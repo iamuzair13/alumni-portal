@@ -1,0 +1,72 @@
+import { NextResponse } from "next/server";
+import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories";
+
+type Story = {
+  id: string;
+  date: string;
+  name: string;
+  program: string;
+  session: string;
+  shortDescription: string;
+  imageUrl: string;
+};
+
+const STORIES: Story[] = [
+  {
+    id: "S-1001",
+    date: "2023-09-12",
+    name: "Ali Raza",
+    program: "BSCS",
+    session: "2021",
+    shortDescription: "Explored AI and ML during final year; now at a local startup.",
+    imageUrl: "https://i.pravatar.cc/64?u=S-1001",
+  },
+  {
+    id: "S-1002",
+    date: "2022-01-05",
+    name: "Sara Khan",
+    program: "BBA",
+    session: "2020",
+    shortDescription: "Finance enthusiast who led student investment club initiatives.",
+    imageUrl: "https://i.pravatar.cc/64?u=S-1002",
+  },
+  {
+    id: "S-1003",
+    date: "2021-11-20",
+    name: "Hassan Ali",
+    program: "BEE",
+    session: "2019",
+    shortDescription: "Designed solar microgrid projects during capstone.",
+    imageUrl: "https://i.pravatar.cc/64?u=S-1003",
+  },
+  {
+    id: "S-1004",
+    date: "2024-02-18",
+    name: "Fatima Noor",
+    program: "BS Biology",
+    session: "2022",
+    shortDescription: "Worked on CRISPR research as a lab assistant.",
+    imageUrl: "https://i.pravatar.cc/64?u=S-1004",
+  },
+];
+
+export async function GET() {
+  return NextResponse.json(STORIES, { status: 200 });
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const parsed = storyServerSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
+    }
+    const payload: ServerStoryPayload = parsed.data;
+    // Mock create: generate id and echo back
+    const id = `S-${Math.floor(1000 + Math.random() * 9000)}`;
+    const created = { id, ...payload };
+    return NextResponse.json(created, { status: 201 });
+  } catch (e) {
+    return NextResponse.json({ message: "Invalid JSON" }, { status: 400 });
+  }
+}
