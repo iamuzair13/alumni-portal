@@ -273,17 +273,16 @@ const GroupedList: React.FC<GroupedProps> = ({ groups, loading, label }) => {
 const AlumniTable: React.FC<AlumniListProps> = ({ items, loading, emptyMessage }) => {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize] = useState(8);
   const [sortKey, setSortKey] = useState<keyof Alumni>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Verified" | "Un-Verified">("All");
-  const [campusFilter, setCampusFilter] = useState<string>("All");
-  const [facultyFilter, setFacultyFilter] = useState<string>("All");
-  const [departmentFilter, setDepartmentFilter] = useState<string>("All");
-  const [programFilter, setProgramFilter] = useState<string>("All");
-  const [yearFilter, setYearFilter] = useState<string>("All");
-  const [countryFilter, setCountryFilter] = useState<string>("All");
-  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [statusFilter] = useState<"All" | "Verified" | "Un-Verified">("All");
+  const [campusFilter] = useState<string>("All");
+  const [facultyFilter] = useState<string>("All");
+  const [departmentFilter] = useState<string>("All");
+  const [programFilter] = useState<string>("All");
+  const [yearFilter] = useState<string>("All");
+  const [countryFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
@@ -399,6 +398,7 @@ const AlumniTable: React.FC<AlumniListProps> = ({ items, loading, emptyMessage }
                   >
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={`https://i.pravatar.cc/32?u=${alum.id}`}
                           alt={alum.name}
@@ -463,30 +463,7 @@ export default function AlumniPage() {
     }
   }, [selected]);
 
-  const campusGroups = useMemo(
-    () => groupBy(DUMMY_ALUMNI, (a) => a.campus),
-    []
-  );
-  const facultyGroups = useMemo(
-    () => groupBy(DUMMY_ALUMNI, (a) => a.faculty),
-    []
-  );
-  const departmentGroups = useMemo(
-    () => groupBy(DUMMY_ALUMNI, (a) => a.department),
-    []
-  );
-  const programGroups = useMemo(
-    () => groupBy(DUMMY_ALUMNI, (a) => a.program),
-    []
-  );
-  const yearGroups = useMemo(
-    () => groupBy(DUMMY_ALUMNI, (a) => String(a.passingYear)),
-    []
-  );
-  const countryGroups = useMemo(
-    () => groupBy(DUMMY_ALUMNI, (a) => a.workCountry),
-    []
-  );
+  // Removed unused grouped memo variables to satisfy linter
 
   return (
     <ComponentCard title="Alumni" className="">

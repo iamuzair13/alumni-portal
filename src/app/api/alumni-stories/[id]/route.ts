@@ -72,7 +72,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     const updated = { id: params.id, ...parsed.data };
     return NextResponse.json(updated, { status: 200 });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
   }
 }

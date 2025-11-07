@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     const id = `S-${Math.floor(1000 + Math.random() * 9000)}`;
     const created = { id, ...payload };
     return NextResponse.json(created, { status: 201 });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ message: "Invalid JSON" }, { status: 400 });
   }
 }

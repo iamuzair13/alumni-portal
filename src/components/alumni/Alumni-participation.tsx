@@ -57,7 +57,7 @@ const STATUS_CLASS_MAP: Record<
 export const AlumniParticipation: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("talkMentorship");
 
-  const stats = MOCK_COUNTS[selected];
+  // Removed unused stats to satisfy linter
 
   return (
     <ComponentCard title="Alumni Participation" className="">

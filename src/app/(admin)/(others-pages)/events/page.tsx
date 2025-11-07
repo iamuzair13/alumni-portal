@@ -8,6 +8,7 @@
  */
 
 
+/* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ComponentCard from "@/components/common/ComponentCard";
@@ -388,7 +389,7 @@ export default function EventsPage() {
               <select
                 id="sort-time"
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as any)}
+                onChange={(e) => setSortOrder(e.target.value === "asc" ? "asc" : "desc")}
                 className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 aria-label="Sort events by start time"
               >
@@ -494,7 +495,9 @@ export const eventFormSchema = z
     category: z.string().min(2, "Category is required"),
     shortHtml: z.string().min(10, "Short info must be at least 10 characters").max(2000, "Too long"),
     description: z.string().min(100, "Description must be at least 100 characters").max(5000, "Too long"),
-    isFeatured: z.boolean().default(false),
+    // Keep isFeatured required in schema to align input/output types
+    isFeatured: z.boolean(),
+    
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Date must be YYYY-MM-DD"),
     startTime: z
       .string()
@@ -508,6 +511,7 @@ export const eventFormSchema = z
       .refine((f) => !f || ["image/png", "image/jpeg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
       .refine((f) => !f || (f as File).size <= 2 * 1024 * 1024, { message: "Max size 2MB" })
       .optional(),
+
   })
   .refine((vals) => {
     try {
@@ -595,8 +599,9 @@ export const AddEventForm: React.FC = () => {
       setServerMsg("Event saved successfully.");
       reset();
       setPreviewUrl(null);
-    } catch (e: any) {
-      setServerError(e?.message || "Unexpected error while saving.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unexpected error while saving.";
+      setServerError(msg);
     }
   };
 

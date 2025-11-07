@@ -52,8 +52,8 @@ export default async function AlumniProfilePage(props: { params: Promise<{ id: s
       throw new Error(`Failed to load profile (status ${res.status})`);
     }
     data = await res.json();
-  } catch (e: any) {
-    error = e?.message || "Failed to load profile";
+  } catch (e: unknown) {
+    error = e instanceof Error ? e.message : "Failed to load profile";
   }
 
   return (

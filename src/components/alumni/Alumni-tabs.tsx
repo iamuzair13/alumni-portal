@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
 import { GroupIcon } from "@/icons";
@@ -98,18 +98,21 @@ export const AlumniTabs: React.FC = () => {
   const router = useRouter();
   const [selected, setSelected] = useState<TabKey>("total");
 
-  const stats = MOCK_COUNTS[selected];
-
   // Simple mock alumni list to demonstrate filtering by status
   type AlumniItem = {
     id: string;
     name: string;
     email: string;
+    mobile?: string;
     campus: string;
     faculty: string;
     program: string;
+    department?: string;
     passingYear: number;
     workCountry: string;
+    workCity?: string;
+    organization?: string;
+    designation?: string;
     verified: boolean;
     underApproval: boolean;
     active: boolean;
@@ -391,23 +394,7 @@ export const AlumniTabs: React.FC = () => {
   },
   ];
 
-  const filteredAlumni = useMemo(() => {
-    switch (selected) {
-      case "verified":
-        return MOCK_ALUMNI.filter((a) => a.verified);
-      case "unverified":
-        return MOCK_ALUMNI.filter((a) => !a.verified);
-      case "underApproval":
-        return MOCK_ALUMNI.filter((a) => a.underApproval);
-      case "active":
-        return MOCK_ALUMNI.filter((a) => a.active);
-      case "inactive":
-        return MOCK_ALUMNI.filter((a) => !a.active);
-      case "total":
-      default:
-        return MOCK_ALUMNI;
-    }
-  }, [selected]);
+  // filtering is handled in the server-like fetcher; remove unused memo
 
   // Pagination types and server-like fetch
   type PaginationParams = { page: number; pageSize: number; status: TabKey; query?: string };
@@ -429,7 +416,7 @@ export const AlumniTabs: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  const fetchAlumniPage = async (params: PaginationParams): Promise<PagedResponse<AlumniItem>> => {
+  const fetchAlumniPage = useCallback(async (params: PaginationParams): Promise<PagedResponse<AlumniItem>> => {
     const source = (() => {
       switch (params.status) {
         case "verified":
@@ -467,7 +454,7 @@ export const AlumniTabs: React.FC = () => {
     await new Promise((res) => setTimeout(res, 250));
 
     return { items, total: totalItems, totalPages: totalPagesCalc, page: safePage, pageSize: params.pageSize };
-  };
+  }, [MOCK_ALUMNI]);
 
   useEffect(() => { setCurrentPage(1); setSelectedRowId(null); }, [selected, pageSize, debouncedQuery]);
 
@@ -485,7 +472,7 @@ export const AlumniTabs: React.FC = () => {
       .catch(() => { if (!cancelled) setError("Failed to load data. Please try again."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [currentPage, pageSize, selected, debouncedQuery]);
+  }, [currentPage, pageSize, selected, debouncedQuery, fetchAlumniPage]);
 
   return (
     <ComponentCard title="Alumni Status" className="">
@@ -621,6 +608,7 @@ export const AlumniTabs: React.FC = () => {
                   >
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={`https://i.pravatar.cc/32?u=${alum.id}`}
                           alt={alum.name}

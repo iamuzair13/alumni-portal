@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Modal } from "@/components/ui/modal";
@@ -182,7 +183,7 @@ export default function SetupPage() {
         localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(SAMPLE_USERS));
       }
       setUsersLoading(false);
-    } catch (e) {
+    } catch {
       setUsersError("Failed to load users.");
       setUsersLoading(false);
     }
@@ -502,7 +503,7 @@ export default function SetupPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Label className="text-sm">Sort by</Label>
-                <Select defaultValue={userSort} onChange={(v: any) => setUserSort(v as any)} options={[
+                <Select defaultValue={userSort} onChange={(v) => setUserSort(v as "name" | "role" | "lastAccess") } options={[
                   { value: "name", label: "Name" },
                   { value: "role", label: "Role" },
                   { value: "lastAccess", label: "Last Access" },
@@ -565,7 +566,7 @@ export default function SetupPage() {
                         <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{formatDateTime(u.lastAccess)}</td>
                         <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">
                           {Object.entries(u.permissions)
-                            .filter(([_, v]) => v)
+                            .filter(([, v]) => v)
                             .map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase())
                             .join(", ") || "None"}
                         </td>

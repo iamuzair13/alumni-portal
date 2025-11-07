@@ -71,6 +71,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
             </div>
           </div>
           <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={event.imageUrl || "https://via.placeholder.com/300x200"} alt={`${event.title} image`} className="rounded-xl border border-gray-200 dark:border-gray-800 object-cover w-full h-auto" />
           </div>
         </div>

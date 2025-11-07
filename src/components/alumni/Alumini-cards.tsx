@@ -57,7 +57,7 @@ const STATUS_CLASS_MAP: Record<
 export const AlumniCards: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("applied");
 
-  const stats = MOCK_COUNTS[selected];
+  // Removed unused stats to satisfy linter
 
   return (
     <ComponentCard title="Alumni Cards" className="">

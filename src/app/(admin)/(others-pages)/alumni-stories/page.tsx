@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -7,7 +8,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
+// zod imported via resolvers and schema; remove unused 'z'
 import { storyFormSchema, type NewStoryPayload } from "@/lib/alumniStories";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, TrashBinIcon } from "@/icons";
@@ -490,8 +491,9 @@ export const AddStoryForm: React.FC = () => {
       setServerMsg("Story saved successfully.");
       reset();
       setPreviewUrl(null);
-    } catch (e: any) {
-      setServerError(e?.message || "Unexpected error while saving.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unexpected error while saving.";
+      setServerError(msg);
     }
   };
 

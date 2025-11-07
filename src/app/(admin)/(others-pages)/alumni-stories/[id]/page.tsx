@@ -110,7 +110,7 @@ export default function StoryDetailPage() {
             : "",
         });
         setImagePreviewUrl(data.imageUrl || "");
-      } catch (e) {
+      } catch {
         if (active) setError("Unable to load story.");
       } finally {
         if (active) setLoading(false);
@@ -232,6 +232,7 @@ export default function StoryDetailPage() {
           <div className="md:col-span-1">
             <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
               <div className="flex flex-col items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagePreviewUrl || form.imageUrl || "https://via.placeholder.com/128"}
                   alt={`${form.name || "Alumni"}'s image`}
