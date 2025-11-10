@@ -1,0 +1,215 @@
+-- Disable statement timeout just in case
+SET statement_timeout = 0;
+
+-- ================================================
+-- TABLE: tbl_alumni  (Main table)
+-- ================================================
+CREATE TABLE public.tbl_alumni (
+  alumniid SERIAL PRIMARY KEY,
+  alumniemail VARCHAR(150),
+  password VARCHAR(50),
+  todaydate TIMESTAMP,
+  registrationno VARCHAR(20),
+  sapid VARCHAR(20),
+  alumniname VARCHAR(200),
+  gender VARCHAR(50),
+  fathername VARCHAR(200),
+  dateofbirth VARCHAR(50),
+  maritalstatus VARCHAR(50),
+  cnicpassport VARCHAR(50),
+  contactno VARCHAR(50),
+  contactno1 VARCHAR(50),
+  contactno1show BOOLEAN,
+  personalemail VARCHAR(100),
+  personalemailshow BOOLEAN,
+  universityemail VARCHAR(100),
+  country VARCHAR(50),
+  province VARCHAR(50),
+  city VARCHAR(50),
+  address VARCHAR(250),
+  academicsession VARCHAR(50),
+  degreetitle VARCHAR(300),
+  cgpa FLOAT,
+  yearofstarting INT,
+  yearofending INT,
+  facultyname VARCHAR(100),
+  campusname VARCHAR(100),
+  departmentname VARCHAR(300),
+  majorsubject VARCHAR(100),
+  industry VARCHAR(100),
+  employeed VARCHAR(10),
+  nameoforganization VARCHAR(100),
+  designation VARCHAR(100),
+  totalyearsofexpereince VARCHAR(10),
+  officialemail VARCHAR(100),
+  officialnumber VARCHAR(50),
+  supervisorname VARCHAR(250),
+  supervisordesignation VARCHAR(100),
+  supervisoremail VARCHAR(150),
+  supervisornumber VARCHAR(50),
+  image1 VARCHAR(200),
+  cv VARCHAR(200),
+  aboutme TEXT,
+  lasttimelogin VARCHAR(50),
+  logincount INT,
+  verify VARCHAR(10),
+  emailsendcount SMALLINT,
+  emailsendstatus VARCHAR(100),
+  createddatetime VARCHAR(50),
+  facebook VARCHAR(300),
+  instagram VARCHAR(300),
+  youtube VARCHAR(300),
+  linkedin VARCHAR(300),
+  datasource VARCHAR(50),
+  alumnistatus VARCHAR(50)
+);
+
+-- ================================================
+-- TABLE: tblchapters
+-- ================================================
+CREATE TABLE public.tblchapters (
+  id SERIAL,
+  alumniid INT NOT NULL,
+  linkedin VARCHAR(300),
+  PRIMARY KEY (alumniid),
+  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
+);
+
+-- ================================================
+-- TABLE: tblcard
+-- ================================================
+CREATE TABLE public.tblcard (
+  cardid SERIAL,
+  alumniid INT NOT NULL,
+  cardpicture VARCHAR(50),
+  cardaddress VARCHAR(200),
+  cnicno VARCHAR(50),
+  status VARCHAR(50),
+  createdat TIMESTAMP,
+  PRIMARY KEY (alumniid),
+  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
+);
+
+-- ================================================
+-- TABLE: tblalumnitalks
+-- ================================================
+CREATE TABLE public.tblalumnitalks (
+  id SERIAL,
+  alumniid INT NOT NULL,
+  alumnitalks VARCHAR(10),
+  mentorshipprogram VARCHAR(10),
+  topic VARCHAR(500),
+  day VARCHAR(20),
+  timings VARCHAR(20),
+  activity VARCHAR(50),
+  linkedin VARCHAR(300),
+  PRIMARY KEY (alumniid),
+  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
+);
+
+-- ================================================
+-- TABLE: tblalumnistories
+-- ================================================
+CREATE TABLE public.tblalumnistories (
+  alumniid INT NOT NULL PRIMARY KEY,
+  alumnistories TEXT,
+  alumniimage VARCHAR(50),
+  status VARCHAR(20),
+  createdat TIMESTAMP,
+  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
+);
+
+-- ================================================
+-- TABLE: tblalumniassociation
+-- ================================================
+CREATE TABLE public.tblalumniassociation (
+  id SERIAL,
+  alumniid INT NOT NULL,
+  q1 VARCHAR(200),
+  q2 VARCHAR(300),
+  q2others VARCHAR(300),
+  q3 VARCHAR(50),
+  q4 VARCHAR(300),
+  q5 VARCHAR(50),
+  q6 VARCHAR(50),
+  q7 VARCHAR(1000),
+  createddatetime TIMESTAMP,
+  PRIMARY KEY (alumniid),
+  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
+);
+
+-- ================================================
+-- TABLE: tblstories
+-- ================================================
+CREATE TABLE public.tblstories (
+  id SERIAL PRIMARY KEY,
+  alumniname VARCHAR(50),
+  alumnisession VARCHAR(50),
+  alumnifaculty VARCHAR(50),
+  alumnicompany VARCHAR(50),
+  alumnidesignation VARCHAR(50),
+  alumnicitycountry VARCHAR(50),
+  alumnistories TEXT,
+  alumnishortstories VARCHAR(500),
+  alumnistoriesdate DATE,
+  alumniimage1 VARCHAR(50),
+  alumnishowhome VARCHAR(10)
+);
+
+-- ================================================
+-- TABLE: tbl_events
+-- ================================================
+CREATE TABLE public.tbl_events (
+  id SERIAL PRIMARY KEY,
+  category VARCHAR(100),
+  title VARCHAR(200),
+  shortdescription VARCHAR(500),
+  longdescription TEXT,
+  fromdate DATE,
+  todate DATE,
+  eventtime VARCHAR(50),
+  image1 VARCHAR(50) NOT NULL,
+  image2 VARCHAR(50),
+  image3 VARCHAR(50),
+  image4 VARCHAR(50),
+  image5 VARCHAR(50)
+);
+
+-- ================================================
+-- TABLE: tbl_banner
+-- ================================================
+CREATE TABLE public.tbl_banner (
+  bannerid SERIAL PRIMARY KEY,
+  bannertitle1 VARCHAR(150),
+  bannertitle2 VARCHAR(150),
+  bannertitle3 VARCHAR(200),
+  bannerimage VARCHAR(100),
+  orderby SMALLINT
+);
+
+-- ================================================
+-- TABLE: tbl_users (Admins / System Users)
+-- ================================================
+CREATE TABLE public.tbl_users (
+  userid SERIAL PRIMARY KEY,
+  email VARCHAR(150),
+  password VARCHAR(50),
+  firstname VARCHAR(100),
+  lastname VARCHAR(100),
+  department VARCHAR(100),
+  type VARCHAR(50),
+  blocked BOOLEAN,
+  lastlogindatetime VARCHAR(50)
+);
+
+-- ================================================
+-- TABLE: alumnichapterslocation
+-- ================================================
+CREATE TABLE public.alumnichapterslocation (
+  chapterid SERIAL PRIMARY KEY,
+  categoryname VARCHAR(50),
+  chaptercode VARCHAR(10),
+  chaptertitle VARCHAR(100),
+  chapterlocation VARCHAR(200) NOT NULL,
+  chapterwhatsapp VARCHAR(300)
+);

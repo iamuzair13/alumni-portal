@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
-import { GroupIcon } from "@/icons";
+import { ListIcon, CheckCircleIcon, CloseLineIcon, TimeIcon, BoltIcon, LockIcon, EyeIcon, TrashBinIcon, CheckLineIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
@@ -92,6 +92,19 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-gray-700 dark:text-gray-200",
     labelText: "text-gray-600 dark:text-gray-300",
   },
+};
+
+// Icon mapping for each tab action (typed for clarity)
+const ICON_COMPONENT_MAP: Record<
+  TabKey,
+  React.ComponentType<{ className?: string }>
+> = {
+  total: ListIcon,
+  verified: CheckCircleIcon,
+  unverified: CloseLineIcon,
+  underApproval: TimeIcon,
+  active: BoltIcon,
+  inactive: LockIcon,
 };
 
 export const AlumniTabs: React.FC = () => {
@@ -475,29 +488,32 @@ export const AlumniTabs: React.FC = () => {
   }, [currentPage, pageSize, selected, debouncedQuery, fetchAlumniPage]);
 
   return (
-    <ComponentCard title="Alumni Status" className="">
+    <ComponentCard  className=" ">
       <div className=" flex flex-col gap-4 ">
         <div className="rounded-2xl  dark:bg-white/[0.03]">
          
           <div
-            className="tab-list  flex flex-wrap gap-4 lg:gap-6 justify-start "
+            className="tab-list flex flex-nowrap items-center gap-3 overflow-x-auto p-1 "
             role="tablist"
             aria-label="Alumni status categories"
           >
             {TABS.map((tab, idx) => {
               const stat = MOCK_COUNTS[tab.key];
               const statusClasses = STATUS_CLASS_MAP[tab.key];
+              const Icon = ICON_COMPONENT_MAP[tab.key];
               return (
-                <div
+                <button
                   key={tab.key}
-                  className={`tab-item rounded-2xl border cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out md:p-6 hover:scale-[1.02] hover:shadow-lg ${statusClasses.hoverBorder} ${
+                  type="button"
+                  className={`w-[180px] whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-1 py-2 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
                     selected === tab.key
                       ? statusClasses.selectedContainer
                       : "border-gray-200 bg-slate-100 dark:border-gray-800 dark:bg-white/[0.03]"
-                  }`}
+                  } hover:translate-y-[-1px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900`}
                   onClick={() => setSelected(tab.key)}
                   role="tab"
                   aria-selected={selected === tab.key}
+                  aria-label={`${tab.label} (${stat.count.toLocaleString()})`}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "ArrowRight") {
@@ -514,21 +530,12 @@ export const AlumniTabs: React.FC = () => {
                     }
                   }}
                 >
-                  <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${statusClasses.iconBg}`}>
-                    <GroupIcon className={`${statusClasses.iconColor} size-6`} />
+                  <div className="flex items-center">
+                  <Icon className={`${statusClasses.iconColor} size-6`} />
+                  <span className={`font-medium ${statusClasses.labelText}`}>{tab.label}</span>
                   </div>
-                  <div className="flex items-end justify-between mt-5">
-                    <div>
-                      <span className={`text-sm ${statusClasses.labelText}`}>
-                        {tab.label}
-                      </span>
-                      <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-                        {stat.count.toLocaleString()}
-                      </h4>
-                    </div>
-                    
-                  </div>
-                </div>
+                  <span className="ml-1 text-[40px] text-gray-600 dark:text-gray-400">{stat.count.toLocaleString()}</span>
+                </button>
               );
             })}
           </div>
@@ -552,9 +559,9 @@ export const AlumniTabs: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[420px] overflow-y-auto">
-          <div className="min-w-[950px] xl:min-w-full">
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
+        <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
+          <div className="min-w-`full` xl:min-w-full">
             <Table>
               <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                 <TableRow>
@@ -609,11 +616,7 @@ export const AlumniTabs: React.FC = () => {
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`https://i.pravatar.cc/32?u=${alum.id}`}
-                          alt={alum.name}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                      
                         <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
                       </div>
                     </TableCell>
@@ -628,12 +631,38 @@ export const AlumniTabs: React.FC = () => {
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
                     <TableCell className="px-4 py-3 text-end">
-                      <button
-                        className="inline-flex items-center rounded-xl border border-blue-500 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100 transition-colors dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
-                        onClick={() => router.push(`/alumni/${alum.id}`)}
-                      >
-                        View Profile
-                      </button>
+                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
+                        {(() => {
+                          const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }>
+                            = selected === "verified"
+                            ? [
+                                { label: "Suspend", icon: LockIcon, onClick: () => {/* TODO: wire suspend */}, hover: "hover:text-amber-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => {/* TODO: wire delete */}, hover: "hover:text-rose-600" },
+                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
+                              ]
+                            : selected === "underApproval"
+                            ? [
+                                { label: "Verify", icon: CheckLineIcon, onClick: () => {/* TODO: wire verify */}, hover: "hover:text-emerald-600" },
+                                { label: "Decline", icon: CloseLineIcon, onClick: () => {/* TODO: wire decline */}, hover: "hover:text-rose-600" },
+                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
+                              ]
+                            : [
+                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
+                              ];
+                          return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
+                            <button
+                              key={`${alum.id}-action-${i}`}
+                              type="button"
+                              onClick={onClick}
+                              className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"}`}
+                              aria-label={label}
+                              title={label}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </button>
+                          ));
+                        })()}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

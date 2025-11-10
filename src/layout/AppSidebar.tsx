@@ -27,12 +27,7 @@ const navItems: NavItem[] = [
     name: "Dashboards", 
     path: "/",
   },
-  {
-    icon: <UserCircleIcon />,
-    name: "Alumni Management",
-    path: "/alumni",
-    
-  },
+ 
   {
     icon: <DocsIcon />,
     name: "Stories Management", //add dropdown with add and view

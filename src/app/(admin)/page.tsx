@@ -16,7 +16,6 @@ export default function Ecommerce() {
       <div className="col-span-12  xl:col-span-12 ">
         <AlumniTabbedMenu />
 
-        <MonthlySalesChart />
       </div>
     </div>
   );

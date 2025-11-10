@@ -1,168 +1,467 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { GroupIcon } from "@/icons";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, UserIcon, EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
+import { alumniCardServerSchema } from "@/lib/alumniCards";
+import { IoMdSearch } from "react-icons/io";
+import { AlumniCard, AlumniDataTable } from "./AlumniCard";
 
-type TabKey = "applied" | "inProcess" | "delivered";
+/**
+ * AlumniCards
+ * Responsive card-based listing for alumni, organized by status (active, pending, archived).
+ * Matches architectural patterns used in Alumni-tabs, with typed props, hooks and design system styles.
+ * Includes loading and error states, keyboard-accessible filters, and responsive grid layout.
+ */
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "applied", label: "Applied" },
-  { key: "inProcess", label: "In Process" },
-  { key: "delivered", label: "Delivered" },
+type CardStatus = "active" | "pending" | "declined" | "all";
+
+type AlumniCardItem = {
+  id: string;
+  name: string;
+  email?: string;
+  program: string;
+  campus: string;
+  faculty: string;
+  passingYear: number;
+  workCountry: string;
+  status: CardStatus;
+  createdAt: string;
+};
+
+type ActionKey = "view" | "verify" | "decline" | "suspend" | "delete";
+type ActionDef = {
+  key: ActionKey;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  hoverClass?: string;
+};
+
+type AlumniCardsProps = {
+  initialStatus?: CardStatus;
+  pageSize?: number;
+};
+
+const CARD_TABS: { key: CardStatus; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "pending", label: "Pending" },
+  { key: "declined", label: "Declined" },
 ];
 
-const MOCK_COUNTS: Record<TabKey, { count: number; delta?: number }> = {
-  applied: { count: 1200, delta: 5.2 },
-  inProcess: { count: 480, delta: 2.4 },
-  delivered: { count: 320, delta: 1.1 },
-};
-
-// Per-status color classes to visually distinguish each stage
 const STATUS_CLASS_MAP: Record<
-  TabKey,
-  {
-    selectedContainer: string;
-    hoverBorder: string;
-    iconBg: string;
-    iconColor: string;
-    labelText: string;
-  }
+  CardStatus,
+  { color: string; bgColor: string; ringColor: string; iconColor: string }
 > = {
-  applied: {
-    selectedContainer:
-      "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
-    hoverBorder: "hover:border-blue-400",
-    iconBg: "bg-blue-100 dark:bg-blue-800",
-    iconColor: "text-blue-700 dark:text-blue-200",
-    labelText: "text-blue-600 dark:text-blue-300",
+  all: {
+    color: "text-blue-700",
+    bgColor: "bg-blue-50",
+    ringColor: "ring-blue-200",
+    iconColor: "text-blue-500",
   },
-  inProcess: {
-    selectedContainer:
-      "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
-    hoverBorder: "hover:border-amber-400",
-    iconBg: "bg-amber-100 dark:bg-amber-800",
-    iconColor: "text-amber-700 dark:text-amber-200",
-    labelText: "text-amber-600 dark:text-amber-300",
+  active: {
+    color: "text-green-700",
+    bgColor: "bg-green-50",
+    ringColor: "ring-green-200",
+    iconColor: "text-green-600",
   },
-  delivered: {
-    selectedContainer:
-      "border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20",
-    hoverBorder: "hover:border-emerald-400",
-    iconBg: "bg-emerald-100 dark:bg-emerald-800",
-    iconColor: "text-emerald-700 dark:text-emerald-200",
-    labelText: "text-emerald-600 dark:text-emerald-300",
+  pending: {
+    color: "text-amber-700",
+    bgColor: "bg-amber-50",
+    ringColor: "ring-amber-200",
+    iconColor: "text-amber-600",
+  },
+  declined: {
+    color: "text-red-700",
+    bgColor: "bg-red-50",
+    ringColor: "ring-red-200",
+    iconColor: "text-red-600",
   },
 };
 
-export const AlumniCards: React.FC = () => {
-  const [selected, setSelected] = useState<TabKey>("applied");
+const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
+  all: GroupIcon,
+  active: BoltIcon,
+  pending: TimeIcon,
+  declined: LockIcon,
+};
 
-  // Removed unused stats to satisfy linter
+export function getActionsForStatus(status: CardStatus): ActionDef[] {
+  switch (status) {
+    case "active":
+      return [
+        { key: "suspend", label: "Suspend", icon: LockIcon, hoverClass: "hover:text-amber-600" },
+        { key: "delete", label: "Delete", icon: TrashBinIcon, hoverClass: "hover:text-rose-600" },
+        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
+      ];
+    case "pending":
+      return [
+        { key: "verify", label: "Verify", icon: CheckLineIcon, hoverClass: "hover:text-emerald-600" },
+        { key: "decline", label: "Decline", icon: CloseLineIcon, hoverClass: "hover:text-rose-600" },
+        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
+      ];
+    case "declined":
+      return [
+        { key: "delete", label: "Delete", icon: TrashBinIcon, hoverClass: "hover:text-rose-600" },
+        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
+      ];
+    case "all":
+    default:
+      return [{ key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" }];
+  }
+}
+
+// Pure reducer used for testing and state updates
+export function applyAction(item: AlumniCardItem, action: ActionKey): { updated?: AlumniCardItem; removed?: boolean } {
+  switch (action) {
+    case "view":
+      return { updated: item };
+    case "verify":
+      return { updated: { ...item, status: "active" } };
+    case "decline":
+      return { updated: { ...item, status: "declined" } };
+    case "suspend":
+      return { updated: { ...item, status: "declined" } };
+    case "delete":
+      return { removed: true };
+    default:
+      return { updated: item };
+  }
+}
+
+// Mock alumni data
+const MOCK_ALUMNI_CARDS: AlumniCardItem[] = [
+  {
+    id: "1",
+    name: "Jacob Jones",
+    email: "jacob.jones@example.com",
+    program: "MSc Advanced Computer Science",
+    campus: "London School of Economics",
+    faculty: "InfoTech",
+    passingYear: 2021,
+    workCountry: "United Kingdom",
+    status: "active",
+    createdAt: new Date(2021, 5, 12).toISOString(),
+  },
+  {
+    id: "2",
+    name: "John Michael",
+    email: "john.michael@example.com",
+    program: "MSc Artificial Intelligence",
+    campus: "University of Manchester",
+    faculty: "InfoTech",
+    passingYear: 2021,
+    workCountry: "United Kingdom",
+    status: "pending",
+    createdAt: new Date(2021, 6, 12).toISOString(),
+  },
+  {
+    id: "3",
+    name: "Guy Hawkins",
+    email: "guy.hawkins@example.com",
+    program: "MBA",
+    campus: "Harvard Business School",
+    faculty: "Business",
+    passingYear: 2020,
+    workCountry: "United States",
+    status: "declined",
+    createdAt: new Date(2020, 9, 3).toISOString(),
+  },
+  {
+    id: "4",
+    name: "Esther Howard",
+    email: "esther.howard@example.com",
+    program: "LLM",
+    campus: "Yale University",
+    faculty: "Law",
+    passingYear: 2019,
+    workCountry: "United States",
+    status: "active",
+    createdAt: new Date(2019, 11, 9).toISOString(),
+  },
+  {
+    id: "5",
+    name: "Savannah Nguyen",
+    email: "sav.nguyen@example.com",
+    program: "Medicine",
+    campus: "Johns Hopkins University",
+    faculty: "Medicine",
+    passingYear: 2022,
+    workCountry: "United States",
+    status: "pending",
+    createdAt: new Date(2022, 2, 22).toISOString(),
+  },
+  {
+    id: "6",
+    name: "Ralph Edwards",
+    email: "ralph.edwards@example.com",
+    program: "Engineering",
+    campus: "MIT",
+    faculty: "Engineering",
+    passingYear: 2021,
+    workCountry: "United States",
+    status: "declined",
+    createdAt: new Date(2021, 7, 19).toISOString(),
+  },
+];
+
+/**
+ * Filters alumni by status and query. Exported for unit testing.
+ */
+export function filterCards(
+  items: AlumniCardItem[],
+  status: CardStatus,
+  query: string
+): AlumniCardItem[] {
+  const q = query.trim().toLowerCase();
+  const tokens = q.length ? q.split(/\s+/).filter(Boolean) : [];
+  return items.filter((item) => {
+    const matchesStatus = status === "all" ? true : item.status === status;
+    if (!tokens.length) return matchesStatus; // empty query
+
+    const fields = [
+      item.id,
+      item.name,
+      item.program,
+      item.campus,
+      item.faculty,
+      item.workCountry,
+      item.email ?? "",
+    ].map((v) => v.toLowerCase());
+
+    // All tokens must appear in at least one field (robust multi-word search)
+    const matchesTokens = tokens.every((t) => fields.some((f) => f.includes(t)));
+    return matchesStatus && matchesTokens;
+  });
+}
+
+export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
+  const [status, setStatus] = useState<CardStatus>(initialStatus);
+  const [query, setQuery] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cards, setCards] = useState<AlumniCardItem[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [busyMap, setBusyMap] = useState<Record<string, boolean>>({});
+  const [actionErrorMap, setActionErrorMap] = useState<Record<string, string | null>>({});
+
+  const memoCards = useMemo(() => MOCK_ALUMNI_CARDS, []);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let canceled = false;
+    setLoading(true);
+    setError(null);
+
+    const timeout = setTimeout(() => {
+      try {
+        const filtered = filterCards(memoCards, status, query);
+        const start = (currentPage - 1) * pageSize;
+        const paged = filtered.slice(start, start + pageSize);
+        if (!canceled) {
+          setCards(paged);
+          setTotal(filtered.length);
+        }
+      } catch (e) {
+        if (!canceled) setError("Failed to load alumni cards.");
+      } finally {
+        if (!canceled) setLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      canceled = true;
+      clearTimeout(timeout);
+    };
+  }, [memoCards, status, query, currentPage, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const handleAction = async (alumni: AlumniCardItem, key: ActionKey) => {
+    setActionErrorMap((m) => ({ ...m, [alumni.id]: null }));
+    setBusyMap((m) => ({ ...m, [alumni.id]: true }));
+    try {
+      // Validate item before applying action
+      const parsed = alumniCardServerSchema.safeParse(alumni);
+      if (!parsed.success) {
+        throw new Error("Invalid card data");
+      }
+      // Simulate network latency; later can swap to real API
+      await new Promise((res) => setTimeout(res, 200));
+      const res = applyAction(alumni, key);
+      // Attempt optional API update; ignore failures but report
+      try {
+        if (res.removed) {
+          await fetch(`/api/alumni-cards/${alumni.id}`, { method: "DELETE" });
+        } else if (res.updated && res.updated.status !== alumni.status) {
+          await fetch(`/api/alumni-cards/${alumni.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: alumni.id,
+              name: alumni.name,
+              email: alumni.email ?? "",
+              program: alumni.program,
+              campus: alumni.campus,
+              faculty: alumni.faculty,
+              passingYear: alumni.passingYear,
+              workCountry: alumni.workCountry,
+              status: res.updated.status === "all" ? "active" : res.updated.status,
+              createdAt: alumni.createdAt,
+            }),
+          });
+        }
+      } catch (apiErr) {
+        // Non-blocking: local state still updates, but we surface the error
+        const msg = apiErr instanceof Error ? apiErr.message : "API update failed";
+        setActionErrorMap((m) => ({ ...m, [alumni.id]: msg }));
+      }
+      setCards((prev) => {
+        const idx = prev.findIndex((c) => c.id === alumni.id);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        if (res.removed) {
+          next.splice(idx, 1);
+          return next;
+        }
+        if (res.updated) {
+          next[idx] = res.updated;
+        }
+        return next;
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Action failed";
+      setActionErrorMap((m) => ({ ...m, [alumni.id]: msg }));
+    } finally {
+      setBusyMap((m) => ({ ...m, [alumni.id]: false }));
+    }
+  };
 
   return (
-    <ComponentCard title="Alumni Cards" className="">
-      <div className=" flex flex-col ">
-        <div className="rounded-2xl  dark:bg-white/[0.03]">
-         
-          <div
-            className="tab-list flex flex-wrap gap-4 lg:gap-6 justify-start"
-            role="tablist"
-            aria-label="Alumni application stages"
-          >
-            {TABS.map((tab, idx) => {
-              const stat = MOCK_COUNTS[tab.key];
-              const statusClasses = STATUS_CLASS_MAP[tab.key];
-              return (
-                <div
-                  key={tab.key}
-                  className={`tab-item rounded-2xl border p-5 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out md:p-6 hover:scale-[1.02] hover:shadow-lg ${statusClasses.hoverBorder} ${
-                    selected === tab.key
-                      ? statusClasses.selectedContainer
-                      : "border-gray-200 bg-slate-100 dark:border-gray-800 dark:bg-white/[0.03]"
-                  }`}
-                  onClick={() => setSelected(tab.key)}
-                  role="tab"
-                  aria-selected={selected === tab.key}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowRight") {
-                      e.preventDefault();
-                      const nextIdx = (idx + 1) % TABS.length;
-                      setSelected(TABS[nextIdx].key);
-                    } else if (e.key === "ArrowLeft") {
-                      e.preventDefault();
-                      const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                      setSelected(TABS[prevIdx].key);
-                    } else if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelected(tab.key);
-                    }
-                  }}
-                >
-                  <div className={`flex items-center justify-center w-12 h-12 rounded-xl ${statusClasses.iconBg}`}>
-                    <GroupIcon className={`${statusClasses.iconColor} size-6`} />
-                  </div>
-                  <div className="flex items-end justify-between mt-5">
-                    <div>
-                      <span className={`text-sm ${statusClasses.labelText}`}>
-                        {tab.label}
-                      </span>
-                      <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-                        {stat.count.toLocaleString()}
-                      </h4>
-                    </div>
-                    
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <ComponentCard className="">
+      {/* Filters & Search */}
+      <div className="p-4 rounded-xl border border-neutral-200 bg-white">
+        <div className="flex items-center gap-3 overflow-x-auto flex-nowrap pb-2" role="tablist" aria-label="Card status filters">
+          {CARD_TABS.map((tab, idx) => {
+            const Icon = STATUS_ICON_MAP[tab.key];
+            const theme = STATUS_CLASS_MAP[tab.key];
+            const isActive = status === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setStatus(tab.key);
+                  setCurrentPage(1);
+                  searchRef.current?.focus();
+                }}
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`Filter by ${tab.label}`}
+                className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium ring-1 ring-inset transition-colors focus:outline-none focus-visible:ring-2 ${
+                  isActive
+                    ? `${theme.bgColor} ${theme.color} ${theme.ringColor}`
+                    : `text-neutral-700 ring-neutral-200 hover:bg-neutral-50`
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    const nextIdx = (idx + 1) % CARD_TABS.length;
+                    setStatus(CARD_TABS[nextIdx].key);
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    const prevIdx = (idx - 1 + CARD_TABS.length) % CARD_TABS.length;
+                    setStatus(CARD_TABS[prevIdx].key);
+                  }
+                }}
+              >
+                <Icon className={`h-6 w-6 ${isActive ? theme.iconColor : "text-neutral-500"}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
-        
+
+        {/* <div className="mt-3">
+          <label htmlFor="cards-search" className="sr-only">Search alumni</label>
+          <div className="is-input-wrap">
+            <div className="is-input has-secondary w-full max-w-[420px] rounded-lg border border-neutral-200 flex items-center gap-2 px-3 py-2 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-200">
+              <IoMdSearch className="h-5 w-5 text-neutral-500" aria-hidden="true" />
+              <input
+                id="cards-search"
+                ref={searchRef}
+                type="text"
+                inputMode="search"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="w-full bg-transparent placeholder:text-neutral-400 focus:outline-none"
+                placeholder="Search by name or SAP-ID"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          </div>
+        </div> */}
       </div>
-      <style jsx>{`
-        .tab-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem; /* base spacing between tabs */
-        }
 
-        .tab-item {
-          /* Flexbox sizing with constraints */
-          flex: 1 1 180px; /* grow; shrink; base width */
-          min-width: 160px;
-          max-width: 320px;
-          /* Smooth transitions for resizing and state */
-          transition: flex-basis 300ms ease, width 300ms ease,
-            background-color 200ms ease, border-color 200ms ease,
-            transform 200ms ease;
-          will-change: transform;
-        }
+      {/* Content */}
+      <div className="min-h-[200px] mt-4">
+        {error && (
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
-        /* Desktop (≥1024px) */
-        @media (min-width: 1024px) {
-          .tab-list {
-            gap: 1.5rem; /* more spacing on desktop */
-          }
-          .tab-item {
-            flex-basis: 240px; /* comfortable width on desktop */
-          }
-        }
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 p-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: Math.min(pageSize, 8) }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-xl border border-neutral-200 p-4 bg-neutral-50">
+                <div className="h-6 w-2/3 bg-neutral-200 rounded mb-3" />
+                <div className="h-4 w-1/2 bg-neutral-200 rounded mb-2" />
+                <div className="h-4 w-1/3 bg-neutral-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <AlumniDataTable
+            items={cards}
+            loading={loading}
+            error={error}
+            defaultPageSize={pageSize}
+            onRowAction={(item, key) => handleAction(item, key)}
+          />
+        )}
+      </div>
 
-        /* Tablet (768px–1023px) */
-        @media (min-width: 768px) and (max-width: 1023px) {
-          .tab-item {
-            flex-basis: 200px; /* medium width on tablets */
-          }
-        }
 
-        /* Mobile (<768px) */
-        @media (max-width: 767px) {
-          .tab-item {
-            flex-basis: 160px; /* compact width on mobile */
-          }
-        }
-      `}</style>
+      {/* Pagination */}
+      <div className="flex items-center justify-between gap-3 mt-2">
+        <div className="text-sm text-neutral-600">
+          Page {currentPage} of {Math.max(1, Math.ceil(total / pageSize))}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-neutral-200 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-neutral-200 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
+            onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(total / pageSize)), p + 1))}
+            disabled={currentPage >= Math.max(1, Math.ceil(total / pageSize))}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </ComponentCard>
   );
 };

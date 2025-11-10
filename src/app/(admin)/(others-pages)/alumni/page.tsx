@@ -162,6 +162,12 @@ const DUMMY_ALUMNI: Alumni[] = [
 // Removed unused dropdown imports and helper/list components to satisfy linter
 
 // Styled Table component with filters, sorting, pagination
+type AlumniListProps = {
+  items: Alumni[];
+  loading?: boolean;
+  emptyMessage?: string;
+};
+
 const AlumniTable: React.FC<AlumniListProps> = ({ items, loading, emptyMessage }) => {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
@@ -185,17 +191,17 @@ const AlumniTable: React.FC<AlumniListProps> = ({ items, loading, emptyMessage }
   const filtered = useMemo(() => {
     let data = items;
     if (statusFilter !== "All") {
-      data = data.filter((i) => (statusFilter === "Verified" ? i.verified : !i.verified));
+      data = data.filter((i: Alumni) => (statusFilter === "Verified" ? i.verified : !i.verified));
     }
-    if (campusFilter !== "All") data = data.filter((i) => i.campus === campusFilter);
-    if (facultyFilter !== "All") data = data.filter((i) => i.faculty === facultyFilter);
-    if (departmentFilter !== "All") data = data.filter((i) => i.department === departmentFilter);
-    if (programFilter !== "All") data = data.filter((i) => i.program === programFilter);
-    if (yearFilter !== "All") data = data.filter((i) => String(i.passingYear) === yearFilter);
-    if (countryFilter !== "All") data = data.filter((i) => i.workCountry === countryFilter);
+    if (campusFilter !== "All") data = data.filter((i: Alumni) => i.campus === campusFilter);
+    if (facultyFilter !== "All") data = data.filter((i: Alumni) => i.faculty === facultyFilter);
+    if (departmentFilter !== "All") data = data.filter((i: Alumni) => i.department === departmentFilter);
+    if (programFilter !== "All") data = data.filter((i: Alumni) => i.program === programFilter);
+    if (yearFilter !== "All") data = data.filter((i: Alumni) => String(i.passingYear) === yearFilter);
+    if (countryFilter !== "All") data = data.filter((i: Alumni) => i.workCountry === countryFilter);
     const q = searchQuery.trim().toLowerCase();
     if (q) {
-      data = data.filter((i) => {
+      data = data.filter((i: Alumni) => {
         const fields = [i.id, i.name, i.email ?? ""];
         return fields.some((v) => String(v).toLowerCase().includes(q));
       });
