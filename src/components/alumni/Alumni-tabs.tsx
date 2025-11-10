@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
 import { GroupIcon } from "@/icons";
@@ -118,7 +118,7 @@ export const AlumniTabs: React.FC = () => {
     active: boolean;
   };
 
-  const MOCK_ALUMNI: AlumniItem[] = [
+  const MOCK_ALUMNI = useMemo<AlumniItem[]>(() => [
     {
       id: "SAP-1001",
       name: "Ayesha Khan",
@@ -392,7 +392,7 @@ export const AlumniTabs: React.FC = () => {
     underApproval: true,
     active: false,
   },
-  ];
+  ], []);
 
   // filtering is handled in the server-like fetcher; remove unused memo
 
@@ -599,9 +599,9 @@ export const AlumniTabs: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 )}
-                {!loading && !error && pageItems.map((alum) => (
+                {!loading && !error && pageItems.map((alum, idx) => (
                   <TableRow
-                    key={alum.id}
+                    key={`${alum.id}-${idx}`}
                     className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
                     onClick={() => setSelectedRowId(alum.id)}
                     aria-selected={selectedRowId === alum.id}
