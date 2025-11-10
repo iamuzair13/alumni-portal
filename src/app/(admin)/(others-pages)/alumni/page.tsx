@@ -6,8 +6,6 @@ import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Badge from "@/components/ui/badge/Badge";
 import Pagination from "@/components/tables/Pagination";
-import {Dropdown} from "@/components/ui/dropdown/Dropdown";
-import {DropdownItem} from "@/components/ui/dropdown/DropdownItem";
 
 type TabKey =
   | "addAlumni"
@@ -161,113 +159,7 @@ const DUMMY_ALUMNI: Alumni[] = [
   },
 ];
 
-function groupBy<T, K extends keyof any>(
-  arr: T[],
-  getKey: (item: T) => K
-): Record<K, T[]> {
-  return arr.reduce((acc, item) => {
-    const key = getKey(item);
-    (acc[key] ||= []).push(item);
-    return acc;
-  }, {} as Record<K, T[]>);
-}
-
-type AlumniListProps = {
-  items: Alumni[];
-  loading?: boolean;
-  emptyMessage?: string;
-};
-
-const AlumniList: React.FC<AlumniListProps> = ({ items, loading, emptyMessage }) => {
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="h-12 rounded-xl bg-gray-200 animate-pulse dark:bg-white/10"
-          />
-        ))}
-      </div>
-    );
-  }
-
-  if (!items.length) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600 dark:text-gray-300">{emptyMessage || "No data found"}</p>
-      </div>
-    );
-  }
-
-  return (
-    <ul className="divide-y divide-gray-200 dark:divide-white/10">
-      {items.map((alum) => (
-        <li key={alum.id} className="py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-            <div className="">
-              <span className="font-medium text-gray-800 dark:text-white/90">{alum.name}</span>
-              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                {alum.program} • {alum.department} • {alum.faculty}
-              </span>
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {alum.campus} • {alum.passingYear} • {alum.workCountry} •
-              {" "}
-              {alum.verified ? (
-                <span className="text-emerald-600 dark:text-emerald-300">Verified</span>
-              ) : (
-                <span className="text-rose-600 dark:text-rose-300">Un-Verified</span>
-              )}
-            </div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-type GroupedProps = {
-  groups: Record<string, Alumni[]>;
-  loading?: boolean;
-  label: string;
-};
-
-const GroupedList: React.FC<GroupedProps> = ({ groups, loading, label }) => {
-  const entries = Object.entries(groups);
-
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-16 rounded-xl bg-gray-200 animate-pulse dark:bg-white/10" />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {entries.map(([key, list]) => (
-        <div
-          key={key}
-          className="rounded-2xl border border-gray-200 bg-slate-100 p-4 dark:border-gray-800 dark:bg-white/[0.03]"
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-gray-800 dark:text-white/90">
-              {label}: {key}
-            </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400">{list.length} alumni</span>
-          </div>
-          <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-            {list.slice(0, 3).map((alum) => alum.name).join(", ")}
-            {list.length > 3 ? " …" : ""}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
+// Removed unused dropdown imports and helper/list components to satisfy linter
 
 // Styled Table component with filters, sorting, pagination
 const AlumniTable: React.FC<AlumniListProps> = ({ items, loading, emptyMessage }) => {
