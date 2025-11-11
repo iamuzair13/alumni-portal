@@ -19,14 +19,16 @@ const ALUMNI_CARDS: AlumniCard[] = [
   },
 ];
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const item = ALUMNI_CARDS.find((c) => c.id === params.id);
   if (!item) return NextResponse.json({ message: "Not found" }, { status: 404 });
   return NextResponse.json(item, { status: 200 });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
+    const params = await ctx.params;
     const body = await req.json();
     const parsed = alumniCardServerSchema.safeParse(body);
     if (!parsed.success) {
@@ -43,7 +45,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const idx = ALUMNI_CARDS.findIndex((c) => c.id === params.id);
   if (idx === -1) return NextResponse.json({ message: "Not found" }, { status: 404 });
   ALUMNI_CARDS.splice(idx, 1);

@@ -500,8 +500,6 @@ export const AlumniTabs: React.FC = () => {
                   >
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                      
                         <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
                       </div>
                     </TableCell>

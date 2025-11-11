@@ -83,16 +83,7 @@ const DUMMY_EVENTS: EventItem[] = [
   },
 ];
 
-// Helper to format date safely to YYYY-MM-DD
-export function formatDate(input: string | Date): string {
-  try {
-    const d = typeof input === "string" ? new Date(input) : input;
-    if (Number.isNaN(d.getTime())) return "-";
-    return d.toISOString().slice(0, 10);
-  } catch {
-    return "-";
-  }
-}
+// Helper to format date safely to YYYY-MM-DD (removed unused)
 
 function formatLocalDateTime(utcIso?: string): string {
   if (!utcIso) return "-";
@@ -126,7 +117,7 @@ type EventListProps = {
   deletingIds?: Set<string>;
 };
 
-export const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
+const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
 
@@ -486,7 +477,7 @@ type NewEventPayload = {
   imageFile?: File | undefined;
 };
 
-export const eventFormSchema = z
+const eventFormSchema = z
   .object({
     title: z.string().min(2, "Title is required").max(80, "Title must be under 80 characters"),
     venue: z.string().min(2, "Venue is required").max(80, "Venue must be under 80 characters"),
@@ -524,7 +515,7 @@ export const eventFormSchema = z
     }
   }, { message: "End time must be after start time", path: ["endTime"] });
 
-export const AddEventForm: React.FC = () => {
+const AddEventForm: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);

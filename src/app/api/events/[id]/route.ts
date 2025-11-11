@@ -36,13 +36,15 @@ const EVENTS: Event[] = [
   },
 ];
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const evt = EVENTS.find((e) => e.id === params.id);
   if (!evt) return NextResponse.json({ message: "Not found" }, { status: 404 });
   return NextResponse.json(evt, { status: 200 });
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const exists = EVENTS.some((e) => e.id === params.id);
   if (!exists) return NextResponse.json({ message: "Not found" }, { status: 404 });
   return new NextResponse(null, { status: 204 });

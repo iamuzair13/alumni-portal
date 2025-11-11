@@ -28,8 +28,8 @@ function formatLocalDateTime(utcIso?: string): string {
   }
 }
 
-export default function EventDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function EventDetailPage(props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
 
   // Frontend-only stub event based on ID; no backend integration
   const event: Event = {

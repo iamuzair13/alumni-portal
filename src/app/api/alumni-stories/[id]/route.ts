@@ -50,21 +50,24 @@ const STORIES: Story[] = [
   },
 ];
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   const story = STORIES.find((s) => s.id === params.id);
   if (!story) return NextResponse.json({ message: "Not found" }, { status: 404 });
   return NextResponse.json(story, { status: 200 });
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const params = await ctx.params;
   // Stubbed delete endpoint: in a real implementation, remove from database.
   const exists = STORIES.some((s) => s.id === params.id);
   if (!exists) return NextResponse.json({ message: "Not found" }, { status: 404 });
   return new NextResponse(null, { status: 204 });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
+    const params = await ctx.params;
     const body = await req.json();
     const parsed = storyServerSchema.safeParse(body);
     if (!parsed.success) {

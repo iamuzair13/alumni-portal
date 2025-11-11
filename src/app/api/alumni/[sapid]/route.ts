@@ -79,9 +79,9 @@ function mapFromDb(row: DbAlumniRow) {
   } as z.infer<typeof alumniRegistrationComprehensiveSchema>;
 }
 
-export async function GET(_: Request, ctx: Promise<{ params: { sapid: string } }>) {
+export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
-    const { sapid } = (await ctx).params as { sapid: string };
+    const { sapid } = await ctx.params;
     const rows = await sql/* sql */`
       SELECT * FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
     if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -93,9 +93,9 @@ export async function GET(_: Request, ctx: Promise<{ params: { sapid: string } }
   }
 }
 
-export async function PUT(req: Request, ctx: Promise<{ params: { sapid: string } }>) {
+export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
-    const { sapid } = (await ctx).params as { sapid: string };
+    const { sapid } = await ctx.params;
     const body = await req.json();
     const parsed = alumniRegistrationComprehensiveSchema.safeParse(body);
     if (!parsed.success) {
@@ -123,9 +123,9 @@ export async function PUT(req: Request, ctx: Promise<{ params: { sapid: string }
   }
 }
 
-export async function DELETE(_: Request, ctx: Promise<{ params: { sapid: string } }>) {
+export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
-    const { sapid } = (await ctx).params as { sapid: string };
+    const { sapid } = await ctx.params;
     const res = await sql/* sql */`
       DELETE FROM public.tbl_alumni WHERE sapid = ${sapid} RETURNING alumniid`;
     if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -136,9 +136,9 @@ export async function DELETE(_: Request, ctx: Promise<{ params: { sapid: string 
   }
 }
 
-export async function PATCH(req: Request, ctx: Promise<{ params: { sapid: string } }>) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
-    const { sapid } = (await ctx).params as { sapid: string };
+    const { sapid } = await ctx.params;
     const body = await req.json();
     const { verify } = body ?? {};
     if (verify === undefined) {
