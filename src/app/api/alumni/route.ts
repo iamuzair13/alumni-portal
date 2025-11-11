@@ -45,10 +45,29 @@ export async function GET() {
   // Optional: list endpoint; limit for safety
   try {
     const rows = await sql/* sql */`
-      SELECT alumniid, registrationno, sapid, alumniname, facultyname, campusname, departmentname, degreetitle, yearofending, country, city
+      SELECT
+        alumniid,
+        registrationno,
+        sapid,
+        alumniname,
+        facultyname,
+        campusname,
+        departmentname,
+        degreetitle,
+        yearofending,
+        country,
+        city,
+        verify,
+        employeed,
+        nameoforganization,
+        designation,
+        officialnumber,
+        officialemail,
+        personalemail,
+        contactno
       FROM public.tbl_alumni
       ORDER BY alumniid DESC
-      LIMIT 25`;
+      LIMIT 100`;
     return NextResponse.json({ items: rows }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni";

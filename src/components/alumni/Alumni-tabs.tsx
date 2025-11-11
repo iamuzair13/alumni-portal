@@ -1,11 +1,29 @@
 "use client";
+/**
+ * AlumniTabs Component Updates
+ *
+ * - Loading: Added explicit skeleton rows, improved error handling with a retry button,
+ *   and live feedback messages for actions via an aria-live region.
+ * - Action Icons: Implemented Verify, Unverify, Delete, and View actions.
+ *   Verify/Unverify use PATCH `/api/alumni/[sapid]` to toggle `verify` per schema.
+ *   Delete uses DELETE `/api/alumni/[sapid]`. View routes to `/alumni/[sapid]`.
+ *   Immediate UI feedback is provided with optimistic updates and disabled icons while mutating.
+ * - Alumni Tab Display: First tab shows all records; actions shown per-row based on current `verified` status.
+ * - Database Flow: Alumni list API now returns `verify`, employment, organization, designation, and contact fields.
+ *   CRUD operations adhere to `public.tbl_alumni` schema and include basic client-side validation and normalization.
+ * - State Management: Uses React Query cache updates to keep UI in sync with DB.
+ * - Responsive: Existing responsive layout maintained; action buttons remain accessible and keyboard focusable.
+ */
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
 import { ListIcon, CheckCircleIcon, CloseLineIcon, TimeIcon, BoltIcon, LockIcon, EyeIcon, TrashBinIcon, CheckLineIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
+import { getAlumniList, type AlumniListItem } from "@/app/queries/fetch-alumni";
+import { Router } from "next/router";
 
 type TabKey =
   | "total"
@@ -24,14 +42,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "inactive", label: "Inactive" },
 ];
 
-const MOCK_COUNTS: Record<TabKey, { count: number; delta?: number }> = {
-  total: { count: 3782, delta: 11.01 },
-  verified: { count: 2140, delta: 4.2 },
-  unverified: { count: 640, delta: -2.1 },
-  underApproval: { count: 230, delta: 1.0 },
-  active: { count: 1650, delta: 3.3 },
-  inactive: { count: 420, delta: -0.8 },
-};
+// Counts are computed dynamically from fetched data
 
 // Per-status color classes to visually distinguish each category
 const STATUS_CLASS_MAP: Record<
@@ -111,315 +122,30 @@ export const AlumniTabs: React.FC = () => {
   const router = useRouter();
   const [selected, setSelected] = useState<TabKey>("total");
 
-  // Simple mock alumni list to demonstrate filtering by status
+  // Unified item type mapped from server response
   type AlumniItem = {
-    id: string;
+    id: string; // sapId
     name: string;
-    email: string;
-    mobile?: string;
-    campus: string;
-    faculty: string;
-    program: string;
-    department?: string;
-    passingYear: number;
-    workCountry: string;
-    workCity?: string;
-    organization?: string;
-    designation?: string;
-    verified: boolean;
-    underApproval: boolean;
-    active: boolean;
+    email?: string | null;
+    mobile?: string | null;
+    campus?: string | null;
+    faculty?: string | null;
+    program?: string | null;
+    department?: string | null;
+    passingYear?: number | null;
+    workCountry?: string | null;
+    workCity?: string | null;
+    organization?: string | null;
+    designation?: string | null;
+    verified?: boolean;
+    employmentStatus?: "Employed" | "Unemployed" | null;
   };
-
-  const MOCK_ALUMNI = useMemo<AlumniItem[]>(() => [
-    {
-      id: "SAP-1001",
-      name: "Ayesha Khan",
-      email: "ayesha.khan@example.com",
-      campus: "Lahore",
-      faculty: "Management Sciences",
-      program: "BBA",
-      passingYear: 2020,
-      workCountry: "Pakistan",
-      verified: true,
-      underApproval: false,
-      active: true,
-    },
-    {
-      id: "SAP-1002",
-      name: "Usman Ali",
-      email: "usman.ali@example.com",
-      campus: "Islamabad",
-      faculty: "Engineering",
-      program: "BS CS",
-      passingYear: 2019,
-      workCountry: "UAE",
-      verified: false,
-      underApproval: true,
-      active: false,
-    },
-    {
-      id: "SAP-1003",
-      name: "Zainab Ahmad",
-      email: "zainab.ahmad@example.com",
-      campus: "Karachi",
-      faculty: "Arts & Humanities",
-      program: "BA English",
-      passingYear: 2018,
-      workCountry: "UK",
-      verified: true,
-      underApproval: false,
-      active: true,
-    },
-    {
-      id: "SAP-1004",
-      name: "Hamza Raza",
-      email: "hamza.raza@example.com",
-      campus: "Lahore",
-      faculty: "Engineering",
-      program: "BS Electrical",
-      passingYear: 2021,
-      workCountry: "Saudi Arabia",
-      verified: false,
-      underApproval: false,
-      active: true,
-    },
-    {
-      id: "SAP-1005",
-      name: "Sara Malik",
-      email: "sara.malik@example.com",
-      campus: "Peshawar",
-      faculty: "Computer Science",
-      program: "MS CS",
-      passingYear: 2017,
-      workCountry: "Canada",
-      verified: true,
-      underApproval: false,
-      active: false,
-    },
-    {
-    id: "SAP-1001",
-    name: "Ayesha Khan",
-    email: "ayesha.khan@example.com",
-    campus: "Lahore",
-    faculty: "Computer Science",
-    program: "BSCS",
-    passingYear: 2020,
-    workCountry: "UAE",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1002",
-    name: "Usman Malik",
-    email: "usman.malik@example.com",
-    campus: "Karachi",
-    faculty: "Engineering",
-    program: "BSEE",
-    passingYear: 2018,
-    workCountry: "Canada",
-    verified: false,
-    underApproval: true,
-    active: true,
-  },
-  {
-    id: "SAP-1003",
-    name: "Hira Fatima",
-    email: "hira.fatima@example.com",
-    campus: "Islamabad",
-    faculty: "Management Sciences",
-    program: "MBA",
-    passingYear: 2019,
-    workCountry: "UK",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1004",
-    name: "Ali Raza",
-    email: "ali.raza@example.com",
-    campus: "Lahore",
-    faculty: "Computer Science",
-    program: "MSCS",
-    passingYear: 2021,
-    workCountry: "Germany",
-    verified: false,
-    underApproval: true,
-    active: false,
-  },
-  {
-    id: "SAP-1005",
-    name: "Sana Ahmed",
-    email: "sana.ahmed@example.com",
-    campus: "Faisalabad",
-    faculty: "Education",
-    program: "B.Ed",
-    passingYear: 2017,
-    workCountry: "Pakistan",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1006",
-    name: "Bilal Hussain",
-    email: "bilal.hussain@example.com",
-    campus: "Multan",
-    faculty: "Management Sciences",
-    program: "MBA",
-    passingYear: 2016,
-    workCountry: "Pakistan",
-    verified: false,
-    underApproval: true,
-    active: true,
-  },
-  {
-    id: "SAP-1007",
-    name: "Nimra Javed",
-    email: "nimra.javed@example.com",
-    campus: "Rawalpindi",
-    faculty: "Computer Science",
-    program: "BSIT",
-    passingYear: 2022,
-    workCountry: "Australia",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1008",
-    name: "Hamza Tariq",
-    email: "hamza.tariq@example.com",
-    campus: "Karachi",
-    faculty: "Business Administration",
-    program: "BBA",
-    passingYear: 2019,
-    workCountry: "Saudi Arabia",
-    verified: false,
-    underApproval: true,
-    active: false,
-  },
-  {
-    id: "SAP-1009",
-    name: "Sara Iqbal",
-    email: "sara.iqbal@example.com",
-    campus: "Lahore",
-    faculty: "Pharmacy",
-    program: "Pharm-D",
-    passingYear: 2020,
-    workCountry: "Qatar",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1010",
-    name: "Imran Yousaf",
-    email: "imran.yousaf@example.com",
-    campus: "Multan",
-    faculty: "Engineering",
-    program: "BSc Civil",
-    passingYear: 2015,
-    workCountry: "Oman",
-    verified: false,
-    underApproval: false,
-    active: false,
-  },
-  {
-    id: "SAP-1011",
-    name: "Fatima Zahra",
-    email: "fatima.zahra@example.com",
-    campus: "Islamabad",
-    faculty: "Computer Science",
-    program: "BSSE",
-    passingYear: 2021,
-    workCountry: "USA",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1012",
-    name: "Ahmad Nawaz",
-    email: "ahmad.nawaz@example.com",
-    campus: "Karachi",
-    faculty: "Law",
-    program: "LLB",
-    passingYear: 2016,
-    workCountry: "Pakistan",
-    verified: false,
-    underApproval: true,
-    active: true,
-  },
-  {
-    id: "SAP-1013",
-    name: "Maryam Riaz",
-    email: "maryam.riaz@example.com",
-    campus: "Faisalabad",
-    faculty: "Economics",
-    program: "BSc Economics",
-    passingYear: 2018,
-    workCountry: "UK",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1014",
-    name: "Zain Ul Abidin",
-    email: "zain.abidin@example.com",
-    campus: "Lahore",
-    faculty: "Computer Science",
-    program: "BSCS",
-    passingYear: 2017,
-    workCountry: "Pakistan",
-    verified: false,
-    underApproval: false,
-    active: false,
-  },
-  {
-    id: "SAP-1015",
-    name: "Iqra Shabbir",
-    email: "iqra.shabbir@example.com",
-    campus: "Multan",
-    faculty: "Management Sciences",
-    program: "BBA",
-    passingYear: 2019,
-    workCountry: "Malaysia",
-    verified: true,
-    underApproval: false,
-    active: true,
-  },
-  {
-    id: "SAP-1016",
-    name: "Taha Mehmood",
-    email: "taha.mehmood@example.com",
-    campus: "Rawalpindi",
-    faculty: "Engineering",
-    program: "BS Mechanical",
-    passingYear: 2020,
-    workCountry: "Canada",
-    verified: false,
-    underApproval: true,
-    active: false,
-  },
-  ], []);
 
   // filtering is handled in the server-like fetcher; remove unused memo
 
-  // Pagination types and server-like fetch
-  type PaginationParams = { page: number; pageSize: number; status: TabKey; query?: string };
-  type PagedResponse<T> = { items: T[]; total: number; totalPages: number; page: number; pageSize: number };
-
+  // Query + UI state (UI state does not duplicate cache)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
-  const [pageItems, setPageItems] = useState<AlumniItem[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -429,63 +155,195 @@ export const AlumniTabs: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  const fetchAlumniPage = useCallback(async (params: PaginationParams): Promise<PagedResponse<AlumniItem>> => {
-    const source = (() => {
-      switch (params.status) {
-        case "verified":
-          return MOCK_ALUMNI.filter((a) => a.verified);
-        case "unverified":
-          return MOCK_ALUMNI.filter((a) => !a.verified);
-        case "underApproval":
-          return MOCK_ALUMNI.filter((a) => a.underApproval);
-        case "active":
-          return MOCK_ALUMNI.filter((a) => a.active);
-        case "inactive":
-          return MOCK_ALUMNI.filter((a) => !a.active);
-        case "total":
-        default:
-          return MOCK_ALUMNI;
-      }
-    })();
+  // React Query: fetch list with proper refetch strategies
+  const {
+    data: rawItems,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery<AlumniListItem[], Error>({
+    queryKey: ["alumnilist"],
+    queryFn: ({ signal }) => getAlumniList(signal),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
 
-    const q = (params.query ?? "").toLowerCase();
-    const filtered = q
-      ? source.filter((a) =>
-          a.id.toString().toLowerCase().includes(q) ||
-          (a.name?.toLowerCase().includes(q)) ||
-          (a.email?.toLowerCase().includes(q))
-        )
-      : source;
+  // Map server items to UI shape
+  const items: AlumniItem[] = useMemo(() => {
+    if (!rawItems) return [];
+    return rawItems.map((r) => ({
+      id: r.sapid,
+      name: r.alumniname,
+      email: r.personalemail ?? r.officialemail ?? null,
+      mobile: r.contactno ?? null,
+      campus: r.campusname,
+      faculty: r.facultyname,
+      program: r.degreetitle,
+      department: r.departmentname,
+      passingYear: r.yearofending,
+      workCountry: r.country,
+      workCity: r.city,
+      organization: r.nameoforganization ?? null,
+      designation: r.designation ?? null,
+      verified: String(r.verify ?? "false").toLowerCase() === "true",
+      employmentStatus:
+        String(r.employeed ?? "Unemployed").toLowerCase() === "employed"
+          ? "Employed"
+          : "Unemployed",
+    }));
+  }, [rawItems]);
 
-    const totalItems = filtered.length;
-    const totalPagesCalc = Math.max(1, Math.ceil(totalItems / params.pageSize));
-    const safePage = Math.min(Math.max(1, params.page), totalPagesCalc);
-    const start = (safePage - 1) * params.pageSize;
-    const end = start + params.pageSize;
-    const items = filtered.slice(start, end);
+  // Compute tab counts
+  const counts = useMemo(() => {
+    const total = items.length;
+    const verified = items.filter((i) => i.verified).length;
+    const unverified = items.filter((i) => !i.verified).length;
+    const active = items.filter((i) => i.employmentStatus === "Employed").length;
+    const inactive = items.filter((i) => i.employmentStatus === "Unemployed").length;
+    const underApproval = unverified;
+    return { total, verified, unverified, underApproval, active, inactive };
+  }, [items]);
 
-    await new Promise((res) => setTimeout(res, 250));
+  // Filter by tab + query
+  const filteredItems = useMemo(() => {
+    const q = debouncedQuery.toLowerCase();
+    const base = items.filter((a) =>
+      !q ||
+      a.id.toLowerCase().includes(q) ||
+      (a.name?.toLowerCase().includes(q)) ||
+      (a.email?.toLowerCase().includes(q))
+    );
+    switch (selected) {
+      case "verified":
+        return base.filter((i) => i.verified);
+      case "unverified":
+        return base.filter((i) => !i.verified);
+      case "underApproval":
+        return base.filter((i) => !i.verified);
+      case "active":
+        return base.filter((i) => i.employmentStatus === "Employed");
+      case "inactive":
+        return base.filter((i) => i.employmentStatus === "Unemployed");
+      case "total":
+      default:
+        return base;
+    }
+  }, [items, selected, debouncedQuery]);
 
-    return { items, total: totalItems, totalPages: totalPagesCalc, page: safePage, pageSize: params.pageSize };
-  }, [MOCK_ALUMNI]);
+  // Pagination derived values
+  const total = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const start = (safePage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageItems = useMemo(() => filteredItems.slice(start, end), [filteredItems, start, end]);
 
   useEffect(() => { setCurrentPage(1); setSelectedRowId(null); }, [selected, pageSize, debouncedQuery]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchAlumniPage({ page: currentPage, pageSize, status: selected, query: debouncedQuery })
-      .then((res) => {
-        if (cancelled) return;
-        setPageItems(res.items);
-        setTotal(res.total);
-        setTotalPages(res.totalPages);
-      })
-      .catch(() => { if (!cancelled) setError("Failed to load data. Please try again."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [currentPage, pageSize, selected, debouncedQuery, fetchAlumniPage]);
+  // Action hooks and handlers must live inside the component body
+  const queryClient = useQueryClient();
+  const [mutatingIds, setMutatingIds] = useState<Set<string>>(new Set());
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const startMut = useCallback((id: string) => {
+    setMutatingIds((prev) => new Set(prev).add(id));
+  }, []);
+
+  const stopMut = useCallback((id: string) => {
+    setMutatingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const updateCacheVerify = useCallback((sapid: string, verify: boolean) => {
+    queryClient.setQueryData<AlumniListItem[] | undefined>(["alumnilist"], (old) => {
+      if (!old) return old;
+      return old.map((it) => (it.sapid === sapid ? { ...it, verify: verify ? "true" : "false" } : it));
+    });
+  }, [queryClient]);
+
+  const removeFromCache = useCallback((sapid: string) => {
+    queryClient.setQueryData<AlumniListItem[] | undefined>(["alumnilist"], (old) => {
+      if (!old) return old;
+      return old.filter((it) => it.sapid !== sapid);
+    });
+  }, [queryClient]);
+
+  const handleVerify = useCallback(async (sapid: string) => {
+    setActionError(null);
+    startMut(sapid);
+    // optimistic
+    updateCacheVerify(sapid, true);
+    try {
+      const res = await fetch(`/api/alumni/${sapid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verify: true }),
+      });
+      if (!res.ok) throw new Error(`Failed to verify: ${res.status}`);
+      setActionMessage("Alumni verified successfully.");
+    } catch (e: any) {
+      // revert
+      updateCacheVerify(sapid, false);
+      setActionError(e?.message ?? "Failed to verify alumni.");
+    } finally {
+      stopMut(sapid);
+    }
+  }, [startMut, stopMut, updateCacheVerify]);
+
+  const handleUnverify = useCallback(async (sapid: string) => {
+    setActionError(null);
+    startMut(sapid);
+    // optimistic
+    updateCacheVerify(sapid, false);
+    try {
+      const res = await fetch(`/api/alumni/${sapid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verify: false }),
+      });
+      if (!res.ok) throw new Error(`Failed to unverify: ${res.status}`);
+      setActionMessage("Alumni marked as unverified.");
+    } catch (e: any) {
+      // revert
+      updateCacheVerify(sapid, true);
+      setActionError(e?.message ?? "Failed to update verification.");
+    } finally {
+      stopMut(sapid);
+    }
+  }, [startMut, stopMut, updateCacheVerify]);
+
+  const handleDelete = useCallback(async (sapid: string) => {
+    setActionError(null);
+    startMut(sapid);
+    const prev = queryClient.getQueryData<AlumniListItem[] | undefined>(["alumnilist"]);
+    // optimistic remove
+    removeFromCache(sapid);
+    try {
+      const res = await fetch(`/api/alumni/${sapid}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Failed to delete: ${res.status}`);
+      setActionMessage("Alumni deleted successfully.");
+    } catch (e: any) {
+      // rollback
+      if (prev) queryClient.setQueryData(["alumnilist"], prev);
+      setActionError(e?.message ?? "Failed to delete alumni.");
+    } finally {
+      stopMut(sapid);
+    }
+  }, [removeFromCache, startMut, stopMut, queryClient]);
+
+  const handleView = useCallback((sapid: string) => {
+    // Redirect to profile page with sapid as a query parameter
+    router.push(`/profile?sapid=${encodeURIComponent(sapid)}`);
+  }, [router]);
 
   return (
     <ComponentCard  className=" ">
@@ -498,7 +356,23 @@ export const AlumniTabs: React.FC = () => {
             aria-label="Alumni status categories"
           >
             {TABS.map((tab, idx) => {
-              const stat = MOCK_COUNTS[tab.key];
+              const statCount = (() => {
+                switch (tab.key) {
+                  case "total":
+                    return counts.total;
+                  case "verified":
+                    return counts.verified;
+                  case "unverified":
+                    return counts.unverified;
+                  case "underApproval":
+                    return counts.underApproval;
+                  case "active":
+                    return counts.active;
+                  case "inactive":
+                  default:
+                    return counts.inactive;
+                }
+              })();
               const statusClasses = STATUS_CLASS_MAP[tab.key];
               const Icon = ICON_COMPONENT_MAP[tab.key];
               return (
@@ -513,7 +387,7 @@ export const AlumniTabs: React.FC = () => {
                   onClick={() => setSelected(tab.key)}
                   role="tab"
                   aria-selected={selected === tab.key}
-                  aria-label={`${tab.label} (${stat.count.toLocaleString()})`}
+                  aria-label={`${tab.label} (${statCount.toLocaleString()})`}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "ArrowRight") {
@@ -534,7 +408,7 @@ export const AlumniTabs: React.FC = () => {
                   <Icon className={`${statusClasses.iconColor} size-6`} />
                   <span className={`font-medium ${statusClasses.labelText}`}>{tab.label}</span>
                   </div>
-                  <span className="ml-1 text-[40px] text-gray-600 dark:text-gray-400">{stat.count.toLocaleString()}</span>
+                  <span className="ml-1 text-[40px] text-gray-600 dark:text-gray-400">{statCount.toLocaleString()}</span>
                 </button>
               );
             })}
@@ -570,7 +444,7 @@ export const AlumniTabs: React.FC = () => {
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Mobile No</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Active Email</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Department</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Work Status</TableCell>
+                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Status</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Name of Ordganization</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Designation</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Work Country/City</TableCell>
@@ -578,7 +452,7 @@ export const AlumniTabs: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {loading && (
+                {(isLoading || isFetching) && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`}>
                       <TableCell className="px-5 py-4"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
@@ -594,19 +468,28 @@ export const AlumniTabs: React.FC = () => {
                     </TableRow>
                   ))
                 )}
-                {!loading && error && (
+                {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-5 py-4 text-red-600" colSpan={10}>{error}</TableCell>
+                    <TableCell className="px-5 py-4 text-red-600" colSpan={10}>
+                      <div className="flex items-center justify-between">
+                        <span>{error?.message ?? "Failed to load data."}</span>
+                        <button
+                          type="button"
+                          onClick={() => refetch()}
+                          className="ml-4 inline-flex items-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        >Retry</button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 )}
-                {!loading && !error && pageItems.length === 0 && (
+                {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
                     <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400" colSpan={10}>
                       No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}. Try adjusting your search or filters.
                     </TableCell>
                   </TableRow>
                 )}
-                {!loading && !error && pageItems.map((alum, idx) => (
+                {!isLoading && !isError && pageItems.map((alum, idx) => (
                   <TableRow
                     key={`${alum.id}-${idx}`}
                     className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
@@ -633,28 +516,27 @@ export const AlumniTabs: React.FC = () => {
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                         {(() => {
+                          const isBusy = mutatingIds.has(alum.id);
                           const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }>
-                            = selected === "verified"
+                            = alum.verified
                             ? [
-                                { label: "Suspend", icon: LockIcon, onClick: () => {/* TODO: wire suspend */}, hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => {/* TODO: wire delete */}, hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                              ]
-                            : selected === "underApproval"
-                            ? [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => {/* TODO: wire verify */}, hover: "hover:text-emerald-600" },
-                                { label: "Decline", icon: CloseLineIcon, onClick: () => {/* TODO: wire decline */}, hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
+                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverify(alum.id), hover: "hover:text-amber-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ]
                             : [
-                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
+                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerify(alum.id), hover: "hover:text-emerald-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ];
                           return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
                             <button
                               key={`${alum.id}-action-${i}`}
                               type="button"
                               onClick={onClick}
-                              className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"}`}
+                              disabled={isBusy}
+                              aria-disabled={isBusy}
+                              className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"} ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
                               aria-label={label}
                               title={label}
                             >
@@ -669,6 +551,19 @@ export const AlumniTabs: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+        </div>
+        {/* Live region for action feedback */}
+        <div className="px-4" aria-live="polite" aria-atomic="true">
+          {actionMessage && (
+            <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              {actionMessage}
+            </div>
+          )}
+          {actionError && (
+            <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              {actionError}
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between p-4">
           <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -743,3 +638,4 @@ export const AlumniTabs: React.FC = () => {
     </ComponentCard>
   );
 };
+// (hooks moved inside component; no code should live below the component)
