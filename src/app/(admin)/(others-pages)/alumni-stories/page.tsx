@@ -73,7 +73,7 @@ const DUMMY_STORIES: Story[] = [
 ];
 
 // Helper to format date safely to YYYY-MM-DD
-export function formatDate(input: string | Date): string {
+function formatDate(input: string | Date): string {
   try {
     const d = typeof input === "string" ? new Date(input) : input;
     if (Number.isNaN(d.getTime())) return "-";
@@ -93,7 +93,7 @@ type StoryListProps = {
   deletingIds?: Set<string>;
 };
 
-export const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
+const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
 
@@ -439,7 +439,7 @@ const buttonPrimaryClass =
 const buttonSecondaryClass =
   "inline-flex items-center rounded-xl border border-gray-300 bg-slate-100 px-4 py-2 text-gray-700 hover:bg-gray-200 transition-colors dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300";
 
-export const AddStoryForm: React.FC = () => {
+const AddStoryForm: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);

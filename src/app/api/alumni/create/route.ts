@@ -239,9 +239,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ alumniid: id }, { status: 201 });
-  } catch (err: any) {
-    console.error("[API] /api/alumni/create error:", { message: err?.message, stack: err?.stack });
-    const message = err?.message ?? "Internal Server Error";
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Internal Server Error";
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[API] /api/alumni/create error:", { message, stack });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -251,8 +251,9 @@ export default function AlumniSqlForm() {
       setSubmitMsg(`Saved. New Alumni ID: ${json.alumniid}`);
       reset();
       setStep(1);
-    } catch (err: any) {
-      setSubmitError(err?.message || "Submission failed");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSubmitError(msg || "Submission failed");
     } finally {
       setSubmitting(false);
     }

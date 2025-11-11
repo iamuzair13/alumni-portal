@@ -1,7 +1,6 @@
 import UserMetaCard from "@/components/user-profile/UserMetaCard";
 import { Metadata } from "next";
 import React from "react";
-import { sql } from "@/lib/dbconnect";
 
 export const metadata: Metadata = {
   title: "Next.js Profile | TailAdmin - Next.js Dashboard Template",
@@ -17,22 +16,7 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const sapidParam = resolvedSearchParams?.sapid;
   const sapid = Array.isArray(sapidParam) ? sapidParam[0] : sapidParam;
-
-  let row: any | null = null;
-  let error: string | null = null;
-
-  if (!sapid) {
-    error = "Missing alumni ID (sapid).";
-  } else {
-    try {
-      const rows = await sql/* sql */`
-        SELECT * FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
-      row = rows?.[0] ?? null;
-      if (!row) error = `No alumni found for ID: ${sapid}`;
-    } catch (e: any) {
-      error = e?.message ?? "Failed to load alumni profile.";
-    }
-  }
+  const error = !sapid ? "Missing alumni ID (sapid)." : null;
 
   return (
     <div>

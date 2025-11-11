@@ -4,7 +4,40 @@ import { alumniRegistrationComprehensiveSchema } from "@/lib/alumniRegistration"
 import { sql } from "@/lib/dbconnect";
 
 // Map DB row -> form values (partial; missing columns set undefined)
-function mapFromDb(row: any) {
+interface DbAlumniRow {
+  registrationno?: string | null;
+  sapid?: string | null;
+  alumniname?: string | null;
+  gender?: string | null;
+  fathername?: string | null;
+  dateofbirth?: string | null;
+  maritalstatus?: string | null;
+  cnicpassport?: string | null;
+  contactno?: string | null;
+  personalemail?: string | null;
+  password?: string | null;
+  address?: string | null;
+  province?: string | null;
+  city?: string | null;
+  country?: string | null;
+  campusname?: string | null;
+  facultyname?: string | null;
+  departmentname?: string | null;
+  degreetitle?: string | null;
+  yearofending?: number | null;
+  employeed?: string | null;
+  industry?: string | null;
+  nameoforganization?: string | null;
+  designation?: string | null;
+  totalyearsofexpereince?: number | null;
+  officialemail?: string | null;
+  officialnumber?: string | null;
+  datasource?: string | null;
+  verify?: string | boolean | null;
+  alumnistatus?: string | null;
+}
+
+function mapFromDb(row: DbAlumniRow) {
   return {
     registrationNo: row.registrationno ?? undefined,
     sapId: row.sapid ?? "",
@@ -46,7 +79,7 @@ function mapFromDb(row: any) {
   } as z.infer<typeof alumniRegistrationComprehensiveSchema>;
 }
 
-export async function GET(_: Request, ctx: any) {
+export async function GET(_: Request, ctx: Promise<{ params: { sapid: string } }>) {
   try {
     const { sapid } = (await ctx).params as { sapid: string };
     const rows = await sql/* sql */`
@@ -60,7 +93,7 @@ export async function GET(_: Request, ctx: any) {
   }
 }
 
-export async function PUT(req: Request, ctx: any) {
+export async function PUT(req: Request, ctx: Promise<{ params: { sapid: string } }>) {
   try {
     const { sapid } = (await ctx).params as { sapid: string };
     const body = await req.json();
@@ -90,7 +123,7 @@ export async function PUT(req: Request, ctx: any) {
   }
 }
 
-export async function DELETE(_: Request, ctx: any) {
+export async function DELETE(_: Request, ctx: Promise<{ params: { sapid: string } }>) {
   try {
     const { sapid } = (await ctx).params as { sapid: string };
     const res = await sql/* sql */`
@@ -103,7 +136,7 @@ export async function DELETE(_: Request, ctx: any) {
   }
 }
 
-export async function PATCH(req: Request, ctx: any) {
+export async function PATCH(req: Request, ctx: Promise<{ params: { sapid: string } }>) {
   try {
     const { sapid } = (await ctx).params as { sapid: string };
     const body = await req.json();

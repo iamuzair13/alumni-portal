@@ -1,10 +1,9 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, UserIcon, EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon,  EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
 import { alumniCardServerSchema } from "@/lib/alumniCards";
-import { IoMdSearch } from "react-icons/io";
-import { AlumniCard, AlumniDataTable } from "./AlumniCard";
+import {  AlumniDataTable } from "./AlumniCard";
 
 /**
  * AlumniCards
@@ -236,15 +235,13 @@ export function filterCards(
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
   const [status, setStatus] = useState<CardStatus>(initialStatus);
-  const [query, setQuery] = useState<string>("");
+  const [query] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<AlumniCardItem[]>([]);
   const [total, setTotal] = useState<number>(0);
-  const [busyMap, setBusyMap] = useState<Record<string, boolean>>({});
-  const [actionErrorMap, setActionErrorMap] = useState<Record<string, string | null>>({});
-
+ 
   const memoCards = useMemo(() => MOCK_ALUMNI_CARDS, []);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -264,6 +261,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         }
       } catch (e) {
         if (!canceled) setError("Failed to load alumni cards.");
+        console.error(e);
       } finally {
         if (!canceled) setLoading(false);
       }
@@ -275,11 +273,10 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     };
   }, [memoCards, status, query, currentPage, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const handleAction = async (alumni: AlumniCardItem, key: ActionKey) => {
-    setActionErrorMap((m) => ({ ...m, [alumni.id]: null }));
-    setBusyMap((m) => ({ ...m, [alumni.id]: true }));
+    
+  
     try {
       // Validate item before applying action
       const parsed = alumniCardServerSchema.safeParse(alumni);
@@ -313,8 +310,9 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         }
       } catch (apiErr) {
         // Non-blocking: local state still updates, but we surface the error
-        const msg = apiErr instanceof Error ? apiErr.message : "API update failed";
-        setActionErrorMap((m) => ({ ...m, [alumni.id]: msg }));
+       console.log(apiErr);
+       
+       
       }
       setCards((prev) => {
         const idx = prev.findIndex((c) => c.id === alumni.id);
@@ -330,10 +328,11 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         return next;
       });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Action failed";
-      setActionErrorMap((m) => ({ ...m, [alumni.id]: msg }));
+     
+    console.log(e);
+    
     } finally {
-      setBusyMap((m) => ({ ...m, [alumni.id]: false }));
+     
     }
   };
 

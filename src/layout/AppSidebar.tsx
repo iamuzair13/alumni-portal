@@ -11,7 +11,6 @@ import {
   HorizontaLDots,
   DocsIcon,
   PlugInIcon,
-  UserCircleIcon,
 } from "../icons/index";
 
 type NavItem = {

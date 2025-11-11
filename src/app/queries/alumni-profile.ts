@@ -5,7 +5,7 @@ import type { AlumniRegistrationComprehensiveForm } from "@/lib/alumniRegistrati
 
 export const alumniProfileKey = (sapId: string | undefined) => ["alumni", "profile", sapId ?? ""];
 
-export async function getAlumniProfile(sapId: string, signal?: AbortSignal): Promise<AlumniRegistrationComprehensiveForm> {
+export async function getAlumniProfile(sapId: string, ): Promise<AlumniRegistrationComprehensiveForm> {
   const res = await getAlumniBySapId(sapId);
   return res.item as AlumniRegistrationComprehensiveForm;
 }
@@ -15,7 +15,9 @@ export function useAlumniProfile(sapId: string | undefined) {
     queryKey: alumniProfileKey(sapId),
     queryFn: ({ signal }) => {
       if (!sapId) throw new Error("Missing sapid");
-      return getAlumniProfile(sapId, signal);
+      return getAlumniProfile(sapId );
+      console.log(signal);
+      
     },
     enabled: !!sapId,
     staleTime: 5 * 60 * 1000, // 5 minutes

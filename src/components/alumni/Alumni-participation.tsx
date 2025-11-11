@@ -313,8 +313,6 @@ export const AlumniParticipation: React.FC = () => {
                   >
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        
                         <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
                       </div>
                     </TableCell>
@@ -323,7 +321,14 @@ export const AlumniParticipation: React.FC = () => {
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.email ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-start">
-                      <Badge size="sm" color={(alum.verified ? "success" : "error") as any}>{alum.verified ? "Verified" : "Un-Verified"}</Badge>
+                      {(() => {
+                        const badgeColor: "success" | "error" = alum.verified ? "success" : "error";
+                        return (
+                          <Badge size="sm" color={badgeColor}>
+                            {alum.verified ? "Verified" : "Un-Verified"}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.designation ?? "-"}</TableCell>

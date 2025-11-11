@@ -1,5 +1,6 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import type { FC } from "react";
+import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { AlumniTabs } from "@/components/alumni/Alumni-tabs";
 import { AlumniCards } from "@/components/alumni/Alumini-cards";
@@ -17,7 +18,7 @@ const MENU_TABS: { key: MenuKey; label: string }[] = [
   { key: "AadAlumni", label: "Add Alumni" },
 ];
 
-export const AlumniTabbedMenu: React.FC = () => {
+export const AlumniTabbedMenu: FC = () => {
   const [selected, setSelected] = useState<MenuKey>("AlumniTabs");
 
   return (
@@ -80,6 +81,6 @@ export const AlumniTabbedMenu: React.FC = () => {
   );
 };
 
-export const AlumniRegistrationFormComponent: React.FC = () => {
+export const AlumniRegistrationFormComponent: FC = () => {
   return <AlumniSqlForm />;
 };

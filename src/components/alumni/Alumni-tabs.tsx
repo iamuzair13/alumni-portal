@@ -23,7 +23,6 @@ import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { getAlumniList, type AlumniListItem } from "@/app/queries/fetch-alumni";
-import { Router } from "next/router";
 
 type TabKey =
   | "total"
@@ -290,10 +289,11 @@ export const AlumniTabs: React.FC = () => {
       });
       if (!res.ok) throw new Error(`Failed to verify: ${res.status}`);
       setActionMessage("Alumni verified successfully.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, false);
-      setActionError(e?.message ?? "Failed to verify alumni.");
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg || "Failed to verify alumni.");
     } finally {
       stopMut(sapid);
     }
@@ -312,10 +312,11 @@ export const AlumniTabs: React.FC = () => {
       });
       if (!res.ok) throw new Error(`Failed to unverify: ${res.status}`);
       setActionMessage("Alumni marked as unverified.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, true);
-      setActionError(e?.message ?? "Failed to update verification.");
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg || "Failed to update verification.");
     } finally {
       stopMut(sapid);
     }
@@ -331,10 +332,11 @@ export const AlumniTabs: React.FC = () => {
       const res = await fetch(`/api/alumni/${sapid}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`Failed to delete: ${res.status}`);
       setActionMessage("Alumni deleted successfully.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       // rollback
       if (prev) queryClient.setQueryData(["alumnilist"], prev);
-      setActionError(e?.message ?? "Failed to delete alumni.");
+      const msg = e instanceof Error ? e.message : String(e);
+      setActionError(msg || "Failed to delete alumni.");
     } finally {
       stopMut(sapid);
     }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import React from "react";
-import MonthlySalesChart from "@/components/alumni/MonthlySalesChart";
 
 import { AlumniTabbedMenu } from "@/components/alumni/AlumniTabbedMenu";
 
