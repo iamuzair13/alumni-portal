@@ -271,10 +271,11 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
 
 // Comprehensive Data Table view, matching dashboard style from Alumni-tabs
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
+import Badge from "@/components/ui/badge/Badge";
 import Pagination from "@/components/tables/Pagination";
 
 type SortDirection = "asc" | "desc";
-type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact";
+type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id";
 
 export interface AlumniDataTableProps {
   items: AlumniListItem[];
@@ -297,6 +298,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [sortDir, setSortDir] = React.useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
+  const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query.trim()), 200);
@@ -371,8 +373,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     }
   };
 
-  const headerClass = "px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400 select-none";
-  const cellClass = "px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300";
+  const headerClass = "px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300";
+  const rightHeaderClass = "px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300";
 
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
@@ -405,84 +407,52 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
+      <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
         <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live="polite">
-          <div className="min-w-full">
-            <Table>
-              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                <TableRow>
-                  <TableCell
-                    isHeader
-                    className={headerClass}
-                    onClick={() => toggleSort("name")}
-                    aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    Name
-                  </TableCell>
-                  <TableCell
-                    isHeader
-                    className={headerClass}
-                    onClick={() => toggleSort("passingYear")}
-                    aria-sort={sortKey === "passingYear" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    Graduation Year
-                  </TableCell>
-                  <TableCell
-                    isHeader
-                    className={headerClass}
-                    onClick={() => toggleSort("program")}
-                    aria-sort={sortKey === "program" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    Degree
-                  </TableCell>
-                  <TableCell
-                    isHeader
-                    className={headerClass}
-                    onClick={() => toggleSort("designation")}
-                    aria-sort={sortKey === "designation" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    Current Position
-                  </TableCell>
-                  <TableCell
-                    isHeader
-                    className={headerClass}
-                    onClick={() => toggleSort("organization")}
-                    aria-sort={sortKey === "organization" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    Company
-                  </TableCell>
-                  <TableCell
-                    isHeader
-                    className={`${headerClass} text-end`}
-                  >
-                    Actions
-                  </TableCell>
+          <div className="min-w-full xl:min-w-full">
+            <Table className="min-w-full border border-gray-200 dark:border-gray-800">
+              <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
+                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("name")} aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Name</TableCell>
+                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("id")} aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>SAP ID</TableCell>
+                  <TableCell isHeader className={headerClass}>Mobile No</TableCell>
+                  <TableCell isHeader className={headerClass}>Active Email</TableCell>
+                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
+                  <TableCell isHeader className={headerClass}>Status</TableCell>
+                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("organization")} aria-sort={sortKey === "organization" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Organization</TableCell>
+                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("designation")} aria-sort={sortKey === "designation" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Designation</TableCell>
+                  <TableCell isHeader className={headerClass}>Work Country/City</TableCell>
+                  <TableCell isHeader className={rightHeaderClass}>Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
-              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+              <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                 {loading && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`}>
-                      <TableCell className="px-5 py-4"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                     </TableRow>
                   ))
                 )}
 
                 {!loading && error && (
                   <TableRow>
-                    <TableCell className="px-5 py-4 text-red-600" colSpan={6}>{error}</TableCell>
+                    <TableCell className="px-5 py-4 text-red-600 border-r border-gray-200" colSpan={10}>{error}</TableCell>
                   </TableRow>
                 )}
 
                 {!loading && !error && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400" colSpan={6}>
+                    <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={10}>
                       No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}. Try adjusting your search or filters.
                     </TableCell>
                   </TableRow>
@@ -491,18 +461,23 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 {!loading && !error && pageItems.map((alum, idx) => (
                   <TableRow
                     key={`${alum.id}-${idx}`}
-                    className="hover:bg-gray-50 dark:hover:bg-white/[0.04]"
+                    className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] odd:bg-gray-50 ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                    onClick={() => setSelectedRowId(alum.id)}
+                    aria-selected={selectedRowId === alum.id}
                   >
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      <div className="flex items-center gap-3">
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
+                      <div className="flex items-center gap-3 w-max">
+                        <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{alum.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className={cellClass}>{alum.passingYear}</TableCell>
-                    <TableCell className={cellClass}>{alum.program}</TableCell>
-                    <TableCell className={cellClass}>{alum.designation ?? "-"}</TableCell>
-                    <TableCell className={cellClass}>{alum.organization ?? "-"}</TableCell>
-                    <TableCell className={cellClass}>{alum.email ?? "-"}{alum.mobile ? ` • ${alum.mobile}` : ""}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.id}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.email ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.department ?? alum.program}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start"><Badge size="sm" color={alum.verified ? "success" : "error"}>{alum.verified ? "Verified" : "Un-Verified"}</Badge></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                         {(() => {
@@ -544,20 +519,20 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </Table>
           </div>
         </div>
-        <div className="flex items-center justify-between p-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {(() => {
-              const start = (currentPage - 1) * pageSize + 1;
-              const end = start + pageItems.length - 1;
-              return `Showing ${pageItems.length ? start : 0}-${pageItems.length ? end : 0} of ${total}`;
-            })()}
-          </span>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-          />
-        </div>
+      <div className="flex items-center justify-between p-4">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          {(() => {
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = start + pageItems.length - 1;
+            return `Showing ${pageItems.length ? start : 0}-${pageItems.length ? end : 0} of ${total}`;
+          })()}
+        </span>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
+        />
+      </div>
       </div>
     </section>
   );

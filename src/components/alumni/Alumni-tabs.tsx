@@ -1,24 +1,10 @@
 "use client";
-/**
- * AlumniTabs Component Updates
- *
- * - Loading: Added explicit skeleton rows, improved error handling with a retry button,
- *   and live feedback messages for actions via an aria-live region.
- * - Action Icons: Implemented Verify, Unverify, Delete, and View actions.
- *   Verify/Unverify use PATCH `/api/alumni/[sapid]` to toggle `verify` per schema.
- *   Delete uses DELETE `/api/alumni/[sapid]`. View routes to `/alumni/[sapid]`.
- *   Immediate UI feedback is provided with optimistic updates and disabled icons while mutating.
- * - Alumni Tab Display: First tab shows all records; actions shown per-row based on current `verified` status.
- * - Database Flow: Alumni list API now returns `verify`, employment, organization, designation, and contact fields.
- *   CRUD operations adhere to `public.tbl_alumni` schema and include basic client-side validation and normalization.
- * - State Management: Uses React Query cache updates to keep UI in sync with DB.
- * - Responsive: Existing responsive layout maintained; action buttons remain accessible and keyboard focusable.
- */
+
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
-import { ListIcon, CheckCircleIcon, CloseLineIcon, TimeIcon, BoltIcon, LockIcon, EyeIcon, TrashBinIcon, CheckLineIcon } from "@/icons";
+import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
@@ -104,18 +90,6 @@ const STATUS_CLASS_MAP: Record<
   },
 };
 
-// Icon mapping for each tab action (typed for clarity)
-const ICON_COMPONENT_MAP: Record<
-  TabKey,
-  React.ComponentType<{ className?: string }>
-> = {
-  total: ListIcon,
-  verified: CheckCircleIcon,
-  unverified: CloseLineIcon,
-  underApproval: TimeIcon,
-  active: BoltIcon,
-  inactive: LockIcon,
-};
 
 export const AlumniTabs: React.FC = () => {
   const router = useRouter();
@@ -350,7 +324,7 @@ export const AlumniTabs: React.FC = () => {
   return (
     <ComponentCard  className=" ">
       <div className=" flex flex-col gap-4  ">
-        <div className="rounded-2xl  dark:bg-white/[0.03]">
+        <div className="rounded-2xl  bg-white flex justify-between   dark:bg-white/[0.03]">
          
           <div
             className="tab-list flex flex-nowrap items-center gap-3 overflow-x-auto p-1 "
@@ -375,16 +349,12 @@ export const AlumniTabs: React.FC = () => {
                     return counts.inactive;
                 }
               })();
-              const statusClasses = STATUS_CLASS_MAP[tab.key];
-              const Icon = ICON_COMPONENT_MAP[tab.key];
+             
               return (
                 <button
                   key={tab.key}
                   type="button"
-                  className={`w-[180px] bg-white whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-2 py-2 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
-                    selected === tab.key
-                      ? statusClasses.selectedContainer
-                      : "border-gray-200 bg-slate-100 dark:border-gray-800 dark:bg-white/[0.03]"
+                  className={`w-[240px] last:border-0 bg-white  flex flex-col items-center  whitespace-nowrap text-center border-r border-gray-300 px-4 py-2 text-sm transition-colors transition-transform 
                   } hover:translate-y-[-1px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900`}
                   onClick={() => setSelected(tab.key)}
                   role="tab"
@@ -406,16 +376,15 @@ export const AlumniTabs: React.FC = () => {
                     }
                   }}
                 >
-                  <div className="flex items-center">
-                  <Icon className={`${statusClasses.iconColor} size-6`} />
-                  <span className={`font-medium ${statusClasses.labelText}`}>{tab.label}</span>
-                  </div>
-                  <span className="ml-1 text-[40px] text-gray-600 dark:text-gray-400">{statCount.toLocaleString()}</span>
+                  <h6 className={`text-[20px] font-bold mt-2 ${STATUS_CLASS_MAP[tab.key].labelText}`}>{tab.label}</h6>
+                  <h3 className={`text-[35px] font-bold mt-6 `}>{statCount.toLocaleString()}</h3>
                 </button>
               );
             })}
           </div>
         </div>
+
+       
 
         {/* Search Bar: by SAP ID, email, or name */}
       <div className="space-y-4">

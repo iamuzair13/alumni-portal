@@ -26,6 +26,7 @@
     "autoprefixer": "^10.4.20",
     "flatpickr": "^4.6.13",
     "next": "15.2.3",
+    "next-auth": "^5.0.0-beta.30",
     "postgres": "^3.4.7",
     "process": "^0.11.10",
     "react": "^19.2.0",

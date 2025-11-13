@@ -270,7 +270,7 @@ export default function AlumniSqlForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-6" aria-label="Alumni registration form">
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 bg-white px-4" aria-label="Alumni registration form">
       {/* Notifications */}
       {(submitMsg || submitError || submitting) && (
         <div className="mb-4" aria-live="polite" aria-atomic="true">
