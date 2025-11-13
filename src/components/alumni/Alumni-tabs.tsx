@@ -349,7 +349,7 @@ export const AlumniTabs: React.FC = () => {
 
   return (
     <ComponentCard  className=" ">
-      <div className=" flex flex-col gap-4 ">
+      <div className=" flex flex-col gap-4">
         <div className="rounded-2xl  dark:bg-white/[0.03]">
          
           <div
@@ -418,7 +418,7 @@ export const AlumniTabs: React.FC = () => {
         </div>
 
         {/* Search Bar: by SAP ID, email, or name */}
-       <div className="space-y-4">
+      <div className="space-y-4">
       {/* Filter bar */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="flex items-center gap-2">
@@ -442,25 +442,25 @@ export const AlumniTabs: React.FC = () => {
               <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                 <TableRow>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Name</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SAP ID</TableCell>
+                  <TableCell className="pl-3 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SAP ID</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Mobile No</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Active Email</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Department</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Status</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Name of Ordganization</TableCell>
+                  <TableCell className="px-5 py-3 w-30  font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Department</TableCell>
+                  <TableCell className="px-5 w-50  py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Status</TableCell>
+                  <TableCell className="px-5 w-40 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Ordganization</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Designation</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Work Country/City</TableCell>
+                  <TableCell className="px-5 py-3 w-40 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Work Country/City</TableCell>
                   <TableCell className="px-5 py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400">Actions</TableCell>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+              <TableBody className="divide-y divide-gray-100   dark:divide-white/[0.05]">
                 {(isLoading || isFetching) && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`}>
                       <TableCell className="px-5 py-4"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4  py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
@@ -500,19 +500,19 @@ export const AlumniTabs: React.FC = () => {
                   >
                     <TableCell className="px-5 py-4 sm:px-6 text-start">
                       <div className="flex items-center gap-3">
-                        <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
+                        <span className="block w-30 font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.id}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.email ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department}</TableCell>
+                    <TableCell className="block px-4 w-40  py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department}</TableCell>
                     <TableCell className="px-4 py-3 text-start">
                       <Badge size="sm" color={alum.verified ? "success" : "error"}>{alum.verified ? "Verified" : "Un-Verified"}</Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
+                    <TableCell className="block px-4 w-40 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                         {(() => {
