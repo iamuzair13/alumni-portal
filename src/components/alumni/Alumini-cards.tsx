@@ -381,30 +381,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
           })}
         </div>
 
-        {/* <div className="mt-3">
-          <label htmlFor="cards-search" className="sr-only">Search alumni</label>
-          <div className="is-input-wrap">
-            <div className="is-input has-secondary w-full max-w-[420px] rounded-lg border border-neutral-200 flex items-center gap-2 px-3 py-2 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-200">
-              <IoMdSearch className="h-5 w-5 text-neutral-500" aria-hidden="true" />
-              <input
-                id="cards-search"
-                ref={searchRef}
-                type="text"
-                inputMode="search"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                className="w-full bg-transparent placeholder:text-neutral-400 focus:outline-none"
-                placeholder="Search by name or SAP-ID"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          </div>
-        </div> */}
+      
       </div>
 
       {/* Content */}

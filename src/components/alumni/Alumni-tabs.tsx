@@ -349,7 +349,7 @@ export const AlumniTabs: React.FC = () => {
 
   return (
     <ComponentCard  className=" ">
-      <div className=" flex flex-col gap-4">
+      <div className=" flex flex-col gap-4  ">
         <div className="rounded-2xl  dark:bg-white/[0.03]">
          
           <div
@@ -381,7 +381,7 @@ export const AlumniTabs: React.FC = () => {
                 <button
                   key={tab.key}
                   type="button"
-                  className={`w-[180px] whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-1 py-2 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
+                  className={`w-[180px] bg-white whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-2 py-2 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
                     selected === tab.key
                       ? statusClasses.selectedContainer
                       : "border-gray-200 bg-slate-100 dark:border-gray-800 dark:bg-white/[0.03]"
@@ -435,50 +435,50 @@ export const AlumniTabs: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
+      <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
         <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
           <div className="min-w-`full` xl:min-w-full">
-            <Table>
-              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                <TableRow>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Name</TableCell>
-                  <TableCell className="pl-3 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SAP ID</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Mobile No</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Active Email</TableCell>
-                  <TableCell className="px-5 py-3 w-30  font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Department</TableCell>
-                  <TableCell className="px-5 w-50  py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Status</TableCell>
-                  <TableCell className="px-5 w-40 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Ordganization</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Designation</TableCell>
-                  <TableCell className="px-5 py-3 w-40 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Work Country/City</TableCell>
-                  <TableCell className="px-5 py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400">Actions</TableCell>
+            <Table className="min-w-full border border-gray-200 dark:border-gray-800">
+              <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Name</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">SAP ID</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Mobile No</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Active Email</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Status</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Organization</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Designation</TableCell>
+                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Work Country/City</TableCell>
+                  <TableCell className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</TableCell>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-gray-100   dark:divide-white/[0.05]">
+              <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                 {(isLoading || isFetching) && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`}>
-                      <TableCell className="px-5 py-4"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4  py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                     </TableRow>
                   ))
                 )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-5 py-4 text-red-600" colSpan={10}>
-                      <div className="flex items-center justify-between">
+                    <TableCell className="px-5 py-4 text-red-600 border-r border-gray-200" colSpan={10}>
+                      <div className="flex items-center justify-between gap-4">
                         <span>{error?.message ?? "Failed to load data."}</span>
                         <button
                           type="button"
                           onClick={() => refetch()}
-                          className="ml-4 inline-flex items-center rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                          className="inline-flex items-center rounded-md bg-white border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >Retry</button>
                       </div>
                     </TableCell>
@@ -486,7 +486,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400" colSpan={10}>
+                    <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={10}>
                       No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}. Try adjusting your search or filters.
                     </TableCell>
                   </TableRow>
@@ -494,25 +494,25 @@ export const AlumniTabs: React.FC = () => {
                 {!isLoading && !isError && pageItems.map((alum, idx) => (
                   <TableRow
                     key={`${alum.id}-${idx}`}
-                    className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                    className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] odd:bg-gray-50 ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
                     onClick={() => setSelectedRowId(alum.id)}
                     aria-selected={selectedRowId === alum.id}
                   >
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      <div className="flex items-center gap-3">
-                        <span className="block w-30 font-medium text-gray-800 text-theme-sm dark:text-white/90">{alum.name}</span>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
+                      <div className="flex items-center gap-3 w-max">
+                        <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{alum.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.id}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.email ?? "-"}</TableCell>
-                    <TableCell className="block px-4 w-40  py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department}</TableCell>
-                    <TableCell className="px-4 py-3 text-start">
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.id}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.email ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.department}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
                       <Badge size="sm" color={alum.verified ? "success" : "error"}>{alum.verified ? "Verified" : "Un-Verified"}</Badge>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
-                    <TableCell className="block px-4 w-40 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                         {(() => {
@@ -551,6 +551,7 @@ export const AlumniTabs: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+          
         </div>
         {/* Live region for action feedback */}
         <div className="px-4" aria-live="polite" aria-atomic="true">
