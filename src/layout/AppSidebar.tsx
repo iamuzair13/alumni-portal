@@ -44,19 +44,7 @@ const navItems: NavItem[] = [
   },
 ];
 
-/**
- * Style Guide — Text Color Scheme
- *
- * Active tab text: `text-blue-700 dark:text-blue-200` (high-contrast primary)
- * Inactive tab text: `text-gray-700 dark:text-gray-300` (secondary/neutral)
- * Hover text: `hover:text-blue-600 dark:hover:text-blue-300` (accent on hover)
- * Focus text: `focus-visible:text-blue-700 dark:focus-visible:text-blue-200`
- *
- * Rationale: Blue tones provide strong contrast on light and dark backgrounds,
- * meeting WCAG guidance for readable active states, while gray offers a
- * neutral baseline for inactive items. Transitions use `transition-colors` for
- * smooth state changes without impacting layout.
- */
+
 const TEXT_COLORS = {
   active: "text-blue-700 dark:text-blue-200",
   inactive: "text-gray-700 dark:text-gray-300",
@@ -72,7 +60,7 @@ const AppSidebar: React.FC = () => {
     navItems: NavItem[],
     menuType: "main" | "others"
   ) => (
-    <ul className="flex flex-col gap-4">
+    <ul className="flex flex-col  gap-4">
       {navItems.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
@@ -296,8 +284,8 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        className={`py-8 flex  ${
+      <div 
+        className={`py-8 ${
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >

@@ -6,6 +6,8 @@ import Badge from "../ui/badge/Badge";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
+import { useAlumniParticipationList } from "@/app/queries/fetch-alumni-participation";
+import type { AlumniListItem } from "@/app/queries/fetch-alumni";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
@@ -15,11 +17,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "alumniAssociation", label: "Alumni Association" },
 ];
 
-const MOCK_COUNTS: Record<TabKey, { count: number; delta?: number }> = {
-  talkMentorship: { count: 180, delta: 3.4 },
-  alumniChapters: { count: 24, delta: 1.2 },
-  alumniAssociation: { count: 12, delta: 0.8 },
-};
 
 // Per-status color classes to visually distinguish each participation type
 const STATUS_CLASS_MAP: Record<
@@ -61,6 +58,7 @@ const STATUS_CLASS_MAP: Record<
 export const AlumniParticipation: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("talkMentorship");
   const router = useRouter();
+  const { data, isLoading, error } = useAlumniParticipationList();
 
   // Icon mapping (replicates Alumni-tabs typed map; using GroupIcon consistently)
   const ICON_COMPONENT_MAP: Record<
@@ -72,16 +70,9 @@ export const AlumniParticipation: React.FC = () => {
     alumniAssociation: GroupIcon,
   };
 
-  // Categorized mock list of alumni by participation level
-  type ParticipationItem = {
+  type TableItem = {
     id: string;
     name: string;
-    program?: string;
-    campus?: string;
-    level: TabKey;
-  };
-
-  type TableItem = ParticipationItem & {
     mobile?: string;
     email?: string;
     department?: string;
@@ -90,37 +81,38 @@ export const AlumniParticipation: React.FC = () => {
     designation?: string;
     workCountry?: string;
     workCity?: string;
+    level: TabKey[];
   };
-
-  const PARTICIPANTS = useMemo<TableItem[]>(
-    () => [
-      { id: "SAP-2001", name: "Ayesha Khan", email: "ayesha.khan@example.com", mobile: "+92 300 1111111", program: "MBA", campus: "Lahore", department: "Management Sciences", verified: true, organization: "ABC Ltd.", designation: "Manager", workCountry: "Pakistan", workCity: "Lahore", level: "talkMentorship" },
-{ id: "SAP-2002", name: "Bilal Ahmed", email: "bilal.ahmed@example.com", mobile: "+92 300 2222222", program: "BSCS", campus: "Karachi", department: "Computer Science", verified: false, organization: "TechSoft", designation: "Engineer", workCountry: "UAE", workCity: "Dubai", level: "talkMentorship" },
-{ id: "SAP-2003", name: "Sadia Noor", email: "sadia.noor@example.com", mobile: "+92 333 3333333", program: "BBA", campus: "Islamabad", department: "Business", verified: true, organization: "Global Corp", designation: "Analyst", workCountry: "USA", workCity: "New York", level: "alumniChapters" },
-{ id: "SAP-2004", name: "Hamza Ali", email: "hamza.ali@example.com", mobile: "+92 322 4444444", program: "LLB", campus: "Multan", department: "Law", verified: false, organization: "Legal Assoc.", designation: "Associate", workCountry: "UK", workCity: "London", level: "alumniChapters" },
-{ id: "SAP-2005", name: "Fatima Zahra", email: "fatima.zahra@example.com", mobile: "+92 311 5555555", program: "BSSE", campus: "Lahore", department: "Computer Science", verified: true, organization: "InnoTech", designation: "Lead Dev", workCountry: "Canada", workCity: "Toronto", level: "alumniAssociation" },
-{ id: "SAP-2006", name: "Imran Yousaf", email: "imran.yousaf@example.com", mobile: "+92 300 6666666", program: "BSc Civil", campus: "Faisalabad", department: "Engineering", verified: false, organization: "BuildWell", designation: "Consultant", workCountry: "Oman", workCity: "Muscat", level: "alumniAssociation" },
-{ id: "SAP-2007", name: "Mariam Raza", email: "mariam.raza@example.com", mobile: "+92 302 7777777", program: "MBA", campus: "Karachi", department: "Business Administration", verified: true, organization: "NextGen Ltd.", designation: "HR Lead", workCountry: "Qatar", workCity: "Doha", level: "talkMentorship" },
-{ id: "SAP-2008", name: "Ali Raza", email: "ali.raza@example.com", mobile: "+92 333 8888888", program: "BSIT", campus: "Lahore", department: "Information Technology", verified: false, organization: "SoftMatrix", designation: "Developer", workCountry: "Germany", workCity: "Berlin", level: "alumniAssociation" },
-{ id: "SAP-2009", name: "Hira Naveed", email: "hira.naveed@example.com", mobile: "+92 301 9999999", program: "BBA", campus: "Islamabad", department: "Business", verified: true, organization: "Alpha Group", designation: "Analyst", workCountry: "Australia", workCity: "Sydney", level: "alumniChapters" },
-{ id: "SAP-2010", name: "Usman Tariq", email: "usman.tariq@example.com", mobile: "+92 344 1112222", program: "BSCS", campus: "Lahore", department: "Computer Science", verified: false, organization: "ByteWorks", designation: "Software Engineer", workCountry: "Pakistan", workCity: "Lahore", level: "talkMentorship" },
-{ id: "SAP-2011", name: "Saad Farooq", email: "saad.farooq@example.com", mobile: "+92 321 3334444", program: "BS Electrical", campus: "Karachi", department: "Engineering", verified: true, organization: "ElectroTech", designation: "Engineer", workCountry: "Saudi Arabia", workCity: "Riyadh", level: "alumniAssociation" },
-{ id: "SAP-2012", name: "Zainab Hassan", email: "zainab.hassan@example.com", mobile: "+92 300 5556666", program: "MBA", campus: "Multan", department: "Management", verified: false, organization: "BizHub", designation: "Manager", workCountry: "USA", workCity: "Chicago", level: "talkMentorship" },
-{ id: "SAP-2013", name: "Arif Mehmood", email: "arif.mehmood@example.com", mobile: "+92 312 7778888", program: "BS Civil", campus: "Faisalabad", department: "Engineering", verified: true, organization: "SkyBuild", designation: "Architect", workCountry: "UAE", workCity: "Dubai", level: "alumniChapters" },
-{ id: "SAP-2014", name: "Mahnoor Qureshi", email: "mahnoor.qureshi@example.com", mobile: "+92 301 1234567", program: "BSCS", campus: "Lahore", department: "Computer Science", verified: true, organization: "CodeLabs", designation: "Software Engineer", workCountry: "Germany", workCity: "Munich", level: "alumniAssociation" },
-{ id: "SAP-2015", name: "Ahmad Javed", email: "ahmad.javed@example.com", mobile: "+92 334 2345678", program: "LLB", campus: "Islamabad", department: "Law", verified: false, organization: "LegalWorks", designation: "Attorney", workCountry: "UK", workCity: "London", level: "talkMentorship" },
-{ id: "SAP-2016", name: "Sana Malik", email: "sana.malik@example.com", mobile: "+92 345 3456789", program: "BBA", campus: "Lahore", department: "Business", verified: true, organization: "FinEdge", designation: "Consultant", workCountry: "Canada", workCity: "Vancouver", level: "alumniAssociation" },
-{ id: "SAP-2017", name: "Asad Iqbal", email: "asad.iqbal@example.com", mobile: "+92 300 4567890", program: "BSSE", campus: "Karachi", department: "Software Engineering", verified: false, organization: "TechVerse", designation: "Engineer", workCountry: "USA", workCity: "New York", level: "alumniChapters" },
-{ id: "SAP-2018", name: "Iqra Shah", email: "iqra.shah@example.com", mobile: "+92 301 5678901", program: "MBA", campus: "Lahore", department: "Management", verified: true, organization: "BizPlus", designation: "Executive", workCountry: "UAE", workCity: "Abu Dhabi", level: "talkMentorship" },
-{ id: "SAP-2019", name: "Hassan Rafiq", email: "hassan.rafiq@example.com", mobile: "+92 302 6789012", program: "BS Mechanical", campus: "Islamabad", department: "Engineering", verified: false, organization: "AutoWorks", designation: "Engineer", workCountry: "Oman", workCity: "Muscat", level: "alumniChapters" },
-{ id: "SAP-2020", name: "Minal Saeed", email: "minal.saeed@example.com", mobile: "+92 303 7890123", program: "BBA", campus: "Faisalabad", department: "Business", verified: true, organization: "ProLink", designation: "Analyst", workCountry: "Qatar", workCity: "Doha", level: "alumniAssociation" },
-
-    ],
-    []
-  );
+  const PARTICIPANTS = useMemo<TableItem[]>(() => {
+    const items = (data ?? []) as AlumniListItem[];
+    const parseVerified = (v: string | null | undefined) => {
+      if (!v) return false;
+      const s = String(v).toLowerCase();
+      return s === "true" || s === "yes" || s === "verified";
+    };
+    return items.map((it) => {
+      const level: TabKey[] = [];
+      if (parseVerified(it.verify)) level.push("talkMentorship");
+      if (it.country || it.city) level.push("alumniChapters");
+      if (it.nameoforganization || it.designation) level.push("alumniAssociation");
+      return {
+        id: it.sapid,
+        name: it.alumniname,
+        mobile: it.contactno ?? it.officialnumber ?? undefined,
+        email: it.personalemail ?? it.officialemail ?? undefined,
+        department: it.departmentname ?? undefined,
+        verified: parseVerified(it.verify),
+        organization: it.nameoforganization ?? undefined,
+        designation: it.designation ?? undefined,
+        workCountry: it.country ?? undefined,
+        workCity: it.city ?? undefined,
+        level,
+      } as TableItem;
+    });
+  }, [data]);
 
   const filteredParticipants = useMemo(
-    () => PARTICIPANTS.filter((p) => p.level === selected),
+    () => PARTICIPANTS.filter((p) => p.level.includes(selected)),
     [PARTICIPANTS, selected]
   );
 
@@ -132,8 +124,8 @@ export const AlumniParticipation: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const [loading] = useState<boolean>(false);
-  const [error] = useState<string | null>(null);
+  const loading = isLoading;
+  const errorMsg = error instanceof Error ? error.message : null;
 
   const sortedParticipants = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
@@ -175,14 +167,15 @@ export const AlumniParticipation: React.FC = () => {
             aria-label="Alumni participation categories"
           >
             {TABS.map((tab, idx) => {
-              const stat = MOCK_COUNTS[tab.key];
+              const stat = { count: PARTICIPANTS.filter((p) => p.level.includes(tab.key)).length };
               const statusClasses = STATUS_CLASS_MAP[tab.key];
               const Icon = ICON_COMPONENT_MAP[tab.key];
               return (
+                <div key={tab.key}>
                 <button
                   key={tab.key}
                   type="button"
-                  className={`w-[180px] whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-3 py-3 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
+                  className={`w-[180px]  whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-3 py-3 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
                     selected === tab.key
                       ? statusClasses.selectedContainer
                       : "border-gray-200 bg-slate-100 dark:border-gray-800 dark:bg-white/[0.03]"
@@ -209,24 +202,26 @@ export const AlumniParticipation: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Icon className={`${statusClasses.iconColor} size-6`} />
-                    <span className={`font-medium ${statusClasses.labelText}`}>{tab.label}</span>
+                    <span className={`font-medium  ${statusClasses.labelText}`}>{tab.label}</span>
                   </div>
                   <span className="ml-1 text-[40px] text-gray-600 dark:text-gray-400">
                     {stat.count.toLocaleString()}
                   </span>
                 </button>
+
+                
+                </div>
               );
             })}
           </div>
         </div>
 
-        {/* Categorized list filtered by selected participation level (responsive, sortable table) */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="overflow-hidden rounded-2xl bg-white dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live={loading ? "polite" : undefined}>
             <div className="min-w-full xl:min-w-full">
-              <Table>
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                  <TableRow>
+              <Table className="min-w-full border border-gray-200 dark:border-gray-800">
+                <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                  <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
                     {(
                       [
                         { label: "Name", key: "name" as SortKey, align: "text-start" },
@@ -243,7 +238,7 @@ export const AlumniParticipation: React.FC = () => {
                       return (
                         <TableCell
                           key={`hdr-${String(key)}`}
-                          className={`px-5 py-3 font-medium text-gray-500 ${align} text-theme-xs dark:text-gray-400`}
+                          className={`px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300 ${align}`}
                           aria-sort={ariaSort}
                         >
                           <button
@@ -265,10 +260,10 @@ export const AlumniParticipation: React.FC = () => {
                         </TableCell>
                       );
                     })}
-                    <TableCell className="px-5 py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400">Actions</TableCell>
+                    <TableCell className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</TableCell>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.06]">
                   {loading && (
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`}>
@@ -285,19 +280,19 @@ export const AlumniParticipation: React.FC = () => {
                     </TableRow>
                   ))
                 )}
-                {!loading && error && (
+                {!loading && errorMsg && (
                   <TableRow>
-                    <TableCell className="px-5 py-4 text-red-600" colSpan={10}>{error}</TableCell>
+                    <TableCell className="px-4 py-3 text-red-600" colSpan={10}>{errorMsg}</TableCell>
                   </TableRow>
                 )}
-                {!loading && !error && pageItems.length === 0 && (
+                {!loading && !errorMsg && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400" colSpan={10}>
+                    <TableCell className="px-4 py-6 text-gray-600 dark:text-gray-400" colSpan={10}>
                       No alumni found for this category.
                     </TableCell>
                   </TableRow>
                 )}
-                {!loading && !error && pageItems.map((alum, idx) => (
+                {!loading && !errorMsg && pageItems.map((alum, idx) => (
                   <TableRow
                     key={`${alum.id}-${idx}`}
                     className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}

@@ -5,6 +5,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState ,useEffect,useRef} from "react";
+import { useSession } from "next-auth/react";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
@@ -23,6 +24,7 @@ const AppHeader: React.FC = () => {
     setApplicationMenuOpen(!isApplicationMenuOpen);
   };
   const inputRef = useRef<HTMLInputElement>(null);
+  const { status } = useSession();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -135,7 +137,16 @@ const AppHeader: React.FC = () => {
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}
-          <UserDropdown /> 
+          {status === "loading" && (
+            <div className="flex items-center gap-3">
+              <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-gray-200 animate-pulse" />
+              <span className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+            </div>
+          )}
+          {status === "authenticated" && <UserDropdown />}
+          {status === "unauthenticated" && (
+            <Link href="/signin" className="text-sm text-blue-600">Sign in</Link>
+          )}
     
         </div>
       </div>

@@ -140,8 +140,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const email = user?.email ?? "";
       if (!email) return "/signin?error=INVALID_EMAIL";
       const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
-      const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
-      if (!dbUser) return "/signin?error=USER_NOT_FOUND";
+      let dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
+      if (!dbUser) {
+        const fullName = String(user?.name || "").trim();
+        const parts = fullName ? fullName.split(/\s+/) : [];
+        const first = parts[0] || null;
+        const last = parts.length > 1 ? parts.slice(1).join(" ") : null;
+        const inserted = await sql/* sql */`INSERT INTO public.tbl_users (email, firstname, lastname, department, type, blocked, lastlogindatetime) VALUES (${email}, ${first}, ${last}, ${null}, ${"google"}, ${false}, ${new Date().toISOString()}) RETURNING userid, email, firstname, lastname, department, type, blocked, lastlogindatetime`;
+        dbUser = inserted[0] as DbUser | undefined;
+        if (!dbUser) return "/signin?error=USER_NOT_FOUND";
+      }
       if (dbUser.blocked) return "/signin?error=USER_BLOCKED";
       const u: UserWithDb = user as UserWithDb;
       u.dbUser = dbUser;
