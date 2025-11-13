@@ -80,7 +80,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
         countryCode: data.countryCode ?? "+92",
         phoneNumber: data.phoneNumber ?? "",
         address: data.address ?? "",
-        province: data.province ?? "",
+        province: data.province ?? undefined,
         homeCity: data.homeCity ?? "",
         homeCountry: data.homeCountry ?? "Pakistan",
         // Academic
@@ -99,7 +99,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
         officialEmail: data.officialEmail ?? "",
         officialPhone: data.officialPhone ?? "",
         workCity: data.workCity ?? "",
-        workCountry: data.workCountry ?? "",
+        workCountry: data.workCountry ?? undefined,
         // Administrative
         source: data.source ?? "",
         verified: Boolean(data.verified ?? false),
