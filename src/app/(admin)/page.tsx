@@ -5,7 +5,7 @@ import { AlumniTabbedMenu } from "@/components/alumni/AlumniTabbedMenu";
 
 export const metadata: Metadata = {
   title:
-    "Next.js E-commerce Dashboard | TailAdmin - Next.js Dashboard Template",
+    "Admin Dashboard-Alumni",
   description: "This is Next.js Home for TailAdmin Dashboard Template",
 };
 
