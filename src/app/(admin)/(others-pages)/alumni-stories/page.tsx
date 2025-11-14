@@ -12,16 +12,19 @@ import { useForm, Controller } from "react-hook-form";
 import { storyFormSchema, type NewStoryPayload } from "@/lib/alumniStories";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, TrashBinIcon } from "@/icons";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
+import { useAlumniMe } from "@/app/queries/fetch-me-alumni";
 
 // TypeScript typings for Stories
 type Story = {
   id: string;
-  date: string | Date; // will be formatted to YYYY-MM-DD
-  name: string; // full name
-  program: string; // academic program
-  session: string; // session/year range
-  shortDescription: string; // brief summary
-  imageUrl: string; // profile picture
+  date: string | Date;
+  name: string;
+  program: string;
+  session: string;
+  shortDescription: string;
+  imageUrl: string;
 };
 
 // Tabs typing: maintain same tab styling and interaction model
@@ -32,45 +35,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "addStory", label: "Add Story" },
 ];
 
-// Dummy stories (replace with API integration when available)
-const DUMMY_STORIES: Story[] = [
-  {
-    id: "S-1001",
-    date: "2023-09-12",
-    name: "Ali Raza",
-    program: "BSCS",
-    session: "2021",
-    shortDescription: "Explored AI and ML during final year; now at a local startup.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1001",
-  },
-  {
-    id: "S-1002",
-    date: "2022-01-05",
-    name: "Sara Khan",
-    program: "BBA",
-    session: "2020",
-    shortDescription: "Finance enthusiast who led student investment club initiatives.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1002",
-  },
-  {
-    id: "S-1003",
-    date: "2021-11-20",
-    name: "Hassan Ali",
-    program: "BEE",
-    session: "2019",
-    shortDescription: "Designed solar microgrid projects during capstone.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1003",
-  },
-  {
-    id: "S-1004",
-    date: "2024-02-18",
-    name: "Fatima Noor",
-    program: "BS Biology",
-    session: "2022",
-    shortDescription: "Worked on CRISPR research as a lab assistant.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1004",
-  },
-];
+// Stories are fetched from API; no local dummy data
 
 // Helper to format date safely to YYYY-MM-DD
 function formatDate(input: string | Date): string {
@@ -88,14 +53,18 @@ function formatDate(input: string | Date): string {
 type StoryListProps = {
   items: Story[];
   loading?: boolean;
+  isFetching?: boolean;
+  errorMessage?: string | null;
   emptyMessage?: string;
   onDelete?: (id: string) => Promise<void> | void;
   deletingIds?: Set<string>;
+  actionMessage?: string | null;
+  actionError?: string | null;
 };
 
-const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
+const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, errorMessage, emptyMessage, onDelete, deletingIds, actionMessage, actionError }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -113,30 +82,12 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, on
   const startIdx = (currentPage - 1) * pageSize;
   const paged = safeItems.slice(startIdx, startIdx + pageSize);
 
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-12 rounded-xl bg-gray-200 animate-pulse dark:bg-white/10" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!safeItems.length) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600 dark:text-gray-300">{emptyMessage || "No stories found"}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
+    <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
+      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
         <div className="min-w-[950px] xl:min-w-full">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+          <Table className="min-w-full border border-gray-200 dark:border-gray-800">
+            <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
               <TableRow>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SrNo.</TableCell>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Date</TableCell>
@@ -148,32 +99,64 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, on
               </TableRow>
             </TableHeader>
 
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {paged.map((story, idx) => (
+            <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
+              {(loading || isFetching) && (
+                Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
+                  <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-12 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-64 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-10 w-10 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                  </TableRow>
+                ))
+              )}
+              {!loading && !!errorMessage && (
+                <TableRow>
+                  <TableCell className="px-5 py-4 text-red-600 border-r border-gray-200" colSpan={7}>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>{errorMessage}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(1)}
+                        className="inline-flex items-center rounded-md bg-white border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      >Retry</button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && !errorMessage && paged.length === 0 && (
+                <TableRow>
+                  <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={7}>
+                    {emptyMessage || "No stories found"}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && !errorMessage && paged.map((story, idx) => (
                 <TableRow key={story.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.04]">
-                  <TableCell className="px-5 py-4 sm:px-6 text-start">
-                    <span className="block text-gray-800 text-theme-sm dark:text-white/90">
-                      {startIdx + idx + 1}
-                    </span>
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
+                    <span className="block text-gray-800 text-theme-sm dark:text-white/90">{startIdx + idx + 1}</span>
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     {formatDate(story.date)}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-800 text-start text-theme-sm dark:text-white/90">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-800 text-start text-theme-sm dark:text-white/90">
                     {story.name || "-"}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     {story.program || "-"}{story.session ? ` • ${story.session}` : ""}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     <span className="line-clamp-2">{story.shortDescription || "-"}</span>
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-start">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
                     <img
                       src={story.imageUrl || "https://via.placeholder.com/64"}
                       alt={`${story.name}'s story image`}
@@ -237,17 +220,43 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, on
               ))}
             </TableBody>
           </Table>
+          <div className="px-4" aria-live="polite" aria-atomic="true">
+            {actionMessage && (
+              <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {actionMessage}
+              </div>
+            )}
+            {actionError && (
+              <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                {actionError}
+              </div>
+            )}
+          </div>
 
-          {/* Pagination footer */}
           <div className="flex items-center justify-between p-4">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Showing {paged.length} of {safeItems.length}
+              {(() => {
+                const start = (currentPage - 1) * pageSize + 1;
+                const end = start + paged.length - 1;
+                const total = safeItems.length;
+                return `Showing ${paged.length ? start : 0}-${paged.length ? end : 0} of ${total}`;
+              })()}
             </span>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-            />
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
+              <select
+                id="page-size"
+                className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
+            </div>
           </div>
         </div>
       </div>
@@ -258,10 +267,13 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, emptyMessage, on
 // Default export function name preserved
 export default function AlumniPage() {
   const [selected, setSelected] = useState<TabKey>("viewStories");
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: rawStories, isLoading, isFetching, isError, error } = useAlumniStories();
   const [stories, setStories] = useState<Story[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const filteredStories = useMemo<Story[]>(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -276,29 +288,18 @@ export default function AlumniPage() {
     }
   }, [stories, searchQuery]);
 
-  // Simulate async data load with error handling and cleanup
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    (async () => {
-      try {
-        // Replace with real fetch when API is ready
-        // const res = await fetch("/api/alumni-stories", { cache: "no-store" });
-        // if (!res.ok) throw new Error(`Failed: ${res.status}`);
-        // const data: Story[] = await res.json();
-        const data = DUMMY_STORIES;
-        if (active) setStories(data);
-      } catch (err) {
-        console.error("Failed to load stories:", err);
-        if (active) setStories([]);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [selected]);
+    const mapped: Story[] = (rawStories ?? []).map((s: AlumniStoryItem) => ({
+      id: s.id,
+      date: s.date,
+      name: s.name,
+      program: s.program,
+      session: s.session,
+      shortDescription: s.shortDescription,
+      imageUrl: s.imageUrl,
+    }));
+    setStories(mapped);
+  }, [rawStories]);
 
   return (
     <ComponentCard title="Alumni Stories" className="">
@@ -362,18 +363,25 @@ export default function AlumniPage() {
         {selected === "viewStories" && (
           <StoryTable
             items={filteredStories}
-            loading={loading}
+            loading={isLoading}
+            isFetching={isFetching}
+            errorMessage={isError ? (error?.message ?? "Failed to load data.") : null}
             emptyMessage="No stories available"
             deletingIds={deletingIds}
+            actionMessage={actionMessage}
+            actionError={actionError}
             onDelete={async (id: string) => {
               try {
+                setActionMessage(null);
+                setActionError(null);
                 setDeletingIds((prev) => new Set(prev).add(id));
                 const res = await fetch(`/api/alumni-stories/${id}`, { method: "DELETE" });
                 if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                setStories((prev) => prev.filter((s) => s.id !== id));
+                await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
+                setActionMessage("Story deleted successfully.");
               } catch (err) {
-                console.error("Failed to delete story:", err);
-                alert("Failed to delete. Please try again.");
+                const msg = err instanceof Error ? err.message : "Failed to delete. Please try again.";
+                setActionError(msg);
               } finally {
                 setDeletingIds((prev) => {
                   const next = new Set(prev);
@@ -395,15 +403,7 @@ export default function AlumniPage() {
   );
 }
 
-// Degrees, sessions, and faculties options
-const DEGREE_OPTIONS = [
-  "BSCS",
-  "BBA",
-  "BEE",
-  "BS Biology",
-  "MBA",
-  "MSCS",
-];
+// Sessions options
 const SESSION_OPTIONS = [
   "2018",
   "2019",
@@ -412,14 +412,6 @@ const SESSION_OPTIONS = [
   "2022",
   "2023",
   "2024",
-];
-const FACULTY_OPTIONS = [
-  "Computer Science",
-  "Business Administration",
-  "Electrical Engineering",
-  "Biology",
-  "Mathematics",
-  "Economics",
 ];
 
 function sanitizeHtml(input: string): string {
@@ -440,6 +432,8 @@ const buttonSecondaryClass =
   "inline-flex items-center rounded-xl border border-gray-300 bg-slate-100 px-4 py-2 text-gray-700 hover:bg-gray-200 transition-colors dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300";
 
 const AddStoryForm: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { data: me, isLoading: isLoadingMe, isError: isMeError } = useAlumniMe();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -474,21 +468,20 @@ const AddStoryForm: React.FC = () => {
     setServerMsg(null);
     setServerError(null);
     try {
-      const formData = {
-        ...data,
-        shortStoriesHtml: sanitizeHtml(data.shortStoriesHtml || ""),
-        imageFile: undefined, // send image separately or URL in real implementation
-      };
-      const res = await fetch("/api/alumni-stories", {
-        method: "POST",
+      const cleanHtml = sanitizeHtml(data.shortStoriesHtml || "");
+      const createdAt = data.date ? new Date(data.date).toISOString() : new Date().toISOString();
+      const status = data.showHome ? "active" : "pending";
+      const res = await fetch("/api/alumni-stories/me", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ text: cleanHtml || data.description || "", imageUrl: null, status, createdAt }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || `Failed (${res.status})`);
+        throw new Error(err?.error || `Failed (${res.status})`);
       }
       setServerMsg("Story saved successfully.");
+      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
       reset();
       setPreviewUrl(null);
     } catch (e: unknown) {
@@ -555,30 +548,38 @@ const AddStoryForm: React.FC = () => {
         {errors.name && <span className="text-xs text-red-600">{errors.name.message}</span>}
       </div>
 
-      {/* Degree & Session */}
+      {/* Degree (auto-populated, read-only) */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="degreeSession" className="text-sm text-gray-600 dark:text-gray-300">Degree & Session</label>
-        <select id="degreeSession" className={inputBaseClass} aria-label="Degree & Session" {...register("degreeSession")}>
-          <option value="">Select degree & session</option>
-          {DEGREE_OPTIONS.map((deg) => (
-            SESSION_OPTIONS.map((ses) => (
-              <option key={`${deg}-${ses}`} value={`${deg} (${ses})`}>{`${deg} (${ses})`}</option>
-            ))
+        <label htmlFor="degree" className="text-sm text-gray-600 dark:text-gray-300">Degree</label>
+        <input id="degree" className={inputBaseClass} aria-label="Degree" value={isLoadingMe ? "Loading…" : (me?.degree ?? "")} readOnly />
+      </div>
+      {/* Session (used to compose degreeSession on submit) */}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="degreeSession" className="text-sm text-gray-600 dark:text-gray-300">Session</label>
+        <select
+          id="degreeSession"
+          className={inputBaseClass}
+          aria-label="Session"
+          {...register("degreeSession")}
+          disabled={isLoadingMe || isMeError}
+          onChange={(e) => {
+            const ses = e.target.value;
+            const deg = me?.degree ?? "";
+            setValue("degreeSession", deg && ses ? `${deg} (${ses})` : deg || ses);
+          }}
+        >
+          <option value="">Select session</option>
+          {SESSION_OPTIONS.map((ses) => (
+            <option key={ses} value={ses}>{ses}</option>
           ))}
         </select>
         {errors.degreeSession && <span className="text-xs text-red-600">{errors.degreeSession.message}</span>}
       </div>
 
-      {/* Faculty */}
+      {/* Faculty (auto-populated, read-only) */}
       <div className="flex flex-col gap-2">
         <label htmlFor="faculty" className="text-sm text-gray-600 dark:text-gray-300">Faculty</label>
-        <select id="faculty" className={inputBaseClass} aria-label="Faculty" {...register("faculty")}>
-          <option value="">Select faculty</option>
-          {FACULTY_OPTIONS.map((f) => (
-            <option key={f} value={f}>{f}</option>
-          ))}
-        </select>
-        {errors.faculty && <span className="text-xs text-red-600">{errors.faculty.message}</span>}
+        <input id="faculty" className={inputBaseClass} aria-label="Faculty" value={isLoadingMe ? "Loading…" : (me?.faculty ?? "")} readOnly />
       </div>
 
       {/* Company */}

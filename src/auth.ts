@@ -20,6 +20,21 @@ type DbUser = {
 
 interface UserWithDb extends User {
   dbUser?: DbUser;
+  alumniDb?: {
+    alumniid: number;
+    alumniname: string | null;
+    departmentname: string | null;
+    facultyname: string | null;
+    degreetitle: string | null;
+    yearofending: number | null;
+    campusname: string | null;
+    alumnistatus: string | null;
+    verify: string | boolean | null;
+    alumniemail: string | null;
+    personalemail: string | null;
+    officialemail: string | null;
+    universityemail: string | null;
+  };
 }
 
 interface AugmentedToken extends JWT {
@@ -58,9 +73,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials, req) {
         const email = String(credentials?.email || "").trim();
         const password = String(credentials?.password || "").trim();
-        console.log(email, password);
+        
+        if (!email || !password) {
+          throw new Error("INVALID_EMAIL_FORMAT");
+        }
+        
         const ip = (req as unknown as { ip?: string }).ip || req?.headers?.get?.("x-forwarded-for") || "unknown";
-        return authenticateCredentials(email, password, String(ip));
+        
+        try {
+          const result = await authenticateCredentials(email, password, String(ip));
+          
+          // Return user object that NextAuth expects
+          return result as User | null;
+        } catch (error) {
+          // Re-throw the error so NextAuth can capture the error message
+          // The error message will be available in result.error in the client
+          throw error;
+        }
       },
     }),
   ],
@@ -89,8 +118,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account.provider === "credentials") {
         const uw: UserWithDb = user as UserWithDb;
         const db = uw.dbUser;
-        const isStaff = !!db && String(db.type || "").toLowerCase() === "staff";
-        return isStaff ? "/" : "/alumni-profile";
+        const alumniDb = uw.alumniDb;
+        
+        // Check if user is staff
+        if (db && String(db.type || "").toLowerCase() === "staff") {
+          if (db.blocked) {
+            return "/signin?error=USER_BLOCKED";
+          }
+          return true; // Allow sign in, redirect handled by client
+        }
+        
+        // Check if user is alumni
+        if (alumniDb) {
+          if (String(alumniDb.alumnistatus || "").toLowerCase() === "blocked") {
+            return "/signin?error=USER_BLOCKED";
+          }
+          return true; // Allow sign in, redirect handled by client
+        }
+        
+        // If neither staff nor alumni, deny sign in
+        return false;
       }
       return false;
     },

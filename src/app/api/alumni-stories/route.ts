@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories";
+import { sql } from "@/lib/dbconnect";
 
-type Story = {
+type StoryItem = {
   id: string;
   date: string;
   name: string;
@@ -11,47 +12,49 @@ type Story = {
   imageUrl: string;
 };
 
-const STORIES: Story[] = [
-  {
-    id: "S-1001",
-    date: "2023-09-12",
-    name: "Ali Raza",
-    program: "BSCS",
-    session: "2021",
-    shortDescription: "Explored AI and ML during final year; now at a local startup.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1001",
-  },
-  {
-    id: "S-1002",
-    date: "2022-01-05",
-    name: "Sara Khan",
-    program: "BBA",
-    session: "2020",
-    shortDescription: "Finance enthusiast who led student investment club initiatives.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1002",
-  },
-  {
-    id: "S-1003",
-    date: "2021-11-20",
-    name: "Hassan Ali",
-    program: "BEE",
-    session: "2019",
-    shortDescription: "Designed solar microgrid projects during capstone.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1003",
-  },
-  {
-    id: "S-1004",
-    date: "2024-02-18",
-    name: "Fatima Noor",
-    program: "BS Biology",
-    session: "2022",
-    shortDescription: "Worked on CRISPR research as a lab assistant.",
-    imageUrl: "https://i.pravatar.cc/64?u=S-1004",
-  },
-];
-
 export async function GET() {
-  return NextResponse.json(STORIES, { status: 200 });
+  try {
+    const rows = await sql/* sql */`
+      SELECT 
+        s.alumniid,
+        s.alumnistories,
+        s.alumniimage,
+        s.status,
+        s.createdat,
+        a.alumniname,
+        a.degreetitle,
+        a.academicsession,
+        a.image1
+      FROM public.tblalumnistories s
+      JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+      ORDER BY s.createdat DESC
+      LIMIT 200`;
+    const typed = rows as unknown as Array<{
+      alumniid?: number;
+      alumnistories?: string | null;
+      alumniimage?: string | null;
+      status?: string | null;
+      createdat?: string | Date | null;
+      alumniname?: string | null;
+      degreetitle?: string | null;
+      academicsession?: string | null;
+      image1?: string | null;
+    }>;
+    const items = typed.map((r): StoryItem => {
+      const id = String(r.alumniid ?? "");
+      const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
+      const name = String(r.alumniname ?? "");
+      const program = String(r.degreetitle ?? "");
+      const session = String(r.academicsession ?? "");
+      const shortDescription = String(r.alumnistories ?? "");
+      const imageUrl = String(r.alumniimage ?? r.image1 ?? "");
+      return { id, date, name, program, session, shortDescription, imageUrl };
+    });
+    return NextResponse.json({ items }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch stories";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
@@ -61,12 +64,23 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
     }
-    const payload: ServerStoryPayload = parsed.data;
-    // Mock create: generate id and echo back
-    const id = `S-${Math.floor(1000 + Math.random() * 9000)}`;
-    const created = { id, ...payload };
-    return NextResponse.json(created, { status: 201 });
-  } catch {
-    return NextResponse.json({ message: "Invalid JSON" }, { status: 400 });
+    const v: ServerStoryPayload = parsed.data;
+    const createdAt = new Date(v.date).toISOString();
+    const text = v.description || v.shortStoriesHtml;
+    const image = v.imageUrl ?? null;
+    // Insert into tblstories (rich story storage) for full fidelity
+    const rows = await sql/* sql */`
+      INSERT INTO public.tblstories (
+        alumniname, alumnisession, alumnifaculty, alumnicompany, alumnidesignation,
+        alumnicitycountry, alumnistories, alumnishortstories, alumnistoriesdate, alumniimage1, alumnishowhome
+      ) VALUES (
+        ${v.name}, ${v.degreeSession}, ${v.faculty}, ${v.company}, ${v.designation},
+        ${v.cityCountry}, ${text}, ${v.shortStoriesHtml.slice(0, 500)}, ${createdAt}, ${image}, ${v.showHome ? "true" : "false"}
+      ) RETURNING id`;
+    const created = rows[0]?.id as number | undefined;
+    return NextResponse.json({ ok: true, id: created }, { status: 201 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Invalid JSON";
+    return NextResponse.json({ message: msg }, { status: 400 });
   }
 }
