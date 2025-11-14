@@ -47,16 +47,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET || "",
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "online",
-        },
-      },
       checks: ["pkce", "state"],
     }),
     CredentialsProvider({
-      name: "Email and Password",
+      name: "credentials",
       credentials: {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
@@ -64,6 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials, req) {
         const email = String(credentials?.email || "").trim();
         const password = String(credentials?.password || "").trim();
+        console.log(email, password);
         const ip = (req as unknown as { ip?: string }).ip || req?.headers?.get?.("x-forwarded-for") || "unknown";
         return authenticateCredentials(email, password, String(ip));
       },
@@ -76,19 +71,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   callbacks: {
     async signIn({ user, account }) {
-      if (!account || account.provider !== "google") return false;
-      const email = user?.email ?? "";
-      if (!email) return "/signin?error=INVALID_EMAIL";
-      const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
-      const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
-      if (!dbUser) return "/signin?error=USER_NOT_FOUND";
-      if (dbUser.blocked) return "/signin?error=USER_BLOCKED";
-      const u: UserWithDb = user as UserWithDb;
-      u.dbUser = dbUser;
-      try {
-        await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
-      } catch {}
-      return true;
+      if (!account) return false;
+      if (account.provider === "google") {
+        const email = user?.email ?? "";
+        if (!email) return "/signin?error=INVALID_EMAIL";
+        const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
+        const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
+        if (!dbUser) return "/signin?error=USER_NOT_FOUND";
+        if (dbUser.blocked) return "/signin?error=USER_BLOCKED";
+        const u: UserWithDb = user as UserWithDb;
+        u.dbUser = dbUser;
+        try {
+          await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
+        } catch {}
+        return "/";
+      }
+      if (account.provider === "credentials") {
+        const uw: UserWithDb = user as UserWithDb;
+        const db = uw.dbUser;
+        const isStaff = !!db && String(db.type || "").toLowerCase() === "staff";
+        return isStaff ? "/" : "/alumni-profile";
+      }
+      return false;
     },
     async jwt({ token, user }) {
       if (user) {
@@ -107,6 +111,84 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           try {
             console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)}`);
           } catch {}
+        } else {
+          const au = (user as unknown as { alumniDb?: {
+            alumniid: number;
+            alumniname: string | null;
+            departmentname: string | null;
+            facultyname: string | null;
+            degreetitle: string | null;
+            yearofending: number | null;
+            campusname: string | null;
+            alumnistatus: string | null;
+            verify: string | boolean | null;
+            alumniemail: string | null;
+            personalemail: string | null;
+            officialemail: string | null;
+            universityemail: string | null;
+          } }).alumniDb;
+          if (au) {
+            const at: AugmentedToken = token as AugmentedToken;
+            at.userId = au.alumniid;
+            at.department = au.departmentname ?? null;
+            at.type = "alumni";
+            at.blocked = String(au.alumnistatus || "").toLowerCase() === "blocked";
+            const fullName = String(au.alumniname || "").trim();
+            const [firstName, ...rest] = fullName.split(" ");
+            at.firstName = firstName || null;
+            at.lastName = rest.join(" ") || null;
+            token.email = (au.alumniemail || au.personalemail || au.officialemail || au.universityemail || token.email) || undefined;
+            token.name = fullName || token.name;
+          } else {
+            const email = String(user.email || token.email || "");
+            if (email) {
+              try {
+                const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
+                const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
+                if (dbUser) {
+                  const at: AugmentedToken = token as AugmentedToken;
+                  at.userId = dbUser.userid;
+                  at.department = dbUser.department;
+                  at.type = dbUser.type;
+                  at.blocked = dbUser.blocked;
+                  at.firstName = dbUser.firstname;
+                  at.lastName = dbUser.lastname;
+                  token.email = dbUser.email || token.email;
+                  token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
+                } else {
+                  const arows = await sql/* sql */`SELECT alumniid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+                  const a = arows[0] as {
+                    alumniid: number;
+                    alumniname: string | null;
+                    departmentname: string | null;
+                    facultyname: string | null;
+                    degreetitle: string | null;
+                    yearofending: number | null;
+                    campusname: string | null;
+                    alumnistatus: string | null;
+                    verify: string | boolean | null;
+                    alumniemail: string | null;
+                    personalemail: string | null;
+                    officialemail: string | null;
+                    universityemail: string | null;
+                  } | undefined;
+                  if (a) {
+                    const at: AugmentedToken = token as AugmentedToken;
+                    at.userId = a.alumniid;
+                    at.department = a.departmentname ?? null;
+                    at.type = "alumni";
+                    at.blocked = String(a.alumnistatus || "").toLowerCase() === "blocked";
+                    const fullName = String(a.alumniname || "").trim();
+                    const [firstName, ...rest] = fullName.split(" ");
+                    at.firstName = firstName || null;
+                    at.lastName = rest.join(" ") || null;
+                    token.email = (a.alumniemail || a.personalemail || a.officialemail || a.universityemail || token.email) || undefined;
+                    token.name = fullName || token.name;
+                  }
+                }
+              } catch {}
+            }
+          }
         }
       } else {
         try {

@@ -50,6 +50,21 @@ export interface UserWithDbLike {
   email?: string | null;
   name?: string | null;
   dbUser?: DbUser;
+  alumniDb?: {
+    alumniid: number;
+    alumniname: string | null;
+    departmentname: string | null;
+    facultyname: string | null;
+    degreetitle: string | null;
+    yearofending: number | null;
+    campusname: string | null;
+    alumnistatus: string | null;
+    verify: string | boolean | null;
+    alumniemail: string | null;
+    personalemail: string | null;
+    officialemail: string | null;
+    universityemail: string | null;
+  };
 }
 
 export async function authenticateCredentials(email: string, password: string, ip: string): Promise<UserWithDbLike> {
@@ -113,7 +128,7 @@ export async function authenticateCredentials(email: string, password: string, i
 
   let arows;
   try {
-    arows = await sql/* sql */`SELECT alumniid, alumniemail, personalemail, universityemail, password, alumniname, departmentname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+    arows = await sql/* sql */`SELECT alumniid, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
   } catch (err) {
     log("FAIL", `alumni db error: ${err instanceof Error ? err.message : String(err)}`);
     throw new Error("DB_CONNECTION_ERROR");
@@ -122,10 +137,15 @@ export async function authenticateCredentials(email: string, password: string, i
     alumniid: number;
     alumniemail: string | null;
     personalemail: string | null;
+    officialemail: string | null;
     universityemail: string | null;
     password: string | null;
     alumniname: string | null;
     departmentname: string | null;
+    facultyname: string | null;
+    degreetitle: string | null;
+    yearofending: number | null;
+    campusname: string | null;
     alumnistatus: string | null;
     verify: string | boolean | null;
     lasttimelogin: string | null;
@@ -145,10 +165,25 @@ export async function authenticateCredentials(email: string, password: string, i
     log("FAIL", "alumni invalid password");
     throw new Error("INVALID_PASSWORD");
   }
-  const userEmail = a.alumniemail || a.personalemail || a.universityemail || email;
+  const userEmail = a.alumniemail || a.personalemail || a.officialemail || a.universityemail || email;
   const u: UserWithDbLike = {
     email: userEmail,
     name: String(a.alumniname || "") || undefined,
+    alumniDb: {
+      alumniid: a.alumniid,
+      alumniname: a.alumniname ?? null,
+      departmentname: a.departmentname ?? null,
+      facultyname: a.facultyname ?? null,
+      degreetitle: a.degreetitle ?? null,
+      yearofending: a.yearofending ?? null,
+      campusname: a.campusname ?? null,
+      alumnistatus: a.alumnistatus ?? null,
+      verify: a.verify ?? null,
+      alumniemail: a.alumniemail ?? null,
+      personalemail: a.personalemail ?? null,
+      officialemail: a.officialemail ?? null,
+      universityemail: a.universityemail ?? null,
+    },
   };
   log("OK", "alumni credentials verified");
   try {

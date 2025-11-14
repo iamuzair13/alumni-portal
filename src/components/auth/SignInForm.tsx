@@ -1,20 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export async function googleSignIn(callbackUrl: string = "/"): Promise<void> {
   await signIn("google", { callbackUrl, redirect: true });
 }
 
 export default function SignInForm() {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const params = useSearchParams();
+  const router = useRouter();
 
   React.useEffect(() => {
     const err = params.get("error");
@@ -51,9 +52,9 @@ export default function SignInForm() {
         setErrorMessage("Insecure connection. Use HTTPS to sign in.");
         return;
       }
-      const res = await signIn("credentials", { email: email.trim(), password: password, redirect: false });
-      if (!res || res.error) {
-        const err = res?.error ?? "LOGIN_FAILED";
+      const result = await signIn("credentials", { email: email.trim(), password: password, redirect: false, callbackUrl: "/" });
+      if (result?.error) {
+        const err = result.error ?? "LOGIN_FAILED";
         if (err === "INVALID_EMAIL_FORMAT") setErrorMessage("Invalid email format");
         else if (err === "INVALID_PASSWORD") setErrorMessage("Incorrect password");
         else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("User account does not exist");
@@ -65,12 +66,22 @@ export default function SignInForm() {
         return;
       }
       setErrorMessage(null);
+      // rely on useEffect redirect once session becomes authenticated
     } catch {
       setErrorMessage("Sign-in failed");
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+    
+      const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase();
+      const dest = t === "staff" ? "/" : "/alumni-profile";
+      router.replace(dest);
+    }
+  }, [status, session, router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">

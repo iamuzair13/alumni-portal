@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
@@ -65,6 +65,86 @@ export type TblAlumniForm = {
 const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
 const labelBase = "block text-sm text-neutral-800";
 
+const departmentsByFaculty: Record<string, string[]> = {
+  "Faculty of Arts & Architecture": [
+    "School of Architecture",
+    "School of Creative Arts",
+    "School of Fashion & Textiles",
+  ],
+  "Faculty of Engineering & Technology": [
+    "Department of Electrical Engineering",
+    "Department of Mechanical Engineering",
+    "Department of Civil Engineering",
+    "Department of Computer Engineering",
+    "Department of Technology",
+  ],
+  "Faculty of Allied Health Sciences": [
+    "University Institute of Radiological Sciences & Medical Imaging Technology",
+    "University Institute of Physical Therapy",
+    "Department of Sports Sciences and Physical Education",
+    "University Institute of Diet & Nutritional Sciences",
+    "University Institute of Food Science & Technology",
+    "University Institute of Medical Lab Technology",
+    "University Institute of Public Health",
+    "Department of Health Professional Technologies",
+    "Department of Optometry & Vision Sciences",
+    "Department of Emerging Allied Health Technologies",
+    "Department of Rehabilitation Sciences",
+    "Lahore School of Nursing",
+    "Department of Audiology",
+  ],
+  "Faculty of Information Technology": [
+    "Department of Computer Science & Information Technology",
+    "Department of Software Engineering",
+    "Department of Intelligent Systems",
+  ],
+  "Faculty of Management Sciences": [
+    "Lahore Business School",
+    "Department of Economics",
+    "Lahore School of Aviation",
+    "Department of Information Management",
+  ],
+  "Faculty of Social Sciences": [
+    "Department of Islamic Studies",
+    "Lahore School of Behavioural Sciences",
+    "School of Integrated Social Sciences",
+    "Department of Education",
+    "Department of Sociology",
+    "Department of Criminology",
+  ],
+  "Faculty of Medicine & Dentistry": [
+    "University College of Medicine and Dentistry",
+    "Institute of Postgraduate Medical Sciences",
+    "University Institute of Health Professions Education and Research",
+    "Centre for Health Professionals Development & Lifelong Learning",
+    "Dental Paramedical School",
+  ],
+  "Faculty of Sciences": [
+    "Department of Physics",
+    "Department of Chemistry",
+    "Department of Environmental Sciences",
+    "Department of Mathematics and Statistics",
+    "Institute of Molecular Biology & Biotechnology",
+    "School of Pain and Regenerative Medicine",
+  ],
+  "Faculty of Pharmacy": [
+    "Department of Pharmacy",
+  ],
+  "Faculty of Law": [
+    "M.A. Raoof College of Law",
+  ],
+  "Faculty of Languages & Literature": [
+    "Department of English Language & Literature",
+    "Department of Urdu",
+  ],
+  "International Qualifications": [
+    "Department of International Qualifications",
+  ],
+  "Centre for Microcredential-Based Skill Development": [
+    "Microcredential-Based Skill Development Centre",
+  ],
+};
+
 export default function AlumniSqlForm() {
   const {
     register,
@@ -74,6 +154,7 @@ export default function AlumniSqlForm() {
     watch,
     setError,
     clearErrors,
+    setValue,
     formState: { errors },
   } = useForm<TblAlumniForm>({
     defaultValues: {
@@ -145,6 +226,11 @@ export default function AlumniSqlForm() {
   const contactVal = watch("contactno") || "";
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
+  const selectedFaculty = watch("facultyname") || "";
+  const deptOptions = useMemo(() => departmentsByFaculty[selectedFaculty] || [], [selectedFaculty]);
+  useEffect(() => {
+    setValue("departmentname", "");
+  }, [selectedFaculty, setValue]);
 
   const passwordScore = useMemo(() => {
     let score = 0;
@@ -436,9 +522,19 @@ export default function AlumniSqlForm() {
               <label className={labelBase}>Faculty *</label>
               <select className={inputBase} {...register("facultyname", { required: true })}>
                 <option value="">Select</option>
-                <option value="Business">Business</option>
-                <option value="Science & Technology">Science & Technology</option>
-                <option value="Arts & Humanities">Arts & Humanities</option>
+                <option value="Faculty of Information Technology">Faculty of Information Technology</option>
+                <option value="Faculty of Medicine & Dentistry">Faculty of Medicine & Dentistry</option>
+                <option value="Faculty of Law">Faculty of Law</option>
+                <option value="Centre for Microcredential-Based Skill Development">Centre for Microcredential-Based Skill Development</option>
+                <option value="Faculty of Engineering & Technology">Faculty of Engineering & Technology</option>
+                <option value="Faculty of Management Sciences">Faculty of Management Sciences</option>
+                <option value="Faculty of Sciences">Faculty of Sciences</option>
+                <option value="Faculty of Languages & Literature">Faculty of Languages & Literature</option>
+                <option value="Faculty of Arts & Architecture">Faculty of Arts & Architecture</option>
+                <option value="Faculty of Social Sciences">Faculty of Social Sciences</option>
+                <option value="Faculty of Pharmacy">Faculty of Pharmacy</option>
+                <option value="International Qualifications">International Qualifications</option>
+                <option value="Faculty of Allied Health Sciences">Faculty of Allied Health Sciences</option>
               </select>
               {errors.facultyname && <p className="mt-1 text-xs text-red-600">Faculty is required</p>}
             </div>
@@ -446,9 +542,9 @@ export default function AlumniSqlForm() {
               <label className={labelBase}>Department *</label>
               <select className={inputBase} {...register("departmentname", { required: true })}>
                 <option value="">Select</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="Electrical Engineering">Electrical Engineering</option>
-                <option value="Management">Management</option>
+                {deptOptions.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
               </select>
               {errors.departmentname && <p className="mt-1 text-xs text-red-600">Department is required</p>}
             </div>
