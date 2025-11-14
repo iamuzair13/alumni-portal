@@ -435,7 +435,7 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="">
       <ComponentCard title="Setup" className="">
         <div
           className="tab-list"
@@ -445,9 +445,9 @@ export default function SetupPage() {
           {TABS.map((tab, idx) => (
             <button
               key={tab.key}
-              className={`tab-item rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm hover:border-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+              className={`tab-item rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out  hover:shadow-sm  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                 selected === tab.key
-                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
+                  ? "bg-white  text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                   : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
               }`}
               onClick={() => setSelected(tab.key)}
@@ -836,17 +836,16 @@ function RealTimeUsers() {
   }
 
   return (
-    <div className="mt-6 overflow-hidden border border-gray-200 bg-white rounded-2xl dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
-        <table className="min-w-full" role="table" aria-label="Real-time users list">
+    <div className="mt-6 overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
+        <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
           <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 dark:text-gray-300">Email</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Type</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Blocked</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 dark:text-gray-300">Last Login</th>
-              <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
+              <th scope="col" className="px-4 py-3 text-center text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
           <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
@@ -854,22 +853,30 @@ function RealTimeUsers() {
               <tr key={u.userid} className="odd:bg-gray-50">
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                   <div className="flex flex-col">
-                    <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
-                    <span className="text-xs text-gray-600 dark:text-gray-300">{u.email ?? "-"}</span>
+                    <span className={`block font-medium  ${u.blocked ? "text-red-600" : "text-slate-900"} text-[13px] dark:text-white/90`}>{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
+                    
                   </div>
                 </td>
+                
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.email ?? "-"}</td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.department ?? "-"}</td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.blocked ? "Yes" : "No"}</td>
-                <td className="px-4 py-3 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.lastlogindatetime ?? "-"}</td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex gap-2 justify-end">
-                    <Button size="sm" aria-label={`Edit ${u.email ?? "user"}`} startIcon={<PencilIcon />} onClick={() => openEdit(u)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button size="sm" variant="outline" aria-label={`Delete ${u.email ?? "user"}`} startIcon={<TrashBinIcon />} onClick={() => setDeleteId(u.userid)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
-                      <span className="sr-only">Delete</span>
-                    </Button>
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      aria-label={`Edit ${u.email ?? "user"}`}
+                      onClick={() => openEdit(u)}
+                      className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    >
+                      <PencilIcon className="w-4 h-4 text-gray-700" />
+                    </button>
+                    <button
+                      aria-label={`Delete ${u.email ?? "user"}`}
+                      onClick={() => setDeleteId(u.userid)}
+                      className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    >
+                      <TrashBinIcon className="w-4 h-4 text-gray-700" />
+                    </button>
                   </div>
                 </td>
               </tr>

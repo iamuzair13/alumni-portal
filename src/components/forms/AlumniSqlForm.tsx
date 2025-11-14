@@ -238,11 +238,18 @@ export default function AlumniSqlForm() {
     setSubmitMsg(null);
     setSubmitError(null);
     try {
+      const payload: TblAlumniForm = { ...data };
+      if (!payload.alumniemail || String(payload.alumniemail).trim() === "") {
+        payload.alumniemail = payload.personalemail ?? null;
+      }
+      if (!payload.datasource || String(payload.datasource).trim() === "") {
+        payload.datasource = "Alumni";
+      }
       // Send to API (server will sanitize and validate again)
       const res = await fetch("/api/alumni/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -271,6 +278,8 @@ export default function AlumniSqlForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 bg-white px-4" aria-label="Alumni registration form">
+      <input type="hidden" value="Alumni" {...register("datasource")} />
+      <input type="hidden" name="alumni" value="alumni" />
       {/* Notifications */}
       {(submitMsg || submitError || submitting) && (
         <div className="mb-4" aria-live="polite" aria-atomic="true">

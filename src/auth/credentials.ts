@@ -82,38 +82,77 @@ export async function authenticateCredentials(email: string, password: string, i
     throw new Error("DB_CONNECTION_ERROR");
   }
   const dbUser: (DbUser & { password: string | null }) | undefined = rows[0] as (DbUser & { password: string | null }) | undefined;
-  if (!dbUser) {
-    log("FAIL", "email not registered");
+  if (dbUser && (dbUser.type || "").toLowerCase() === "staff") {
+    if (dbUser.blocked) {
+      log("FAIL", "account blocked");
+      throw new Error("USER_BLOCKED");
+    }
+    const stored = dbUser.password || "";
+    const ok = await verifyPassword(password, stored);
+    if (!ok) {
+      log("FAIL", "invalid password");
+      throw new Error("INVALID_PASSWORD");
+    }
+    if (stored && !stored.startsWith("scrypt:")) {
+      try {
+        const newHash = await hashPassword(password);
+        await sql/* sql */`UPDATE public.tbl_users SET password = ${newHash} WHERE userid = ${dbUser.userid}`;
+      } catch {}
+    }
+    const u: UserWithDbLike = {
+      email: dbUser.email || email,
+      name: `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim() || undefined,
+      dbUser,
+    };
+    log("OK", "staff credentials verified");
+    try {
+      await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
+    } catch {}
+    return u;
+  }
+
+  let arows;
+  try {
+    arows = await sql/* sql */`SELECT alumniid, alumniemail, personalemail, universityemail, password, alumniname, departmentname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+  } catch (err) {
+    log("FAIL", `alumni db error: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error("DB_CONNECTION_ERROR");
+  }
+  const a = arows[0] as {
+    alumniid: number;
+    alumniemail: string | null;
+    personalemail: string | null;
+    universityemail: string | null;
+    password: string | null;
+    alumniname: string | null;
+    departmentname: string | null;
+    alumnistatus: string | null;
+    verify: string | boolean | null;
+    lasttimelogin: string | null;
+    logincount: number | null;
+  } | undefined;
+  if (!a) {
+    log("FAIL", "email not registered (alumni)");
     throw new Error("EMAIL_NOT_REGISTERED");
   }
-  if (dbUser.blocked) {
-    log("FAIL", "account blocked");
+  if ((a.alumnistatus || "").toLowerCase() === "blocked") {
+    log("FAIL", "alumni blocked");
     throw new Error("USER_BLOCKED");
   }
-  if ((dbUser.type || "").toLowerCase() !== "staff") {
-    log("FAIL", "not staff");
-    throw new Error("USER_NOT_STAFF");
-  }
-  const stored = dbUser.password || "";
-  const ok = await verifyPassword(password, stored);
-  if (!ok) {
-    log("FAIL", "invalid password");
+  const storedA = a.password || "";
+  const okA = await verifyPassword(password, storedA);
+  if (!okA) {
+    log("FAIL", "alumni invalid password");
     throw new Error("INVALID_PASSWORD");
   }
-  if (stored && !stored.startsWith("scrypt:")) {
-    try {
-      const newHash = await hashPassword(password);
-      await sql/* sql */`UPDATE public.tbl_users SET password = ${newHash} WHERE userid = ${dbUser.userid}`;
-    } catch {}
-  }
+  const userEmail = a.alumniemail || a.personalemail || a.universityemail || email;
   const u: UserWithDbLike = {
-    email: dbUser.email || email,
-    name: `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim() || undefined,
-    dbUser,
+    email: userEmail,
+    name: String(a.alumniname || "") || undefined,
   };
-  log("OK", "credentials verified");
+  log("OK", "alumni credentials verified");
   try {
-    await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
+    await sql/* sql */`UPDATE public.tbl_alumni SET lasttimelogin = ${new Date().toISOString()}, logincount = COALESCE(logincount, 0) + 1 WHERE alumniid = ${a.alumniid}`;
   } catch {}
   return u;
 }
