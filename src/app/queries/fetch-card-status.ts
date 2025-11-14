@@ -1,0 +1,59 @@
+"use client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { cardApplicantsKey } from "@/app/queries/fetch-card-applicants";
+
+export type CardStatus = "pending" | "rejected" | "delivered";
+
+export type CardData = {
+  cardid: number;
+  alumniid: number;
+  cnicno: string | null;
+  cardaddress: string | null;
+  status: CardStatus | null;
+  cardpicture: string | null;
+  createdat: string | null;
+};
+
+export const cardStatusKey = (sapId: string | undefined) => ["alumni", "card", sapId ?? ""];
+
+export function useCardStatus(sapId: string | undefined) {
+  return useQuery<CardData | null>({
+    queryKey: cardStatusKey(sapId),
+    enabled: !!sapId,
+    queryFn: async () => {
+      const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(String(sapId))}`, { cache: "no-store" });
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `Failed (${res.status})`);
+      }
+      const j = await res.json();
+      return (j?.card ?? null) as CardData | null;
+    },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useUpdateCardStatus(sapId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (status: CardStatus) => {
+      const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(String(sapId))}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `Failed (${res.status})`);
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: cardStatusKey(sapId), exact: true });
+      qc.invalidateQueries({ queryKey: cardApplicantsKey, exact: true });
+    },
+  });
+}

@@ -2,15 +2,6 @@
 import React from "react";
 import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
 
-/**
- * AlumniCard
- * A clean, modern, and accessible card component for displaying a single alumni item.
- * - Preserves all existing data fields and structure via `item` prop
- * - Uses inline Tailwind CSS classes for styling (no external CSS files)
- * - Fully responsive with clear typography and visual hierarchy
- * - Subtle transitions and focus states for polished interactions
- * - Reusable with the same action model as the existing implementation
- */
 
 export type CardStatus = "active" | "pending" | "declined" | "all";
 
@@ -271,8 +262,9 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
 
 // Comprehensive Data Table view, matching dashboard style from Alumni-tabs
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
-import Badge from "@/components/ui/badge/Badge";
 import Pagination from "@/components/tables/Pagination";
+import { useCardStatus, useUpdateCardStatus } from "@/app/queries/fetch-card-status";
+import { useCardApplicants } from "@/app/queries/fetch-card-applicants";
 
 type SortDirection = "asc" | "desc";
 type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id";
@@ -299,16 +291,39 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
+  const { data: applicants, isLoading: applicantsLoading, isError: applicantsError, error: applicantsErrorObj } = useCardApplicants();
 
   React.useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query.trim()), 200);
     return () => clearTimeout(id);
   }, [query]);
 
+  const baseItems = React.useMemo(() => {
+    if (applicants && applicants.length) {
+      return applicants.map((r) => ({
+        id: String(r.sapid ?? ""),
+        name: String(r.alumniname ?? ""),
+        email: r.email ?? undefined,
+        program: String(r.degreetitle ?? ""),
+        campus: "",
+        faculty: String(r.facultyname ?? ""),
+        passingYear: Number(r.yearofending ?? 0),
+        workCountry: "",
+        status: "pending",
+        createdAt: String(r.createdat ?? ""),
+        department: String(r.departmentname ?? ""),
+      })) as AlumniListItem[];
+    }
+    return items;
+  }, [items, applicants]);
+
+  const effectiveLoading = loading || applicantsLoading;
+  const effectiveError: string | null = error ?? (applicantsError ? (applicantsErrorObj?.message || "Failed to load applicants") : null);
+
   const filtered = React.useMemo(() => {
-    if (!debouncedQuery) return items;
+    if (!debouncedQuery) return baseItems;
     const q = debouncedQuery.toLowerCase();
-    return items.filter((i) => {
+    return baseItems.filter((i) => {
       const contact = `${i.email ?? ""} ${i.mobile ?? ""}`.toLowerCase();
       return (
         i.name.toLowerCase().includes(q) ||
@@ -319,7 +334,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         contact.includes(q)
       );
     });
-  }, [items, debouncedQuery]);
+  }, [baseItems, debouncedQuery]);
 
   const sorted = React.useMemo(() => {
     const arr = [...filtered];
@@ -376,6 +391,48 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const headerClass = "px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300";
   const rightHeaderClass = "px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300";
 
+  function toTitleCase(s: string | undefined): string {
+    const v = String(s || "").toLowerCase();
+    return v.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  function formatSapId(id: string | undefined): string {
+    const digits = String(id || "").replace(/\D/g, "");
+    if (!digits) return "-";
+    return digits.padStart(8, "0").slice(-8);
+  }
+  function formatEmail(e: string | undefined): string {
+    const v = String(e || "");
+    return v.includes("@") ? v : "-";
+  }
+
+  const StatusSelect: React.FC<{ sapId: string }> = ({ sapId }) => {
+    const { data, isFetching, isLoading, error } = useCardStatus(sapId);
+    const { mutateAsync, isPending } = useUpdateCardStatus(sapId);
+    const current = (data?.status ?? "pending") as "pending" | "rejected" | "delivered";
+    return (
+      <div className="flex items-center gap-2">
+        <select
+          aria-label="Card status"
+          className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[12px] text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+          value={current}
+          disabled={isLoading || isFetching || isPending}
+          onChange={async (e) => {
+            const next = e.target.value as "pending" | "rejected" | "delivered";
+            try {
+              await mutateAsync(next);
+            } catch {}
+          }}
+        >
+          <option value="pending">pending</option>
+          <option value="rejected">rejected</option>
+          <option value="delivered">delivered</option>
+        </select>
+        {(isLoading || isFetching || isPending) && <span className="text-[11px] text-gray-500">Updating...</span>}
+        {error && <span className="text-[11px] text-red-600">Error</span>}
+      </div>
+    );
+  };
+
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
       <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -418,16 +475,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   <TableCell isHeader className={headerClass}>Mobile No</TableCell>
                   <TableCell isHeader className={headerClass}>Active Email</TableCell>
                   <TableCell isHeader className={headerClass} onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
-                  <TableCell isHeader className={headerClass}>Status</TableCell>
-                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("organization")} aria-sort={sortKey === "organization" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Organization</TableCell>
-                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("designation")} aria-sort={sortKey === "designation" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Designation</TableCell>
-                  <TableCell isHeader className={headerClass}>Work Country/City</TableCell>
+                  <TableCell isHeader className={headerClass}>Card Status</TableCell>
+                 
                   <TableCell isHeader className={rightHeaderClass}>Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
               <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
-                {loading && (
+                {effectiveLoading && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
                       <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
@@ -435,22 +490,19 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                     <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                     </TableRow>
                   ))
                 )}
 
-                {!loading && error && (
+                {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-5 py-4 text-red-600 border-r border-gray-200" colSpan={10}>{error}</TableCell>
+                    <TableCell className="px-5 py-4 text-red-600 border-r border-gray-200" colSpan={10}>{effectiveError}</TableCell>
                   </TableRow>
                 )}
 
-                {!loading && !error && pageItems.length === 0 && (
+                {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
                     <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={10}>
                       No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}. Try adjusting your search or filters.
@@ -458,7 +510,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   </TableRow>
                 )}
 
-                {!loading && !error && pageItems.map((alum, idx) => (
+                {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => (
                   <TableRow
                     key={`${alum.id}-${idx}`}
                     className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] odd:bg-gray-50 ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
@@ -467,18 +519,15 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   >
                     <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
                       <div className="flex items-center gap-3 w-max">
-                        <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{alum.name}</span>
+                        <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{toTitleCase(alum.name)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.id}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatSapId(alum.id)}</TableCell>
                     <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.email ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.department ?? alum.program}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start"><Badge size="sm" color={alum.verified ? "success" : "error"}>{alum.verified ? "Verified" : "Un-Verified"}</Badge></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
-                    <TableCell className="px-4 py-3 text-end">
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatEmail(alum.email)}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start"><StatusSelect sapId={alum.id} /></TableCell>
+                   <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                         {(() => {
                           const actions: Array<{ key: ActionKey; label: string; icon: React.ComponentType<{ className?: string }>; hover?: string; onClick: () => void }>
