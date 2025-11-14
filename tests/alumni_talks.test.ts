@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/dbconnect", () => ({ sql: async () => [] }));
 vi.mock("@/auth", () => ({ auth: async () => ({ user: { email: "test@example.com" } }) }));
-import { validatePayload } from "../src/app/api/alumni/talks/route";
+import { validatePayload } from "../src/app/api/alumni/talks/validation";
 
 describe("validatePayload", () => {
   it("accepts valid payload", () => {

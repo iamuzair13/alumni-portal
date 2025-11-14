@@ -36,16 +36,100 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
   }, [data]);
 
   const handleOpenEdit = () => {
-    if (!sapid) {
-      // Guard against missing sapid: do not open modal
-      return;
-    }
+    if (!sapid) return;
     setFormName(data?.name ?? "");
     setFormDesignation(data?.designation ?? "");
     setFormHomeCity(data?.homeCity ?? "");
     setFormHomeCountry(data?.homeCountry ?? "Pakistan");
     openModal();
   };
+
+  const handleToggleInlineEdit = () => {
+    if (!data) return;
+    setSaveError(null);
+    setValidationErrors({});
+    if (!isEditingInline) {
+      setDraft({
+        registrationNo: data.registrationNo ?? "",
+        sapId: data.sapId ?? "",
+        name: data.name ?? "",
+        fatherName: data.fatherName ?? "",
+        gender: data.gender ?? "Other",
+        dob: data.dob ?? "",
+        maritalStatus: data.maritalStatus ?? "Single",
+        personalEmail: data.personalEmail ?? "",
+        password: data.password ?? "",
+        countryCode: data.countryCode ?? "+92",
+        phoneNumber: data.phoneNumber ?? "",
+        address: data.address ?? "",
+        province: data.province ?? undefined,
+        homeCity: data.homeCity ?? "",
+        homeCountry: data.homeCountry ?? "Pakistan",
+        campus: data.campus ?? "",
+        faculty: data.faculty ?? "",
+        department: data.department ?? "",
+        program: data.program ?? "",
+        passingYear: (data.passingYear ?? "").toString(),
+        employmentStatus: data.employmentStatus ?? "Unemployed",
+        sector: data.sector ?? "",
+        subSector: data.subSector ?? "",
+        organization: data.organization ?? "",
+        designation: data.designation ?? "",
+        totalExperienceYears: (data.totalExperienceYears ?? "").toString(),
+        officialEmail: data.officialEmail ?? "",
+        officialPhone: data.officialPhone ?? "",
+        workCity: data.workCity ?? "",
+        workCountry: data.workCountry ?? undefined,
+        source: data.source ?? "",
+        verified: Boolean(data.verified ?? false),
+        category: data.category ?? "",
+      });
+      setIsEditingInline(true);
+    } else {
+      setIsEditingInline(false);
+      setDraft(null);
+    }
+  };
+
+  const handleInlineCancel = () => {
+    setIsEditingInline(false);
+    setDraft(null);
+    setSaveError(null);
+    setValidationErrors({});
+  };
+
+  const handleInlineSave = async () => {
+    if (!data || !draft) {
+      setIsEditingInline(false);
+      return;
+    }
+    try {
+      setSaveError(null);
+      setValidationErrors({});
+      const parsed = alumniRegistrationComprehensiveSchema.safeParse(draft);
+      if (!parsed.success) {
+        const vErrs: Record<string, string> = {};
+        parsed.error.issues.forEach((iss) => {
+          const key = Array.isArray(iss.path) && iss.path.length ? String(iss.path[0]) : "form";
+          vErrs[key] = iss.message;
+        });
+        setValidationErrors(vErrs);
+        setSaveError("Please fix the highlighted fields.");
+        return;
+      }
+      await updateMut.mutateAsync({
+        ...data,
+        ...parsed.data,
+      });
+      setIsEditingInline(false);
+      setDraft(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to save changes.";
+      setSaveError(msg);
+    }
+  };
+
+
 
   const handleSave = async () => {
     if (!data) return closeModal();
@@ -89,101 +173,14 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
     }
   };
 
-  const handleToggleInlineEdit = () => {
-    if (!data) return;
-    setSaveError(null);
-    setValidationErrors({});
-    if (!isEditingInline) {
-      // Initialize draft with current values
-      setDraft({
-        // Personal
-        registrationNo: data.registrationNo ?? "",
-        sapId: data.sapId ?? "",
-        name: data.name ?? "",
-        fatherName: data.fatherName ?? "",
-        gender: data.gender ?? "Other",
-        dob: data.dob ?? "",
-        maritalStatus: data.maritalStatus ?? "Single",
-        personalEmail: data.personalEmail ?? "",
-        password: data.password ?? "",
-        // Contact
-        countryCode: data.countryCode ?? "+92",
-        phoneNumber: data.phoneNumber ?? "",
-        address: data.address ?? "",
-        province: data.province ?? undefined,
-        homeCity: data.homeCity ?? "",
-        homeCountry: data.homeCountry ?? "Pakistan",
-        // Academic
-        campus: data.campus ?? "",
-        faculty: data.faculty ?? "",
-        department: data.department ?? "",
-        program: data.program ?? "",
-        passingYear: (data.passingYear ?? "").toString(),
-        // Employment
-        employmentStatus: data.employmentStatus ?? "Unemployed",
-        sector: data.sector ?? "",
-        subSector: data.subSector ?? "",
-        organization: data.organization ?? "",
-        designation: data.designation ?? "",
-        totalExperienceYears: (data.totalExperienceYears ?? "").toString(),
-        officialEmail: data.officialEmail ?? "",
-        officialPhone: data.officialPhone ?? "",
-        workCity: data.workCity ?? "",
-        workCountry: data.workCountry ?? undefined,
-        // Administrative
-        source: data.source ?? "",
-        verified: Boolean(data.verified ?? false),
-        category: data.category ?? "",
-      });
-      setIsEditingInline(true);
-    } else {
-      setIsEditingInline(false);
-      setDraft(null);
-    }
-  };
+
 
   const handleInlineChange = (key: string, value: string | number | boolean) => {
     setDraft((prev) => ({ ...(prev ?? {}), [key]: value }));
   };
 
-  const handleInlineCancel = () => {
-    setIsEditingInline(false);
-    setDraft(null);
-    setSaveError(null);
-    setValidationErrors({});
-  };
-
-  const handleInlineSave = async () => {
-    if (!data || !draft) {
-      setIsEditingInline(false);
-      return;
-    }
-    try {
-      setSaveError(null);
-      setValidationErrors({});
-      const parsed = alumniRegistrationComprehensiveSchema.safeParse(draft);
-      if (!parsed.success) {
-        const vErrs: Record<string, string> = {};
-        parsed.error.issues.forEach((iss) => {
-          const key = Array.isArray(iss.path) && iss.path.length ? String(iss.path[0]) : "form";
-          vErrs[key] = iss.message;
-        });
-        setValidationErrors(vErrs);
-        setSaveError("Please fix the highlighted fields.");
-        return;
-      }
-      await updateMut.mutateAsync({
-        ...data,
-        ...parsed.data,
-      });
-      setIsEditingInline(false);
-      setDraft(null);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to save changes.";
-      setSaveError(msg);
-    }
-  };
-
+ 
+ 
   return (
     <>
       <section
@@ -225,8 +222,12 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
             </div>
           </div>
           <div className="flex w-full items-center justify-center gap-3 lg:inline-flex lg:w-auto">
-            
-            
+            <Button size="sm" variant="outline" onClick={handleOpenEdit} className="focus-visible:ring-2 focus-visible:ring-primary">
+              Edit
+            </Button>
+            <Button size="sm" onClick={handleToggleInlineEdit} className="focus-visible:ring-2 focus-visible:ring-primary">
+              {isEditingInline ? "Close Inline Edit" : "Inline Edit"}
+            </Button>
           </div>
         </div>
         {/* Details grid mapped from normalized profile data */}
@@ -287,6 +288,14 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
           </dl>
           ) : (
             <form className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="col-span-1 sm:col-span-2 lg:col-span-4 flex items-center justify-end gap-3 mb-2">
+                <Button size="sm" variant="outline" onClick={handleInlineCancel} className="focus-visible:ring-2 focus-visible:ring-primary">
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleInlineSave} className="focus-visible:ring-2 focus-visible:ring-primary">
+                  Save
+                </Button>
+              </div>
               {/* Email */}
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Email</dt>

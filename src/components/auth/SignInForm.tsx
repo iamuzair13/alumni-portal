@@ -68,9 +68,6 @@ export default function SignInForm() {
           </div>
         </div>
 
-        <div className="w-full h-full flex items-center bg-[#000842] rounded-xl p-8">
-          <img src="https://readymadeui.com/signin-image.webp" className="w-full aspect-[12/12] object-contain" alt="login illustration" />
-        </div>
       </div>
     </div>
   );
