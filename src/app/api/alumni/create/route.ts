@@ -116,6 +116,9 @@ export async function POST(req: Request) {
     };
 
     const todayDateValue = body.todaydate ? new Date(String(body.todaydate)) : null;
+    const normalizedAlumniEmail = (body.alumniemail && String(body.alumniemail).trim().length)
+      ? body.alumniemail
+      : body.personalemail;
 
     const id = await sql.begin(async (tx) => {
       const rows = await tx<{ alumniid: number }[]>`
@@ -177,7 +180,7 @@ export async function POST(req: Request) {
           datasource,
           alumnistatus
         ) VALUES (
-          ${clean(body.alumniemail)},
+          ${clean(normalizedAlumniEmail)},
           ${clean(body.password)},
           ${todayDateValue},
           ${clean(body.registrationno)},

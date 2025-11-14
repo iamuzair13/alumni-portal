@@ -1,0 +1,63 @@
+import { NextResponse } from "next/server";
+import { sql } from "@/lib/dbconnect";
+
+type DbUser = {
+  userid: number;
+  email: string | null;
+  firstname: string | null;
+  lastname: string | null;
+  department: string | null;
+  type: string | null;
+  blocked: boolean | null;
+  lastlogindatetime: string | null;
+};
+
+export async function GET() {
+  try {
+    const rows = await sql/* sql */`
+      SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
+      FROM public.tbl_users
+      ORDER BY userid DESC` as DbUser[];
+    return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Internal Server Error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (body.email && !emailRegex.test(String(body.email))) {
+      return NextResponse.json({ error: "INVALID_EMAIL_FORMAT" }, { status: 400 });
+    }
+    let hashed: string | null = null;
+    if (body.password) {
+      if (String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
+      const { randomBytes, scrypt } = await import("crypto");
+      const salt = randomBytes(16);
+      const buf: Buffer = await new Promise((resolve, reject) => {
+        scrypt(String(body.password), salt, 64, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
+      });
+      hashed = `scrypt:${salt.toString("hex")}:${buf.toString("hex")}`;
+    }
+    const userid = Number(body.userid);
+    if (!userid || Number.isNaN(userid)) return NextResponse.json({ error: "INVALID_USERID" }, { status: 400 });
+    await sql/* sql */`
+      UPDATE public.tbl_users
+      SET
+        email = ${body.email ?? null},
+        ${hashed ? sql`password = ${hashed},` : sql``}
+        firstname = ${body.firstname ?? null},
+        lastname = ${body.lastname ?? null},
+        department = ${body.department ?? null},
+        type = ${body.type ?? null},
+        blocked = ${body.blocked ?? null}
+      WHERE userid = ${userid}`;
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Internal Server Error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

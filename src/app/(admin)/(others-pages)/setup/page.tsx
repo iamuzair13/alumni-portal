@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useState } from "react";
+import { useUsersList } from "@/app/queries/fetch-users";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
@@ -10,6 +11,9 @@ import { PencilIcon, TrashBinIcon } from "@/icons";
 import Select from "@/components/form/Select";
 import Checkbox from "@/components/form/input/Checkbox";
 import Alert from "@/components/ui/alert/Alert";
+import UserForm from "@/components/forms/UserForm";
+import { useQueryClient } from "@tanstack/react-query";
+import type { AdminUser } from "@/app/queries/fetch-users";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -165,7 +169,6 @@ export default function SetupPage() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
-  const [userSort, setUserSort] = useState<"name" | "role" | "lastAccess">("name");
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [removeUserId, setRemoveUserId] = useState<string | null>(null);
@@ -211,14 +214,9 @@ export default function SetupPage() {
     let list = users.filter((u) =>
       [u.name, u.email, u.role, u.status].join(" ").toLowerCase().includes(q)
     );
-    list = list.sort((a, b) => {
-      if (userSort === "name") return a.name.localeCompare(b.name);
-      if (userSort === "role") return a.role.localeCompare(b.role);
-      // lastAccess
-      return new Date(b.lastAccess).getTime() - new Date(a.lastAccess).getTime();
-    });
+    list = list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
-  }, [users, userSearch, userSort]);
+  }, [users, userSearch]);
 
   const formatDateTime = (iso: string) => {
     try {
@@ -440,17 +438,17 @@ export default function SetupPage() {
     <div className="p-6">
       <ComponentCard title="Setup" className="">
         <div
-          className="flex flex-wrap gap-3 lg:gap-4 justify-start"
+          className="tab-list"
           role="tablist"
           aria-label="Setup sections"
         >
           {TABS.map((tab, idx) => (
             <button
               key={tab.key}
-              className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm hover:border-blue-400 ${
+              className={`tab-item rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm hover:border-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
                 selected === tab.key
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
-                  : "border-gray-200 bg-slate-100 text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
+                  : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
               }`}
               onClick={() => setSelected(tab.key)}
               role="tab"
@@ -496,18 +494,13 @@ export default function SetupPage() {
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   aria-label="Search users"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 />
                 {userSearch && (
-                  <Button size="sm" variant="outline" onClick={() => setUserSearch("")} aria-label="Clear user search">Clear</Button>
+                  <Button size="sm" variant="outline" onClick={() => setUserSearch("")} aria-label="Clear user search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Clear</Button>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <Label className="text-sm">Sort by</Label>
-                <Select defaultValue={userSort} onChange={(v) => setUserSort(v as "name" | "role" | "lastAccess") } options={[
-                  { value: "name", label: "Name" },
-                  { value: "role", label: "Role" },
-                  { value: "lastAccess", label: "Last Access" },
-                ]} />
                 <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
               </div>
             </div>
@@ -524,9 +517,7 @@ export default function SetupPage() {
               </div>
             )}
             {!usersLoading && !usersError && filteredUsers.length === 0 && (
-              <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
-                <p className="text-sm text-gray-600 dark:text-gray-300">No users found. Try adding one.</p>
-              </div>
+              <RealTimeUsers />
             )}
 
             {/* User Cards (preview) */}
@@ -542,40 +533,40 @@ export default function SetupPage() {
             {!usersLoading && filteredUsers.length > 0 && (
               <div className="mt-6 overflow-x-auto">
                 <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
-                  <thead className="bg-slate-100 dark:bg-white/[0.03]">
-                    <tr>
-                      <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">User</th>
-                      <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Role</th>
-                      <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
-                      <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Last Access</th>
-                      <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Permissions</th>
-                      <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                  <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                    <tr className="border-b border-gray-200 dark:border-white/[0.06]">
+                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
+                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Role</th>
+                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Status</th>
+                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Last Access</th>
+                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Permissions</th>
+                      <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                     {filteredUsers.map((u) => (
-                      <tr key={u.id} className="border-t border-gray-200 dark:border-gray-800">
-                        <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">
+                      <tr key={u.id} className="odd:bg-gray-50">
+                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                           <div className="flex flex-col">
-                            <span className="font-medium">{u.name}</span>
+                            <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{u.name}</span>
                             <span className="text-xs text-gray-600 dark:text-gray-300">{u.email}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{u.role}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{u.status}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{formatDateTime(u.lastAccess)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">
+                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.role}</td>
+                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.status}</td>
+                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatDateTime(u.lastAccess)}</td>
+                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                           {Object.entries(u.permissions)
                             .filter(([, v]) => v)
                             .map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase())
                             .join(", ") || "None"}
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="flex gap-2">
-                            <Button size="sm" aria-label={`Edit ${u.name}`} startIcon={<PencilIcon />} onClick={() => setEditUserId(u.id)}>
+                          </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button size="sm" aria-label={`Edit ${u.name}`} startIcon={<PencilIcon />} onClick={() => setEditUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                               <span className="sr-only">Edit</span>
                             </Button>
-                            <Button size="sm" variant="outline" aria-label={`Remove ${u.name}`} startIcon={<TrashBinIcon />} onClick={() => setRemoveUserId(u.id)}>
+                            <Button size="sm" variant="outline" aria-label={`Remove ${u.name}`} startIcon={<TrashBinIcon />} onClick={() => setRemoveUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                               <span className="sr-only">Remove</span>
                             </Button>
                           </div>
@@ -590,24 +581,7 @@ export default function SetupPage() {
             {/* Add User Modal */}
             <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[720px] p-5 lg:p-10">
               <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Add User</h4>
-              <AddOrEditUserForm
-                mode="add"
-                onCancel={() => setAddUserOpen(false)}
-                onSubmit={(payload) => {
-                  const newUser: UserItem = {
-                    id: `U-${Date.now()}`,
-                    name: payload.name,
-                    email: payload.email,
-                    role: payload.role,
-                    status: payload.status,
-                    permissions: payload.permissions,
-                    lastAccess: new Date().toISOString(),
-                  };
-                  setUsers((prev) => [newUser, ...prev]);
-                  setAddUserOpen(false);
-                  pushToast("success", "User added.");
-                }}
-              />
+              <UserForm />
             </Modal>
 
             {/* Edit User Modal */}
@@ -659,9 +633,10 @@ export default function SetupPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   aria-label="Search chapters"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 />
                 {searchQuery && (
-                  <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} aria-label="Clear search">
+                  <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} aria-label="Clear search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                     Clear
                   </Button>
                 )}
@@ -671,26 +646,26 @@ export default function SetupPage() {
 
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Chapters list">
-                <thead className="bg-slate-100 dark:bg-white/[0.03]">
-                  <tr>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Sr.No.</th>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Category</th>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Code</th>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Title</th>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Location</th>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">WhatsApp</th>
-                    <th scope="col" className="px-3 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                  <tr className="border-b border-gray-200 dark:border-white/[0.06]">
+                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Sr.No.</th>
+                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Category</th>
+                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Code</th>
+                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Title</th>
+                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Location</th>
+                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">WhatsApp</th>
+                    <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                   {filteredChapters.map((c, i) => (
-                    <tr key={`${c.code}-${i}`} className="border-t border-gray-200 dark:border-gray-800">
-                      <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{i + 1}</td>
-                      <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{c.category}</td>
-                      <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{c.code}</td>
-                      <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{c.title}</td>
-                      <td className="px-3 py-2 text-sm text-gray-800 dark:text-white/90">{c.location}</td>
-                      <td className="px-3 py-2 text-sm text-blue-600 dark:text-blue-300">
+                    <tr key={`${c.code}-${i}`} className="odd:bg-gray-50">
+                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{i + 1}</td>
+                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.category}</td>
+                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.code}</td>
+                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.title}</td>
+                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.location}</td>
+                      <td className="px-4 py-3 border-r border-gray-200 text-blue-600 text-[13px] text-start dark:text-blue-300">
                         <a
                           href={`https://wa.me/${c.whatsapp.replace(/[^\d]/g, "")}`}
                           target="_blank"
@@ -701,13 +676,14 @@ export default function SetupPage() {
                           {c.whatsapp}
                         </a>
                       </td>
-                      <td className="px-3 py-2 text-sm">
-                        <div className="flex gap-2">
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex gap-2 justify-end">
                           <Button
                             size="sm"
                             onClick={() => openEdit(chapters.indexOf(c))}
                             aria-label={`Edit ${c.title}`}
                             startIcon={<PencilIcon />}
+                            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                           >
                             <span className="sr-only">Edit</span>
                           </Button>
@@ -717,6 +693,7 @@ export default function SetupPage() {
                             onClick={() => confirmDelete(chapters.indexOf(c))}
                             aria-label={`Delete ${c.title}`}
                             startIcon={<TrashBinIcon />}
+                            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                           >
                             <span className="sr-only">Delete</span>
                           </Button>
@@ -726,7 +703,7 @@ export default function SetupPage() {
                   ))}
                   {filteredChapters.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-3 py-6 text-center text-sm text-gray-600 dark:text-gray-300">No chapters found</td>
+                      <td colSpan={7} className="px-4 py-6 text-center text-[13px] text-gray-600 dark:text-gray-300">No chapters found</td>
                     </tr>
                   )}
                 </tbody>
@@ -773,6 +750,180 @@ export default function SetupPage() {
         <div className="flex items-center justify-end w-full gap-3 mt-6">
           <Button size="sm" variant="outline" onClick={cancelDelete} aria-label="Cancel delete">Cancel</Button>
           <Button size="sm" onClick={performDelete} disabled={deleteLoading} aria-label="Confirm delete">{deleteLoading ? "Deleting..." : "Delete"}</Button>
+        </div>
+      </Modal>
+      <style jsx>{`
+        .tab-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+        .tab-item {
+          flex: 1 1 180px;
+          min-width: 160px;
+        }
+        @media (min-width: 768px) {
+          .tab-item { flex-basis: 200px; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function RealTimeUsers() {
+  const { data, isLoading, error } = useUsersList();
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [values, setValues] = useState<{ userid: number; email: string | null; firstname: string | null; lastname: string | null; department: string | null; type: string | null; blocked: boolean | null; password?: string }>({ userid: 0, email: null, firstname: null, lastname: null, department: null, type: "staff", blocked: false });
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  if (isLoading) {
+    return (
+      <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
+        <p className="text-sm text-gray-600 dark:text-gray-300">Loading users...</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="mt-6 p-5 border border-error-500 rounded-2xl bg-error-50 dark:border-error-500/30 dark:bg-error-500/15">
+        <p className="text-sm text-error-600 dark:text-error-400">Failed to fetch users.</p>
+      </div>
+    );
+  }
+  const users = data ?? [];
+  if (!users.length) {
+    return (
+      <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
+        <p className="text-sm text-gray-600 dark:text-gray-300">No users found. Try adding one.</p>
+      </div>
+    );
+  }
+  async function openEdit(u: AdminUser) {
+    setValues({ userid: u.userid, email: u.email, firstname: u.firstname, lastname: u.lastname, department: u.department, type: u.type, blocked: !!u.blocked });
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    try {
+      setSaving(true);
+      setErrorMsg(null);
+      const res = await fetch(`/api/users/${values.userid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to update user");
+      setEditOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function performDelete() {
+    if (!deleteId) return;
+    try {
+      const res = await fetch(`/api/users/${deleteId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to delete user");
+      setDeleteId(null);
+      await queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+    } catch {
+      setDeleteId(null);
+    }
+  }
+
+  return (
+    <div className="mt-6 overflow-hidden border border-gray-200 bg-white rounded-2xl dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="max-w-full overflow-x-auto custom-scrollbar">
+        <table className="min-w-full" role="table" aria-label="Real-time users list">
+          <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+            <tr className="border-b border-gray-200 dark:border-white/[0.06]">
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Type</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Blocked</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 dark:text-gray-300">Last Login</th>
+              <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
+            {users.map((u) => (
+              <tr key={u.userid} className="odd:bg-gray-50">
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                  <div className="flex flex-col">
+                    <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300">{u.email ?? "-"}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.department ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.blocked ? "Yes" : "No"}</td>
+                <td className="px-4 py-3 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.lastlogindatetime ?? "-"}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" aria-label={`Edit ${u.email ?? "user"}`} startIcon={<PencilIcon />} onClick={() => openEdit(u)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button size="sm" variant="outline" aria-label={`Delete ${u.email ?? "user"}`} startIcon={<TrashBinIcon />} onClick={() => setDeleteId(u.userid)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} className="max-w-[720px] p-5 lg:p-10">
+        <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit User</h4>
+        {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
+        <form className="space-y-4" aria-label="Edit user form" onSubmit={(e) => { e.preventDefault(); saveEdit(); }}>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={values.email ?? ""} onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))} />
+            </div>
+            <div>
+              <Label>First Name</Label>
+              <Input type="text" value={values.firstname ?? ""} onChange={(e) => setValues((v) => ({ ...v, firstname: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Last Name</Label>
+              <Input type="text" value={values.lastname ?? ""} onChange={(e) => setValues((v) => ({ ...v, lastname: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Department</Label>
+              <Input type="text" value={values.department ?? ""} onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Type</Label>
+              <Select defaultValue={values.type ?? "staff"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "staff", label: "Staff" }, { value: "user", label: "User" }]} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox checked={!!values.blocked} onChange={(c) => setValues((v) => ({ ...v, blocked: c }))} label="Blocked" />
+            </div>
+            <div className="md:col-span-2">
+              <Label>New Password (optional)</Label>
+              <Input type="password" value={values.password ?? ""} onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))} placeholder="Leave empty to keep existing password" />
+              <p className="mt-1 text-xs text-neutral-600">Minimum 8 characters</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end w-full gap-3 mt-4">
+            <Button size="sm" variant="outline" onClick={() => setEditOpen(false)} aria-label="Cancel editing">Cancel</Button>
+            <Button size="sm" onClick={saveEdit} disabled={saving} aria-label="Save changes">{saving ? "Saving..." : "Save"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} className="max-w-[520px] p-5 lg:p-8">
+        <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Delete</h4>
+        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete this user?</p>
+        <div className="flex items-center justify-end w-full gap-3 mt-6">
+          <Button size="sm" variant="outline" onClick={() => setDeleteId(null)} aria-label="Cancel delete">Cancel</Button>
+          <Button size="sm" onClick={performDelete} aria-label="Confirm delete">Delete</Button>
         </div>
       </Modal>
     </div>

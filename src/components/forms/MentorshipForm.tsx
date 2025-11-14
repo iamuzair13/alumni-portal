@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -18,6 +19,7 @@ type MeAlumni = {
 type MentorshipFormValues = {
   major: string;
   areas: string[];
+  areaInput: string;
   topicInput: string;
   topics: string[];
   day: string;
@@ -30,14 +32,6 @@ const labelBase = "block text-sm text-neutral-800";
 const optionChip = "inline-flex items-center gap-2 rounded-full bg-gray-100 text-gray-700 px-3 py-1 text-xs mr-2 mb-2";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
-const AREA_OPTIONS = [
-  "Career Guidance",
-  "Technical Coaching",
-  "Interview Preparation",
-  "Networking",
-  "Resume Review",
-  "Industry Insights",
-] as const;
 
 function useCurrentAlumni(email: string | undefined) {
   return useQuery({
@@ -65,6 +59,7 @@ export default function MentorshipForm() {
   const { data: session } = useSession();
   const email = session?.user?.email;
   const { data: me, isLoading: loadingMe } = useCurrentAlumni(email ?? undefined);
+  const qc = useQueryClient();
 
   const {
     register,
@@ -73,7 +68,7 @@ export default function MentorshipForm() {
     watch,
     resetField,
   } = useForm<MentorshipFormValues>({
-    defaultValues: { major: "", areas: [], topicInput: "", topics: [], day: "", start: "", end: "" },
+    defaultValues: { major: "", areas: [], areaInput: "", topicInput: "", topics: [], day: "", start: "", end: "" },
   });
 
   const topics = watch("topics");
@@ -116,10 +111,18 @@ export default function MentorshipForm() {
     setValue("topics", next);
   }
 
-  function toggleArea(a: string) {
-    const set = new Set(areas || []);
-    if (set.has(a)) set.delete(a); else set.add(a);
-    setValue("areas", Array.from(set));
+  function addAreaFromInput() {
+    const raw = watch("areaInput") || "";
+    const a = raw.trim();
+    if (!a) return;
+    const next = Array.from(new Set([...(areas || []), a]));
+    setValue("areas", next);
+    setValue("areaInput", "");
+  }
+
+  function removeArea(a: string) {
+    const next = (areas || []).filter((x) => x !== a);
+    setValue("areas", next);
   }
 
   async function onSubmit(values: MentorshipFormValues) {
@@ -142,8 +145,11 @@ export default function MentorshipForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to submit");
       setMessage("Submitted");
+      qc.invalidateQueries({ queryKey: ["alumni", "participation", "list"] });
       resetField("topics");
       resetField("topicInput");
+      resetField("areas");
+      resetField("areaInput");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -178,18 +184,17 @@ export default function MentorshipForm() {
 
         <div className="md:col-span-2">
           <label className={labelBase}>Area of Experience</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {AREA_OPTIONS.map((a) => {
-              const active = (areas || []).includes(a);
-              return (
-                <button
-                  key={a}
-                  type="button"
-                  className={`${optionChip} ${active ? "bg-indigo-100 text-indigo-700" : ""}`}
-                  onClick={() => toggleArea(a)}
-                >{a}</button>
-              );
-            })}
+          <div className="mt-1 flex items-center gap-2">
+            <input className={`${inputBase} flex-1`} placeholder="Type and press Enter" {...register("areaInput")} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAreaFromInput(); } }} />
+            <button type="button" className="rounded-md bg-indigo-600 px-3 py-2 text-white" onClick={addAreaFromInput}>Add</button>
+          </div>
+          <div className="mt-2">
+            {(areas || []).map((a) => (
+              <span key={a} className={optionChip}>
+                <span>{a}</span>
+                <button type="button" className="text-xs text-gray-500" onClick={() => removeArea(a)}>×</button>
+              </span>
+            ))}
           </div>
         </div>
 
