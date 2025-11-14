@@ -1,13 +1,13 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { GroupIcon, EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon, LockIcon } from "@/icons";
-import Badge from "../ui/badge/Badge";
+import { GroupIcon, EyeIcon, TrashBinIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useAlumniParticipationList } from "@/app/queries/fetch-alumni-participation";
-import type { AlumniListItem } from "@/app/queries/fetch-alumni";
+import type { MentorshipItem } from "@/app/queries/fetch-alumni-participation";
+import MentorshipForm from "@/components/forms/MentorshipForm";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
@@ -73,39 +73,32 @@ export const AlumniParticipation: React.FC = () => {
   type TableItem = {
     id: string;
     name: string;
-    mobile?: string;
     email?: string;
-    department?: string;
-    verified?: boolean;
-    organization?: string;
-    designation?: string;
-    workCountry?: string;
-    workCity?: string;
+    department?: string | null;
+    faculty?: string | null;
+    program?: string | null;
+    topics: string[];
+    areas: string[];
+    day: string;
+    time: string;
     level: TabKey[];
   };
   const PARTICIPANTS = useMemo<TableItem[]>(() => {
-    const items = (data ?? []) as AlumniListItem[];
-    const parseVerified = (v: string | null | undefined) => {
-      if (!v) return false;
-      const s = String(v).toLowerCase();
-      return s === "true" || s === "yes" || s === "verified";
-    };
+    const items = (data ?? []) as MentorshipItem[];
     return items.map((it) => {
-      const level: TabKey[] = [];
-      if (parseVerified(it.verify)) level.push("talkMentorship");
-      if (it.country || it.city) level.push("alumniChapters");
-      if (it.nameoforganization || it.designation) level.push("alumniAssociation");
+      const level: TabKey[] = ["talkMentorship"];
+      if (it.day && it.time) level.push("alumniChapters");
       return {
         id: it.sapid,
-        name: it.alumniname,
-        mobile: it.contactno ?? it.officialnumber ?? undefined,
-        email: it.personalemail ?? it.officialemail ?? undefined,
-        department: it.departmentname ?? undefined,
-        verified: parseVerified(it.verify),
-        organization: it.nameoforganization ?? undefined,
-        designation: it.designation ?? undefined,
-        workCountry: it.country ?? undefined,
-        workCity: it.city ?? undefined,
+        name: it.name,
+        email: it.email ?? undefined,
+        department: it.department ?? null,
+        faculty: it.faculty ?? null,
+        program: it.program ?? null,
+        topics: it.topics,
+        areas: it.areas,
+        day: it.day,
+        time: it.time,
         level,
       } as TableItem;
     });
@@ -160,7 +153,7 @@ export const AlumniParticipation: React.FC = () => {
   return (
     <ComponentCard className="">
       <div className="flex flex-col gap-6">
-        <div className="rounded-2xl dark:bg-white/[0.03]">
+        <div className="rounded-2xl  dark:bg-white/[0.03]">
           <div
             className="tab-list flex flex-nowrap items-center gap-3 overflow-x-auto p-1"
             role="tablist"
@@ -172,50 +165,41 @@ export const AlumniParticipation: React.FC = () => {
               const Icon = ICON_COMPONENT_MAP[tab.key];
               return (
                 <div key={tab.key}>
-                <button
-                  key={tab.key}
-                  type="button"
-                  className={`w-[180px]  whitespace-nowrap flex flex-col items-start gap-2 rounded-xl border px-3 py-3 text-sm transition-colors transition-transform ${statusClasses.hoverBorder} ${
-                    selected === tab.key
-                      ? statusClasses.selectedContainer
-                      : "border-gray-200 bg-slate-100 dark:border-gray-800 dark:bg-white/[0.03]"
-                  } hover:translate-y-[-1px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900`}
-                  onClick={() => setSelected(tab.key)}
-                  role="tab"
-                  aria-selected={selected === tab.key}
-                  aria-label={`${tab.label} (${stat.count.toLocaleString()})`}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowRight") {
-                      e.preventDefault();
-                      const nextIdx = (idx + 1) % TABS.length;
-                      setSelected(TABS[nextIdx].key);
-                    } else if (e.key === "ArrowLeft") {
-                      e.preventDefault();
-                      const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                      setSelected(TABS[prevIdx].key);
-                    } else if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelected(tab.key);
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon className={`${statusClasses.iconColor} size-6`} />
-                    <span className={`font-medium  ${statusClasses.labelText}`}>{tab.label}</span>
-                  </div>
-                  <span className="ml-1 text-[40px] text-gray-600 dark:text-gray-400">
-                    {stat.count.toLocaleString()}
-                  </span>
-                </button>
-
-                
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={`w-[240px]  last:border-0 bg-white flex flex-col items-center whitespace-nowrap text-center border-r border-gray-300 px-4 py-2 text-sm transition-colors transition-transform hover:translate-y-[-1px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900`}
+                    onClick={() => setSelected(tab.key)}
+                    role="tab"
+                    aria-selected={selected === tab.key}
+                    aria-label={`${tab.label} (${stat.count.toLocaleString()})`}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowRight") {
+                        e.preventDefault();
+                        const nextIdx = (idx + 1) % TABS.length;
+                        setSelected(TABS[nextIdx].key);
+                      } else if (e.key === "ArrowLeft") {
+                        e.preventDefault();
+                        const prevIdx = (idx - 1 + TABS.length) % TABS.length;
+                        setSelected(TABS[prevIdx].key);
+                      } else if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelected(tab.key);
+                      }
+                    }}
+                  >
+                    <Icon className="hidden" aria-hidden="true" />
+                    <h6 className={`text-[20px] font-bold mt-2 ${statusClasses.labelText}`}>{tab.label}</h6>
+                    <h3 className={`text-[35px] font-bold mt-6`}>{stat.count.toLocaleString()}</h3>
+                  </button>
                 </div>
               );
             })}
           </div>
         </div>
 
+        <MentorshipForm />
         <div className="overflow-hidden rounded-2xl bg-white dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live={loading ? "polite" : undefined}>
             <div className="min-w-full xl:min-w-full">
@@ -226,12 +210,14 @@ export const AlumniParticipation: React.FC = () => {
                       [
                         { label: "Name", key: "name" as SortKey, align: "text-start" },
                         { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
-                        { label: "Mobile No", key: "mobile" as SortKey, align: "text-start" },
-                        { label: "Active Email", key: "email" as SortKey, align: "text-start" },
+                        { label: "Email", key: "email" as SortKey, align: "text-start" },
                         { label: "Department", key: "department" as SortKey, align: "text-start" },
-                        { label: "Work Status", key: "verified" as SortKey, align: "text-start" },
-                        { label: "Designation", key: "designation" as SortKey, align: "text-start" },
-                        { label: "Work Country/City", key: "workCountry" as SortKey, align: "text-start" },
+                        { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
+                        { label: "Program", key: "program" as SortKey, align: "text-start" },
+                        { label: "Topics", key: "topics" as SortKey, align: "text-start" },
+                        { label: "Areas", key: "areas" as SortKey, align: "text-start" },
+                        { label: "Day", key: "day" as SortKey, align: "text-start" },
+                        { label: "Time", key: "time" as SortKey, align: "text-start" },
                       ] as { label: string; key: SortKey; align: string }[]
                     ).map(({ label, key, align }) => {
                       const ariaSort = sortKey === key ? (sortDir === "asc" ? "ascending" : "descending") : "none";
@@ -312,47 +298,34 @@ export const AlumniParticipation: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.id}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.email ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-start">
-                      <Badge size="sm" color={alum.verified ? "success" : "error"}>{alum.verified ? "Verified" : "Un-Verified"}</Badge>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.workCountry ? `${alum.workCountry}${alum.workCity ? ` / ${alum.workCity}` : ""}` : "-"}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.faculty ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.program ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.topics.join(", ") || "-"}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.areas.join(", ") || "-"}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.day}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.time}</TableCell>
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
-                        {(() => {
-                          const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> =
-                            selected === "talkMentorship"
-                              ? [
-                                  { label: "Suspend", icon: LockIcon, onClick: () => {/* TODO: wire suspend */}, hover: "hover:text-amber-600" },
-                                  { label: "Delete", icon: TrashBinIcon, onClick: () => {/* TODO: wire delete */}, hover: "hover:text-rose-600" },
-                                  { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                                ]
-                              : selected === "alumniChapters"
-                              ? [
-                                  { label: "Verify", icon: CheckLineIcon, onClick: () => {/* TODO: wire verify */}, hover: "hover:text-emerald-600" },
-                                  { label: "Decline", icon: CloseLineIcon, onClick: () => {/* TODO: wire decline */}, hover: "hover:text-rose-600" },
-                                  { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                                ]
-                              : [
-                                  { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                                ];
-                          return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
-                            <button
-                              key={`${alum.id}-action-${i}`}
-                              type="button"
-                              onClick={onClick}
-                              className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"}`}
-                              aria-label={label}
-                              title={label}
-                            >
-                              <Icon className="h-5 w-5" />
-                            </button>
-                          ));
-                        })()}
+                            {(() => {
+                              const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> = [
+                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => {}, hover: "hover:text-rose-600" },
+                              ];
+                              return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
+                                <button
+                                  key={`${alum.id}-action-${i}`}
+                                  type="button"
+                                  onClick={onClick}
+                                  className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"}`}
+                                  aria-label={label}
+                                  title={label}
+                                >
+                                  <Icon className="h-5 w-5" />
+                                </button>
+                              ));
+                            })()}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -1,6 +1,8 @@
 import UserMetaCard from "@/components/user-profile/UserMetaCard";
 import { Metadata } from "next";
 import React from "react";
+import { auth } from "@/auth";
+import { sql } from "@/lib/dbconnect";
 
 export const metadata: Metadata = {
   title: "Next.js Profile | TailAdmin - Next.js Dashboard Template",
@@ -15,8 +17,18 @@ type ProfilePageProps = {
 export default async function Profile({ searchParams }: ProfilePageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const sapidParam = resolvedSearchParams?.sapid;
-  const sapid = Array.isArray(sapidParam) ? sapidParam[0] : sapidParam;
-  const error = !sapid ? "Missing alumni ID (sapid)." : null;
+  let sapid = Array.isArray(sapidParam) ? sapidParam[0] : sapidParam;
+  if (!sapid) {
+    const session = await auth();
+    const email = session?.user?.email ? String(session.user.email) : undefined;
+    if (email) {
+      const rows = await sql/* sql */`
+        SELECT sapid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
+        ORDER BY alumniid DESC LIMIT 1`;
+      sapid = rows[0]?.sapid as string | undefined;
+    }
+  }
+  const error = !sapid ? "Missing alumni ID (sapid). Open a profile via the alumni list or ensure you are signed in." : null;
 
   return (
     <div>
@@ -33,7 +45,7 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
             role="alert"
             className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800"
           >
-            Missing alumni ID (sapid). Open a profile via the alumni list.
+            {error}
           </div>
         )}
 
