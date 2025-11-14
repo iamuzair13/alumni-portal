@@ -52,7 +52,7 @@ export default function SignInForm() {
         setErrorMessage("Insecure connection. Use HTTPS to sign in.");
         return;
       }
-      const result = await signIn("credentials", { email: email.trim(), password: password, redirect: false, callbackUrl: "/" });
+      const result = await signIn("credentials", { email: email.trim(), password: password, redirect: false,  });
       if (result?.error) {
         const err = result.error ?? "LOGIN_FAILED";
         if (err === "INVALID_EMAIL_FORMAT") setErrorMessage("Invalid email format");
