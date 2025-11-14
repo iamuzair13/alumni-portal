@@ -12,6 +12,18 @@ type StoryItem = {
   imageUrl: string;
 };
 
+type StoryRow = {
+  alumniid: number;
+  alumnistories: string | null;
+  alumniimage: string | null;
+  status: string | null;
+  createdat: string | null;
+  alumniname: string | null;
+  degreetitle: string | null;
+  academicsession: string | null;
+  image1: string | null;
+};
+
 export async function GET() {
   try {
     const rows = await sql/* sql */`
@@ -28,19 +40,8 @@ export async function GET() {
       FROM public.tblalumnistories s
       JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
       ORDER BY s.createdat DESC
-      LIMIT 200`;
-    const typed = rows as unknown as Array<{
-      alumniid?: number;
-      alumnistories?: string | null;
-      alumniimage?: string | null;
-      status?: string | null;
-      createdat?: string | Date | null;
-      alumniname?: string | null;
-      degreetitle?: string | null;
-      academicsession?: string | null;
-      image1?: string | null;
-    }>;
-    const items = typed.map((r): StoryItem => {
+      LIMIT 200` as StoryRow[];
+    const items = rows.map((r): StoryItem => {
       const id = String(r.alumniid ?? "");
       const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
       const name = String(r.alumniname ?? "");
@@ -65,20 +66,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
     }
     const v: ServerStoryPayload = parsed.data;
-    const createdAt = new Date(v.date).toISOString();
-    const text = v.description || v.shortStoriesHtml;
-    const image = v.imageUrl ?? null;
-    // Insert into tblstories (rich story storage) for full fidelity
-    const rows = await sql/* sql */`
-      INSERT INTO public.tblstories (
-        alumniname, alumnisession, alumnifaculty, alumnicompany, alumnidesignation,
-        alumnicitycountry, alumnistories, alumnishortstories, alumnistoriesdate, alumniimage1, alumnishowhome
-      ) VALUES (
-        ${v.name}, ${v.degreeSession}, ${v.faculty}, ${v.company}, ${v.designation},
-        ${v.cityCountry}, ${text}, ${v.shortStoriesHtml.slice(0, 500)}, ${createdAt}, ${image}, ${v.showHome ? "true" : "false"}
-      ) RETURNING id`;
-    const created = rows[0]?.id as number | undefined;
-    return NextResponse.json({ ok: true, id: created }, { status: 201 });
+    const createdAt = new Date();
+    const cleanHtml = String(v.storyHtml || "")
+      .replace(/<script[^>]*?>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*?>[\s\S]*?<\/style>/gi, "");
+
+    const alumniRows = await sql/* sql */`
+      SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1` as { alumniid: number }[];
+    const alumniId = alumniRows[0]?.alumniid;
+    if (!alumniId) {
+      return NextResponse.json({ message: "SAP ID not found in tbl_alumni" }, { status: 404 });
+    }
+
+    await sql/* sql */`
+      INSERT INTO public.tblalumnistories (alumniid, alumnistories, alumniimage, status, createdat)
+      VALUES (${alumniId}, ${cleanHtml}, ${null}, ${null}, ${createdAt.toISOString()})
+      ON CONFLICT (alumniid) DO UPDATE SET
+        alumnistories = EXCLUDED.alumnistories,
+        createdat = EXCLUDED.createdat`;
+    return NextResponse.json({ ok: true, alumniid: alumniId }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid JSON";
     return NextResponse.json({ message: msg }, { status: 400 });

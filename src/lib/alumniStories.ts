@@ -1,44 +1,25 @@
 import { z } from "zod";
 
-// Client-side form schema (uses File type for image)
+export const sapIdNumericRegex = /^\d{4,20}$/;
+
 export const storyFormSchema = z.object({
-  imageFile: z
-    .any()
-    .optional()
-    .refine(
-      (file) => !file || (file instanceof File && ["image/png", "image/jpeg"].includes(file.type)),
-      { message: "Invalid image type. Use JPG/PNG." }
-    )
-    .refine((file) => !file || (file instanceof File && file.size <= 2 * 1024 * 1024), {
-      message: "Image exceeds 2MB size limit.",
-    }),
-  name: z.string().min(1, "Name is required").max(100, "Name must be under 100 chars"),
-  degreeSession: z.string().min(1, "Degree & Session is required"),
-  faculty: z.string().min(1, "Faculty is required"),
-  company: z.string().min(1, "Company is required"),
-  designation: z.string().min(1, "Designation is required"),
-  cityCountry: z.string().min(1, "City, Country is required"),
-  shortStoriesHtml: z.string().min(1, "Short Stories is required"),
-  description: z.string().min(100, "Description must be at least 100 characters"),
-  showHome: z.boolean(),
-  date: z.string().min(1, "Date is required"),
+  sapId: z.string().trim().regex(sapIdNumericRegex, "SAP ID must be 4–20 digits"),
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be under 100 chars"),
+  email: z.string().trim().email("Enter a valid email address"),
+  faculty: z.string().trim().min(1, "Faculty is required"),
+  department: z.string().trim().min(1, "Department is required"),
+  storyHtml: z.string().trim().min(1, "Story is required"),
 });
 
 export type NewStoryPayload = z.infer<typeof storyFormSchema>;
 
-// Server-side payload schema (image provided as URL or omitted)
 export const storyServerSchema = z.object({
-  name: z.string().min(1).max(100),
-  degreeSession: z.string().min(1),
-  faculty: z.string().min(1),
-  company: z.string().min(1),
-  designation: z.string().min(1),
-  cityCountry: z.string().min(1),
-  shortStoriesHtml: z.string().min(1),
-  description: z.string().min(100),
-  showHome: z.boolean(),
-  date: z.string().min(1),
-  imageUrl: z.string().url().optional(),
+  sapId: z.string().trim().regex(sapIdNumericRegex),
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().email(),
+  faculty: z.string().trim().min(1),
+  department: z.string().trim().min(1),
+  storyHtml: z.string().trim().min(1),
 });
 
 export type ServerStoryPayload = z.infer<typeof storyServerSchema>;

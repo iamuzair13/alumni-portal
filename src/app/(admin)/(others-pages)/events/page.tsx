@@ -17,6 +17,8 @@ import Pagination from "@/components/tables/Pagination";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEventsList, eventsKey, type EventListItem } from "@/app/queries/fetch-events";
 // Note: events page defines its own schema locally to mirror alumni stories patterns
 
 // TypeScript typings for Events
@@ -39,49 +41,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "addEvent", label: "Add Event" },
 ];
 
-// Dummy events (replace with API integration when available)
-const DUMMY_EVENTS: EventItem[] = [
-  {
-    id: "E-2001",
-    date: "2024-01-15",
-    title: "AI Seminar",
-    venue: "Main Auditorium",
-    shortDescription: "Explore the latest in AI research and applications.",
-    imageUrl: "https://i.pravatar.cc/64?u=E-2001",
-    startTimeUTC: "2024-01-15T09:00:00Z",
-    endTimeUTC: "2024-01-15T11:00:00Z",
-  },
-  {
-    id: "E-2002",
-    date: "2024-03-05",
-    title: "Startup Workshop",
-    venue: "Innovation Lab",
-    shortDescription: "Hands-on session on building MVPs and pitching.",
-    imageUrl: "https://i.pravatar.cc/64?u=E-2002",
-    startTimeUTC: "2024-03-05T13:30:00Z",
-    endTimeUTC: "2024-03-05T15:00:00Z",
-  },
-  {
-    id: "E-2003",
-    date: "2024-06-10",
-    title: "Career Fair",
-    venue: "Hall B",
-    shortDescription: "Meet top employers and explore internships.",
-    imageUrl: "https://i.pravatar.cc/64?u=E-2003",
-    startTimeUTC: "2024-06-10T08:00:00Z",
-    endTimeUTC: "2024-06-10T17:00:00Z",
-  },
-  {
-    id: "E-2004",
-    date: "2024-09-22",
-    title: "Research Symposium",
-    venue: "Conference Center",
-    shortDescription: "Showcase of faculty and student research projects.",
-    imageUrl: "https://i.pravatar.cc/64?u=E-2004",
-    startTimeUTC: "2024-09-22T10:00:00Z",
-    endTimeUTC: "2024-09-22T14:00:00Z",
-  },
-];
+// Fetched via TanStack Query
 
 // Helper to format date safely to YYYY-MM-DD (removed unused)
 
@@ -119,7 +79,7 @@ type EventListProps = {
 
 const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -137,30 +97,12 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
   const startIdx = (currentPage - 1) * pageSize;
   const paged = safeItems.slice(startIdx, startIdx + pageSize);
 
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-12 rounded-xl bg-gray-200 animate-pulse dark:bg-white/10" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!safeItems.length) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600 dark:text-gray-300">{emptyMessage || "No events found"}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
+    <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
+      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
         <div className="min-w-[950px] xl:min-w-full">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+          <Table className="min-w-full border border-gray-200 dark:border-gray-800">
+            <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
               <TableRow>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SrNo.</TableCell>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Start Time</TableCell>
@@ -173,35 +115,54 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               </TableRow>
             </TableHeader>
 
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {paged.map((evt, idx) => (
-                <TableRow key={evt.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.04]">
-                  <TableCell className="px-5 py-4 sm:px-6 text-start">
-                    <span className="block text-gray-800 text-theme-sm dark:text-white/90">
-                      {startIdx + idx + 1}
-                    </span>
+            <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
+              {loading && (
+                Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
+                  <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-12 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-64 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-10 w-10 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                  </TableRow>
+                ))
+              )}
+              {!loading && paged.length === 0 && (
+                <TableRow>
+                  <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={8}>
+                    {emptyMessage || "No events found"}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && paged.map((evt, idx) => (
+              <TableRow key={evt.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.04]">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
+                    <span className="block text-gray-800 text-theme-sm dark:text-white/90">{startIdx + idx + 1}</span>
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     {formatLocalDateTime(evt.startTimeUTC)}
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     {formatLocalDateTime(evt.endTimeUTC)}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-800 text-start text-theme-sm dark:text-white/90">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-800 text-start text-theme-sm dark:text-white/90">
                     {evt.title || "-"}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     {evt.venue || "-"}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
                     <span className="line-clamp-2">{evt.shortDescription || "-"}</span>
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 text-start">
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
                     <img
                       src={evt.imageUrl || "https://via.placeholder.com/64"}
                       alt={`${evt.title} image`}
@@ -234,17 +195,30 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               ))}
             </TableBody>
           </Table>
-
-          {/* Pagination footer */}
           <div className="flex items-center justify-between p-4">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Showing {paged.length} of {safeItems.length}
+              {(() => {
+                const start = (currentPage - 1) * pageSize + 1;
+                const end = start + paged.length - 1;
+                const total = safeItems.length;
+                return `Showing ${paged.length ? start : 0}-${paged.length ? end : 0} of ${total}`;
+              })()}
             </span>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-            />
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
+              <select
+                id="page-size"
+                className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
+            </div>
           </div>
         </div>
       </div>
@@ -255,7 +229,8 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
 // Default export function name preserved
 export default function EventsPage() {
   const [selected, setSelected] = useState<TabKey>("viewEvents");
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: rawEvents, isLoading, isFetching, isError, error } = useEventsList();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -294,29 +269,19 @@ export default function EventsPage() {
     }
   }, [events, searchQuery, upcomingOnly, sortOrder]);
 
-  // Simulate async data load with error handling and cleanup
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    (async () => {
-      try {
-        // Replace with real fetch when API is ready
-        // const res = await fetch("/api/events", { cache: "no-store" });
-        // if (!res.ok) throw new Error(`Failed: ${res.status}`);
-        // const data: EventItem[] = await res.json();
-        const data = DUMMY_EVENTS;
-        if (active) setEvents(data);
-      } catch (err) {
-        console.error("Failed to load events:", err);
-        if (active) setEvents([]);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [selected]);
+    const mapped: EventItem[] = (rawEvents ?? []).map((e: EventListItem) => ({
+      id: e.id,
+      date: e.startTimeUTC ?? "",
+      title: e.title,
+      venue: e.venue ?? "",
+      shortDescription: e.shortDescription ?? "",
+      imageUrl: e.imageUrl ?? "",
+      startTimeUTC: e.startTimeUTC,
+      endTimeUTC: e.endTimeUTC,
+    }));
+    setEvents(mapped);
+  }, [rawEvents]);
 
   return (
     <ComponentCard title="Events" className="">
@@ -403,15 +368,15 @@ export default function EventsPage() {
         {selected === "viewEvents" && (
           <EventTable
             items={filteredEvents}
-            loading={loading}
-            emptyMessage="No events available"
+            loading={isLoading || isFetching}
+            emptyMessage={isError ? (error?.message ?? "Failed to load events") : "No events available"}
             deletingIds={deletingIds}
             onDelete={async (id: string) => {
               try {
                 setDeletingIds((prev) => new Set(prev).add(id));
                 const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
                 if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                setEvents((prev) => prev.filter((e) => e.id !== id));
+                await queryClient.invalidateQueries({ queryKey: eventsKey });
               } catch (err) {
                 console.error("Failed to delete event:", err);
                 alert("Failed to delete. Please try again.");

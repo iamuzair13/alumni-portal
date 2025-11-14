@@ -8,13 +8,11 @@ import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useForm, Controller } from "react-hook-form";
-// zod imported via resolvers and schema; remove unused 'z'
 import { storyFormSchema, type NewStoryPayload } from "@/lib/alumniStories";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, TrashBinIcon } from "@/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
-import { useAlumniMe } from "@/app/queries/fetch-me-alumni";
 
 // TypeScript typings for Stories
 type Story = {
@@ -403,16 +401,102 @@ export default function AlumniPage() {
   );
 }
 
-// Sessions options
-const SESSION_OPTIONS = [
-  "2018",
-  "2019",
-  "2020",
-  "2021",
-  "2022",
-  "2023",
-  "2024",
+// Faculty and departments options
+const FACULTY_OPTIONS = [
+  "Faculty of Information Technology",
+  "Faculty of Medicine & Dentistry",
+  "Faculty of Law",
+  "Centre for Microcredential-Based Skill Development",
+  "Faculty of Engineering & Technology",
+  "Faculty of Management Sciences",
+  "Faculty of Sciences",
+  "Faculty of Languages & Literature",
+  "Faculty of Arts & Architecture",
+  "Faculty of Social Sciences",
+  "Faculty of Pharmacy",
+  "International Qualifications",
+  "Faculty of Allied Health Sciences",
 ];
+
+const DEPARTMENTS_BY_FACULTY: Record<string, string[]> = {
+  "Faculty of Arts & Architecture": [
+    "School of Architecture",
+    "School of Creative Arts",
+    "School of Fashion & Textiles",
+  ],
+  "Faculty of Engineering & Technology": [
+    "Department of Electrical Engineering",
+    "Department of Mechanical Engineering",
+    "Department of Civil Engineering",
+    "Department of Computer Engineering",
+    "Department of Technology",
+  ],
+  "Faculty of Allied Health Sciences": [
+    "University Institute of Radiological Sciences & Medical Imaging Technology",
+    "University Institute of Physical Therapy",
+    "Department of Sports Sciences and Physical Education",
+    "University Institute of Diet & Nutritional Sciences",
+    "University Institute of Food Science & Technology",
+    "University Institute of Medical Lab Technology",
+    "University Institute of Public Health",
+    "Department of Health Professional Technologies",
+    "Department of Optometry & Vision Sciences",
+    "Department of Emerging Allied Health Technologies",
+    "Department of Rehabilitation Sciences",
+    "Lahore School of Nursing",
+    "Department of Audiology",
+  ],
+  "Faculty of Information Technology": [
+    "Department of Computer Science & Information Technology",
+    "Department of Software Engineering",
+    "Department of Intelligent Systems",
+  ],
+  "Faculty of Management Sciences": [
+    "Lahore Business School",
+    "Department of Economics",
+    "Lahore School of Aviation",
+    "Department of Information Management",
+  ],
+  "Faculty of Social Sciences": [
+    "Department of Islamic Studies",
+    "Lahore School of Behavioural Sciences",
+    "School of Integrated Social Sciences",
+    "Department of Education",
+    "Department of Sociology",
+    "Department of Criminology",
+  ],
+  "Faculty of Medicine & Dentistry": [
+    "University College of Medicine and Dentistry",
+    "Institute of Postgraduate Medical Sciences",
+    "University Institute of Health Professions Education and Research",
+    "Centre for Health Professionals Development & Lifelong Learning",
+    "Dental Paramedical School",
+  ],
+  "Faculty of Sciences": [
+    "Department of Physics",
+    "Department of Chemistry",
+    "Department of Environmental Sciences",
+    "Department of Mathematics and Statistics",
+    "Institute of Molecular Biology & Biotechnology",
+    "School of Pain and Regenerative Medicine",
+  ],
+  "Faculty of Pharmacy": [
+    "Department of Pharmacy",
+  ],
+  "Faculty of Law": [
+    "M.A. Raoof College of Law",
+  ],
+  "Faculty of Languages & Literature": [
+    "Department of English Language & Literature",
+    "Department of Urdu",
+  ],
+  "International Qualifications": [
+    "Department of International Qualifications",
+  ],
+  "Centre for Microcredential-Based Skill Development": [
+    "Microcredential-Based Skill Development Centre",
+  ],
+};
 
 function sanitizeHtml(input: string): string {
   // Very basic sanitation: allow b, i, u, br, a tags; strip others
@@ -433,8 +517,6 @@ const buttonSecondaryClass =
 
 const AddStoryForm: React.FC = () => {
   const queryClient = useQueryClient();
-  const { data: me, isLoading: isLoadingMe, isError: isMeError } = useAlumniMe();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -444,176 +526,106 @@ const AddStoryForm: React.FC = () => {
     control,
     reset,
     formState: { errors, isSubmitting },
-    setValue,
     watch,
   } = useForm<NewStoryPayload>({
     resolver: zodResolver(storyFormSchema),
     defaultValues: {
+      sapId: "",
       name: "",
-      degreeSession: "",
+      email: "",
       faculty: "",
-      company: "",
-      designation: "",
-      cityCountry: "",
-      shortStoriesHtml: "",
-      description: "",
-      showHome: false,
-      date: "",
-      imageFile: undefined,
+      department: "",
+      storyHtml: "",
     },
     mode: "onChange",
   });
+  const selectedFaculty = watch("faculty") || "";
+  const deptOptions = useMemo(() => DEPARTMENTS_BY_FACULTY[selectedFaculty] || [], [selectedFaculty]);
 
   const onSubmit = async (data: NewStoryPayload) => {
     setServerMsg(null);
     setServerError(null);
     try {
-      const cleanHtml = sanitizeHtml(data.shortStoriesHtml || "");
-      const createdAt = data.date ? new Date(data.date).toISOString() : new Date().toISOString();
-      const status = data.showHome ? "active" : "pending";
-      const res = await fetch("/api/alumni-stories/me", {
-        method: "PUT",
+      const payload = {
+        sapId: data.sapId,
+        name: data.name,
+        email: data.email,
+        faculty: data.faculty,
+        department: data.department,
+        storyHtml: sanitizeHtml(data.storyHtml || ""),
+      };
+      const res = await fetch("/api/alumni-stories", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanHtml || data.description || "", imageUrl: null, status, createdAt }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || `Failed (${res.status})`);
+        throw new Error(err?.message || `Failed (${res.status})`);
       }
       setServerMsg("Story saved successfully.");
       await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
       reset();
-      setPreviewUrl(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unexpected error while saving.";
       setServerError(msg);
     }
   };
 
-  const imageFile = watch("imageFile");
-  useEffect(() => {
-    if (imageFile && imageFile instanceof File) {
-      const url = URL.createObjectURL(imageFile);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [imageFile]);
+  
 
   return (
     <form className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Add story form" onSubmit={handleSubmit(onSubmit)}>
-      {/* Image upload */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="image" className="text-sm text-gray-600 dark:text-gray-300">Image (JPG/PNG, max 2MB)</label>
-        <Controller
-          name="imageFile"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="image"
-              type="file"
-              accept="image/png, image/jpeg"
-              className={inputBaseClass}
-              aria-label="Upload image"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) {
-                  field.onChange(undefined);
-                  return;
-                }
-                const isValidType = ["image/png", "image/jpeg"].includes(file.type);
-                const isValidSize = file.size <= 2 * 1024 * 1024;
-                if (!isValidType || !isValidSize) {
-                  setServerError(!isValidType ? "Invalid image type. Use JPG/PNG." : "Image exceeds 2MB size limit.");
-                  e.target.value = "";
-                  setValue("imageFile", undefined);
-                  setPreviewUrl(null);
-                  return;
-                }
-                setServerError(null);
-                field.onChange(file);
-              }}
-            />
-          )}
-        />
-        {previewUrl && (
-          <img src={previewUrl} alt="Selected image preview" className="mt-2 h-16 w-16 rounded-md object-cover border border-gray-200 dark:border-gray-700" />
-        )}
-        {errors.imageFile && <span className="text-xs text-red-600">{errors.imageFile.message as string}</span>}
+        <label htmlFor="sapId" className="text-sm text-gray-600 dark:text-gray-300">SAP ID</label>
+        <input id="sapId" className={inputBaseClass} aria-label="SAP ID" {...register("sapId")} />
+        {errors.sapId && <span className="text-xs text-red-600">{errors.sapId.message as string}</span>}
       </div>
 
-      {/* Name */}
       <div className="flex flex-col gap-2">
         <label htmlFor="name" className="text-sm text-gray-600 dark:text-gray-300">Name</label>
         <input id="name" className={inputBaseClass} aria-label="Name" {...register("name")} />
         {errors.name && <span className="text-xs text-red-600">{errors.name.message}</span>}
       </div>
 
-      {/* Degree (auto-populated, read-only) */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="degree" className="text-sm text-gray-600 dark:text-gray-300">Degree</label>
-        <input id="degree" className={inputBaseClass} aria-label="Degree" value={isLoadingMe ? "Loading…" : (me?.degree ?? "")} readOnly />
-      </div>
-      {/* Session (used to compose degreeSession on submit) */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="degreeSession" className="text-sm text-gray-600 dark:text-gray-300">Session</label>
-        <select
-          id="degreeSession"
-          className={inputBaseClass}
-          aria-label="Session"
-          {...register("degreeSession")}
-          disabled={isLoadingMe || isMeError}
-          onChange={(e) => {
-            const ses = e.target.value;
-            const deg = me?.degree ?? "";
-            setValue("degreeSession", deg && ses ? `${deg} (${ses})` : deg || ses);
-          }}
-        >
-          <option value="">Select session</option>
-          {SESSION_OPTIONS.map((ses) => (
-            <option key={ses} value={ses}>{ses}</option>
-          ))}
-        </select>
-        {errors.degreeSession && <span className="text-xs text-red-600">{errors.degreeSession.message}</span>}
+        <label htmlFor="email" className="text-sm text-gray-600 dark:text-gray-300">Email</label>
+        <input id="email" className={inputBaseClass} aria-label="Email" type="email" {...register("email")} />
+        {errors.email && <span className="text-xs text-red-600">{errors.email.message as string}</span>}
       </div>
 
-      {/* Faculty (auto-populated, read-only) */}
       <div className="flex flex-col gap-2">
         <label htmlFor="faculty" className="text-sm text-gray-600 dark:text-gray-300">Faculty</label>
-        <input id="faculty" className={inputBaseClass} aria-label="Faculty" value={isLoadingMe ? "Loading…" : (me?.faculty ?? "")} readOnly />
+        <select id="faculty" className={inputBaseClass} aria-label="Faculty" {...register("faculty")}>
+          <option value="">Select</option>
+          {FACULTY_OPTIONS.map((f) => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+        {errors.faculty && <span className="text-xs text-red-600">{errors.faculty.message as string}</span>}
       </div>
 
-      {/* Company */}
       <div className="flex flex-col gap-2">
-        <label htmlFor="company" className="text-sm text-gray-600 dark:text-gray-300">Company</label>
-        <input id="company" className={inputBaseClass} aria-label="Company" {...register("company")} />
-        {errors.company && <span className="text-xs text-red-600">{errors.company.message}</span>}
+        <label htmlFor="department" className="text-sm text-gray-600 dark:text-gray-300">Department</label>
+        <select id="department" className={inputBaseClass} aria-label="Department" {...register("department")}>
+          <option value="">Select</option>
+          {deptOptions.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </select>
+        {errors.department && <span className="text-xs text-red-600">{errors.department.message as string}</span>}
       </div>
 
-      {/* Designation */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="designation" className="text-sm text-gray-600 dark:text-gray-300">Designation</label>
-        <input id="designation" className={inputBaseClass} aria-label="Designation" {...register("designation")} />
-        {errors.designation && <span className="text-xs text-red-600">{errors.designation.message}</span>}
-      </div>
-
-      {/* City, Country */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="cityCountry" className="text-sm text-gray-600 dark:text-gray-300">City, Country</label>
-        <input id="cityCountry" className={inputBaseClass} aria-label="City, Country" placeholder="e.g., Lahore, Pakistan" {...register("cityCountry")} />
-        {errors.cityCountry && <span className="text-xs text-red-600">{errors.cityCountry.message}</span>}
-      </div>
-
-      {/* Short Stories (rich text) */}
       <div className="md:col-span-2 flex flex-col gap-2">
-        <label className="text-sm text-gray-600 dark:text-gray-300">Short Stories</label>
+        <label className="text-sm text-gray-600 dark:text-gray-300">Story</label>
         <Controller
-          name="shortStoriesHtml"
+          name="storyHtml"
           control={control}
           render={({ field }) => (
             <div>
               <div
                 role="textbox"
-                aria-label="Short stories rich text"
+                aria-label="Story rich text"
                 className={`${inputBaseClass} min-h-24`}
                 contentEditable
                 suppressContentEditableWarning
@@ -627,39 +639,16 @@ const AddStoryForm: React.FC = () => {
             </div>
           )}
         />
-        {errors.shortStoriesHtml && <span className="text-xs text-red-600">{errors.shortStoriesHtml.message}</span>}
+        {errors.storyHtml && <span className="text-xs text-red-600">{errors.storyHtml.message as string}</span>}
       </div>
 
-      {/* Description */}
-      <div className="md:col-span-2 flex flex-col gap-2">
-        <label htmlFor="description" className="text-sm text-gray-600 dark:text-gray-300">Description (min 100 characters)</label>
-        <textarea id="description" rows={4} className={inputBaseClass} aria-label="Description" {...register("description")} />
-        {errors.description && <span className="text-xs text-red-600">{errors.description.message}</span>}
-      </div>
-
-      {/* Show Home toggle */}
-      <div className="flex items-center gap-3">
-        <label htmlFor="showHome" className="text-sm text-gray-600 dark:text-gray-300">Show Home</label>
-        <input id="showHome" type="checkbox" aria-label="Show on homepage" {...register("showHome")} />
-        {errors.showHome && <span className="text-xs text-red-600">{errors.showHome.message as string}</span>}
-      </div>
-
-      {/* Date */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="date" className="text-sm text-gray-600 dark:text-gray-300">Date</label>
-        <input id="date" type="date" className={inputBaseClass} aria-label="Date" {...register("date")} />
-        {errors.date && <span className="text-xs text-red-600">{errors.date.message}</span>}
-      </div>
-
-      {/* Feedback */}
       <div className="md:col-span-2 mt-2">
         {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700">{serverMsg}</div>}
         {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700">{serverError}</div>}
       </div>
 
-      {/* Actions */}
       <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2">
-        <button type="reset" className={buttonSecondaryClass} onClick={() => { reset(); setPreviewUrl(null); }}>
+        <button type="reset" className={buttonSecondaryClass} onClick={() => { reset(); }}>
           Reset
         </button>
         <button type="submit" className={buttonPrimaryClass} disabled={isSubmitting} aria-busy={isSubmitting}>
