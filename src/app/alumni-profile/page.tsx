@@ -89,7 +89,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
         ) : null;
       })()}
       <div className="w-full">
-    <div className="w-full h-32 bg-gray-200 rounded-t-lg"></div>
+    <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+      <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-center text-2xl sm:text-3xl font-bold tracking-tight">University of Lahore</h1>
+        </div>
+      </div>
+    </div>
 
     {/* 2. Main Content Container (Max-width and Padding) */}
     {/* This container centers and holds the profile details and ID card. */}
@@ -321,5 +327,3 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     </div>
   );
 }
-
-// helpers are imported from '@/lib/alumniProfile'
