@@ -5,6 +5,7 @@ import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import React from "react";
+import { useSession } from "next-auth/react";
 
 export default function AdminLayout({
   children,
@@ -12,6 +13,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { data: session } = useSession();
+  const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
+  const isAlumni = t === "alumni";
 
   // Dynamic class for main content margin based on sidebar state
   const mainContentMargin = isMobileOpen
@@ -22,12 +26,15 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen xl:flex">
-      {/* Sidebar and Backdrop */}
-      <AppSidebar />
-      <Backdrop />
+      {!isAlumni && (
+        <>
+          <AppSidebar />
+          <Backdrop />
+        </>
+      )}
       {/* Main Content Area */}
       <div
-        className={`flex-1 transition-all border  duration-300 ease-in-out ${mainContentMargin}`}
+        className={`flex-1 transition-all border  duration-300 ease-in-out ${isAlumni ? "ml-0" : mainContentMargin}`}
       >
         {/* Header */}
         <AppHeader />
@@ -36,4 +43,9 @@ export default function AdminLayout({
       </div>
     </div>
   );
+}
+
+export function shouldRenderSidebar(type?: string | null): boolean {
+  const t = String(type || "").toLowerCase();
+  return t !== "alumni";
 }

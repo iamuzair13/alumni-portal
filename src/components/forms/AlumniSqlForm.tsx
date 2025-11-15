@@ -145,7 +145,7 @@ const departmentsByFaculty: Record<string, string[]> = {
   ],
 };
 
-export default function AlumniSqlForm() {
+export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdminStep?: boolean }) {
   const {
     register,
     handleSubmit,
@@ -218,6 +218,7 @@ export default function AlumniSqlForm() {
   });
 
   const [step, setStep] = useState<number>(1);
+  const maxStep = excludeAdminStep ? 3 : 4;
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -331,6 +332,19 @@ export default function AlumniSqlForm() {
       if (!payload.datasource || String(payload.datasource).trim() === "") {
         payload.datasource = "Alumni";
       }
+      const sapId = String(payload.sapid || "").trim();
+      if (sapId) {
+        const existsRes = await fetch(`/api/alumni/${encodeURIComponent(sapId)}`);
+        if (existsRes.ok) {
+          setSubmitError("User already exists");
+          return;
+        }
+        if (existsRes.status !== 404) {
+          const ej = await existsRes.json().catch(() => null);
+          setSubmitError(ej?.error || "Failed to verify existing user");
+          return;
+        }
+      }
       // Send to API (server will sanitize and validate again)
       const res = await fetch("/api/alumni/create", {
         method: "POST",
@@ -354,7 +368,7 @@ export default function AlumniSqlForm() {
 
   function nextStep() {
     validateStep(step).then((ok) => {
-      if (ok) setStep((s) => Math.min(4, s + 1));
+      if (ok) setStep((s) => Math.min(maxStep, s + 1));
     });
   }
 
@@ -378,14 +392,14 @@ export default function AlumniSqlForm() {
       {/* Progress Indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
-          {[1,2,3,4].map((n) => (
+          {(excludeAdminStep ? [1,2,3] : [1,2,3,4]).map((n) => (
             <div key={n} className="flex-1">
               <div className={`h-2 rounded ${step >= n ? "bg-indigo-600" : "bg-neutral-200"}`}></div>
               <p className="mt-2 text-center text-xs text-neutral-700">
                 {n === 1 && "Personal Information"}
                 {n === 2 && "Academic Information"}
                 {n === 3 && "Work Status"}
-                {n === 4 && "Admin Section"}
+                {!excludeAdminStep && n === 4 && "Admin Section"}
               </p>
             </div>
           ))}
@@ -661,7 +675,7 @@ export default function AlumniSqlForm() {
       )}
 
       {/* Step 4: Admin Section */}
-      {step === 4 && (
+      {!excludeAdminStep && step === 4 && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -697,10 +711,10 @@ export default function AlumniSqlForm() {
         {step > 1 && (
           <button type="button" onClick={prevStep} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Back</button>
         )}
-        {step < 4 && (
+        {step < maxStep && (
           <button type="button" onClick={nextStep} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Next</button>
         )}
-        {step === 4 && (
+        {step === maxStep && (
           <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60">Submit</button>
         )}
         <button type="button" disabled={submitting} onClick={() => { reset(); setStep(1); }} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Reset</button>

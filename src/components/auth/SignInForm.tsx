@@ -1,11 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import Alert from "@/components/ui/alert/Alert";
+import { useModal } from "@/hooks/useModal";
+import { Modal } from "@/components/ui/modal";
+import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
-export async function googleSignIn(callbackUrl: string = "/"): Promise<void> {
-  await signIn("google", { callbackUrl, redirect: true });
+type PasswordStrength = "weak" | "medium" | "strong";
+type FormErrors = { email?: string; password?: string };
+
+function computeStrength(pw: string): PasswordStrength {
+  const len = pw.length >= 8;
+  const num = /\d/.test(pw);
+  const up = /[A-Z]/.test(pw);
+  const sym = /[^A-Za-z0-9]/.test(pw);
+  const score = [len, num, up, sym].filter(Boolean).length;
+  if (score >= 3) return "strong";
+  if (score >= 2) return "medium";
+  return "weak";
 }
 
 export default function SignInForm() {
@@ -14,10 +30,16 @@ export default function SignInForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const strength: PasswordStrength = useMemo(() => computeStrength(password), [password]);
   const params = useSearchParams();
   const router = useRouter();
+  const { isOpen, openModal, closeModal } = useModal();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const err = params.get("error");
     if (err === "USER_NOT_FOUND") setErrorMessage("Email not registered");
     else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
@@ -26,24 +48,25 @@ export default function SignInForm() {
     else setErrorMessage(null);
   }, [params]);
 
-  
-
   const handleCredentials = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       setErrorMessage(null);
+      setVerificationError(null);
       setIsLoading(true);
+      const nextErrors: FormErrors = {};
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email.trim()) nextErrors.email = "Email is required";
+      else if (!emailRegex.test(email.trim())) nextErrors.email = "Invalid email format";
+      if (!password) nextErrors.password = "Password is required";
+      setErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) return;
       const isProd = process.env.NODE_ENV === "production";
-      if (!emailRegex.test(email.trim())) {
-        setErrorMessage("Invalid email format");
-        return;
-      }
       if (isProd && typeof window !== "undefined" && window.location.protocol !== "https:") {
         setErrorMessage("Insecure connection. Use HTTPS to sign in.");
         return;
       }
-      const result = await signIn("credentials", { email: email.trim(), password: password, redirect: false,  });
+      const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
       if (result?.error) {
         const err = result.error ?? "LOGIN_FAILED";
         if (err === "INVALID_EMAIL_FORMAT") setErrorMessage("Invalid email format");
@@ -57,7 +80,44 @@ export default function SignInForm() {
         return;
       }
       setErrorMessage(null);
-      // rely on useEffect redirect once session becomes authenticated
+      setIsVerifying(true);
+      try {
+        const res = await fetch("/api/alumni", { headers: { accept: "application/json" } });
+        if (!res.ok) {
+          const txt = await res.text();
+          setVerificationError(txt || "Failed to verify alumni");
+          return;
+        }
+        const data = await res.json();
+        const items = (data?.items || []) as Array<{ personalemail?: string | null; officialemail?: string | null; universityemail?: string | null; verify?: string | boolean | null; alumnistatus?: string | null }>;
+        const entered = email.trim().toLowerCase();
+        const match = items.find((it) => {
+          const p = String(it.personalemail || "").toLowerCase();
+          const o = String(it.officialemail || "").toLowerCase();
+          const u = String(it.universityemail || "").toLowerCase();
+          return entered && (p === entered || o === entered || u === entered);
+        });
+        const verified = parseVerify(match?.verify);
+        const blocked = String(match?.alumnistatus || "").toLowerCase() === "blocked";
+        if (!match) {
+          setVerificationError("Missing alumni record");
+          return;
+        }
+        if (blocked) {
+          setVerificationError("This account is blocked");
+          return;
+        }
+        if (!verified) {
+          setVerificationError("Alumni status is unverified");
+          return;
+        }
+        router.replace("/alumni-profile");
+      } catch (ve) {
+        const msg = ve instanceof Error ? ve.message : String(ve);
+        setVerificationError(msg || "Network failure during verification");
+      } finally {
+        setIsVerifying(false);
+      }
     } catch {
       setErrorMessage("Sign-in failed");
     } finally {
@@ -67,67 +127,133 @@ export default function SignInForm() {
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-    
       const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase();
-      const dest = t === "staff" ? "/" : "/alumni-profile";
-      router.replace(dest);
+      if (t === "staff") router.replace("/");
     }
   }, [status, session, router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="grid md:grid-cols-2 items-center gap-6 max-md:gap-8 max-w-6xl max-md:max-w-lg w-full p-4 [box-shadow:0_2px_10px_-3px_rgba(6,81,237,0.3)] rounded-md">
-        <div className="md:max-w-md w-full px-4 py-4">
-          <form className="mt-6 space-y-4" onSubmit={handleCredentials} aria-label="Email sign in form">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                aria-invalid={!!errorMessage && /email/i.test(errorMessage)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <button
-                type="submit"
-                aria-label="Sign in"
-                aria-busy={isLoading}
-                disabled={isLoading || status === "loading"}
-                className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none disabled:opacity-60"
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
-              </button>
-            </div>
-          </form>
-        
-
-          <div role="status" aria-live="polite" className="mt-4 text-red-600 text-sm min-h-5">
-            {errorMessage}
+    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-6xl flex items-center justify-between gap-12">
+        {/* Left Side - University Info */}
+        <div className="flex-1 flex flex-col items-start justify-start  text-center">
+          <div className="mb-6 flex justify-center">
+            <Image src="/images/logo/login-1.jfif" alt="University Logo" width={128} height={128} className="w-32 h-32 object-contain rounded-full bg-white p-2 shadow-lg" />
           </div>
-
-          <div className="mt-2 text-xs text-slate-600" aria-live="polite">
-            {status === "authenticated" ? "Signed in" : status === "loading" ? "Checking session..." : "Not signed in"}
-          </div>
+          <h1 className="text-5xl font-bold text-white mb-8">
+            University of Lahore
+          </h1>
+          <h4 className="text-lg text-white/90 mb-6">Your gateway to alumni connections & opportunities</h4>
+          <button type="button" onClick={openModal} className="bg-white text-green-700 px-8 py-3 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg">
+            Register Alumni
+          </button>
         </div>
 
+        {/* Right Side - Login Form */}
+        <div className="flex-1">
+          <div className="w-full max-w-md mx-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-white/10 bg-gray-600 flex items-center justify-center" aria-label="Logo">
+                <Image src="/images/logo/login-1.jfif" alt="Logo" width={40} height={40} className="rounded" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-slate-900">Welcome Back</h1>
+                <p className="text-sm text-slate-600">Please Sign in to your portal</p>
+    </div>
+    <Modal isOpen={isOpen} onClose={closeModal} isFullscreen={true} showCloseButton={true}>
+      <div className="fixed inset-0 flex flex-col overflow-y-auto bg-white dark:bg-gray-900 p-4 sm:p-6">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h2 className="text-lg font-semibold text-slate-900">Alumni Registration</h2>
+          <button aria-label="Close" onClick={closeModal} className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100">Close</button>
+        </div>
+        <div className="mt-4">
+          <AlumniSqlForm excludeAdminStep={true} />
+        </div>
+      </div>
+    </Modal>
+    </div>
+
+            <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="Email sign in form">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={!!errors.email}
+                />
+                {errors.email && <p className="mt-1 text-xs text-red-600" role="alert">{errors.email}</p>}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
+                  <Link href="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700">Forgot Password?</Link>
+                </div>
+                <div className="relative mt-1">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    aria-invalid={!!errors.password}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-sm text-slate-600 hover:text-slate-800"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {errors.password && <p className="mt-1 text-xs text-red-600" role="alert">{errors.password}</p>}
+                <div className="mt-1 text-xs">
+                  <span className={strength === "strong" ? "text-emerald-600" : strength === "medium" ? "text-amber-600" : "text-rose-600"}>Password strength: {strength}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="submit"
+                  aria-label="Sign in"
+                  aria-busy={isLoading || isVerifying}
+                  disabled={isLoading || isVerifying || status === "loading"}
+                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-white text-sm font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60"
+                >
+                  {isLoading ? "Signing in..." : isVerifying ? "Verifying..." : "Sign In"}
+                </button>
+              </div>
+            </form>
+
+            <div role="status" aria-live="polite" className="mt-4 text-red-600 text-sm min-h-5">
+              {errorMessage}
+            </div>
+            {verificationError && (
+              <div className="mt-2">
+                <Alert variant="error" title="Verification Failed" message={verificationError} />
+              </div>
+            )}
+
+            <div className="mt-1 text-xs text-slate-600" aria-live="polite">
+              {status === "authenticated" ? "Signed in" : status === "loading" ? "Checking session..." : "Not signed in"}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
+}
+
+export function parseVerify(v: unknown): boolean {
+  const s = String(v ?? "").toLowerCase().trim();
+  if (!s) return false;
+  return s === "true" || s === "yes" || s === "verified" || s === "1";
 }

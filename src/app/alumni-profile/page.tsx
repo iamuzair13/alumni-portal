@@ -6,6 +6,9 @@ import Link from "next/link";
 import AlumniCardAction from "@/components/alumni/AlumniCardAction";
 import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
+import AppHeader from "@/layout/AppHeader";
+import Alert from "@/components/ui/alert/Alert";
+import { computeLoginBanner, safeText, formatPhone, composeFacultyDept } from "@/lib/alumniProfile";
 
 type Profile = {
   alumniname: string | null;
@@ -19,13 +22,14 @@ type Profile = {
   instagram: string | null;
   youtube: string | null;
   linkedin: string | null;
+  contactno: string | null;
 };
 
 async function getProfile(searchParams: { sapid?: string }) {
   const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
   if (sapid) {
     const rows = await sql/* sql */`
-      SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin
+      SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
       FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
     return rows[0] as Profile | undefined;
   }
@@ -33,25 +37,27 @@ async function getProfile(searchParams: { sapid?: string }) {
   const email = session?.user?.email ? String(session.user.email) : undefined;
   if (!email) return undefined;
   const rows = await sql/* sql */`
-    SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin
+    SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
     FROM public.tbl_alumni 
     WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
     ORDER BY alumniid DESC LIMIT 1`;
   return rows[0] as Profile | undefined;
 }
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ sapid?: string }> }) {
+type AlumniProfileSearchParams = { sapid?: string };
+
+
+export default async function Page({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
   const sp = await searchParams;
   const p = await getProfile(sp);
   const session = await auth();
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
   const avatar = googleImage ?? "/images/person.jpg";
-  const campus = p?.campusname ?? "";
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const program = p?.degreetitle ?? "";
-  const year = p?.yearofending ?? "";
+  const contact = p?.contactno ?? "";
   const email = session?.user?.email ? String(session.user.email) : undefined;
   const sapRows = email ? await sql/* sql */`
     SELECT alumniid, sapid FROM public.tbl_alumni 
@@ -72,7 +78,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
     cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
   }
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 mt-20">
+    <div className="w-full px-4 sm:px-6 lg:px-8">
+      <AppHeader />
+      {(() => {
+        const b = computeLoginBanner(session?.user);
+        return b.show ? (
+          <div className="mt-4">
+            <Alert variant="error" title="Access Restricted" message={b.message} />
+          </div>
+        ) : null;
+      })()}
       <div className="w-full">
     <div className="w-full h-32 bg-gray-200 rounded-t-lg"></div>
 
@@ -130,15 +145,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
                     
                     {/* Academic Details - Added padding-top to separate from name/socials */}
                     <div className="mt-6 pt-4 border-t border-gray-100">
-                        <h5 className="text-lg font-semibold text-slate-800 mb-3">Academic History</h5>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 text-sm text-slate-700">
-                            <div className="font-medium col-span-2 sm:col-span-1">
-                                <span className="font-bold">{campus}</span> — {faculty}
+                        <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-slate-700">
+                            <div className="col-span-1">
+                                <span className="font-semibold">SAP ID:</span> {safeText(sapId) || "N/A"}
                             </div>
-                            <div className="col-span-2 sm:col-span-1">{dept}</div>
-                            <div className="col-span-2 sm:col-span-1">{program}</div>
-                            <div className="col-span-2 sm:col-span-1">
-                                <span className="font-semibold">Passing Year:</span> {String(year)}
+                            <div className="col-span-1">
+                                <span className="font-semibold">Phone:</span> {formatPhone(contact) || "Not provided"}
+                            </div>
+                            <div className="col-span-1">
+                                <span className="font-semibold">Faculty - Department:</span> {composeFacultyDept(faculty, dept) || "N/A"}
+                            </div>
+                            <div className="col-span-1">
+                                <span className="font-semibold">Program:</span> {safeText(program) || "N/A"}
                             </div>
                         </div>
                     </div>
@@ -244,8 +263,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
               {c.icon}
             </div>
             <div className="p-4 text-center">
+              <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
               {c.title === "Alumni Card" && (
-                <div role="status" aria-live="polite" className="mb-2">
+                <div role="status" aria-live="polite" className="mt-2 mb-2">
                   {cardStatusError ? (
                     <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
                       <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
@@ -274,7 +294,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
                   )}
                 </div>
               )}
-              <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
               {c.title === "Success Story" ? (
                 <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -302,3 +321,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
     </div>
   );
 }
+
+// helpers are imported from '@/lib/alumniProfile'

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function SignIn() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" aria-busy="true" aria-live="polite">Loading…</div>}>
+    <Suspense fallback={<div className="min-h-screen flex  items-center justify-center" aria-busy="true" aria-live="polite">Loading…</div>}>
       <SignInForm />
     </Suspense>
   );
