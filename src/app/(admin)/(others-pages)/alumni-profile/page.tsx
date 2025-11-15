@@ -4,7 +4,7 @@ import { sql } from "@/lib/dbconnect";
 import Image from "next/image";
 import Link from "next/link";
 import AlumniCardAction from "@/components/alumni/AlumniCardAction";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
 
 type Profile = {

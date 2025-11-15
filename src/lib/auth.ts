@@ -5,7 +5,7 @@ import type { User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { Session } from "next-auth";
 import { sql } from "@/lib/dbconnect";
-import { authenticateCredentials } from "./auth/credentials";
+import { authenticateCredentials } from "../auth/credentials";
 
 type DbUser = {
   userid: number;

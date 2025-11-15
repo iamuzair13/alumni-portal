@@ -1,7 +1,7 @@
 import UserMetaCard from "@/components/user-profile/UserMetaCard";
 import { Metadata } from "next";
 import React from "react";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 
 export const metadata: Metadata = {

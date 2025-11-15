@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import { validatePayload } from "./validation";
 
 export async function GET() {

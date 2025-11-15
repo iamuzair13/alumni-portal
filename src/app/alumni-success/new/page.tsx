@@ -1,7 +1,7 @@
 import ComponentCard from "@/components/common/ComponentCard";
 import AlumniSuccessForm from "@/components/forms/alumni-success";
 import { sql } from "@/lib/dbconnect";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 
 export default async function Page() {
   const session = await auth();
