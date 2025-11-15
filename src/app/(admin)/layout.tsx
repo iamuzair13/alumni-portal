@@ -44,8 +44,3 @@ export default function AdminLayout({
     </div>
   );
 }
-
-export function shouldRenderSidebar(type?: string | null): boolean {
-  const t = String(type || "").toLowerCase();
-  return t !== "alumni";
-}

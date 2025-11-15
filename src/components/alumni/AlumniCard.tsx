@@ -389,7 +389,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   };
 
   const headerClass = "px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300";
-  const rightHeaderClass = "px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300";
 
   function toTitleCase(s: string | undefined): string {
     const v = String(s || "").toLowerCase();
