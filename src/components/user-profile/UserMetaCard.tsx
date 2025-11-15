@@ -4,6 +4,8 @@ import type { z } from "zod";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
+import { PencilIcon, CheckLineIcon, CloseLineIcon, ListIcon } from "@/icons";
+import {  parseContactNumber, displayCnic } from "./helpers";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { useAlumniProfile, useUpdateAlumniProfile } from "@/app/queries/alumni-profile";
@@ -26,6 +28,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
   const [draft, setDraft] = useState<Partial<z.input<typeof alumniRegistrationComprehensiveSchema>> | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [contactCombined, setContactCombined] = useState<string>("");
 
   const safeName = useMemo(() => data?.name ?? "-", [data]);
   const safeDesignation = useMemo(() => data?.designation ?? "-", [data]);
@@ -84,10 +87,12 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
         verified: Boolean(data.verified ?? false),
         category: data.category ?? "",
       });
+      setContactCombined(`${data.countryCode ?? ""} ${data.phoneNumber ?? ""}`.trim());
       setIsEditingInline(true);
     } else {
       setIsEditingInline(false);
       setDraft(null);
+      setContactCombined("");
     }
   };
 
@@ -96,6 +101,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
     setDraft(null);
     setSaveError(null);
     setValidationErrors({});
+    setContactCombined("");
   };
 
   const handleInlineSave = async () => {
@@ -106,6 +112,17 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
     try {
       setSaveError(null);
       setValidationErrors({});
+      if (contactCombined) {
+        const parsedContact = parseContactNumber(contactCombined);
+        if (!parsedContact.valid) {
+          const v = { ...validationErrors, phoneNumber: "Invalid phone format. Use +[code] [number]" };
+          setValidationErrors(v);
+          setSaveError("Please fix the highlighted fields.");
+          return;
+        }
+        draft.countryCode = parsedContact.code;
+        draft.phoneNumber = parsedContact.number;
+      }
       const parsed = alumniRegistrationComprehensiveSchema.safeParse(draft);
       if (!parsed.success) {
         const vErrs: Record<string, string> = {};
@@ -222,10 +239,28 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
             </div>
           </div>
           <div className="flex w-full items-center justify-center gap-3 lg:inline-flex lg:w-auto">
-            <Button size="sm" variant="outline" onClick={handleOpenEdit} className="focus-visible:ring-2 focus-visible:ring-primary">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleOpenEdit}
+              className="focus-visible:ring-2 focus-visible:ring-primary"
+              startIcon={<PencilIcon />}
+              aria-controls="user-meta-edit-modal"
+              aria-label="Edit personal information"
+              disabled={isLoading || !!error}
+            >
               Edit
             </Button>
-            <Button size="sm" onClick={handleToggleInlineEdit} className="focus-visible:ring-2 focus-visible:ring-primary">
+            <Button
+              size="sm"
+              onClick={handleToggleInlineEdit}
+              className="focus-visible:ring-2 focus-visible:ring-primary"
+              startIcon={<ListIcon />}
+              aria-expanded={isEditingInline}
+              aria-controls="user-meta-inline-form"
+              aria-label={isEditingInline ? "Close inline edit" : "Open inline edit"}
+              disabled={!!error}
+            >
               {isEditingInline ? "Close Inline Edit" : "Inline Edit"}
             </Button>
           </div>
@@ -287,13 +322,13 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
             ))}
           </dl>
           ) : (
-            <form className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <form id="user-meta-inline-form" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="col-span-1 sm:col-span-2 lg:col-span-4 flex items-center justify-end gap-3 mb-2">
-                <Button size="sm" variant="outline" onClick={handleInlineCancel} className="focus-visible:ring-2 focus-visible:ring-primary">
+                <Button size="sm" variant="outline" onClick={handleInlineCancel} className="focus-visible:ring-2 focus-visible:ring-primary" startIcon={<CloseLineIcon />} aria-label="Cancel inline edit">
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleInlineSave} className="focus-visible:ring-2 focus-visible:ring-primary">
-                  Save
+                <Button size="sm" onClick={handleInlineSave} className="focus-visible:ring-2 focus-visible:ring-primary" startIcon={<CheckLineIcon />} disabled={updateMut.isPending} aria-busy={updateMut.isPending} aria-label="Save inline edits">
+                  {updateMut.isPending ? "Saving…" : "Save"}
                 </Button>
               </div>
               {/* Email */}
@@ -343,21 +378,35 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
                   {["Single","Married","Divorced"].map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-              {/* CNIC/Passport */}
+              {/* CNIC/Passport (read-only from DB) */}
               <div className="rounded-xl p-3 sm:col-span-2">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">CNIC/Passport</dt>
-                <Input type="text" value={(draft?.cnicOrPassport ?? "") as string} onChange={(e) => handleInlineChange("cnicOrPassport", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["cnicOrPassport"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["cnicOrPassport"]}</p>}
+                <Input type="text" value={displayCnic(data?.cnicOrPassport as string | undefined)} disabled aria-disabled="true" className="focus-visible:ring-primary" />
               </div>
-              {/* Contact No split */}
+              {/* Contact Number (single field) */}
               <div className="rounded-xl p-3">
-                <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Country Code</dt>
-                <Input type="text" value={(draft?.countryCode ?? "") as string} onChange={(e) => handleInlineChange("countryCode", e.target.value)} className="focus-visible:ring-primary" />
-                {validationErrors["countryCode"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["countryCode"]}</p>}
-              </div>
-              <div className="rounded-xl p-3">
-                <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Phone Number</dt>
-                <Input type="text" value={(draft?.phoneNumber ?? "") as string} onChange={(e) => handleInlineChange("phoneNumber", e.target.value)} className="focus-visible:ring-primary" />
+                <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Contact Number</dt>
+                <Input
+                  type="text"
+                  value={contactCombined}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setContactCombined(val);
+                    const p = parseContactNumber(val);
+                    if (!p.valid) {
+                      setValidationErrors({ ...validationErrors, phoneNumber: "Invalid phone format. Use +[code] [number]" });
+                    } else {
+                      const v = { ...validationErrors };
+                      delete v.phoneNumber;
+                      setValidationErrors(v);
+                    }
+                    handleInlineChange("countryCode", p.code);
+                    handleInlineChange("phoneNumber", p.number);
+                  }}
+                  className="focus-visible:ring-primary"
+                  placeholder="e.g. +92 3001234567"
+                  aria-label="Contact number"
+                />
                 {validationErrors["phoneNumber"] && <p className="mt-1 text-sm text-rose-600">{validationErrors["phoneNumber"]}</p>}
               </div>
               {/* Country/Province/City */}
@@ -551,7 +600,7 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               </div>
             </div>
             <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
-              <Button size="sm" variant="outline" onClick={closeModal} className="focus-visible:ring-2 focus-visible:ring-primary">
+              <Button size="sm" variant="outline" onClick={closeModal} className="focus-visible:ring-2 focus-visible:ring-primary" startIcon={<CloseLineIcon />} aria-label="Close edit dialog">
                 Close
               </Button>
               <Button
@@ -560,6 +609,8 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
                 disabled={updateMut.isPending}
                 className="focus-visible:ring-2 focus-visible:ring-primary"
                 aria-busy={updateMut.isPending}
+                startIcon={<CheckLineIcon />}
+                aria-label="Save changes"
               >
                 {updateMut.isPending ? "Saving…" : "Save Changes"}
               </Button>

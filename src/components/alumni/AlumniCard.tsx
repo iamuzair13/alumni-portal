@@ -477,7 +477,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   <TableCell isHeader className={headerClass} onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
                   <TableCell isHeader className={headerClass}>Card Status</TableCell>
                  
-                  <TableCell isHeader className={rightHeaderClass}>Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
