@@ -38,92 +38,7 @@ type UserItem = {
 };
 const STORAGE_KEY_USERS = "setup_users_v1";
 
-const SAMPLE_USERS: UserItem[] = [
-  {
-    id: "U-1001",
-    name: "Ayesha Khan",
-    email: "ayesha.khan@example.com",
-    role: "Admin",
-    status: "active",
-    permissions: {
-      viewDashboard: true,
-      editContent: true,
-      manageUsers: true,
-      viewAnalytics: true,
-    },
-    lastAccess: new Date(Date.now() - 3600_000).toISOString(),
-  },
-  {
-    id: "U-1002",
-    name: "Bilal Ahmed",
-    email: "bilal.ahmed@example.com",
-    role: "Editor",
-    status: "active",
-    permissions: {
-      viewDashboard: true,
-      editContent: true,
-      manageUsers: false,
-      viewAnalytics: true,
-    },
-    lastAccess: new Date(Date.now() - 7200_000).toISOString(),
-  },
-  {
-    id: "U-1003",
-    name: "Chen Li",
-    email: "chen.li@example.com",
-    role: "Viewer",
-    status: "inactive",
-    permissions: {
-      viewDashboard: true,
-      editContent: false,
-      manageUsers: false,
-      viewAnalytics: true,
-    },
-    lastAccess: new Date(Date.now() - 86400_000).toISOString(),
-  },
-  {
-    id: "U-1004",
-    name: "Diego Martinez",
-    email: "diego.martinez@example.com",
-    role: "Editor",
-    status: "active",
-    permissions: {
-      viewDashboard: true,
-      editContent: true,
-      manageUsers: false,
-      viewAnalytics: false,
-    },
-    lastAccess: new Date(Date.now() - 5400_000).toISOString(),
-  },
-  {
-    id: "U-1005",
-    name: "Emma Thompson",
-    email: "emma.thompson@example.com",
-    role: "Viewer",
-    status: "active",
-    permissions: {
-      viewDashboard: true,
-      editContent: false,
-      manageUsers: false,
-      viewAnalytics: true,
-    },
-    lastAccess: new Date(Date.now() - 1800_000).toISOString(),
-  },
-  {
-    id: "U-1006",
-    name: "Farhan Ali",
-    email: "farhan.ali@example.com",
-    role: "Admin",
-    status: "active",
-    permissions: {
-      viewDashboard: true,
-      editContent: true,
-      manageUsers: true,
-      viewAnalytics: true,
-    },
-    lastAccess: new Date(Date.now() - 1000_000).toISOString(),
-  },
-];
+// Removed dummy users; only real-time users are shown via API
 
 type ToastItem = { id: string; type: "success" | "error"; message: string };
 
@@ -182,8 +97,7 @@ export default function SetupPage() {
         const parsed = JSON.parse(raw) as UserItem[];
         setUsers(parsed);
       } else {
-        setUsers(SAMPLE_USERS);
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(SAMPLE_USERS));
+        setUsers([]);
       }
       setUsersLoading(false);
     } catch {

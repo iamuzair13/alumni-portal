@@ -27,21 +27,25 @@ type Profile = {
 
 async function getProfile(searchParams: { sapid?: string }) {
   const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
-  if (sapid) {
+  try {
+    if (sapid) {
+      const rows = await sql/* sql */`
+        SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
+        FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+      return rows[0] as Profile | undefined;
+    }
+    const session = await auth();
+    const email = session?.user?.email ? String(session.user.email) : undefined;
+    if (!email) return undefined;
     const rows = await sql/* sql */`
       SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-      FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+      FROM public.tbl_alumni 
+      WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
+      ORDER BY alumniid DESC LIMIT 1`;
     return rows[0] as Profile | undefined;
+  } catch {
+    return undefined;
   }
-  const session = await auth();
-  const email = session?.user?.email ? String(session.user.email) : undefined;
-  if (!email) return undefined;
-  const rows = await sql/* sql */`
-    SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-    FROM public.tbl_alumni 
-    WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-    ORDER BY alumniid DESC LIMIT 1`;
-  return rows[0] as Profile | undefined;
 }
 
 type AlumniProfileSearchParams = { sapid?: string };
@@ -49,7 +53,13 @@ type AlumniProfileSearchParams = { sapid?: string };
 
 export default async function Page({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
   const sp = await searchParams;
-  const p = await getProfile(sp);
+  let p: Profile | undefined;
+  let profileError: string | null = null;
+  try {
+    p = await getProfile(sp);
+  } catch (e) {
+    profileError = e instanceof Error ? e.message : "Failed to load profile";
+  }
   const session = await auth();
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
@@ -59,10 +69,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const program = p?.degreetitle ?? "";
   const contact = p?.contactno ?? "";
   const email = session?.user?.email ? String(session.user.email) : undefined;
-  const sapRows = email ? await sql/* sql */`
-    SELECT alumniid, sapid FROM public.tbl_alumni 
-    WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-    ORDER BY alumniid DESC LIMIT 1` : [];
+  let sapRows: Array<{ alumniid: number; sapid: string }> = [];
+  let sapError: string | null = null;
+  if (email) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni 
+        WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
+        ORDER BY alumniid DESC LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
+    }
+  }
   const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? "");
   const alumniId = String(sapRows[0]?.alumniid ?? "");
   let cardStatus: CardStatus = "none";
@@ -88,6 +106,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           </div>
         ) : null;
       })()}
+      {profileError && (
+        <div className="mt-4">
+          <Alert variant="error" title="Profile Load Failed" message={profileError} />
+        </div>
+      )}
+      {sapError && (
+        <div className="mt-2">
+          <Alert variant="error" title="Account Lookup Failed" message={sapError} />
+        </div>
+      )}
       <div className="w-full">
     <div className="-mx-4 sm:-mx-6 lg:-mx-8">
       <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
