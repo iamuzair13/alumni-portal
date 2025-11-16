@@ -112,8 +112,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
   }
   return (
-    <div className="w-full px-4 sm:px-6 bg-gray-300 lg:px-8">
+    <div className=" bg-slate-200">
+      <div className="border bg-white">
       <AppHeader />
+      </div>
       {(() => {
         const b = computeLoginBanner(session?.user);
         return b.show ? (
@@ -300,10 +302,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             title: "Alumni Association",
             action: "VIEW",
             color: "text-gray-700",
-            bg: "bg-gray-200",
+            bg: "bg-red-200",
             icon: (
-              <svg role="img" aria-label="Handshake" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
-                <path className="fill-current" d="M16 7a3 3 0 013 3v3l-2 2-3-3-3 3-2-2 3-3-3-3 2-2 3 3 3-3 2 2-3 3zM5 7h4l-2 2-2-2zm0 10l4-4 2 2-3 3H5z"/>
+              <svg role="img" aria-label="Building" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+                <path className="fill-current" d="M12 2L2 7v10h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2V7L12 2zm0 2.5l6 2.5v2h-2V9h-2v2h-2V9h-2v2h-2V9H8v2H6V9H4v-2l6-2.5zM4 11h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
               </svg>
             ),
           },
