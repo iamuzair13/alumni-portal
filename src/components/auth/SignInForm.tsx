@@ -137,7 +137,7 @@ export default function SignInForm() {
         {/* Left Side - University Info */}
         <div className="flex-1 flex flex-col items-start justify-start  text-center">
           <div className="mb-6 flex justify-center">
-            <Image src="/images/logo/login-1.jfif" alt="University Logo" width={128} height={128} className="w-32 h-32 object-contain rounded-full bg-white p-2 shadow-lg" />
+            <Image src="/images/logo/login-1.jpg" alt="University Logo" width={128} height={128} className="w-32 h-32 object-contain rounded-full bg-white p-2 shadow-lg" />
           </div>
           <h1 className="text-5xl font-bold text-white mb-8">
             University of Lahore
@@ -153,7 +153,7 @@ export default function SignInForm() {
           <div className="w-full max-w-md mx-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-white/10 bg-gray-600 flex items-center justify-center" aria-label="Logo">
-                <Image src="/images/logo/login-1.jfif" alt="Logo" width={40} height={40} className="rounded" />
+                <Image src="/images/logo/login-1.jpg" alt="Logo" width={40} height={40} className="rounded" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">Welcome Back</h1>
