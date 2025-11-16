@@ -190,6 +190,10 @@
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
   }
+  img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 @utility menu-item {

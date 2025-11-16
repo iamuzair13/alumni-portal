@@ -132,32 +132,32 @@ export default function SignInForm() {
   }, [status, session, router]);
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-6xl flex items-center justify-between gap-12">
+    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-6 sm:py-8">
+      <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-12">
         {/* Left Side - University Info */}
-        <div className="flex-1 flex flex-col items-start justify-start  text-center">
-          <div className="mb-6 flex justify-center">
-            <Image src="/images/logo/login-1.jpg" alt="University Logo" width={128} height={128} className="w-32 h-32 object-contain rounded-full bg-white p-2 shadow-lg" />
+        <div className="flex-1 flex flex-col items-center lg:items-start justify-start text-center lg:text-left">
+          <div className="mb-6 flex justify-center lg:justify-start">
+            <Image src="/images/logo/login-1.jpg" alt="University Logo" width={128} height={128} className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 object-contain rounded-full bg-white p-2 shadow-lg" sizes="(max-width: 640px) 96px, (max-width: 1024px) 128px, 128px" priority />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-8">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 sm:mb-8">
             University of Lahore
           </h1>
-          <h4 className="text-lg text-white/90 mb-6">Your gateway to alumni connections & opportunities</h4>
-          <button type="button" onClick={openModal} className="bg-white text-green-700 px-8 py-3 rounded-lg font-semibold text-lg hover:bg-gray-100 transition-colors shadow-lg">
+          <h4 className="text-sm sm:text-base lg:text-lg text-white/90 mb-5 sm:mb-6">Your gateway to alumni connections & opportunities</h4>
+          <button type="button" onClick={openModal} className="w-full sm:w-auto bg-white text-green-700 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold text-base sm:text-lg hover:bg-gray-100 transition-colors shadow-lg">
             Register Alumni
           </button>
         </div>
 
         {/* Right Side - Login Form */}
-        <div className="flex-1">
-          <div className="w-full max-w-md mx-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+        <div className="flex-1 w-full">
+          <div className="w-full max-w-md mx-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-white/10 bg-gray-600 flex items-center justify-center" aria-label="Logo">
-                <Image src="/images/logo/login-1.jpg" alt="Logo" width={40} height={40} className="rounded" />
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-md bg-gray-100 dark:bg-white/10 bg-gray-600 flex items-center justify-center" aria-label="Logo">
+                <Image src="/images/logo/login-1.jpg" alt="Logo" width={40} height={40} className="rounded" sizes="40px" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-slate-900">Welcome Back</h1>
-                <p className="text-sm text-slate-600">Please Sign in to your portal</p>
+                <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Welcome Back</h1>
+                <p className="text-xs sm:text-sm text-slate-600">Please Sign in to your portal</p>
     </div>
     <Modal isOpen={isOpen} onClose={closeModal} isFullscreen={true} showCloseButton={true}>
       <div className="fixed inset-0 flex flex-col overflow-y-auto bg-white dark:bg-gray-900 p-4 sm:p-6">
@@ -231,7 +231,7 @@ export default function SignInForm() {
               </div>
             </form>
 
-            <div role="status" aria-live="polite" className="mt-4 text-red-600 text-sm min-h-5">
+            <div role="status" aria-live="polite" className="mt-3 sm:mt-4 text-red-600 text-sm min-h-5">
               {errorMessage}
             </div>
             {verificationError && (
