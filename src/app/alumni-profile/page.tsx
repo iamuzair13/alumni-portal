@@ -112,7 +112,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
   }
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8">
+    <div className="w-full px-4 sm:px-6 bg-gray-300 lg:px-8">
       <AppHeader />
       {(() => {
         const b = computeLoginBanner(session?.user);
@@ -143,7 +143,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 
     {/* 2. Main Content Container (Max-width and Padding) */}
     {/* This container centers and holds the profile details and ID card. */}
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto  px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row -mt-20 sm:-mt-16 gap-8">
 
             {/* A. Profile Card & Social Links (Takes full width on small screens, adjusts on large) */}
