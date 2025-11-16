@@ -125,10 +125,22 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    const url = new URL(req.url);
+    const maybeSapId = url.searchParams.get("sapid");
+    const type = String((session.user as unknown as { type?: string | null })?.type || "").toLowerCase();
+    if (maybeSapId) {
+      if (type !== "staff") return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+      const arows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${maybeSapId} LIMIT 1`;
+      const aid = arows[0]?.alumniid as number | undefined;
+      if (!aid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
+      await sql/* sql */`DELETE FROM public.tblalumnitalks WHERE alumniid = ${aid}`;
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
     const email = String(session.user.email);
     const alumRows = await sql/* sql */`
       SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}

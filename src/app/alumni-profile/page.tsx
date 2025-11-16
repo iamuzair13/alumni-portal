@@ -4,11 +4,13 @@ import { sql } from "@/lib/dbconnect";
 import Image from "next/image";
 import Link from "next/link";
 import AlumniCardAction from "@/components/alumni/AlumniCardAction";
+import MentorshipForm from "@/components/forms/MentorshipForm";
 import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner, safeText, formatPhone, composeFacultyDept } from "@/lib/alumniProfile";
+import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 
 type Profile = {
   alumniname: string | null;
@@ -48,7 +50,7 @@ async function getProfile(searchParams: { sapid?: string }) {
   }
 }
 
-type AlumniProfileSearchParams = { sapid?: string };
+type AlumniProfileSearchParams = { sapid?: string; modal?: string };
 
 
 export default async function Page({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
@@ -83,6 +85,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   }
   const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? "");
   const alumniId = String(sapRows[0]?.alumniid ?? "");
+  const modal = String(sp?.modal ?? "");
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
   try {
@@ -94,6 +97,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     }
   } catch (e) {
     cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
+  }
+  // Mentorship application status for alumni users
+  let mentorshipStatus: MentorshipStatus = "none";
+  let mentorshipStatusError: string | null = null;
+  try {
+    if (alumniId) {
+      const mrows = await sql/* sql */`
+        SELECT alumnitalks, mentorshipprogram FROM public.tblalumnitalks WHERE alumniid = ${alumniId} LIMIT 1`;
+      const rec = mrows[0] as { alumnitalks?: string | null; mentorshipprogram?: string | null } | undefined;
+      mentorshipStatus = deriveMentorshipStatus(rec);
+    }
+  } catch (e) {
+    mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
   }
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -343,6 +359,43 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   program={program}
                   initialStatus={cardStatus === "active" ? "delivered" : cardStatus === "rejected" ? "rejected" : cardStatus === "pending" ? "pending" : null}
                 />
+              ) : c.title === "Mentorship Session" ? (
+                <>
+                  {/* Mentorship status indicator for alumni */}
+                  {mentorshipStatusError ? (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
+                      <span className="text-xs">{mentorshipStatusError}</span>
+                    </div>
+                  ) : mentorshipStatus === "applied" ? (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
+                      <span className="text-xs">Mentorship Status: Applied</span>
+                    </div>
+                  ) : mentorshipStatus === "conducted" ? (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
+                      <span className="text-xs">Mentorship Status: Conducted</span>
+                    </div>
+                  ) : null}
+                  {mentorshipStatus === "applied" ? (
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled
+                      className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                    >
+                      Already Applied
+                    </button>
+                  ) : (
+                    <Link
+                      href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}&modal=mentorship` : `/alumni-profile?modal=mentorship`}
+                      className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      {c.action}
+                    </Link>
+                  )}
+                </>
               ) : (
                 <button type="button" className="mt-4 px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium border-none outline-none bg-blue-600 hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                   {c.action}
@@ -351,6 +404,25 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             </div>
           </div>
         ))}
+        {modal === "mentorship" && (
+          <dialog open className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+            <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+              <div className="flex items-center justify-between border-b p-4">
+                <h2 className="text-lg font-semibold text-slate-900">Apply for Mentorship Session</h2>
+                <Link
+                  aria-label="Close"
+                  href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
+                  className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
+                >
+                  Close
+                </Link>
+              </div>
+              <div className="p-4">
+                <MentorshipForm />
+              </div>
+            </div>
+          </dialog>
+        )}
       </div>
     </div>
   );

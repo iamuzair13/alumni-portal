@@ -1,5 +1,11 @@
-export type CardStatus = "active" | "rejected" | "pending" | "full" | "none";
+export type CardStatus = "none" | "pending" | "rejected" | "active" | "full";
+export type MentorshipStatus = "none" | "applied" | "conducted";
 
-export function statusToVariant(s: CardStatus): "active" | "rejected" | "pending" | "full" | "none" {
-  return s;
+export function deriveMentorshipStatus(row: { alumnitalks?: string | null; mentorshipprogram?: string | null } | undefined): MentorshipStatus {
+  const a = String(row?.alumnitalks ?? "").toLowerCase().trim();
+  const m = String(row?.mentorshipprogram ?? "").toLowerCase().trim();
+  const val = a || m;
+  if (!val) return "none";
+  if (val === "conducted") return "conducted";
+  return "applied";
 }

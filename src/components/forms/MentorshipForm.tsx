@@ -18,10 +18,8 @@ type MeAlumni = {
 
 type MentorshipFormValues = {
   major: string;
-  areas: string[];
-  areaInput: string;
-  topicInput: string;
-  topics: string[];
+  area: string;
+  topic: string;
   day: string;
   start: string;
   end: string;
@@ -29,7 +27,7 @@ type MentorshipFormValues = {
 
 const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
 const labelBase = "block text-sm text-neutral-800";
-const optionChip = "inline-flex items-center gap-2 rounded-full bg-gray-100 text-gray-700 px-3 py-1 text-xs mr-2 mb-2";
+const errorText = "mt-1 text-xs text-rose-600";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
 
@@ -64,15 +62,18 @@ export default function MentorshipForm() {
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     resetField,
+    formState,
+    trigger,
   } = useForm<MentorshipFormValues>({
-    defaultValues: { major: "", areas: [], areaInput: "", topicInput: "", topics: [], day: "", start: "", end: "" },
+    defaultValues: { major: "", area: "", topic: "", day: "", start: "", end: "" },
+    mode: "onBlur",
+    reValidateMode: "onBlur",
   });
 
-  const topics = watch("topics");
-  const areas = watch("areas");
+  const topic = watch("topic");
+  const area = watch("area");
   const start = watch("start");
   const end = watch("end");
 
@@ -87,43 +88,17 @@ export default function MentorshipForm() {
 
   const canSubmit = useMemo(() => {
     const hasMajor = !!watch("major")?.trim();
-    const hasAreas = (areas || []).length > 0;
-    const hasTopics = (topics || []).length > 0;
+    const hasArea = !!String(area || "").trim();
+    const hasTopic = !!String(topic || "").trim();
     const validDay = WEEKDAYS.includes(watch("day") as typeof WEEKDAYS[number]);
     const t1 = String(start || "");
     const t2 = String(end || "");
     const fmt = /^\d{2}:\d{2}$/;
     const timeValid = fmt.test(t1) && fmt.test(t2) && t1 < t2;
-    return hasMajor && hasAreas && hasTopics && validDay && timeValid;
-  }, [areas, topics, start, end, watch]);
+    return hasMajor && hasArea && hasTopic && validDay && timeValid;
+  }, [area, topic, start, end, watch]);
 
-  function addTopicFromInput() {
-    const raw = watch("topicInput") || "";
-    const t = raw.trim();
-    if (!t) return;
-    const next = Array.from(new Set([...(topics || []), t]));
-    setValue("topics", next);
-    setValue("topicInput", "");
-  }
-
-  function removeTopic(t: string) {
-    const next = (topics || []).filter((x) => x !== t);
-    setValue("topics", next);
-  }
-
-  function addAreaFromInput() {
-    const raw = watch("areaInput") || "";
-    const a = raw.trim();
-    if (!a) return;
-    const next = Array.from(new Set([...(areas || []), a]));
-    setValue("areas", next);
-    setValue("areaInput", "");
-  }
-
-  function removeArea(a: string) {
-    const next = (areas || []).filter((x) => x !== a);
-    setValue("areas", next);
-  }
+  const errors = formState.errors;
 
   async function onSubmit(values: MentorshipFormValues) {
     try {
@@ -132,8 +107,8 @@ export default function MentorshipForm() {
       setError(null);
       const payload = {
         major: String(values.major || "").trim(),
-        areas: Array.from(new Set(values.areas || [])).map((s) => String(s).trim()).filter(Boolean),
-        topics: Array.from(new Set(values.topics || [])).map((s) => String(s).trim()).filter(Boolean),
+        areas: [String(values.area || "").trim()].filter(Boolean),
+        topics: [String(values.topic || "").trim()].filter(Boolean),
         day: String(values.day || "").trim(),
         time: `${String(values.start || "").trim()}-${String(values.end || "").trim()}`,
       };
@@ -146,10 +121,8 @@ export default function MentorshipForm() {
       if (!res.ok) throw new Error(data?.error || "Failed to submit");
       setMessage("Submitted");
       qc.invalidateQueries({ queryKey: ["alumni", "participation", "list"] });
-      resetField("topics");
-      resetField("topicInput");
-      resetField("areas");
-      resetField("areaInput");
+      resetField("topic");
+      resetField("area");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -163,7 +136,7 @@ export default function MentorshipForm() {
       <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Mentorship Program</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400">Provide details to participate in mentorship sessions.</p>
 
-      <form className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={handleSubmit(onSubmit)}>
+      <form className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={async (e) => { e.preventDefault(); const ok = await trigger(); if (ok) handleSubmit(onSubmit)(); }}>
         <div>
           <label className={labelBase}>Faculty</label>
           <input className={`${inputBase} bg-gray-100`} value={me?.facultyname || ""} readOnly />
@@ -179,58 +152,48 @@ export default function MentorshipForm() {
 
         <div>
           <label className={labelBase}>Major/Specialization</label>
-          <input className={inputBase} placeholder="e.g., Data Science" {...register("major", { required: true })} />
+          <input className={`${inputBase} ${errors.major ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Data Science" {...register("major", { required: "Major is required" })} />
+          {errors.major && <span className={errorText}>{String(errors.major.message || "Required")}</span>}
         </div>
 
         <div className="md:col-span-2">
           <label className={labelBase}>Area of Experience</label>
-          <div className="mt-1 flex items-center gap-2">
-            <input className={`${inputBase} flex-1`} placeholder="Type and press Enter" {...register("areaInput")} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAreaFromInput(); } }} />
-            <button type="button" className="rounded-md bg-indigo-600 px-3 py-2 text-white" onClick={addAreaFromInput}>Add</button>
-          </div>
-          <div className="mt-2">
-            {(areas || []).map((a) => (
-              <span key={a} className={optionChip}>
-                <span>{a}</span>
-                <button type="button" className="text-xs text-gray-500" onClick={() => removeArea(a)}>×</button>
-              </span>
-            ))}
-          </div>
+          <input className={`${inputBase} ${errors.area ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Web Development" {...register("area", { required: "Area of expertise is required" })} />
+          {errors.area && <span className={errorText}>{String(errors.area.message || "Required")}</span>}
         </div>
 
         <div className="md:col-span-2">
-          <label className={labelBase}>Topics for mentoring</label>
-          <div className="mt-1 flex items-center gap-2">
-            <input className={`${inputBase} flex-1`} placeholder="Type and press Enter" {...register("topicInput")} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTopicFromInput(); } }} />
-            <button type="button" className="rounded-md bg-indigo-600 px-3 py-2 text-white" onClick={addTopicFromInput}>Add</button>
-          </div>
-          <div className="mt-2">
-            {(topics || []).map((t) => (
-              <span key={t} className={optionChip}>
-                <span>{t}</span>
-                <button type="button" className="text-xs text-gray-500" onClick={() => removeTopic(t)}>×</button>
-              </span>
-            ))}
-          </div>
+          <label className={labelBase}>Topic for mentoring</label>
+          <input className={`${inputBase} ${errors.topic ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., React Performance" {...register("topic", { required: "Topic is required" })} />
+          {errors.topic && <span className={errorText}>{String(errors.topic.message || "Required")}</span>}
         </div>
 
         <div>
           <label className={labelBase}>Availability (Weekday)</label>
-          <select className={inputBase} {...register("day", { required: true })}>
+          <select className={`${inputBase} ${errors.day ? "border-rose-500 bg-rose-50" : ""}`} {...register("day", { required: "Weekday is required", validate: (v) => WEEKDAYS.includes(v as typeof WEEKDAYS[number]) || "Weekday must be Monday to Friday" })}>
             <option value="">Select a day</option>
             {WEEKDAYS.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
+          {errors.day && <span className={errorText}>{String(errors.day.message || "Required")}</span>}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelBase}>Start</label>
-            <input type="time" className={inputBase} {...register("start", { required: true })} />
+            <input type="time" className={`${inputBase} ${errors.start ? "border-rose-500 bg-rose-50" : ""}`} {...register("start", { required: "Start time is required", validate: (v) => (/^\d{2}:\d{2}$/.test(String(v)) || "Invalid time format") })} />
+            {errors.start && <span className={errorText}>{String(errors.start.message || "Required")}</span>}
           </div>
           <div>
             <label className={labelBase}>End</label>
-            <input type="time" className={inputBase} {...register("end", { required: true })} />
+            <input type="time" className={`${inputBase} ${errors.end ? "border-rose-500 bg-rose-50" : ""}`} {...register("end", { required: "End time is required", validate: (v) => {
+              const s = String(watch("start") || "");
+              const e = String(v || "");
+              if (!/^\d{2}:\d{2}$/.test(e)) return "Invalid time format";
+              if (!/^\d{2}:\d{2}$/.test(s)) return true;
+              return s < e || "End must be after start";
+            } })} />
+            {errors.end && <span className={errorText}>{String(errors.end.message || "Required")}</span>}
           </div>
         </div>
 

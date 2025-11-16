@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
+import { useRouter } from "next/navigation";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon } from "@/icons";
 
 
 export type CardStatus = "active" | "pending" | "declined" | "all";
@@ -284,6 +285,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   defaultPageSize = 10,
   onRowAction,
 }) => {
+  const router = useRouter();
   const [query, setQuery] = React.useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = React.useState<string>("");
   const [sortKey, setSortKey] = React.useState<SortKey>("name");
@@ -525,26 +527,12 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                     <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatEmail(alum.email)}</TableCell>
                     <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
                     <TableCell className="px-4 py-3 border-r border-gray-200 text-start"><StatusSelect sapId={alum.id} /></TableCell>
-                   <TableCell className="px-4 py-3 text-end">
+                    <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                         {(() => {
-                          const actions: Array<{ key: ActionKey; label: string; icon: React.ComponentType<{ className?: string }>; hover?: string; onClick: () => void }>
-                            = alum.status === "active"
-                            ? [
-                                { key: "suspend", label: "Suspend", icon: LockIcon, hover: "hover:text-amber-600", onClick: () => onRowAction?.(alum, "suspend") },
-                                { key: "delete", label: "Delete", icon: TrashBinIcon, hover: "hover:text-rose-600", onClick: () => onRowAction?.(alum, "delete") },
-                                { key: "view", label: "View", icon: EyeIcon, hover: "hover:text-blue-600", onClick: () => onRowAction?.(alum, "view") },
-                              ]
-                            : alum.status === "pending"
-                            ? [
-                                { key: "verify", label: "Verify", icon: CheckLineIcon, hover: "hover:text-emerald-600", onClick: () => onRowAction?.(alum, "verify") },
-                                { key: "decline", label: "Decline", icon: CloseLineIcon, hover: "hover:text-rose-600", onClick: () => onRowAction?.(alum, "decline") },
-                                { key: "view", label: "View", icon: EyeIcon, hover: "hover:text-blue-600", onClick: () => onRowAction?.(alum, "view") },
-                              ]
-                            : [
-                                { key: "delete", label: "Delete", icon: TrashBinIcon, hover: "hover:text-rose-600", onClick: () => onRowAction?.(alum, "delete") },
-                                { key: "view", label: "View", icon: EyeIcon, hover: "hover:text-blue-600", onClick: () => onRowAction?.(alum, "view") },
-                              ];
+                          const actions: Array<{ key: "view"; label: string; icon: React.ComponentType<{ className?: string }>; hover?: string; onClick: () => void }> = [
+                            { key: "view", label: "View", icon: EyeIcon, hover: "hover:text-blue-600", onClick: () => { router.push(`/alumni/${alum.id}`); onRowAction?.(alum, "view"); } },
+                          ];
                           return actions.map(({ key, label, icon: Icon, onClick, hover }, i) => (
                             <button
                               key={`${alum.id}-action-${key}-${i}`}

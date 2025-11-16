@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import Alert from "@/components/ui/alert/Alert";
 import { useModal } from "@/hooks/useModal";
@@ -192,7 +191,6 @@ export default function SignInForm() {
               <div>
                 <div className="flex items-center justify-between">
                   <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
-                  <Link href="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700">Forgot Password?</Link>
                 </div>
                 <div className="relative mt-1">
                   <input

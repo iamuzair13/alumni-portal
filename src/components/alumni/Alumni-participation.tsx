@@ -7,7 +7,8 @@ import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useAlumniParticipationList } from "@/app/queries/fetch-alumni-participation";
 import type { MentorshipItem } from "@/app/queries/fetch-alumni-participation";
-import MentorshipForm from "@/components/forms/MentorshipForm";
+import { useQueryClient } from "@tanstack/react-query";
+import { Modal } from "@/components/ui/modal";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
@@ -59,6 +60,12 @@ export const AlumniParticipation: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("talkMentorship");
   const router = useRouter();
   const { data, isLoading, error } = useAlumniParticipationList();
+  const qc = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [targetSapId, setTargetSapId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
 
   // Icon mapping (replicates Alumni-tabs typed map; using GroupIcon consistently)
   const ICON_COMPONENT_MAP: Record<
@@ -103,6 +110,34 @@ export const AlumniParticipation: React.FC = () => {
       } as TableItem;
     });
   }, [data]);
+
+  async function deleteMentorshipBySapId(sapid: string) {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/alumni/talks?sapid=${encodeURIComponent(sapid)}`, {
+        method: "DELETE",
+        headers: { accept: "application/json" },
+        credentials: "same-origin",
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || `Failed (${res.status})`);
+      const key = ["alumni", "participation", "list"] as const;
+      const prev = qc.getQueryData<MentorshipItem[]>(key);
+      if (prev) {
+        const next = prev.filter((r) => String(r.sapid) !== String(sapid));
+        qc.setQueryData(key, next);
+      }
+      setDeleteSuccess("Mentorship session deleted successfully");
+      setConfirmOpen(false);
+      setTargetSapId(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const filteredParticipants = useMemo(
     () => PARTICIPANTS.filter((p) => p.level.includes(selected)),
@@ -199,7 +234,16 @@ export const AlumniParticipation: React.FC = () => {
           </div>
         </div>
 
-        <MentorshipForm />
+        {deleteSuccess && (
+          <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-3 py-2 border border-emerald-200">
+            <span className="text-sm">{deleteSuccess}</span>
+          </div>
+        )}
+        {deleteError && (
+          <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-3 py-2 border border-rose-200">
+            <span className="text-sm">{deleteError}</span>
+          </div>
+        )}
         <div className="overflow-hidden rounded-2xl bg-white dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live={loading ? "polite" : undefined}>
             <div className="min-w-full xl:min-w-full">
@@ -311,7 +355,7 @@ export const AlumniParticipation: React.FC = () => {
                             {(() => {
                               const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> = [
                                 { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => {}, hover: "hover:text-rose-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" },
                               ];
                               return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
                                 <button
@@ -360,6 +404,36 @@ export const AlumniParticipation: React.FC = () => {
           </div>
         </div>
       </div>
+      {confirmOpen && (
+        <Modal isOpen={confirmOpen} onClose={() => { if (!deleting) { setConfirmOpen(false); setTargetSapId(null); } }} className="max-w-md mx-auto">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Are you sure you want to delete this mentorship session?</h3>
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <button type="button" disabled={deleting} onClick={() => { setConfirmOpen(false); setTargetSapId(null); }} className="rounded-md px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">Cancel</button>
+              <button type="button" disabled={deleting || !targetSapId} onClick={() => { if (targetSapId) deleteMentorshipBySapId(targetSapId); }} className="rounded-md px-4 py-2 text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500">
+                {deleting ? "Deleting…" : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </ComponentCard>
   );
 };
+
+export async function deleteMentorshipSessionBySapId(qc: import("@tanstack/react-query").QueryClient, sapid: string) {
+  const res = await fetch(`/api/alumni/talks?sapid=${encodeURIComponent(sapid)}`, {
+    method: "DELETE",
+    headers: { accept: "application/json" },
+    credentials: "same-origin",
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j?.error || `Failed (${res.status})`);
+  const key = ["alumni", "participation", "list"] as const;
+  const prev = qc.getQueryData<MentorshipItem[]>(key);
+  if (prev) {
+    const next = prev.filter((r) => String(r.sapid) !== String(sapid));
+    qc.setQueryData(key, next);
+  }
+  return true;
+}
