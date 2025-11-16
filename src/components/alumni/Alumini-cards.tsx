@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon,  EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
+import { LockIcon, EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
 import { alumniCardServerSchema } from "@/lib/alumniCards";
 import {  AlumniDataTable } from "./AlumniCard";
 
@@ -40,49 +40,7 @@ type AlumniCardsProps = {
   pageSize?: number;
 };
 
-const CARD_TABS: { key: CardStatus; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "pending", label: "Pending" },
-  { key: "declined", label: "Declined" },
-];
-
-const STATUS_CLASS_MAP: Record<
-  CardStatus,
-  { color: string; bgColor: string; ringColor: string; iconColor: string }
-> = {
-  all: {
-    color: "text-blue-700",
-    bgColor: "bg-blue-50",
-    ringColor: "ring-blue-200",
-    iconColor: "text-blue-500",
-  },
-  active: {
-    color: "text-green-700",
-    bgColor: "bg-green-50",
-    ringColor: "ring-green-200",
-    iconColor: "text-green-600",
-  },
-  pending: {
-    color: "text-amber-700",
-    bgColor: "bg-amber-50",
-    ringColor: "ring-amber-200",
-    iconColor: "text-amber-600",
-  },
-  declined: {
-    color: "text-red-700",
-    bgColor: "bg-red-50",
-    ringColor: "ring-red-200",
-    iconColor: "text-red-600",
-  },
-};
-
-const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
-  all: GroupIcon,
-  active: BoltIcon,
-  pending: TimeIcon,
-  declined: LockIcon,
-};
+ 
 
 export function getActionsForStatus(status: CardStatus): ActionDef[] {
   switch (status) {
@@ -234,7 +192,7 @@ export function filterCards(
 }
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
-  const [status, setStatus] = useState<CardStatus>(initialStatus);
+  const [status] = useState<CardStatus>(initialStatus);
   const [query] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
@@ -243,7 +201,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   const [total, setTotal] = useState<number>(0);
  
   const memoCards = useMemo(() => MOCK_ALUMNI_CARDS, []);
-  const searchRef = useRef<HTMLInputElement>(null);
+  
 
   useEffect(() => {
     let canceled = false;
@@ -340,46 +298,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     <ComponentCard className="">
       {/* Filters & Search */}
       <div className="p-4 rounded-xl border border-neutral-200 bg-white">
-        <div className="flex items-center gap-3 overflow-x-auto flex-nowrap pb-2" role="tablist" aria-label="Card status filters">
-          {CARD_TABS.map((tab, idx) => {
-            const Icon = STATUS_ICON_MAP[tab.key];
-            const theme = STATUS_CLASS_MAP[tab.key];
-            const isActive = status === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setStatus(tab.key);
-                  setCurrentPage(1);
-                  searchRef.current?.focus();
-                }}
-                role="tab"
-                aria-selected={isActive}
-                aria-label={`Filter by ${tab.label}`}
-                className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium ring-1 ring-inset transition-colors focus:outline-none focus-visible:ring-2 ${
-                  isActive
-                    ? `${theme.bgColor} ${theme.color} ${theme.ringColor}`
-                    : `text-neutral-700 ring-neutral-200 hover:bg-neutral-50`
-                }`}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    e.preventDefault();
-                    const nextIdx = (idx + 1) % CARD_TABS.length;
-                    setStatus(CARD_TABS[nextIdx].key);
-                  } else if (e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    const prevIdx = (idx - 1 + CARD_TABS.length) % CARD_TABS.length;
-                    setStatus(CARD_TABS[prevIdx].key);
-                  }
-                }}
-              >
-                <Icon className={`h-6 w-6 ${isActive ? theme.iconColor : "text-neutral-500"}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+
 
       
       </div>
