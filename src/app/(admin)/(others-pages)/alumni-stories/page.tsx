@@ -156,10 +156,11 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
 
                   <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
                     <img
-                      src={story.imageUrl || "https://via.placeholder.com/64"}
+                      src={safeImageSrc(story.imageUrl)}
                       alt={`${story.name}'s story image`}
                       className="w-10 h-10 rounded-lg object-cover"
                       loading="lazy"
+                      onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/64"; }}
                     />
                   </TableCell>
                   {/* add action button to view full story(create new component having full information of the student) and delete story */}
@@ -658,3 +659,16 @@ const AddStoryForm: React.FC = () => {
     </form>
   );
 };
+function safeImageSrc(input?: string): string {
+  const u = String(input || "").trim();
+  if (!u) return "https://via.placeholder.com/64";
+  try {
+    const isAbsolute = /^https?:\/\//i.test(u);
+    if (!isAbsolute) return u;
+    const parsed = new URL(u);
+    if (parsed.protocol === "http:") parsed.protocol = "https:";
+    return parsed.toString();
+  } catch {
+    return "https://via.placeholder.com/64";
+  }
+}

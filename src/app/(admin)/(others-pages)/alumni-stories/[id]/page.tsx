@@ -234,9 +234,22 @@ export default function StoryDetailPage() {
               <div className="flex flex-col items-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={imagePreviewUrl || form.imageUrl || "https://via.placeholder.com/128"}
+                  src={(function () {
+                    const u = (imagePreviewUrl || form.imageUrl || "").trim();
+                    if (!u) return "https://via.placeholder.com/128";
+                    try {
+                      const abs = /^https?:\/\//i.test(u);
+                      if (!abs) return u;
+                      const t = new URL(u);
+                      if (t.protocol === "http:") t.protocol = "https:";
+                      return t.toString();
+                    } catch {
+                      return "https://via.placeholder.com/128";
+                    }
+                  })()}
                   alt={`${form.name || "Alumni"}'s image`}
                   className="w-32 h-32 rounded-xl object-cover"
+                  onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/128"; }}
                 />
                 <div className="mt-3 w-full">
                   <label className="text-sm text-gray-600 dark:text-gray-300">Image (JPG/PNG ≤ 2MB)</label>

@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
+const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const nextConfig = {
   images: {
-    domains: ["lh3.googleusercontent.com", "readymadeui.com"],
+    domains: ["lh3.googleusercontent.com", "readymadeui.com", ...extraDomains],
+    remotePatterns: extraDomains.map((d) => ({ protocol: "https", hostname: d, port: "", pathname: "**" })),
   },
   webpack(config) {
     config.module.rules.push({
