@@ -175,7 +175,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   <div className="bg-white flex justify-between border rounded-lg p-6 pt-0">
                     <div>
                       <div className="flex flex-col items-start sm:flex-row sm:items-end">
-                        <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-100 overflow-hidden -mt-16 sm:-mt-10">
+                        <div className="w-32 h-32 rounded-full border-4 border-red-600 bg-gray-100 overflow-hidden -mt-16 sm:-mt-10 ">
                           <Image
                             src={avatar}
                             alt={name || "alumni"}
