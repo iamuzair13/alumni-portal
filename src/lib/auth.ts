@@ -4,7 +4,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { Session } from "next-auth";
-import { sql } from "@/lib/dbconnect";
 import { authenticateCredentials } from "../auth/credentials";
 
 type DbUser = {
@@ -104,6 +103,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account.provider === "google") {
         const email = user?.email ?? "";
         if (!email) return "/signin?error=INVALID_EMAIL";
+        const { sql } = await import("@/lib/dbconnect");
         const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
         const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
         if (!dbUser) return "/signin?error=USER_NOT_FOUND";
@@ -111,6 +111,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const u: UserWithDb = user as UserWithDb;
         u.dbUser = dbUser;
         try {
+          const { sql } = await import("@/lib/dbconnect");
           await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
         } catch {}
         return "/";
@@ -190,6 +191,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const email = String(user.email || token.email || "");
             if (email) {
               try {
+                const { sql } = await import("@/lib/dbconnect");
                 const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
                 const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
                 if (dbUser) {
@@ -203,6 +205,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                   token.email = dbUser.email || token.email;
                   token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
                 } else {
+                  const { sql } = await import("@/lib/dbconnect");
                   const arows = await sql/* sql */`SELECT alumniid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
                   const a = arows[0] as {
                     alumniid: number;

@@ -25,8 +25,8 @@ type MentorshipFormValues = {
   end: string;
 };
 
-const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
-const labelBase = "block text-sm text-neutral-800";
+const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
+const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
 const errorText = "mt-1 text-xs text-rose-600";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
@@ -136,74 +136,96 @@ export default function MentorshipForm() {
       <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Mentorship Program</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400">Provide details to participate in mentorship sessions.</p>
 
-      <form className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={async (e) => { e.preventDefault(); const ok = await trigger(); if (ok) handleSubmit(onSubmit)(); }}>
-        <div>
-          <label className={labelBase}>Faculty</label>
-          <input className={`${inputBase} bg-gray-100`} value={me?.facultyname || ""} readOnly />
-        </div>
-        <div>
-          <label className={labelBase}>Program</label>
-          <input className={`${inputBase} bg-gray-100`} value={me?.degreetitle || ""} readOnly />
-        </div>
-        <div>
-          <label className={labelBase}>Department</label>
-          <input className={`${inputBase} bg-gray-100`} value={me?.departmentname || ""} readOnly />
-        </div>
-
-        <div>
-          <label className={labelBase}>Major/Specialization</label>
-          <input className={`${inputBase} ${errors.major ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Data Science" {...register("major", { required: "Major is required" })} />
-          {errors.major && <span className={errorText}>{String(errors.major.message || "Required")}</span>}
-        </div>
-
-        <div className="md:col-span-2">
-          <label className={labelBase}>Area of Experience</label>
-          <input className={`${inputBase} ${errors.area ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Web Development" {...register("area", { required: "Area of expertise is required" })} />
-          {errors.area && <span className={errorText}>{String(errors.area.message || "Required")}</span>}
-        </div>
-
-        <div className="md:col-span-2">
-          <label className={labelBase}>Topic for mentoring</label>
-          <input className={`${inputBase} ${errors.topic ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., React Performance" {...register("topic", { required: "Topic is required" })} />
-          {errors.topic && <span className={errorText}>{String(errors.topic.message || "Required")}</span>}
-        </div>
-
-        <div>
-          <label className={labelBase}>Availability (Weekday)</label>
-          <select className={`${inputBase} ${errors.day ? "border-rose-500 bg-rose-50" : ""}`} {...register("day", { required: "Weekday is required", validate: (v) => WEEKDAYS.includes(v as typeof WEEKDAYS[number]) || "Weekday must be Monday to Friday" })}>
-            <option value="">Select a day</option>
-            {WEEKDAYS.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-          {errors.day && <span className={errorText}>{String(errors.day.message || "Required")}</span>}
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+      <form className="max-w-4xl mx-auto mt-4" onSubmit={async (e) => { e.preventDefault(); const ok = await trigger(); if (ok) handleSubmit(onSubmit)(); }}>
+        <div className="grid sm:grid-cols-2 gap-6">
           <div>
-            <label className={labelBase}>Start</label>
-            <input type="time" className={`${inputBase} ${errors.start ? "border-rose-500 bg-rose-50" : ""}`} {...register("start", { required: "Start time is required", validate: (v) => (/^\d{2}:\d{2}$/.test(String(v)) || "Invalid time format") })} />
-            {errors.start && <span className={errorText}>{String(errors.start.message || "Required")}</span>}
+            <label className={labelBase}>Faculty</label>
+            <div className="relative flex items-center">
+              <input className={inputBase} value={me?.facultyname || ""} readOnly />
+            </div>
           </div>
           <div>
-            <label className={labelBase}>End</label>
-            <input type="time" className={`${inputBase} ${errors.end ? "border-rose-500 bg-rose-50" : ""}`} {...register("end", { required: "End time is required", validate: (v) => {
-              const s = String(watch("start") || "");
-              const e = String(v || "");
-              if (!/^\d{2}:\d{2}$/.test(e)) return "Invalid time format";
-              if (!/^\d{2}:\d{2}$/.test(s)) return true;
-              return s < e || "End must be after start";
-            } })} />
-            {errors.end && <span className={errorText}>{String(errors.end.message || "Required")}</span>}
+            <label className={labelBase}>Program</label>
+            <div className="relative flex items-center">
+              <input className={inputBase} value={me?.degreetitle || ""} readOnly />
+            </div>
+          </div>
+          <div>
+            <label className={labelBase}>Department</label>
+            <div className="relative flex items-center">
+              <input className={inputBase} value={me?.departmentname || ""} readOnly />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelBase}>Major/Specialization</label>
+            <div className="relative flex items-center">
+              <input className={`${inputBase} ${errors.major ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Data Science" {...register("major", { required: "Major is required" })} />
+            </div>
+            {errors.major && <span className={errorText}>{String(errors.major.message || "Required")}</span>}
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelBase}>Area of Experience</label>
+            <div className="relative flex items-center">
+              <input className={`${inputBase} ${errors.area ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Web Development" {...register("area", { required: "Area of expertise is required" })} />
+            </div>
+            {errors.area && <span className={errorText}>{String(errors.area.message || "Required")}</span>}
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelBase}>Topic for mentoring</label>
+            <div className="relative flex items-center">
+              <input className={`${inputBase} ${errors.topic ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., React Performance" {...register("topic", { required: "Topic is required" })} />
+            </div>
+            {errors.topic && <span className={errorText}>{String(errors.topic.message || "Required")}</span>}
+          </div>
+
+          <div>
+            <label className={labelBase}>Availability (Weekday)</label>
+            <div className="relative flex items-center">
+              <select className={`${inputBase} ${errors.day ? "border-rose-500 bg-rose-50" : ""}`} {...register("day", { required: "Weekday is required", validate: (v) => WEEKDAYS.includes(v as typeof WEEKDAYS[number]) || "Weekday must be Monday to Friday" })}>
+                <option value="">Select a day</option>
+                {WEEKDAYS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+            {errors.day && <span className={errorText}>{String(errors.day.message || "Required")}</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className={labelBase}>Start</label>
+              <div className="relative flex items-center">
+                <input type="time" className={`${inputBase} ${errors.start ? "border-rose-500 bg-rose-50" : ""}`} {...register("start", { required: "Start time is required", validate: (v) => (/^\d{2}:\d{2}$/.test(String(v)) || "Invalid time format") })} />
+              </div>
+              {errors.start && <span className={errorText}>{String(errors.start.message || "Required")}</span>}
+            </div>
+            <div>
+              <label className={labelBase}>End</label>
+              <div className="relative flex items-center">
+                <input type="time" className={`${inputBase} ${errors.end ? "border-rose-500 bg-rose-50" : ""}`} {...register("end", { required: "End time is required", validate: (v) => {
+                  const s = String(watch("start") || "");
+                  const e = String(v || "");
+                  if (!/^\d{2}:\d{2}$/.test(e)) return "Invalid time format";
+                  if (!/^\d{2}:\d{2}$/.test(s)) return true;
+                  return s < e || "End must be after start";
+                } })} />
+              </div>
+              {errors.end && <span className={errorText}>{String(errors.end.message || "Required")}</span>}
+            </div>
           </div>
         </div>
 
         <div className="md:col-span-2 flex items-center gap-3">
-          <button type="submit" disabled={!canSubmit || submitting || loadingMe} className={`rounded-md px-4 py-2 text-white ${canSubmit && !submitting ? "bg-indigo-600" : "bg-gray-400"}`}>Submit</button>
+          <button type="submit" disabled={!canSubmit || submitting || loadingMe} className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60">Submit</button>
           {submitting && <span className="text-sm text-gray-500">Submitting…</span>}
           {message && <span className="text-sm text-green-600">{message}</span>}
           {error && <span className="text-sm text-rose-600">{error}</span>}
         </div>
-      </form>
+      
+
+    </form>
     </div>
   );
 }

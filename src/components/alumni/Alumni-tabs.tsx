@@ -8,6 +8,8 @@ import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { isAdminUser } from "@/lib/alumniProfile";
 import { getAlumniList, type AlumniListItem } from "@/app/queries/fetch-alumni";
 
 type TabKey =
@@ -94,6 +96,7 @@ const STATUS_CLASS_MAP: Record<
 export const AlumniTabs: React.FC = () => {
   const router = useRouter();
   const [selected, setSelected] = useState<TabKey>("total");
+  const { data: session } = useSession();
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -263,6 +266,7 @@ export const AlumniTabs: React.FC = () => {
       });
       if (!res.ok) throw new Error(`Failed to verify: ${res.status}`);
       setActionMessage("Alumni verified successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
     } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, false);
@@ -271,7 +275,7 @@ export const AlumniTabs: React.FC = () => {
     } finally {
       stopMut(sapid);
     }
-  }, [startMut, stopMut, updateCacheVerify]);
+  }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
   const handleUnverify = useCallback(async (sapid: string) => {
     setActionError(null);
@@ -286,6 +290,7 @@ export const AlumniTabs: React.FC = () => {
       });
       if (!res.ok) throw new Error(`Failed to unverify: ${res.status}`);
       setActionMessage("Alumni marked as unverified.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
     } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, true);
@@ -294,7 +299,7 @@ export const AlumniTabs: React.FC = () => {
     } finally {
       stopMut(sapid);
     }
-  }, [startMut, stopMut, updateCacheVerify]);
+  }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
   const handleDelete = useCallback(async (sapid: string) => {
     setActionError(null);
@@ -306,6 +311,7 @@ export const AlumniTabs: React.FC = () => {
       const res = await fetch(`/api/alumni/${sapid}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`Failed to delete: ${res.status}`);
       setActionMessage("Alumni deleted successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
     } catch (e: unknown) {
       // rollback
       if (prev) queryClient.setQueryData(["alumnilist"], prev);
@@ -317,9 +323,10 @@ export const AlumniTabs: React.FC = () => {
   }, [removeFromCache, startMut, stopMut, queryClient]);
 
   const handleView = useCallback((sapid: string) => {
-    // Redirect to profile page with sapid as a query parameter
-    router.push(`/profile?sapid=${encodeURIComponent(sapid)}`);
-  }, [router]);
+    const isAdmin = isAdminUser(session?.user);
+    const url = isAdmin ? `/alumni-profile?sapid=${encodeURIComponent(sapid)}&modal=` : `/alumni-profile?sapid=${encodeURIComponent(sapid)}`;
+    router.push(url);
+  }, [router, session]);
 
   return (
     <ComponentCard  className=" ">

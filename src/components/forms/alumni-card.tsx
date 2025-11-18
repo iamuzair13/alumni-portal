@@ -13,6 +13,7 @@ type Props = {
   department: string;
   program: string;
   onSuccess?: () => void;
+  onCancel?: () => void;
 };
 
 const schema = z.object({
@@ -24,9 +25,9 @@ const schema = z.object({
 
 type FormVals = z.infer<typeof schema>;
 
-const inputBase = "border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md";
-const labelBase = "text-sm text-gray-600";
-const buttonPrimary = "inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60";
+const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
+const labelBase = "my-2 text-sm text-slate-900 font-medium block";
+const buttonPrimary = "mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] mx-auto block bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60";
 
 export function validateImage(file: File | undefined): { ok: boolean; error?: string } {
   if (!file) return { ok: false, error: "Select an image file" };
@@ -37,16 +38,28 @@ export function validateImage(file: File | undefined): { ok: boolean; error?: st
   return { ok: true };
 }
 
-export default function AlumniCardForm({ alumniId, faculty, department, program, onSuccess }: Props) {
+export default function AlumniCardForm({ alumniId, faculty, department, program, onSuccess, onCancel }: Props) {
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm<FormVals>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
     defaultValues: { preference: "Collect" },
     mode: "onChange",
   });
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("alumni-card-last");
+      if (raw) {
+        const last = JSON.parse(raw) as { cnicno?: string; cardaddress?: string; status?: string };
+        if (last.cnicno) setValue("cnic", last.cnicno);
+        if (last.cardaddress) setValue("address", last.cardaddress);
+        if (last.status && (last.status === "Collect" || last.status === "Deliver")) setValue("preference", last.status as FormVals["preference"]);
+      }
+    } catch {}
+  }, [setValue]);
 
   
 
@@ -83,67 +96,97 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
   };
 
   return (
-    <form className="grid grid-cols-1 gap-4" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <>
+    <form className="max-w-4xl mx-auto mt-4 " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
+      <div className="grid sm:grid-cols-2 gap-6">
         <div>
           <label className={labelBase} htmlFor="faculty">Faculty</label>
-          <input id="faculty" className={inputBase} value={faculty} readOnly aria-label="Faculty" />
+          <div className="relative flex items-center">
+            <input id="faculty" className={inputBase} value={faculty} readOnly aria-label="Faculty" />
+          </div>
         </div>
         <div>
           <label className={labelBase} htmlFor="department">Department</label>
-          <input id="department" className={inputBase} value={department} readOnly aria-label="Department" />
+          <div className="relative flex items-center">
+            <input id="department" className={inputBase} value={department} readOnly aria-label="Department" />
+          </div>
         </div>
         <div>
           <label className={labelBase} htmlFor="program">Program</label>
-          <input id="program" className={inputBase} value={program} readOnly aria-label="Program" />
+          <div className="relative flex items-center">
+            <input id="program" className={inputBase} value={program} readOnly aria-label="Program" />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-2 gap-6">
         <div>
           <label className={labelBase} htmlFor="cnic">CNIC Number</label>
-          <input id="cnic" {...register("cnic")} className={inputBase} placeholder="12345-1234567-1" aria-label="CNIC" />
+          <div className="relative flex items-center">
+            <input id="cnic" {...register("cnic")} className={inputBase} placeholder="12345-1234567-1" aria-label="CNIC" />
+          </div>
           {errors.cnic && <p className="text-xs text-red-600 mt-1">{errors.cnic.message}</p>}
         </div>
         <div>
           <label className={labelBase} htmlFor="preference">Delivery Preference</label>
-          <select id="preference" {...register("preference")} className={inputBase} aria-label="Delivery preference">
-            <option value="Collect">Collect from Campus</option>
-            <option value="Deliver">Get it Delivered to Address</option>
-          </select>
+          <div className="relative flex items-center">
+            <select id="preference" {...register("preference")} className={inputBase} aria-label="Delivery preference">
+              <option value="Collect">Collect from Campus</option>
+              <option value="Deliver">Get it Delivered to Address</option>
+            </select>
+          </div>
           {errors.preference && <p className="text-xs text-red-600 mt-1">{errors.preference.message}</p>}
         </div>
       </div>
 
       <div>
         <label className={labelBase} htmlFor="address">Postal Address</label>
-        <textarea id="address" {...register("address")} className={inputBase} rows={3} aria-label="Postal Address" />
+        <div className="relative flex items-center mt-4">
+          <textarea
+            id="address"
+            {...register("address")}
+            className={`${inputBase} ${watch("preference") === "Collect" ? "bg-gray-100 opacity-60 cursor-not-allowed" : ""}`}
+            rows={3}
+            aria-label="Postal Address"
+            aria-disabled={watch("preference") === "Collect"}
+            disabled={watch("preference") === "Collect"}
+          />
+        </div>
+        {watch("preference") === "Collect" && (
+          <p className="text-xs text-gray-500 mt-1">Collect you card from campus</p>
+        )}
         {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address.message}</p>}
       </div>
 
       <div>
-        <label className={labelBase} htmlFor="picture">Profile Picture</label>
-        <input
-          id="picture"
-          type="file"
-          accept="image/jpeg,image/png,image/gif"
-          className={inputBase}
-          aria-label="Profile picture"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            const v = validateImage(file);
-            if (!v.ok) {
-              setFileError(v.error || "Invalid file");
-              setPreviewUrl(null);
-              setValue("pictureName", "");
-              return;
-            }
-            setFileError(null);
-            setPreviewUrl(file ? URL.createObjectURL(file) : null);
-            setValue("pictureName", file?.name || "");
-          }}
-          disabled={isSubmitting}
-        />
+        <label className={labelBase} htmlFor="picture">
+          Profile Picture
+          <span className="text-red-600 ml-1">*</span>
+          <span className="ml-2 text-xs text-slate-500">Image must be headshot and blue background</span>
+        </label>
+        <div className="relative flex items-center">
+          <input
+            id="picture"
+            type="file"
+            accept="image/jpeg,image/png,image/gif"
+            className={inputBase}
+            aria-label="Profile picture"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              const v = validateImage(file);
+              if (!v.ok) {
+                setFileError(v.error || "Invalid file");
+                setPreviewUrl(null);
+                setValue("pictureName", "");
+                return;
+              }
+              setFileError(null);
+              setPreviewUrl(file ? URL.createObjectURL(file) : null);
+              setValue("pictureName", file?.name || "");
+            }}
+            disabled={isSubmitting}
+          />
+        </div>
         <input type="hidden" {...register("pictureName")} name="pictureName" />
         {fileError && <p className="text-xs text-red-600 mt-1">{fileError}</p>}
         {errors.pictureName && <p className="text-xs text-red-600 mt-1">{errors.pictureName.message}</p>}
@@ -155,6 +198,9 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       </div>
 
       <div className="flex items-center justify-end gap-2">
+        <button type="button" className="inline-flex items-center rounded-lg bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400" onClick={() => onCancel?.()} aria-label="Cancel application">
+          Cancel
+        </button>
         <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
           {isSubmitting ? "Submitting..." : "Submit"}
         </button>
@@ -165,5 +211,7 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
         {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700">{serverError}</div>}
       </div>
     </form>
+    
+</>
   );
 }

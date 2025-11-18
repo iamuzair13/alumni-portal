@@ -38,6 +38,9 @@ export function useAlumniList() {
     queryKey: ["alumnilist"],
     queryFn: ({ signal }) => getAlumniList(signal),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchOnMount: "always",
   });
 }
 

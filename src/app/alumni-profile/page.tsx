@@ -9,8 +9,9 @@ import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner, safeText, formatPhone, composeFacultyDept } from "@/lib/alumniProfile";
+import { computeLoginBanner, isAdminUser, safeText, formatPhone } from "@/lib/alumniProfile";
 import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
+import ProfileDetailsClient from "./ProfileDetailsClient";
 
 type Profile = {
   alumniname: string | null;
@@ -63,6 +64,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
   const session = await auth();
+  const isAdmin = isAdminUser(session?.user);
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
   const avatar = googleImage ?? "/images/person.jpg";
@@ -88,32 +90,44 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const modal = String(sp?.modal ?? "");
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
-  try {
-    if (alumniId) {
-      const cr = await sql/* sql */`
-        SELECT status FROM public.tblcard WHERE alumniid = ${alumniId} ORDER BY cardid DESC LIMIT 1`;
-      const raw = String(cr[0]?.status ?? "").toLowerCase();
-      cardStatus = raw === "delivered" ? "active" : raw === "rejected" ? "rejected" : raw === "pending" ? "pending" : raw === "full" ? "full" : "none";
+  if (isAdmin) {
+    cardStatus = "active";
+    cardStatusError = null;
+  } else {
+    try {
+      if (sapId) {
+        // Preload validation now uses sapid to check existing tblcard association
+        const cr = await sql/* sql */`
+          SELECT c.status FROM public.tblcard c
+          JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+          WHERE a.sapid = ${sapId}
+          ORDER BY c.cardid DESC LIMIT 1`;
+        const raw = String(cr[0]?.status ?? "").toLowerCase();
+        cardStatus = raw === "delivered" ? "active" : raw === "rejected" ? "rejected" : raw === "pending" ? "pending" : raw === "full" ? "full" : "none";
+      }
+    } catch (e) {
+      cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
     }
-  } catch (e) {
-    cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
   }
   // Mentorship application status for alumni users
   let mentorshipStatus: MentorshipStatus = "none";
   let mentorshipStatusError: string | null = null;
-  try {
-    if (alumniId) {
-      const mrows = await sql/* sql */`
-        SELECT alumnitalks, mentorshipprogram FROM public.tblalumnitalks WHERE alumniid = ${alumniId} LIMIT 1`;
-      const rec = mrows[0] as { alumnitalks?: string | null; mentorshipprogram?: string | null } | undefined;
-      mentorshipStatus = deriveMentorshipStatus(rec);
+  if (!isAdmin) {
+    try {
+      if (alumniId) {
+        const mrows = await sql/* sql */`
+          SELECT alumnitalks, mentorshipprogram FROM public.tblalumnitalks WHERE alumniid = ${alumniId} LIMIT 1`;
+        const rec = mrows[0] as { alumnitalks?: string | null; mentorshipprogram?: string | null } | undefined;
+        mentorshipStatus = deriveMentorshipStatus(rec);
+      }
+    } catch (e) {
+      mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
     }
-  } catch (e) {
-    mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
   }
   return (
-    <div className=" bg-slate-200">
-      <div className="border bg-white">
+    <>
+    <div className=" bg-slate-200 overflow-x-hidden">
+      <div className="border bg-white relative z-50">
       <AppHeader />
       </div>
       {(() => {
@@ -134,7 +148,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           <Alert variant="error" title="Account Lookup Failed" message={sapError} />
         </div>
       )}
-      <div className="w-full">
+      <div className="min-w-screen">
     <div className="-mx-4 sm:-mx-6 lg:-mx-8">
       <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -145,114 +159,76 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 
     {/* 2. Main Content Container (Max-width and Padding) */}
     {/* This container centers and holds the profile details and ID card. */}
-    <div className="max-w-7xl mx-auto  px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row -mt-20 sm:-mt-16 gap-8">
+    <div className="min-w-screen mx-auto  px-4 sm:px-6 lg:px-8">
+        <div className="flex bg-white rounded-[10px] lg:flex-row -mt-20 sm:-mt-16 gap-8 pb-10 pr-4">
 
-            {/* A. Profile Card & Social Links (Takes full width on small screens, adjusts on large) */}
-            <div className="w-full lg:w-3/4 flex-shrink-0">
-                <div className="bg-white rounded-lg shadow-xl p-6 pt-0">
-                    
-                    {/* Avatar & Details Group */}
-                    <div className="flex flex-col items-start sm:flex-row sm:items-end">
-                        
-                        {/* Avatar */}
-                        {/* Adjusted negative margin (-mt-16) to align with the banner bottom */}
+            <div className="w-full flex  ">
+                {sapId ? (
+                  <ProfileDetailsClient sapId={sapId} />
+                ) : (
+                  <div className="bg-white flex justify-between border  rounded-lg p-6 pt-0">
+                    <div>
+                      <div className="flex flex-col  items-start sm:flex-row sm:items-end">
                         <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-100 overflow-hidden -mt-16 sm:-mt-10">
-                            <Image src={avatar} alt={name || "alumni"} width={128} height={128} className="w-full h-full object-cover" />
+                          <Image src={avatar} alt={name || "alumni"} width={128} height={128} className="w-full h-full object-cover" />
                         </div>
-                        
-                        {/* Name and Social Links */}
                         <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
-                            <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
-                            
-                            {/* Social Icons */}
-                            <div className="space-x-3 mt-4">
-                                {[
-                                    { href: p?.facebook ?? null, label: "Facebook", svg: (
-                                        <svg role="img" aria-label="Facebook" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 155.139 155.139"><path d="M89.584 155.139V84.378h23.742l3.562-27.585H89.584V39.184c0-7.984 2.208-13.425 13.67-13.425l14.595-.006V1.08C115.325.752 106.661 0 96.577 0 75.52 0 61.104 12.853 61.104 36.452v20.341H37.29v27.585h23.814v70.761h28.48z"/></svg>
-                                    )},
-                                    { href: p?.instagram ?? null, label: "Instagram", svg: (
-                                        <svg role="img" aria-label="Instagram" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 512 512"><path d="M512 97.248c-19.04 8.352-39.328 13.888-60.48 16.576 21.76-12.992 38.368-33.408 46.176-58.016-20.288 12.096-42.688 20.64-66.56 25.408C411.872 60.704 384.416 48 354.464 48c-58.112 0-104.896 47.168-104.896 104.992 0 8.32.704 16.32 2.432 23.936-87.264-4.256-164.48-46.08-216.352-109.792-9.056 15.712-14.368 33.696-14.368 53.056 0 36.352 18.72 68.576 46.624 87.232-16.864-.32-33.408-5.216-47.424-12.928v1.152c0 51.008 36.384 93.376 84.096 103.136-8.544 2.336-17.856 3.456-27.52 3.456-6.72 0-13.504-.384-19.872-1.792 13.6 41.568 52.192 72.128 98.08 73.12-35.712 27.936-81.056 44.768-130.144 44.768-8.608 0-16.864-.384-25.12-1.44C46.496 446.88 101.6 464 161.024 464c193.152 0 298.752-160 298.752-298.688 0-4.64-.16-9.12-.384-13.568 20.832-14.784 38.336-33.248 52.608-54.496z"/></svg>
-                                    )},
-                                    { href: p?.linkedin ?? null, label: "LinkedIn", svg: (
-                                        <svg role="img" aria-label="LinkedIn" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700" viewBox="0 0 24 24"><path d="M23.994 24v-.001H24v-8.802c0-4.306-.927-7.623-5.961-7.623-2.42 0-4.044 1.328-4.707 2.587h-.07V7.976H8.489v16.023h4.97v-7.934c0-2.089.396-4.109 2.983-4.109 2.549 0 2.587 2.384 2.587 4.243V24zM.396 7.977h4.976V24H.396zM2.882 0C1.291 0 0 1.291 0 2.882s1.291 2.909 2.882 2.909 2.882-1.318 2.882-2.909A2.884 2.884 0 0 0 2.882 0z"/></svg>
-                                    )},
-                                    { href: p?.youtube ?? null, label: "YouTube", svg: (
-                                        <svg role="img" aria-label="YouTube" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700" viewBox="0 0 24 24"><path d="M23.498 6.186a2.999 2.999 0 0 0-2.116-2.12C19.59 3.5 12 3.5 12 3.5s-7.59 0-9.382.566A2.999 2.999 0 0 0 .502 6.186C0 8.002 0 12 0 12s0 3.998.502 5.814a2.999 2.999 0 0 0 2.116 2.12C4.41 20.5 12 20.5 12 20.5s7.59 0 9.382-.566a2.999 2.999 0 0 0 2.116-2.12C24 15.998 24 12 24 12s0-3.998-.502-5.814zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
-                                    )},
-                                ].map((s, i) => (
-                                    s.href ? (
-                                        <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-300 transition-colors" aria-label={s.label}>
-                                            {s.svg}
-                                        </a>
-                                    ) : (
-                                        <button key={i} type="button" className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-50 text-gray-400 cursor-not-allowed" aria-label={`${s.label} not provided`} title={`${s.label} not provided`}>
-                                            {s.svg}
-                                        </button>
-                                    )
-                                ))}
-                            </div>
+                          <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
                         </div>
-                    </div>
-                    
-                    {/* Academic Details - Added padding-top to separate from name/socials */}
-                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      </div>
+                      <div className="mt-6 pt-4 border-t border-gray-100">
                         <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-slate-700">
-                            <div className="col-span-1">
-                                <span className="font-semibold">SAP ID:</span> {safeText(sapId) || "N/A"}
-                            </div>
-                            <div className="col-span-1">
-                                <span className="font-semibold">Phone:</span> {formatPhone(contact) || "Not provided"}
-                            </div>
-                            <div className="col-span-1">
-                                <span className="font-semibold">Faculty - Department:</span> {composeFacultyDept(faculty, dept) || "N/A"}
-                            </div>
-                            <div className="col-span-1">
-                                <span className="font-semibold">Program:</span> {safeText(program) || "N/A"}
-                            </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-sm text-slate-700">
+                          <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {safeText(sapId) || "N/A"}</div>
+                          <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {formatPhone(contact) || "Not provided"}</div>
+                          <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {safeText(faculty) || "N/A"}</div>
+                          <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>
+                          <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(program) || "N/A"}</div>
                         </div>
+                      </div>
                     </div>
+                  </div>
+                )}
                 </div>
-            </div>
+                  <div className="w-full lg:w-1/4 flex-shrink-0  pt-10">
+                    {cardStatus === "active" ? (
+                      <div className="bg-green-100  border border-gray-100  rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Active alumni card">
+                        <h3 className="text-xl font-bold text-indigo-600 mb-1">Alumni Card</h3>
+                        <div className="border-t border-gray-200 pt-3 mt-3 text-sm text-slate-700">
+                          <div className="font-semibold text-base">{name}</div>
+                          <div className="mt-1 text-xs text-gray-500">SAP ID: {sapId || "N/A"}</div>
+                        </div>
+                        <p className="mt-4 text-xs text-gray-400">Please carry this ID for campus access.</p>
+                      </div>
+                    ) : cardStatus === "pending" ? (
+                      <div className="bg-amber-50 shadow-sm border border-amber-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Pending alumni card">
+                        <h3 className="text-lg font-semibold text-amber-700">Alumni Card (Pending)</h3>
+                        <div className="mt-2 text-xs text-amber-700">Your application is under review.</div>
+                      </div>
+                    ) : cardStatus === "rejected" ? (
+                      <div className="bg-rose-50 shadow-sm border border-rose-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Rejected alumni card">
+                        <h3 className="text-lg font-semibold text-rose-700">Alumni Card (Rejected)</h3>
+                        <div className="mt-2 text-xs text-rose-700">Your application was rejected. You may reapply.</div>
+                      </div>
+                    ) : cardStatus === "full" ? (
+                      <div className="bg-sky-50 shadow-sm border border-sky-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Capacity full">
+                        <h3 className="text-lg font-semibold text-sky-700">Alumni Card (Capacity Full)</h3>
+                        <div className="mt-2 text-xs text-sky-700">Application capacity is currently full. Please try later.</div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 shadow-sm border border-gray-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="No application">
+                        <h3 className="text-lg font-semibold text-gray-700">No Alumni Card Application</h3>
+                        <div className="mt-2 text-xs text-gray-700">Start your application using the Alumni Card section below.</div>
+                      </div>
+                    )}
+                  </div>
+        </div>
 
             {/* B. Alumni ID Card (Fixed width on larger screens) */}
-            <div className="w-full lg:w-1/4 flex-shrink-0">
-              {cardStatus === "active" ? (
-                <div className="bg-white shadow-xl border border-gray-100 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Active alumni card">
-                  <h3 className="text-xl font-bold text-indigo-600 mb-1">Alumni Card</h3>
-                  <div className="border-t border-gray-200 pt-3 mt-3 text-sm text-slate-700">
-                    <div className="font-semibold text-base">{name}</div>
-                    <div className="mt-1 text-xs text-gray-500">SAP ID: {sapId || "N/A"}</div>
-                  </div>
-                  <p className="mt-4 text-xs text-gray-400">Please carry this ID for campus access.</p>
-                </div>
-              ) : cardStatus === "pending" ? (
-                <div className="bg-amber-50 shadow-sm border border-amber-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Pending alumni card">
-                  <h3 className="text-lg font-semibold text-amber-700">Alumni Card (Pending)</h3>
-                  <div className="mt-2 text-xs text-amber-700">Your application is under review.</div>
-                </div>
-              ) : cardStatus === "rejected" ? (
-                <div className="bg-rose-50 shadow-sm border border-rose-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Rejected alumni card">
-                  <h3 className="text-lg font-semibold text-rose-700">Alumni Card (Rejected)</h3>
-                  <div className="mt-2 text-xs text-rose-700">Your application was rejected. You may reapply.</div>
-                </div>
-              ) : cardStatus === "full" ? (
-                <div className="bg-sky-50 shadow-sm border border-sky-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Capacity full">
-                  <h3 className="text-lg font-semibold text-sky-700">Alumni Card (Capacity Full)</h3>
-                  <div className="mt-2 text-xs text-sky-700">Application capacity is currently full. Please try later.</div>
-                </div>
-              ) : (
-                <div className="bg-gray-50 shadow-sm border border-gray-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="No application">
-                  <h3 className="text-lg font-semibold text-gray-700">No Alumni Card Application</h3>
-                  <div className="mt-2 text-xs text-gray-700">Start your application using the Alumni Card section below.</div>
-                </div>
-              )}
-            </div>
         </div>
     </div>
-</div>
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    </div>
+      <div className="p-10  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-slate-100 gap-6">
         {[
           {
             title: "Success Story",
@@ -310,41 +286,45 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             ),
           },
         ].map((c, idx) => (
-          <div key={idx} className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
-            <div className={`flex items-center justify-center ${c.bg} ${c.color} h-40`}>
+          <div key={idx} className="bg-white w-90 shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
+            <div className={`flex items-center justify-center ${c.bg} ${c.color} h-40 w-full`}>
               {c.icon}
             </div>
-            <div className="p-4 text-center">
-              <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-              {c.title === "Alumni Card" && (
-                <div role="status" aria-live="polite" className="mt-2 mb-2">
-                  {cardStatusError ? (
-                    <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
-                      <span className="text-xs">{cardStatusError}</span>
-                    </div>
-                  ) : cardStatus === "active" ? (
-                    <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
-                      <span className="text-xs">Card Status: Active</span>
-                    </div>
-                  ) : cardStatus === "rejected" ? (
-                    <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
-                      <span className="text-xs">Card Status: Rejected</span>
-                    </div>
-                  ) : cardStatus === "pending" ? (
-                    <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                      <span className="text-xs">Card Status: Pending</span>
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-2 rounded-md bg-gray-50 text-gray-700 px-2.5 py-1 border border-gray-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
-                      <span className="text-xs">No Application Found</span>
-                    </div>
-                  )}
+            <div className="p-4 text-center flex flex-col justify-between  h-50">
+              {c.title === "Alumni Card" ? (
+                <div className="flex items-center justify-center gap-3">
+                  <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
+                  <div role="status" aria-live="polite">
+                    {cardStatusError ? (
+                      <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
+                        <span className="text-xs">{cardStatusError}</span>
+                      </div>
+                    ) : cardStatus === "active" ? (
+                      <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
+                        <span className="text-xs">Active</span>
+                      </div>
+                    ) : cardStatus === "rejected" ? (
+                      <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
+                        <span className="text-xs">Rejected</span>
+                      </div>
+                    ) : cardStatus === "pending" ? (
+                      <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
+                        <span className="text-xs">Pending</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-2 rounded-md bg-gray-50 text-gray-700 px-2.5 py-1 border border-gray-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
+                        <span className="text-xs">No Application Found</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
               )}
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
               {c.title === "Success Story" ? (
@@ -359,7 +339,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   faculty={faculty}
                   department={dept}
                   program={program}
-                  initialStatus={cardStatus === "active" ? "delivered" : cardStatus === "rejected" ? "rejected" : cardStatus === "pending" ? "pending" : null}
+                  initialStatus={isAdmin ? "delivered" : cardStatus === "active" ? "delivered" : cardStatus === "rejected" ? "rejected" : cardStatus === "pending" ? "pending" : null}
                 />
               ) : c.title === "Mentorship Session" ? (
                 <>
@@ -399,15 +379,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   )}
                 </>
               ) : (
-                <button type="button" className="mt-4 px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium border-none outline-none bg-blue-600 hover:bg-blue-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <Link
+                  href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}&modal=card` : `/alumni-profile?modal=card`}
+                  className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
                   {c.action}
-                </button>
+                </Link>
               )}
             </div>
           </div>
         ))}
         {modal === "mentorship" && (
-          <dialog open className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <dialog open className="fixed inset-0  flex items-center mt-20 justify-center rounded-lg">
             <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
               <div className="flex items-center justify-between border-b p-4">
                 <h2 className="text-lg font-semibold text-slate-900">Apply for Mentorship Session</h2>
@@ -419,13 +402,40 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   Close
                 </Link>
               </div>
-              <div className="p-4">
+              <div className="p-4 ">
                 <MentorshipForm />
               </div>
             </div>
           </dialog>
         )}
+        {modal === "card" && (
+          <dialog open className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
+            <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl transition-all duration-300 ease-out">
+              <div className="flex items-center justify-between border-b p-4">
+                <h2 className="text-lg font-semibold text-slate-900">Apply for Alumni Card</h2>
+                <Link
+                  aria-label="Close"
+                  href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
+                  className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
+                >
+                  Close
+                </Link>
+              </div>
+              <div className="p-4">
+                <AlumniCardAction
+                  alumniId={alumniId}
+                  name={name}
+                  sapId={sapId}
+                  faculty={faculty}
+                  department={dept}
+                  program={program}
+                  initialStatus={isAdmin ? "delivered" : cardStatus === "active" ? "delivered" : cardStatus === "rejected" ? "rejected" : cardStatus === "pending" ? "pending" : null}
+                />
+              </div>
+            </div>
+          </dialog>
+        )}
       </div>
-    </div>
+  </>
   );
 }

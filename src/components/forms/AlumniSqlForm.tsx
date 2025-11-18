@@ -442,7 +442,23 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
             </div>
             <div>
               <label className={labelBase}>Date of Birth</label>
-              <input type="date" className={inputBase} {...register("dateofbirth", { maxLength: 50 })} />
+              <input
+                type="date"
+                className={inputBase}
+                min="1900-01-01"
+                max="9999-12-31"
+                onInput={(e) => {
+                  const el = e.currentTarget as HTMLInputElement;
+                  const v = el.value;
+                  const dash = v.indexOf("-");
+                  if (dash > 4) {
+                    el.value = v.slice(0, 4) + v.slice(dash);
+                  } else if (dash === -1 && v.length > 4) {
+                    el.value = v.slice(0, 4);
+                  }
+                }}
+                {...register("dateofbirth", { maxLength: 50 })}
+              />
             </div>
             <div>
               <label className={labelBase}>Marital Status</label>
@@ -454,8 +470,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
               </select>
             </div>
             <div>
-              <label className={labelBase}>CNIC/Passport#</label>
-              <input type="text" className={inputBase} {...register("cnicpassport", { maxLength: 50 })} />
+              <label className={labelBase}>CNIC/Passport *</label>
+              <input type="text" className={inputBase} {...register("cnicpassport", {required:true, maxLength: 50 })} />
             </div>
             <div>
               <label className={labelBase}>Mobile No.*</label>

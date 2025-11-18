@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AlumniCardForm from "@/components/forms/alumni-card";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
   department: string;
   program: string;
   initialStatus?: "pending" | "rejected" | "delivered" | null;
+  isAdmin?: boolean;
 };
 
 type CardRow = {
@@ -34,12 +35,14 @@ export function shouldDisableView(card: CardRow | null, initialStatus?: "pending
   return st === "pending";
 }
 
-export default function AlumniCardAction({ alumniId, name, sapId, faculty, department, program, initialStatus }: Props) {
+export default function AlumniCardAction({ alumniId, name, sapId, faculty, department, program, initialStatus, isAdmin = false }: Props) {
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [card, setCard] = useState<CardRow | null>(null);
+  const closeFormBtnRef = useRef<HTMLButtonElement | null>(null);
+  const closeViewBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const mode = useMemo(() => computeButtonMode(card, initialStatus), [card, initialStatus]);
   const disableView = useMemo(() => shouldDisableView(card, initialStatus), [card, initialStatus]);
@@ -48,7 +51,8 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/alumni-cards/${encodeURIComponent(alumniId)}`, { cache: "no-store" });
+      // Validation uses sapid-based lookup to determine existing card registration
+      const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setCard(data?.card || null);
@@ -67,9 +71,40 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
   };
 
   useEffect(() => {
-    fetchStatus();
+    if (!isAdmin) {
+      fetchStatus();
+    } else {
+      setCard(null);
+      setError(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alumniId]);
+  }, [alumniId, isAdmin]);
+
+  useEffect(() => {
+    if (openForm && closeFormBtnRef.current) {
+      closeFormBtnRef.current.focus();
+    }
+  }, [openForm]);
+
+  useEffect(() => {
+    if (openView && closeViewBtnRef.current) {
+      closeViewBtnRef.current.focus();
+    }
+  }, [openView]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (openForm) setOpenForm(false);
+        if (openView) setOpenView(false);
+      }
+    }
+    if (openForm || openView) {
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }
+    return;
+  }, [openForm, openView]);
 
   return (
     <div>
@@ -106,27 +141,27 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
       )}
 
       {openForm && (
-        <dialog open className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+        <dialog open aria-modal="true"  role="dialog" className="fixed inset-0 mt-20 flex items-start justify-center p-0 bg-black/40">
+          <div className="w-full h-full max-w-none bg-white shadow-xl transition-all duration-300 ease-out">
             <div className="flex items-center justify-between border-b p-4">
               <h2 className="text-lg font-semibold text-slate-900">Apply for Alumni Card</h2>
-              <button aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenForm(false)}>Close</button>
+              <button ref={closeFormBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenForm(false)}>Close</button>
             </div>
-            <div className="p-4">
-              <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} program={program} onSuccess={() => { setOpenForm(false); fetchStatus(); }} />
+            <div className="p-4 m overflow-y-auto h-[calc(100vh-56px)]">
+              <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} program={program} onSuccess={() => { setOpenForm(false); fetchStatus(); }} onCancel={() => setOpenForm(false)} />
             </div>
           </div>
         </dialog>
       )}
 
       {openView && card && (
-        <dialog open className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+        <dialog open aria-modal="true" role="dialog" className="fixed inset-0 z-40 flex items-start justify-center p-0 bg-black/40">
+          <div className="w-full h-full max-w-none bg-white shadow-xl transition-all duration-300 ease-out">
             <div className="flex items-center justify-between border-b p-4">
               <h2 className="text-lg font-semibold text-slate-900">Alumni Card</h2>
-              <button aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenView(false)}>Close</button>
+              <button ref={closeViewBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenView(false)}>Close</button>
             </div>
-            <div className="p-4">
+            <div className="p-4 overflow-y-auto h-[calc(100vh-56px)]">
               <div className="text-center">
                 <div className="text-xl font-semibold text-slate-900">{name}</div>
                 <div className="mt-1 text-slate-700">SAP ID: {sapId}</div>

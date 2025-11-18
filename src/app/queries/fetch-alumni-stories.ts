@@ -31,6 +31,6 @@ export function useAlumniStories() {
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: true,
-    refetchOnMount: false,
+    refetchOnMount: "always",
   });
 }

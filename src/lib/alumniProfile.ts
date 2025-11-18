@@ -1,9 +1,15 @@
 import type { Session } from "next-auth";
 
+export function isAdminUser(user: Session["user"] | null | undefined): boolean {
+  const t = String((user as unknown as { type?: string })?.type || "").toLowerCase();
+  return t === "staff";
+}
+
 export function computeLoginBanner(user: Session["user"] | null | undefined): { show: boolean; message: string } {
   const email = user?.email ? String(user.email) : "";
   const type = String((user as unknown as { type?: string })?.type || "").toLowerCase();
   if (!email) return { show: true, message: "Please sign in to view your alumni profile." };
+  if (type === "staff") return { show: false, message: "" };
   if (type !== "alumni") return { show: true, message: "Only alumni accounts can access this page." };
   return { show: false, message: "" };
 }

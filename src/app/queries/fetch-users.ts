@@ -27,7 +27,8 @@ export function useUsersList() {
     queryKey: ["users", "list"],
     queryFn: ({ signal }) => getUsersList(signal),
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     refetchOnReconnect: true,
+    refetchOnMount: "always",
   });
 }

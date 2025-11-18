@@ -29,7 +29,8 @@ export function useAlumniParticipationList() {
     queryKey: ["alumni", "participation", "list"],
     queryFn: ({ signal }) => getAlumniParticipationList(signal),
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     refetchOnReconnect: true,
+    refetchOnMount: "always",
   });
 }
