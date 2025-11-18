@@ -30,22 +30,20 @@ export function computeButtonMode(card: CardRow | null, initialStatus?: "pending
   return "apply";
 }
 
-export function shouldDisableView(card: CardRow | null, initialStatus?: "pending" | "rejected" | "delivered" | null): boolean {
-  const st = (initialStatus ?? card?.status ?? "").toLowerCase();
-  return st === "pending";
-}
+ 
 
 export default function AlumniCardAction({ alumniId, name, sapId, faculty, department, program, initialStatus, isAdmin = false }: Props) {
   const [openForm, setOpenForm] = useState(false);
-  const [openView, setOpenView] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [card, setCard] = useState<CardRow | null>(null);
   const closeFormBtnRef = useRef<HTMLButtonElement | null>(null);
-  const closeViewBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const mode = useMemo(() => computeButtonMode(card, initialStatus), [card, initialStatus]);
-  const disableView = useMemo(() => shouldDisableView(card, initialStatus), [card, initialStatus]);
+  const statusLabel = useMemo(() => {
+    const st = (initialStatus ?? card?.status ?? "").toLowerCase();
+    return st === "delivered" || st === "active" ? "card is active" : "Under Review";
+  }, [card, initialStatus]);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -87,24 +85,21 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
   }, [openForm]);
 
   useEffect(() => {
-    if (openView && closeViewBtnRef.current) {
-      closeViewBtnRef.current.focus();
-    }
-  }, [openView]);
+    // no-op for view dialog
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (openForm) setOpenForm(false);
-        if (openView) setOpenView(false);
+      if (e.key === "Escape" && openForm) {
+        setOpenForm(false);
       }
     }
-    if (openForm || openView) {
+    if (openForm) {
       window.addEventListener("keydown", onKey);
       return () => window.removeEventListener("keydown", onKey);
     }
     return;
-  }, [openForm, openView]);
+  }, [openForm]);
 
   return (
     <div>
@@ -122,17 +117,13 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
       ) : (
         <button
           type="button"
-          aria-label={disableView ? "Under review" : "View Alumni Card"}
+          aria-label={statusLabel}
           role="button"
-          className={`${disableView ? "mt-4 px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed" : "mt-4 px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"}`}
-          onClick={() => {
-            if (disableView) return;
-            setOpenView(true);
-          }}
-          disabled={disableView}
-          aria-disabled={disableView}
+          className="mt-4 px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+          disabled
+          aria-disabled="true"
         >
-          {disableView ? "Under Review" : "View Card"}
+          {statusLabel}
         </button>
       )}
 
@@ -154,27 +145,7 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
         </dialog>
       )}
 
-      {openView && card && (
-        <dialog open aria-modal="true" role="dialog" className="fixed inset-0 z-40 flex items-start justify-center p-0 bg-black/40">
-          <div className="w-full h-full max-w-none bg-white shadow-xl transition-all duration-300 ease-out">
-            <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold text-slate-900">Alumni Card</h2>
-              <button ref={closeViewBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenView(false)}>Close</button>
-            </div>
-            <div className="p-4 overflow-y-auto h-[calc(100vh-56px)]">
-              <div className="text-center">
-                <div className="text-xl font-semibold text-slate-900">{name}</div>
-                <div className="mt-1 text-slate-700">SAP ID: {sapId}</div>
-                <div className="mt-2 text-sm text-slate-600">{faculty} • {department}</div>
-                <div className="mt-1 text-sm text-slate-600">{program}</div>
-                <div className="mt-3 text-sm text-slate-600">CNIC: {card.cnicno || "N/A"}</div>
-                <div className="mt-1 text-sm text-slate-600">Address: {card.cardaddress || "N/A"}</div>
-                <div className="mt-1 text-sm text-slate-600">Status: {card.status || "issued"}</div>
-              </div>
-            </div>
-          </div>
-        </dialog>
-      )}
+      
     </div>
   );
 }
