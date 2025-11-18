@@ -17,15 +17,15 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
 
   return (
     <div className="w-full flex-shrink-0">
-      <div className="bg-white flex justify-between rounded-lg  p-6 pt-0">
+      <div className="bg-white flex justify-between rounded-lg p-6 pt-0">
         <div>
           <div className="flex flex-col items-start sm:flex-row sm:items-end">
-            <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-100 overflow-hidden -mt-16 sm:-mt-10">
-              <Image src={avatar} alt={name || "alumni"} width={128} height={128} className="w-full h-full object-cover" />
+            <div className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-full border-4 border-white bg-gray-100 overflow-hidden -mt-16 sm:-mt-10 md:-mt-8">
+              <Image src={avatar} alt={name || "alumni"} width={160} height={160} sizes="(max-width: 640px) 8rem, (max-width: 768px) 10rem, 10rem" className="w-full h-full object-cover" />
             </div>
             <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
-              <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
-              <div className="space-x-3 mt-4">
+              <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold">{name}</h4>
+              <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
                 {[{ href: facebook, label: "Facebook", svg: (
                   <svg role="img" aria-label="Facebook" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 155.139 155.139"><path d="M89.584 155.139V84.378h23.742l3.562-27.585H89.584V39.184c0-7.984 2.208-13.425 13.67-13.425l14.595-.006V1.08C115.325.752 106.661 0 96.577 0 75.52 0 61.104 12.853 61.104 36.452v20.341H37.29v27.585h23.814v70.761h28.48z"/></svg>
                 )}, { href: instagram, label: "Instagram", svg: (
@@ -36,11 +36,11 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                   <svg role="img" aria-label="YouTube" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700" viewBox="0 0 24 24"><path d="M23.498 6.186a2.999 2.999 0 0 0-2.116-2.12C19.59 3.5 12 3.5 12 3.5s-7.59 0-9.382.566A2.999 2.999 0 0 0 .502 6.186C0 8.002 0 12 0 12s0 3.998.502 5.814a2.999 2.999 0 0 0 2.116 2.12C4.41 20.5 12 20.5 12 20.5s7.59 0 9.382-.566a2.999 2.999 0 0 0 2.116-2.12C24 15.998 24 12 24 12s0-3.998-.502-5.814zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
                 )}].map((s, i) => (
                   s.href ? (
-                    <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-300 transition-colors" aria-label={s.label}>
+                    <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" className="w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-300 transition-colors" aria-label={s.label}>
                       {s.svg}
                     </a>
                   ) : (
-                    <button key={i} type="button" className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-gray-50 text-gray-400 cursor-not-allowed" aria-label={`${s.label} not provided`} title={`${s.label} not provided`}>
+                    <button key={i} type="button" className="w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full bg-gray-50 text-gray-400 cursor-not-allowed" aria-label={`${s.label} not provided`} title={`${s.label} not provided`}>
                       {s.svg}
                     </button>
                   )
@@ -50,7 +50,7 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
           </div>
           <div className="mt-6 pt-4 border-t border-gray-100">
             <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-sm text-slate-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 text-sm text-slate-700">
               <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {sapId || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {contact || "Not provided"}</div>
               <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {faculty || "N/A"}</div>

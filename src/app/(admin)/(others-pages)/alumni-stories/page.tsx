@@ -150,8 +150,8 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
                     {story.program || "-"}{story.session ? ` • ${story.session}` : ""}
                   </TableCell>
 
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
-                    <span className="line-clamp-2">{story.shortDescription || "-"}</span>
+                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300 max-w-xs">
+                    <span className="line-clamp-2 break-words">{story.shortDescription || "-"}</span>
                   </TableCell>
 
                   <TableCell className="px-4 py-3 border-r border-gray-200 text-start">

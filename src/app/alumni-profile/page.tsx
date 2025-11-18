@@ -1,4 +1,10 @@
 export const dynamic = "force-dynamic";
+import type { Viewport } from "next";
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 import { sql } from "@/lib/dbconnect";
 import Image from "next/image";
@@ -128,7 +134,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     <>
     <div className=" bg-slate-200 overflow-x-hidden">
       <div className="border bg-white relative z-50">
-      <AppHeader />
+        <AppHeader />
       </div>
       {(() => {
         const b = computeLoginBanner(session?.user);
@@ -149,28 +155,35 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
         </div>
       )}
       <div className="min-w-screen">
-    <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-      <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-center text-2xl sm:text-3xl font-bold tracking-tight">University of Lahore</h1>
+        <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+          <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
+            <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
+              <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">University of Lahore</h1>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    {/* 2. Main Content Container (Max-width and Padding) */}
-    {/* This container centers and holds the profile details and ID card. */}
-    <div className="min-w-screen mx-auto  px-4 sm:px-6 lg:px-8">
-        <div className="flex bg-white rounded-[10px] lg:flex-row -mt-20 sm:-mt-16 gap-8 pb-10 pr-4">
+        {/* 2. Main Content Container (Max-width and Padding) */}
+        {/* This container centers and holds the profile details and ID card. */}
+        <div className="min-w-screen mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
+          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-12 sm:-mt-16 md:-mt-16 gap-6 md:gap-8 p-4 sm:p-6 md:p-8">
 
-            <div className="w-full flex  ">
+            <div className="w-full flex min-w-0 order-1">
                 {sapId ? (
                   <ProfileDetailsClient sapId={sapId} />
                 ) : (
-                  <div className="bg-white flex justify-between border  rounded-lg p-6 pt-0">
+                  <div className="bg-white flex justify-between border rounded-lg p-6 pt-0">
                     <div>
-                      <div className="flex flex-col  items-start sm:flex-row sm:items-end">
+                      <div className="flex flex-col items-start sm:flex-row sm:items-end">
                         <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-100 overflow-hidden -mt-16 sm:-mt-10">
-                          <Image src={avatar} alt={name || "alumni"} width={128} height={128} className="w-full h-full object-cover" />
+                          <Image
+                            src={avatar}
+                            alt={name || "alumni"}
+                            width={128}
+                            height={128}
+                            sizes="(max-width: 640px) 8rem, (max-width: 768px) 8rem, 8rem"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
                           <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
@@ -178,7 +191,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                       </div>
                       <div className="mt-6 pt-4 border-t border-gray-100">
                         <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-sm text-slate-700">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 text-sm text-slate-700">
                           <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {safeText(sapId) || "N/A"}</div>
                           <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {formatPhone(contact) || "Not provided"}</div>
                           <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {safeText(faculty) || "N/A"}</div>
@@ -190,9 +203,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   </div>
                 )}
                 </div>
-                  <div className="w-full lg:w-1/4 flex-shrink-0  pt-10">
+                  <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-8 md:pt-10 mt-8 md:mt-0 order-2">
                     {cardStatus === "active" ? (
-                      <div className="bg-green-100  border border-gray-100  rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Active alumni card">
+                      <div className="bg-green-100 border border-gray-100 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Active alumni card">
                         <h3 className="text-xl font-bold text-indigo-600 mb-1">Alumni Card</h3>
                         <div className="border-t border-gray-200 pt-3 mt-3 text-sm text-slate-700">
                           <div className="font-semibold text-base">{name}</div>
@@ -222,13 +235,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                       </div>
                     )}
                   </div>
-        </div>
+          </div>
 
-            {/* B. Alumni ID Card (Fixed width on larger screens) */}
+          {/* B. Alumni ID Card (Fixed width on larger screens) */}
         </div>
-    </div>
-    </div>
-      <div className="p-10  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-slate-100 gap-6">
+      </div>
+      </div>
+      <div className="p-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-6">
         {[
           {
             title: "Success Story",
@@ -286,11 +299,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             ),
           },
         ].map((c, idx) => (
-          <div key={idx} className="bg-white w-90 shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
-            <div className={`flex items-center justify-center ${c.bg} ${c.color} h-40 w-full`}>
+          <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
+            <div className={`flex items-center justify-center ${c.bg} ${c.color} min-h-[12rem] w-full`}>
               {c.icon}
             </div>
-            <div className="p-4 text-center flex flex-col justify-between  h-50">
+            <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
               {c.title === "Alumni Card" ? (
                 <div className="flex items-center justify-center gap-3">
                   <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
@@ -328,7 +341,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
               )}
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
               {c.title === "Success Story" ? (
-                <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                   {c.action}
                 </Link>
               ) : c.title === "Alumni Card" ? (
