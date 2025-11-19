@@ -8,8 +8,6 @@ export const viewport: Viewport = {
 
 import { sql } from "@/lib/dbconnect";
 import Link from "next/link";
-import AlumniCardModal from "@/components/alumni/AlumniCardModal";
-import MentorshipForm from "@/components/forms/MentorshipForm";
 import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
@@ -57,6 +55,7 @@ async function getProfile(searchParams: { sapid?: string }) {
   }
 }
 
+
 type AlumniProfileSearchParams = { sapid?: string; modal?: string };
 
 
@@ -93,7 +92,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   }
   const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? "");
   const alumniId = String(sapRows[0]?.alumniid ?? "");
-  const modal = String(sp?.modal ?? "");
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
   if (isAdmin) {
@@ -132,7 +130,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   }
   return (
     <>
-    <div className=" bg-slate-200 overflow-x-hidden">
+    <div className=" bg-slate-100 overflow-x-hidden">
       <div className="border bg-white relative z-50">
         <AppHeader />
       </div>
@@ -271,7 +269,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                             </button>
                           ) : cardStatus !== "active" && (
                             <Link
-                              href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}&modal=card` : `/alumni-profile?modal=card`}
+                              href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
                               className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               Apply now
@@ -287,141 +285,123 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
         </div>
       </div>
       </div>
-      <div className="p-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-6">
-        {[
-          {
-            title: "Success Story",
-            action: "View",
-            color: "text-yellow-600",
-            bg: "bg-yellow-100",
-            icon: (
-              <svg role="img" aria-label="Trophy" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
-                <path className="fill-current" d="M20 6h1a1 1 0 011 1c0 3.866-3.134 7-7 7h-.278A5.5 5.5 0 0113 15.5V18h3a1 1 0 110 2H8a1 1 0 110-2h3v-2.5A5.5 5.5 0 017.278 14H7c-3.866 0-7-3.134-7-7a1 1 0 011-1h1V4a1 1 0 011-1h14a1 1 0 011 1v2zm-1 2V5H5v3a5 5 0 005 5h4a5 5 0 005-5zM4 8.874C3.16 8.552 2.5 7.853 2.2 7H4v1.874zM20 8.874V7h1.8c-.3.853-.96 1.552-1.8 1.874z"/>
-              </svg>
-            ),
-          },
-          
-          {
-            title: "Mentorship Session",
-            action: "Apply now",
-            color: "text-purple-600",
-            bg: "bg-purple-100",
-            icon: (
-              <svg role="img" aria-label="Mentorship" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
-                <path className="fill-current" d="M7 7a4 4 0 118 0 4 4 0 01-8 0zm-3 12a6 6 0 1112 0H4zm13.5-8a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM21 21h-3.5a4.5 4.5 0 114.5-4.5V21z"/>
-              </svg>
-            ),
-          },
-          {
-            title: "Alumni Chapters",
-            action: "Apply now",
-            color: "text-green-700",
-            bg: "bg-green-100",
-            icon: (
-              <svg role="img" aria-label="Group" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
-                <path className="fill-current" d="M12 12a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0H5zm14.5-9.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM3.5 11.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM22 21h-3.5a5.5 5.5 0 00-3.9-5.2 6.97 6.97 0 013.4-.8A4.5 4.5 0 0122 19.5V21zM5.5 21H2v-1.5A4.5 4.5 0 016.6 15a6.97 6.97 0 013.4.8A5.5 5.5 0 005.5 21z"/>
-              </svg>
-            ),
-          },
-          {
-            title: "Alumni Association",
-            action: "VIEW",
-            color: "text-gray-700",
-            bg: "bg-red-200",
-            icon: (
-              <svg role="img" aria-label="Building" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
-                <path className="fill-current" d="M12 2L2 7v10h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2V7L12 2zm0 2.5l6 2.5v2h-2V9h-2v2h-2V9h-2v2h-2V9H8v2H6V9H4v-2l6-2.5zM4 11h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
-              </svg>
-            ),
-          },
-        ].map((c, idx) => (
-          <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
+      <div className="p-10 text-slate-900">
+        <h4 className="text-2xl font-bold text-slate-900 mb-6">Networking & Engagement</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-6">
+          {[
+            {
+              title: "Success Story",
+              action: "View",
+              color: "text-yellow-600",
+              bg: "bg-yellow-100",
+              icon: (
+                <svg role="img" aria-label="Trophy" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+                  <path className="fill-current" d="M20 6h1a1 1 0 011 1c0 3.866-3.134 7-7 7h-.278A5.5 5.5 0 0113 15.5V18h3a1 1 0 110 2H8a1 1 0 110-2h3v-2.5A5.5 5.5 0 017.278 14H7c-3.866 0-7-3.134-7-7a1 1 0 011-1h1V4a1 1 0 011-1h14a1 1 0 011 1v2zm-1 2V5H5v3a5 5 0 005 5h4a5 5 0 005-5zM4 8.874C3.16 8.552 2.5 7.853 2.2 7H4v1.874zM20 8.874V7h1.8c-.3.853-.96 1.552-1.8 1.874z"/>
+                </svg>
+              ),
+            },
+           
             
-        
-            <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
-              <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
-              {c.title === "Success Story" ? (
-                <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
-                  {c.action}
-                </Link>
-              ) : c.title === "Mentorship Session" ? (
-                <>
-                  {/* Mentorship status indicator for alumni */}
-                  {mentorshipStatusError ? (
-                    <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
-                      <span className="text-xs">{mentorshipStatusError}</span>
-                    </div>
-                  ) : mentorshipStatus === "applied" ? (
-                    <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                      <span className="text-xs">Mentorship Status: Applied</span>
-                    </div>
-                  ) : mentorshipStatus === "conducted" ? (
-                    <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
-                      <span className="text-xs">Mentorship Status: Conducted</span>
-                    </div>
-                  ) : null}
-                  {mentorshipStatus === "applied" ? (
-                    <button
-                      type="button"
-                      disabled
-                      aria-disabled
-                      className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
-                    >
-                      Already Applied
-                    </button>
-                  ) : (
-                    <Link
-                      href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}&modal=mentorship` : `/alumni-profile?modal=mentorship`}
-                      className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      {c.action}
-                    </Link>
-                  )}
-                </>
-              ) : (
-                <Link
-                  href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}&modal=card` : `/alumni-profile?modal=card`}
-                  className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  {c.action}
-                </Link>
-              )}
-            </div>
-          </div>
-        ))}
-        {modal === "mentorship" && (
-          <dialog open className="fixed inset-0  flex items-center mt-20 justify-center rounded-lg">
-            <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
-              <div className="flex items-center justify-between border-b p-4">
-                <h2 className="text-lg font-semibold text-slate-900">Apply for Mentorship Session</h2>
-                <Link
-                  aria-label="Close"
-                  href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
-                  className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
-                >
-                  Close
-                </Link>
+            {
+              title: "Mentorship Session",
+              action: "Apply now",
+              color: "text-purple-600",
+              bg: "bg-purple-100",
+              icon: (
+                <svg role="img" aria-label="Mentorship" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+                  <path className="fill-current" d="M7 7a4 4 0 118 0 4 4 0 01-8 0zm-3 12a6 6 0 1112 0H4zm13.5-8a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM21 21h-3.5a4.5 4.5 0 114.5-4.5V21z"/>
+                </svg>
+              ),
+            },
+            {
+              title: "Alumni Chapters",
+              action: "Apply now",
+              color: "text-green-700",
+              bg: "bg-green-100",
+              icon: (
+                <svg role="img" aria-label="Group" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+                  <path className="fill-current" d="M12 12a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0H5zm14.5-9.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM3.5 11.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM22 21h-3.5a5.5 5.5 0 00-3.9-5.2 6.97 6.97 0 013.4-.8A4.5 4.5 0 0122 19.5V21zM5.5 21H2v-1.5A4.5 4.5 0 016.6 15a6.97 6.97 0 013.4.8A5.5 5.5 0 005.5 21z"/>
+                </svg>
+              ),
+            },
+            {
+              title: "Alumni Association",
+              action: "VIEW",
+              color: "text-gray-700",
+              bg: "bg-red-200",
+              icon: (
+                <svg role="img" aria-label="Building" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+                  <path className="fill-current" d="M12 2L2 7v10h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2V7L12 2zm0 2.5l6 2.5v2h-2V9h-2v2h-2V9h-2v2h-2V9H8v2H6V9H4v-2l6-2.5zM4 11h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
+                </svg>
+              ),
+            },
+          ].map((c, idx) => (
+            <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
+              
+          
+              <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
+                <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
+                {c.title === "Success Story" ? (
+                  <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
+                    {c.action}
+                  </Link>
+                ) : c.title === "Mentorship Session" ? (
+                  <>
+                    {/* Mentorship status indicator for alumni */}
+                    {mentorshipStatusError ? (
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
+                        <span className="text-xs">{mentorshipStatusError}</span>
+                      </div>
+                    ) : mentorshipStatus === "applied" ? (
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
+                        <span className="text-xs">Mentorship Status: Applied</span>
+                      </div>
+                    ) : mentorshipStatus === "conducted" ? (
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
+                        <span className="text-xs">Mentorship Status: Conducted</span>
+                      </div>
+                    ) : null}
+                    {mentorshipStatus === "applied" ? (
+                      <button
+                        type="button"
+                        disabled
+                        aria-disabled
+                        className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                      >
+                        Already Applied
+                      </button>
+                    ) : (
+                      <Link
+                        href={sapId ? `/alumni-profile/mentorship?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/mentorship`}
+                        className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        {c.action}
+                      </Link>
+                    )}
+                  </>
+                ) : c.title === "Alumni Chapters" ? (
+                  <Link
+                    href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    {c.action}
+                  </Link>
+                ) : (
+                  <Link
+                    href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    {c.action}
+                  </Link>
+                )}
               </div>
-              <div className="p-4 ">
-                <MentorshipForm />
-              </div>
             </div>
-          </dialog>
-        )}
-        {modal === "card" && (
-          <AlumniCardModal
-            alumniId={alumniId}
-            name={name}
-            sapId={sapId}
-            faculty={faculty}
-            department={dept}
-            program={program}
-          />
-        )}
+          ))}
+        </div>
       </div>
 
 

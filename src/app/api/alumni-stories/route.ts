@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories";
 import { sql } from "@/lib/dbconnect";
+import DOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
+
+// Configure DOMPurify for server-side sanitization
+const window = new JSDOM("").window;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const purify = DOMPurify(window as any);
 
 type StoryItem = {
   id: string;
@@ -67,15 +74,26 @@ export async function POST(req: Request) {
     }
     const v: ServerStoryPayload = parsed.data;
     const createdAt = new Date();
-    const cleanHtml = String(v.storyHtml || "")
-      .replace(/<script[^>]*?>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*?>[\s\S]*?<\/style>/gi, "");
+    
+    // Sanitize HTML using DOMPurify
+    const cleanHtml = purify.sanitize(String(v.storyHtml || ""), {
+      ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
+      ALLOWED_ATTR: ["href", "target", "rel"],
+    });
 
     const alumniRows = await sql/* sql */`
       SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1` as { alumniid: number }[];
     const alumniId = alumniRows[0]?.alumniid;
     if (!alumniId) {
       return NextResponse.json({ message: "SAP ID not found in tbl_alumni" }, { status: 404 });
+    }
+
+    // Update contact number if provided
+    if (v.contactNumber) {
+      await sql/* sql */`
+        UPDATE public.tbl_alumni 
+        SET contactno = ${v.contactNumber}
+        WHERE alumniid = ${alumniId}`;
     }
 
     await sql/* sql */`

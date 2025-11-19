@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 type MeAlumni = {
@@ -59,6 +60,7 @@ export default function MentorshipForm() {
   const email = session?.user?.email;
   const { data: me, isLoading: loadingMe } = useCurrentAlumni(email ?? undefined);
   const qc = useQueryClient();
+  const router = useRouter();
 
   const {
     register,
@@ -142,6 +144,18 @@ export default function MentorshipForm() {
       qc.invalidateQueries({ queryKey: ["alumni", "participation", "list"] });
       resetField("topic");
       resetField("area");
+      
+      // Navigate back to profile page
+      setTimeout(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sapId = urlParams.get('sapid') || me?.sapid;
+        if (sapId) {
+          router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
+        } else {
+          router.push('/alumni-profile');
+        }
+        router.refresh();
+      }, 1500);
     } catch {
       // Error already handled with toast above
     } finally {

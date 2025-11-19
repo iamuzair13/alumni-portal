@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AlumniCardForm from "@/components/forms/alumni-card";
 
@@ -14,18 +13,6 @@ type Props = {
 };
 
 export default function AlumniCardModal({ alumniId, name, sapId, faculty, department, program }: Props) {
-  const router = useRouter();
-
-  const handleSuccess = () => {
-    // Close modal and refresh page to update status
-    router.push(sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`);
-    router.refresh();
-  };
-
-  const handleCancel = () => {
-    // Close modal
-    router.push(sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`);
-  };
 
   return (
     <dialog open className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
@@ -48,8 +35,6 @@ export default function AlumniCardModal({ alumniId, name, sapId, faculty, depart
             faculty={faculty}
             department={department}
             program={program}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
           />
         </div>
       </div>

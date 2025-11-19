@@ -78,6 +78,14 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alumniId, isAdmin]);
 
+  // Refresh status when form closes (after navigation back)
+  useEffect(() => {
+    if (!openForm && !isAdmin) {
+      fetchStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openForm, isAdmin]);
+
   useEffect(() => {
     if (openForm && closeFormBtnRef.current) {
       closeFormBtnRef.current.focus();
@@ -139,7 +147,7 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
               <button ref={closeFormBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenForm(false)}>Close</button>
             </div>
             <div className="p-4 m overflow-y-auto h-[calc(100vh-56px)]">
-              <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} program={program} onSuccess={() => { setOpenForm(false); fetchStatus(); }} onCancel={() => setOpenForm(false)} />
+              <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} program={program} />
             </div>
           </div>
         </dialog>

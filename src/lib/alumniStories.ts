@@ -8,6 +8,8 @@ export const storyFormSchema = z.object({
   email: z.string().trim().email("Enter a valid email address"),
   faculty: z.string().trim().min(1, "Faculty is required"),
   department: z.string().trim().min(1, "Department is required"),
+  passingYear: z.number().int().min(1900).max(2100).optional(),
+  contactNumber: z.string().trim().max(50).optional(),
   storyHtml: z.string().trim().min(1, "Story is required"),
 });
 
@@ -19,6 +21,8 @@ export const storyServerSchema = z.object({
   email: z.string().trim().email(),
   faculty: z.string().trim().min(1),
   department: z.string().trim().min(1),
+  passingYear: z.number().int().min(1900).max(2100).optional(),
+  contactNumber: z.string().trim().max(50).optional(),
   storyHtml: z.string().trim().min(1),
 });
 

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 type Props = {
   alumniId: string;
@@ -13,8 +14,6 @@ type Props = {
   faculty: string;
   department: string;
   program: string;
-  onSuccess?: () => void;
-  onCancel?: () => void;
 };
 
 const schema = z.object({
@@ -39,7 +38,8 @@ export function validateImage(file: File | undefined): { ok: boolean; error?: st
   return { ok: true };
 }
 
-export default function AlumniCardForm({ alumniId, faculty, department, program, onSuccess, onCancel }: Props) {
+export default function AlumniCardForm({ alumniId, faculty, department, program, sapId }: Props) {
+  const router = useRouter();
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
@@ -110,7 +110,18 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       reset();
       setPreviewUrl(null);
       try { localStorage.setItem("alumni-card-last", JSON.stringify(payload)); } catch {}
-      onSuccess?.();
+      
+      // Navigate back to profile page
+      setTimeout(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sapIdParam = urlParams.get('sapid') || sapId;
+        if (sapIdParam) {
+          router.push(`/alumni-profile?sapid=${encodeURIComponent(sapIdParam)}`);
+        } else {
+          router.push('/alumni-profile');
+        }
+        router.refresh();
+      }, 1500);
     } catch {
       // Error already handled with toast above
     }
@@ -219,9 +230,6 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       </div>
 
       <div className="flex items-center justify-end gap-2">
-        <button type="button" className="inline-flex items-center rounded-lg bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400" onClick={() => onCancel?.()} aria-label="Cancel application">
-          Cancel
-        </button>
         <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
           {isSubmitting ? "Submitting..." : "Submit"}
         </button>
