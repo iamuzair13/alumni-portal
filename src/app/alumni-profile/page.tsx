@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 import { sql } from "@/lib/dbconnect";
 import Image from "next/image";
 import Link from "next/link";
-import AlumniCardAction from "@/components/alumni/AlumniCardAction";
+import AlumniCardModal from "@/components/alumni/AlumniCardModal";
 import MentorshipForm from "@/components/forms/MentorshipForm";
 import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
@@ -204,36 +204,102 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                 )}
                 </div>
                   <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-8 md:pt-10 mt-8 md:mt-0 order-2">
-                    {cardStatus === "active" ? (
-                      <div className="bg-green-100 border border-gray-100 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Active alumni card">
-                        <h3 className="text-xl font-bold text-indigo-600 mb-1">Alumni Card</h3>
-                        <div className="border-t border-gray-200 pt-3 mt-3 text-sm text-slate-700">
-                          <div className="font-semibold text-base">{name}</div>
-                          <div className="mt-1 text-xs text-gray-500">SAP ID: {sapId || "N/A"}</div>
+                    <div className={`shadow-sm border rounded-lg overflow-hidden text-center lg:mt-0 ${
+                      cardStatus === "active" 
+                        ? "bg-green-100 border-gray-100" 
+                        : cardStatus === "pending" 
+                        ? "bg-amber-50 border-amber-200" 
+                        : cardStatus === "rejected" 
+                        ? "bg-rose-50 border-rose-200" 
+                        : cardStatus === "full" 
+                        ? "bg-sky-50 border-sky-200" 
+                        : "bg-gray-50 border-gray-200"
+                    }`} aria-label="Alumni card">
+                      <div className="p-6">
+                        <div className="flex items-center justify-center gap-2 mb-3">
+                          <h3 className={`text-xl font-bold ${
+                            cardStatus === "active" 
+                              ? "text-indigo-600" 
+                              : cardStatus === "pending" 
+                              ? "text-amber-700" 
+                              : cardStatus === "rejected" 
+                              ? "text-rose-700" 
+                              : cardStatus === "full" 
+                              ? "text-sky-700" 
+                              : "text-gray-700"
+                          }`}>Alumni Card</h3>
+                          <div role="status" aria-live="polite">
+                            {cardStatusError ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
+                                <span className="text-xs">{cardStatusError}</span>
+                              </div>
+                            ) : cardStatus === "active" ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 border border-emerald-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
+                                <span className="text-xs">Active</span>
+                              </div>
+                            ) : cardStatus === "rejected" ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
+                                <span className="text-xs">Rejected</span>
+                              </div>
+                            ) : cardStatus === "pending" ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 border border-amber-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
+                                <span className="text-xs">Pending</span>
+                              </div>
+                            ) : cardStatus === "full" ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-sky-50 text-sky-700 px-2 py-0.5 border border-sky-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-sky-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
+                                <span className="text-xs">Full</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-gray-50 text-gray-700 px-2 py-0.5 border border-gray-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
+                                <span className="text-xs">No Application</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="mt-4 text-xs text-gray-400">Please carry this ID for campus access.</p>
+                        {cardStatus === "active" && (
+                          <div className="border-t border-gray-200 pt-3 mt-3 text-sm text-slate-700">
+                            <div className="font-semibold text-base">{name}</div>
+                            <div className="mt-1 text-xs text-gray-500">SAP ID: {sapId || "N/A"}</div>
+                          </div>
+                        )}
+                        <div className="mt-4">
+                          {cardStatus === "active" ? (
+                            <p className="text-xs text-gray-400">Please carry this ID for campus access.</p>
+                          ) : cardStatus === "pending" ? (
+                            <p className="text-xs text-amber-700">Your application is under review.</p>
+                          ) : cardStatus === "rejected" ? (
+                            <p className="text-xs text-rose-700">Your application was rejected. You may reapply.</p>
+                          ) : cardStatus === "full" ? (
+                            <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
+                          ) : (
+                            <p className="text-xs text-gray-700 mb-3">Start your application to get your alumni card.</p>
+                          )}
+                          {cardStatus === "pending" ? (
+                            <button
+                              type="button"
+                              disabled
+                              aria-disabled
+                              className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                            >
+                              Under review
+                            </button>
+                          ) : cardStatus !== "active" && (
+                            <Link
+                              href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}&modal=card` : `/alumni-profile?modal=card`}
+                              className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              Apply now
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                    ) : cardStatus === "pending" ? (
-                      <div className="bg-amber-50 shadow-sm border border-amber-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Pending alumni card">
-                        <h3 className="text-lg font-semibold text-amber-700">Alumni Card (Pending)</h3>
-                        <div className="mt-2 text-xs text-amber-700">Your application is under review.</div>
-                      </div>
-                    ) : cardStatus === "rejected" ? (
-                      <div className="bg-rose-50 shadow-sm border border-rose-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Rejected alumni card">
-                        <h3 className="text-lg font-semibold text-rose-700">Alumni Card (Rejected)</h3>
-                        <div className="mt-2 text-xs text-rose-700">Your application was rejected. You may reapply.</div>
-                      </div>
-                    ) : cardStatus === "full" ? (
-                      <div className="bg-sky-50 shadow-sm border border-sky-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="Capacity full">
-                        <h3 className="text-lg font-semibold text-sky-700">Alumni Card (Capacity Full)</h3>
-                        <div className="mt-2 text-xs text-sky-700">Application capacity is currently full. Please try later.</div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 shadow-sm border border-gray-200 rounded-lg overflow-hidden p-6 text-center lg:mt-0" aria-label="No application">
-                        <h3 className="text-lg font-semibold text-gray-700">No Alumni Card Application</h3>
-                        <div className="mt-2 text-xs text-gray-700">Start your application using the Alumni Card section below.</div>
-                      </div>
-                    )}
+                    </div>
                   </div>
           </div>
 
@@ -254,17 +320,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
               </svg>
             ),
           },
-          {
-            title: "Alumni Card",
-            action: "Apply now",
-            color: "text-blue-600",
-            bg: "bg-blue-100",
-            icon: (
-              <svg role="img" aria-label="Graduation cap" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
-                <path className="fill-current" d="M12 3l10 5-10 5-10-5 10-5zm0 12l7-3.5V17a2 2 0 01-2 2H7a2 2 0 01-2-2v-5.5L12 15z"/>
-              </svg>
-            ),
-          },
+          
           {
             title: "Mentorship Session",
             action: "Apply now",
@@ -304,56 +360,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
               {c.icon}
             </div>
             <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
-              {c.title === "Alumni Card" ? (
-                <div className="flex items-center justify-center gap-3">
-                  <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-                  <div role="status" aria-live="polite">
-                    {cardStatusError ? (
-                      <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
-                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
-                        <span className="text-xs">{cardStatusError}</span>
-                      </div>
-                    ) : cardStatus === "active" ? (
-                      <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
-                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
-                        <span className="text-xs">Active</span>
-                      </div>
-                    ) : cardStatus === "rejected" ? (
-                      <div className="inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
-                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
-                        <span className="text-xs">Rejected</span>
-                      </div>
-                    ) : cardStatus === "pending" ? (
-                      <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
-                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                        <span className="text-xs">Pending</span>
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-2 rounded-md bg-gray-50 text-gray-700 px-2.5 py-1 border border-gray-200">
-                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
-                        <span className="text-xs">No Application Found</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-              )}
+              <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
               {c.title === "Success Story" ? (
                 <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                   {c.action}
                 </Link>
-              ) : c.title === "Alumni Card" ? (
-                <AlumniCardAction
-                  alumniId={alumniId}
-                  name={name}
-                  sapId={sapId}
-                  faculty={faculty}
-                  department={dept}
-                  program={program}
-                  initialStatus={isAdmin ? "delivered" : cardStatus === "active" ? "delivered" : cardStatus === "rejected" ? "rejected" : cardStatus === "pending" ? "pending" : null}
-                />
               ) : c.title === "Mentorship Session" ? (
                 <>
                   {/* Mentorship status indicator for alumni */}
@@ -422,31 +434,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           </dialog>
         )}
         {modal === "card" && (
-          <dialog open className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
-            <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl transition-all duration-300 ease-out">
-              <div className="flex items-center justify-between border-b p-4">
-                <h2 className="text-lg font-semibold text-slate-900">Apply for Alumni Card</h2>
-                <Link
-                  aria-label="Close"
-                  href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
-                  className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
-                >
-                  Close
-                </Link>
-              </div>
-              <div className="p-4">
-                <AlumniCardAction
-                  alumniId={alumniId}
-                  name={name}
-                  sapId={sapId}
-                  faculty={faculty}
-                  department={dept}
-                  program={program}
-                  initialStatus={isAdmin ? "delivered" : cardStatus === "active" ? "delivered" : cardStatus === "rejected" ? "rejected" : cardStatus === "pending" ? "pending" : null}
-                />
-              </div>
-            </div>
-          </dialog>
+          <AlumniCardModal
+            alumniId={alumniId}
+            name={name}
+            sapId={sapId}
+            faculty={faculty}
+            department={dept}
+            program={program}
+          />
         )}
       </div>
   </>

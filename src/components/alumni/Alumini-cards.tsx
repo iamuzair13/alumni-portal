@@ -268,9 +268,6 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         }
       } catch (apiErr) {
         // Non-blocking: local state still updates, but we surface the error
-       console.log(apiErr);
-       
-       
       }
       setCards((prev) => {
         const idx = prev.findIndex((c) => c.id === alumni.id);
@@ -286,11 +283,8 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         return next;
       });
     } catch (e) {
-     
-    console.log(e);
-    
+      // Error handled silently
     } finally {
-     
     }
   };
 

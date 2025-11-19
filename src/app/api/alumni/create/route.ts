@@ -66,14 +66,20 @@ export async function POST(req: Request) {
 
     // Server-side validation
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phonePattern = /^\+?[1-9]\d{7,14}$/;
+    
+    // Check that at least one of registrationno or sapid is provided
+    const regNo = body.registrationno ? String(body.registrationno).trim() : "";
+    const sapId = body.sapid ? String(body.sapid).trim() : "";
+    if (!regNo && !sapId) {
+      return NextResponse.json({ error: "Either Registration # or SAP ID is required" }, { status: 400 });
+    }
+    
     const required: Array<[keyof TblAlumniBody, string]> = [
-      ["sapid", "SAP ID"],
       ["alumniname", "Name"],
       ["gender", "Gender"],
+      ["cnicpassport", "CNIC/Passport"],
       ["contactno", "Mobile No"],
       ["personalemail", "Personal Email"],
-      ["password", "Password"],
       ["city", "City"],
       ["country", "Country"],
       ["campusname", "Campus"],
@@ -91,20 +97,7 @@ export async function POST(req: Request) {
     if (!emailPattern.test(String(body.personalemail))) {
       return NextResponse.json({ error: "Invalid personal email format" }, { status: 400 });
     }
-    if (!phonePattern.test(String(body.contactno))) {
-      return NextResponse.json({ error: "Invalid mobile number format (E.164)" }, { status: 400 });
-    }
-    const pwd = String(body.password || "");
-    const pwdScore = [
-      pwd.length >= 8,
-      /[A-Z]/.test(pwd),
-      /[a-z]/.test(pwd),
-      /\d/.test(pwd),
-      /[^A-Za-z0-9]/.test(pwd),
-    ].filter(Boolean).length;
-    if (pwdScore < 4) {
-      return NextResponse.json({ error: "Password too weak" }, { status: 400 });
-    }
+    // Phone number and password have no format restrictions - only required
 
     // Sanitize: trim empty strings to null, coerce boolean verify to Yes/No
     const clean = (v: unknown) => {

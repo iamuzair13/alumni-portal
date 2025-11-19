@@ -16,8 +16,6 @@ export function useAlumniProfile(sapId: string | undefined) {
     queryFn: ({ signal }) => {
       if (!sapId) throw new Error("Missing sapid");
       return getAlumniProfile(sapId );
-      console.log(signal);
-      
     },
     enabled: !!sapId,
     staleTime: 5 * 60 * 1000, // 5 minutes

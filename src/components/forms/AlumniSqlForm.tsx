@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
 export type TblAlumniForm = {
@@ -145,7 +147,8 @@ const departmentsByFaculty: Record<string, string[]> = {
   ],
 };
 
-export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdminStep?: boolean }) {
+export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: { excludeAdminStep?: boolean; onSuccess?: () => void }) {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -155,6 +158,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
     setError,
     clearErrors,
     setValue,
+    control,
     formState: { errors },
   } = useForm<TblAlumniForm>({
     defaultValues: {
@@ -217,106 +221,120 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
     },
   });
 
-  const [step, setStep] = useState<number>(1);
-  const maxStep = excludeAdminStep ? 3 : 4;
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const passwordVal = watch("password") || "";
-  const contactVal = watch("contactno") || "";
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
   const selectedFaculty = watch("facultyname") || "";
+  const selectedCountry = watch("country") || "";
   const deptOptions = useMemo(() => departmentsByFaculty[selectedFaculty] || [], [selectedFaculty]);
+  
+  // Province options based on selected country
+  const provinceOptions = useMemo(() => {
+    if (selectedCountry === "Pakistan") {
+      return [
+        { value: "Punjab", label: "Punjab" },
+        { value: "Sindh", label: "Sindh" },
+        { value: "KPK", label: "KPK" },
+        { value: "Balochistan", label: "Balochistan" },
+        { value: "Islamabad", label: "Islamabad Capital Territory" },
+        { value: "GB", label: "Gilgit-Baltistan" },
+        { value: "AJK", label: "Azad Kashmir" },
+      ];
+    } else if (selectedCountry && selectedCountry !== "" && selectedCountry !== "Select") {
+      return [{ value: "Other", label: "Other" }];
+    }
+    return [];
+  }, [selectedCountry]);
+  
   useEffect(() => {
     setValue("departmentname", "");
   }, [selectedFaculty, setValue]);
+  
+  // Reset province when country changes to non-Pakistan
+  useEffect(() => {
+    if (selectedCountry && selectedCountry !== "Pakistan") {
+      setValue("province", "");
+    }
+  }, [selectedCountry, setValue]);
 
-  const passwordScore = useMemo(() => {
-    let score = 0;
-    if (passwordVal.length >= 8) score++;
-    if (/[A-Z]/.test(passwordVal)) score++;
-    if (/[a-z]/.test(passwordVal)) score++;
-    if (/\d/.test(passwordVal)) score++;
-    if (/[^A-Za-z0-9]/.test(passwordVal)) score++;
-    return score; // 0-5
-  }, [passwordVal]);
-
-  const phonePattern = /^\+?[1-9]\d{7,14}$/; // E.164-ish
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  async function validateStep(current: number) {
+  async function validateAll() {
     clearErrors();
-    if (current === 1) {
-      const ok = await trigger([
-        "sapid",
-        "alumniname",
-        "gender",
-        "contactno",
-        "personalemail",
-        "password",
-        "city",
-        "country",
-      ]);
-      if (!ok) return false;
-      if (!phonePattern.test(contactVal)) {
-        setError("contactno", { type: "pattern", message: "Must be international format e.g. +923001234567" });
-        return false;
-      }
-      if (!emailPattern.test(personalEmailVal)) {
-        setError("personalemail", { type: "pattern", message: "Invalid email format" });
-        return false;
-      }
-      if (passwordScore < 4) {
-        setError("password", { type: "min", message: "Password too weak (use upper, lower, number, symbol)" });
-        return false;
-      }
-      return true;
+    
+    // Check if at least one of registrationno or sapid is provided
+    const regNo = watch("registrationno") ? String(watch("registrationno")).trim() : "";
+    const sapId = watch("sapid") ? String(watch("sapid")).trim() : "";
+    if (!regNo && !sapId) {
+      setError("registrationno", { type: "validate", message: "Either Registration # or SAP ID is required" });
+      setError("sapid", { type: "validate", message: "Either Registration # or SAP ID is required" });
+      return false;
     }
-    if (current === 2) {
-      const ok = await trigger([
-        "campusname",
-        "facultyname",
-        "departmentname",
-        "degreetitle",
-        "yearofending",
-      ]);
-      return ok;
+    
+    // Validate Personal Information section (only trigger fields that are actually required)
+    const fieldsToValidate: Array<keyof TblAlumniForm> = ["alumniname", "gender", "cnicpassport", "contactno", "personalemail", "city", "country"];
+    
+    // Only validate the provided field (registrationno OR sapid), not both
+    if (regNo) {
+      fieldsToValidate.push("registrationno");
+    } else if (sapId) {
+      fieldsToValidate.push("sapid");
     }
-    if (current === 3) {
-      const baseOk = await trigger([
-        "employeed",
+    
+    const personalOk = await trigger(fieldsToValidate);
+    if (!personalOk) return false;
+    if (!emailPattern.test(personalEmailVal)) {
+      setError("personalemail", { type: "pattern", message: "Invalid email format" });
+      return false;
+    }
+
+    // Validate Academic Information section
+    const academicOk = await trigger([
+      "campusname",
+      "facultyname",
+      "departmentname",
+      "degreetitle",
+      "yearofending",
+    ]);
+    if (!academicOk) return false;
+
+    // Validate Work Status section
+    const workFieldsToValidate: Array<keyof TblAlumniForm> = ["employeed"];
+    
+    // Only validate work fields if employed
+    if ((employeedVal || "").toLowerCase() === "employed") {
+      workFieldsToValidate.push("industry", "nameoforganization", "designation", "totalyearsofexpereince", "city", "country");
+    }
+    
+    const workOk = await trigger(workFieldsToValidate);
+    if (!workOk) return false;
+    
+    // Conditional: when employed, industry/org/designation/experience required
+    if ((employeedVal || "").toLowerCase() === "employed") {
+      const fields: Array<keyof TblAlumniForm> = [
         "industry",
         "nameoforganization",
         "designation",
         "totalyearsofexpereince",
-        "city",
-        "country",
-      ]);
-      if (!baseOk) return false;
-      // Conditional: when employed, industry/org/designation/experience required
-      if ((employeedVal || "").toLowerCase() === "employed") {
-        const fields: Array<keyof TblAlumniForm> = [
-          "industry",
-          "nameoforganization",
-          "designation",
-          "totalyearsofexpereince",
-        ];
-        for (const f of fields) {
-          const val = watch(f);
-          if (!val || String(val).trim() === "") {
-            setError(f, { type: "required", message: "Required" });
-            return false;
-          }
+      ];
+      for (const f of fields) {
+        const val = watch(f);
+        if (!val || String(val).trim() === "") {
+          setError(f, { type: "required", message: "Required" });
+          return false;
         }
       }
-      return true;
     }
-    if (current === 4) {
-      const ok = await trigger(["datasource", "verify", "alumnistatus"]);
-      return ok;
+
+    // Validate Admin Section (if not excluded)
+    if (!excludeAdminStep) {
+      const adminOk = await trigger(["datasource", "verify", "alumnistatus"]);
+      if (!adminOk) return false;
     }
+
     return true;
   }
 
@@ -324,6 +342,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
     setSubmitting(true);
     setSubmitMsg(null);
     setSubmitError(null);
+    
     try {
       const payload: TblAlumniForm = { ...data };
       if (!payload.alumniemail || String(payload.alumniemail).trim() === "") {
@@ -332,97 +351,242 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
       if (!payload.datasource || String(payload.datasource).trim() === "") {
         payload.datasource = "Alumni";
       }
+      
+      // Check if SAP ID or Registration # exists
       const sapId = String(payload.sapid || "").trim();
-      if (sapId) {
-        const existsRes = await fetch(`/api/alumni/${encodeURIComponent(sapId)}`);
-        if (existsRes.ok) {
-          setSubmitError("User already exists");
-          return;
+      const regNo = String(payload.registrationno || "").trim();
+      
+      // Show loading toast
+      const loadingToast = toast.loading("Checking if user already exists...");
+      
+      // Check both registration number and SAP ID
+      const checkParams = new URLSearchParams();
+      if (regNo) checkParams.append("registrationno", regNo);
+      if (sapId) checkParams.append("sapid", sapId);
+      
+      const checkRes = await fetch(`/api/alumni/check-registration?${checkParams.toString()}`);
+      const checkData = await checkRes.json();
+      
+      toast.dismiss(loadingToast);
+      
+      if (checkRes.ok && checkData.exists) {
+        const alumni = checkData.alumni;
+        let errorMsg = "";
+        
+        if (regNo && alumni?.registrationno === regNo && sapId && alumni?.sapid === sapId) {
+          errorMsg = "User with this Registration Number and SAP ID is already registered. Please use different credentials or contact support if you believe this is an error.";
+        } else if (regNo && alumni?.registrationno === regNo) {
+          errorMsg = "User with this Registration Number is already registered. Please use a different Registration Number or contact support if you believe this is an error.";
+        } else if (sapId && alumni?.sapid === sapId) {
+          errorMsg = "User with this SAP ID is already registered. Please use a different SAP ID or contact support if you believe this is an error.";
+        } else {
+          errorMsg = "User with these credentials is already registered. Please use different credentials or contact support if you believe this is an error.";
         }
-        if (existsRes.status !== 404) {
-          const ej = await existsRes.json().catch(() => null);
-          setSubmitError(ej?.error || "Failed to verify existing user");
-          return;
-        }
+        
+        toast.error(errorMsg, {
+          duration: 6000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+            borderRadius: '8px',
+          },
+        });
+        
+        setSubmitError(errorMsg);
+        setSubmitting(false);
+        return;
       }
+      
+      if (!checkRes.ok) {
+        const errorMsg = checkData?.error || "Failed to verify existing user. Please try again.";
+        toast.error(errorMsg, {
+          duration: 5000,
+        });
+        setSubmitError(errorMsg);
+        setSubmitting(false);
+        return;
+      }
+      
+      // Show submitting toast
+      const submittingToast = toast.loading("Submitting your registration...");
+      
       // Send to API (server will sanitize and validate again)
       const res = await fetch("/api/alumni/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      
       const json = await res.json();
+      
+      toast.dismiss(submittingToast);
+      
       if (!res.ok) {
-        throw new Error(json?.error || "Failed to save record");
+        const errorMsg = json?.error || json?.message || "Failed to save record. Please check all fields and try again.";
+        toast.error(errorMsg, {
+          duration: 6000,
+        });
+        setSubmitError(errorMsg);
+        setSubmitting(false);
+        return;
       }
-      setSubmitMsg(`Saved. New Alumni ID: ${json.alumniid}`);
+      
+      // Success - show toast and close form
+      toast.success(`Registration successful! Your Alumni ID is ${json.alumniid}.`, {
+        duration: 4000,
+        style: {
+          background: '#d1fae5',
+          color: '#065f46',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      
+      setSubmitMsg(`Registration successful! Your Alumni ID is ${json.alumniid}. Redirecting to sign in...`);
+      
+      // Reset form
       reset();
-      setStep(1);
+      
+      // Close modal/form if callback provided, otherwise redirect
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess();
+          // Redirect after closing modal
+          setTimeout(() => {
+            router.push("/signin");
+            router.refresh();
+          }, 300);
+        }, 800);
+      } else {
+        // Redirect to signin page immediately (form will close)
+        setTimeout(() => {
+          router.push("/signin");
+          router.refresh();
+        }, 800);
+      }
+      
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setSubmitError(msg || "Submission failed");
+      const errorMsg = msg || "An unexpected error occurred. Please try again later.";
+      
+      toast.error(errorMsg, {
+        duration: 6000,
+      });
+      
+      setSubmitError(errorMsg);
     } finally {
       setSubmitting(false);
     }
   }
 
-  function nextStep() {
-    validateStep(step).then((ok) => {
-      if (ok) setStep((s) => Math.min(maxStep, s + 1));
-    });
-  }
-
-  function prevStep() {
-    setStep((s) => Math.max(1, s - 1));
+  async function handleFormSubmit(data: TblAlumniForm) {
+    // Clear previous errors
+    setSubmitError(null);
+    setSubmitMsg(null);
+    
+    // Validate all fields
+    const isValid = await validateAll();
+    if (!isValid) {
+      // Show general error message
+      setSubmitError("Please fix all errors in the form before submitting.");
+      
+      // Scroll to first error after a brief delay to allow errors to render
+      setTimeout(() => {
+        const firstErrorField = document.querySelector('.text-red-600')?.closest('div')?.querySelector('input, select, textarea');
+        if (firstErrorField) {
+          firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
+          (firstErrorField as HTMLElement).focus();
+        }
+      }, 100);
+      return;
+    }
+    
+    // If validation passes, submit the form
+    await onSubmit(data);
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 bg-white px-4" aria-label="Alumni registration form">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="mt-6 bg-white px-4" aria-label="Alumni registration form">
       <input type="hidden" value="Alumni" {...register("datasource")} />
       <input type="hidden" name="alumni" value="alumni" />
       {/* Notifications */}
       {(submitMsg || submitError || submitting) && (
-        <div className="mb-4" aria-live="polite" aria-atomic="true">
-          {submitting && <div className="text-sm text-neutral-600">Submitting...</div>}
-          {submitMsg && <div role="status" className="text-sm text-green-700">{submitMsg}</div>}
-          {submitError && <div role="alert" className="text-sm text-red-700">{submitError}</div>}
+        <div className="mb-4 rounded-lg border p-4" aria-live="polite" aria-atomic="true">
+          {submitting && (
+            <div className="flex items-center gap-2 text-sm text-neutral-600">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
+              <span>Submitting your registration...</span>
+            </div>
+          )}
+          {submitMsg && (
+            <div role="status" className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+              <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span>{submitMsg}</span>
+            </div>
+          )}
+          {submitError && (
+            <div role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+              <svg className="h-5 w-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span>{submitError}</span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Progress Indicator */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          {(excludeAdminStep ? [1,2,3] : [1,2,3,4]).map((n) => (
-            <div key={n} className="flex-1">
-              <div className={`h-2 rounded ${step >= n ? "bg-indigo-600" : "bg-neutral-200"}`}></div>
-              <p className="mt-2 text-center text-xs text-neutral-700">
-                {n === 1 && "Personal Information"}
-                {n === 2 && "Academic Information"}
-                {n === 3 && "Work Status"}
-                {!excludeAdminStep && n === 4 && "Admin Section"}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Step 1: Personal Information */}
-      {step === 1 && (
-        <section className="mb-6">
+      {/* Section 1: Personal Information */}
+      <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Personal Information</h2>
           <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className={labelBase}>Registration #</label>
-              <input type="text" className={inputBase} {...register("registrationno", { maxLength: 20 })} />
+              <label className={labelBase}>Registration NO</label>
+              <input
+                type="text"
+                className={inputBase}
+                {...register("registrationno", {
+                  maxLength: 20,
+                  validate: (value, formValues) => {
+                    const regNo = value ? String(value).trim() : "";
+                    const sapId = formValues?.sapid ? String(formValues.sapid).trim() : "";
+                    // If this field has a value, it's valid
+                    if (regNo) return true;
+                    // If the other field has a value, this one is optional
+                    if (sapId) return true;
+                    // Both are empty
+                    return "Either Registration # or SAP ID is required";
+                  }
+                })}
+              />
+              {errors.registrationno && <p className="mt-1 text-xs text-red-600">{errors.registrationno.message}</p>}
             </div>
             <div>
-              <label className={labelBase}>SAP ID *</label>
-              <input type="text" className={inputBase} {...register("sapid", { required: true, maxLength: 20 })} />
-              {errors.sapid && <p className="mt-1 text-xs text-red-600">SAP ID is required</p>}
+              <label className={labelBase}>SAP ID </label>
+              <input
+                type="text"
+                className={inputBase}
+                {...register("sapid", {
+                  maxLength: 20,
+                  validate: (value, formValues) => {
+                    const regNo = formValues?.registrationno ? String(formValues.registrationno).trim() : "";
+                    const sapId = value ? String(value).trim() : "";
+                    // If this field has a value, it's valid
+                    if (sapId) return true;
+                    // If the other field has a value, this one is optional
+                    if (regNo) return true;
+                    // Both are empty
+                    return "Either Registration # or SAP ID is required";
+                  }
+                })}
+              />
+              {errors.sapid && <p className="mt-1 text-xs text-red-600">{errors.sapid.message}</p>}
             </div>
             <div>
-              <label className={labelBase}>Name *</label>
+              <label className={labelBase}>Full Name (as in CNIC) *</label>
               <input type="text" className={inputBase} {...register("alumniname", { required: true, maxLength: 200 })} />
               {errors.alumniname && <p className="mt-1 text-xs text-red-600">Name is required</p>}
             </div>
@@ -436,7 +600,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
                 <option value="">Select</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Other">Other</option>
               </select>
               {errors.gender && <p className="mt-1 text-xs text-red-600">Gender is required</p>}
             </div>
@@ -460,53 +623,68 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
                 {...register("dateofbirth", { maxLength: 50 })}
               />
             </div>
-            <div>
-              <label className={labelBase}>Marital Status</label>
-              <select className={inputBase} {...register("maritalstatus")}> 
-                <option value="">Select</option>
-                <option value="Single">Single</option>
-                <option value="Married">Married</option>
-                <option value="Divorced">Divorced</option>
-              </select>
-            </div>
+            
             <div>
               <label className={labelBase}>CNIC/Passport *</label>
-              <input type="text" className={inputBase} {...register("cnicpassport", {required:true, maxLength: 50 })} />
+              <input type="text" className={inputBase} {...register("cnicpassport", { required: true, maxLength: 50 })} />
+              {errors.cnicpassport && <p className="mt-1 text-xs text-red-600">CNIC/Passport is required</p>}
             </div>
             <div>
               <label className={labelBase}>Mobile No.*</label>
-              <input type="tel" className={inputBase} placeholder="e.g. +923001234567" {...register("contactno", { required: true, maxLength: 50 })} />
-              {errors.contactno && <p className="mt-1 text-xs text-red-600">Valid phone is required</p>}
+              <input type="tel" className={inputBase} placeholder="Enter mobile number"  {...register("contactno", { required: true, maxLength: 50 })} />
+              {errors.contactno && <p className="mt-1 text-xs text-red-600">Mobile number is required</p>}
             </div>
             <div>
               <label className={labelBase}>Personal Email *</label>
-              <input type="email" className={inputBase} {...register("personalemail", { required: true, maxLength: 100 })} />
+              <input type="email" className={inputBase} placeholder="eg. example@gmail.com" {...register("personalemail", { required: true, maxLength: 100 })} />
               {errors.personalemail && <p className="mt-1 text-xs text-red-600">Valid email is required</p>}
             </div>
             <div className="lg:col-span-1">
-              <label className={labelBase}>Password *</label>
-              <input type="password" className={inputBase} {...register("password", { required: true, maxLength: 50 })} />
-              <div className="mt-2 h-2 rounded bg-neutral-200">
-                <div className={`h-2 rounded ${passwordScore <= 2 ? "bg-red-500" : passwordScore === 3 ? "bg-yellow-500" : "bg-green-600"}`} style={{ width: `${(passwordScore/5)*100}%` }}></div>
-              </div>
-              <p className="mt-1 text-xs text-neutral-600">Use upper + lower + number + symbol, min 8 chars.</p>
-              {errors.password && <p className="mt-1 text-xs text-red-600">{String(errors.password.message || "Password is required")}</p>}
+              <label className={labelBase}>Password</label>
+              <input type="password" className={inputBase} placeholder="eg. 123" {...register("password")} />
             </div>
             <div className="lg:col-span-3">
               <label className={labelBase}>Address</label>
               <textarea rows={3} className={inputBase} {...register("address", { maxLength: 250 })} />
             </div>
             <div>
+              <label className={labelBase}>Home Country *</label>
+              <Controller
+                name="country"
+                control={control}
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <select 
+                    className={inputBase} 
+                    {...field}
+                    value={field.value || ""}
+                  >
+                    <option value="">Select</option>
+                    <option value="Pakistan">Pakistan</option>
+                    <option value="United Arab Emirates">United Arab Emirates</option>
+                    <option value="Saudi Arabia">Saudi Arabia</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Other">Other</option>
+                  </select>
+                )}
+              />
+              {errors.country && <p className="mt-1 text-xs text-red-600">Country is required</p>}
+            </div>
+            <div>
               <label className={labelBase}>Province</label>
-              <select className={inputBase} {...register("province")}> 
+              <select 
+                className={inputBase} 
+                {...register("province")}
+                key={`province-${selectedCountry || "none"}`}
+              > 
                 <option value="">Select</option>
-                <option value="Punjab">Punjab</option>
-                <option value="Sindh">Sindh</option>
-                <option value="KPK">KPK</option>
-                <option value="Balochistan">Balochistan</option>
-                <option value="Islamabad">Islamabad Capital Territory</option>
-                <option value="GB">Gilgit-Baltistan</option>
-                <option value="AJK">Azad Kashmir</option>
+                {provinceOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -514,27 +692,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
               <input type="text" className={inputBase} {...register("city", { required: true, maxLength: 50 })} />
               {errors.city && <p className="mt-1 text-xs text-red-600">City is required</p>}
             </div>
-            <div>
-              <label className={labelBase}>Home Country *</label>
-              <select className={inputBase} {...register("country", { required: true })}>
-                <option value="">Select</option>
-                <option value="Pakistan">Pakistan</option>
-                <option value="United Arab Emirates">United Arab Emirates</option>
-                <option value="Saudi Arabia">Saudi Arabia</option>
-                <option value="United States">United States</option>
-                <option value="United Kingdom">United Kingdom</option>
-                <option value="Canada">Canada</option>
-                <option value="Other">Other</option>
-              </select>
-              {errors.country && <p className="mt-1 text-xs text-red-600">Country is required</p>}
-            </div>
           </div>
         </section>
-      )}
 
-      {/* Step 2: Academic Information */}
-      {step === 2 && (
-        <section className="mb-6">
+      {/* Section 2: Academic Information */}
+      <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Academic Information</h2>
           <p className="mt-1 text-xs text-neutral-600">All fields are required.</p>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -542,9 +704,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
               <label className={labelBase}>Campus *</label>
               <select className={inputBase} {...register("campusname", { required: true })}>
                 <option value="">Select</option>
-                <option value="Main">Main Campus</option>
-                <option value="City">City Campus</option>
-                <option value="Sub">Sub Campus</option>
+                <option value="lahore">Lahore Campus</option>
+                <option value="islamabad">Islamabad Campus</option>
+                <option value="sargodha">Sargodha Campus</option>
+                <option value="gujrat">Gujrat Campus</option>
               </select>
               {errors.campusname && <p className="mt-1 text-xs text-red-600">Campus is required</p>}
             </div>
@@ -565,6 +728,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
                 <option value="Faculty of Pharmacy">Faculty of Pharmacy</option>
                 <option value="International Qualifications">International Qualifications</option>
                 <option value="Faculty of Allied Health Sciences">Faculty of Allied Health Sciences</option>
+                <option value="other">Other</option>
               </select>
               {errors.facultyname && <p className="mt-1 text-xs text-red-600">Faculty is required</p>}
             </div>
@@ -572,6 +736,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
               <label className={labelBase}>Department *</label>
               <select className={inputBase} {...register("departmentname", { required: true })}>
                 <option value="">Select</option>
+                <option value="other">Other</option>
                 {deptOptions.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -591,26 +756,24 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
             </div>
             <div>
               <label className={labelBase}>Year of Passing Out *</label>
-              <input type="number" className={inputBase} {...register("yearofending", { required: true, valueAsNumber: true })} />
+              <input type="number" className={inputBase} placeholder="e.g. 2025" {...register("yearofending", { required: true, valueAsNumber: true })} />
               {errors.yearofending && <p className="mt-1 text-xs text-red-600">Year is required</p>}
             </div>
           </div>
         </section>
-      )}
 
-      {/* Step 3: Work Status */}
-      {step === 3 && (
-        <section className="mb-6">
+      {/* Section 3: Work Status */}
+      <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Work Status</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
               <label className={labelBase}>Current Status</label>
               <div className="mt-2 flex gap-6">
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Employed" {...register("employeed")} /> Employed
+                  <input type="radio" value="Employed" defaultChecked {...register("employeed")} /> Employed
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed" {...register("employeed")} /> Unemployed
+                  <input type="radio" value="Unemployed"  {...register("employeed")} /> Unemployed
                 </label>
               </div>
             </div>
@@ -664,34 +827,41 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
               <input type="text" className={inputBase} {...register("officialnumber", { maxLength: 50 })} />
             </div>
 
-            {/* Work City/Country bound to same schema fields */}
-            <div>
-              <label className={labelBase}>Work City *</label>
-              <input type="text" className={inputBase} {...register("city", { required: true, maxLength: 50 })} />
-              {errors.city && <p className="mt-1 text-xs text-red-600">Work city is required</p>}
-              <p className="mt-1 text-xs text-neutral-600">Overrides Home City and maps to `city`.</p>
-            </div>
-            <div>
-              <label className={labelBase}>Work Country *</label>
-              <select className={inputBase} {...register("country", { required: true })}>
-                <option value="">Select</option>
-                <option value="Pakistan">Pakistan</option>
-                <option value="United Arab Emirates">United Arab Emirates</option>
-                <option value="Saudi Arabia">Saudi Arabia</option>
-                <option value="United States">United States</option>
-                <option value="United Kingdom">United Kingdom</option>
-                <option value="Canada">Canada</option>
-                <option value="Other">Other</option>
-              </select>
-              {errors.country && <p className="mt-1 text-xs text-red-600">Work country is required</p>}
-              <p className="mt-1 text-xs text-neutral-600">Overrides Home Country and maps to `country`.</p>
-            </div>
+            {/* Work City/Country bound to same schema fields - only required if employed */}
+            {(employeedVal || "").toLowerCase() === "employed" && (
+              <>
+                <div>
+                  <label className={labelBase}>Work City *</label>
+                  <input type="text" className={inputBase} {...register("city", { required: (employeedVal || "").toLowerCase() === "employed", maxLength: 50 })} />
+                  {(errors.city && (employeedVal || "").toLowerCase() === "employed") && (
+                    <p className="mt-1 text-xs text-red-600">Work city is required</p>
+                  )}
+                  <p className="mt-1 text-xs text-neutral-600">Overrides Home City and maps to `city`.</p>
+                </div>
+                <div>
+                  <label className={labelBase}>Work Country *</label>
+                  <select className={inputBase} {...register("country", { required: (employeedVal || "").toLowerCase() === "employed" })}>
+                    <option value="">Select</option>
+                    <option value="Pakistan">Pakistan</option>
+                    <option value="United Arab Emirates">United Arab Emirates</option>
+                    <option value="Saudi Arabia">Saudi Arabia</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {(errors.country && (employeedVal || "").toLowerCase() === "employed") && (
+                    <p className="mt-1 text-xs text-red-600">Work country is required</p>
+                  )}
+                  <p className="mt-1 text-xs text-neutral-600">Overrides Home Country and maps to `country`.</p>
+                </div>
+              </>
+            )}
           </div>
         </section>
-      )}
 
-      {/* Step 4: Admin Section */}
-      {!excludeAdminStep && step === 4 && (
+      {/* Section 4: Admin Section */}
+      {!excludeAdminStep && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -722,18 +892,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false }: { excludeAdm
         </section>
       )}
 
-      {/* Navigation */}
+      {/* Submit and Reset Buttons */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        {step > 1 && (
-          <button type="button" onClick={prevStep} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Back</button>
-        )}
-        {step < maxStep && (
-          <button type="button" onClick={nextStep} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Next</button>
-        )}
-        {step === maxStep && (
-          <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60">Submit</button>
-        )}
-        <button type="button" disabled={submitting} onClick={() => { reset(); setStep(1); }} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Reset</button>
+        <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60">Submit</button>
+        <button type="button" disabled={submitting} onClick={() => { reset(); }} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Reset</button>
       </div>
     </form>
   );

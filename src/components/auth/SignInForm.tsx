@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -9,19 +9,7 @@ import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
-type PasswordStrength = "weak" | "medium" | "strong";
 type FormErrors = { email?: string; password?: string };
-
-function computeStrength(pw: string): PasswordStrength {
-  const len = pw.length >= 8;
-  const num = /\d/.test(pw);
-  const up = /[A-Z]/.test(pw);
-  const sym = /[^A-Za-z0-9]/.test(pw);
-  const score = [len, num, up, sym].filter(Boolean).length;
-  if (score >= 3) return "strong";
-  if (score >= 2) return "medium";
-  return "weak";
-}
 
 export default function SignInForm() {
   const { status, data: session } = useSession();
@@ -33,7 +21,6 @@ export default function SignInForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const strength: PasswordStrength = useMemo(() => computeStrength(password), [password]);
   const params = useSearchParams();
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
@@ -156,7 +143,7 @@ export default function SignInForm() {
                 <Image src="/images/logo/login-1.jpg" alt="Logo" width={40} height={40} className="rounded" sizes="40px" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Welcome Back</h1>
+                <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Welcome !</h1>
                 <p className="text-xs sm:text-sm text-slate-600">Please Sign in to your portal</p>
     </div>
     <Modal isOpen={isOpen} onClose={closeModal} isFullscreen={true} showCloseButton={true}>
@@ -166,7 +153,7 @@ export default function SignInForm() {
           <button aria-label="Close" onClick={closeModal} className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100">Close</button>
         </div>
         <div className="mt-4">
-          <AlumniSqlForm excludeAdminStep={true} />
+          <AlumniSqlForm excludeAdminStep={true} onSuccess={closeModal} />
         </div>
       </div>
     </Modal>
@@ -213,9 +200,6 @@ export default function SignInForm() {
                   </button>
                 </div>
                 {errors.password && <p className="mt-1 text-xs text-red-600" role="alert">{errors.password}</p>}
-                <div className="mt-1 text-xs">
-                  <span className={strength === "strong" ? "text-emerald-600" : strength === "medium" ? "text-amber-600" : "text-rose-600"}>Password strength: {strength}</span>
-                </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">
