@@ -78,24 +78,30 @@ const benefitsData: Record<string, { title: string; description: string; content
     title: "Healthcare Benefits",
     description: "Comprehensive health insurance and wellness programs for alumni members.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Healthcare Benefits for Alumni</h3>
-      <p class="mb-4">We care about your health and wellbeing. Our alumni healthcare benefits provide comprehensive coverage and wellness support to help you maintain a healthy lifestyle.</p>
+      <h3 class="text-xl font-semibold mb-4">Healthcare:</h3>
+      <p class="mb-6">We care about your health and wellbeing. Our alumni healthcare benefits provide comprehensive medical consultation and diagnostic services at University of Lahore Hospital and Sehat Medical Complexes.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Health Insurance</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Group health insurance plans with competitive rates</li>
-        <li>Coverage for medical, dental, and vision care</li>
-        <li>Family coverage options available</li>
-        <li>Access to network of healthcare providers</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Wellness Programs</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Annual health screenings and check-ups</li>
-        <li>Fitness and wellness workshops</li>
-        <li>Mental health support and counseling services</li>
-        <li>Preventive care programs</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit Category</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Eligibility</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Medical Consultation, Diagnostic Services at University of Lahore Hospital (ULH)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700" rowspan="2">Alumni and family members (Spouse, Children, Parents)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700" rowspan="2">Same discount % & services, as offered to UOL students or staff (whichever is better)</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Medical Consultation, Diagnostic Services at all UOL SMCs (Sehat Medical Complexes)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-emerald-700" viewBox="0 0 24 24">
@@ -107,24 +113,34 @@ const benefitsData: Record<string, { title: string; description: string; content
     title: "Identity & Inclusion",
     description: "Foster a sense of belonging and celebrate diversity within our alumni community.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Identity & Inclusion</h3>
-      <p class="mb-4">Our alumni community is built on the foundation of diversity, inclusion, and mutual respect. We celebrate the unique identities and contributions of all our members.</p>
+      <h3 class="text-xl font-semibold mb-4">Identity & Inclusion: UOL Facilities Access & Memberships (Alumni)</h3>
+      <p class="mb-6">As a valued member of our alumni community, you have access to exclusive facilities and memberships designed to support your continued connection with the University of Lahore.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Inclusive Community</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Diverse representation in leadership and events</li>
-        <li>Cultural celebration events and heritage months</li>
-        <li>Support for underrepresented groups</li>
-        <li>Inclusive policies and practices</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Affinity Groups</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Connect with alumni who share similar backgrounds</li>
-        <li>Professional networking within affinity groups</li>
-        <li>Mentorship opportunities</li>
-        <li>Community support and resources</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit Category</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Percentage for Alumni</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Access to UOL Library Resources</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Free on-campus access</li>
+                  <li>Free on-line access (digital library)</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Alumni Email</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Permanent email address @alumni.uol.edu.pk</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-purple-700" viewBox="0 0 24 24">
@@ -137,23 +153,55 @@ const benefitsData: Record<string, { title: string; description: string; content
     description: "Enjoy access to gym, sports facilities, and exclusive campus amenities.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Campus Facilities and Memberships</h3>
-      <p class="mb-4">Stay connected to campus life with exclusive access to our state-of-the-art facilities and amenities.</p>
+      <p class="mb-6">Stay connected to campus life with exclusive access to our state-of-the-art facilities and amenities, including gym, swimming pool, cricket club, and restaurant discounts.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Fitness & Recreation</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Gym and fitness center access</li>
-        <li>Swimming pool and sports facilities</li>
-        <li>Recreational activities and programs</li>
-        <li>Personal training services</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Campus Amenities</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Parking privileges</li>
-        <li>Dining hall access with alumni discounts</li>
-        <li>Event space rentals</li>
-        <li>Guest accommodation options</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit Category</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Percentage for Alumni</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Gym Membership</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Regular Membership: Same % discount as offered to UOL Staff or Students or 50% discount on rate for outsiders (whichever is better)</li>
+                  <li>Free registration for select competitions</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Swimming Pool Membership</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Regular Membership: Same % discount as offered to UOL Staff or Students or 50% discount on rate for outsiders (whichever is better)</li>
+                  <li>Free registration for select competitions</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Qalandars Cricket Club Membership</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>50% Discount on Qalandars Cricket Club membership or Same % discount as offered to UOL Students (whichever is better)</li>
+                  <li>Free registration for select tournaments</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Discounts at UOL Restaurants (Poet)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Same % discount as offered to UOL Staff or Students (whichever is better)</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Free 3 Membership coupons to Alumni per month for Gym & Pool</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Monthly draw run through portal</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-blue-700" viewBox="0 0 24 24">
@@ -165,24 +213,34 @@ const benefitsData: Record<string, { title: string; description: string; content
     title: "Merchant and Business Promotions",
     description: "Exclusive discounts and special offers from partner businesses and merchants.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Merchant and Business Promotions</h3>
-      <p class="mb-4">Enjoy exclusive discounts and special offers from our network of partner businesses and merchants.</p>
+      <h3 class="text-xl font-semibold mb-4">Merchant Discounts & Alumni Businesses Promotion:</h3>
+      <p class="mb-6">Enjoy exclusive discounts from partnered merchants and get support for launching your alumni business or start-up through UOL Alumni platforms.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Partner Discounts</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Retail store discounts and promotions</li>
-        <li>Restaurant and dining specials</li>
-        <li>Travel and hotel booking discounts</li>
-        <li>Technology and software deals</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Business Services</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Professional services at discounted rates</li>
-        <li>Business consulting and advisory services</li>
-        <li>Marketing and branding support</li>
-        <li>Networking opportunities with partner businesses</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit Category</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Percentage for Alumni</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Discounts at Partnered Merchants (Restaurants, Shopping Brands etc.)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Same discount % & services, as offered to UOL students.</li>
+                  <li>Refer to list of merchants with discounts on Alumni website.</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Alumni Start-up Launch @ UOL</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Launch or promotion of UOL Alumni businesses / start-ups through UOL Alumni Social Media and extend their offers to UOL community</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-orange-700" viewBox="0 0 24 24">
@@ -194,24 +252,45 @@ const benefitsData: Record<string, { title: string; description: string; content
     title: "Career and Mentorship",
     description: "Professional development opportunities and mentorship programs for career growth.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Career and Mentorship</h3>
-      <p class="mb-4">Advance your career with our comprehensive professional development and mentorship programs designed to support your growth at every stage.</p>
+      <h3 class="text-xl font-semibold mb-4">Career: Mentorship, Employment, Career Progression & Recognition</h3>
+      <p class="mb-6">Advance your career with our comprehensive professional development and mentorship programs designed to support your growth at every stage, from mentorship and job opportunities to start-up support.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Career Services</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Career counseling and guidance</li>
-        <li>Resume review and interview preparation</li>
-        <li>Job placement assistance</li>
-        <li>Career transition support</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Mentorship Programs</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>One-on-one mentorship matching</li>
-        <li>Industry-specific mentorship opportunities</li>
-        <li>Peer-to-peer learning networks</li>
-        <li>Professional development workshops</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Channel</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Mentorship and Coaching Programs</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Free one on one mentorship & coaching session (through prior registration) for Alumni, led by industry COs (CEO, COO, etc.)</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Job Postings and Career Opportunities (UOL Jobs, Other Employers Jobs)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Access to jobs offered by UOL as well as other employers, as advertised on UOL Alumni website, UOL Career Portal, official emails, social media platforms.</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Career Counselling & Job Placement Support</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">One-on-one career counselling and placement support through UOL Career Services & Placement Office</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Invitation to Recruitment Drives</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Alumni participation in UOL-organized recruitment drives, career expos, both as job seeker or employer (through prior registration)</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Participation in Seminars, Workshops, and Conferences</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Invitation & participation (through prior registration) in seminars, conferences, symposia, bootcamps, and training workshops organized by UOL or its partners</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Start-ups support through UOL Innovation Hub (iHub) and Funding Assistance</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Support to Alumni on their Start-up incubation or accelerator programs (through iHub), entrepreneurship bootcamps, joint research & innovation challenges.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-teal-700" viewBox="0 0 24 24">
@@ -223,24 +302,59 @@ const benefitsData: Record<string, { title: string; description: string; content
     title: "Chapters & Engagement Events",
     description: "Connect with local chapters and participate in networking events worldwide.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Chapters & Engagement Events</h3>
-      <p class="mb-4">Stay connected with fellow alumni through our global network of chapters and exciting engagement events.</p>
+      <h3 class="text-xl font-semibold mb-4">Networking: Chapters & Engagement Events</h3>
+      <p class="mb-6">Stay connected with fellow alumni through our global network of chapters, special interest groups, advisory roles, and exciting engagement events.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Local Chapters</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Join or start a local alumni chapter</li>
-        <li>Regional networking events and meetups</li>
-        <li>Chapter leadership opportunities</li>
-        <li>Community service initiatives</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Global Events</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Annual alumni reunions and homecoming</li>
-        <li>Professional networking conferences</li>
-        <li>Cultural and social events</li>
-        <li>Virtual events and webinars</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Channel for Alumni</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Chapter* Membership and Ambassadorship</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Membership of Local, Regional, and International Alumni chapters, promoting Alumni community engagement, networking, and various professional & social interaction events.</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Alumni Associations - Special Interest Groups (SIGs)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Membership of various UOL Alumni Associations (SIGs), focused on a specific subject or initiative, as announced on Alumni website</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Advisory Roles</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Membership of advisory boards, accreditation review committees, industry panels constituted at UOL faculty-wise, or function-wise</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Alumni Networking Events</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Participation in regular meet-ups (area-wise, faculty-wise) conducted by UOL Alumni Office as per the schedule announced at Alumni website.</td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Alumni Talks & Podcasts</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Participation as mentor or guest speaker to deliver a talk to UOL students</li>
+                  <li>Participate in Alumni Podcast series to promote UOL Alumni on various platforms</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Participation in UOL Mega Events</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                Participation in UOL Organized Mega Events (through prior registration) e.g.:
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                  <li>Alumni Annual Homecoming</li>
+                  <li>UOL Annual Graduation Ceremony</li>
+                  <li>UOL Annual Sports Festivals</li>
+                  <li>UOL Organized International Conferences</li>
+                </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-sm text-gray-600 italic mt-4">*Alumni Chapter is a local, regional or international professional network of UOL alumni established under approval of the UOL Alumni Office</p>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-rose-700" viewBox="0 0 24 24">
@@ -252,24 +366,39 @@ const benefitsData: Record<string, { title: string; description: string; content
     title: "Recognition",
     description: "Honor outstanding achievements and contributions of our distinguished alumni.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Recognition</h3>
-      <p class="mb-4">We celebrate the remarkable achievements and contributions of our alumni community through various recognition programs and awards.</p>
+      <h3 class="text-xl font-semibold mb-4">Recognition:</h3>
+      <p class="mb-6">We celebrate the remarkable achievements and contributions of our alumni community through various recognition programs, awards, and spotlight features.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Awards & Honors</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Distinguished Alumni Awards</li>
-        <li>Outstanding Achievement Recognition</li>
-        <li>Young Alumni Excellence Awards</li>
-        <li>Community Service Honors</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Spotlight Features</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Alumni success stories and profiles</li>
-        <li>Featured alumni in newsletters and publications</li>
-        <li>Social media recognition</li>
-        <li>Hall of Fame inductions</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Channel</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Awards for High Achievers (Gold, Silver, Bronze)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Participation in quarterly high achiever recognition competition for professional excellence, entrepreneurship, or public service, through Alumni website to earn various awards (criteria based).</li>
+                  <li>The awards will be presented by the Board of Governance, and subsequently published on social media; campus displays etc.</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Alumni Wall of Fame & Social Media Spotlight</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Display of Alumni picture & profile on walls of fame at various location within UOL campuses as well as on online platforms</li>
+                  <li>Highlighting Alumni success stories on UOL's website and social media.</li>
+                </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-amber-700" viewBox="0 0 24 24">
@@ -317,9 +446,6 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
               </div>
 
               <div className="flex items-center gap-4 mb-6">
-                <div className="flex-shrink-0">
-                  {benefit.icon}
-                </div>
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">{benefit.title}</h2>
                   <p className="text-slate-600 mt-2">{benefit.description}</p>
