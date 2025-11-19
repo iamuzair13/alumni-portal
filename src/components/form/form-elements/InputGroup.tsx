@@ -13,7 +13,8 @@ export default function InputGroup() {
     { code: "CA", label: "+1" },
     { code: "AU", label: "+61" },
   ];
-  const handlePhoneNumberChange = (phoneNumber: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handlePhoneNumberChange = (_phoneNumber: string) => {
     // Handle phone number change
   };
   return (

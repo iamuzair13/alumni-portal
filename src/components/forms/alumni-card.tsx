@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import toast from "react-hot-toast";
 
 type Props = {
   alumniId: string;
@@ -39,8 +40,6 @@ export function validateImage(file: File | undefined): { ok: boolean; error?: st
 }
 
 export default function AlumniCardForm({ alumniId, faculty, department, program, onSuccess, onCancel }: Props) {
-  const [serverMsg, setServerMsg] = useState<string | null>(null);
-  const [serverError, setServerError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
@@ -64,10 +63,10 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
   
 
   const onSubmit = async (vals: FormVals) => {
-    setServerMsg(null);
-    setServerError(null);
     setFileError(null);
     try {
+      const loadingToast = toast.loading("Submitting your alumni card application...");
+      
       const payload = {
         alumniId,
         cnicno: vals.cnic,
@@ -80,18 +79,40 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      
+      toast.dismiss(loadingToast);
+      
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || `Failed (${res.status})`);
+        const errorMsg = j?.error || `Failed to submit application (${res.status})`;
+        toast.error(errorMsg, {
+          duration: 5000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+            borderRadius: '8px',
+          },
+        });
+        throw new Error(errorMsg);
       }
-      setServerMsg("Application submitted.");
+      
+      toast.success("Alumni card application submitted successfully!", {
+        duration: 4000,
+        style: {
+          background: '#d1fae5',
+          color: '#065f46',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      
       reset();
       setPreviewUrl(null);
       try { localStorage.setItem("alumni-card-last", JSON.stringify(payload)); } catch {}
       onSuccess?.();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Unexpected error";
-      setServerError(msg);
+    } catch {
+      // Error already handled with toast above
     }
   };
 
@@ -204,11 +225,6 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
         <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
           {isSubmitting ? "Submitting..." : "Submit"}
         </button>
-      </div>
-
-      <div className="mt-2">
-        {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700">{serverMsg}</div>}
-        {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700">{serverError}</div>}
       </div>
     </form>
     

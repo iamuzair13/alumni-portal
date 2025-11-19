@@ -14,7 +14,8 @@ export default function DefaultInputs() {
     { value: "template", label: "Template" },
     { value: "development", label: "Development" },
   ];
-  const handleSelectChange = (value: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSelectChange = (_value: string) => {
     // Handle select change
   };
   return (
@@ -67,7 +68,8 @@ export default function DefaultInputs() {
             id="date-picker"
             label="Date Picker Input"
             placeholder="Select a date"
-            onChange={(dates, currentDateString) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            onChange={(_dates, _currentDateString) => {
               // Handle your logic
             }}
           />
@@ -80,7 +82,8 @@ export default function DefaultInputs() {
               type="time"
               id="tm"
               name="tm"
-              onChange={(e) => {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              onChange={(_e) => {
                 // Handle time change
               }}
             />

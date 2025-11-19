@@ -266,7 +266,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
             }),
           });
         }
-      } catch (apiErr) {
+      } catch {
         // Non-blocking: local state still updates, but we surface the error
       }
       setCards((prev) => {
@@ -282,7 +282,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         }
         return next;
       });
-    } catch (e) {
+    } catch {
       // Error handled silently
     } finally {
     }

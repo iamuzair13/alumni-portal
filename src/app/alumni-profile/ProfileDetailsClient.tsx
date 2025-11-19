@@ -1,9 +1,20 @@
 "use client";
 import Image from "next/image";
+import { useEffect } from "react";
 import { useAlumniProfile } from "@/app/queries/alumni-profile";
+import { useProgress } from "@bprogress/react";
 
 export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
-  const { data } = useAlumniProfile(sapId);
+  const { data, isLoading } = useAlumniProfile(sapId);
+  const { start, stop } = useProgress();
+
+  useEffect(() => {
+    if (isLoading) {
+      start();
+    } else {
+      stop();
+    }
+  }, [isLoading, start, stop]);
   const name = String(data?.name ?? "");
   const avatar = String((data as unknown as { image1?: string })?.image1 ?? "") || "/images/person.jpg";
   const faculty = String(data?.faculty ?? "");

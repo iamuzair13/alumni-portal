@@ -7,7 +7,6 @@ export const viewport: Viewport = {
 };
 
 import { sql } from "@/lib/dbconnect";
-import Image from "next/image";
 import Link from "next/link";
 import AlumniCardModal from "@/components/alumni/AlumniCardModal";
 import MentorshipForm from "@/components/forms/MentorshipForm";
@@ -15,9 +14,10 @@ import { auth } from "@/lib/auth";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner, isAdminUser, safeText, formatPhone } from "@/lib/alumniProfile";
+import { computeLoginBanner, isAdminUser } from "@/lib/alumniProfile";
 import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
+import ProfileDetailsServer from "./ProfileDetailsServer";
 
 type Profile = {
   alumniname: string | null;
@@ -172,35 +172,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                 {sapId ? (
                   <ProfileDetailsClient sapId={sapId} />
                 ) : (
-                  <div className="bg-white flex justify-between border rounded-lg p-6 pt-0">
-                    <div>
-                      <div className="flex flex-col items-start sm:flex-row sm:items-end">
-                        <div className="w-32 h-32 rounded-full border-4 border-red-600 bg-gray-100 overflow-hidden -mt-16 sm:-mt-10 ">
-                          <Image
-                            src={avatar}
-                            alt={name || "alumni"}
-                            width={128}
-                            height={128}
-                            sizes="(max-width: 640px) 8rem, (max-width: 768px) 8rem, 8rem"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
-                          <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
-                        </div>
-                      </div>
-                      <div className="mt-6 pt-4 border-t border-gray-100">
-                        <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 text-sm text-slate-700">
-                          <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {safeText(sapId) || "N/A"}</div>
-                          <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {formatPhone(contact) || "Not provided"}</div>
-                          <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {safeText(faculty) || "N/A"}</div>
-                          <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>
-                          <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(program) || "N/A"}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ProfileDetailsServer
+                    name={name}
+                    avatar={avatar}
+                    sapId={sapId}
+                    contact={contact}
+                    faculty={faculty}
+                    dept={dept}
+                    program={program}
+                  />
                 )}
                 </div>
                   <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-8 md:pt-10 mt-8 md:mt-0 order-2">
@@ -356,9 +336,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           },
         ].map((c, idx) => (
           <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
-            <div className={`flex items-center justify-center ${c.bg} ${c.color} min-h-[12rem] w-full`}>
-              {c.icon}
-            </div>
+            
+        
             <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
               <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
@@ -444,6 +423,113 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           />
         )}
       </div>
+
+
+      <div className="p-10">
+        <h2 className="text-2xl font-bold text-slate-900 mb-6">Perks & Benefits</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[
+            {
+              title: "Academic Benefits",
+              description: "Access to library resources, research databases, and academic support services.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-indigo-700" viewBox="0 0 24 24">
+                  <path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12z"/>
+                  <path d="M7 8h10v2H7zm0 4h7v2H7z"/>
+                </svg>
+              ),
+              slug: "academic-benefits",
+            },
+            {
+              title: "Healthcare Benefits",
+              description: "Comprehensive health insurance and wellness programs for alumni members.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-emerald-700" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              ),
+              slug: "healthcare-benefits",
+            },
+            {
+              title: "Identity & Inclusion",
+              description: "Foster a sense of belonging and celebrate diversity within our alumni community.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-purple-700" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                </svg>
+              ),
+              slug: "identity-inclusion",
+            },
+            {
+              title: "Campus Facilities and Memberships",
+              description: "Enjoy access to gym, sports facilities, and exclusive campus amenities.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-blue-700" viewBox="0 0 24 24">
+                  <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                </svg>
+              ),
+              slug: "campus-facilities",
+            },
+            {
+              title: "Merchant and Business Promotions",
+              description: "Exclusive discounts and special offers from partner businesses and merchants.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-orange-700" viewBox="0 0 24 24">
+                  <path d="M7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM1 2v2h2l3.6 7.59-1.35 2.45c-.15.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+              ),
+              slug: "merchant-promotions",
+            },
+            {
+              title: "Career and Mentorship",
+              description: "Professional development opportunities and mentorship programs for career growth.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-teal-700" viewBox="0 0 24 24">
+                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                </svg>
+              ),
+              slug: "career-mentorship",
+            },
+            {
+              title: "Chapters & Engagement Events",
+              description: "Connect with local chapters and participate in networking events worldwide.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-rose-700" viewBox="0 0 24 24">
+                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                </svg>
+              ),
+              slug: "chapters-events",
+            },
+            {
+              title: "Recognition",
+              description: "Honor outstanding achievements and contributions of our distinguished alumni.",
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-amber-700" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              ),
+              slug: "recognition",
+            },
+          ].map((benefit, idx) => (
+            <Link
+              key={idx}
+              href={`/alumni-profile/benefits/${benefit.slug}`}
+              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow duration-200 cursor-pointer"
+            >
+              <div className="p-6">
+                <div>
+                  {benefit.icon}
+                </div>
+                <div className="mt-4">
+                  <h4 className="text-base font-semibold text-slate-900">{benefit.title}</h4>
+                  <p className="mt-2 text-sm text-slate-500 leading-relaxed">{benefit.description}</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+      
   </>
   );
 }

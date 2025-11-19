@@ -4,7 +4,8 @@ import ComponentCard from "../../common/ComponentCard";
 import Switch from "../switch/Switch";
 
 export default function ToggleSwitch() {
-  const handleSwitchChange = (checked: boolean) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSwitchChange = (_checked: boolean) => {
     // Handle switch change
   };
   return (

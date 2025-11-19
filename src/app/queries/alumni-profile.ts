@@ -13,7 +13,7 @@ export async function getAlumniProfile(sapId: string, ): Promise<AlumniRegistrat
 export function useAlumniProfile(sapId: string | undefined) {
   return useQuery({
     queryKey: alumniProfileKey(sapId),
-    queryFn: ({ signal }) => {
+    queryFn: () => {
       if (!sapId) throw new Error("Missing sapid");
       return getAlumniProfile(sapId );
     },

@@ -1,9 +1,10 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 type MeAlumni = {
   sapid: string;
@@ -78,13 +79,6 @@ export default function MentorshipForm() {
   const end = watch("end");
 
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMessage(null);
-    setError(null);
-  }, [email]);
 
   const canSubmit = useMemo(() => {
     const hasMajor = !!watch("major")?.trim();
@@ -103,8 +97,8 @@ export default function MentorshipForm() {
   async function onSubmit(values: MentorshipFormValues) {
     try {
       setSubmitting(true);
-      setMessage(null);
-      setError(null);
+      const loadingToast = toast.loading("Submitting your mentorship application...");
+      
       const payload = {
         major: String(values.major || "").trim(),
         areas: [String(values.area || "").trim()].filter(Boolean),
@@ -118,14 +112,38 @@ export default function MentorshipForm() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to submit");
-      setMessage("Submitted");
+      
+      toast.dismiss(loadingToast);
+      
+      if (!res.ok) {
+        const errorMsg = data?.error || "Failed to submit application. Please try again.";
+        toast.error(errorMsg, {
+          duration: 5000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '16px',
+            borderRadius: '8px',
+          },
+        });
+        throw new Error(errorMsg);
+      }
+      
+      toast.success("Mentorship application submitted successfully!", {
+        duration: 4000,
+        style: {
+          background: '#d1fae5',
+          color: '#065f46',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      
       qc.invalidateQueries({ queryKey: ["alumni", "participation", "list"] });
       resetField("topic");
       resetField("area");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
+    } catch {
+      // Error already handled with toast above
     } finally {
       setSubmitting(false);
     }
@@ -218,10 +236,9 @@ export default function MentorshipForm() {
         </div>
 
         <div className="md:col-span-2 flex items-center gap-3">
-          <button type="submit" disabled={!canSubmit || submitting || loadingMe} className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60">Submit</button>
-          {submitting && <span className="text-sm text-gray-500">Submitting…</span>}
-          {message && <span className="text-sm text-green-600">{message}</span>}
-          {error && <span className="text-sm text-rose-600">{error}</span>}
+          <button type="submit" disabled={!canSubmit || submitting || loadingMe} className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60">
+            {submitting ? "Submitting..." : "Submit"}
+          </button>
         </div>
       
 

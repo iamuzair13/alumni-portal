@@ -15,7 +15,8 @@ export default function SelectInputs() {
 
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
 
-  const handleSelectChange = (value: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSelectChange = (_value: string) => {
     // Handle select change
   };
 

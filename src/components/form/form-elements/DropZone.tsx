@@ -4,7 +4,8 @@ import ComponentCard from "../../common/ComponentCard";
 import { useDropzone } from "react-dropzone";
 
 const DropzoneComponent: React.FC = () => {
-  const onDrop = (acceptedFiles: File[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const onDrop = (_acceptedFiles: File[]) => {
     // Handle file uploads here
   };
 

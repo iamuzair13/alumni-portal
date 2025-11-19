@@ -28,8 +28,8 @@ export default function AlumniCardModal({ alumniId, name, sapId, faculty, depart
   };
 
   return (
-    <dialog open className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-lg bg-white shadow-xl transition-all duration-300 ease-out flex flex-col">
+    <dialog open className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
+      <div className="w-full h-full max-h-[100vh] rounded-lg bg-white shadow-xl transition-all duration-300 ease-out flex flex-col">
         <div className="flex items-center justify-between border-b p-4 flex-shrink-0">
           <h2 className="text-lg font-semibold text-slate-900">Apply for Alumni Card</h2>
           <Link
