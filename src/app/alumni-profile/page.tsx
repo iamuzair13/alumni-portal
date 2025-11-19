@@ -106,8 +106,23 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE a.sapid = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
-        const raw = String(cr[0]?.status ?? "").toLowerCase();
-        cardStatus = raw === "delivered" ? "active" : raw === "rejected" ? "rejected" : raw === "pending" ? "pending" : raw === "full" ? "full" : "none";
+        const raw = String(cr[0]?.status ?? "").toLowerCase().trim();
+        // Map database statuses to CardStatus
+        if (raw === "delivered") {
+          cardStatus = "active";
+        } else if (raw === "rejected") {
+          cardStatus = "rejected";
+        } else if (raw === "pending") {
+          cardStatus = "pending";
+        } else if (raw === "full") {
+          cardStatus = "full";
+        } else if (raw && cr[0]) {
+          // If there's a record but status is unknown, default to pending
+          cardStatus = "pending";
+        } else {
+          // No record found - no application
+          cardStatus = "none";
+        }
       }
     } catch (e) {
       cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
@@ -178,6 +193,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                     faculty={faculty}
                     dept={dept}
                     program={program}
+                    facebook={p?.facebook}
+                    instagram={p?.instagram}
+                    youtube={p?.youtube}
+                    linkedin={p?.linkedin}
                   />
                 )}
                 </div>
@@ -252,7 +271,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                           ) : cardStatus === "pending" ? (
                             <p className="text-xs text-amber-700">Your application is under review.</p>
                           ) : cardStatus === "rejected" ? (
-                            <p className="text-xs text-rose-700">Your application was rejected. You may reapply.</p>
+                            <p className="text-xs text-rose-700">Your application was rejected. Please contact support for more information.</p>
                           ) : cardStatus === "full" ? (
                             <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
                           ) : (
@@ -267,14 +286,44 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                             >
                               Under review
                             </button>
-                          ) : cardStatus !== "active" && (
+                          ) : cardStatus === "rejected" ? (
+                            <div className="mt-3 space-y-2">
+                              <button
+                                type="button"
+                                disabled
+                                aria-disabled
+                                className="inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              >
+                                Application Rejected
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors"
+                                aria-label="Contact Management"
+                              >
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                Contact Management
+                              </button>
+                            </div>
+                          ) : cardStatus === "full" ? (
+                            <button
+                              type="button"
+                              disabled
+                              aria-disabled
+                              className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                            >
+                              Capacity Full
+                            </button>
+                          ) : cardStatus === "none" ? (
                             <Link
                               href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
                               className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               Apply now
                             </Link>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -291,6 +340,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           {[
             {
               title: "Success Story",
+              decription: "Celebrate your achievements and share your journey with the alumni community to inspire others.",
               action: "View",
               color: "text-yellow-600",
               bg: "bg-yellow-100",
@@ -304,6 +354,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             
             {
               title: "Mentorship Session",
+              decription: "Apply to mentor or be mentored by fellow alumni, gaining and sharing valuable career guidance.",
               action: "Apply now",
               color: "text-purple-600",
               bg: "bg-purple-100",
@@ -315,6 +366,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Alumni Chapters",
+              decription: "Join regional or interest-based chapters to network, collaborate, and engage with your peers.",
               action: "Apply now",
               color: "text-green-700",
               bg: "bg-green-100",
@@ -326,6 +378,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Alumni Association",
+              decription: "Become an active member of the alumni community, support initiatives, and stay connected with your university.",
               action: "VIEW",
               color: "text-gray-700",
               bg: "bg-red-200",
@@ -341,7 +394,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           
               <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
                 <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">Explore opportunities and resources tailored for alumni.</p>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{c.decription}`</p>
                 {c.title === "Success Story" ? (
                   <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                     {c.action}

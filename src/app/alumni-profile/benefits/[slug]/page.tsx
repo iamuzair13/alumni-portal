@@ -5,33 +5,67 @@ import React from "react";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
-    title: "Academic Benefits",
+    title: "Fee Discounts & Scholarships",
     description: "Access to library resources, research databases, and academic support services.",
     content: `
-      <h3 class="text-xl font-semibold mb-4">Academic Benefits for Alumni</h3>
-      <p class="mb-4">As a valued member of our alumni community, you have access to a wide range of academic resources and support services designed to help you continue your learning journey and professional development.</p>
+      <h3 class="text-xl font-semibold mb-4">Academic: Fee Discounts & Scholarships</h3>
+      <p class="mb-6">As a valued member of our alumni community, you have access to exclusive fee discounts and scholarship opportunities designed to support your continued education and professional development.</p>
       
-      <h4 class="text-lg font-semibold mt-6 mb-3">Library Access</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Full access to digital library resources and databases</li>
-        <li>Online journal subscriptions and research materials</li>
-        <li>E-book collections and academic publications</li>
-        <li>Reference assistance from library staff</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Research Support</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Access to research databases and academic journals</li>
-        <li>Collaboration opportunities with current faculty</li>
-        <li>Research consultation services</li>
-      </ul>
-      
-      <h4 class="text-lg font-semibold mt-6 mb-3">Continuing Education</h4>
-      <ul class="list-disc list-inside mb-4 space-y-2">
-        <li>Discounted rates on continuing education courses</li>
-        <li>Access to online learning platforms</li>
-        <li>Professional development workshops and seminars</li>
-      </ul>
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit Category</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Eligibility</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Kinship Scholarship Discounts</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">Alumni immediate family members and siblings</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">15% discount on tuition fee (one scholarship at a time, in case the member is eligible for other scholarships e.g., Merit, High Achiever etc.)</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Masters or PhD Alumni Scholarship</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">UOL Alumni (pursuing second degree at UOL)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <ul class="list-disc list-inside space-y-1">
+                  <li>Admission Fee: 75% discount</li>
+                  <li>Tuition Fee: 50% discount for Masters, 25% discount for PhD</li>
+                  <li>Additional 5% tuition discount for gold medallists</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Masters Scholarships via UOL International Collaborations</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">UOL Alumni</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <p class="mb-2">Same discount % & services, as offered to UOL students pursuing international graduate programs through UOL international academic partners.</p>
+                <p class="font-semibold mt-2 mb-1">Current Partnerships:</p>
+                <ul class="list-disc list-inside space-y-1">
+                  <li>University of Plymouth, UK</li>
+                  <li>Western Scotland University</li>
+                  <li>California State University Northridge, USA</li>
+                </ul>
+              </td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Upskill and Reskill Courses (on-prem and on-line)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">UOL Alumni</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700">
+                <p class="mb-2">Up to 15% discount (on top of regular offered discounts) on courses, certifications, related to skill and professional development.</p>
+                <p class="font-semibold mt-2 mb-1">Current Programs:</p>
+                <ul class="list-disc list-inside space-y-1">
+                  <li>IT programs through Flumni (UOL's skill development platform)</li>
+                  <li>Language Courses (Academy of Languages)</li>
+                  <li>Skill Development Programs offered by various UOL Faculties & Departments</li>
+                </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     `,
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-indigo-700" viewBox="0 0 24 24">
