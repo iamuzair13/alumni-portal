@@ -395,7 +395,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           
               <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
                 <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{c.decription}`</p>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{c.decription}</p>
                 {c.title === "Success Story" ? (
                   <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                     {c.action}
