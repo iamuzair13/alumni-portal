@@ -19,12 +19,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <Suspense fallback={null}>
             <ProgressBar />
           </Suspense>
-          <ThemeProvider>
+        <ThemeProvider>
             <SidebarProvider>
               {children}
               <Toaster position="top-right" />
             </SidebarProvider>
-          </ThemeProvider>
+        </ThemeProvider>
         </ProgressProvider>
       </QueryClientProvider>
     </SessionProvider>

@@ -131,3 +131,32 @@ export function useUpdateAlumniProfile(sapId: string | undefined) {
     },
   });
 }
+
+// Update specific fields in alumni profile
+export async function updateAlumniFields(sapId: string, fields: Partial<AlumniFullDetails>): Promise<{ ok: boolean; updated: { alumniid: number; sapid: string } }> {
+  const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/update-fields`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error ? (typeof data.error === "string" ? data.error : JSON.stringify(data.error)) : "Failed to update profile");
+  return data as { ok: boolean; updated: { alumniid: number; sapid: string } };
+}
+
+export function useUpdateAlumniFields(sapId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (fields: Partial<AlumniFullDetails>) => {
+      if (!sapId) throw new Error("Missing sapid");
+      return updateAlumniFields(sapId, fields);
+    },
+    onSuccess: () => {
+      const key = alumniFullDetailsKey(sapId);
+      const profileKey = alumniProfileKey(sapId);
+      // Invalidate both queries to refetch updated data
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: profileKey });
+    },
+  });
+}

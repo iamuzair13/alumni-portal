@@ -172,7 +172,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
         <div className="-mx-4 sm:-mx-6 lg:-mx-8">
           <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
             <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-              <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Alumni Profile</h1>
+              <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">My Profile</h1>
             </div>
           </div>
         </div>
@@ -240,7 +240,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                             ) : cardStatus === "rejected" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200">
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
-                                <span className="text-xs">Rejected</span>
+                                <span className="text-xs">On hold</span>
                               </div>
                             ) : cardStatus === "pending" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 border border-amber-200">
@@ -272,7 +272,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                           ) : cardStatus === "pending" ? (
                             <p className="text-xs text-amber-700">Your application is under review.</p>
                           ) : cardStatus === "rejected" ? (
-                            <p className="text-xs text-rose-700">Your application was rejected. Please contact support for more information.</p>
+                            <p className="text-xs text-rose-700">Your application is on hold. Please contact us for more information.</p>
                           ) : cardStatus === "full" ? (
                             <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
                           ) : (
@@ -295,7 +295,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                                 aria-disabled
                                 className="inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
                               >
-                                Application Rejected
+                                Application on hold
                               </button>
                               <button
                                 type="button"
@@ -305,7 +305,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                 </svg>
-                                Contact Management
+                                Contact Us
                               </button>
                             </div>
                           ) : cardStatus === "full" ? (
@@ -342,7 +342,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             {
               title: "Success Story",
               decription: "Celebrate your achievements and share your journey with the alumni community to inspire others.",
-              action: "View",
+              action: "Share",
               color: "text-yellow-600",
               bg: "bg-yellow-100",
               icon: (

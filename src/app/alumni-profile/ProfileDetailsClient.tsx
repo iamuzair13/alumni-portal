@@ -1,20 +1,27 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
-import { useAlumniProfile, alumniProfileKey } from "@/app/queries/alumni-profile";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProgress } from "@bprogress/react";
 import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
+import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
 export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
+  const { data: fullDetails } = useAlumniFullDetails(sapId);
   const queryClient = useQueryClient();
   const { start, stop } = useProgress();
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Calculate profile completion percentage
+  const completionPercentage = useMemo(() => {
+    return calculateProfileCompletion(fullDetails);
+  }, [fullDetails]);
 
   useEffect(() => {
     if (isLoading) {
@@ -180,37 +187,72 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
       <div className="bg-white flex justify-between rounded-lg p-6 pt-0">
         <div>
           <div className="flex flex-col items-start sm:flex-row sm:items-end">
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 -mt-16 sm:-mt-10 md:-mt-8 group">
-              <div className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
-                <Image src={avatar} alt={name || "alumni"} width={160} height={160} sizes="(max-width: 640px) 8rem, (max-width: 768px) 10rem, 10rem" className="w-full h-full object-cover" />
+            <div className="flex flex-col items-center">
+              <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 -mt-16 sm:-mt-10 md:-mt-8 group">
+                <div className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
+                  <Image src={avatar} alt={name || "alumni"} width={160} height={160} sizes="(max-width: 640px) 8rem, (max-width: 768px) 10rem, 10rem" className="w-full h-full object-cover" />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleImageClick}
+                  disabled={uploading}
+                  className="absolute bottom-0 right-0 w-10 h-10 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-full flex items-center justify-center shadow-lg transition-all duration-200 group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  aria-label="Upload profile picture"
+                  title="Upload profile picture"
+                >
+                  {uploading ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  aria-label="Profile picture file input"
+                />
               </div>
-              <button
-                type="button"
-                onClick={handleImageClick}
-                disabled={uploading}
-                className="absolute bottom-0 right-0 w-10 h-10 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-full flex items-center justify-center shadow-lg transition-all duration-200 group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                aria-label="Upload profile picture"
-                title="Upload profile picture"
-              >
-                {uploading ? (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                onChange={handleFileChange}
-                className="hidden"
-                aria-label="Profile picture file input"
-              />
+              {/* Profile Completion Progress Bar */}
+              <div className="w-full max-w-[160px] sm:max-w-[180px] md:max-w-[200px] mt-4">
+                <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-700">Profile Completion</span>
+                    <span className="text-xs font-semibold text-gray-900">{completionPercentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        completionPercentage >= 80
+                          ? "bg-green-600"
+                          : completionPercentage >= 50
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
+                      }`}
+                      style={{ width: `${completionPercentage}%` }}
+                      role="progressbar"
+                      aria-valuenow={completionPercentage}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Profile completion: ${completionPercentage}%`}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5 text-center">
+                    {completionPercentage < 50
+                      ? "Complete your profile"
+                      : completionPercentage < 80
+                      ? "Great progress!"
+                      : "Almost complete!"}
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
               <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold">{name}</h4>

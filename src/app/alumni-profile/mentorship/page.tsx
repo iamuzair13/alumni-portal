@@ -6,13 +6,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-import Link from "next/link";
 import MentorshipForm from "@/components/forms/MentorshipForm";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
 import { sql } from "@/lib/dbconnect";
+import BackButton from "@/components/ui/BackButton";
 
 type AlumniProfileSearchParams = { sapid?: string };
 
@@ -36,7 +36,7 @@ async function getSapId(searchParams: { sapid?: string }) {
 export default async function MentorshipPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
   const sp = await searchParams;
   const session = await auth();
-  const sapId = await getSapId(sp);
+  await getSapId(sp);
 
   return (
     <>
@@ -56,12 +56,7 @@ export default async function MentorshipPage({ searchParams }: { searchParams: P
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-slate-900">Apply for Mentorship Session</h1>
-              <Link
-                href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
-                className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md px-3 py-2 transition-colors"
-              >
-                ← Back to Profile
-              </Link>
+              <BackButton />
             </div>
             <MentorshipForm />
           </div>

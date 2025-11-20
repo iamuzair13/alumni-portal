@@ -7,12 +7,12 @@ export const viewport: Viewport = {
 };
 
 import { sql } from "@/lib/dbconnect";
-import Link from "next/link";
 import AlumniCardForm from "@/components/forms/alumni-card";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
+import BackButton from "@/components/ui/BackButton";
 
 type Profile = {
   alumniname: string | null;
@@ -104,12 +104,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-slate-900">Apply for Alumni Card</h1>
-              <Link
-                href={sapId ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile`}
-                className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md px-3 py-2 transition-colors"
-              >
-                ← Back to Profile
-              </Link>
+              <BackButton />
             </div>
             <AlumniCardForm
               alumniId={alumniId}

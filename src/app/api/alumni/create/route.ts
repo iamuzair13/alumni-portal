@@ -58,6 +58,11 @@ type TblAlumniBody = {
   linkedin: string | null;
   datasource: string | null;
   alumnistatus: string | null;
+  // Higher Education fields
+  highereducationdegreetitle: string | null;
+  highereducationinstitute: string | null;
+  highereducationprogram: string | null;
+  scholarship: string | null;
 };
 
 export async function POST(req: Request) {
@@ -106,6 +111,24 @@ export async function POST(req: Request) {
       if (typeof v === "number") return v;
       const s = String(v).trim();
       return s.length ? s : null;
+    };
+    
+    // Map employeed values to fit VARCHAR(10) constraint
+    const mapEmployeed = (value: string | null): string | null => {
+      if (!value) return null;
+      const val = String(value).trim();
+      if (val === "Pursuing Higher Education") return "HigherEd";
+      if (val === "Unemployed") return "Unemployed"; // 10 chars, at limit
+      if (val === "Employed") return "Employed"; // 8 chars
+      // Truncate to 10 characters if longer
+      return val.length > 10 ? val.substring(0, 10) : val;
+    };
+    
+    // Truncate totalyearsofexpereince to fit VARCHAR(10) constraint
+    const truncateExperience = (value: string | null): string | null => {
+      if (!value) return null;
+      const val = String(value).trim();
+      return val.length > 10 ? val.substring(0, 10) : val;
     };
 
     const todayDateValue = body.todaydate ? new Date(String(body.todaydate)) : null;
@@ -171,7 +194,11 @@ export async function POST(req: Request) {
           youtube,
           linkedin,
           datasource,
-          alumnistatus
+          alumnistatus,
+          degree_title,
+          higher_education_institute_name,
+          higher_education_program,
+          is_scholarship
         ) VALUES (
           ${clean(normalizedAlumniEmail)},
           ${clean(body.password)},
@@ -204,10 +231,10 @@ export async function POST(req: Request) {
           ${clean(body.departmentname)},
           ${clean(body.majorsubject)},
           ${clean(body.industry)},
-          ${clean(body.employeed)},
+          ${mapEmployeed(body.employeed)},
           ${clean(body.nameoforganization)},
           ${clean(body.designation)},
-          ${clean(body.totalyearsofexpereince)},
+          ${truncateExperience(body.totalyearsofexpereince)},
           ${clean(body.officialemail)},
           ${clean(body.officialnumber)},
           ${clean(body.supervisorname)},
@@ -228,7 +255,11 @@ export async function POST(req: Request) {
           ${clean(body.youtube)},
           ${clean(body.linkedin)},
           ${clean(body.datasource)},
-          ${clean(body.alumnistatus)}
+          ${clean(body.alumnistatus)},
+          ${clean(body.highereducationdegreetitle)},
+          ${clean(body.highereducationinstitute)},
+          ${clean(body.highereducationprogram)},
+          ${clean(body.scholarship)}
         ) RETURNING alumniid;
       `;
       return rows[0]?.alumniid;

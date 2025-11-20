@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import React from "react";
+import BackButton from "@/components/ui/BackButton";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
@@ -434,15 +434,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
           <div className="min-w-screen mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
             <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8 md:p-10">
               <div className="mb-6">
-                <Link
-                  href="/alumni-profile"
-                  className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Back to Profile
-                </Link>
+                <BackButton />
               </div>
 
               <div className="flex items-center gap-4 mb-6">
