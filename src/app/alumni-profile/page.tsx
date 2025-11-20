@@ -72,7 +72,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const isAdmin = isAdminUser(session?.user);
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
-  const avatar = googleImage ?? "/images/person.jpg";
+  // Priority: database image1 > Google image > default
+  const avatar = (p?.image1 && p.image1.trim() !== "") ? p.image1 : (googleImage ?? "/images/person.jpg");
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const program = p?.degreetitle ?? "";
@@ -396,7 +397,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                 <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
                 <p className="mt-2 text-sm text-slate-600 leading-relaxed">{c.decription}`</p>
                 {c.title === "Success Story" ? (
-                  <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
+                  <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                     {c.action}
                   </Link>
                 ) : c.title === "Mentorship Session" ? (
@@ -430,7 +431,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                     ) : (
                       <Link
                         href={sapId ? `/alumni-profile/mentorship?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/mentorship`}
-                        className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       >
                         {c.action}
                       </Link>
@@ -439,14 +440,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                 ) : c.title === "Alumni Chapters" ? (
                   <Link
                     href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
-                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {c.action}
                   </Link>
                 ) : (
                   <Link
                     href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {c.action}
                   </Link>

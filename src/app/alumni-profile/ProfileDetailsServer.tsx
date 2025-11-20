@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useProgress } from "@bprogress/react";
 import { safeText, formatPhone } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
@@ -28,6 +29,13 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync avatar when prop changes
+  useEffect(() => {
+    if (initialAvatar) {
+      setAvatar(initialAvatar);
+    }
+  }, [initialAvatar]);
 
   useEffect(() => {
     // Show progress on mount
@@ -283,7 +291,19 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(program) || "N/A"}</div>
           </div>
-          <button className="text-blue-600 hover:text-blue-700">Show More Details</button>
+          {sapId && (
+            <div className="mt-4">
+              <Link
+                href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                More Details
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

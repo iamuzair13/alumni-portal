@@ -1,13 +1,16 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
-import { useAlumniProfile } from "@/app/queries/alumni-profile";
+import { useAlumniProfile, alumniProfileKey } from "@/app/queries/alumni-profile";
+import { useQueryClient } from "@tanstack/react-query";
 import { useProgress } from "@bprogress/react";
 import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
 
 export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
+  const queryClient = useQueryClient();
   const { start, stop } = useProgress();
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -108,6 +111,9 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
         },
       });
 
+      // Invalidate and refetch the profile data to show the updated image
+      await queryClient.invalidateQueries({ queryKey: alumniProfileKey(sapId) });
+      
       // Refresh the page after a short delay to show the updated image
       setTimeout(() => {
         window.location.reload();
@@ -182,7 +188,7 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                 type="button"
                 onClick={handleImageClick}
                 disabled={uploading}
-                className="absolute bottom-0 right-0 w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-full flex items-center justify-center shadow-lg transition-all duration-200 group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="absolute bottom-0 right-0 w-10 h-10 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-full flex items-center justify-center shadow-lg transition-all duration-200 group-hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 aria-label="Upload profile picture"
                 title="Upload profile picture"
               >
@@ -242,7 +248,7 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                 <button
                   type="button"
                   onClick={() => setShowSocialForm(!showSocialForm)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full bg-green-600 hover:bg-green-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   aria-label="Edit social media links"
                   title="Edit social media links"
                 >
@@ -274,7 +280,17 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
               <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {dept || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {program || "N/A"}</div>
             </div>
-            
+            <div className="mt-4">
+              <Link
+                href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                More Details
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

@@ -4,6 +4,86 @@ import { getAlumniBySapId, updateAlumniBySapId } from "@/services/alumniService"
 import type { AlumniRegistrationComprehensiveForm } from "@/lib/alumniRegistration";
 
 export const alumniProfileKey = (sapId: string | undefined) => ["alumni", "profile", sapId ?? ""];
+export const alumniFullDetailsKey = (sapId: string | undefined) => ["alumni", "full-details", sapId ?? ""];
+
+export type AlumniFullDetails = {
+  alumniid: number | null;
+  alumniemail: string | null;
+  registrationno: string | null;
+  sapid: string | null;
+  alumniname: string | null;
+  gender: string | null;
+  fathername: string | null;
+  dateofbirth: string | null;
+  maritalstatus: string | null;
+  cnicpassport: string | null;
+  contactno: string | null;
+  contactno1: string | null;
+  contactno1show: boolean | null;
+  personalemail: string | null;
+  personalemailshow: boolean | null;
+  universityemail: string | null;
+  country: string | null;
+  province: string | null;
+  city: string | null;
+  address: string | null;
+  academicsession: string | null;
+  degreetitle: string | null;
+  cgpa: number | null;
+  yearofstarting: number | null;
+  yearofending: number | null;
+  facultyname: string | null;
+  campusname: string | null;
+  departmentname: string | null;
+  majorsubject: string | null;
+  industry: string | null;
+  employeed: string | null;
+  nameoforganization: string | null;
+  designation: string | null;
+  totalyearsofexpereince: string | null;
+  officialemail: string | null;
+  officialnumber: string | null;
+  supervisorname: string | null;
+  supervisordesignation: string | null;
+  supervisoremail: string | null;
+  supervisornumber: string | null;
+  image1: string | null;
+  cv: string | null;
+  aboutme: string | null;
+  lasttimelogin: string | null;
+  logincount: number | null;
+  verify: string | null;
+  emailsendcount: number | null;
+  emailsendstatus: string | null;
+  createddatetime: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  youtube: string | null;
+  linkedin: string | null;
+  datasource: string | null;
+  alumnistatus: string | null;
+};
+
+export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {
+  const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error ?? "Failed to fetch alumni details");
+  return data.item as AlumniFullDetails;
+}
+
+export function useAlumniFullDetails(sapId: string | undefined) {
+  return useQuery({
+    queryKey: alumniFullDetailsKey(sapId),
+    queryFn: () => {
+      if (!sapId) throw new Error("Missing sapid");
+      return getAlumniFullDetails(sapId);
+    },
+    enabled: !!sapId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+}
 
 export async function getAlumniProfile(sapId: string, ): Promise<AlumniRegistrationComprehensiveForm> {
   const res = await getAlumniBySapId(sapId);
@@ -44,7 +124,10 @@ export function useUpdateAlumniProfile(sapId: string | undefined) {
     },
     onSuccess: () => {
       const key = alumniProfileKey(sapId);
+      const fullDetailsKey = alumniFullDetailsKey(sapId);
+      // Invalidate both profile and full details queries on update
       qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: fullDetailsKey });
     },
   });
 }

@@ -35,6 +35,11 @@ interface DbAlumniRow {
   datasource?: string | null;
   verify?: string | boolean | null;
   alumnistatus?: string | null;
+  image1?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  youtube?: string | null;
+  linkedin?: string | null;
 }
 
 function mapFromDb(row: DbAlumniRow) {
@@ -86,7 +91,18 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       SELECT * FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
     if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const formVals = mapFromDb(rows[0]);
-    return NextResponse.json({ item: formVals }, { status: 200 });
+    const row = rows[0] as DbAlumniRow;
+    // Include image1 and social links in the response
+    return NextResponse.json({ 
+      item: {
+        ...formVals,
+        image1: row.image1 ?? undefined,
+        facebook: row.facebook ?? undefined,
+        instagram: row.instagram ?? undefined,
+        youtube: row.youtube ?? undefined,
+        linkedin: row.linkedin ?? undefined,
+      }
+    }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni";
     return NextResponse.json({ error: message }, { status: 500 });

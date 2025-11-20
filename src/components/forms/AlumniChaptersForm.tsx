@@ -3,6 +3,10 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import {
+  PakistanFlag,
+  getCountryFlag,
+} from "./country-flags";
 
 type AlumniChaptersFormValues = {
   name: string;
@@ -10,39 +14,42 @@ type AlumniChaptersFormValues = {
   department: string;
   passingYear: string;
   contactNumber: string;
-  nationalChapter: string;
-  internationalChapter: string;
+  chapters: string[]; // Array to hold up to 3 selected chapters
 };
 
+
 const nationalChapters = [
-  'kasur',
-  'Rawalpindi',
-  'Isla',
-  'Karachi',
-  'Islamabad',
-  'Peshawar',
-  'Quetta',
-  'Multan',
-  'Faisalabad',
-  'DG khan',
-  'Sahiwal',
-  'Gilgit',
-  'Sargodha',
+  { value: 'kasur', label: 'Kasur' },
+  { value: 'Rawalpindi', label: 'Rawalpindi' },
+  { value: 'Karachi', label: 'Karachi' },
+  { value: 'Islamabad', label: 'Islamabad' },
+  { value: 'Peshawar', label: 'Peshawar' },
+  { value: 'Quetta', label: 'Quetta' },
+  { value: 'Multan', label: 'Multan' },
+  { value: 'Faisalabad', label: 'Faisalabad' },
+  { value: 'DG khan', label: 'DG Khan' },
+  { value: 'Sahiwal', label: 'Sahiwal' },
+  { value: 'Gilgit', label: 'Gilgit' },
+  { value: 'Sargodha', label: 'Sargodha' },
 ];
 
 const internationalChapters = [
-  'KSA',
-  'United Kingdom',
-  'Kuwait',
-  'UAE',
-  'UK',
-  'Bahrain ',
-  'Canada',
-  'USA',
-  'Qatar',
-  'Germany & Austria',
-  ''
-].filter(ch => ch.trim() !== ''); // Remove empty strings
+  { value: 'KSA', label: 'KSA' },
+  { value: 'Kuwait', label: 'Kuwait' },
+  { value: 'UAE', label: 'UAE' },
+  { value: 'UK', label: 'UK' },
+  { value: 'Bahrain', label: 'Bahrain' },
+  { value: 'Canada', label: 'Canada' },
+  { value: 'USA', label: 'USA' },
+  { value: 'Qatar', label: 'Qatar' },
+  { value: 'Germany & Austria', label: 'Germany & Austria' },
+];
+
+// Combine all chapters with their types and flag components
+const allChapters = [
+  ...nationalChapters.map(ch => ({ ...ch, type: 'national' as const, FlagComponent: PakistanFlag })),
+  ...internationalChapters.map(ch => ({ ...ch, type: 'international' as const, FlagComponent: getCountryFlag(ch.value) })),
+];
 
 const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
 const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
@@ -67,6 +74,7 @@ export default function AlumniChaptersForm({
 }: Props) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedChapters, setSelectedChapters] = useState<string[]>([]);
 
   const {
     register,
@@ -80,8 +88,7 @@ export default function AlumniChaptersForm({
       department: department || "",
       passingYear: passingYear ? String(passingYear) : "",
       contactNumber: initialContactNumber || "",
-      nationalChapter: "",
-      internationalChapter: "",
+      chapters: [],
     },
   });
 
@@ -96,6 +103,35 @@ export default function AlumniChaptersForm({
     setValue("contactNumber", initialContactNumber || "");
   }, [name, faculty, department, passingYear, initialContactNumber, setValue]);
 
+  // Sync selectedChapters with form value
+  useEffect(() => {
+    setValue("chapters", selectedChapters);
+  }, [selectedChapters, setValue]);
+
+  const handleChapterToggle = (chapterValue: string) => {
+    setSelectedChapters(prev => {
+      if (prev.includes(chapterValue)) {
+        // Remove if already selected
+        return prev.filter(ch => ch !== chapterValue);
+      } else {
+        // Add if not selected and less than 3
+        if (prev.length >= 3) {
+          toast.error("You can select up to 3 chapters only.", {
+            duration: 3000,
+            style: {
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '12px',
+              borderRadius: '8px',
+            },
+          });
+          return prev;
+        }
+        return [...prev, chapterValue];
+      }
+    });
+  };
+
   const onSubmit = async (data: AlumniChaptersFormValues) => {
     if (!alumniId) {
       toast.error("Alumni ID is required. Please log in again.");
@@ -103,8 +139,30 @@ export default function AlumniChaptersForm({
     }
 
     // Validate that at least one chapter is selected
-    if (!data.nationalChapter && !data.internationalChapter) {
-      toast.error("Please select at least one chapter (National or International).");
+    if (selectedChapters.length === 0) {
+      toast.error("Please select at least one chapter.", {
+        duration: 3000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '12px',
+          borderRadius: '8px',
+        },
+      });
+      return;
+    }
+
+    // Validate maximum 3 chapters
+    if (selectedChapters.length > 3) {
+      toast.error("You can select up to 3 chapters only.", {
+        duration: 3000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '12px',
+          borderRadius: '8px',
+        },
+      });
       return;
     }
 
@@ -119,8 +177,7 @@ export default function AlumniChaptersForm({
         },
         body: JSON.stringify({
           alumniId: parseInt(alumniId, 10),
-          nationalChapter: data.nationalChapter || null,
-          internationalChapter: data.internationalChapter || null,
+          chapters: selectedChapters, // Send array of selected chapters
           contactNumber: data.contactNumber,
         }),
       });
@@ -254,51 +311,123 @@ export default function AlumniChaptersForm({
         {errors.contactNumber && <p className={errorText}>{errors.contactNumber.message}</p>}
       </div>
 
-      {/* National Chapters Dropdown */}
+      {/* Chapters Selection - Multi-select up to 3 */}
       <div>
-        <label htmlFor="nationalChapter" className={labelBase}>
-          National Chapter
+        <label className={labelBase}>
+          Select Chapters <span className="text-rose-600">*</span>
+          <span className="text-xs text-gray-500 font-normal ml-2">(Select up to 3 chapters)</span>
         </label>
-        <select
-          id="nationalChapter"
-          {...register("nationalChapter")}
-          className={inputBase}
-        >
-          <option value="">Select a national chapter</option>
-          {nationalChapters.map((chapter) => (
-            <option key={chapter} value={chapter}>
-              {chapter}
-            </option>
-          ))}
-        </select>
-        {errors.nationalChapter && <p className={errorText}>{errors.nationalChapter.message}</p>}
-      </div>
+        <div className="space-y-4">
+          {/* National Chapters Section */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              National Chapters
+              <PakistanFlag className="w-5 h-4" />
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {nationalChapters.map((chapter) => {
+                const isSelected = selectedChapters.includes(chapter.value);
+                return (
+                  <label
+                    key={chapter.value}
+                    className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-blue-50 border-blue-500'
+                        : 'bg-white border-gray-200 hover:border-gray-300'
+                    } ${selectedChapters.length >= 3 && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleChapterToggle(chapter.value)}
+                      disabled={selectedChapters.length >= 3 && !isSelected}
+                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm flex items-center">
+                      <span className="mr-2 flex-shrink-0">
+                        <PakistanFlag className="w-5 h-4" />
+                      </span>
+                      {chapter.label}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* International Chapters Dropdown */}
-      <div>
-        <label htmlFor="internationalChapter" className={labelBase}>
-          International Chapter
-        </label>
-        <select
-          id="internationalChapter"
-          {...register("internationalChapter")}
-          className={inputBase}
-        >
-          <option value="">Select an international chapter</option>
-          {internationalChapters.map((chapter) => (
-            <option key={chapter} value={chapter}>
-              {chapter}
-            </option>
-          ))}
-        </select>
-        {errors.internationalChapter && <p className={errorText}>{errors.internationalChapter.message}</p>}
+          {/* International Chapters Section */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">International Chapters</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {internationalChapters.map((chapter) => {
+                const isSelected = selectedChapters.includes(chapter.value);
+                const FlagComponent = getCountryFlag(chapter.value);
+                return (
+                  <label
+                    key={chapter.value}
+                    className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-blue-50 border-blue-500'
+                        : 'bg-white border-gray-200 hover:border-gray-300'
+                    } ${selectedChapters.length >= 3 && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleChapterToggle(chapter.value)}
+                      disabled={selectedChapters.length >= 3 && !isSelected}
+                      className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm flex items-center">
+                      <span className="mr-2 flex-shrink-0">
+                        <FlagComponent className="w-5 h-4" />
+                      </span>
+                      {chapter.label}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        {selectedChapters.length > 0 && (
+          <div className="mt-3 p-3 bg-gray-50 rounded-md">
+            <p className="text-xs text-gray-600 mb-1">
+              Selected chapters ({selectedChapters.length}/3):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {selectedChapters.map((chapterValue) => {
+                const chapter = allChapters.find(ch => ch.value === chapterValue);
+                return chapter ? (
+                  <span
+                    key={chapterValue}
+                    className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                  >
+                    <span className="mr-1 flex-shrink-0">
+                      <chapter.FlagComponent className="w-4 h-3" />
+                    </span>
+                    {chapter.label}
+                    <button
+                      type="button"
+                      onClick={() => handleChapterToggle(chapterValue)}
+                      className="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : null;
+              })}
+            </div>
+          </div>
+        )}
+        {errors.chapters && <p className={errorText}>{errors.chapters.message}</p>}
       </div>
 
       {/* Submit Button */}
       <div className="flex gap-4 pt-4">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || selectedChapters.length === 0}
           className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSubmitting ? "Submitting..." : "Submit Application"}
@@ -307,4 +436,3 @@ export default function AlumniChaptersForm({
     </form>
   );
 }
-

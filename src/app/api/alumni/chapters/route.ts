@@ -10,19 +10,32 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, nationalChapter, internationalChapter, contactNumber } = body;
+    const { alumniId, chapters, contactNumber } = body;
 
     if (!alumniId) {
       return NextResponse.json({ error: "Alumni ID is required" }, { status: 400 });
     }
 
     // Validate that at least one chapter is selected
-    if (!nationalChapter && !internationalChapter) {
+    if (!chapters || !Array.isArray(chapters) || chapters.length === 0) {
       return NextResponse.json(
-        { error: "At least one chapter (National or International) must be selected" },
+        { error: "At least one chapter must be selected" },
         { status: 400 }
       );
     }
+
+    // Validate maximum 3 chapters
+    if (chapters.length > 3) {
+      return NextResponse.json(
+        { error: "You can select up to 3 chapters only" },
+        { status: 400 }
+      );
+    }
+
+    // Extract chapters (up to 3)
+    const chapter1 = chapters[0] || null;
+    const chapter2 = chapters[1] || null;
+    const chapter3 = chapters[2] || null;
 
     // Check if a record already exists for this alumni
     const existingRecord = await sql/* sql */`
@@ -32,23 +45,21 @@ export async function POST(request: NextRequest) {
 
     if (existingRecord.length > 0) {
       // Update existing record
-      // Column names in schema show "national - chapter" and "international - chapter"
-      // Using quoted identifiers to handle spaces/hyphens if they exist
-      // If actual columns use underscores, this will still work
+      // Using quoted identifiers to handle spaces/hyphens in column names
       await sql/* sql */`
         UPDATE public.alumni_chapter 
         SET 
-          "national_chapter" = ${nationalChapter || null},
-          "international_chapter" = ${internationalChapter || null}
+          "chapter1" = ${chapter1},
+          "chapter2" = ${chapter2},
+          "chapter3" = ${chapter3}
         WHERE id = ${alumniId}
       `;
     } else {
       // Insert new record
-      // Column names in schema show "national - chapter" and "international - chapter"
-      // Using quoted identifiers to handle spaces/hyphens if they exist
+      // Using quoted identifiers to handle spaces/hyphens in column names
       await sql/* sql */`
-        INSERT INTO public.alumni_chapter (id, "national_chapter", "international_chapter")
-        VALUES (${alumniId}, ${nationalChapter || null}, ${internationalChapter || null})
+        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+        VALUES (${alumniId}, ${chapter1}, ${chapter2}, ${chapter3})
       `;
     }
 
