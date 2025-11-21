@@ -164,7 +164,7 @@ export default function MentorshipForm() {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Mentorship Program</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400">Provide details to participate in mentorship sessions.</p>
 

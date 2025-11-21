@@ -367,7 +367,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           {[
             {
               title: "Success Story",
-              decription: "Celebrate your achievements and share your journey with the alumni community to inspire others.",
+              decription: "Tell us where life has taken you after graduation. Share your story and inspire the next generation of UOL.",
               action: "Share",
               color: "text-yellow-600",
               bg: "bg-yellow-100",
@@ -380,8 +380,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
            
             
             {
-              title: "Mentorship Session",
-              decription: "Apply to mentor or be mentored by fellow alumni, gaining and sharing valuable career guidance.",
+              title: "Alumni Talk",
+              decription: "Apply to lead an Alumni Talk and help students prepare for their professional journey.",
               action: "Apply now",
               color: "text-purple-600",
               bg: "bg-purple-100",
@@ -393,7 +393,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Alumni Chapters",
-              decription: "Join regional or interest-based chapters to network, collaborate, and engage with your peers.",
+              decription: "Keep your UOL connection alive by joining national and international alumni chapters wherever you are.",
               action: "Apply now",
               color: "text-green-700",
               bg: "bg-green-100",
@@ -405,7 +405,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Alumni Association",
-              decription: "Become an active member of the alumni community, support initiatives, and stay connected with your university.",
+              decription: "Join the UOL Alumni Association to connect, engage, and contribute. Apply today!",
               action: "VIEW",
               color: "text-gray-700",
               bg: "bg-red-200",
@@ -426,7 +426,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                     {c.action}
                   </Link>
-                ) : c.title === "Mentorship Session" ? (
+                ) : c.title === "Alumni Talk" ? (
                   <>
                     {/* Mentorship status indicator for alumni */}
                     {mentorshipStatusError ? (
