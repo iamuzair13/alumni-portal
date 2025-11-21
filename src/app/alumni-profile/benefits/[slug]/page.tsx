@@ -418,7 +418,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <div className="bg-slate-200 overflow-x-hidden">
+      <div className="bg-slate-100 overflow-x-hidden">
         <div className="border bg-white relative z-50">
           <AppHeader />
         </div>

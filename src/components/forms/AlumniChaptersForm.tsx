@@ -9,10 +9,6 @@ import {
 } from "./country-flags";
 
 type AlumniChaptersFormValues = {
-  name: string;
-  faculty: string;
-  department: string;
-  passingYear: string;
   contactNumber: string;
   chapters: string[]; // Array to hold up to 3 selected chapters
 };
@@ -56,19 +52,11 @@ const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
 const errorText = "mt-1 text-xs text-rose-600";
 
 type Props = {
-  name: string;
-  faculty: string;
-  department: string;
-  passingYear: number | null;
   contactNumber: string;
   alumniId: string;
 };
 
 export default function AlumniChaptersForm({ 
-  name, 
-  faculty, 
-  department, 
-  passingYear, 
   contactNumber: initialContactNumber,
   alumniId,
 }: Props) {
@@ -83,25 +71,15 @@ export default function AlumniChaptersForm({
     setValue,
   } = useForm<AlumniChaptersFormValues>({
     defaultValues: {
-      name: name || "",
-      faculty: faculty || "",
-      department: department || "",
-      passingYear: passingYear ? String(passingYear) : "",
       contactNumber: initialContactNumber || "",
       chapters: [],
     },
   });
 
-  // Auto-fill form fields on mount
+  // Auto-fill contact number on mount
   useEffect(() => {
-    setValue("name", name || "");
-    setValue("faculty", faculty || "");
-    setValue("department", department || "");
-    if (passingYear) {
-      setValue("passingYear", String(passingYear));
-    }
     setValue("contactNumber", initialContactNumber || "");
-  }, [name, faculty, department, passingYear, initialContactNumber, setValue]);
+  }, [initialContactNumber, setValue]);
 
   // Sync selectedChapters with form value
   useEffect(() => {
@@ -235,74 +213,6 @@ export default function AlumniChaptersForm({
 
       <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="grid sm:grid-cols-2 gap-6">
-          {/* Name - Auto-filled */}
-          <div>
-            <label htmlFor="name" className={labelBase}>
-              Name <span className="text-rose-600">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="name"
-                type="text"
-                {...register("name", { required: "Name is required" })}
-                disabled
-                className={inputBase}
-              />
-            </div>
-            {errors.name && <span className={errorText}>{errors.name.message}</span>}
-          </div>
-
-          {/* Faculty - Auto-filled */}
-          <div>
-            <label htmlFor="faculty" className={labelBase}>
-              Faculty <span className="text-rose-600">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="faculty"
-                type="text"
-                {...register("faculty", { required: "Faculty is required" })}
-                disabled
-                className={inputBase}
-              />
-            </div>
-            {errors.faculty && <span className={errorText}>{errors.faculty.message}</span>}
-          </div>
-
-          {/* Department - Auto-filled */}
-          <div>
-            <label htmlFor="department" className={labelBase}>
-              Department <span className="text-rose-600">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="department"
-                type="text"
-                {...register("department", { required: "Department is required" })}
-                disabled
-                className={inputBase}
-              />
-            </div>
-            {errors.department && <span className={errorText}>{errors.department.message}</span>}
-          </div>
-
-          {/* Passing Year - Auto-filled */}
-          <div>
-            <label htmlFor="passingYear" className={labelBase}>
-              Passing Year <span className="text-rose-600">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="passingYear"
-                type="text"
-                {...register("passingYear", { required: "Passing year is required" })}
-                disabled
-                className={inputBase}
-              />
-            </div>
-            {errors.passingYear && <span className={errorText}>{errors.passingYear.message}</span>}
-          </div>
-
           {/* Contact Number - Manual input */}
           <div className="md:col-span-2">
             <label htmlFor="contactNumber" className={labelBase}>

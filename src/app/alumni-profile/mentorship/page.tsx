@@ -65,7 +65,7 @@ export default async function MentorshipPage({ searchParams }: { searchParams: P
               <h1 className="text-2xl font-bold text-slate-900">Apply for Alumni Talk</h1>
               <BackButton />
             </div>
-            <div className="mb-7">
+            <div className="max-w-4xl mx-auto mb-7">
               <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-1 flex items-center gap-2">
                 
                 Share Your Journey, Guide the Future

@@ -509,17 +509,33 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       }
       
       // Success - show toast and close form
-      toast.success(`Registration successful! Your Alumni ID is ${json.alumniid}.`, {
-        duration: 4000,
-        style: {
-          background: '#d1fae5',
-          color: '#065f46',
-          padding: '16px',
-          borderRadius: '8px',
-        },
-      });
+      let successMessage = `Registration successful! Your Alumni ID is ${json.alumniid}.`;
+      if (json.generatedPassword) {
+        successMessage += ` A password has been generated and sent to your email. Please check your inbox for login credentials.`;
+        toast.success(successMessage, {
+          duration: 6000,
+          style: {
+            background: '#d1fae5',
+            color: '#065f46',
+            padding: '16px',
+            borderRadius: '8px',
+          },
+        });
+      } else {
+        toast.success(successMessage, {
+          duration: 4000,
+          style: {
+            background: '#d1fae5',
+            color: '#065f46',
+            padding: '16px',
+            borderRadius: '8px',
+          },
+        });
+      }
       
-      setSubmitMsg(`Registration successful! Your Alumni ID is ${json.alumniid}. Redirecting to sign in...`);
+      setSubmitMsg(json.generatedPassword 
+        ? `Registration successful! Your Alumni ID is ${json.alumniid}. A password has been generated and sent to your email. Please check your inbox for login credentials.`
+        : `Registration successful! Your Alumni ID is ${json.alumniid}. Redirecting to sign in...`);
       
       // Reset form
       reset();

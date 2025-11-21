@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { validatePayload } from "./validation";
+import { sendMentorshipApplicationEmail } from "@/lib/email";
 
 export async function GET() {
   try {
@@ -88,6 +89,50 @@ export async function POST(req: Request) {
         ${alum.alumniid}, ${"yes"}, ${"yes"}, ${topicStr}, ${dayStr}, ${timeStr}, ${activityStr}, ${alum.linkedin ?? null}
       )`;
     });
+
+    // Send confirmation email
+    try {
+      const alumniRows = await sql/* sql */`
+        SELECT alumniname, personalemail, officialemail, universityemail
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${alum.alumniid}
+        LIMIT 1
+      `;
+      const alumniInfo = alumniRows[0] as {
+        alumniname: string | null;
+        personalemail: string | null;
+        officialemail: string | null;
+        universityemail: string | null;
+      } | undefined;
+      
+      if (alumniInfo) {
+        const alumniEmail = alumniInfo.personalemail || alumniInfo.officialemail || alumniInfo.universityemail || email;
+        const alumniName = alumniInfo.alumniname || "Alumni";
+        
+        if (alumniEmail) {
+          // Parse time string (format: "HH:MM-HH:MM")
+          const timeParts = timeStr.split("-");
+          const startTime = timeParts[0] || "";
+          const endTime = timeParts[1] || "";
+          
+          // Send email asynchronously (don't wait for it to complete)
+          sendMentorshipApplicationEmail(
+            alumniEmail,
+            alumniName,
+            majorStr,
+            activityStr, // This is years of experience
+            topicStr,
+            dayStr,
+            `${startTime} - ${endTime}`
+          ).catch((err) => {
+            console.error("[API] Failed to send mentorship application email:", err);
+          });
+        }
+      }
+    } catch (emailError) {
+      // Don't fail the request if email fails
+      console.error("[API] Error sending mentorship application email:", emailError);
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {

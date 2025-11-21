@@ -68,9 +68,6 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
   const session = await auth();
-  const name = p?.alumniname ?? "";
-  const faculty = p?.facultyname ?? "";
-  const dept = p?.departmentname ?? "";
   const contact = p?.contactno ?? "";
   // Get SAP ID from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
@@ -132,7 +129,7 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
               <h1 className="text-2xl font-bold text-slate-900">Apply for Alumni Chapters</h1>
               <BackButton />
             </div>
-            <div className="mb-7">
+            <div className="mb-7 max-w-4xl mx-auto">
               <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-1 flex items-center gap-2">
                 Stay connected anywhere
               </h2>
@@ -141,10 +138,6 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
               </p>
             </div>
             <AlumniChaptersForm
-              name={name}
-              faculty={faculty}
-              department={dept}
-              passingYear={p?.yearofending ?? null}
               contactNumber={contact}
               alumniId={alumniId}
             />

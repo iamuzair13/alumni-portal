@@ -3,6 +3,7 @@ import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories"
 import { sql } from "@/lib/dbconnect";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
+import { sendSuccessStoryEmail } from "@/lib/email";
 
 // Configure DOMPurify for server-side sanitization
 const window = new JSDOM("").window;
@@ -102,6 +103,38 @@ export async function POST(req: Request) {
       ON CONFLICT (alumniid) DO UPDATE SET
         alumnistories = EXCLUDED.alumnistories,
         createdat = EXCLUDED.createdat`;
+    
+    // Send confirmation email
+    try {
+      const alumniRows = await sql/* sql */`
+        SELECT alumniname, personalemail, officialemail, universityemail
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${alumniId}
+        LIMIT 1
+      `;
+      const alumni = alumniRows[0] as {
+        alumniname: string | null;
+        personalemail: string | null;
+        officialemail: string | null;
+        universityemail: string | null;
+      } | undefined;
+      
+      if (alumni) {
+        const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
+        const alumniName = alumni.alumniname || "Alumni";
+        
+        if (alumniEmail) {
+          // Send email asynchronously (don't wait for it to complete)
+          sendSuccessStoryEmail(alumniEmail, alumniName).catch((err) => {
+            console.error("[API] Failed to send success story email:", err);
+          });
+        }
+      }
+    } catch (emailError) {
+      // Don't fail the request if email fails
+      console.error("[API] Error sending success story email:", emailError);
+    }
+    
     return NextResponse.json({ ok: true, alumniid: alumniId }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Invalid JSON";

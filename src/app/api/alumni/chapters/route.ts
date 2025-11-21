@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
+import { sendChaptersApplicationEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,6 +71,37 @@ export async function POST(request: NextRequest) {
         SET contactno = ${contactNumber}
         WHERE alumniid = ${alumniId}
       `;
+    }
+
+    // Send confirmation email
+    try {
+      const alumniRows = await sql/* sql */`
+        SELECT alumniname, personalemail, officialemail, universityemail
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${alumniId}
+        LIMIT 1
+      `;
+      const alumni = alumniRows[0] as {
+        alumniname: string | null;
+        personalemail: string | null;
+        officialemail: string | null;
+        universityemail: string | null;
+      } | undefined;
+      
+      if (alumni) {
+        const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
+        const alumniName = alumni.alumniname || "Alumni";
+        
+        if (alumniEmail) {
+          // Send email asynchronously (don't wait for it to complete)
+          sendChaptersApplicationEmail(alumniEmail, alumniName, chapters).catch((err) => {
+            console.error("[API] Failed to send chapters application email:", err);
+          });
+        }
+      }
+    } catch (emailError) {
+      // Don't fail the request if email fails
+      console.error("[API] Error sending chapters application email:", emailError);
     }
 
     return NextResponse.json({ 

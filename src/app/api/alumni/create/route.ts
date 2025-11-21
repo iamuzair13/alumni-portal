@@ -1,5 +1,8 @@
 import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
+import { hashPassword } from "@/auth/credentials";
+import generateEasyPassword from "@/lib/passwordUtils";
+import { sendWelcomeEmail } from "@/lib/email";
 
 type TblAlumniBody = {
   alumniemail: string | null;
@@ -68,6 +71,37 @@ type TblAlumniBody = {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as TblAlumniBody;
+    
+    // Check for duplicate email or SAP ID before inserting
+    if (body.personalemail || body.sapid || body.registrationno) {
+      const emailCheck = body.personalemail ? await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE personalemail = ${String(body.personalemail).trim()} 
+        LIMIT 1
+      ` : [];
+      
+      const sapidCheck = body.sapid ? await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE sapid = ${String(body.sapid).trim()} 
+        LIMIT 1
+      ` : [];
+      
+      const regNoCheck = body.registrationno ? await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE registrationno = ${String(body.registrationno).trim()} 
+        LIMIT 1
+      ` : [];
+      
+      if (emailCheck.length > 0) {
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
+      }
+      if (sapidCheck.length > 0) {
+        return NextResponse.json({ error: "An account with this SAP ID already exists" }, { status: 400 });
+      }
+      if (regNoCheck.length > 0) {
+        return NextResponse.json({ error: "An account with this Registration Number already exists" }, { status: 400 });
+      }
+    }
 
     // Server-side validation
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -102,7 +136,26 @@ export async function POST(req: Request) {
     if (!emailPattern.test(String(body.personalemail))) {
       return NextResponse.json({ error: "Invalid personal email format" }, { status: 400 });
     }
-    // Phone number and password have no format restrictions - only required
+    // Phone number has no format restrictions - only required
+    // Password will be auto-generated if not provided
+
+    // Generate password if not provided
+    const plainPassword = body.password && String(body.password).trim().length > 0
+      ? String(body.password).trim()
+      : generateEasyPassword();
+
+    // Hash the password before saving
+    // Note: scrypt hash is ~169 chars, ensure DB column is VARCHAR(255) or larger
+    const hashedPassword = await hashPassword(plainPassword);
+    
+    // Check if hashed password exceeds database column limit (should be VARCHAR(255))
+    // If column is still VARCHAR(50), this will fail - need to run migration script
+    if (hashedPassword.length > 50) {
+      console.warn(`[API] Warning: Hashed password length (${hashedPassword.length}) exceeds typical VARCHAR(50) limit. Ensure password column is VARCHAR(255) or larger.`);
+    }
+
+    // Store the generated password for email (will be sent if auto-generated)
+    const generatedPassword = body.password && String(body.password).trim().length > 0 ? null : plainPassword;
 
     // Sanitize: trim empty strings to null, coerce boolean verify to Yes/No
     const clean = (v: unknown) => {
@@ -136,7 +189,60 @@ export async function POST(req: Request) {
       ? body.alumniemail
       : body.personalemail;
 
+    // Check for duplicate email or SAP ID before inserting
+    if (body.personalemail || body.sapid || body.registrationno) {
+      const emailCheck = body.personalemail ? await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE personalemail = ${String(body.personalemail).trim()} 
+        LIMIT 1
+      ` : [];
+      
+      const sapidCheck = body.sapid ? await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE sapid = ${String(body.sapid).trim()} 
+        LIMIT 1
+      ` : [];
+      
+      const regNoCheck = body.registrationno ? await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE registrationno = ${String(body.registrationno).trim()} 
+        LIMIT 1
+      ` : [];
+      
+      if (emailCheck.length > 0) {
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
+      }
+      if (sapidCheck.length > 0) {
+        return NextResponse.json({ error: "An account with this SAP ID already exists" }, { status: 400 });
+      }
+      if (regNoCheck.length > 0) {
+        return NextResponse.json({ error: "An account with this Registration Number already exists" }, { status: 400 });
+      }
+    }
+
     const id = await sql.begin(async (tx) => {
+      // Reset sequence if needed to prevent duplicate key errors
+      // This ensures the sequence is at least as high as the highest existing alumniid
+      try {
+        const maxIdResult = await tx<{ max: number | null }[]>`
+          SELECT MAX(alumniid) as max FROM public.tbl_alumni
+        `;
+        const maxId = maxIdResult[0]?.max ?? 0;
+        
+        if (maxId > 0) {
+          await tx/* sql */`
+            SELECT setval(
+              pg_get_serial_sequence('public.tbl_alumni', 'alumniid'),
+              ${maxId},
+              true
+            )
+          `;
+        }
+      } catch (seqError) {
+        // If sequence reset fails, continue anyway - PostgreSQL will handle it
+        console.warn("[API] Could not reset sequence, continuing with insert:", seqError);
+      }
+      
       const rows = await tx<{ alumniid: number }[]>`
         INSERT INTO public.tbl_alumni (
           alumniemail,
@@ -201,7 +307,7 @@ export async function POST(req: Request) {
           is_scholarship
         ) VALUES (
           ${clean(normalizedAlumniEmail)},
-          ${clean(body.password)},
+          ${hashedPassword},
           ${todayDateValue},
           ${clean(body.registrationno)},
           ${clean(body.sapid)},
@@ -265,7 +371,46 @@ export async function POST(req: Request) {
       return rows[0]?.alumniid;
     });
 
-    return NextResponse.json({ alumniid: id }, { status: 201 });
+    // Send welcome email with generated password if auto-generated
+    if (generatedPassword) {
+      try {
+        const alumniRows = await sql/* sql */`
+          SELECT alumniname, personalemail, officialemail, universityemail
+          FROM public.tbl_alumni 
+          WHERE alumniid = ${id}
+          LIMIT 1
+        `;
+        const alumni = alumniRows[0] as {
+          alumniname: string | null;
+          personalemail: string | null;
+          officialemail: string | null;
+          universityemail: string | null;
+        } | undefined;
+        
+        if (alumni) {
+          const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
+          const alumniName = alumni.alumniname || "Alumni";
+          
+          if (alumniEmail) {
+            // Send welcome email with generated password asynchronously
+            sendWelcomeEmail(alumniEmail, alumniName, generatedPassword, body.sapid || body.registrationno || "").catch((err) => {
+              console.error("[API] Failed to send welcome email:", err);
+            });
+          }
+        }
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error("[API] Error sending welcome email:", emailError);
+      }
+    }
+
+    // Return the generated password if it was auto-generated (for client-side display)
+    const response: { alumniid: number; generatedPassword?: string } = { alumniid: id! };
+    if (generatedPassword) {
+      response.generatedPassword = generatedPassword;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     const stack = err instanceof Error ? err.stack : undefined;

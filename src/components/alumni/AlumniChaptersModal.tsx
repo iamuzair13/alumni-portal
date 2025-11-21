@@ -4,21 +4,13 @@ import AlumniChaptersForm from "@/components/forms/AlumniChaptersForm";
 
 type Props = {
   alumniId: string;
-  name: string;
   sapId: string;
-  faculty: string;
-  department: string;
-  passingYear: number | null;
   contactNumber: string;
 };
 
 export default function AlumniChaptersModal({
   alumniId,
-  name,
   sapId,
-  faculty,
-  department,
-  passingYear,
   contactNumber,
 }: Props) {
 
@@ -37,10 +29,6 @@ export default function AlumniChaptersModal({
         </div>
         <div className="p-6">
           <AlumniChaptersForm
-            name={name}
-            faculty={faculty}
-            department={department}
-            passingYear={passingYear}
             contactNumber={contactNumber}
             alumniId={alumniId}
           />

@@ -205,7 +205,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 
         {/* 2. Main Content Container (Max-width and Padding) */}
         {/* This container centers and holds the profile details and ID card. */}
-        <div className="min-w-screen mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
+        <div className="min-w-screen bg-slate-100 mx-auto mt-16  px-4 sm:px-6 md:px-8 lg:px-10">
           <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-12 sm:-mt-16 md:-mt-16 gap-6 md:gap-8 p-4 sm:p-6 md:p-8">
 
             <div className="w-full flex min-w-0 order-1">
@@ -361,13 +361,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
         </div>
       </div>
       </div>
-      <div className="p-10 text-slate-900">
+      <div className="p-10 text-slate-900 bg-slate-100">
         <h4 className="text-2xl font-bold text-slate-900 mb-6">Networking & Engagement</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-6">
           {[
             {
               title: "Success Story",
-              decription: "Tell us where life has taken you after graduation. Share your story and inspire the next generation of UOL.",
+              decription: "Share your story and inspire the next generation of UOL.",
               action: "Share",
               color: "text-yellow-600",
               bg: "bg-yellow-100",
@@ -393,7 +393,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Alumni Chapters",
-              decription: "Keep your UOL connection alive by joining national and international alumni chapters wherever you are.",
+              decription: "Keep your UOL connection alive by joining national and international alumni chapters.",
               action: "Apply now",
               color: "text-green-700",
               bg: "bg-green-100",
@@ -406,7 +406,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             {
               title: "Alumni Association",
               decription: "Join the UOL Alumni Association to connect, engage, and contribute. Apply today!",
-              action: "VIEW",
+              action: "Apply",
               color: "text-gray-700",
               bg: "bg-red-200",
               icon: (
@@ -470,6 +470,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   >
                     {c.action}
                   </Link>
+                ) : c.title === "Alumni Association" ? (
+                  <Link
+                    href={sapId ? `/alumni-profile/association?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/association`}
+                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    {c.action}
+                  </Link>
                 ) : (
                   <Link
                     href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
@@ -485,7 +492,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
       </div>
 
 
-      <div className="p-10">
+      <div className="p-10 bg-slate-100">
         <h2 className="text-2xl font-bold text-slate-900 mb-6">Perks & Benefits</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[

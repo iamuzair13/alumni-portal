@@ -20,7 +20,7 @@ type MeAlumni = {
 
 type MentorshipFormValues = {
   major: string;
-  area: string;
+  area: number;
   topic: string;
   day: string;
   start: string;
@@ -70,7 +70,7 @@ export default function MentorshipForm() {
     formState,
     trigger,
   } = useForm<MentorshipFormValues>({
-    defaultValues: { major: "", area: "", topic: "", day: "", start: "", end: "" },
+    defaultValues: { major: "", area: undefined as unknown as number, topic: "", day: "", start: "", end: "" },
     mode: "onBlur",
     reValidateMode: "onBlur",
   });
@@ -84,7 +84,7 @@ export default function MentorshipForm() {
 
   const canSubmit = useMemo(() => {
     const hasMajor = !!watch("major")?.trim();
-    const hasArea = !!String(area || "").trim();
+    const hasArea = typeof area === 'number' && !isNaN(area) && area > 0;
     const hasTopic = !!String(topic || "").trim();
     const validDay = WEEKDAYS.includes(watch("day") as typeof WEEKDAYS[number]);
     const t1 = String(start || "");
@@ -103,7 +103,7 @@ export default function MentorshipForm() {
       
       const payload = {
         major: String(values.major || "").trim(),
-        areas: [String(values.area || "").trim()].filter(Boolean),
+        areas: [String(values.area || "")].filter(Boolean),
         topics: [String(values.topic || "").trim()].filter(Boolean),
         day: String(values.day || "").trim(),
         time: `${String(values.start || "").trim()}-${String(values.end || "").trim()}`,
@@ -171,25 +171,6 @@ export default function MentorshipForm() {
       <form className="max-w-4xl mx-auto mt-4" onSubmit={async (e) => { e.preventDefault(); const ok = await trigger(); if (ok) handleSubmit(onSubmit)(); }}>
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
-            <label className={labelBase}>Faculty</label>
-            <div className="relative flex items-center">
-              <input className={inputBase} value={me?.facultyname || ""} readOnly />
-            </div>
-          </div>
-          <div>
-            <label className={labelBase}>Program</label>
-            <div className="relative flex items-center">
-              <input className={inputBase} value={me?.degreetitle || ""} readOnly />
-            </div>
-          </div>
-          <div>
-            <label className={labelBase}>Department</label>
-            <div className="relative flex items-center">
-              <input className={inputBase} value={me?.departmentname || ""} readOnly />
-            </div>
-          </div>
-
-          <div>
             <label className={labelBase}>Major/Specialization</label>
             <div className="relative flex items-center">
               <input className={`${inputBase} ${errors.major ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Data Science" {...register("major", { required: "Major is required" })} />
@@ -197,10 +178,31 @@ export default function MentorshipForm() {
             {errors.major && <span className={errorText}>{String(errors.major.message || "Required")}</span>}
           </div>
 
-          <div className="md:col-span-2">
-            <label className={labelBase}>Area of Experience</label>
+          <div>
+            <label className={labelBase}>Area of Experience (Years)</label>
             <div className="relative flex items-center">
-              <input className={`${inputBase} ${errors.area ? "border-rose-500 bg-rose-50" : ""}`} placeholder="e.g., Web Development" {...register("area", { required: "Area of expertise is required" })} />
+              <input 
+                type="number" 
+                min="1"
+                step="1"
+                className={`${inputBase} ${errors.area ? "border-rose-500 bg-rose-50" : ""}`} 
+                placeholder="e.g., 5" 
+                {...register("area", { 
+                  required: "Area of experience is required",
+                  valueAsNumber: true,
+                  min: {
+                    value: 1,
+                    message: "Please enter a number greater than 0"
+                  },
+                  validate: (value) => {
+                    const num = Number(value);
+                    if (isNaN(num) || num <= 0 || !Number.isInteger(num)) {
+                      return "Please enter a valid whole number greater than 0";
+                    }
+                    return true;
+                  }
+                })} 
+              />
             </div>
             {errors.area && <span className={errorText}>{String(errors.area.message || "Required")}</span>}
           </div>
