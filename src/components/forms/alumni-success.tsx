@@ -34,9 +34,10 @@ const schema = z.object({
 
 type FormVals = z.infer<typeof schema>;
 
-const inputBase = "w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
-const labelBase = "block text-sm font-medium text-gray-700 mb-2";
-const buttonPrimary = "inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
+const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
+const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
+const errorText = "mt-1 text-xs text-rose-600";
+const buttonPrimary = "px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60";
 
 export default function AlumniSuccessForm({ 
   sapId, 
@@ -178,122 +179,137 @@ export default function AlumniSuccessForm({
   };
 
   return (
-    <form className="grid grid-cols-1 gap-6" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni success form">
-      {/* Name */}
-      <div>
-        <label htmlFor="name" className={labelBase}>Name</label>
-        <Controller
-          name="name"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="name"
-              {...field}
-              className={inputBase}
-              readOnly
-              aria-label="Name"
-            />
-          )}
-        />
-        {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
-      </div>
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Success Story</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Share your success story with the alumni community.</p>
 
-      {/* Faculty */}
-      <div>
-        <label htmlFor="faculty" className={labelBase}>Faculty</label>
-        <Controller
-          name="faculty"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="faculty"
-              {...field}
-              className={inputBase}
-              readOnly
-              aria-label="Faculty"
-            />
-          )}
-        />
-        {errors.faculty && <p className="mt-1 text-xs text-red-600">{errors.faculty.message}</p>}
-      </div>
+      <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni success form">
+        <div className="grid sm:grid-cols-2 gap-6">
+          {/* Name */}
+          <div>
+            <label htmlFor="name" className={labelBase}>Name</label>
+            <div className="relative flex items-center">
+              <Controller
+                name="name"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="name"
+                    {...field}
+                    className={inputBase}
+                    readOnly
+                    aria-label="Name"
+                  />
+                )}
+              />
+            </div>
+            {errors.name && <span className={errorText}>{errors.name.message}</span>}
+          </div>
 
-      {/* Department */}
-      <div>
-        <label htmlFor="department" className={labelBase}>Department</label>
-        <Controller
-          name="department"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="department"
-              {...field}
-              className={inputBase}
-              readOnly
-              aria-label="Department"
-            />
-          )}
-        />
-        {errors.department && <p className="mt-1 text-xs text-red-600">{errors.department.message}</p>}
-      </div>
+          {/* Faculty */}
+          <div>
+            <label htmlFor="faculty" className={labelBase}>Faculty</label>
+            <div className="relative flex items-center">
+              <Controller
+                name="faculty"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="faculty"
+                    {...field}
+                    className={inputBase}
+                    readOnly
+                    aria-label="Faculty"
+                  />
+                )}
+              />
+            </div>
+            {errors.faculty && <span className={errorText}>{errors.faculty.message}</span>}
+          </div>
 
-      {/* Passing Year */}
-      <div>
-        <label htmlFor="passingYear" className={labelBase}>Passing Year</label>
-        <Controller
-          name="passingYear"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="passingYear"
-              type="number"
-              {...field}
-              value={field.value || ""}
-              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value, 10) : null)}
-              className={inputBase}
-              readOnly
-              aria-label="Passing Year"
-            />
-          )}
-        />
-        {errors.passingYear && <p className="mt-1 text-xs text-red-600">{errors.passingYear.message}</p>}
-      </div>
+          {/* Department */}
+          <div>
+            <label htmlFor="department" className={labelBase}>Department</label>
+            <div className="relative flex items-center">
+              <Controller
+                name="department"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="department"
+                    {...field}
+                    className={inputBase}
+                    readOnly
+                    aria-label="Department"
+                  />
+                )}
+              />
+            </div>
+            {errors.department && <span className={errorText}>{errors.department.message}</span>}
+          </div>
 
-      {/* Contact Number */}
-      <div>
-        <label htmlFor="contactNumber" className={labelBase}>
-          Contact Number
-          <span className="text-gray-500 text-xs ml-1">(Optional)</span>
-        </label>
-        <Controller
-          name="contactNumber"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="contactNumber"
-              type="tel"
-              {...field}
-              className={inputBase}
-              placeholder="Enter your contact number"
-              aria-label="Contact Number"
-            />
-          )}
-        />
-        {errors.contactNumber && <p className="mt-1 text-xs text-red-600">{errors.contactNumber.message}</p>}
-      </div>
+          {/* Passing Year */}
+          <div>
+            <label htmlFor="passingYear" className={labelBase}>Passing Year</label>
+            <div className="relative flex items-center">
+              <Controller
+                name="passingYear"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="passingYear"
+                    type="number"
+                    {...field}
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+                    className={inputBase}
+                    readOnly
+                    aria-label="Passing Year"
+                  />
+                )}
+              />
+            </div>
+            {errors.passingYear && <span className={errorText}>{String(errors.passingYear.message || "Required")}</span>}
+          </div>
 
-      {/* Story - Tiptap Editor */}
-      <div>
-        <label htmlFor="storyHtml" className={labelBase}>
-          Your Success Story
-          <span className="text-red-600 ml-1">*</span>
-        </label>
-        <Controller
-          name="storyHtml"
-          control={control}
-          render={({ field }) => (
-            <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
-              {/* Toolbar */}
-              <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+          {/* Contact Number */}
+          <div className="md:col-span-2">
+            <label htmlFor="contactNumber" className={labelBase}>
+              Contact Number
+              <span className="text-gray-500 text-xs ml-1 font-normal">(Optional)</span>
+            </label>
+            <div className="relative flex items-center">
+              <Controller
+                name="contactNumber"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="contactNumber"
+                    type="tel"
+                    {...field}
+                    className={`${inputBase} ${errors.contactNumber ? "border-rose-500 bg-rose-50" : ""}`}
+                    placeholder="Enter your contact number"
+                    aria-label="Contact Number"
+                  />
+                )}
+              />
+            </div>
+            {errors.contactNumber && <span className={errorText}>{errors.contactNumber.message}</span>}
+          </div>
+
+          {/* Story - Tiptap Editor */}
+          <div className="md:col-span-2">
+            <label htmlFor="storyHtml" className={labelBase}>
+              Your Success Story
+              <span className="text-rose-600 ml-1">*</span>
+            </label>
+            <Controller
+              name="storyHtml"
+              control={control}
+              render={({ field }) => (
+                <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+                  {/* Toolbar */}
+                  <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
                 <button
                   type="button"
                   onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -410,16 +426,18 @@ export default function AlumniSuccessForm({
             </div>
           )}
         />
-        {errors.storyHtml && <p className="mt-1 text-xs text-red-600">{errors.storyHtml.message}</p>}
-        <p className="mt-2 text-xs text-gray-500">You can format your story with headings, bold, italic, lists, and links.</p>
-      </div>
+            {errors.storyHtml && <span className={errorText}>{errors.storyHtml.message}</span>}
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">You can format your story with headings, bold, italic, lists, and links.</p>
+          </div>
+        </div>
 
-      {/* Submit Button */}
-      <div className="flex items-center justify-end gap-3 pt-4">
-        <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting}>
-          {isSubmitting ? (storyId ? "Updating..." : "Submitting...") : (storyId ? "Update Story" : "Submit Story")}
-        </button>
-      </div>
-    </form>
+        {/* Submit Button */}
+        <div className="md:col-span-2 flex items-center gap-3 mt-6">
+          <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting}>
+            {isSubmitting ? (storyId ? "Updating..." : "Submitting...") : (storyId ? "Update Story" : "Submit Story")}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

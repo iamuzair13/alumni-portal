@@ -7,7 +7,8 @@ import { useProgress } from "@bprogress/react";
 import { safeText, formatPhone } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
-import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
+import { useAlumniFullDetails, currentUserImageKey } from "@/app/queries/alumni-profile";
+import { useQueryClient } from "@tanstack/react-query";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
 type Props = {
@@ -27,6 +28,7 @@ type Props = {
 export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, program, facebook, instagram, youtube, linkedin }: Props) {
   const { start, stop } = useProgress();
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
+  const queryClient = useQueryClient();
   const [avatar, setAvatar] = useState(initialAvatar);
   const [uploading, setUploading] = useState(false);
   const [showSocialForm, setShowSocialForm] = useState(false);
@@ -131,6 +133,9 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
       const newImagePath = data.imagePath + `?t=${Date.now()}`;
       setAvatar(newImagePath);
 
+      // Invalidate current user image query to update header in real-time
+      await queryClient.invalidateQueries({ queryKey: currentUserImageKey() });
+
       toast.success("Profile picture updated successfully!", {
         duration: 4000,
         style: {
@@ -232,10 +237,14 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             </div>
             {/* Profile Completion Progress Bar */}
             {sapId && (
-              <div className="w-full max-w-[160px] mt-4">
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <Link
+                href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
+                className="w-full max-w-[160px] mt-4 block"
+                title="Click to complete your profile"
+              >
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer group">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-700">Profile Completion</span>
+                    <span className="text-xs font-medium text-gray-700 group-hover:text-green-600 transition-colors">Profile Completion</span>
                     <span className="text-xs font-semibold text-gray-900">{completionPercentage}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -255,7 +264,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                       aria-label={`Profile completion: ${completionPercentage}%`}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1.5 text-center">
+                  <p className="text-xs text-gray-500 mt-1.5 text-center group-hover:text-green-600 transition-colors">
                     {completionPercentage < 50
                       ? "Complete your profile"
                       : completionPercentage < 80
@@ -263,7 +272,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                       : "Almost complete!"}
                   </p>
                 </div>
-              </div>
+              </Link>
             )}
           </div>
           <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">

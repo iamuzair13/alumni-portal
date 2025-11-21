@@ -13,6 +13,7 @@ import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
+import BackButton from "@/components/ui/BackButton";
 
 export default async function Page() {
   const session = await auth();
@@ -80,12 +81,7 @@ export default async function Page() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-slate-900">Submit Your Success Story</h1>
-              <Link
-                href="/alumni-success"
-                className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md px-3 py-2 transition-colors"
-              >
-                ← Back to Stories
-              </Link>
+              <BackButton />
             </div>
             <AlumniSuccessForm 
               sapId={sapId} 

@@ -14,7 +14,7 @@ function MoreDetailsContent() {
   const searchParams = useSearchParams();
   const sapId = searchParams.get("sapid") || "";
 
-  const { data, isLoading, isError, error } = useAlumniFullDetails(sapId || undefined);
+  const { data, isLoading, isError, error, refetch } = useAlumniFullDetails(sapId || undefined);
   const updateMutation = useUpdateAlumniFields(sapId || undefined);
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
   const [isSavingAll, setIsSavingAll] = useState(false);
@@ -45,6 +45,8 @@ function MoreDetailsContent() {
       await updateMutation.mutateAsync(pendingChanges as Partial<NonNullable<typeof data>>);
       // Clear pending changes after successful save
       setPendingChanges({});
+      // Refetch data to ensure we have the latest from the database
+      await refetch();
       toast.success(`Successfully saved ${changesCount} field${changesCount > 1 ? 's' : ''}`, {
         duration: 3000,
         style: {
@@ -134,7 +136,8 @@ function MoreDetailsContent() {
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return "Not provided";
     if (typeof value === "boolean") return value ? "Yes" : "No";
-    return String(value);
+    const strValue = String(value).trim();
+    return strValue === "" ? "Not provided" : strValue;
   };
 
   const maritalStatusOptions = [

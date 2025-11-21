@@ -9,7 +9,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     const session = await auth();
     
     // Verify the user is authenticated
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -23,13 +23,41 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
 
     const row = rows[0] as Record<string, unknown>;
 
-    // Verify the user has access to this profile (either owns it or is admin)
-    const userEmail = String(session.user.email);
-    const isOwner = 
-      row.personalemail === userEmail ||
-      row.universityemail === userEmail ||
-      row.officialemail === userEmail;
+    // Verify the user has access to this profile (either owns it by SAP ID or email, or is admin)
+    const userEmail = session.user.email ? String(session.user.email) : null;
+    const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
+    const requestedSapid = String(sapid || "").toLowerCase().trim();
+    const dbSapid = String(row.sapid ?? "").toLowerCase().trim();
+    
+    // Check ownership by SAP ID first (since users now log in with SAP ID)
+    // Compare both: session SAP ID with requested SAP ID, and session SAP ID with database SAP ID
+    const isOwnerBySapid = userSapid && (
+      userSapid.toLowerCase().trim() === requestedSapid ||
+      dbSapid === userSapid.toLowerCase().trim() ||
+      requestedSapid === dbSapid // Allow if requested SAP ID matches database SAP ID
+    );
+    
+    // Check ownership by email (backward compatibility)
+    const isOwnerByEmail = userEmail && (
+      String(row.personalemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
+      String(row.universityemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
+      String(row.officialemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim()
+    );
+    
+    const isOwner = isOwnerBySapid || isOwnerByEmail;
     const isAdmin = isAdminUser(session.user);
+
+    // Debug logging
+    console.log("[API] Full details auth check:", {
+      requestedSapid,
+      userSapid,
+      dbSapid,
+      userEmail,
+      isOwnerBySapid,
+      isOwnerByEmail,
+      isOwner,
+      isAdmin
+    });
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

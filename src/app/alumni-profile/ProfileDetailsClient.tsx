@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails } from "@/app/queries/alumni-profile";
+import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails, currentUserImageKey } from "@/app/queries/alumni-profile";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProgress } from "@bprogress/react";
 import toast from "react-hot-toast";
@@ -11,7 +11,7 @@ import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
 export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
-  const { data: fullDetails } = useAlumniFullDetails(sapId);
+  const { data: fullDetails, isLoading: isLoadingFullDetails } = useAlumniFullDetails(sapId);
   const queryClient = useQueryClient();
   const { start, stop } = useProgress();
   const [showSocialForm, setShowSocialForm] = useState(false);
@@ -24,22 +24,42 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
   }, [fullDetails]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || isLoadingFullDetails) {
       start();
     } else {
       stop();
     }
-  }, [isLoading, start, stop]);
-  const name = String(data?.name ?? "");
-  const avatar = String((data as unknown as { image1?: string })?.image1 ?? "") || "/images/person.jpg";
-  const faculty = String(data?.faculty ?? "");
-  const dept = String(data?.department ?? "");
-  const program = String(data?.program ?? "");
-  const contact = String(data?.phoneNumber ?? data?.officialPhone ?? "");
-  const facebook = String((data as unknown as { facebook?: string })?.facebook ?? "").trim() || null;
-  const instagram = String((data as unknown as { instagram?: string })?.instagram ?? "").trim() || null;
-  const youtube = String((data as unknown as { youtube?: string })?.youtube ?? "").trim() || null;
-  const linkedin = String((data as unknown as { linkedin?: string })?.linkedin ?? "").trim() || null;
+  }, [isLoading, isLoadingFullDetails, start, stop]);
+  
+  // Use fullDetails for displaying profile summary as it has the raw database values
+  // Fallback to data (mapped profile) if fullDetails is not available yet
+  const name = String(fullDetails?.alumniname ?? data?.name ?? "").trim();
+  const avatar = String(fullDetails?.image1 ?? (data as unknown as { image1?: string })?.image1 ?? "").trim() || "/images/person.jpg";
+  const faculty = String(fullDetails?.facultyname ?? data?.faculty ?? "").trim();
+  const dept = String(fullDetails?.departmentname ?? data?.department ?? "").trim();
+  const program = String(fullDetails?.degreetitle ?? data?.program ?? "").trim();
+  // Use contactno directly from fullDetails, or try to reconstruct from mapped data
+  const contact = String(fullDetails?.contactno ?? (data?.phoneNumber ? `${data?.countryCode ?? ""} ${data?.phoneNumber}`.trim() : "") ?? data?.officialPhone ?? "").trim();
+  const facebook = String(fullDetails?.facebook ?? (data as unknown as { facebook?: string })?.facebook ?? "").trim() || null;
+  const instagram = String(fullDetails?.instagram ?? (data as unknown as { instagram?: string })?.instagram ?? "").trim() || null;
+  const youtube = String(fullDetails?.youtube ?? (data as unknown as { youtube?: string })?.youtube ?? "").trim() || null;
+  const linkedin = String(fullDetails?.linkedin ?? (data as unknown as { linkedin?: string })?.linkedin ?? "").trim() || null;
+
+  // Debug: Log data to console for troubleshooting
+  useEffect(() => {
+    if (fullDetails || data) {
+      console.log("[ProfileDetailsClient] Data loaded:", {
+        fullDetails,
+        data,
+        name,
+        faculty,
+        dept,
+        program,
+        contact,
+        sapId
+      });
+    }
+  }, [fullDetails, data, name, faculty, dept, program, contact, sapId]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -120,6 +140,8 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
 
       // Invalidate and refetch the profile data to show the updated image
       await queryClient.invalidateQueries({ queryKey: alumniProfileKey(sapId) });
+      // Also invalidate current user image query to update header
+      await queryClient.invalidateQueries({ queryKey: currentUserImageKey() });
       
       // Refresh the page after a short delay to show the updated image
       setTimeout(() => {
@@ -146,7 +168,7 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingFullDetails) {
     return (
       <div className="w-full flex-shrink-0">
         <div className="bg-white flex justify-between rounded-lg p-6 pt-0">
@@ -221,10 +243,14 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                 />
               </div>
               {/* Profile Completion Progress Bar */}
-              <div className="w-full max-w-[160px] sm:max-w-[180px] md:max-w-[200px] mt-4">
-                <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+              <Link
+                href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
+                className="w-full max-w-[160px] sm:max-w-[180px] md:max-w-[200px] mt-4 block"
+                title="Click to complete your profile"
+              >
+                <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer group">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-700">Profile Completion</span>
+                    <span className="text-xs font-medium text-gray-700 group-hover:text-green-600 transition-colors">Profile Completion</span>
                     <span className="text-xs font-semibold text-gray-900">{completionPercentage}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -244,7 +270,7 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                       aria-label={`Profile completion: ${completionPercentage}%`}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1.5 text-center">
+                  <p className="text-xs text-gray-500 mt-1.5 text-center group-hover:text-green-600 transition-colors">
                     {completionPercentage < 50
                       ? "Complete your profile"
                       : completionPercentage < 80
@@ -252,7 +278,7 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                       : "Almost complete!"}
                   </p>
                 </div>
-              </div>
+              </Link>
             </div>
             <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
               <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold">{name}</h4>

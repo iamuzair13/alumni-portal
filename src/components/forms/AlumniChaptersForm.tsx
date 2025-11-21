@@ -229,94 +229,109 @@ export default function AlumniChaptersForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Name - Auto-filled */}
-      <div>
-        <label htmlFor="name" className={labelBase}>
-          Name <span className="text-rose-600">*</span>
-        </label>
-        <input
-          id="name"
-          type="text"
-          {...register("name", { required: "Name is required" })}
-          disabled
-          className={`${inputBase} bg-gray-100 cursor-not-allowed`}
-        />
-        {errors.name && <p className={errorText}>{errors.name.message}</p>}
-      </div>
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Alumni Chapters</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Apply to join alumni chapters and connect with fellow alumni in your area.</p>
 
-      {/* Faculty - Auto-filled */}
-      <div>
-        <label htmlFor="faculty" className={labelBase}>
-          Faculty <span className="text-rose-600">*</span>
-        </label>
-        <input
-          id="faculty"
-          type="text"
-          {...register("faculty", { required: "Faculty is required" })}
-          disabled
-          className={`${inputBase} bg-gray-100 cursor-not-allowed`}
-        />
-        {errors.faculty && <p className={errorText}>{errors.faculty.message}</p>}
-      </div>
+      <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid sm:grid-cols-2 gap-6">
+          {/* Name - Auto-filled */}
+          <div>
+            <label htmlFor="name" className={labelBase}>
+              Name <span className="text-rose-600">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="name"
+                type="text"
+                {...register("name", { required: "Name is required" })}
+                disabled
+                className={inputBase}
+              />
+            </div>
+            {errors.name && <span className={errorText}>{errors.name.message}</span>}
+          </div>
 
-      {/* Department - Auto-filled */}
-      <div>
-        <label htmlFor="department" className={labelBase}>
-          Department <span className="text-rose-600">*</span>
-        </label>
-        <input
-          id="department"
-          type="text"
-          {...register("department", { required: "Department is required" })}
-          disabled
-          className={`${inputBase} bg-gray-100 cursor-not-allowed`}
-        />
-        {errors.department && <p className={errorText}>{errors.department.message}</p>}
-      </div>
+          {/* Faculty - Auto-filled */}
+          <div>
+            <label htmlFor="faculty" className={labelBase}>
+              Faculty <span className="text-rose-600">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="faculty"
+                type="text"
+                {...register("faculty", { required: "Faculty is required" })}
+                disabled
+                className={inputBase}
+              />
+            </div>
+            {errors.faculty && <span className={errorText}>{errors.faculty.message}</span>}
+          </div>
 
-      {/* Passing Year - Auto-filled */}
-      <div>
-        <label htmlFor="passingYear" className={labelBase}>
-          Passing Year <span className="text-rose-600">*</span>
-        </label>
-        <input
-          id="passingYear"
-          type="text"
-          {...register("passingYear", { required: "Passing year is required" })}
-          disabled
-          className={`${inputBase} bg-gray-100 cursor-not-allowed`}
-        />
-        {errors.passingYear && <p className={errorText}>{errors.passingYear.message}</p>}
-      </div>
+          {/* Department - Auto-filled */}
+          <div>
+            <label htmlFor="department" className={labelBase}>
+              Department <span className="text-rose-600">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="department"
+                type="text"
+                {...register("department", { required: "Department is required" })}
+                disabled
+                className={inputBase}
+              />
+            </div>
+            {errors.department && <span className={errorText}>{errors.department.message}</span>}
+          </div>
 
-      {/* Contact Number - Manual input */}
-      <div>
-        <label htmlFor="contactNumber" className={labelBase}>
-          Contact Number <span className="text-rose-600">*</span>
-        </label>
-        <input
-          id="contactNumber"
-          type="tel"
-          {...register("contactNumber", {
-            required: "Contact number is required",
-            pattern: {
-              value: /^[0-9+\-\s()]+$/,
-              message: "Please enter a valid contact number",
-            },
-          })}
-          className={inputBase}
-          placeholder="Enter your contact number"
-        />
-        {errors.contactNumber && <p className={errorText}>{errors.contactNumber.message}</p>}
-      </div>
+          {/* Passing Year - Auto-filled */}
+          <div>
+            <label htmlFor="passingYear" className={labelBase}>
+              Passing Year <span className="text-rose-600">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="passingYear"
+                type="text"
+                {...register("passingYear", { required: "Passing year is required" })}
+                disabled
+                className={inputBase}
+              />
+            </div>
+            {errors.passingYear && <span className={errorText}>{errors.passingYear.message}</span>}
+          </div>
 
-      {/* Chapters Selection - Multi-select up to 3 */}
-      <div>
-        <label className={labelBase}>
-          Select Chapters <span className="text-rose-600">*</span>
-          <span className="text-xs text-gray-500 font-normal ml-2">(Select up to 3 chapters)</span>
-        </label>
+          {/* Contact Number - Manual input */}
+          <div className="md:col-span-2">
+            <label htmlFor="contactNumber" className={labelBase}>
+              Contact Number <span className="text-rose-600">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                id="contactNumber"
+                type="tel"
+                {...register("contactNumber", {
+                  required: "Contact number is required",
+                  pattern: {
+                    value: /^[0-9+\-\s()]+$/,
+                    message: "Please enter a valid contact number",
+                  },
+                })}
+                className={`${inputBase} ${errors.contactNumber ? "border-rose-500 bg-rose-50" : ""}`}
+                placeholder="Enter your contact number"
+              />
+            </div>
+            {errors.contactNumber && <span className={errorText}>{errors.contactNumber.message}</span>}
+          </div>
+
+          {/* Chapters Selection - Multi-select up to 3 */}
+          <div className="md:col-span-2">
+            <label className={labelBase}>
+              Select Chapters <span className="text-rose-600">*</span>
+              <span className="text-xs text-gray-500 font-normal ml-2">(Select up to 3 chapters)</span>
+            </label>
         <div className="space-y-4">
           {/* National Chapters Section */}
           <div>
@@ -420,19 +435,21 @@ export default function AlumniChaptersForm({
             </div>
           </div>
         )}
-        {errors.chapters && <p className={errorText}>{errors.chapters.message}</p>}
-      </div>
+            {errors.chapters && <span className={errorText}>{errors.chapters.message}</span>}
+          </div>
+        </div>
 
-      {/* Submit Button */}
-      <div className="flex gap-4 pt-4">
-        <button
-          type="submit"
-          disabled={isSubmitting || selectedChapters.length === 0}
-          className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isSubmitting ? "Submitting..." : "Submit Application"}
-        </button>
-      </div>
-    </form>
+        {/* Submit Button */}
+        <div className="md:col-span-2 flex items-center gap-3 mt-6">
+          <button
+            type="submit"
+            disabled={isSubmitting || selectedChapters.length === 0}
+            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Application"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

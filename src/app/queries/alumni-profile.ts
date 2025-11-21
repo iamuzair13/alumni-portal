@@ -5,6 +5,7 @@ import type { AlumniRegistrationComprehensiveForm } from "@/lib/alumniRegistrati
 
 export const alumniProfileKey = (sapId: string | undefined) => ["alumni", "profile", sapId ?? ""];
 export const alumniFullDetailsKey = (sapId: string | undefined) => ["alumni", "full-details", sapId ?? ""];
+export const currentUserImageKey = () => ["alumni", "current-user-image"];
 
 export type AlumniFullDetails = {
   alumniid: number | null;
@@ -79,9 +80,10 @@ export function useAlumniFullDetails(sapId: string | undefined) {
       return getAlumniFullDetails(sapId);
     },
     enabled: !!sapId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always consider data stale to ensure fresh data after updates
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    refetchOnMount: true, // Refetch when component mounts
   });
 }
 
@@ -98,9 +100,10 @@ export function useAlumniProfile(sapId: string | undefined) {
       return getAlumniProfile(sapId );
     },
     enabled: !!sapId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always consider data stale to ensure fresh data after updates
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    refetchOnMount: true, // Refetch when component mounts
   });
 }
 
@@ -157,6 +160,28 @@ export function useUpdateAlumniFields(sapId: string | undefined) {
       // Invalidate both queries to refetch updated data
       qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: profileKey });
+      // Also invalidate current user image query to update header
+      qc.invalidateQueries({ queryKey: currentUserImageKey() });
     },
+  });
+}
+
+// Fetch current user's profile image
+export async function getCurrentUserImage(): Promise<{ image: string | null; timestamp: number }> {
+  const res = await fetch("/api/alumni/current-user-image");
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error ?? "Failed to fetch current user image");
+  return data as { image: string | null; timestamp: number };
+}
+
+export function useCurrentUserImage(enabled: boolean = true) {
+  return useQuery({
+    queryKey: currentUserImageKey(),
+    queryFn: () => getCurrentUserImage(),
+    enabled,
+    staleTime: 0, // Always consider data stale to ensure fresh data after updates
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchOnMount: true,
   });
 }

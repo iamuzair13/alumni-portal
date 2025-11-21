@@ -32,6 +32,17 @@ async function getProfile(searchParams: { sapid?: string }) {
       return rows[0] as Profile | undefined;
     }
     const session = await auth();
+    
+    // First try to get SAP ID from session (if alumni logged in with SAP ID)
+    const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+    if (sessionSapid) {
+      const rows = await sql/* sql */`
+        SELECT alumniname, facultyname, departmentname, yearofending, contactno
+        FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
+      if (rows[0]) return rows[0] as Profile | undefined;
+    }
+    
+    // Fallback to email lookup (backward compatibility)
     const email = session?.user?.email ? String(session.user.email) : undefined;
     if (!email) return undefined;
     const rows = await sql/* sql */`
@@ -61,10 +72,24 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const contact = p?.contactno ?? "";
+  // Get SAP ID from session first, then from search params, then from email lookup
+  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const email = session?.user?.email ? String(session.user.email) : undefined;
+  
   let sapRows: Array<{ alumniid: number; sapid: string }> = [];
   let sapError: string | null = null;
-  if (email) {
+  
+  // If we have SAP ID from session, use it directly
+  if (sessionSapid) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni 
+        WHERE sapid = ${sessionSapid} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from session";
+    }
+  } else if (email) {
+    // Fallback to email lookup (backward compatibility)
     try {
       sapRows = await sql/* sql */`
         SELECT alumniid, sapid FROM public.tbl_alumni 
@@ -74,6 +99,7 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
       sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
     }
   }
+  
   const alumniId = String(sapRows[0]?.alumniid ?? "");
 
   return (

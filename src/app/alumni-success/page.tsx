@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AppHeader from "@/layout/AppHeader";
 import { useAlumniStories, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
+import BackButton from "@/components/ui/BackButton";
 
 type SuccessStory = {
   id: string;
@@ -45,7 +46,10 @@ export default function Page() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-8">
-              <h1 className="text-3xl font-bold text-slate-900">Alumni Success Stories</h1>
+              <div className="flex items-center gap-4">
+                <BackButton />
+                <h1 className="text-3xl font-bold text-slate-900">Alumni Success Stories</h1>
+              </div>
               <Link 
                 href="/alumni-success/new" 
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"

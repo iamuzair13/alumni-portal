@@ -9,13 +9,13 @@ import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
-type FormErrors = { email?: string; password?: string };
+type FormErrors = { identifier?: string; password?: string };
 
 export default function SignInForm() {
   const { status, data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [email, setEmail] = useState<string>("");
+  const [identifier, setIdentifier] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -27,9 +27,12 @@ export default function SignInForm() {
 
   useEffect(() => {
     const err = params.get("error");
-    if (err === "USER_NOT_FOUND") setErrorMessage("Email not registered");
+    if (err === "USER_NOT_FOUND") setErrorMessage("User not registered");
+    else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID not registered");
+    else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
     else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
     else if (err === "INVALID_EMAIL") setErrorMessage("Invalid email received from provider");
+    else if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID or Email is required");
     else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
     else setErrorMessage(null);
   }, [params]);
@@ -41,23 +44,31 @@ export default function SignInForm() {
       setVerificationError(null);
       setIsLoading(true);
       const nextErrors: FormErrors = {};
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!email.trim()) nextErrors.email = "Email is required";
-      else if (!emailRegex.test(email.trim())) nextErrors.email = "Invalid email format";
-      if (!password) nextErrors.password = "Password is required";
+      if (!identifier.trim()) {
+        nextErrors.identifier = "SAP ID or Email is required";
+      }
+      if (!password) {
+        nextErrors.password = "Password is required";
+      }
       setErrors(nextErrors);
       if (Object.keys(nextErrors).length > 0) return;
+      
       const isProd = process.env.NODE_ENV === "production";
       if (isProd && typeof window !== "undefined" && window.location.protocol !== "https:") {
         setErrorMessage("Insecure connection. Use HTTPS to sign in.");
         return;
       }
-      const result = await signIn("credentials", { email: email.trim(), password, redirect: false });
+      
+      // Use identifier field (can be SAP ID or Email)
+      const result = await signIn("credentials", { identifier: identifier.trim(), password, redirect: false });
+      
       if (result?.error) {
         const err = result.error ?? "LOGIN_FAILED";
-        if (err === "INVALID_EMAIL_FORMAT") setErrorMessage("Invalid email format");
+        if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID or Email is required");
+        else if (err === "INVALID_EMAIL_FORMAT") setErrorMessage("Invalid email format (staff only)");
         else if (err === "INVALID_PASSWORD") setErrorMessage("Incorrect password");
-        else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("User account does not exist");
+        else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID not found");
+        else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
         else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
         else if (err === "USER_NOT_STAFF") setErrorMessage("Not an admin account");
         else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
@@ -65,42 +76,49 @@ export default function SignInForm() {
         else setErrorMessage("Sign-in failed");
         return;
       }
+      
       setErrorMessage(null);
+      
+      // Successful login - wait for session to update then redirect
       setIsVerifying(true);
-      try {
-        const res = await fetch("/api/alumni", { headers: { accept: "application/json" } });
-        if (!res.ok) {
-          const txt = await res.text();
-          setVerificationError(txt || "Failed to verify alumni");
-          return;
+      
+      // Poll for session update (session updates asynchronously)
+      const checkSession = async () => {
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          const newSession = await fetch("/api/auth/session").then(r => r.json()).catch(() => null);
+          
+          if (newSession?.user) {
+            const userType = (newSession.user as { type?: string | null })?.type || "";
+            const isStaff = String(userType).toLowerCase() === "staff";
+            const isAlumni = String(userType).toLowerCase() === "alumni";
+            
+            if (isStaff) {
+              router.replace("/");
+              return;
+            } else if (isAlumni) {
+              router.replace("/alumni-profile");
+              return;
+            }
+          }
+          
+          attempts++;
         }
-        const data = await res.json();
-        const items = (data?.items || []) as Array<{ personalemail?: string | null; officialemail?: string | null; universityemail?: string | null; verify?: string | boolean | null; alumnistatus?: string | null }>;
-        const entered = email.trim().toLowerCase();
-        const match = items.find((it) => {
-          const p = String(it.personalemail || "").toLowerCase();
-          const o = String(it.officialemail || "").toLowerCase();
-          const u = String(it.universityemail || "").toLowerCase();
-          return entered && (p === entered || o === entered || u === entered);
-        });
-        const verified = parseVerify(match?.verify);
-        const blocked = String(match?.alumnistatus || "").toLowerCase() === "blocked";
-        if (!match) {
-          setVerificationError("Missing alumni record");
-          return;
-        }
-        if (blocked) {
-          setVerificationError("This account is blocked");
-          return;
-        }
-        if (!verified) {
-          setVerificationError("Alumni status is unverified");
-          return;
-        }
+        
+        // If we can't determine type, redirect to alumni profile as default for alumni users
+        // (Staff users should have been caught earlier)
         router.replace("/alumni-profile");
+      };
+      
+      try {
+        await checkSession();
       } catch (ve) {
         const msg = ve instanceof Error ? ve.message : String(ve);
-        setVerificationError(msg || "Network failure during verification");
+        setVerificationError(msg || "Failed to verify session");
+        router.replace("/alumni-profile"); // Default redirect
       } finally {
         setIsVerifying(false);
       }
@@ -114,7 +132,11 @@ export default function SignInForm() {
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
       const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase();
-      if (t === "staff") router.replace("/");
+      if (t === "staff") {
+        router.replace("/");
+      } else if (t === "alumni") {
+        router.replace("/alumni-profile");
+      }
     }
   }, [status, session, router]);
 
@@ -159,20 +181,22 @@ export default function SignInForm() {
     </Modal>
     </div>
 
-            <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="Email sign in form">
+            <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="SAP ID or Email sign in form">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700">Email</label>
+                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">SAP ID or Email</label>
                 <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
+                  id="identifier"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Enter SAP ID (for alumni) or Email (for staff)"
                   required
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={!!errors.email}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  aria-invalid={!!errors.identifier}
                 />
-                {errors.email && <p className="mt-1 text-xs text-red-600" role="alert">{errors.email}</p>}
+                <p className="mt-1 text-xs text-slate-500">For alumni: Enter your SAP ID. For staff: Enter your email.</p>
+                {errors.identifier && <p className="mt-1 text-xs text-red-600" role="alert">{errors.identifier}</p>}
               </div>
 
               <div>

@@ -19,7 +19,14 @@ type AlumniProfileSearchParams = { sapid?: string };
 async function getSapId(searchParams: { sapid?: string }) {
   const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
   if (sapid) return sapid;
+  
   const session = await auth();
+  
+  // First try to get SAP ID from session (if alumni logged in with SAP ID)
+  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+  if (sessionSapid) return sessionSapid;
+  
+  // Fallback to email lookup (backward compatibility)
   const email = session?.user?.email ? String(session.user.email) : undefined;
   if (!email) return "";
   try {

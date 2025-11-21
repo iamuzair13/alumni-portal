@@ -42,7 +42,7 @@ function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>)
 }
 
 export async function GET() {
-  // Optional: list endpoint; limit for safety
+  // Fetch all alumni records from database
   try {
     const rows = await sql/* sql */`
       SELECT
@@ -66,8 +66,7 @@ export async function GET() {
         personalemail,
         contactno
       FROM public.tbl_alumni
-      ORDER BY alumniid DESC
-      LIMIT 100`;
+      ORDER BY alumniid DESC`;
     return NextResponse.json({ items: rows }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni";

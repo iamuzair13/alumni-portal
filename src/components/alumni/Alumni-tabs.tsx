@@ -190,7 +190,7 @@ export const AlumniTabs: React.FC = () => {
     const q = debouncedQuery.toLowerCase();
     const base = items.filter((a) =>
       !q ||
-      a.id.toLowerCase().includes(q) ||
+      (a.id?.toString().toLowerCase().includes(q) ?? false) ||
       (a.name?.toLowerCase().includes(q)) ||
       (a.email?.toLowerCase().includes(q))
     );

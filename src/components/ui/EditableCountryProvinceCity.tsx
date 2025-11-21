@@ -40,7 +40,7 @@ function EditableCityField({
       const val = value === null || value === undefined ? "" : String(value);
       setCitySearch(val);
     }
-  }, [isEditing, value, setCitySearch]);
+  }, [isEditing, value, citySearch, setCitySearch]);
 
   const displayValue = (val: unknown): string => {
     if (val === null || val === undefined || val === "") return "Not provided";

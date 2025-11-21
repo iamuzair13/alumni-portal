@@ -1,15 +1,36 @@
 "use client";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useCurrentUserImage } from "@/app/queries/alumni-profile";
 
 export default function UserDropdown() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+
+  const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
+  const isAlumni = t === "alumni";
+  
+  // Fetch current user's profile image from database for alumni users
+  const { data: userImageData } = useCurrentUserImage(isAlumni && status === "authenticated");
+  
+  // Determine which image to use: database image for alumni, session image for others
+  const profileImage = useMemo(() => {
+    if (isAlumni && userImageData?.image) {
+      // Use database image with cache busting timestamp
+      return `${userImageData.image}${userImageData.image.includes('?') ? '&' : '?'}t=${userImageData.timestamp || Date.now()}`;
+    }
+    // Fallback to session image or Google image, then default
+    const sessionImage = session?.user?.image;
+    if (sessionImage && sessionImage.includes("googleusercontent")) {
+      return sessionImage;
+    }
+    return "/images/person.jpg";
+  }, [isAlumni, userImageData, session?.user?.image]);
 
 function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   e.stopPropagation();
@@ -19,8 +40,7 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   function closeDropdown() {
     setIsOpen(false);
   }
-  const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
-  const isAlumni = t === "alumni";
+  
   return (
     <div className="relative">
       <button
@@ -31,8 +51,9 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
           <Image
             width={44}
             height={44}
-            src={session?.user?.image || "/images/person.jpg"}
+            src={profileImage}
             alt="User"
+            key={profileImage} // Force re-render when image changes
           />
         </span>
 

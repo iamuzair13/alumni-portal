@@ -43,6 +43,7 @@ interface AugmentedToken extends JWT {
   blocked?: boolean | null;
   firstName?: string | null;
   lastName?: string | null;
+  sapid?: string | null; // Add SAP ID for alumni
 }
 
 interface AugmentedSession extends Session {
@@ -53,6 +54,7 @@ interface AugmentedSession extends Session {
     blocked?: boolean | null;
     firstName?: string | null;
     lastName?: string | null;
+    sapid?: string | null; // Add SAP ID for alumni
   };
 }
 
@@ -66,21 +68,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        identifier: { label: "SAP ID or Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
-        const email = String(credentials?.email || "").trim();
+        const identifier = String(credentials?.identifier || "").trim();
         const password = String(credentials?.password || "").trim();
         
-        if (!email || !password) {
-          throw new Error("INVALID_EMAIL_FORMAT");
+        if (!identifier || !password) {
+          throw new Error("INVALID_IDENTIFIER");
         }
         
         const ip = (req as unknown as { ip?: string }).ip || req?.headers?.get?.("x-forwarded-for") || "unknown";
         
         try {
-          const result = await authenticateCredentials(email, password, String(ip));
+          const result = await authenticateCredentials(identifier, password, String(ip));
           
           // Return user object that NextAuth expects
           return result as User | null;
@@ -160,8 +162,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)}`);
           } catch {}
         } else {
-          const au = (user as unknown as { alumniDb?: {
+          const au = (user as unknown as { sapid?: string | null; alumniDb?: {
             alumniid: number;
+            sapid: string | null;
             alumniname: string | null;
             departmentname: string | null;
             facultyname: string | null;
@@ -181,6 +184,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             at.department = au.departmentname ?? null;
             at.type = "alumni";
             at.blocked = String(au.alumnistatus || "").toLowerCase() === "blocked";
+            at.sapid = au.sapid ?? null; // Store SAP ID in token
             const fullName = String(au.alumniname || "").trim();
             const [firstName, ...rest] = fullName.split(" ");
             at.firstName = firstName || null;
@@ -188,55 +192,67 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.email = (au.alumniemail || au.personalemail || au.officialemail || au.universityemail || token.email) || undefined;
             token.name = fullName || token.name;
           } else {
-            const email = String(user.email || token.email || "");
-            if (email) {
-              try {
-                const { sql } = await import("@/lib/dbconnect");
-                const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
-                const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
-                if (dbUser) {
-                  const at: AugmentedToken = token as AugmentedToken;
-                  at.userId = dbUser.userid;
-                  at.department = dbUser.department;
-                  at.type = dbUser.type;
-                  at.blocked = dbUser.blocked;
-                  at.firstName = dbUser.firstname;
-                  at.lastName = dbUser.lastname;
-                  token.email = dbUser.email || token.email;
-                  token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
-                } else {
+            // Check if user has sapid at top level (from credentials)
+            const userSapid = (user as unknown as { sapid?: string | null }).sapid;
+            if (userSapid) {
+              const at: AugmentedToken = token as AugmentedToken;
+              at.sapid = userSapid;
+            }
+            
+            // Fallback: try to find by email if we don't have alumniDb or sapid
+            if (!au && !userSapid) {
+              const email = String(user.email || token.email || "");
+              if (email) {
+                try {
                   const { sql } = await import("@/lib/dbconnect");
-                  const arows = await sql/* sql */`SELECT alumniid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
-                  const a = arows[0] as {
-                    alumniid: number;
-                    alumniname: string | null;
-                    departmentname: string | null;
-                    facultyname: string | null;
-                    degreetitle: string | null;
-                    yearofending: number | null;
-                    campusname: string | null;
-                    alumnistatus: string | null;
-                    verify: string | boolean | null;
-                    alumniemail: string | null;
-                    personalemail: string | null;
-                    officialemail: string | null;
-                    universityemail: string | null;
-                  } | undefined;
-                  if (a) {
+                  const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
+                  const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
+                  if (dbUser) {
                     const at: AugmentedToken = token as AugmentedToken;
-                    at.userId = a.alumniid;
-                    at.department = a.departmentname ?? null;
-                    at.type = "alumni";
-                    at.blocked = String(a.alumnistatus || "").toLowerCase() === "blocked";
-                    const fullName = String(a.alumniname || "").trim();
-                    const [firstName, ...rest] = fullName.split(" ");
-                    at.firstName = firstName || null;
-                    at.lastName = rest.join(" ") || null;
-                    token.email = (a.alumniemail || a.personalemail || a.officialemail || a.universityemail || token.email) || undefined;
-                    token.name = fullName || token.name;
+                    at.userId = dbUser.userid;
+                    at.department = dbUser.department;
+                    at.type = dbUser.type;
+                    at.blocked = dbUser.blocked;
+                    at.firstName = dbUser.firstname;
+                    at.lastName = dbUser.lastname;
+                    token.email = dbUser.email || token.email;
+                    token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
+                  } else {
+                    const { sql } = await import("@/lib/dbconnect");
+                    const arows = await sql/* sql */`SELECT alumniid, sapid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+                    const a = arows[0] as {
+                      alumniid: number;
+                      sapid: string | null;
+                      alumniname: string | null;
+                      departmentname: string | null;
+                      facultyname: string | null;
+                      degreetitle: string | null;
+                      yearofending: number | null;
+                      campusname: string | null;
+                      alumnistatus: string | null;
+                      verify: string | boolean | null;
+                      alumniemail: string | null;
+                      personalemail: string | null;
+                      officialemail: string | null;
+                      universityemail: string | null;
+                    } | undefined;
+                    if (a) {
+                      const at: AugmentedToken = token as AugmentedToken;
+                      at.userId = a.alumniid;
+                      at.department = a.departmentname ?? null;
+                      at.type = "alumni";
+                      at.blocked = String(a.alumnistatus || "").toLowerCase() === "blocked";
+                      at.sapid = a.sapid ?? null; // Store SAP ID in token
+                      const fullName = String(a.alumniname || "").trim();
+                      const [firstName, ...rest] = fullName.split(" ");
+                      at.firstName = firstName || null;
+                      at.lastName = rest.join(" ") || null;
+                      token.email = (a.alumniemail || a.personalemail || a.officialemail || a.universityemail || token.email) || undefined;
+                      token.name = fullName || token.name;
+                    }
                   }
-                }
-              } catch {}
+                } catch {}
+              }
             }
           }
         }
@@ -258,9 +274,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         s.user.blocked = at.blocked;
         s.user.firstName = at.firstName;
         s.user.lastName = at.lastName;
+        s.user.sapid = at.sapid ?? null; // Store SAP ID in session
         s.user.name = `${at.firstName ?? ""} ${at.lastName ?? ""}`.trim();
         try {
-          console.info(`[auth] session set userId=${String(s.user.userId)} email=${String(s.user.email)}`);
+          console.info(`[auth] session set userId=${String(s.user.userId)} email=${String(s.user.email)} sapid=${String(s.user.sapid || '')}`);
         } catch {}
       } else {
         try {

@@ -3,6 +3,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import {
+  getDepartmentsByFaculty,
+  getProgramsByFacultyAndDepartment,
+  getFaculties,
+} from "@/data/programs-departments";
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
 export type TblAlumniForm = {
@@ -113,87 +118,6 @@ const getCitiesByProvince = (province: string): string[] => {
   return citiesByProvince[province] || [];
 };
 
-
-const departmentsByFaculty: Record<string, string[]> = {
-  "Faculty of Arts & Architecture": [
-    "School of Architecture",
-    "School of Creative Arts",
-    "School of Fashion & Textiles",
-  ],
-  "Faculty of Engineering & Technology": [
-    "Department of Electrical Engineering",
-    "Department of Mechanical Engineering",
-    "Department of Civil Engineering",
-    "Department of Computer Engineering",
-    "Department of Technology",
-  ],
-  "Faculty of Allied Health Sciences": [
-    "University Institute of Radiological Sciences & Medical Imaging Technology",
-    "University Institute of Physical Therapy",
-    "Department of Sports Sciences and Physical Education",
-    "University Institute of Diet & Nutritional Sciences",
-    "University Institute of Food Science & Technology",
-    "University Institute of Medical Lab Technology",
-    "University Institute of Public Health",
-    "Department of Health Professional Technologies",
-    "Department of Optometry & Vision Sciences",
-    "Department of Emerging Allied Health Technologies",
-    "Department of Rehabilitation Sciences",
-    "Lahore School of Nursing",
-    "Department of Audiology",
-  ],
-  "Faculty of Information Technology": [
-    "Department of Computer Science & Information Technology",
-    "Department of Software Engineering",
-    "Department of Intelligent Systems",
-  ],
-  "Faculty of Management Sciences": [
-    "Lahore Business School",
-    "Department of Economics",
-    "Lahore School of Aviation",
-    "Department of Information Management",
-  ],
-  "Faculty of Social Sciences": [
-    "Department of Islamic Studies",
-    "Lahore School of Behavioural Sciences",
-    "School of Integrated Social Sciences",
-    "Department of Education",
-    "Department of Sociology",
-    "Department of Criminology",
-  ],
-  "Faculty of Medicine & Dentistry": [
-    "University College of Medicine and Dentistry",
-    "Institute of Postgraduate Medical Sciences",
-    "University Institute of Health Professions Education and Research",
-    "Centre for Health Professionals Development & Lifelong Learning",
-    "Dental Paramedical School",
-  ],
-  "Faculty of Sciences": [
-    "Department of Physics",
-    "Department of Chemistry",
-    "Department of Environmental Sciences",
-    "Department of Mathematics and Statistics",
-    "Institute of Molecular Biology & Biotechnology",
-    "School of Pain and Regenerative Medicine",
-  ],
-  "Faculty of Pharmacy": [
-    "Department of Pharmacy",
-  ],
-  "Faculty of Law": [
-    "M.A. Raoof College of Law",
-  ],
-  "Faculty of Languages & Literature": [
-    "Department of English Language & Literature",
-    "Department of Urdu",
-  ],
-  "International Qualifications": [
-    "Department of International Qualifications",
-  ],
-  "Centre for Microcredential-Based Skill Development": [
-    "Microcredential-Based Skill Development Centre",
-  ],
-};
-
 export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: { excludeAdminStep?: boolean; onSuccess?: () => void }) {
   const router = useRouter();
   const {
@@ -281,10 +205,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
   const selectedFaculty = watch("facultyname") || "";
+  const selectedDepartment = watch("departmentname") || "";
   const selectedCountry = watch("country") || "";
   const selectedProvince = watch("province") || "";
   const selectedCity = watch("city") || "";
-  const deptOptions = useMemo(() => departmentsByFaculty[selectedFaculty] || [], [selectedFaculty]);
+  const deptOptions = useMemo(() => getDepartmentsByFaculty(selectedFaculty), [selectedFaculty]);
+  const programOptions = useMemo(() => {
+    if (selectedFaculty && selectedDepartment && selectedDepartment !== "other") {
+      return getProgramsByFacultyAndDepartment(selectedFaculty, selectedDepartment);
+    }
+    return [];
+  }, [selectedFaculty, selectedDepartment]);
   
   // Get cities for selected province
   const provinceCities = useMemo(() => {
@@ -333,9 +264,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     return [];
   }, [selectedCountry]);
   
+  // Reset department and program when faculty changes
   useEffect(() => {
     setValue("departmentname", "");
+    setValue("degreetitle", "");
   }, [selectedFaculty, setValue]);
+
+  // Reset program when department changes
+  useEffect(() => {
+    setValue("degreetitle", "");
+  }, [selectedDepartment, setValue]);
   
   // Reset province and city when country changes
   useEffect(() => {
@@ -957,19 +895,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               <label className={labelBase}>Faculty *</label>
               <select className={inputBase} {...register("facultyname", { required: true })}>
                 <option value="">Select</option>
-                <option value="Faculty of Information Technology">Faculty of Information Technology</option>
-                <option value="Faculty of Medicine & Dentistry">Faculty of Medicine & Dentistry</option>
-                <option value="Faculty of Law">Faculty of Law</option>
-                <option value="Centre for Microcredential-Based Skill Development">Centre for Microcredential-Based Skill Development</option>
-                <option value="Faculty of Engineering & Technology">Faculty of Engineering & Technology</option>
-                <option value="Faculty of Management Sciences">Faculty of Management Sciences</option>
-                <option value="Faculty of Sciences">Faculty of Sciences</option>
-                <option value="Faculty of Languages & Literature">Faculty of Languages & Literature</option>
-                <option value="Faculty of Arts & Architecture">Faculty of Arts & Architecture</option>
-                <option value="Faculty of Social Sciences">Faculty of Social Sciences</option>
-                <option value="Faculty of Pharmacy">Faculty of Pharmacy</option>
-                <option value="International Qualifications">International Qualifications</option>
-                <option value="Faculty of Allied Health Sciences">Faculty of Allied Health Sciences</option>
+                {getFaculties().map((faculty) => (
+                  <option key={faculty} value={faculty}>{faculty}</option>
+                ))}
                 <option value="other">Other</option>
               </select>
               {errors.facultyname && <p className="mt-1 text-xs text-red-600">Faculty is required</p>}
@@ -987,12 +915,20 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             <div>
               <label className={labelBase}>Program *</label>
-              <select className={inputBase} {...register("degreetitle", { required: true })}>
-                <option value="">Select</option>
-                <option value="BS Computer Science">BS Computer Science</option>
-                <option value="BBA">BBA</option>
-                <option value="MBA">MBA</option>
-                <option value="MS Computer Science">MS Computer Science</option>
+              <select 
+                className={inputBase} 
+                {...register("degreetitle", { required: true })}
+                disabled={!selectedFaculty || !selectedDepartment || selectedDepartment === "other" || programOptions.length === 0}
+              >
+                <option value="">
+                  {!selectedFaculty ? "Select Faculty first" : 
+                   !selectedDepartment ? "Select Department first" : 
+                   selectedDepartment === "other" ? "Other Department Selected" :
+                   programOptions.length === 0 ? "No Programs Available" : "Select Program"}
+                </option>
+                {programOptions.map((program) => (
+                  <option key={program} value={program}>{program}</option>
+                ))}
               </select>
               {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
             </div>

@@ -49,9 +49,11 @@ function rateLimitPrune() {
 export interface UserWithDbLike {
   email?: string | null;
   name?: string | null;
+  sapid?: string | null; // Add SAP ID for alumni
   dbUser?: DbUser;
   alumniDb?: {
     alumniid: number;
+    sapid: string | null; // Add SAP ID to alumni DB object
     alumniname: string | null;
     departmentname: string | null;
     facultyname: string | null;
@@ -67,18 +69,22 @@ export interface UserWithDbLike {
   };
 }
 
-export async function authenticateCredentials(email: string, password: string, ip: string): Promise<UserWithDbLike> {
+export async function authenticateCredentials(identifier: string, password: string, ip: string): Promise<UserWithDbLike> {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isEmail = emailRegex.test(identifier);
+  
   const log = (status: string, msg: string) => {
     const ts = new Date().toISOString();
-    try { console.info(`[auth] ${ts} ${status} email=${email} ip=${ip} ${msg}`); } catch {}
+    try { console.info(`[auth] ${ts} ${status} identifier=${identifier} (${isEmail ? 'email' : 'sapid'}) ip=${ip} ${msg}`); } catch {}
   };
-  if (!emailRegex.test(email)) {
-    log("FAIL", "invalid email format");
-    throw new Error("INVALID_EMAIL_FORMAT");
+  
+  if (!identifier || !identifier.trim()) {
+    log("FAIL", "empty identifier");
+    throw new Error("INVALID_IDENTIFIER");
   }
+  
   rateLimitPrune();
-  const key = `${email}|${String(ip)}`;
+  const key = `${identifier}|${String(ip)}`;
   const rl = RATE_LIMIT.get(key) || { count: 0, last: Date.now() };
   const now = Date.now();
   if (now - rl.last > RATE_WINDOW_MS) rl.count = 0;
@@ -89,52 +95,64 @@ export async function authenticateCredentials(email: string, password: string, i
     log("FAIL", "rate limited");
     throw new Error("RATE_LIMITED");
   }
-  let rows;
-  try {
-    rows = await sql/* sql */`SELECT userid, email, password, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
-  } catch (err) {
-    log("FAIL", `db error: ${err instanceof Error ? err.message : String(err)}`);
-    throw new Error("DB_CONNECTION_ERROR");
-  }
-  const dbUser: (DbUser & { password: string | null }) | undefined = rows[0] as (DbUser & { password: string | null }) | undefined;
-  if (dbUser && (dbUser.type || "").toLowerCase() === "staff") {
-    if (dbUser.blocked) {
-      log("FAIL", "account blocked");
-      throw new Error("USER_BLOCKED");
-    }
-    const stored = dbUser.password || "";
-    const ok = await verifyPassword(password, stored);
-    if (!ok) {
-      log("FAIL", "invalid password");
-      throw new Error("INVALID_PASSWORD");
-    }
-    if (stored && !stored.startsWith("scrypt:")) {
-      try {
-        const newHash = await hashPassword(password);
-        await sql/* sql */`UPDATE public.tbl_users SET password = ${newHash} WHERE userid = ${dbUser.userid}`;
-      } catch {}
-    }
-    const u: UserWithDbLike = {
-      email: dbUser.email || email,
-      name: `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim() || undefined,
-      dbUser,
-    };
-    log("OK", "staff credentials verified");
+
+  // Try staff login first (always uses email)
+  if (isEmail) {
+    let rows;
     try {
-      await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
-    } catch {}
-    return u;
+      rows = await sql/* sql */`SELECT userid, email, password, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${identifier.trim()} LIMIT 1`;
+    } catch (err) {
+      log("FAIL", `db error: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error("DB_CONNECTION_ERROR");
+    }
+    const dbUser: (DbUser & { password: string | null }) | undefined = rows[0] as (DbUser & { password: string | null }) | undefined;
+    if (dbUser && (dbUser.type || "").toLowerCase() === "staff") {
+      if (dbUser.blocked) {
+        log("FAIL", "account blocked");
+        throw new Error("USER_BLOCKED");
+      }
+      const stored = dbUser.password || "";
+      const ok = await verifyPassword(password, stored);
+      if (!ok) {
+        log("FAIL", "invalid password");
+        throw new Error("INVALID_PASSWORD");
+      }
+      if (stored && !stored.startsWith("scrypt:")) {
+        try {
+          const newHash = await hashPassword(password);
+          await sql/* sql */`UPDATE public.tbl_users SET password = ${newHash} WHERE userid = ${dbUser.userid}`;
+        } catch {}
+      }
+      const u: UserWithDbLike = {
+        email: dbUser.email || identifier.trim(),
+        name: `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim() || undefined,
+        dbUser,
+      };
+      log("OK", "staff credentials verified");
+      try {
+        await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
+      } catch {}
+      return u;
+    }
   }
 
+  // Alumni login: Use SAP ID (or email if provided, but prioritize SAP ID)
   let arows;
   try {
-    arows = await sql/* sql */`SELECT alumniid, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+    if (isEmail) {
+      // Try email first (for backward compatibility)
+      arows = await sql/* sql */`SELECT alumniid, sapid, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${identifier.trim()} OR personalemail = ${identifier.trim()} OR universityemail = ${identifier.trim()} LIMIT 1`;
+    } else {
+      // Use SAP ID for alumni login
+      arows = await sql/* sql */`SELECT alumniid, sapid, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE sapid = ${identifier.trim()} LIMIT 1`;
+    }
   } catch (err) {
     log("FAIL", `alumni db error: ${err instanceof Error ? err.message : String(err)}`);
     throw new Error("DB_CONNECTION_ERROR");
   }
   const a = arows[0] as {
     alumniid: number;
+    sapid: string | null;
     alumniemail: string | null;
     personalemail: string | null;
     officialemail: string | null;
@@ -152,8 +170,8 @@ export async function authenticateCredentials(email: string, password: string, i
     logincount: number | null;
   } | undefined;
   if (!a) {
-    log("FAIL", "email not registered (alumni)");
-    throw new Error("EMAIL_NOT_REGISTERED");
+    log("FAIL", `${isEmail ? 'email' : 'sapid'} not registered (alumni)`);
+    throw new Error(isEmail ? "EMAIL_NOT_REGISTERED" : "SAPID_NOT_REGISTERED");
   }
   if ((a.alumnistatus || "").toLowerCase() === "blocked") {
     log("FAIL", "alumni blocked");
@@ -165,12 +183,14 @@ export async function authenticateCredentials(email: string, password: string, i
     log("FAIL", "alumni invalid password");
     throw new Error("INVALID_PASSWORD");
   }
-  const userEmail = a.alumniemail || a.personalemail || a.officialemail || a.universityemail || email;
+  const userEmail = a.alumniemail || a.personalemail || a.officialemail || a.universityemail || identifier.trim();
   const u: UserWithDbLike = {
     email: userEmail,
     name: String(a.alumniname || "") || undefined,
+    sapid: a.sapid ?? null, // Store SAP ID at top level
     alumniDb: {
       alumniid: a.alumniid,
+      sapid: a.sapid ?? null, // Store SAP ID in alumni DB object
       alumniname: a.alumniname ?? null,
       departmentname: a.departmentname ?? null,
       facultyname: a.facultyname ?? null,
