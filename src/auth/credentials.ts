@@ -22,17 +22,6 @@ export async function hashPassword(plain: string): Promise<string> {
 
 export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   if (!stored) return false;
-  if (stored.startsWith("scrypt:")) {
-    const parts = stored.split(":");
-    const saltHex = parts[1];
-    const hashHex = parts[2];
-    const { scrypt } = await import("crypto");
-    const salt = Buffer.from(saltHex, "hex");
-    const buf: Buffer = await new Promise((resolve, reject) => {
-      scrypt(plain, salt, 64, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
-    });
-    return buf.toString("hex") === hashHex;
-  }
   return stored === plain;
 }
 
@@ -116,12 +105,6 @@ export async function authenticateCredentials(identifier: string, password: stri
       if (!ok) {
         log("FAIL", "invalid password");
         throw new Error("INVALID_PASSWORD");
-      }
-      if (stored && !stored.startsWith("scrypt:")) {
-        try {
-          const newHash = await hashPassword(password);
-          await sql/* sql */`UPDATE public.tbl_users SET password = ${newHash} WHERE userid = ${dbUser.userid}`;
-        } catch {}
       }
       const u: UserWithDbLike = {
         email: dbUser.email || identifier.trim(),

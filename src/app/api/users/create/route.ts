@@ -23,14 +23,6 @@ function rateLimitPrune() {
   }
 }
 
-async function hashPassword(plain: string): Promise<string> {
-  const { randomBytes, scrypt } = await import("crypto");
-  const salt = randomBytes(16);
-  const buf: Buffer = await new Promise((resolve, reject) => {
-    scrypt(plain, salt, 64, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
-  });
-  return `scrypt:${salt.toString("hex")}:${buf.toString("hex")}`;
-}
 
 export async function POST(req: Request) {
   try {
@@ -60,12 +52,11 @@ export async function POST(req: Request) {
     const cookieCsrf = match?.[1] ?? "";
     if (!cookieCsrf || cookieCsrf !== String(body.csrf || "")) return NextResponse.json({ error: "CSRF_INVALID" }, { status: 400 });
 
-    const hashed = await hashPassword(String(body.password));
     const rows = await sql/* sql */`
       INSERT INTO public.tbl_users (email, password, firstname, lastname, department, type, blocked, lastlogindatetime)
       VALUES (
         ${String(body.email).trim()},
-        ${hashed},
+        ${String(body.password)},
         ${body.firstname ?? null},
         ${body.lastname ?? null},
         ${body.department ?? null},

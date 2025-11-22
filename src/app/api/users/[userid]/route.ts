@@ -35,21 +35,12 @@ export async function PUT(req: Request) {
     if (body.email && !emailRegex.test(String(body.email))) {
       return NextResponse.json({ error: "INVALID_EMAIL_FORMAT" }, { status: 400 });
     }
-    let hashed: string | null = null;
-    if (body.password) {
-      if (String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
-      const { randomBytes, scrypt } = await import("crypto");
-      const salt = randomBytes(16);
-      const buf: Buffer = await new Promise((resolve, reject) => {
-        scrypt(String(body.password), salt, 64, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
-      });
-      hashed = `scrypt:${salt.toString("hex")}:${buf.toString("hex")}`;
-    }
+    if (body.password && String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
     await sql/* sql */`
       UPDATE public.tbl_users
       SET
         email = ${body.email ?? null},
-        ${hashed ? sql`password = ${hashed},` : sql``}
+        ${body.password ? sql`password = ${String(body.password)},` : sql``}
         firstname = ${body.firstname ?? null},
         lastname = ${body.lastname ?? null},
         department = ${body.department ?? null},

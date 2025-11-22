@@ -1,6 +1,5 @@
 import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
-import { hashPassword } from "@/auth/credentials";
 import generateEasyPassword from "@/lib/passwordUtils";
 import { sendWelcomeEmail } from "@/lib/email";
 
@@ -143,16 +142,6 @@ export async function POST(req: Request) {
     const plainPassword = body.password && String(body.password).trim().length > 0
       ? String(body.password).trim()
       : generateEasyPassword();
-
-    // Hash the password before saving
-    // Note: scrypt hash is ~169 chars, ensure DB column is VARCHAR(255) or larger
-    const hashedPassword = await hashPassword(plainPassword);
-    
-    // Check if hashed password exceeds database column limit (should be VARCHAR(255))
-    // If column is still VARCHAR(50), this will fail - need to run migration script
-    if (hashedPassword.length > 50) {
-      console.warn(`[API] Warning: Hashed password length (${hashedPassword.length}) exceeds typical VARCHAR(50) limit. Ensure password column is VARCHAR(255) or larger.`);
-    }
 
     // Store the generated password for email (will be sent if auto-generated)
     const generatedPassword = body.password && String(body.password).trim().length > 0 ? null : plainPassword;
@@ -307,7 +296,7 @@ export async function POST(req: Request) {
           is_scholarship
         ) VALUES (
           ${clean(normalizedAlumniEmail)},
-          ${hashedPassword},
+          ${plainPassword},
           ${todayDateValue},
           ${clean(body.registrationno)},
           ${clean(body.sapid)},
