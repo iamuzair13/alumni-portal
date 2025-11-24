@@ -50,15 +50,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     // Verify alumni exists and user has access
     const rows = await sql/* sql */`
-      SELECT alumniid, sapid, alumniname, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+      SELECT alumniid, sapid, alumniname, personalemail, universityemail, officialemail, cnicpassport, father_cnic FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
 
     if (!rows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
     }
 
     const row = rows[0] as Record<string, unknown>;
+    const alumniId = Number(row.alumniid);
     const alumniName = String(row.alumniname || "");
     const alumniEmail = String(row.personalemail || row.universityemail || row.officialemail || userEmail || "");
+    const alumniCnic = String(row.cnicpassport || "");
 
     // Check ownership
     const isOwnerBySapid = userSapid && String(row.sapid ?? "").toLowerCase().trim() === userSapid.toLowerCase().trim();
@@ -74,15 +76,66 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     }
 
     const body = await req.json();
-    const { discountType, applyingFor, degreeTitle, kinshipRelation, kinshipName } = body;
+    const { discountType, applyingFor, degreeTitle, kinshipRelation, kinshipFirstName, kinshipLastName, kinshipCnic, fatherCnic } = body;
 
     // Validate required fields
     if (!discountType || !applyingFor || !degreeTitle) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    if (discountType === "kinship" && (!kinshipRelation || !kinshipName)) {
-      return NextResponse.json({ error: "Kinship relation and name are required for kinship discount" }, { status: 400 });
+    if (discountType === "kinship" && (!kinshipRelation || !kinshipFirstName || !kinshipLastName || !kinshipCnic)) {
+      return NextResponse.json({ error: "Kinship relation, first name, last name, and CNIC are required for kinship discount" }, { status: 400 });
+    }
+
+    // Update father_cnic in tbl_alumni if provided
+    if (fatherCnic && fatherCnic.trim() !== "") {
+      try {
+        await sql/* sql */`
+          UPDATE public.tbl_alumni 
+          SET father_cnic = ${fatherCnic.trim()}
+          WHERE alumniid = ${alumniId}
+        `;
+      } catch (updateError) {
+        console.error("[API] Failed to update father_cnic:", updateError);
+        // Continue with application even if father_cnic update fails
+      }
+    }
+
+    // Save to alumni_scholarships table
+    // Note: The schema has a foreign key constraint where id references tbl_alumni(alumniid)
+    // We'll use the alumniid as the id to satisfy the constraint
+    try {
+      await sql/* sql */`
+        INSERT INTO public.alumni_scholarships (
+          id,
+          kinship_firstname,
+          kinship_lastname,
+          kinship_cnic,
+          apply_for,
+          degree_title,
+          created_at
+        )
+        VALUES (
+          ${alumniId},
+          ${discountType === "kinship" ? (kinshipFirstName || null) : null},
+          ${discountType === "kinship" ? (kinshipLastName || null) : null},
+          ${discountType === "kinship" ? (kinshipCnic || null) : null},
+          ${applyingFor || null},
+          ${degreeTitle || null},
+          NOW()
+        )
+        ON CONFLICT (id) DO UPDATE
+        SET 
+          kinship_firstname = EXCLUDED.kinship_firstname,
+          kinship_lastname = EXCLUDED.kinship_lastname,
+          kinship_cnic = EXCLUDED.kinship_cnic,
+          apply_for = EXCLUDED.apply_for,
+          degree_title = EXCLUDED.degree_title,
+          created_at = NOW()
+      `;
+    } catch (insertError) {
+      console.error("[API] Failed to save to alumni_scholarships:", insertError);
+      // Continue with email sending even if database save fails
     }
 
     // Generate PDF
@@ -92,7 +145,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       applyingFor,
       degreeTitle,
       kinshipRelation: kinshipRelation || null,
-      kinshipName: kinshipName || null,
+      kinshipFirstName: discountType === "kinship" ? (kinshipFirstName || null) : null,
+      kinshipLastName: discountType === "kinship" ? (kinshipLastName || null) : null,
+      kinshipName: discountType === "kinship" && kinshipFirstName && kinshipLastName 
+        ? `${kinshipFirstName} ${kinshipLastName}` 
+        : null,
     });
 
     // Prepare email content
@@ -111,7 +168,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           <li><strong>Discount Type:</strong> ${getDiscountLabel(discountType)}</li>
           <li><strong>Applying For:</strong> ${applyingFor}</li>
           <li><strong>Degree Title:</strong> ${degreeTitle}</li>
-          ${kinshipRelation && kinshipName ? `<li><strong>Beneficiary:</strong> ${kinshipName} (${kinshipRelation})</li>` : ""}
+          ${discountType === "kinship" && kinshipFirstName && kinshipLastName ? `<li><strong>Beneficiary:</strong> ${kinshipFirstName} ${kinshipLastName} (${kinshipRelation})</li>` : ""}
+          ${discountType === "kinship" && alumniCnic ? `<li><strong>Alumni CNIC:</strong> ${alumniCnic}</li>` : ""}
+          ${discountType === "kinship" && kinshipCnic ? `<li><strong>Kinship CNIC:</strong> ${kinshipCnic}</li>` : ""}
+          ${fatherCnic ? `<li><strong>Father CNIC:</strong> ${fatherCnic}</li>` : ""}
         </ul>
       </div>
     `;

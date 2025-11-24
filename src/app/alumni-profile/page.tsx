@@ -486,7 +486,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 
 
       <div className="p-10 bg-slate-100">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6">Perks & Benefits</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-3">
+          Perks &amp; Benefits
+          <span className="ml-3 px-3 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 font-medium border border-yellow-200">
+            Alumni card is required to avail these benefits
+          </span>
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[
             {

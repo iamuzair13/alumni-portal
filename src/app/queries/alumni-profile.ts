@@ -64,6 +64,7 @@ export type AlumniFullDetails = {
   datasource: string | null;
   alumnistatus: string | null;
   password: string | null;
+  father_cnic: string | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {

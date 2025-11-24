@@ -385,20 +385,26 @@ export async function POST(req: Request) {
             console.log("[API] Alumni name:", alumniName);
             console.log("[API] Generated password length:", generatedPassword.length);
             
-            // Send welcome email with generated password asynchronously
-            sendWelcomeEmail(alumniEmail, alumniName, generatedPassword, body.sapid || body.registrationno || "")
-              .then((success) => {
-                if (success) {
-                  console.log("[API] Welcome email sent successfully to:", alumniEmail);
-                } else {
-                  console.warn("[API] Welcome email was not sent (SMTP may not be configured)");
-                }
-              })
-              .catch((err) => {
-                const errorMessage = err instanceof Error ? err.message : String(err);
-                console.error("[API] Failed to send welcome email:", errorMessage);
-                console.error("[API] Error details:", err);
-              });
+            // Send welcome email with generated password - await to ensure it completes in serverless environment
+            try {
+              const emailSent = await sendWelcomeEmail(
+                alumniEmail, 
+                alumniName, 
+                generatedPassword, 
+                body.sapid || body.registrationno || ""
+              );
+              
+              if (emailSent) {
+                console.log("[API] Welcome email sent successfully to:", alumniEmail);
+              } else {
+                console.warn("[API] Welcome email was not sent (SMTP may not be configured)");
+              }
+            } catch (emailError) {
+              const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+              console.error("[API] Failed to send welcome email:", errorMessage);
+              console.error("[API] Error details:", emailError);
+              // Don't fail the request if email fails - user is already created
+            }
           } else {
             console.warn("[API] No email address found for alumni, cannot send welcome email");
           }

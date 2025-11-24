@@ -96,7 +96,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
         Thank you for applying for the <strong>${String(courseName).trim()}</strong> offered by the <strong>${String(departmentName).trim()}</strong> at UOL.
       </p>
       <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-        Attached is your auto-generated application document, which has been sent to the Alumni Office for approval. Please keep this document for your records. Once your application is approved, you will be notified and can proceed with enrollment in the selected program.
+        Attached is your  application document, which has been sent to the Alumni Office for approval. Please keep this document for your records. Once your application is approved, you will be notified and can proceed with enrollment in the selected program.
       </p>
       <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
         We appreciate your continued engagement with UOL and your commitment to lifelong learning.

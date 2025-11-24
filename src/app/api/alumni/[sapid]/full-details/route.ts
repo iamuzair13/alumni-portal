@@ -123,6 +123,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
         password: row.password ?? null, // Fetch actual password from database
+        father_cnic: row.father_cnic ?? null,
       }
     }, { status: 200 });
   } catch (err) {

@@ -36,8 +36,19 @@ function ScholarshipApplicationContent() {
     applyingFor: "",
     degreeTitle: "",
     kinshipRelation: "",
-    kinshipName: "",
+    kinshipFirstName: "",
+    kinshipLastName: "",
+    kinshipCnic: "",
+    fatherCnic: "",
   });
+
+  // Initialize fatherCnic when data loads
+  useEffect(() => {
+    if (data?.father_cnic && !formData.fatherCnic) {
+      setFormData(prev => ({ ...prev, fatherCnic: data.father_cnic || "" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.father_cnic]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const discountOptions = [
@@ -83,8 +94,8 @@ function ScholarshipApplicationContent() {
       return;
     }
 
-    if (formData.discountType === "kinship" && (!formData.kinshipRelation || !formData.kinshipName)) {
-      toast.error("Please provide kinship relation and name", {
+    if (formData.discountType === "kinship" && (!formData.kinshipRelation || !formData.kinshipFirstName || !formData.kinshipLastName || !formData.kinshipCnic)) {
+      toast.error("Please provide all kinship details (relation, first name, last name, and CNIC)", {
         duration: 4000,
         style: {
           background: '#fee2e2',
@@ -119,7 +130,10 @@ function ScholarshipApplicationContent() {
           applyingFor: formData.applyingFor,
           degreeTitle: formData.degreeTitle,
           kinshipRelation: formData.kinshipRelation || null,
-          kinshipName: formData.kinshipName || null,
+          kinshipFirstName: formData.kinshipFirstName || null,
+          kinshipLastName: formData.kinshipLastName || null,
+          kinshipCnic: formData.kinshipCnic || null,
+          fatherCnic: formData.fatherCnic || null,
         }),
       });
 
@@ -188,7 +202,10 @@ function ScholarshipApplicationContent() {
         applyingFor: "",
         degreeTitle: "",
         kinshipRelation: "",
-        kinshipName: "",
+        kinshipFirstName: "",
+        kinshipLastName: "",
+        kinshipCnic: "",
+        fatherCnic: data?.father_cnic || "",
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
@@ -262,137 +279,183 @@ function ScholarshipApplicationContent() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Scholarship / Fee Discount Application</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Scholarship</h1>
             <p className="text-gray-600 mb-8">Fill out the form below to apply for UOL Alumni Scholarship or Fee Discount.</p>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="discountType" className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Discount <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="discountType"
-                  value={formData.discountType}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      discountType: e.target.value,
-                      applyingFor: "", // Reset when discount type changes
-                    });
-                  }}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Discount Type</option>
-                  {discountOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {formData.discountType && (
-                <div>
-                  <label htmlFor="applyingFor" className="block text-sm font-medium text-gray-700 mb-2">
-                    Applying For <span className="text-red-500">*</span>
+            <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-4" aria-label="Scholarship application form">
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="sm:col-span-2">
+                  <label htmlFor="discountType" className="mb-2 text-sm text-slate-900 font-medium block">
+                    Select Discount <span className="text-red-500">*</span>
                   </label>
                   <select
-                    id="applyingFor"
-                    value={formData.applyingFor}
-                    onChange={(e) => setFormData({ ...formData, applyingFor: e.target.value })}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    id="discountType"
+                    value={formData.discountType}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        discountType: e.target.value,
+                        applyingFor: "", // Reset when discount type changes
+                      });
+                    }}
+                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
                     required
                   >
-                    <option value="">Select Program</option>
-                    {currentOptions.map((option) => (
+                    <option value="">Select Discount Type</option>
+                    {discountOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
                 </div>
-              )}
 
-              {formData.discountType === "kinship" && (
-                <>
-                  <div>
-                    <label htmlFor="kinshipRelation" className="block text-sm font-medium text-gray-700 mb-2">
-                      Relation <span className="text-red-500">*</span>
+                {formData.discountType && (
+                  <div className="sm:col-span-2">
+                    <label htmlFor="applyingFor" className="mb-2 text-sm text-slate-900 font-medium block">
+                      Applying For <span className="text-red-500">*</span>
                     </label>
                     <select
-                      id="kinshipRelation"
-                      value={formData.kinshipRelation}
-                      onChange={(e) => setFormData({ ...formData, kinshipRelation: e.target.value })}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      id="applyingFor"
+                      value={formData.applyingFor}
+                      onChange={(e) => setFormData({ ...formData, applyingFor: e.target.value })}
+                      className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
                       required
                     >
-                      <option value="">Select Relation</option>
-                      {kinshipRelations.map((option) => (
+                      <option value="">Select Program</option>
+                      {currentOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
                     </select>
                   </div>
+                )}
 
-                  <div>
-                    <label htmlFor="kinshipName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Name of {formData.kinshipRelation || "Beneficiary"} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="kinshipName"
-                      value={formData.kinshipName}
-                      onChange={(e) => setFormData({ ...formData, kinshipName: e.target.value })}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                      placeholder="Enter name"
-                    />
-                  </div>
-                </>
-              )}
+                {formData.discountType === "kinship" && (
+                  <>
+                    <div>
+                      <label htmlFor="kinshipRelation" className="mb-2 text-sm text-slate-900 font-medium block">
+                        Relation <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="kinshipRelation"
+                        value={formData.kinshipRelation}
+                        onChange={(e) => setFormData({ ...formData, kinshipRelation: e.target.value })}
+                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                        required
+                      >
+                        <option value="">Select Relation</option>
+                        {kinshipRelations.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div>
-                <label htmlFor="degreeTitle" className="block text-sm font-medium text-gray-700 mb-2">
-                  Degree Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="degreeTitle"
-                  value={formData.degreeTitle}
-                  onChange={(e) => setFormData({ ...formData, degreeTitle: e.target.value })}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  placeholder="Enter degree title"
-                />
+                    <div>
+                      <label htmlFor="kinshipFirstName" className="mb-2 text-sm text-slate-900 font-medium block">
+                        {formData.kinshipRelation || "Kinship"} First Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="kinshipFirstName"
+                        value={formData.kinshipFirstName}
+                        onChange={(e) => setFormData({ ...formData, kinshipFirstName: e.target.value })}
+                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                        required
+                        placeholder={`Enter ${formData.kinshipRelation ? formData.kinshipRelation.toLowerCase() : "kinship"} first name`}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="kinshipLastName" className="mb-2 text-sm text-slate-900 font-medium block">
+                        {formData.kinshipRelation || "Kinship"} Last Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="kinshipLastName"
+                        value={formData.kinshipLastName}
+                        onChange={(e) => setFormData({ ...formData, kinshipLastName: e.target.value })}
+                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                        required
+                        placeholder={`Enter ${formData.kinshipRelation ? formData.kinshipRelation.toLowerCase() : "kinship"} last name`}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="alumniCnic" className="mb-2 text-sm text-slate-900 font-medium block">
+                        Alumni CNIC
+                      </label>
+                      <input
+                        type="text"
+                        id="alumniCnic"
+                        value={data?.cnicpassport || ""}
+                        className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                        readOnly
+                        disabled
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="kinshipCnic" className="mb-2 text-sm text-slate-900 font-medium block">
+                        {formData.kinshipRelation || "Kinship"} CNIC <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="kinshipCnic"
+                        value={formData.kinshipCnic}
+                        onChange={(e) => setFormData({ ...formData, kinshipCnic: e.target.value })}
+                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                        required
+                        placeholder={`Enter ${formData.kinshipRelation ? formData.kinshipRelation.toLowerCase() : "kinship"} CNIC (xxxxx-xxxxxxx-x)`}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="fatherCnic" className="mb-2 text-sm text-slate-900 font-medium block">
+                        Father CNIC
+                      </label>
+                      <input
+                        type="text"
+                        id="fatherCnic"
+                        value={formData.fatherCnic}
+                        onChange={(e) => setFormData({ ...formData, fatherCnic: e.target.value })}
+                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                        placeholder={data?.father_cnic ? `Current: ${data.father_cnic}` : "Enter father CNIC (xxxxx-xxxxxxx-x)"}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        {data?.father_cnic ? "Auto-fetched from your profile. You can update it if needed." : "Enter father CNIC if available"}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <div className="sm:col-span-2">
+                  <label htmlFor="degreeTitle" className="mb-2 text-sm text-slate-900 font-medium block">
+                    Degree Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="degreeTitle"
+                    value={formData.degreeTitle}
+                    onChange={(e) => setFormData({ ...formData, degreeTitle: e.target.value })}
+                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                    required
+                    placeholder="Enter degree title"
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center gap-4 pt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Submit Application
-                    </>
-                  )}
-                </button>
-                <BackButton />
-              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] mx-auto block bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Application"}
+              </button>
             </form>
           </div>
         </div>
