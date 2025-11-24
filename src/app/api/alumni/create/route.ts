@@ -381,16 +381,38 @@ export async function POST(req: Request) {
           const alumniName = alumni.alumniname || "Alumni";
           
           if (alumniEmail) {
+            console.log("[API] Attempting to send welcome email to:", alumniEmail);
+            console.log("[API] Alumni name:", alumniName);
+            console.log("[API] Generated password length:", generatedPassword.length);
+            
             // Send welcome email with generated password asynchronously
-            sendWelcomeEmail(alumniEmail, alumniName, generatedPassword, body.sapid || body.registrationno || "").catch((err) => {
-              console.error("[API] Failed to send welcome email:", err);
-            });
+            sendWelcomeEmail(alumniEmail, alumniName, generatedPassword, body.sapid || body.registrationno || "")
+              .then((success) => {
+                if (success) {
+                  console.log("[API] Welcome email sent successfully to:", alumniEmail);
+                } else {
+                  console.warn("[API] Welcome email was not sent (SMTP may not be configured)");
+                }
+              })
+              .catch((err) => {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                console.error("[API] Failed to send welcome email:", errorMessage);
+                console.error("[API] Error details:", err);
+              });
+          } else {
+            console.warn("[API] No email address found for alumni, cannot send welcome email");
           }
+        } else {
+          console.warn("[API] Alumni record not found after creation, cannot send welcome email");
         }
       } catch (emailError) {
         // Don't fail the request if email fails
-        console.error("[API] Error sending welcome email:", emailError);
+        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+        console.error("[API] Error preparing welcome email:", errorMessage);
+        console.error("[API] Error details:", emailError);
       }
+    } else {
+      console.log("[API] Password was provided by user, skipping welcome email");
     }
 
     // Return the generated password if it was auto-generated (for client-side display)

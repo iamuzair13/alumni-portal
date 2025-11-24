@@ -68,16 +68,31 @@ const benefitsData: Record<string, { title: string; description: string; content
           </tbody>
         </table>
       </div>
-      <div class="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-        <p class="mb-4 text-gray-700">
-          To avail any of these scholarships or discounts (Kinship Scholarship, MS and PhD Discounts, Masters Scholarships via UOL International Collaborations), please fill the application form below.
-        </p>
-        <a href="/alumni-profile/scholarship-application" class="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Apply for Scholarship/Discount
-        </a>
+      <div class="mt-8 space-y-6">
+        <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+          <p class="mb-4 text-gray-700">
+            To avail any of these scholarships or discounts (Kinship Scholarship, MS and PhD Discounts, Masters Scholarships via UOL International Collaborations), please fill the application form below.
+          </p>
+          <a href="/alumni-profile/scholarship-application" class="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Apply for Scholarship/Discount
+          </a>
+        </div>
+        
+        <div class="p-6 bg-purple-50 border border-purple-200 rounded-lg">
+          <h4 class="text-lg font-semibold text-gray-800 mb-2">Upskill and Reskill Courses</h4>
+          <p class="mb-4 text-gray-700">
+            As a valued UOL alumnus, you can take advantage of our exclusive Upskill &amp; Reskill courses designed to boost your professional knowledge and career growth. Select your preferred course offered by department below.
+          </p>
+          <a href="/alumni-profile/upskill-application" class="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Apply for Upskill/Reskill Course
+          </a>
+        </div>
       </div>
     `,
     icon: (
@@ -457,6 +472,10 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     content = content.replace(
       'href="/alumni-profile/scholarship-application"',
       `href="/alumni-profile/scholarship-application?sapid=${encodeURIComponent(sapId)}"`
+    );
+    content = content.replace(
+      'href="/alumni-profile/upskill-application"',
+      `href="/alumni-profile/upskill-application?sapid=${encodeURIComponent(sapId)}"`
     );
   }
 
