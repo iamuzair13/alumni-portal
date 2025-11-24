@@ -3,26 +3,37 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser } from "@/lib/alumniProfile";
 import { generateScholarshipPDF } from "@/lib/pdfGenerator";
-import { createEmailTemplate } from "@/lib/email";
+import { createEmailTemplate, verifySMTPConfig } from "@/lib/email";
 import nodemailer from "nodemailer";
 
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_SECURE = process.env.SMTP_SECURE === "true";
-const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_EMAIL;
-const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || "noreply@uol.edu.pk";
-const FROM_NAME = process.env.FROM_NAME || "UOL Alumni Portal";
+// Get email configuration dynamically
+function getEmailConfig() {
+  const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+  const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
+  const SMTP_SECURE = process.env.SMTP_SECURE === "true";
+  const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_EMAIL;
+  const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+  const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || "noreply@uol.edu.pk";
+  const FROM_NAME = process.env.FROM_NAME || "UOL Alumni Portal";
+  return { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, FROM_EMAIL, FROM_NAME };
+}
 
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_SECURE,
-  auth: SMTP_USER && SMTP_PASS ? {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  } : undefined,
-});
+// Create transporter dynamically
+function getTransporter() {
+  const config = getEmailConfig();
+  if (!config.SMTP_USER || !config.SMTP_PASS) {
+    return null;
+  }
+  return nodemailer.createTransport({
+    host: config.SMTP_HOST,
+    port: config.SMTP_PORT,
+    secure: config.SMTP_SECURE,
+    auth: {
+      user: config.SMTP_USER,
+      pass: config.SMTP_PASS,
+    },
+  });
+}
 
 export async function POST(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -110,9 +121,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     // Send email with PDF attachment
     try {
+      const config = getEmailConfig();
+      const transporter = getTransporter();
+      
       // Check SMTP configuration
-      if (!SMTP_USER || !SMTP_PASS) {
+      if (!transporter) {
         console.warn("[Scholarship API] SMTP not configured. Missing SMTP_USER or SMTP_PASS");
+        console.warn("[Scholarship API] SMTP_USER:", config.SMTP_USER ? "SET" : "NOT SET");
+        console.warn("[Scholarship API] SMTP_PASS:", config.SMTP_PASS ? "SET" : "NOT SET");
         console.warn("[Scholarship API] Email would be sent to:", alumniEmail);
         return NextResponse.json({ 
           ok: true, 
@@ -140,7 +156,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       }
 
       const mailOptions = {
-        from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+        from: `"${config.FROM_NAME}" <${config.FROM_EMAIL}>`,
         to: alumniEmail,
         subject: subject,
         html: html,
@@ -154,9 +170,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       };
 
       console.log("[Scholarship API] Attempting to send email to:", alumniEmail);
-      console.log("[Scholarship API] From:", FROM_EMAIL);
-      console.log("[Scholarship API] SMTP Host:", SMTP_HOST);
-      console.log("[Scholarship API] SMTP Port:", SMTP_PORT);
+      console.log("[Scholarship API] From:", config.FROM_EMAIL);
+      console.log("[Scholarship API] SMTP Host:", config.SMTP_HOST);
+      console.log("[Scholarship API] SMTP Port:", config.SMTP_PORT);
 
       const emailInfo = await transporter.sendMail(mailOptions);
       console.log("[Scholarship API] Email sent successfully!");

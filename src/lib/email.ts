@@ -1,35 +1,61 @@
 import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 
-// Email configuration from environment variables
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_SECURE = process.env.SMTP_SECURE === "true";
-const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_EMAIL;
-const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || "noreply@uol.edu.pk";
-const FROM_NAME = process.env.FROM_NAME || "UOL Alumni Portal";
+// Get email configuration from environment variables (read at runtime for Vercel compatibility)
+function getEmailConfig() {
+  const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+  const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
+  const SMTP_SECURE = process.env.SMTP_SECURE === "true";
+  const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_EMAIL;
+  const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+  const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || "noreply@uol.edu.pk";
+  const FROM_NAME = process.env.FROM_NAME || "UOL Alumni Portal";
 
-// Create reusable transporter
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_SECURE, // true for 465, false for other ports
-  auth: SMTP_USER && SMTP_PASS ? {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  } : undefined,
-  // For Gmail, you might need to enable "Less secure app access" or use OAuth2
-  // For development, you can use services like Mailtrap or Ethereal Email
-});
+  return {
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_SECURE,
+    SMTP_USER,
+    SMTP_PASS,
+    FROM_EMAIL,
+    FROM_NAME,
+  };
+}
 
-// Verify connection on first use (optional)
-if (SMTP_USER && SMTP_PASS) {
-  transporter.verify().then(() => {
-    console.log("[Email] SMTP server is ready to send emails");
-  }).catch((err) => {
-    console.warn("[Email] SMTP server connection failed:", err.message);
-    console.warn("[Email] Email functionality may not work. Check SMTP configuration.");
-  });
+// Create transporter dynamically (for Vercel compatibility)
+let transporterCache: Transporter | null = null;
+
+function getTransporter(): Transporter | null {
+  const config = getEmailConfig();
+  
+  // Log configuration status (without sensitive data)
+  if (!config.SMTP_USER || !config.SMTP_PASS) {
+    console.warn("[Email] SMTP not configured. Missing SMTP_USER or SMTP_PASS");
+    console.warn("[Email] SMTP_USER:", config.SMTP_USER ? "SET" : "NOT SET");
+    console.warn("[Email] SMTP_PASS:", config.SMTP_PASS ? "SET" : "NOT SET");
+    return null;
+  }
+
+  // Create new transporter if not cached or if config changed
+  if (!transporterCache) {
+    console.log("[Email] Creating SMTP transporter...");
+    console.log("[Email] SMTP Host:", config.SMTP_HOST);
+    console.log("[Email] SMTP Port:", config.SMTP_PORT);
+    console.log("[Email] SMTP Secure:", config.SMTP_SECURE);
+    console.log("[Email] SMTP User:", config.SMTP_USER);
+    
+    transporterCache = nodemailer.createTransport({
+      host: config.SMTP_HOST,
+      port: config.SMTP_PORT,
+      secure: config.SMTP_SECURE, // true for 465, false for other ports
+      auth: {
+        user: config.SMTP_USER,
+        pass: config.SMTP_PASS,
+      },
+    });
+  }
+
+  return transporterCache;
 }
 
 export interface EmailOptions {
@@ -41,8 +67,11 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
+    const config = getEmailConfig();
+    const transporter = getTransporter();
+
     // If SMTP is not configured, log the email instead of failing
-    if (!SMTP_USER || !SMTP_PASS) {
+    if (!transporter) {
       console.warn("[Email] SMTP not configured. Email would be sent:", {
         to: options.to,
         subject: options.subject,
@@ -52,20 +81,75 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
 
     const mailOptions = {
-      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+      from: `"${config.FROM_NAME}" <${config.FROM_EMAIL}>`,
       to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
       subject: options.subject,
       text: options.text || options.html.replace(/<[^>]*>/g, ""), // Plain text version
       html: options.html,
     };
 
+    console.log("[Email] Attempting to send email to:", options.to);
     const info = await transporter.sendMail(mailOptions);
-    console.log("[Email] Email sent successfully:", info.messageId);
+    console.log("[Email] Email sent successfully!");
+    console.log("[Email] Message ID:", info.messageId);
+    console.log("[Email] Response:", info.response);
     return true;
   } catch (error) {
-    console.error("[Email] Failed to send email:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("[Email] Failed to send email:");
+    console.error("[Email] Error:", errorMessage);
+    if (errorStack) {
+      console.error("[Email] Stack:", errorStack);
+    }
     // Don't throw error - just log it so the application continues
     return false;
+  }
+}
+
+// Export function to verify SMTP configuration
+export async function verifySMTPConfig(): Promise<{ ok: boolean; message: string; details?: any }> {
+  try {
+    const config = getEmailConfig();
+    
+    if (!config.SMTP_USER || !config.SMTP_PASS) {
+      return {
+        ok: false,
+        message: "SMTP not configured",
+        details: {
+          SMTP_USER: config.SMTP_USER ? "SET" : "NOT SET",
+          SMTP_PASS: config.SMTP_PASS ? "SET" : "NOT SET",
+          SMTP_HOST: config.SMTP_HOST,
+          SMTP_PORT: config.SMTP_PORT,
+        },
+      };
+    }
+
+    const transporter = getTransporter();
+    if (!transporter) {
+      return {
+        ok: false,
+        message: "Failed to create transporter",
+      };
+    }
+
+    await transporter.verify();
+    return {
+      ok: true,
+      message: "SMTP configuration is valid and connection successful",
+      details: {
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        secure: config.SMTP_SECURE,
+        from: config.FROM_EMAIL,
+      },
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      message: `SMTP verification failed: ${errorMessage}`,
+    };
   }
 }
 
