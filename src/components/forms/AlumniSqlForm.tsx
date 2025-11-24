@@ -304,10 +304,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   // Initialize citySearch from form value when city changes (but not during active typing)
   useEffect(() => {
     if (selectedCountry === "Pakistan" && selectedCity) {
+      const cityStr = String(selectedCity).trim();
       // Only sync if citySearch is empty or if the selectedCity doesn't match current citySearch
       // This prevents overwriting user input while typing
-      if (citySearch === "" || citySearch !== selectedCity) {
-        setCitySearch(selectedCity);
+      if (citySearch === "" || citySearch !== cityStr) {
+        setCitySearch(cityStr);
       }
     } else if (!selectedCity) {
       setCitySearch("");
@@ -805,7 +806,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     <Controller
                       name="city"
                       control={control}
-                      rules={{ required: true, maxLength: 50 }}
+                      rules={{ 
+                        required: true, 
+                        maxLength: 50,
+                        validate: (value) => {
+                          const val = value ? String(value).trim() : "";
+                          if (val === "") {
+                            return "City is required";
+                          }
+                          return true;
+                        }
+                      }}
                       render={({ field }) => (
                         <>
                           <input 
@@ -816,7 +827,26 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                               const value = e.target.value;
                               setCitySearch(value);
                               setShowCityDropdown(true);
-                              // Don't update form value while typing - only when selecting from dropdown
+                              
+                              // Always update form value immediately to ensure validation works
+                              // This fixes the issue where validation runs before blur
+                              const trimmedValue = value.trim();
+                              
+                              // Check if the typed value exactly matches a city (case-insensitive)
+                              const matchingCity = provinceCities.find(c => c.toLowerCase() === trimmedValue.toLowerCase());
+                              if (matchingCity) {
+                                // Update form value with exact match
+                                field.onChange(matchingCity);
+                                setCitySearch(matchingCity);
+                                setShowCityDropdown(false);
+                              } else if (trimmedValue === "") {
+                                // Clear form value if input is empty
+                                field.onChange("");
+                              } else {
+                                // Update form value with typed value immediately
+                                // This ensures validation sees the value even if it doesn't match exactly
+                                field.onChange(trimmedValue);
+                              }
                             }}
                             onFocus={() => {
                               if (selectedProvince) {
@@ -832,17 +862,30 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                               // Delay to allow dropdown click
                               setTimeout(() => {
                                 setShowCityDropdown(false);
-                                // If the typed value matches a city in the list, use it; otherwise keep current form value
-                                const matchingCity = provinceCities.find(c => c.toLowerCase() === citySearch.toLowerCase().trim());
+                                const trimmedSearch = citySearch.trim();
+                                
+                                // If the typed value matches a city in the list, use it
+                                const matchingCity = provinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
                                 if (matchingCity) {
                                   field.onChange(matchingCity);
                                   setCitySearch(matchingCity);
-                                } else if (citySearch.trim() === "") {
+                                } else if (trimmedSearch === "") {
                                   field.onChange("");
                                 } else {
-                                  // If typed value doesn't match, keep the current form value
-                                  const currentCity = selectedCity || "";
-                                  setCitySearch(currentCity);
+                                  // If typed value doesn't match exactly, accept it as-is (user might be typing a valid city not in list)
+                                  // But first check if it's close to any city
+                                  const closeMatch = provinceCities.find(c => 
+                                    c.toLowerCase().startsWith(trimmedSearch.toLowerCase()) ||
+                                    trimmedSearch.toLowerCase().startsWith(c.toLowerCase())
+                                  );
+                                  if (closeMatch && trimmedSearch.length >= 3) {
+                                    // Auto-complete if close match found
+                                    field.onChange(closeMatch);
+                                    setCitySearch(closeMatch);
+                                  } else {
+                                    // Accept the typed value as-is (already set in onChange, but ensure it's set)
+                                    field.onChange(trimmedSearch);
+                                  }
                                 }
                               }, 200);
                             }}
@@ -1030,9 +1073,22 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Work City/Country */}
                 <div>
                   <label className={labelBase}>Work City *</label>
-                  <input type="text" className={inputBase} {...register("city", { required: true, maxLength: 50 })} />
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    {...register("city", { 
+                      required: "Work city is required", 
+                      maxLength: 50,
+                      validate: (value) => {
+                        if (!value || String(value).trim() === "") {
+                          return "Work city is required";
+                        }
+                        return true;
+                      }
+                    })} 
+                  />
                   {errors.city && (
-                    <p className="mt-1 text-xs text-red-600">Work city is required</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.city.message || "Work city is required"}</p>
                   )}
                   <p className="mt-1 text-xs text-neutral-600">Overrides Home City and maps to `city`.</p>
                 </div>
