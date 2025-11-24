@@ -152,26 +152,28 @@ export const AlumniTabs: React.FC = () => {
   // Map server items to UI shape
   const items: AlumniItem[] = useMemo(() => {
     if (!rawItems) return [];
-    return rawItems.map((r) => ({
-      id: r.sapid,
-      name: r.alumniname,
-      email: r.personalemail ?? r.officialemail ?? null,
-      mobile: r.contactno ?? null,
-      campus: r.campusname,
-      faculty: r.facultyname,
-      program: r.degreetitle,
-      department: r.departmentname,
-      passingYear: r.yearofending,
-      workCountry: r.country,
-      workCity: r.city,
-      organization: r.nameoforganization ?? null,
-      designation: r.designation ?? null,
-      verified: String(r.verify ?? "false").toLowerCase() === "true",
-      employmentStatus:
-        String(r.employeed ?? "Unemployed").toLowerCase() === "employed"
-          ? "Employed"
-          : "Unemployed",
-    }));
+    return rawItems
+      .filter((r) => r.sapid && r.sapid.trim() !== "") // Filter out items without valid SAP ID
+      .map((r) => ({
+        id: r.sapid,
+        name: r.alumniname,
+        email: r.personalemail ?? r.officialemail ?? null,
+        mobile: r.contactno ?? null,
+        campus: r.campusname,
+        faculty: r.facultyname,
+        program: r.degreetitle,
+        department: r.departmentname,
+        passingYear: r.yearofending,
+        workCountry: r.country,
+        workCity: r.city,
+        organization: r.nameoforganization ?? null,
+        designation: r.designation ?? null,
+        verified: String(r.verify ?? "false").toLowerCase() === "true",
+        employmentStatus:
+          String(r.employeed ?? "Unemployed").toLowerCase() === "employed"
+            ? "Employed"
+            : "Unemployed",
+      }));
   }, [rawItems]);
 
   // Compute tab counts
@@ -254,12 +256,18 @@ export const AlumniTabs: React.FC = () => {
   }, [queryClient]);
 
   const handleVerify = useCallback(async (sapid: string) => {
+    // Validate sapid before proceeding
+    if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
+      setActionError("Invalid SAP ID. Cannot verify alumni without a valid SAP ID.");
+      return;
+    }
+
     setActionError(null);
     startMut(sapid);
     // optimistic
     updateCacheVerify(sapid, true);
     try {
-      const res = await fetch(`/api/alumni/${sapid}`, {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify: true }),
@@ -278,12 +286,18 @@ export const AlumniTabs: React.FC = () => {
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
   const handleUnverify = useCallback(async (sapid: string) => {
+    // Validate sapid before proceeding
+    if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
+      setActionError("Invalid SAP ID. Cannot unverify alumni without a valid SAP ID.");
+      return;
+    }
+
     setActionError(null);
     startMut(sapid);
     // optimistic
     updateCacheVerify(sapid, false);
     try {
-      const res = await fetch(`/api/alumni/${sapid}`, {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify: false }),
@@ -302,14 +316,23 @@ export const AlumniTabs: React.FC = () => {
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
   const handleDelete = useCallback(async (sapid: string) => {
+    // Validate sapid before proceeding
+    if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
+      setActionError("Invalid SAP ID. Cannot delete alumni without a valid SAP ID.");
+      return;
+    }
+
     setActionError(null);
     startMut(sapid);
     const prev = queryClient.getQueryData<AlumniListItem[] | undefined>(["alumnilist"]);
     // optimistic remove
     removeFromCache(sapid);
     try {
-      const res = await fetch(`/api/alumni/${sapid}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`Failed to delete: ${res.status}`);
+      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to delete: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to delete: ${res.status}`);
+      }
       setActionMessage("Alumni deleted successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
     } catch (e: unknown) {

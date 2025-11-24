@@ -10,6 +10,11 @@ export async function POST(req: Request) {
     const cardaddress = String(body?.cardaddress || "");
     const status = String(body?.status || "requested");
     const cardpicture = String(body?.cardpicture || "profile").slice(0, 50);
+    
+    // Validate address is required when status is "Deliver"
+    if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
+      return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
+    }
     const rows = await sql/* sql */`
       INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, createdat)
       VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, NOW())

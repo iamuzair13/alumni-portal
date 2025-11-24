@@ -10,7 +10,7 @@ create table public.alumni_chapter (
   national - chapter text null,
   international - chapter text null,
   constraint alumni_chapter_pkey primary key (id),
-  constraint alumni_chapter_id_fkey foreign KEY (id) references tbl_alumni (alumniid)
+  constraint alumni_chapter_id_fkey foreign KEY (id) references tbl_alumni (alumniid) ON DELETE CASCADE
 ) TABLESPACE pg_default;
 
 -- ================================================

@@ -18,9 +18,18 @@ type Props = {
 
 const schema = z.object({
   cnic: z.string().regex(/^[0-9]{5}-[0-9]{7}-[0-9]$/, "Invalid CNIC format (xxxxx-xxxxxxx-x)"),
-  address: z.string().min(10, "Address is too short"),
+  address: z.string().optional(),
   preference: z.enum(["Collect", "Deliver"], { message: "Select a preference" }),
   pictureName: z.string().min(1, "Profile picture is required"),
+}).refine((data) => {
+  // Address is required only when preference is "Deliver"
+  if (data.preference === "Deliver") {
+    return data.address && data.address.trim().length >= 10;
+  }
+  return true;
+}, {
+  message: "Address is required and must be at least 10 characters when delivery is selected",
+  path: ["address"], // This will show the error on the address field
 });
 
 type FormVals = z.infer<typeof schema>;
@@ -60,6 +69,14 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
     } catch {}
   }, [setValue]);
 
+  // Clear address when preference changes to "Collect"
+  const preference = watch("preference");
+  React.useEffect(() => {
+    if (preference === "Collect") {
+      setValue("address", "");
+    }
+  }, [preference, setValue]);
+
   
 
   const onSubmit = async (vals: FormVals) => {
@@ -70,7 +87,7 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       const payload = {
         alumniId,
         cnicno: vals.cnic,
-        cardaddress: vals.address,
+        cardaddress: vals.preference === "Deliver" ? vals.address : "", // Only include address if delivery is selected
         status: vals.preference,
         cardpicture: vals.pictureName.slice(0, 50),
       };
