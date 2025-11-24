@@ -183,7 +183,7 @@ export default function SignInForm() {
 
             <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="SAP ID or Email sign in form">
               <div>
-                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">SAP ID or Email</label>
+                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">SAP ID</label>
                 <input
                   id="identifier"
                   type="text"
@@ -195,7 +195,7 @@ export default function SignInForm() {
                   onChange={(e) => setIdentifier(e.target.value)}
                   aria-invalid={!!errors.identifier}
                 />
-                <p className="mt-1 text-xs text-slate-500">For alumni: Enter your SAP ID. For staff: Enter your email.</p>
+                <p className="mt-1 text-xs text-slate-500">Enter your SAP ID.</p>
                 {errors.identifier && <p className="mt-1 text-xs text-red-600" role="alert">{errors.identifier}</p>}
               </div>
 
