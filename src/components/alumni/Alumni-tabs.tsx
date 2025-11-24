@@ -323,23 +323,34 @@ export const AlumniTabs: React.FC = () => {
     }
 
     setActionError(null);
+    setActionMessage(null);
     startMut(sapid);
     const prev = queryClient.getQueryData<AlumniListItem[] | undefined>(["alumnilist"]);
     // optimistic remove
     removeFromCache(sapid);
     try {
-      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, { method: "DELETE" });
+      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, { 
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }
+      });
+      
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: `Failed to delete: ${res.status}` }));
         throw new Error(errorData.error || `Failed to delete: ${res.status}`);
       }
+      
       setActionMessage("Alumni deleted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
+      // Invalidate both profile and list queries to ensure fresh data
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] }),
+        queryClient.invalidateQueries({ queryKey: ["alumnilist"] })
+      ]);
     } catch (e: unknown) {
       // rollback
       if (prev) queryClient.setQueryData(["alumnilist"], prev);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to delete alumni.");
+      console.error("[AlumniTabs] Delete error:", msg, e);
     } finally {
       stopMut(sapid);
     }

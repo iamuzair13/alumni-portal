@@ -201,6 +201,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [citySearch, setCitySearch] = useState("");
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [sectorOtherSelected, setSectorOtherSelected] = useState(false);
 
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
@@ -275,6 +276,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     setValue("degreetitle", "");
   }, [selectedDepartment, setValue]);
   
+  // Reset sector "Other" state when employment status changes
+  useEffect(() => {
+    if ((employeedVal || "").toLowerCase() !== "employed") {
+      setSectorOtherSelected(false);
+    }
+  }, [employeedVal]);
+
   // Reset province and city when country changes
   useEffect(() => {
     if (selectedCountry && selectedCountry !== "Pakistan") {
@@ -367,7 +375,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     // Validate higher education fields if pursuing higher education
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      workFieldsToValidate.push("highereducationdegreetitle", "highereducationinstitute", "highereducationprogram");
+      workFieldsToValidate.push("highereducationdegreetitle", "highereducationinstitute", "highereducationprogram", "city", "country");
     }
     
     const workOk = await trigger(workFieldsToValidate);
@@ -396,6 +404,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         "highereducationdegreetitle",
         "highereducationinstitute",
         "highereducationprogram",
+        "city",
+        "country",
       ];
       for (const f of fields) {
         const val = watch(f);
@@ -1024,9 +1034,61 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Sector = industry */}
                 <div>
                   <label className={labelBase}>Sector *</label>
-                  <input type="text" className={inputBase} {...register("industry", { required: true, maxLength: 100 })} />
+                  {!sectorOtherSelected ? (
+                    <select 
+                      className={inputBase} 
+                      {...register("industry", { 
+                        required: true,
+                        onChange: (e) => {
+                          if (e.target.value === "Other (please specify)") {
+                            setSectorOtherSelected(true);
+                            setValue("industry", "");
+                          }
+                        }
+                      })}
+                    >
+                      <option value="">Select Sector</option>
+                      <option value="IT & Software Development">IT & Software Development</option>
+                      <option value="Engineering & Manufacturing">Engineering & Manufacturing</option>
+                      <option value="Finance & Banking">Finance & Banking</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Education & Research">Education & Research</option>
+                      <option value="Media & Communication">Media & Communication</option>
+                      <option value="Retail & E-commerce">Retail & E-commerce</option>
+                      <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
+                      <option value="Textile & Fashion">Textile & Fashion</option>
+                      <option value="Architecture & Planning">Architecture & Planning</option>
+                      <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                      <option value="NGO & Social Services">NGO & Social Services</option>
+                      <option value="Government Sector">Government Sector</option>
+                      <option value="Construction & Real Estate">Construction & Real Estate</option>
+                      <option value="Other (please specify)">Other (please specify)</option>
+                    </select>
+                  ) : (
+                    <>
+                      <input 
+                        type="text" 
+                        className={inputBase} 
+                        {...register("industry", { 
+                          required: "Please specify your sector",
+                          maxLength: 100 
+                        })} 
+                        placeholder="Enter your sector"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSectorOtherSelected(false);
+                          setValue("industry", "");
+                        }}
+                        className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                      >
+                        ← Back to sector list
+                      </button>
+                    </>
+                  )}
                   {errors.industry && (
-                    <p className="mt-1 text-xs text-red-600">Sector is required</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.industry.message || "Sector is required"}</p>
                   )}
                   <p className="mt-1 text-xs text-neutral-600">Maps to `industry` per schema.</p>
                 </div>
@@ -1115,7 +1177,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             {/* Pursuing Higher Education Fields */}
             {(employeedVal || "").toLowerCase() === "pursuing higher education" && (
               <>
-              city and contry
                 <div>
                   <label className={labelBase}>Degree Title *</label>
                   <input type="text" className={inputBase} placeholder="e.g. Masters in Civil Engineering" {...register("highereducationdegreetitle", { required: true, maxLength: 200 })} />
@@ -1138,11 +1199,55 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     <option value="">Select</option>
                     <option value="MS">MS (Master of Science)</option>
                     <option value="PhD">PhD (Doctor of Philosophy)</option>
-                    
                   </select>
                   {errors.highereducationprogram && (
                     <p className="mt-1 text-xs text-red-600">Program is required</p>
                   )}
+                </div>
+
+                <div>
+                  <label className={labelBase}>City *</label>
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    {...register("city", { 
+                      required: "City is required", 
+                      maxLength: 50,
+                      validate: (value) => {
+                        if (!value || String(value).trim() === "") {
+                          return "City is required";
+                        }
+                        return true;
+                      }
+                    })} 
+                    placeholder="e.g. Lahore"
+                  />
+                  {errors.city && (
+                    <p className="mt-1 text-xs text-red-600">{errors.city.message || "City is required"}</p>
+                  )}
+                  <p className="mt-1 text-xs text-neutral-600">City where you are pursuing higher education.</p>
+                </div>
+
+                <div>
+                  <label className={labelBase}>Country *</label>
+                  <select className={inputBase} {...register("country", { required: true })}>
+                    <option value="">Select</option>
+                    <option value="Pakistan">Pakistan</option>
+                    <option value="United Arab Emirates">United Arab Emirates</option>
+                    <option value="Saudi Arabia">Saudi Arabia</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Australia">Australia</option>
+                    <option value="Germany">Germany</option>
+                    <option value="Malaysia">Malaysia</option>
+                    <option value="Turkey">Turkey</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {errors.country && (
+                    <p className="mt-1 text-xs text-red-600">Country is required</p>
+                  )}
+                  <p className="mt-1 text-xs text-neutral-600">Country where you are pursuing higher education.</p>
                 </div>
 
                 <div>

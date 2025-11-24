@@ -143,17 +143,30 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
   try {
     const { sapid } = await ctx.params;
     
+    console.log("[API] DELETE request received for SAP ID:", sapid);
+    
     // Validate sapid
     if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
+      console.error("[API] Invalid SAP ID provided:", sapid);
       return NextResponse.json({ error: "Invalid SAP ID" }, { status: 400 });
     }
     
+    const normalizedSapid = String(sapid).trim();
+    console.log("[API] Attempting to delete alumni with SAP ID:", normalizedSapid);
+    
     const res = await sql/* sql */`
-      DELETE FROM public.tbl_alumni WHERE sapid = ${sapid} RETURNING alumniid`;
-    if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ ok: true }, { status: 200 });
+      DELETE FROM public.tbl_alumni WHERE sapid = ${normalizedSapid} RETURNING alumniid`;
+    
+    if (!res[0]) {
+      console.warn("[API] No alumni found with SAP ID:", normalizedSapid);
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    
+    console.log("[API] Successfully deleted alumni with SAP ID:", normalizedSapid, "Alumni ID:", res[0].alumniid);
+    return NextResponse.json({ ok: true, deletedId: res[0].alumniid }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete alumni";
+    console.error("[API] Error deleting alumni:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
