@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import React from "react";
 import BackButton from "@/components/ui/BackButton";
+import { auth } from "@/lib/auth";
+import { sql } from "@/lib/dbconnect";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
@@ -9,7 +11,7 @@ const benefitsData: Record<string, { title: string; description: string; content
     description: "Access to library resources, research databases, and academic support services.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Academic: Fee Discounts & Scholarships</h3>
-      <p class="mb-6">As a valued member of our alumni community, you have access to exclusive fee discounts and scholarship opportunities designed to support your continued education and professional development.</p>
+      <p class="mb-6">As a valued UOL alumnus, you are eligible for academic scholarships and fee discounts on select programs and courses. These benefits support your continued learning and professional growth while rewarding your connection with UOL. To apply and learn more, the details below</p>
       
       <div class="overflow-x-auto mb-6">
         <table class="min-w-full border-collapse border border-gray-300">
@@ -65,6 +67,17 @@ const benefitsData: Record<string, { title: string; description: string; content
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="mb-4 text-gray-700">
+          To avail any of these scholarships or discounts (Kinship Scholarship, MS and PhD Discounts, Masters Scholarships via UOL International Collaborations), please fill the application form below.
+        </p>
+        <a href="/alumni-profile/scholarship-application" class="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Apply for Scholarship/Discount
+        </a>
       </div>
     `,
     icon: (
@@ -416,6 +429,37 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
+  // Get SAP ID for the scholarship application link
+  let sapId = "";
+  try {
+    const session = await auth();
+    const userSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+    const userEmail = session?.user?.email ? String(session.user.email) : undefined;
+
+    if (userSapid) {
+      sapId = userSapid;
+    } else if (userEmail) {
+      const rows = await sql/* sql */`
+        SELECT sapid FROM public.tbl_alumni 
+        WHERE personalemail = ${userEmail} OR officialemail = ${userEmail} OR universityemail = ${userEmail}
+        ORDER BY alumniid DESC LIMIT 1`;
+      if (rows[0]?.sapid) {
+        sapId = String(rows[0].sapid);
+      }
+    }
+  } catch {
+    // If we can't get SAP ID, link will work without it (page will fetch it)
+  }
+
+  // Inject SAP ID into the content if it's the academic-benefits page
+  let content = benefit.content;
+  if (slug === "academic-benefits" && sapId) {
+    content = content.replace(
+      'href="/alumni-profile/scholarship-application"',
+      `href="/alumni-profile/scholarship-application?sapid=${encodeURIComponent(sapId)}"`
+    );
+  }
+
   return (
     <>
       <div className="bg-slate-100 overflow-x-hidden">
@@ -446,7 +490,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
 
               <div
                 className="prose prose-slate max-w-none [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:mb-4 [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:mt-6 [&_h4]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:mb-4 [&_ul]:space-y-2"
-                dangerouslySetInnerHTML={{ __html: benefit.content }}
+                dangerouslySetInnerHTML={{ __html: content }}
               />
             </div>
           </div>

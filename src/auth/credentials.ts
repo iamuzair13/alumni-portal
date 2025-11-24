@@ -22,6 +22,7 @@ export async function hashPassword(plain: string): Promise<string> {
 
 export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   if (!stored) return false;
+  // Compare as plain text
   return stored === plain;
 }
 

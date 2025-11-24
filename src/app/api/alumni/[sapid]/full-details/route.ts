@@ -64,6 +64,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
 
     // Return all fields from tbl_alumni
+    // Note: password is fetched from database but will be masked in UI for security
     return NextResponse.json({ 
       item: {
         alumniid: row.alumniid ?? null,
@@ -121,6 +122,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
+        password: row.password ?? null, // Fetch actual password from database
       }
     }, { status: 200 });
   } catch (err) {

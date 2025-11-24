@@ -60,21 +60,43 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
-    const email = String(session.user.email);
+    
+    const email = session.user.email ? String(session.user.email) : null;
+    const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
+    
+    if (!email && !userSapid) {
+      return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    }
+    
     const body = await req.json();
     const v = validatePayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
 
-    const alumRows = await sql/* sql */`
-      SELECT alumniid, facultyname, degreetitle, departmentname, linkedin FROM public.tbl_alumni 
-      WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
+    // Try to find alumni by SAP ID first (more reliable), then by email
+    let alumRows: Array<{ alumniid: number; facultyname: string | null; degreetitle: string | null; departmentname: string | null; linkedin?: string | null }> = [];
+    
+    if (userSapid) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid, facultyname, degreetitle, departmentname, linkedin FROM public.tbl_alumni 
+        WHERE sapid = ${userSapid}
+        LIMIT 1`;
+    }
+    
+    // If not found by SAP ID, try by email
+    if (alumRows.length === 0 && email) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid, facultyname, degreetitle, departmentname, linkedin FROM public.tbl_alumni 
+        WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email} OR alumniemail = ${email}
+        ORDER BY alumniid DESC LIMIT 1`;
+    }
+    
     const alum = alumRows[0] as { alumniid: number; facultyname: string | null; degreetitle: string | null; departmentname: string | null; linkedin?: string | null } | undefined;
     if (!alum?.alumniid) {
-      return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
+      console.error("[API] Alumni not found. Email:", email, "SAP ID:", userSapid);
+      return NextResponse.json({ error: "ALUMNI_NOT_FOUND", message: "Your alumni record was not found. Please ensure you are logged in with the correct account." }, { status: 404 });
     }
 
     const topicStr = v.data.topics.join(", ").slice(0, 500);
@@ -144,14 +166,31 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
-    const email = String(session.user.email);
+    if (!session?.user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    
+    const email = session.user.email ? String(session.user.email) : null;
+    const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
+    
+    if (!email && !userSapid) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    
     const body = await req.json();
     const v = validatePayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
-    const alumRows = await sql/* sql */`
-      SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
+    
+    // Try to find alumni by SAP ID first, then by email
+    let alumRows: Array<{ alumniid: number }> = [];
+    
+    if (userSapid) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
+    }
+    
+    if (alumRows.length === 0 && email) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email} OR alumniemail = ${email}
+        ORDER BY alumniid DESC LIMIT 1`;
+    }
+    
     const alumniid = alumRows[0]?.alumniid as number | undefined;
     if (!alumniid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
     const topicStr = v.data.topics.join(", ").slice(0, 500);
@@ -186,10 +225,23 @@ export async function DELETE(req: Request) {
       await sql/* sql */`DELETE FROM public.tblalumnitalks WHERE alumniid = ${aid}`;
       return NextResponse.json({ ok: true }, { status: 200 });
     }
-    const email = String(session.user.email);
-    const alumRows = await sql/* sql */`
-      SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
+    const email = session.user.email ? String(session.user.email) : null;
+    const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
+    
+    // Try to find alumni by SAP ID first, then by email
+    let alumRows: Array<{ alumniid: number }> = [];
+    
+    if (userSapid) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
+    }
+    
+    if (alumRows.length === 0 && email) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email} OR alumniemail = ${email}
+        ORDER BY alumniid DESC LIMIT 1`;
+    }
+    
     const alumniid = alumRows[0]?.alumniid as number | undefined;
     if (!alumniid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
     await sql/* sql */`DELETE FROM public.tblalumnitalks WHERE alumniid = ${alumniid}`;

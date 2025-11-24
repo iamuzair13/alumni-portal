@@ -58,7 +58,7 @@ function useCurrentAlumni(email: string | undefined) {
 export default function MentorshipForm() {
   const { data: session } = useSession();
   const email = session?.user?.email;
-  const { data: me, isLoading: loadingMe } = useCurrentAlumni(email ?? undefined);
+  const { data: me } = useCurrentAlumni(email ?? undefined);
   const qc = useQueryClient();
   const router = useRouter();
 
@@ -75,7 +75,9 @@ export default function MentorshipForm() {
     reValidateMode: "onBlur",
   });
 
+  const major = watch("major");
   const topic = watch("topic");
+  const day = watch("day");
   const area = watch("area");
   const start = watch("start");
   const end = watch("end");
@@ -83,16 +85,30 @@ export default function MentorshipForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const canSubmit = useMemo(() => {
-    const hasMajor = !!watch("major")?.trim();
+    // Check all required fields have values
+    const hasMajor = !!String(major || "").trim();
     const hasArea = typeof area === 'number' && !isNaN(area) && area > 0;
     const hasTopic = !!String(topic || "").trim();
-    const validDay = WEEKDAYS.includes(watch("day") as typeof WEEKDAYS[number]);
-    const t1 = String(start || "");
-    const t2 = String(end || "");
-    const fmt = /^\d{2}:\d{2}$/;
-    const timeValid = fmt.test(t1) && fmt.test(t2) && t1 < t2;
-    return hasMajor && hasArea && hasTopic && validDay && timeValid;
-  }, [area, topic, start, end, watch]);
+    const validDay = WEEKDAYS.includes(String(day || "") as typeof WEEKDAYS[number]);
+    const hasStartTime = !!String(start || "").trim();
+    const hasEndTime = !!String(end || "").trim();
+    
+    // Basic validation - all fields filled
+    const allFieldsFilled = hasMajor && hasArea && hasTopic && validDay && hasStartTime && hasEndTime;
+    
+    // Additional time validation - end must be after start
+    let timeValid = true;
+    if (hasStartTime && hasEndTime) {
+      const t1 = String(start || "").trim();
+      const t2 = String(end || "").trim();
+      // Simple string comparison works for HH:MM format
+      if (t1 && t2) {
+        timeValid = t1 < t2;
+      }
+    }
+    
+    return allFieldsFilled && timeValid;
+  }, [major, area, topic, day, start, end]);
 
   const errors = formState.errors;
 
@@ -118,9 +134,17 @@ export default function MentorshipForm() {
       toast.dismiss(loadingToast);
       
       if (!res.ok) {
-        const errorMsg = data?.error || "Failed to submit application. Please try again.";
+        let errorMsg = data?.error || data?.message || "Failed to submit application. Please try again.";
+        
+        // Provide user-friendly error messages
+        if (data?.error === "ALUMNI_NOT_FOUND") {
+          errorMsg = data?.message || "Your alumni record was not found. Please ensure you are logged in with the correct account.";
+        } else if (data?.error === "UNAUTHENTICATED") {
+          errorMsg = "You must be logged in to submit an application. Please sign in and try again.";
+        }
+        
         toast.error(errorMsg, {
-          duration: 5000,
+          duration: 6000,
           style: {
             background: '#fee2e2',
             color: '#991b1b',
@@ -252,7 +276,12 @@ export default function MentorshipForm() {
         </div>
 
         <div className="md:col-span-2 flex items-center gap-3">
-          <button type="submit" disabled={!canSubmit || submitting || loadingMe} className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60">
+          <button 
+            type="submit" 
+            disabled={!canSubmit || submitting} 
+            className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            title={!canSubmit ? "Please fill in all required fields correctly" : ""}
+          >
             {submitting ? "Submitting..." : "Submit"}
           </button>
         </div>

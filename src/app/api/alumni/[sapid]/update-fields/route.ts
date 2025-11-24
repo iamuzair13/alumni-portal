@@ -8,6 +8,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const { sapid } = await ctx.params;
     const session = await auth();
     
+    console.log("[API] Update fields request for SAP ID:", sapid);
+    
     // Verify the user is authenticated (by email or SAP ID)
     const userEmail = session?.user?.email ? String(session.user.email) : null;
     const userSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null) : null;
@@ -18,13 +20,14 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
 
     // Verify alumni exists and user has access
     const rows = await sql/* sql */`
-      SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+      SELECT alumniid, sapid, personalemail, universityemail, officialemail, password FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
     
     if (!rows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
     }
 
     const row = rows[0] as Record<string, unknown>;
+    const currentPassword = row.password ? String(row.password) : null;
     
     // Note: userEmail and userSapid are already declared above in the authentication check
     // Check ownership by SAP ID first (since users now log in with SAP ID)
@@ -44,33 +47,72 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }
 
     const body = await req.json();
+    console.log("[API] Update fields body keys:", Object.keys(body));
+    console.log("[API] Current password in DB:", currentPassword ? (currentPassword.startsWith("scrypt:") ? "HASHED" : "PLAIN") : "NULL");
     
     // Validate email format if email fields are being updated
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (body.personalemail !== undefined && body.personalemail !== null && body.personalemail !== "" && !emailPattern.test(String(body.personalemail))) {
-      return NextResponse.json({ error: "Invalid personal email format" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid personal email format",
+        field: "personalemail",
+        reason: "INVALID_FORMAT",
+        message: "Please enter a valid email address (e.g., user@example.com)"
+      }, { status: 400 });
     }
     if (body.universityemail !== undefined && body.universityemail !== null && body.universityemail !== "" && !emailPattern.test(String(body.universityemail))) {
-      return NextResponse.json({ error: "Invalid university email format" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid university email format",
+        field: "universityemail",
+        reason: "INVALID_FORMAT",
+        message: "Please enter a valid email address (e.g., user@example.com)"
+      }, { status: 400 });
     }
     if (body.officialemail !== undefined && body.officialemail !== null && body.officialemail !== "" && !emailPattern.test(String(body.officialemail))) {
-      return NextResponse.json({ error: "Invalid official email format" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid official email format",
+        field: "officialemail",
+        reason: "INVALID_FORMAT",
+        message: "Please enter a valid email address (e.g., user@example.com)"
+      }, { status: 400 });
     }
 
     // Validate URL format for social media fields
     const urlPattern = /^https?:\/\/.+/;
     if (body.facebook !== undefined && body.facebook !== null && body.facebook !== "" && !urlPattern.test(String(body.facebook))) {
-      return NextResponse.json({ error: "Invalid Facebook URL format. Must start with http:// or https://" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid Facebook URL format",
+        field: "facebook",
+        reason: "INVALID_FORMAT",
+        message: "URL must start with http:// or https:// (e.g., https://facebook.com/username)"
+      }, { status: 400 });
     }
     if (body.instagram !== undefined && body.instagram !== null && body.instagram !== "" && !urlPattern.test(String(body.instagram))) {
-      return NextResponse.json({ error: "Invalid Instagram URL format. Must start with http:// or https://" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid Instagram URL format",
+        field: "instagram",
+        reason: "INVALID_FORMAT",
+        message: "URL must start with http:// or https:// (e.g., https://instagram.com/username)"
+      }, { status: 400 });
     }
     if (body.youtube !== undefined && body.youtube !== null && body.youtube !== "" && !urlPattern.test(String(body.youtube))) {
-      return NextResponse.json({ error: "Invalid YouTube URL format. Must start with http:// or https://" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid YouTube URL format",
+        field: "youtube",
+        reason: "INVALID_FORMAT",
+        message: "URL must start with http:// or https:// (e.g., https://youtube.com/username)"
+      }, { status: 400 });
     }
     if (body.linkedin !== undefined && body.linkedin !== null && body.linkedin !== "" && !urlPattern.test(String(body.linkedin))) {
-      return NextResponse.json({ error: "Invalid LinkedIn URL format. Must start with http:// or https://" }, { status: 400 });
+      return NextResponse.json({ 
+        error: "Invalid LinkedIn URL format",
+        field: "linkedin",
+        reason: "INVALID_FORMAT",
+        message: "URL must start with http:// or https:// (e.g., https://linkedin.com/in/username)"
+      }, { status: 400 });
     }
+
+    // Password validation will happen later when we determine if it needs to be updated
 
     // Prepare values for each allowed field
     const cleanValue = (key: string, value: unknown): unknown => {
@@ -130,19 +172,78 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const instagramVal = "instagram" in body ? cleanValue("instagram", body.instagram) : undefined;
     const youtubeVal = "youtube" in body ? cleanValue("youtube", body.youtube) : undefined;
     const linkedinVal = "linkedin" in body ? cleanValue("linkedin", body.linkedin) : undefined;
+    
+    // Handle password separately - store as plain text
+    let passwordVal: string | undefined = undefined;
+    if ("password" in body && body.password !== undefined && body.password !== null && body.password !== "") {
+      const passwordStr = String(body.password).trim();
+      console.log("[API] Password provided:", `PLAIN (${passwordStr.length} chars)`);
+      
+      // Check if it's the same as current password
+      const isSameAsCurrent = currentPassword && passwordStr === currentPassword;
+      
+      console.log("[API] Password comparison - isSameAsCurrent:", isSameAsCurrent);
+      
+      if (isSameAsCurrent) {
+        console.log("[API] Password is same as current, skipping update");
+      } else {
+        // Password is different, validate minimum length (4 characters)
+        if (passwordStr.length < 4) {
+          console.log("[API] Password is too short (" + passwordStr.length + " chars), returning error");
+          return NextResponse.json({ 
+            error: "Password must be at least 4 characters long",
+            field: "password",
+            reason: "MIN_LENGTH"
+          }, { status: 400 });
+        }
+        console.log("[API] Password is different, will update as plain text");
+        passwordVal = passwordStr;
+      }
+    } else {
+      console.log("[API] No password in body or password is empty");
+    }
+    
+    console.log("[API] passwordVal after processing:", passwordVal ? "SET" : "UNDEFINED");
 
     // Check if at least one field is being updated
-    const hasUpdates = [
-      maritalstatusVal, contactnoVal, contactno1Val, contactno1showVal,
-      personalemailVal, personalemailshowVal, universityemailVal,
-      officialemailVal, officialnumberVal, countryVal, provinceVal,
-      cityVal, addressVal, cgpaVal, employeedVal, industryVal,
-      nameoforganizationVal, designationVal, totalyearsofexpereinceVal,
-      facebookVal, instagramVal, youtubeVal, linkedinVal
-    ].some(val => val !== undefined);
-
-    if (!hasUpdates) {
-      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    const updateFields = {
+      maritalstatus: maritalstatusVal,
+      contactno: contactnoVal,
+      contactno1: contactno1Val,
+      contactno1show: contactno1showVal,
+      personalemail: personalemailVal,
+      personalemailshow: personalemailshowVal,
+      universityemail: universityemailVal,
+      officialemail: officialemailVal,
+      officialnumber: officialnumberVal,
+      country: countryVal,
+      province: provinceVal,
+      city: cityVal,
+      address: addressVal,
+      cgpa: cgpaVal,
+      employeed: employeedVal,
+      industry: industryVal,
+      nameoforganization: nameoforganizationVal,
+      designation: designationVal,
+      totalyearsofexpereince: totalyearsofexpereinceVal,
+      facebook: facebookVal,
+      instagram: instagramVal,
+      youtube: youtubeVal,
+      linkedin: linkedinVal,
+      password: passwordVal
+    };
+    
+    const fieldsToUpdate = Object.entries(updateFields).filter(([, val]) => val !== undefined);
+    console.log("[API] Fields to update:", fieldsToUpdate.map(([key]) => key).join(", "));
+    
+    if (fieldsToUpdate.length === 0) {
+      console.log("[API] No valid fields to update - all fields are unchanged");
+      // Return success if no fields need updating (all values are the same as current)
+      return NextResponse.json({ 
+        ok: true, 
+        updated: { alumniid: Number(row.alumniid), sapid: String(row.sapid) },
+        message: "No changes to update"
+      }, { status: 200 });
     }
 
     // Build the UPDATE query by executing individual updates in a transaction
@@ -218,6 +319,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       if (linkedinVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET linkedin = ${linkedinVal as string | null} WHERE sapid = ${sapid}`;
       }
+      if (passwordVal !== undefined) {
+        console.log("[API] Updating password in database (first 20 chars):", passwordVal.substring(0, 20));
+        await tx`UPDATE public.tbl_alumni SET password = ${passwordVal as string} WHERE sapid = ${sapid}`;
+        // Verify the update
+        const verify = await tx`SELECT password FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+        console.log("[API] Password after update (first 20 chars):", verify[0]?.password ? String(verify[0].password).substring(0, 20) : "NULL");
+      }
       
       // Return the updated record
       const updated = await tx`
@@ -237,8 +345,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update profile";
-    console.error("[API] Update fields error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[API] Update fields error:", message, err);
+    return NextResponse.json({ 
+      error: message,
+      details: err instanceof Error ? err.stack : String(err)
+    }, { status: 500 });
   }
 }
 

@@ -8,7 +8,7 @@ type EditableFieldProps = {
   fieldKey: string;
   onUpdate?: (key: string, value: unknown) => Promise<void>;
   onValueChange?: (key: string, value: unknown) => void;
-  type?: "text" | "email" | "tel" | "number" | "textarea" | "select" | "checkbox";
+  type?: "text" | "email" | "tel" | "number" | "textarea" | "select" | "checkbox" | "password";
   options?: Array<{ value: string; label: string }>;
   disabled?: boolean;
   batchMode?: boolean;
@@ -29,6 +29,10 @@ export default function EditableField({
   const [editValue, setEditValue] = useState<string>(() => {
     if (value === null || value === undefined) return "";
     if (typeof value === "boolean") return value ? "true" : "false";
+    // For password fields, show the actual password value
+    if (type === "password") {
+      return String(value).trim();
+    }
     return String(value);
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -46,7 +50,7 @@ export default function EditableField({
       return val === "true";
     } else if (type === "number") {
       return val === "" ? null : parseFloat(val);
-    } else if (type === "text" || type === "textarea" || type === "email" || type === "tel" || type === "select") {
+    } else if (type === "text" || type === "textarea" || type === "email" || type === "tel" || type === "select" || type === "password") {
       return val === "" ? null : val.trim();
     }
     return val.trim();
@@ -106,6 +110,11 @@ export default function EditableField({
   const displayValue = (val: unknown): string => {
     if (val === null || val === undefined) return "Not provided";
     if (typeof val === "boolean") return val ? "Yes" : "No";
+    // For password fields, show the actual password text
+    if (type === "password") {
+      const strVal = String(val).trim();
+      return strVal === "" ? "Not provided" : strVal;
+    }
     // For select fields, try to find the label from options
     if (type === "select" && options) {
       const option = options.find(opt => opt.value === String(val));

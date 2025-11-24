@@ -42,11 +42,16 @@ function MoreDetailsContent() {
     const changesCount = Object.keys(pendingChanges).length;
     setIsSavingAll(true);
     try {
+      console.log("[Frontend] Saving changes:", Object.keys(pendingChanges));
+      if (pendingChanges.password) {
+        console.log("[Frontend] Password being saved (first 20 chars):", String(pendingChanges.password).substring(0, 20));
+      }
       await updateMutation.mutateAsync(pendingChanges as Partial<NonNullable<typeof data>>);
       // Clear pending changes after successful save
       setPendingChanges({});
-      // Refetch data to ensure we have the latest from the database
+      // Force refetch to ensure we have the latest from the database
       await refetch();
+      console.log("[Frontend] Data refetched after save");
       toast.success(`Successfully saved ${changesCount} field${changesCount > 1 ? 's' : ''}`, {
         duration: 3000,
         style: {
@@ -56,14 +61,44 @@ function MoreDetailsContent() {
           borderRadius: '8px',
         },
       });
-    } catch {
-      toast.error("Failed to save changes. Please try again.", {
-        duration: 4000,
+    } catch (error) {
+      // Extract error message from the error
+      let errorMessage = "Failed to save changes. Please try again.";
+      let errorDetails = "";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // Try to parse error message if it contains JSON
+        try {
+          const errorData = JSON.parse(errorMessage);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+          if (errorData.message) {
+            errorDetails = errorData.message;
+          }
+          if (errorData.field) {
+            errorDetails = `${errorDetails ? errorDetails + " " : ""}(Field: ${errorData.field})`;
+          }
+        } catch {
+          // If parsing fails, use the error message as is
+        }
+      }
+      
+      // Combine error message and details
+      const fullErrorMessage = errorDetails 
+        ? `${errorMessage}\n${errorDetails}` 
+        : errorMessage;
+      
+      toast.error(fullErrorMessage, {
+        duration: 5000,
         style: {
           background: '#fee2e2',
           color: '#991b1b',
           padding: '12px',
           borderRadius: '8px',
+          maxWidth: '400px',
+          whiteSpace: 'pre-line',
         },
       });
     } finally {
@@ -133,9 +168,14 @@ function MoreDetailsContent() {
     );
   }
 
-  const formatValue = (value: unknown): string => {
+  const formatValue = (value: unknown, isPassword: boolean = false): string => {
     if (value === null || value === undefined) return "Not provided";
     if (typeof value === "boolean") return value ? "Yes" : "No";
+    // For password fields, always show masked value
+    if (isPassword) {
+      const strValue = String(value).trim();
+      return strValue === "" ? "Not provided" : strValue;
+    }
     const strValue = String(value).trim();
     return strValue === "" ? "Not provided" : strValue;
   };
@@ -163,6 +203,7 @@ function MoreDetailsContent() {
         { label: "Date of Birth", value: data.dateofbirth, key: "dateofbirth", editable: false },
         { label: "Marital Status", value: data.maritalstatus, key: "maritalstatus", editable: true, type: "select" as const, options: maritalStatusOptions },
         { label: "CNIC/Passport", value: data.cnicpassport, key: "cnicpassport", editable: false },
+        { label: "Password", value: data.password, key: "password", editable: true, type: "password" as const },
       ],
     },
     {

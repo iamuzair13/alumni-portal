@@ -63,6 +63,7 @@ export type AlumniFullDetails = {
   linkedin: string | null;
   datasource: string | null;
   alumnistatus: string | null;
+  password: string | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {
@@ -81,6 +82,7 @@ export function useAlumniFullDetails(sapId: string | undefined) {
     },
     enabled: !!sapId,
     staleTime: 0, // Always consider data stale to ensure fresh data after updates
+    gcTime: 0, // Don't cache data to always get fresh values
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     refetchOnMount: true, // Refetch when component mounts
@@ -143,7 +145,12 @@ export async function updateAlumniFields(sapId: string, fields: Partial<AlumniFu
     body: JSON.stringify(fields),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error ? (typeof data.error === "string" ? data.error : JSON.stringify(data.error)) : "Failed to update profile");
+  if (!res.ok) {
+    // Preserve the full error object with details
+    const errorMessage = data?.error ? (typeof data.error === "string" ? data.error : JSON.stringify(data.error)) : "Failed to update profile";
+    const error = new Error(JSON.stringify({ error: errorMessage, ...data }));
+    throw error;
+  }
   return data as { ok: boolean; updated: { alumniid: number; sapid: string } };
 }
 
