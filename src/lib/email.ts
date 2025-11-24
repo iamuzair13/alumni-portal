@@ -108,7 +108,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 }
 
 // Export function to verify SMTP configuration
-export async function verifySMTPConfig(): Promise<{ ok: boolean; message: string; details?: any }> {
+export async function verifySMTPConfig(): Promise<{ ok: boolean; message: string; details?: Record<string, unknown> }> {
   try {
     const config = getEmailConfig();
     

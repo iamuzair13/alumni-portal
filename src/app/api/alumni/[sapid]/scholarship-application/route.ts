@@ -3,7 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser } from "@/lib/alumniProfile";
 import { generateScholarshipPDF } from "@/lib/pdfGenerator";
-import { createEmailTemplate, verifySMTPConfig } from "@/lib/email";
+import { createEmailTemplate } from "@/lib/email";
 import nodemailer from "nodemailer";
 
 // Get email configuration dynamically
