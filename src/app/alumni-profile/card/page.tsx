@@ -13,6 +13,7 @@ import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
+import PageBanner from "@/components/ui/PageBanner";
 
 type Profile = {
   alumniname: string | null;
@@ -126,6 +127,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
             <Alert variant="error" title="Account Lookup Failed" message={sapError} />
           </div>
         )}
+        <PageBanner title="Alumni Card" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">

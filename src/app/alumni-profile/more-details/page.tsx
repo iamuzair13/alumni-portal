@@ -5,6 +5,7 @@ import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumn
 import AppHeader from "@/layout/AppHeader";
 import Image from "next/image";
 import BackButton from "@/components/ui/BackButton";
+import PageBanner from "@/components/ui/PageBanner";
 import EditableField from "@/components/ui/EditableField";
 import EditableCountryProvinceCity from "@/components/ui/EditableCountryProvinceCity";
 import EditableEmploymentStatus from "@/components/ui/EditableEmploymentStatus";
@@ -277,6 +278,7 @@ function MoreDetailsContent() {
     <>
       <AppHeader />
       <Toaster position="top-right" />
+      <PageBanner title="More Details" />
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}

@@ -13,6 +13,7 @@ import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
 import { sql } from "@/lib/dbconnect";
 import BackButton from "@/components/ui/BackButton";
+import PageBanner from "@/components/ui/PageBanner";
 
 type AlumniProfileSearchParams = { sapid?: string };
 
@@ -59,6 +60,7 @@ export default async function MentorshipPage({ searchParams }: { searchParams: P
             </div>
           ) : null;
         })()}
+        <PageBanner title="Alumni Talk" />
         <div className="min-w-screen mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">

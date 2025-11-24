@@ -16,6 +16,7 @@ import { computeLoginBanner, isAdminUser } from "@/lib/alumniProfile";
 import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
+import PageBanner from "@/components/ui/PageBanner";
 
 type Profile = {
   alumniname: string | null;
@@ -194,14 +195,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           <Alert variant="error" title="Account Lookup Failed" message={sapError} />
         </div>
       )}
-      <div className="min-w-screen">
-        <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-          <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
-            <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-              <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">My Profile</h1>
-            </div>
-          </div>
-        </div>
+      <PageBanner title="My Profile" />
 
         {/* 2. Main Content Container (Max-width and Padding) */}
         {/* This container centers and holds the profile details and ID card. */}
@@ -359,7 +353,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 
           {/* B. Alumni ID Card (Fixed width on larger screens) */}
         </div>
-      </div>
       </div>
       <div className="p-10 text-slate-900 bg-slate-100">
         <h4 className="text-2xl font-bold text-slate-900 mb-6">Networking & Engagement</h4>

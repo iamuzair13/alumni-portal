@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import React from "react";
 import BackButton from "@/components/ui/BackButton";
+import PageBanner from "@/components/ui/PageBanner";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 
@@ -494,6 +495,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
 
+          <PageBanner title="Benefits" />
           <div className="min-w-screen mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
             <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8 md:p-10">
               <div className="mb-6">

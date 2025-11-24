@@ -22,7 +22,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ThemeProvider>
             <SidebarProvider>
               {children}
-              <Toaster position="top-right" />
+              <Toaster position="top-center" />
             </SidebarProvider>
         </ThemeProvider>
         </ProgressProvider>

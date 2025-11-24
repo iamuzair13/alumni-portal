@@ -6,6 +6,7 @@ import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departmen
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import { Toaster, toast } from "react-hot-toast";
+import PageBanner from "@/components/ui/PageBanner";
 
 function UpskillApplicationContent() {
   const searchParams = useSearchParams();
@@ -219,6 +220,7 @@ function UpskillApplicationContent() {
     <>
       <AppHeader />
       <Toaster position="top-right" />
+      <PageBanner title="Upskill & Reskill Application" />
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
