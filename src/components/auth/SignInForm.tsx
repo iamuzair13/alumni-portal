@@ -195,7 +195,6 @@ export default function SignInForm() {
                   onChange={(e) => setIdentifier(e.target.value)}
                   aria-invalid={!!errors.identifier}
                 />
-                <p className="mt-1 text-xs text-slate-500">Enter your SAP ID.</p>
                 {errors.identifier && <p className="mt-1 text-xs text-red-600" role="alert">{errors.identifier}</p>}
               </div>
 
