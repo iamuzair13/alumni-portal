@@ -194,6 +194,7 @@ const benefitsData: Record<string, { title: string; description: string; content
             <tr class="bg-gray-100">
               <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Benefit Category</th>
               <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Coverage / Percentage for Alumni</th>
+              <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-800">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -205,6 +206,14 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <li>Free registration for select competitions</li>
                 </ul>
               </td>
+              <td class="border border-gray-300 px-4 py-3">
+                <a href="/alumni-profile/gym-membership" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Apply for Gym Membership
+                </a>
+              </td>
             </tr>
             <tr class="bg-gray-50">
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Swimming Pool Membership</td>
@@ -214,6 +223,7 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <li>Free registration for select competitions</li>
                 </ul>
               </td>
+              <td class="border border-gray-300 px-4 py-3"></td>
             </tr>
             <tr>
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Qalandars Cricket Club Membership</td>
@@ -223,14 +233,17 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <li>Free registration for select tournaments</li>
                 </ul>
               </td>
+              <td class="border border-gray-300 px-4 py-3"></td>
             </tr>
             <tr class="bg-gray-50">
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Discounts at UOL Restaurants (Poet)</td>
               <td class="border border-gray-300 px-4 py-3 text-gray-700">Same % discount as offered to UOL Staff or Students (whichever is better)</td>
+              <td class="border border-gray-300 px-4 py-3"></td>
             </tr>
             <tr>
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Free 3 Membership coupons to Alumni per month for Gym & Pool</td>
               <td class="border border-gray-300 px-4 py-3 text-gray-700">Monthly draw run through portal</td>
+              <td class="border border-gray-300 px-4 py-3"></td>
             </tr>
           </tbody>
         </table>
@@ -471,7 +484,7 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     // If we can't get SAP ID, link will work without it (page will fetch it)
   }
 
-  // Inject SAP ID into the content if it's the academic-benefits page
+  // Inject SAP ID into the content if it's the academic-benefits or campus-facilities page
   let content = benefit.content;
   if (slug === "academic-benefits" && sapId) {
     content = content.replace(
@@ -481,6 +494,12 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     content = content.replace(
       'href="/alumni-profile/upskill-application"',
       `href="/alumni-profile/upskill-application?sapid=${encodeURIComponent(sapId)}"`
+    );
+  }
+  if (slug === "campus-facilities" && sapId) {
+    content = content.replace(
+      'href="/alumni-profile/gym-membership"',
+      `href="/alumni-profile/gym-membership?sapid=${encodeURIComponent(sapId)}"`
     );
   }
 

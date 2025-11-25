@@ -17,6 +17,7 @@ import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
 import PageBanner from "@/components/ui/PageBanner";
+import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
 
 type Profile = {
   alumniname: string | null;
@@ -118,10 +119,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     }
   }
   
-  const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? sessionSapid ?? "");
+  const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? sessionSapid ?? "").trim();
   const alumniId = String(sapRows[0]?.alumniid ?? "");
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
+  let cardPicture: string | null = null;
   if (isAdmin) {
     cardStatus = "active";
     cardStatusError = null;
@@ -130,11 +132,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
       if (sapId) {
         // Preload validation now uses sapid to check existing tblcard association
         const cr = await sql/* sql */`
-          SELECT c.status FROM public.tblcard c
+          SELECT c.status, c.cardpicture FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE a.sapid = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
         const raw = String(cr[0]?.status ?? "").toLowerCase().trim();
+        cardPicture = cr[0]?.cardpicture ?? null;
         // Map database statuses to CardStatus
         if (raw === "delivered") {
           cardStatus = "active";
@@ -156,6 +159,26 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
       cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
     }
   }
+
+  // Get photo URL for card template - prioritize card picture, then profile image
+  const photoUrl = (() => {
+    if (cardPicture && cardPicture.trim()) {
+      const cardPic = cardPicture.trim();
+      if (cardPic.startsWith("/") || cardPic.startsWith("http")) return cardPic;
+      return `/images/cards/${cardPic}`;
+    }
+    if (p?.image1 && p.image1.trim()) {
+      const img1 = p.image1.trim();
+      if (img1.startsWith("/") || img1.startsWith("http")) return img1;
+      if (img1.includes("/")) return img1.startsWith("/") ? img1 : `/${img1}`;
+      return `/images/profile/${img1}`;
+    }
+    return undefined;
+  })();
+
+  // Calculate validity from yearofending (add 5 years as default validity)
+  const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
+  const validity = validityYear ? `${validityYear}-12` : undefined;
   // Mentorship application status for alumni users
   let mentorshipStatus: MentorshipStatus = "none";
   let mentorshipStatusError: string | null = null;
@@ -280,25 +303,31 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                             )}
                           </div>
                         </div>
-                        {cardStatus === "active" && (
-                          <div className="border-t border-gray-200 pt-3 mt-3 text-sm text-slate-700">
-                            <div className="font-semibold text-base">{name}</div>
-                            <div className="mt-1 text-xs text-gray-500">SAP ID: {sapId || "N/A"}</div>
+                        {cardStatus === "active" ? (
+                          <div className="mt-4">
+                            <AlumniCardTemplate
+                              studentName={name}
+                              department={dept}
+                              faculty={faculty}
+                              alumniId={sapId || "UOL-AL-0000"}
+                              validity={validity}
+                              photoUrl={photoUrl}
+                            />
                           </div>
-                        )}
-                        <div className="mt-4">
-                          {cardStatus === "active" ? (
-                            <p className="text-xs text-gray-400">Please carry this ID for campus access.</p>
-                          ) : cardStatus === "pending" ? (
-                            <p className="text-xs text-amber-700">Your application is under review.</p>
-                          ) : cardStatus === "rejected" ? (
-                            <p className="text-xs text-rose-700">Your application is on hold. Please contact us for more information.</p>
-                          ) : cardStatus === "full" ? (
-                            <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
-                          ) : (
-                            <p className="text-xs text-gray-700 mb-3">Start your application to get your alumni card.</p>
-                          )}
-                          {cardStatus === "pending" ? (
+                        ) : (
+                          <>
+                            <div className="mt-4">
+                              {cardStatus === "pending" ? (
+                                <p className="text-xs text-amber-700">Your application is under review.</p>
+                              ) : cardStatus === "rejected" ? (
+                                <p className="text-xs text-rose-700">Your application is on hold. Please contact us for more information.</p>
+                              ) : cardStatus === "full" ? (
+                                <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
+                              ) : (
+                                <p className="text-xs text-gray-700 mb-3">Start your application to get your alumni card.</p>
+                              )}
+                            </div>
+                            {cardStatus === "pending" ? (
                             <button
                               type="button"
                               disabled
@@ -345,7 +374,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                               Apply now
                             </Link>
                           ) : null}
-                        </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

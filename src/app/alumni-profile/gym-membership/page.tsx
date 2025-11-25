@@ -7,8 +7,7 @@ export const viewport: Viewport = {
 };
 
 import { sql } from "@/lib/dbconnect";
-import AlumniCardForm from "@/components/forms/alumni-card";
-import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
+import GymMembershipForm from "@/components/forms/gym-membership";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
@@ -18,11 +17,6 @@ import PageBanner from "@/components/ui/PageBanner";
 
 type Profile = {
   alumniname: string | null;
-  facultyname: string | null;
-  departmentname: string | null;
-  degreetitle: string | null;
-  image1: string | null;
-  yearofending: number | null;
 };
 
 async function getProfile(searchParams: { sapid?: string }) {
@@ -30,7 +24,7 @@ async function getProfile(searchParams: { sapid?: string }) {
   try {
     if (sapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
+        SELECT alumniname
         FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
@@ -40,7 +34,7 @@ async function getProfile(searchParams: { sapid?: string }) {
     const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
     if (sessionSapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
+        SELECT alumniname
         FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
@@ -49,7 +43,7 @@ async function getProfile(searchParams: { sapid?: string }) {
     const email = session?.user?.email ? String(session.user.email) : undefined;
     if (!email) return undefined;
     const rows = await sql/* sql */`
-      SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
+      SELECT alumniname
       FROM public.tbl_alumni 
       WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
       ORDER BY alumniid DESC LIMIT 1`;
@@ -59,24 +53,9 @@ async function getProfile(searchParams: { sapid?: string }) {
   }
 }
 
-async function getCardStatus(sapId: string) {
-  if (!sapId) return null;
-  try {
-    const rows = await sql/* sql */`
-      SELECT c.status, c.cardpicture
-      FROM public.tblcard c
-      JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-      WHERE a.sapid = ${sapId}
-      ORDER BY c.cardid DESC LIMIT 1`;
-    return rows[0] as { status: string | null; cardpicture: string | null } | undefined;
-  } catch {
-    return null;
-  }
-}
-
 type AlumniProfileSearchParams = { sapid?: string };
 
-export default async function CardPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
+export default async function GymMembershipPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
   const sp = await searchParams;
   let p: Profile | undefined;
   let profileError: string | null = null;
@@ -87,9 +66,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   }
   const session = await auth();
   const name = p?.alumniname ?? "";
-  const faculty = p?.facultyname ?? "";
-  const dept = p?.departmentname ?? "";
-  const program = p?.degreetitle ?? "";
+  
   // Get SAP ID from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const email = session?.user?.email ? String(session.user.email) : undefined;
@@ -121,54 +98,6 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? sessionSapid ?? "").trim();
   const alumniId = String(sapRows[0]?.alumniid ?? "");
 
-  // Get card status and card picture
-  let cardStatus: string | null = null;
-  let cardPicture: string | null = null;
-  let cardStatusError: string | null = null;
-  
-  if (sapId && sapId !== "") {
-    try {
-      const cardData = await getCardStatus(sapId);
-      if (cardData) {
-        cardStatus = cardData.status;
-        cardPicture = cardData.cardpicture;
-      }
-    } catch (e) {
-      cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
-    }
-  }
-
-  // Determine if we should show template (delivered or active status)
-  // Normalize status: trim whitespace and convert to lowercase for comparison
-  const normalizedStatus = cardStatus ? String(cardStatus).trim().toLowerCase() : "";
-  const showTemplate = normalizedStatus === "delivered" || normalizedStatus === "active";
-  
-  // Get photo URL - prioritize card picture, then profile image
-  // cardpicture is just a filename, image1 might be a path or filename
-  const photoUrl = (() => {
-    if (cardPicture && cardPicture.trim()) {
-      // Card picture - check if it's already a full path or just filename
-      const cardPic = cardPicture.trim();
-      if (cardPic.startsWith("/") || cardPic.startsWith("http")) return cardPic;
-      // Assume card pictures are in /images/cards/ or /images/profile/
-      return `/images/cards/${cardPic}`;
-    }
-    if (p?.image1 && p.image1.trim()) {
-      // Profile image - check if it's already a full path or just filename
-      const img1 = p.image1.trim();
-      if (img1.startsWith("/") || img1.startsWith("http")) return img1;
-      // Check if it contains a path separator (already a path)
-      if (img1.includes("/")) return img1.startsWith("/") ? img1 : `/${img1}`;
-      // Otherwise assume it's in images/profile
-      return `/images/profile/${img1}`;
-    }
-    return undefined;
-  })();
-
-  // Calculate validity from yearofending (add 5 years as default validity)
-  const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
-  const validity = validityYear ? `${validityYear}-12` : undefined;
-
   return (
     <>
       <div className="bg-slate-100 overflow-x-hidden min-h-screen">
@@ -193,45 +122,20 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
             <Alert variant="error" title="Account Lookup Failed" message={sapError} />
           </div>
         )}
-        {cardStatusError && (
-          <div className="mt-2">
-            <Alert variant="error" title="Card Status Error" message={cardStatusError} />
-          </div>
-        )}
-        {/* Debug info - remove in production */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-2 mx-auto max-w-4xl px-4 text-xs text-gray-500 bg-yellow-50 p-2 rounded">
-            Debug: SAP ID: {sapId || "none"} | Card Status: {cardStatus || "none"} | Normalized: {normalizedStatus || "none"} | Show Template: {showTemplate ? "YES" : "NO"}
-          </div>
-        )}
-        <PageBanner title="Alumni Card" />
+        <PageBanner title="Gym Membership Application" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-slate-900">
-                {showTemplate ? "Your Alumni Card" : "Apply for Alumni Card"}
+                Gym Membership Application
               </h1>
               <BackButton />
             </div>
-            {showTemplate ? (
-              <AlumniCardTemplate
-                studentName={name}
-                department={dept}
-                faculty={faculty}
-                alumniId={sapId || "UOL-AL-0000"}
-                validity={validity}
-                photoUrl={photoUrl}
-              />
-            ) : (
-              <AlumniCardForm
-                alumniId={alumniId}
-                name={name}
-                sapId={sapId}
-                faculty={faculty}
-                department={dept}
-                program={program}
-              />
-            )}
+            <GymMembershipForm
+              alumniId={alumniId}
+              name={name}
+              sapId={sapId}
+            />
           </div>
         </div>
       </div>
