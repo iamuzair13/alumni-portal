@@ -10,7 +10,9 @@ import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { isAdminUser, canModify } from "@/lib/alumniProfile";
-import { getAlumniList, type AlumniListItem } from "@/app/queries/fetch-alumni";
+import { useAlumniListPaginated, getAlumniCounts, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
 
 type TabKey =
   | "total"
@@ -100,7 +102,8 @@ export const AlumniTabs: React.FC = () => {
 
   // Unified item type mapped from server response
   type AlumniItem = {
-    id: string; // sapId
+    id: string; // sapId, registrationNo, or alumniid as fallback
+    registrationNo?: string | null;
     name: string;
     email?: string | null;
     mobile?: string | null;
@@ -128,67 +131,143 @@ export const AlumniTabs: React.FC = () => {
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  
+  // Confirmation modal state
+  const confirmModal = useModal();
+  const [pendingAction, setPendingAction] = useState<{
+    type: "verify" | "unverify" | "delete";
+    sapid: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
     return () => clearTimeout(t);
   }, [query]);
 
-  // React Query: fetch list with proper refetch strategies
+  // Determine status filter based on selected tab
+  const statusFilter = useMemo(() => {
+    if (selected === "verified") return "verified";
+    if (selected === "unverified") return "unverified";
+    if (selected === "underApproval") return "underApproval";
+    return undefined; // No filter for "total", "active", "inactive"
+  }, [selected]);
+
+  // Reset page to 1 when tab changes
+  useEffect(() => {
+    console.log("[AlumniTabs] Tab changed to:", selected, "Status filter:", statusFilter);
+    setCurrentPage(1);
+  }, [selected, statusFilter]);
+
+  // React Query: fetch paginated list for table display with status filter
   const {
-    data: rawItems,
+    data: paginatedData,
     isLoading,
     isFetching,
     isError,
     error,
     refetch,
-  } = useQuery<AlumniListItem[], Error>({
-    queryKey: ["alumnilist"],
-    queryFn: ({ signal }) => getAlumniList(signal),
-    staleTime: 5 * 60 * 1000, // 5 minutes - data is fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache for 10 minutes
+  } = useAlumniListPaginated(debouncedQuery || undefined, currentPage, pageSize, statusFilter);
+  
+  // Debug logging - commented out to fix build issue
+  // useEffect(() => {
+  //   console.log("[AlumniTabs] Selected tab:", selected, "Status filter:", statusFilter);
+  //   console.log("[AlumniTabs] Paginated data:", paginatedData);
+  //   if (paginatedData?.items) {
+  //     console.log("[AlumniTabs] Items count:", paginatedData.items.length);
+  //     const underApprovalItems = paginatedData.items.filter((item: any) => {
+  //       const verifyVal = item.verify;
+  //       return verifyVal === null || verifyVal === undefined || verifyVal === "" || 
+  //              String(verifyVal).toLowerCase().trim() === 'pending';
+  //     });
+  //     console.log("[AlumniTabs] Items with verify = 'pending' or null:", underApprovalItems.length);
+  //   }
+  // }, [selected, statusFilter, paginatedData]);
+  
+  // Fetch counts separately (lightweight query) - stable caching to prevent reloading
+  const {
+    data: countsData,
+    isLoading: isLoadingCounts,
+  } = useQuery<AlumniCounts, Error>({
+    queryKey: ["alumnilist-counts", debouncedQuery],
+    queryFn: ({ signal }) => getAlumniCounts(signal, debouncedQuery || undefined),
+    staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh for 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
     refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnReconnect: true, // Refetch when network reconnects
-    refetchOnMount: true, // Only refetch if data is stale
+    refetchInterval: false, // Disable auto-refetch interval
+    enabled: true, // Always enabled
+    retry: 2, // Retry failed requests 2 times
+    retryDelay: 1000, // Wait 1 second between retries
   });
+  
+  const rawItems = paginatedData?.items ?? [];
+  const totalRecords = paginatedData?.total ?? 0;
 
   // Map server items to UI shape (optimized for performance)
+  // Use paginated items for display
   const items: AlumniItem[] = useMemo(() => {
     if (!rawItems || rawItems.length === 0) return [];
     
     // Pre-allocate array for better performance
-    const result: AlumniItem[] = new Array(rawItems.length);
+    const result: AlumniItem[] = [];
+    result.length = rawItems.length;
     let idx = 0;
     
     for (let i = 0; i < rawItems.length; i++) {
       const r = rawItems[i];
       
-      // Skip items without valid SAP ID (already filtered at DB level, but double-check)
-      if (!r.sapid || !r.sapid.trim()) continue;
+      // Allow records with either sapid OR registrationno for all tabs
+      // This includes "Under Approval" records that might have null sapid
+      if ((!r.sapid || !r.sapid.trim()) && (!r.registrationno || !r.registrationno.trim())) {
+        // Skip only if both sapid and registrationno are missing
+        continue;
+      }
       
-      // Optimize verification status check (avoid multiple string operations)
-      const verifyVal = r.verify;
+      // Optimize verification status check (handle string, boolean, or null)
+      // Handle 'pending', null, undefined, empty string, or any non-true/false value as "underApproval"
+      const verifyRaw = r.verify;
       let verifyStatus: "verified" | "unverified" | "underApproval";
       let verified: boolean;
       
-      if (verifyVal === "true" || verifyVal === "True" || verifyVal === "TRUE") {
-        verifyStatus = "verified";
-        verified = true;
-      } else if (verifyVal === "false" || verifyVal === "False" || verifyVal === "FALSE") {
-        verifyStatus = "unverified";
-        verified = false;
-      } else {
+      // Check if verify is null, undefined, empty, or 'pending'
+      if (verifyRaw === null || verifyRaw === undefined || verifyRaw === "") {
         verifyStatus = "underApproval";
         verified = false;
+      } else {
+        // Convert to string and check value
+        const verifyStr = String(verifyRaw).toLowerCase().trim();
+        if (verifyStr === "true") {
+          verifyStatus = "verified";
+          verified = true;
+        } else if (verifyStr === "false") {
+          verifyStatus = "unverified";
+          verified = false;
+        } else if (verifyStr === "pending") {
+          // Explicitly handle 'pending' status
+          verifyStatus = "underApproval";
+          verified = false;
+        } else {
+          // Any other value (empty string after trim, or unexpected value) = under approval
+          verifyStatus = "underApproval";
+          verified = false;
+        }
       }
       
-      // Optimize employment status check
-      const employeedVal = r.employeed;
+      // Debug logging for new registrations (verify = 'pending' or null)
+      if (verifyRaw === null || verifyRaw === undefined || String(verifyRaw).toLowerCase().trim() === 'pending') {
+        console.log("[AlumniTabs] Found alumni under approval:", r.sapid || r.registrationno || r.alumniid, "verify:", verifyRaw, "status:", verifyStatus);
+      }
+      
+      // Optimize employment status check (single lowercase conversion)
       const employmentStatus: "Employed" | "Unemployed" = 
-        (employeedVal && employeedVal.toLowerCase() === "employed") ? "Employed" : "Unemployed";
+        (r.employeed?.toLowerCase() === "employed") ? "Employed" : "Unemployed";
+      
+      // Use sapid as ID if available, otherwise use registrationno, otherwise use alumniid as fallback
+      const itemId = r.sapid?.trim() || r.registrationno?.trim() || String(r.alumniid);
       
       result[idx++] = {
-        id: r.sapid,
+        id: itemId,
+        registrationNo: r.registrationno ?? null,
         name: r.alumniname ?? "",
         email: r.personalemail ?? r.officialemail ?? null,
         mobile: r.contactno ?? null,
@@ -213,52 +292,40 @@ export const AlumniTabs: React.FC = () => {
     return result.slice(0, idx);
   }, [rawItems]);
 
-  // Compute tab counts (optimized - single pass through items)
+  // Use counts from server (lightweight query) - always use server data for real-time accuracy
   const counts = useMemo(() => {
-    const total = items.length;
-    let verified = 0;
-    let unverified = 0;
-    let underApproval = 0;
-    let active = 0;
-    let inactive = 0;
-    
-    // Single pass through items for better performance
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
-      // Count verification status
-      if (item.verifyStatus === "verified") verified++;
-      else if (item.verifyStatus === "unverified") unverified++;
-      else if (item.verifyStatus === "underApproval") underApproval++;
-      
-      // Count login status
-      const hasLoggedIn = (item.lastLoginTime && item.lastLoginTime.trim() !== "") || (item.loginCount && item.loginCount > 0);
-      if (hasLoggedIn) active++;
-      else inactive++;
+    // Always use server counts if available (real-time data)
+    if (countsData) {
+      return {
+        total: countsData.total || 0,
+        verified: countsData.verified || 0,
+        unverified: countsData.unverified || 0,
+        underApproval: countsData.underApproval || 0,
+        active: countsData.active || 0,
+        inactive: countsData.inactive || 0,
+      };
     }
-    
-    return { total, verified, unverified, underApproval, active, inactive };
-  }, [items]);
+    // Fallback: use total from paginated response while counts are loading
+    return {
+      total: totalRecords || 0,
+      verified: 0,
+      unverified: 0,
+      underApproval: 0,
+      active: 0,
+      inactive: 0,
+    };
+  }, [countsData, totalRecords]);
 
-  // Filter by tab + query
+  // Filter by tab only (search is now handled server-side)
   const filteredItems = useMemo(() => {
-    const q = debouncedQuery.toLowerCase();
-    const base = items.filter((a) =>
-      !q ||
-      (a.id?.toString().toLowerCase().includes(q) ?? false) ||
-      (a.name?.toLowerCase().includes(q)) ||
-      (a.email?.toLowerCase().includes(q))
-    );
+    // Since search is handled server-side, we only filter by tab status
+    const base = items;
     switch (selected) {
       case "verified":
-        // Verified: explicitly marked as verified by admin
-        return base.filter((i) => i.verifyStatus === "verified");
       case "unverified":
-        // Unverified: explicitly marked as unverified by admin (not in under approval)
-        return base.filter((i) => i.verifyStatus === "unverified");
       case "underApproval":
-        // Under approval: new registrations that haven't been reviewed yet
-        return base.filter((i) => i.verifyStatus === "underApproval");
+        // These are now filtered server-side, so return all items (they're already filtered)
+        return base;
       case "active":
         // Active: users who have logged in at least once
         return base.filter((i) => {
@@ -275,17 +342,21 @@ export const AlumniTabs: React.FC = () => {
       default:
         return base;
     }
-  }, [items, selected, debouncedQuery]);
+  }, [items, selected]);
 
-  // Pagination derived values
-  const total = filteredItems.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(Math.max(1, currentPage), totalPages);
-  const start = (safePage - 1) * pageSize;
-  const end = start + pageSize;
-  const pageItems = useMemo(() => filteredItems.slice(start, end), [filteredItems, start, end]);
+  // Pagination derived values - use server-side pagination
+  const total = totalRecords; // Use total from server
+  const totalPages = paginatedData?.totalPages ?? Math.max(1, Math.ceil(total / pageSize));
+  
+  // No need to slice - server already returns the correct page
+  const pageItems = useMemo(() => filteredItems, [filteredItems]);
 
-  useEffect(() => { setCurrentPage(1); setSelectedRowId(null); }, [selected, pageSize, debouncedQuery]);
+  useEffect(() => { 
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+    setSelectedRowId(null); 
+  }, [selected, pageSize, debouncedQuery, totalPages, currentPage]);
 
   // Action hooks and handlers must live inside the component body
   const queryClient = useQueryClient();
@@ -310,6 +381,8 @@ export const AlumniTabs: React.FC = () => {
       if (!old) return old;
       return old.map((it) => (it.sapid === sapid ? { ...it, verify: verify ? "true" : "false" } : it));
     });
+    // Invalidate counts to refetch real-time data
+    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] });
   }, [queryClient]);
 
   const removeFromCache = useCallback((sapid: string) => {
@@ -317,13 +390,23 @@ export const AlumniTabs: React.FC = () => {
       if (!old) return old;
       return old.filter((it) => it.sapid !== sapid);
     });
+    // Invalidate counts to refetch real-time data
+    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] });
   }, [queryClient]);
 
-  const handleVerify = useCallback(async (sapid: string) => {
+  // Open confirmation modal for verify
+  const handleVerifyClick = useCallback((sapid: string, name: string) => {
+    setPendingAction({ type: "verify", sapid, name });
+    confirmModal.openModal();
+  }, [confirmModal]);
+
+  // Execute verify after confirmation
+  const handleVerify = useCallback(async (sapid: string): Promise<void> => {
     // Validate sapid before proceeding
     if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      setActionError("Invalid SAP ID. Cannot verify alumni without a valid SAP ID.");
-      return;
+      const errorMsg = "Invalid SAP ID. Cannot verify alumni without a valid SAP ID.";
+      setActionError(errorMsg);
+      throw new Error(errorMsg);
     }
 
     setActionError(null);
@@ -336,24 +419,44 @@ export const AlumniTabs: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify: true }),
       });
-      if (!res.ok) throw new Error(`Failed to verify: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to verify: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to verify: ${res.status}`);
+      }
+      const responseData = await res.json();
+      console.log("[AlumniTabs] Verify response:", responseData);
+      if (responseData.verify === false || responseData.verify === "false") {
+        console.error("[AlumniTabs] Verify returned false when it should be true!");
+        throw new Error("Verification failed - server returned false");
+      }
       setActionMessage("Alumni verified successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }); // Refresh counts
+      queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
     } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, false);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to verify alumni.");
+      throw e; // Re-throw so executePendingAction can catch it
     } finally {
       stopMut(sapid);
     }
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
-  const handleUnverify = useCallback(async (sapid: string) => {
+  // Open confirmation modal for unverify
+  const handleUnverifyClick = useCallback((sapid: string, name: string) => {
+    setPendingAction({ type: "unverify", sapid, name });
+    confirmModal.openModal();
+  }, [confirmModal]);
+
+  // Execute unverify after confirmation
+  const handleUnverify = useCallback(async (sapid: string): Promise<void> => {
     // Validate sapid before proceeding
     if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      setActionError("Invalid SAP ID. Cannot unverify alumni without a valid SAP ID.");
-      return;
+      const errorMsg = "Invalid SAP ID. Cannot unverify alumni without a valid SAP ID.";
+      setActionError(errorMsg);
+      throw new Error(errorMsg);
     }
 
     setActionError(null);
@@ -366,19 +469,34 @@ export const AlumniTabs: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify: false }),
       });
-      if (!res.ok) throw new Error(`Failed to unverify: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to unverify: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to unverify: ${res.status}`);
+      }
+      const responseData = await res.json();
+      console.log("[AlumniTabs] Unverify response:", responseData);
       setActionMessage("Alumni marked as unverified.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }); // Refresh counts
+      queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
     } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, true);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to update verification.");
+      throw e; // Re-throw so executePendingAction can catch it
     } finally {
       stopMut(sapid);
     }
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
+  // Open confirmation modal for delete
+  const handleDeleteClick = useCallback((sapid: string, name: string) => {
+    setPendingAction({ type: "delete", sapid, name });
+    confirmModal.openModal();
+  }, [confirmModal]);
+
+  // Execute delete after confirmation
   const handleDelete = useCallback(async (sapid: string) => {
     // Validate sapid before proceeding
     if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
@@ -407,7 +525,8 @@ export const AlumniTabs: React.FC = () => {
       // Invalidate both profile and list queries to ensure fresh data
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] }),
-        queryClient.invalidateQueries({ queryKey: ["alumnilist"] })
+        queryClient.invalidateQueries({ queryKey: ["alumnilist"] }),
+        queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }) // Refresh counts
       ]);
     } catch (e: unknown) {
       // rollback
@@ -420,6 +539,60 @@ export const AlumniTabs: React.FC = () => {
     }
   }, [removeFromCache, startMut, stopMut, queryClient]);
 
+  // Execute pending action after confirmation
+  const executePendingAction = useCallback(async () => {
+    if (!pendingAction) {
+      console.warn("[AlumniTabs] No pending action to execute");
+      return;
+    }
+    
+    const { type, sapid } = pendingAction;
+    console.log("[AlumniTabs] Executing action:", type, "for SAP ID:", sapid);
+    
+    // Store the action locally before async operations
+    const actionType = type;
+    const actionSapid = sapid;
+    
+    try {
+      if (actionType === "verify") {
+        await handleVerify(actionSapid);
+      } else if (actionType === "unverify") {
+        await handleUnverify(actionSapid);
+      } else if (actionType === "delete") {
+        await handleDelete(actionSapid);
+      }
+      
+      // Close modal and clear pending action after successful execution
+      console.log("[AlumniTabs] Action completed successfully, closing modal");
+      confirmModal.closeModal();
+      setPendingAction(null);
+    } catch (error) {
+      // Error is already handled in the individual handlers (setActionError)
+      // Keep modal open if there's an error so user can see the error message
+      console.error("[AlumniTabs] Error executing action:", error);
+      // Don't close modal on error - let user see the error and try again or cancel
+    }
+  }, [pendingAction, confirmModal, handleVerify, handleUnverify, handleDelete]);
+  
+  // Wrapper for button click to ensure it works
+  const handleConfirmClick = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!pendingAction) {
+      console.warn("[AlumniTabs] No pending action in confirm click");
+      return;
+    }
+    
+    if (mutatingIds.has(pendingAction.sapid)) {
+      console.log("[AlumniTabs] Action already in progress, ignoring click");
+      return;
+    }
+    
+    console.log("[AlumniTabs] Confirm button clicked, executing action:", pendingAction.type, "for", pendingAction.sapid);
+    await executePendingAction();
+  }, [pendingAction, mutatingIds, executePendingAction]);
+
   const handleView = useCallback((sapid: string) => {
     const isAdmin = isAdminUser(session?.user);
     const url = isAdmin ? `/alumni-profile?sapid=${encodeURIComponent(sapid)}&modal=` : `/alumni-profile?sapid=${encodeURIComponent(sapid)}`;
@@ -427,165 +600,199 @@ export const AlumniTabs: React.FC = () => {
   }, [router, session]);
 
   return (
-    <ComponentCard  className=" ">
-      <div className=" flex flex-col gap-4  ">
-        <div className="rounded-2xl  bg-white flex justify-between   dark:bg-white/[0.03]">
-         
-          <div
-            className="tab-list flex flex-nowrap items-center gap-3 overflow-x-auto p-1 "
-            role="tablist"
-            aria-label="Alumni status categories"
-          >
-            {TABS.map((tab, idx) => {
-              const statCount = (() => {
-                switch (tab.key) {
-                  case "total":
-                    return counts.total;
-                  case "verified":
-                    return counts.verified;
-                  case "unverified":
-                    return counts.unverified;
-                  case "underApproval":
-                    return counts.underApproval;
-                  case "active":
-                    return counts.active;
-                  case "inactive":
-                  default:
-                    return counts.inactive;
-                }
-              })();
-             
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  className={`w-[240px] last:border-0 bg-white  flex flex-col items-center  whitespace-nowrap text-center border-r border-gray-300 px-4 py-2 text-sm transition-colors transition-transform 
-                  } hover:translate-y-[-1px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900`}
-                  onClick={() => setSelected(tab.key)}
-                  role="tab"
-                  aria-selected={selected === tab.key}
-                  aria-label={`${tab.label} (${statCount.toLocaleString()})`}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowRight") {
-                      e.preventDefault();
-                      const nextIdx = (idx + 1) % TABS.length;
-                      setSelected(TABS[nextIdx].key);
-                    } else if (e.key === "ArrowLeft") {
-                      e.preventDefault();
-                      const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                      setSelected(TABS[prevIdx].key);
-                    } else if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelected(tab.key);
-                    }
-                  }}
-                >
-                  <h6 className={`text-[20px] font-bold mt-2 ${STATUS_CLASS_MAP[tab.key].labelText}`}>{tab.label}</h6>
-                  <h3 className={`text-[35px] font-bold mt-6 `}>{statCount.toLocaleString()}</h3>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-       
-
-        {/* Search Bar: by SAP ID, email, or name */}
-      <div className="space-y-4">
-      {/* Filter bar */}
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600 dark:text-gray-300" htmlFor="alumni-search">Search:</label>
-          <input
-            id="alumni-search"
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="SAP ID, name, email"
-            className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-          />
-        </div>
-        {/* Background refetch indicator */}
-        {isFetching && !isLoading && (
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span>Updating...</span>
-          </div>
-        )}
-      </div>
-
-      {/* Table */}
-      <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
-        <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
-          <div className="min-w-`full` xl:min-w-full">
-            <Table className="min-w-full border border-gray-200 dark:border-gray-800">
-              <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
-                <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Name</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">SAP ID</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Mobile No</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Active Email</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Status</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Organization</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Designation</TableCell>
-                  <TableCell className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Work Country/City</TableCell>
-                  <TableCell className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</TableCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
-                {isLoading && (
-                  Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50 dark:odd:bg-gray-800/50">
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-56 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200 dark:border-gray-700">
-                        <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                    </TableRow>
-                  ))
+    <ComponentCard className="p-0">
+      <div className="flex flex-col gap-8">
+        {/* Stats Cards Section */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 pt-8">
+          {TABS.map((tab, idx) => {
+            const statCount = (() => {
+              switch (tab.key) {
+                case "total":
+                  return counts.total;
+                case "verified":
+                  return counts.verified;
+                case "unverified":
+                  return counts.unverified;
+                case "underApproval":
+                  return counts.underApproval;
+                case "active":
+                  return counts.active;
+                case "inactive":
+                default:
+                  return counts.inactive;
+              }
+            })();
+            
+            const isSelected = selected === tab.key;
+            const statusStyles = STATUS_CLASS_MAP[tab.key];
+           
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={`
+                  relative group rounded-2xl p-6 text-left transition-all duration-300 ease-out
+                  ${isSelected 
+                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
+                    : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
+                  }
+                  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
+                `}
+                onClick={() => {
+                  console.log("[AlumniTabs] Tab clicked:", tab.key);
+                  setSelected(tab.key);
+                }}
+                role="tab"
+                aria-selected={isSelected}
+                aria-label={`${tab.label} (${statCount.toLocaleString()})`}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    const nextIdx = (idx + 1) % TABS.length;
+                    setSelected(TABS[nextIdx].key);
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    const prevIdx = (idx - 1 + TABS.length) % TABS.length;
+                    setSelected(TABS[prevIdx].key);
+                  } else if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(tab.key);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h6 className={`text-xs font-bold uppercase tracking-wider ${isSelected ? statusStyles.labelText : 'text-gray-500 dark:text-gray-400'}`}>
+                    {tab.label}
+                  </h6>
+                  {isSelected && (
+                    <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
+                  )}
+                </div>
+                {isLoadingCounts && !countsData ? (
+                  <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
+                ) : (
+                  <h3 className={`text-4xl font-extrabold tracking-tight ${isSelected ? statusStyles.labelText : 'text-gray-900 dark:text-gray-100'}`}>
+                    {statCount.toLocaleString()}
+                  </h3>
                 )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search and Filters Section */}
+        <div className="px-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+            <div className="flex-1 w-full sm:max-w-lg">
+              <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
+                Search Alumni
+              </label>
+              <div className="relative">
+                <svg 
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  id="alumni-search"
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by name, SAP ID, registration no, email, faculty, or department..."
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+                />
+              </div>
+            </div>
+            {/* Background refetch indicator */}
+            {isFetching && !isLoading && (
+              <div className="flex items-center gap-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 px-4 py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
+                <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span>Updating...</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Table Section */}
+        <div className="px-6 pb-8">
+          <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
+            <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto">
+              <Table className="min-w-full">
+                <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+                  <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Full Name
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      SAP ID / Registration
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Email
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Faculty
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Department
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Status
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+                  {isLoading && (
+                    Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
+                      <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+                        <TableCell className="px-6 py-5">
+                          <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-6 py-5">
+                          <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-6 py-5">
+                          <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-6 py-5">
+                          <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-6 py-5">
+                          <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-6 py-5">
+                          <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
+                        </TableCell>
+                        <TableCell className="px-6 py-5">
+                          <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-5 py-6 text-center border-r border-gray-200 dark:border-gray-700" colSpan={10}>
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <TableCell className="px-6 py-16 text-center" colSpan={7}>
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span className="font-medium">{error?.message ?? "Failed to load data."}</span>
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-red-600 dark:text-red-400 mb-1">{error?.message ?? "Failed to load data."}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-500">Please try again</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => refetch()}
                           disabled={isFetching}
-                          className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-5 py-2.5 text-sm font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
                         >
                           {isFetching ? (
                             <>
@@ -607,36 +814,67 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-5 py-8 text-center text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700" colSpan={10}>
-                      <div className="flex flex-col items-center gap-2">
-                        <svg className="w-12 h-12 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p className="text-sm font-medium">No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500">Try adjusting your search or filters</p>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-gray-700 dark:text-gray-300">No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Try adjusting your search or filters</p>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
-                {!isLoading && !isError && pageItems.map((alum, idx) => (
-                  
-                   
+                {!isLoading && !isError && pageItems.map((alum, idx) => {
+                  // Format SapId/Registration No as --/1234 or 1234/-- (memoized)
+                  const sapIdRegNo = (() => {
+                    const sapId = alum.id || "";
+                    const regNo = alum.registrationNo || "";
+                    
+                    if (sapId && regNo) {
+                      return `${sapId}/${regNo}`;
+                    } else if (sapId) {
+                      return `${sapId}/--`;
+                    } else if (regNo) {
+                      return `--/${regNo}`;
+                    }
+                    return "--/--";
+                  })();
+
+                  return (
                   <TableRow
                     key={`${alum.id}-${idx}`}
-                    className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] odd:bg-gray-50 ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                    className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
                     onClick={() => setSelectedRowId(alum.id)}
                     aria-selected={selectedRowId === alum.id}
                   >
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
-                      <div className="flex items-center gap-3 w-max">
-                        <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{alum.name}</span>
+                    <TableCell className="px-6 py-5 text-start">
+                      <div className="flex items-center gap-3">
+                        <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{alum.name || "-"}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.id}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.email ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.department}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                      {sapIdRegNo}
+                    </TableCell>
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                      <a 
+                        href={alum.email ? `mailto:${alum.email}` : "#"} 
+                        className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
+                      >
+                        {alum.email || "-"}
+                      </a>
+                    </TableCell>
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                      {alum.faculty || "-"}
+                    </TableCell>
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                      {alum.department || "-"}
+                    </TableCell>
+                    <TableCell className="px-6 py-5 text-start">
                       <Badge 
                         size="sm" 
                         color={
@@ -654,11 +892,8 @@ export const AlumniTabs: React.FC = () => {
                           : "Under Approval"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.organization ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.designation ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.workCountry}{alum.workCity ? ` / ${alum.workCity}` : ""}</TableCell>
-                    <TableCell className="px-4 py-3 text-end">
-                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
+                    <TableCell className="px-6 py-5 text-end">
+                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
                         {(() => {
                           const isBusy = mutatingIds.has(alum.id);
                           const canPerformActions = canModify(session?.user);
@@ -691,23 +926,23 @@ export const AlumniTabs: React.FC = () => {
                             if (alum.verifyStatus === "verified") {
                               // Verified: can unverify, delete, view
                               actions = [
-                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverify(alum.id), hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                 { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ];
                             } else if (alum.verifyStatus === "unverified") {
                               // Unverified: can verify, delete, view
                               actions = [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerify(alum.id), hover: "hover:text-emerald-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                 { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ];
                             } else {
                               // Under approval: can verify, unverify, delete, view
                               actions = [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerify(alum.id), hover: "hover:text-emerald-600" },
-                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverify(alum.id), hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                 { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ];
                             }
@@ -715,14 +950,14 @@ export const AlumniTabs: React.FC = () => {
                             // Other tabs: show context-appropriate actions
                             if (alum.verifyStatus === "verified") {
                               actions = [
-                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverify(alum.id), hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                 { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ];
                             } else {
                               actions = [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerify(alum.id), hover: "hover:text-emerald-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDelete(alum.id), hover: "hover:text-rose-600" },
+                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                 { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                               ];
                             }
@@ -735,7 +970,7 @@ export const AlumniTabs: React.FC = () => {
                               onClick={onClick}
                               disabled={isBusy}
                               aria-disabled={isBusy}
-                              className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"} ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                              className={`p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
                               aria-label={label}
                               title={label}
                             >
@@ -746,96 +981,172 @@ export const AlumniTabs: React.FC = () => {
                       </div>
                     </TableCell>
                   </TableRow>
-
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
           
         </div>
+        </div>
         {/* Live region for action feedback */}
-        <div className="px-4" aria-live="polite" aria-atomic="true">
+        <div className="px-6" aria-live="polite" aria-atomic="true">
           {actionMessage && (
-            <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            <div className="mb-4 rounded-xl border border-emerald-200/80 bg-emerald-50/80 dark:bg-emerald-900/20 dark:border-emerald-800/50 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200 shadow-sm">
               {actionMessage}
             </div>
           )}
           {actionError && (
-            <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            <div className="mb-4 rounded-xl border border-rose-200/80 bg-rose-50/80 dark:bg-rose-900/20 dark:border-rose-800/50 px-4 py-3 text-sm font-medium text-rose-800 dark:text-rose-200 shadow-sm">
               {actionError}
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between p-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
             {(() => {
-              const start = (currentPage - 1) * pageSize + 1;
-              const end = start + pageItems.length - 1;
-              return `Showing ${pageItems.length ? start : 0}-${pageItems.length ? end : 0} of ${total}`;
+              const start = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+              const end = Math.min(start + pageItems.length - 1, total);
+              return `Showing ${start.toLocaleString()}-${end.toLocaleString()} of ${total.toLocaleString()}`;
             })()}
           </span>
-          <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
             <select
               id="page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
+              onChange={(e) => {
+                const newPageSize = Number(e.target.value);
+                setPageSize(newPageSize);
+                setCurrentPage(1); // Reset to first page when changing page size
+              }}
             >
-              <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
+              <option value={100}>100</option>
             </select>
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages} 
+              onPageChange={(p) => {
+                const newPage = Math.max(1, Math.min(totalPages, p));
+                setCurrentPage(newPage);
+                // Scroll to top of table when page changes
+                const tableContainer = document.querySelector('.custom-scrollbar');
+                if (tableContainer) {
+                  tableContainer.scrollTop = 0;
+                }
+              }} 
+            />
           </div>
         </div>
       </div>
-    </div>
-      </div>
-      <style jsx>{`
-        .tab-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem; /* base spacing between tabs */
-        }
-
-        .tab-item {
-          /* Flexbox sizing with constraints */
-          flex: 1 1 180px; /* grow; shrink; base width */
-          min-width: 160px;
-          max-width: 320px;
-          /* Smooth transitions for resizing and state */
-          transition: flex-basis 300ms ease, width 300ms ease,
-            background-color 200ms ease, border-color 200ms ease,
-            transform 200ms ease;
-          will-change: transform;
-        }
-
-        /* Desktop (≥1024px) */
-        @media (min-width: 1024px) {
-          .tab-list {
-            gap: 1.5rem; /* more spacing on desktop */
-          }
-          .tab-item {
-            flex-basis: 240px; /* comfortable width on desktop */
-          }
-        }
-
-        /* Tablet (768px–1023px) */
-        @media (min-width: 768px) and (max-width: 1023px) {
-          .tab-item {
-            flex-basis: 200px; /* medium width on tablets */
-          }
-        }
-
-        /* Mobile (<768px) */
-        @media (max-width: 767px) {
-          .tab-item {
-            flex-basis: 160px; /* compact width on mobile */
-          }
-        }
-      `}</style>
+      
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && pendingAction && (
+        <Modal
+          isOpen={confirmModal.isOpen}
+          onClose={() => {
+            if (!mutatingIds.has(pendingAction?.sapid || "")) {
+              confirmModal.closeModal();
+              setPendingAction(null);
+            }
+          }}
+          className="max-w-lg mx-auto"
+          showCloseButton={true}
+        >
+          <div className="p-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                pendingAction.type === "delete"
+                  ? "bg-rose-100 dark:bg-rose-900/30"
+                  : pendingAction.type === "unverify"
+                  ? "bg-amber-100 dark:bg-amber-900/30"
+                  : "bg-emerald-100 dark:bg-emerald-900/30"
+              }`}>
+                {pendingAction.type === "delete" && (
+                  <TrashBinIcon className={`h-6 w-6 text-rose-600 dark:text-rose-400`} />
+                )}
+                {pendingAction.type === "unverify" && (
+                  <CloseLineIcon className={`h-6 w-6 text-amber-600 dark:text-amber-400`} />
+                )}
+                {pendingAction.type === "verify" && (
+                  <CheckLineIcon className={`h-6 w-6 text-emerald-600 dark:text-emerald-400`} />
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                  {pendingAction.type === "verify" && "Confirm Verification"}
+                  {pendingAction.type === "unverify" && "Confirm Unverification"}
+                  {pendingAction.type === "delete" && "Confirm Deletion"}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {pendingAction.type === "verify" && "This will mark the alumni as verified and send them a welcome email."}
+                  {pendingAction.type === "unverify" && "This will mark the alumni as unverified."}
+                  {pendingAction.type === "delete" && "This action cannot be undone."}
+                </p>
+              </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                {pendingAction.type === "verify" && (
+                  <>Are you sure you want to verify <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>?</>
+                )}
+                {pendingAction.type === "unverify" && (
+                  <>Are you sure you want to unverify <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>?</>
+                )}
+                {pendingAction.type === "delete" && (
+                  <>Are you sure you want to delete <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>? This will permanently remove their record.</>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={mutatingIds.has(pendingAction.sapid)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!mutatingIds.has(pendingAction.sapid)) {
+                    confirmModal.closeModal();
+                    setPendingAction(null);
+                  }
+                }}
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={mutatingIds.has(pendingAction.sapid)}
+                onClick={handleConfirmClick}
+                className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md ${
+                  pendingAction.type === "delete"
+                    ? "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+                    : pendingAction.type === "unverify"
+                    ? "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
+                    : "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+                }`}
+              >
+                {mutatingIds.has(pendingAction.sapid) ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  <>
+                    {pendingAction.type === "verify" && "Verify"}
+                    {pendingAction.type === "unverify" && "Unverify"}
+                    {pendingAction.type === "delete" && "Delete"}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </ComponentCard>
   );
 };

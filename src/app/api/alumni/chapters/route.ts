@@ -3,6 +3,52 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { sendChaptersApplicationEmail } from "@/lib/email";
 
+export async function GET() {
+  try {
+    const rows = await sql/* sql */`
+      SELECT 
+        a.alumniid,
+        a.sapid,
+        a.alumniname,
+        a.departmentname,
+        a.facultyname,
+        a.degreetitle,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail,
+        a.registrationno,
+        c."chapter1",
+        c."chapter2",
+        c."chapter3"
+      FROM public.tbl_alumni a
+      JOIN public.alumni_chapter c ON c.id = a.alumniid
+      ORDER BY a.alumniid DESC`;
+    
+    const items = rows.map((r: Record<string, unknown>) => {
+      const chapters: string[] = [];
+      if (r.chapter1) chapters.push(String(r.chapter1));
+      if (r.chapter2) chapters.push(String(r.chapter2));
+      if (r.chapter3) chapters.push(String(r.chapter3));
+      
+      return {
+        sapid: String(r.sapid ?? ""),
+        registrationNo: r.registrationno ? String(r.registrationno) : null,
+        name: String(r.alumniname ?? ""),
+        department: r.departmentname ? String(r.departmentname) : null,
+        faculty: r.facultyname ? String(r.facultyname) : null,
+        program: r.degreetitle ? String(r.degreetitle) : null,
+        email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null),
+        chapters,
+      };
+    });
+    
+    return NextResponse.json({ items }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch chapters";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();

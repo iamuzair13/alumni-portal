@@ -817,11 +817,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       name="city"
                       control={control}
                       rules={{ 
-                        required: true, 
-                        maxLength: 50,
+                        required: "City is required",
+                        maxLength: {
+                          value: 50,
+                          message: "City must be 50 characters or less"
+                        },
                         validate: (value) => {
                           const val = value ? String(value).trim() : "";
-                          if (val === "") {
+                          if (val === "" || val.length === 0) {
                             return "City is required";
                           }
                           return true;
@@ -849,6 +852,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                 field.onChange(matchingCity);
                                 setCitySearch(matchingCity);
                                 setShowCityDropdown(false);
+                                // Trigger validation to clear any error messages
+                                setTimeout(() => {
+                                  trigger("city");
+                                }, 0);
                               } else if (trimmedValue === "") {
                                 // Clear form value if input is empty
                                 field.onChange("");
@@ -856,6 +863,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                 // Update form value with typed value immediately
                                 // This ensures validation sees the value even if it doesn't match exactly
                                 field.onChange(trimmedValue);
+                                // Trigger validation to update error state
+                                setTimeout(() => {
+                                  trigger("city");
+                                }, 0);
                               }
                             }}
                             onFocus={() => {
@@ -879,6 +890,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                 if (matchingCity) {
                                   field.onChange(matchingCity);
                                   setCitySearch(matchingCity);
+                                  // Trigger validation to clear any error messages
+                                  setTimeout(() => {
+                                    trigger("city");
+                                  }, 0);
                                 } else if (trimmedSearch === "") {
                                   field.onChange("");
                                 } else {
@@ -892,9 +907,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                     // Auto-complete if close match found
                                     field.onChange(closeMatch);
                                     setCitySearch(closeMatch);
+                                    // Trigger validation to clear any error messages
+                                    setTimeout(() => {
+                                      trigger("city");
+                                    }, 0);
                                   } else {
                                     // Accept the typed value as-is (already set in onChange, but ensure it's set)
                                     field.onChange(trimmedSearch);
+                                    // Trigger validation to update error state
+                                    setTimeout(() => {
+                                      trigger("city");
+                                    }, 0);
                                   }
                                 }
                               }, 200);
@@ -914,6 +937,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                     setCitySearch(city);
                                     field.onChange(city);
                                     setShowCityDropdown(false);
+                                    // Trigger validation to clear any error messages
+                                    setTimeout(() => {
+                                      trigger("city");
+                                    }, 0);
                                   }}
                                 >
                                   {city}

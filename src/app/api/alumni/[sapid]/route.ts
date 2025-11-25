@@ -128,7 +128,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         departmentname = ${v.department}, degreetitle = ${v.program}, yearofending = ${v.passingYear}, employeed = ${v.employmentStatus},
         industry = ${v.sector ?? null}, nameoforganization = ${v.organization ?? null}, designation = ${v.designation ?? null},
         totalyearsofexpereince = ${v.totalExperienceYears ?? null}, officialemail = ${v.officialEmail ?? null}, officialnumber = ${v.officialPhone ?? null},
-        datasource = ${v.source ?? null}, verify = ${String(v.verified ?? false)}, alumnistatus = ${v.category ?? null}
+        datasource = ${v.source ?? null}, verify = ${v.verified === true ? "true" : v.verified === false ? "false" : null}, alumnistatus = ${v.category ?? null}
       WHERE sapid = ${sapid}
       RETURNING alumniid, sapid`;
     if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -179,13 +179,173 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     if (verify === undefined) {
       return NextResponse.json({ error: "Missing 'verify' field" }, { status: 400 });
     }
-    const normalized = String(verify).toLowerCase();
-    const asBoolString = normalized === "true" || normalized === "yes" ? "true" : "false";
-    const res = await sql/* sql */`
-      UPDATE public.tbl_alumni SET verify = ${asBoolString} WHERE sapid = ${sapid} RETURNING alumniid, verify`;
+    
+    // Determine the target value: true -> 'true', false -> 'false'
+    // Handle both boolean and string inputs
+    const shouldVerify = verify === true || verify === "true" || String(verify).toLowerCase() === "true" || String(verify).toLowerCase() === "yes";
+    
+    console.log("[API] Updating verify for identifier:", sapid, "shouldVerify:", shouldVerify, "original value:", verify, "type:", typeof verify);
+    
+    // First, get the current alumni record to check if password exists and get email
+    // The identifier might be sapid, registrationno, or alumniid (as string)
+    // Try to find by sapid first, then by registrationno, then by alumniid
+    let currentRecord = await sql/* sql */`
+      SELECT alumniid, password, alumniname, personalemail, officialemail, universityemail, verify, sapid, registrationno
+      FROM public.tbl_alumni 
+      WHERE sapid = ${sapid} 
+      LIMIT 1
+    `;
+    
+    // If not found by sapid, try registrationno
+    if (!currentRecord[0]) {
+      currentRecord = await sql/* sql */`
+        SELECT alumniid, password, alumniname, personalemail, officialemail, universityemail, verify, sapid, registrationno
+        FROM public.tbl_alumni 
+        WHERE registrationno = ${sapid} 
+        LIMIT 1
+      `;
+    }
+    
+    // If still not found, try alumniid (if the identifier is numeric)
+    if (!currentRecord[0] && !isNaN(Number(sapid))) {
+      currentRecord = await sql/* sql */`
+        SELECT alumniid, password, alumniname, personalemail, officialemail, universityemail, verify, sapid, registrationno
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${Number(sapid)} 
+        LIMIT 1
+      `;
+    }
+    
+    if (!currentRecord[0]) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    
+    const current = currentRecord[0] as {
+      alumniid: number;
+      password: string | null;
+      alumniname: string | null;
+      personalemail: string | null;
+      officialemail: string | null;
+      universityemail: string | null;
+      verify: string | boolean | null;
+    };
+    
+    // Check if this is a status change from 'pending' (under approval) to verified/unverified
+    const wasUnderApproval = current.verify === null || current.verify === undefined || 
+                              String(current.verify).trim().toLowerCase() === 'pending' || 
+                              String(current.verify).trim() === "";
+    
+    // Always generate password and send email when admin verifies/unverifies an alumni that was under approval
+    // This happens only once when status changes from NULL to verified/unverified
+    let generatedPassword: string | null = null;
+    let passwordToStore: string | null = null;
+    
+    if (wasUnderApproval) {
+      // Always generate password when admin verifies/unverifies for the first time (moving from NULL to verified/unverified)
+      // This is a one-time action - email will be sent only when moving from NULL status
+      const { default: generateEasyPassword } = await import("@/lib/passwordUtils");
+      generatedPassword = generateEasyPassword();
+      passwordToStore = generatedPassword; // Store as plain text (same as create route)
+      console.log("[API] Generated password for alumni (moving from under approval):", sapid);
+    } else {
+      // Keep existing password if alumni was already verified/unverified (admin is just changing status)
+      passwordToStore = current.password;
+      console.log("[API] Keeping existing password (alumni was already verified/unverified):", sapid);
+    }
+    
+    // Verify field is now VARCHAR(10) - update with string value
+    const verifyValue = shouldVerify ? "true" : "false";
+    const needsPasswordUpdate = passwordToStore !== current.password;
+    
+    // Get the actual alumniid for the WHERE clause (more reliable than sapid which might be null)
+    const actualAlumniId = current.alumniid;
+    console.log("[API] Updating verify to:", verifyValue, "for identifier:", sapid, "actual alumni ID:", actualAlumniId);
+    
+    // Update verify field and password if needed
+    // Use alumniid for the WHERE clause since it's the primary key and always exists
+    let res;
+    if (needsPasswordUpdate) {
+      res = await sql/* sql */`
+        UPDATE public.tbl_alumni 
+        SET verify = ${verifyValue}, password = ${passwordToStore}
+        WHERE alumniid = ${actualAlumniId} 
+        RETURNING alumniid, verify, sapid, registrationno`;
+    } else {
+      res = await sql/* sql */`
+        UPDATE public.tbl_alumni 
+        SET verify = ${verifyValue}
+        WHERE alumniid = ${actualAlumniId} 
+        RETURNING alumniid, verify, sapid, registrationno`;
+    }
+    
     if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ ok: true, verify: res[0].verify }, { status: 200 });
+    
+    // Normalize the returned value to string for consistent response
+    // Verify field is now VARCHAR(10)
+    const updatedVerify = res[0].verify;
+    let verifyString: string = String(updatedVerify || "").toLowerCase();
+    
+    // Ensure it's 'true' or 'false'
+    if (verifyString !== "true" && verifyString !== "false") {
+      verifyString = shouldVerify ? "true" : "false";
+    }
+    
+    console.log("[API] Updated verify - raw:", updatedVerify, "normalized:", verifyString, "should be:", shouldVerify ? "true" : "false");
+    
+    // Verify the update was successful
+    if (shouldVerify && verifyString !== "true") {
+      console.error("[API] ERROR: Verify should be true but got:", verifyString);
+    } else if (!shouldVerify && verifyString !== "false") {
+      console.error("[API] ERROR: Verify should be false but got:", verifyString);
+    }
+    
+    // Send welcome email ONLY when admin verifies/unverifies for the first time (moving from NULL to verified/unverified)
+    // This is a one-time email sent only when status changes from NULL
+    if (wasUnderApproval && generatedPassword) {
+      try {
+        const { sendWelcomeEmail } = await import("@/lib/email");
+        const alumniEmail = current.personalemail || current.officialemail || current.universityemail;
+        const alumniName = current.alumniname || "Alumni";
+        
+        if (alumniEmail) {
+          console.log("[API] Sending welcome email to:", alumniEmail, "for first-time verification/unverification");
+          console.log("[API] Generated password:", generatedPassword);
+          try {
+            const emailSent = await sendWelcomeEmail(
+              alumniEmail,
+              alumniName,
+              generatedPassword,
+              sapid
+            );
+            
+            if (emailSent) {
+              console.log("[API] Welcome email sent successfully to:", alumniEmail);
+            } else {
+              console.warn("[API] Welcome email was not sent (SMTP may not be configured)");
+            }
+          } catch (emailError) {
+            const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+            console.error("[API] Failed to send welcome email:", errorMessage);
+            console.error("[API] Email error details:", emailError);
+            // Don't fail the request if email fails - verification is already updated
+          }
+        } else {
+          console.warn("[API] No email address found for alumni, cannot send welcome email");
+          console.warn("[API] Available emails - personal:", current.personalemail, "official:", current.officialemail, "university:", current.universityemail);
+        }
+      } catch (emailError) {
+        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+        console.error("[API] Error preparing welcome email:", errorMessage);
+        console.error("[API] Email error details:", emailError);
+        // Don't fail the request if email fails
+      }
+    } else if (wasUnderApproval && !generatedPassword) {
+      console.error("[API] ERROR: Alumni was under approval but password was not generated!");
+    }
+    
+    return NextResponse.json({ ok: true, verify: verifyString }, { status: 200 });
   } catch (err) {
+    console.error("[API] Error updating verify:", err);
     const message = err instanceof Error ? err.message : "Failed to update verification status";
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -181,6 +181,16 @@ export async function authenticateCredentials(identifier: string, password: stri
     log("FAIL", "alumni blocked");
     throw new Error("USER_BLOCKED");
   }
+  // Check if alumni is under approval (verify = 'pending')
+  // Alumni with verify = 'pending' cannot log in until admin verifies or unverifies them
+  const verifyValue = a.verify;
+  const isUnderApproval = verifyValue === null || verifyValue === undefined || 
+                          String(verifyValue).trim().toLowerCase() === 'pending' || 
+                          String(verifyValue).trim() === "";
+  if (isUnderApproval) {
+    log("FAIL", "alumni under approval - cannot login until verified/unverified by admin");
+    throw new Error("UNDER_APPROVAL");
+  }
   const storedA = a.password || "";
   const okA = await verifyPassword(password, storedA);
   if (!okA) {

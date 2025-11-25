@@ -4,17 +4,21 @@ import { useState } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { AlumniTabs } from "@/components/alumni/Alumni-tabs";
 import { AlumniCards } from "@/components/alumni/Alumini-cards";
-import { AlumniParticipation } from "@/components/alumni/Alumni-participation";
+import { AlumniTalksTab } from "@/components/alumni/AlumniTalksTab";
+import { AlumniChaptersTab } from "@/components/alumni/AlumniChaptersTab";
+import { AlumniAssociationTab } from "@/components/alumni/AlumniAssociationTab";
 
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
 
-type MenuKey = "AlumniTabs" | "AlumniCards" | "AlumniParticipation" | "AadAlumni";
+type MenuKey = "AlumniTabs" | "AlumniCards" | "AlumniTalks" | "AlumniChapters" | "AlumniAssociation" | "AadAlumni";
 
 const MENU_TABS: { key: MenuKey; label: string }[] = [
   { key: "AlumniTabs", label: "Alumni Status" },
   { key: "AlumniCards", label: "Alumni Cards" },
-  { key: "AlumniParticipation", label: "Alumni Participation" },
+  { key: "AlumniTalks", label: "Alumni Talks" },
+  { key: "AlumniChapters", label: "Alumni Chapters" },
+  { key: "AlumniAssociation", label: "Alumni Association" },
   { key: "AadAlumni", label: "Add Alumni" },
 ];
 
@@ -63,7 +67,9 @@ export const AlumniTabbedMenu: FC = () => {
       <div className=" ">
         {selected === "AlumniTabs" && <AlumniTabs />}
         {selected === "AlumniCards" && <AlumniCards />}
-        {selected === "AlumniParticipation" && <AlumniParticipation />}
+        {selected === "AlumniTalks" && <AlumniTalksTab />}
+        {selected === "AlumniChapters" && <AlumniChaptersTab />}
+        {selected === "AlumniAssociation" && <AlumniAssociationTab />}
         {selected === "AadAlumni" && <AlumniRegistrationFormComponent />}
       </div>
 

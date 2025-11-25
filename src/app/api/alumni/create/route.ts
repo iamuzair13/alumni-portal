@@ -1,7 +1,6 @@
 import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
 import generateEasyPassword from "@/lib/passwordUtils";
-import { sendWelcomeEmail } from "@/lib/email";
 
 type TblAlumniBody = {
   alumniemail: string | null;
@@ -232,6 +231,7 @@ export async function POST(req: Request) {
         console.warn("[API] Could not reset sequence, continuing with insert:", seqError);
       }
       
+      // Build the INSERT query - handle verify field separately to ensure NULL is inserted correctly
       const rows = await tx<{ alumniid: number }[]>`
         INSERT INTO public.tbl_alumni (
           alumniemail,
@@ -341,7 +341,7 @@ export async function POST(req: Request) {
           ${clean(body.aboutme)},
           ${clean(body.lasttimelogin)},
           ${body.logincount ?? null},
-          ${clean(body.verify)},
+          ${'pending'}, /* verify = 'pending' for new registrations (Under Approval) */
           ${body.emailsendcount ?? null},
           ${clean(body.emailsendstatus)},
           ${clean(body.createddatetime)},
@@ -357,68 +357,66 @@ export async function POST(req: Request) {
           ${clean(body.scholarship)}
         ) RETURNING alumniid;
       `;
-      return rows[0]?.alumniid;
+      const alumniId = rows[0]?.alumniid;
+      
+      // Immediately verify that 'pending' was inserted correctly
+      if (alumniId) {
+        try {
+          const immediateCheck = await tx/* sql */`
+            SELECT verify, LENGTH(verify) as verify_length
+            FROM public.tbl_alumni 
+            WHERE alumniid = ${alumniId}
+            LIMIT 1
+          `;
+          console.log("[API] Immediate verify check after INSERT (within transaction):", immediateCheck[0]);
+          if (immediateCheck[0]?.verify !== 'pending') {
+            console.error("[API] CRITICAL: verify is NOT 'pending' immediately after INSERT! Value:", immediateCheck[0]?.verify);
+            // Try to fix it within the same transaction
+            await tx/* sql */`
+              UPDATE public.tbl_alumni 
+              SET verify = 'pending'
+              WHERE alumniid = ${alumniId}
+            `;
+            console.log("[API] Attempted to fix verify to 'pending' within transaction");
+          }
+        } catch (checkErr) {
+          console.error("[API] Error checking verify immediately after INSERT:", checkErr);
+        }
+      }
+      
+      return alumniId;
     });
 
-    // Send welcome email with generated password if auto-generated
-    if (generatedPassword) {
+    // DO NOT send welcome email on registration
+    // Email will be sent when admin verifies or unverifies the alumni
+    console.log("[API] ========================================");
+    console.log("[API] Alumni registered successfully. Email will be sent when admin verifies/unverifies.");
+    console.log("[API] New alumni ID:", id, "SAP ID:", body.sapid || body.registrationno);
+    console.log("[API] ========================================");
+    
+    // Verify that verify field was set to 'pending'
+    if (id) {
       try {
-        const alumniRows = await sql/* sql */`
-          SELECT alumniname, personalemail, officialemail, universityemail
+        const verifyCheck = await sql/* sql */`
+          SELECT verify, pg_typeof(verify) as verify_type,
+                 LENGTH(verify) as verify_length,
+                 TRIM(verify) as verify_trimmed,
+                 LOWER(TRIM(verify)) as verify_lower_trimmed
           FROM public.tbl_alumni 
-          WHERE alumniid = ${id}
+          WHERE alumniid = ${id} 
           LIMIT 1
         `;
-        const alumni = alumniRows[0] as {
-          alumniname: string | null;
-          personalemail: string | null;
-          officialemail: string | null;
-          universityemail: string | null;
-        } | undefined;
-        
-        if (alumni) {
-          const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
-          const alumniName = alumni.alumniname || "Alumni";
-          
-          if (alumniEmail) {
-            console.log("[API] Attempting to send welcome email to:", alumniEmail);
-            console.log("[API] Alumni name:", alumniName);
-            console.log("[API] Generated password length:", generatedPassword.length);
-            
-            // Send welcome email with generated password - await to ensure it completes in serverless environment
-            try {
-              const emailSent = await sendWelcomeEmail(
-                alumniEmail, 
-                alumniName, 
-                generatedPassword, 
-                body.sapid || body.registrationno || ""
-              );
-              
-              if (emailSent) {
-                console.log("[API] Welcome email sent successfully to:", alumniEmail);
-              } else {
-                console.warn("[API] Welcome email was not sent (SMTP may not be configured)");
-              }
-            } catch (emailError) {
-              const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-              console.error("[API] Failed to send welcome email:", errorMessage);
-              console.error("[API] Error details:", emailError);
-              // Don't fail the request if email fails - user is already created
-            }
-          } else {
-            console.warn("[API] No email address found for alumni, cannot send welcome email");
-          }
+        console.log("[API] Verify field after insert:", verifyCheck[0]);
+        const verifyValue = verifyCheck[0]?.verify;
+        if (verifyValue === 'pending' || String(verifyValue).toLowerCase().trim() === 'pending') {
+          console.log("[API] SUCCESS: verify field is 'pending' as expected");
         } else {
-          console.warn("[API] Alumni record not found after creation, cannot send welcome email");
+          console.error("[API] ERROR: verify field is not 'pending'! Value:", verifyValue, "Type:", verifyCheck[0]?.verify_type, "Length:", verifyCheck[0]?.verify_length);
+          console.error("[API] Trimmed:", verifyCheck[0]?.verify_trimmed, "Lower trimmed:", verifyCheck[0]?.verify_lower_trimmed);
         }
-      } catch (emailError) {
-        // Don't fail the request if email fails
-        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-        console.error("[API] Error preparing welcome email:", errorMessage);
-        console.error("[API] Error details:", emailError);
+      } catch (checkErr) {
+        console.error("[API] Error checking verify field:", checkErr);
       }
-    } else {
-      console.log("[API] Password was provided by user, skipping welcome email");
     }
 
     // Return the generated password if it was auto-generated (for client-side display)

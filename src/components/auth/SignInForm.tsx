@@ -70,6 +70,7 @@ export default function SignInForm() {
         else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID not found");
         else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
         else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
+        else if (err === "UNDER_APPROVAL") setErrorMessage("Your account is under approval. You will receive an email once it's verified.");
         else if (err === "USER_NOT_STAFF") setErrorMessage("Not an admin account");
         else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
         else if (err === "DB_CONNECTION_ERROR") setErrorMessage("Server error. Please try again later.");

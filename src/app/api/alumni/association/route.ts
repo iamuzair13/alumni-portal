@@ -3,6 +3,45 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { sendAssociationApplicationEmail } from "@/lib/email";
 
+export async function GET() {
+  try {
+    const rows = await sql/* sql */`
+      SELECT 
+        a.alumniid,
+        a.sapid,
+        a.alumniname,
+        a.departmentname,
+        a.facultyname,
+        a.degreetitle,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail,
+        a.registrationno,
+        ass.q3 as role,
+        ass.createddatetime
+      FROM public.tbl_alumni a
+      JOIN public.tblalumniassociation ass ON ass.alumniid = a.alumniid
+      ORDER BY ass.createddatetime DESC NULLS LAST, a.alumniid DESC`;
+    
+    const items = rows.map((r: Record<string, unknown>) => ({
+      sapid: String(r.sapid ?? ""),
+      registrationNo: r.registrationno ? String(r.registrationno) : null,
+      name: String(r.alumniname ?? ""),
+      department: r.departmentname ? String(r.departmentname) : null,
+      faculty: r.facultyname ? String(r.facultyname) : null,
+      program: r.degreetitle ? String(r.degreetitle) : null,
+      email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null),
+      role: r.role ? String(r.role) : null,
+      createdAt: r.createddatetime,
+    }));
+    
+    return NextResponse.json({ items }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch association";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();

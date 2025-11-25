@@ -25,25 +25,76 @@ export type AlumniListItem = {
   logincount?: number | null;
 };
 
-export async function getAlumniList(signal?: AbortSignal): Promise<AlumniListItem[]> {
-  const res = await fetch("/api/alumni", { signal, headers: { "accept": "application/json" } });
+export type AlumniListResponse = {
+  items: AlumniListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export async function getAlumniList(
+  signal?: AbortSignal,
+  search?: string,
+  page: number = 1,
+  limit: number = 100,
+  status?: string // Filter by verify status: "verified", "unverified", "underApproval"
+): Promise<AlumniListResponse> {
+  const url = new URL("/api/alumni", typeof window !== "undefined" ? window.location.origin : "");
+  if (search) {
+    url.searchParams.set("search", search);
+  }
+  if (status) {
+    url.searchParams.set("status", status);
+  }
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("limit", String(limit));
+  
+  const res = await fetch(url.toString(), { signal, headers: { "accept": "application/json" } });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || "Failed to fetch alumni list");
   }
-  const data = (await res.json()) as { items: AlumniListItem[] };
-  return data.items ?? [];
+  const data = (await res.json()) as AlumniListResponse;
+  return data;
 }
 
-export function useAlumniList() {
-  return useQuery({
-    queryKey: ["alumnilist"],
-    queryFn: ({ signal }) => getAlumniList(signal),
-    staleTime: 5 * 60 * 1000, // 5 minutes - data is fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache for 10 minutes
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnReconnect: true, // Refetch when network reconnects
-    refetchOnMount: true, // Only refetch if data is stale
+export function useAlumniListPaginated(search?: string, page: number = 1, pageSize: number = 100, status?: string) {
+  return useQuery<AlumniListResponse, Error>({
+    queryKey: ["alumnilist", search, page, pageSize, status],
+    queryFn: ({ signal }) => {
+      console.log("[useAlumniListPaginated] Fetching with status:", status);
+      return getAlumniList(signal, search, page, pageSize, status);
+    },
+    staleTime: 0, // Always consider data stale - refetch on mount/tab change
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchOnReconnect: true,
+    refetchOnMount: true, // Always refetch when component mounts
   });
+}
+
+export type AlumniCounts = {
+  total: number;
+  verified: number;
+  unverified: number;
+  underApproval: number;
+  active: number;
+  inactive: number;
+};
+
+export async function getAlumniCounts(signal?: AbortSignal, search?: string): Promise<AlumniCounts> {
+  const url = new URL("/api/alumni/counts", typeof window !== "undefined" ? window.location.origin : "");
+  if (search) {
+    url.searchParams.set("search", search);
+  }
+  
+  const res = await fetch(url.toString(), { signal, headers: { "accept": "application/json" } });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || "Failed to fetch alumni counts");
+  }
+  const data = (await res.json()) as AlumniCounts;
+  return data;
 }
 
