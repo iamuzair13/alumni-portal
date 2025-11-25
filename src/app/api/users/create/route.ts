@@ -7,7 +7,7 @@ type UserBody = {
   firstname?: string | null;
   lastname?: string | null;
   department?: string | null;
-  type: string; // expect "staff" for admin
+  type: string; // expect "admin" for admin, "viewer" for view-only
   blocked?: boolean | null;
   csrf?: string;
 };
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         ${body.firstname ?? null},
         ${body.lastname ?? null},
         ${body.department ?? null},
-        ${String(body.type || "user").trim()},
+        ${String(body.type || "viewer").trim()},
         ${Boolean(body.blocked ?? false)},
         ${new Date().toISOString()}
       ) RETURNING userid` as { userid: number }[];

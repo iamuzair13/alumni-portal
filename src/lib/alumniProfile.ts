@@ -1,15 +1,27 @@
 import type { Session } from "next-auth";
 
 export function isAdminUser(user: Session["user"] | null | undefined): boolean {
-  const t = String((user as unknown as { type?: string })?.type || "").toLowerCase();
-  return t === "staff";
+  const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
+  return t === "admin";
+}
+
+export function isViewerUser(user: Session["user"] | null | undefined): boolean {
+  const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
+  // Viewer has view-only access
+  // Note: "user" type is treated as "viewer" for backward compatibility
+  return t === "viewer" || t === "user";
+}
+
+export function canModify(user: Session["user"] | null | undefined): boolean {
+  // Only admins can modify data, viewers (including legacy "user") cannot
+  return isAdminUser(user);
 }
 
 export function computeLoginBanner(user: Session["user"] | null | undefined): { show: boolean; message: string } {
   const email = user?.email ? String(user.email) : "";
-  const type = String((user as unknown as { type?: string })?.type || "").toLowerCase();
+  const type = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   if (!email) return { show: true, message: "Please sign in to view your alumni profile." };
-  if (type === "staff") return { show: false, message: "" };
+  if (type === "admin" || type === "viewer") return { show: false, message: "" };
   if (type !== "alumni") return { show: true, message: "Only alumni accounts can access this page." };
   return { show: false, message: "" };
 }

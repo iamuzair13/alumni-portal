@@ -27,10 +27,10 @@ export function useAlumniStories() {
   return useQuery<AlumniStoryItem[], Error>({
     queryKey: alumniStoriesKey,
     queryFn: ({ signal }) => getAlumniStories(signal),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: "always",
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: "always",
+    refetchOnMount: true, // Only refetch if data is stale
   });
 }

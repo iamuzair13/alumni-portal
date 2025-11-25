@@ -10,7 +10,22 @@ import { ProgressProvider } from "@bprogress/react";
 import ProgressBar from "@/components/ProgressBar";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = React.useState(() => new QueryClient());
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh for 2 minutes
+            gcTime: 10 * 60 * 1000, // 10 minutes - cache data for 10 minutes
+            refetchOnWindowFocus: false, // Don't refetch on window focus by default
+            refetchOnReconnect: true, // Refetch when network reconnects
+            refetchOnMount: true, // Refetch on mount if data is stale
+            retry: 1, // Retry failed requests once
+            retryDelay: 1000, // Wait 1 second before retry
+          },
+        },
+      })
+  );
 
   return (
     <SessionProvider>

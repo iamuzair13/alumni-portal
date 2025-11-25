@@ -9,6 +9,8 @@ import { useAlumniParticipationList } from "@/app/queries/fetch-alumni-participa
 import type { MentorshipItem } from "@/app/queries/fetch-alumni-participation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/modal";
+import { useSession } from "next-auth/react";
+import { canModify } from "@/lib/alumniProfile";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
@@ -61,6 +63,8 @@ export const AlumniParticipation: React.FC = () => {
   const router = useRouter();
   const { data, isLoading, error } = useAlumniParticipationList();
   const qc = useQueryClient();
+  const { data: session } = useSession();
+  const canPerformActions = canModify(session?.user);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetSapId, setTargetSapId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -353,9 +357,10 @@ export const AlumniParticipation: React.FC = () => {
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                             {(() => {
+                              // For viewers, only show View button
                               const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> = [
                                 { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" },
+                                ...(canPerformActions ? [{ label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" } as const] : []),
                               ];
                               return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
                                 <button

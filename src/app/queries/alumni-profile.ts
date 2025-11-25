@@ -82,11 +82,11 @@ export function useAlumniFullDetails(sapId: string | undefined) {
       return getAlumniFullDetails(sapId);
     },
     enabled: !!sapId,
-    staleTime: 0, // Always consider data stale to ensure fresh data after updates
-    gcTime: 0, // Don't cache data to always get fresh values
-    refetchOnWindowFocus: true,
+    staleTime: 1 * 60 * 1000, // 1 minute - profile data can change, but not constantly
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true, // Refetch when component mounts
+    refetchOnMount: true, // Refetch if data is stale
   });
 }
 
@@ -103,10 +103,11 @@ export function useAlumniProfile(sapId: string | undefined) {
       return getAlumniProfile(sapId );
     },
     enabled: !!sapId,
-    staleTime: 0, // Always consider data stale to ensure fresh data after updates
-    refetchOnWindowFocus: true,
+    staleTime: 1 * 60 * 1000, // 1 minute - profile data can change, but not constantly
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true, // Refetch when component mounts
+    refetchOnMount: true, // Refetch if data is stale
   });
 }
 
@@ -187,8 +188,9 @@ export function useCurrentUserImage(enabled: boolean = true) {
     queryKey: currentUserImageKey(),
     queryFn: () => getCurrentUserImage(),
     enabled,
-    staleTime: 0, // Always consider data stale to ensure fresh data after updates
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000, // 2 minutes - images don't change frequently
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     refetchOnMount: true,
   });

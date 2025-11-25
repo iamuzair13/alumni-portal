@@ -217,7 +217,8 @@ export async function DELETE(req: Request) {
     const maybeSapId = url.searchParams.get("sapid");
     const type = String((session.user as unknown as { type?: string | null })?.type || "").toLowerCase();
     if (maybeSapId) {
-      if (type !== "staff") return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+      // Only admin can modify (viewer has view-only access)
+      if (type !== "admin") return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
       const arows = await sql/* sql */`
         SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${maybeSapId} LIMIT 1`;
       const aid = arows[0]?.alumniid as number | undefined;

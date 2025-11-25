@@ -28,10 +28,11 @@ export function useCardApplicants() {
       const j = await res.json();
       return (j?.items ?? []) as CardApplicant[];
     },
-    staleTime: 5 * 60_000,
-    gcTime: 15 * 60_000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60_000, // 2 minutes - card statuses change more frequently
+    gcTime: 10 * 60_000, // 10 minutes
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    refetchOnMount: true,
   });
 }
 

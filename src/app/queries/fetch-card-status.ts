@@ -30,9 +30,11 @@ export function useCardStatus(sapId: string | undefined) {
       const j = await res.json();
       return (j?.card ?? null) as CardData | null;
     },
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60_000, // 2 minutes
+    gcTime: 10 * 60_000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: true,
   });
 }
 

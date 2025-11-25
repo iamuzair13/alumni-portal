@@ -14,6 +14,8 @@ import Alert from "@/components/ui/alert/Alert";
 import UserForm from "@/components/forms/UserForm";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AdminUser } from "@/app/queries/fetch-users";
+import { useSession } from "next-auth/react";
+import { canModify, isAdminUser } from "@/lib/alumniProfile";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -64,6 +66,10 @@ const INITIAL_CHAPTERS: Chapter[] = [
 ];
 
 export default function SetupPage() {
+  const { data: session } = useSession();
+  const isAdmin = isAdminUser(session?.user);
+  const hasModifyAccess = canModify(session?.user);
+
   const TABS = [
     { key: "users", label: "Users" },
     { key: "chapters", label: "Chapters" },
@@ -141,7 +147,7 @@ export default function SetupPage() {
     }
   };
 
-  const UserCard: React.FC<{ user: UserItem; onEdit: () => void; onRemove: () => void }> = ({ user, onEdit, onRemove }) => {
+  const UserCard: React.FC<{ user: UserItem; onEdit: () => void; onRemove: () => void; canModify: boolean }> = ({ user, onEdit, onRemove, canModify }) => {
     return (
       <div className="flex items-center gap-4 p-4 border rounded-xl dark:border-gray-800">
         <div className="relative w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
@@ -158,12 +164,18 @@ export default function SetupPage() {
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Role: {user.role}</div>
         </div>
         <div className="flex gap-2">
+          {canModify ? (
+            <>
           <Button size="sm" aria-label={`Edit ${user.name}`} startIcon={<PencilIcon />} onClick={onEdit}>
             <span className="sr-only">Edit</span>
           </Button>
           <Button size="sm" variant="outline" aria-label={`Remove ${user.name}`} startIcon={<TrashBinIcon />} onClick={onRemove}>
             <span className="sr-only">Remove</span>
           </Button>
+            </>
+          ) : (
+            <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
+          )}
         </div>
       </div>
     );
@@ -351,6 +363,22 @@ export default function SetupPage() {
   return (
     <div className="">
       <ComponentCard title="Setup" className="">
+        {/* Role indicator */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {isAdmin ? (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                Admin Access - Full Permissions
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+                Viewer Access - Read Only
+              </span>
+            )}
+          </div>
+        </div>
         <div
           className="tab-list"
           role="tablist"
@@ -414,9 +442,16 @@ export default function SetupPage() {
                   <Button size="sm" variant="outline" onClick={() => setUserSearch("")} aria-label="Clear user search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Clear</Button>
                 )}
               </div>
+              {hasModifyAccess && (
               <div className="flex items-center gap-2">
                 <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
               </div>
+              )}
+              {!hasModifyAccess && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span>Viewer access - Read only</span>
+                </div>
+              )}
             </div>
 
             {/* Loading / Error / Empty States */}
@@ -438,7 +473,7 @@ export default function SetupPage() {
             {!usersLoading && filteredUsers.length > 0 && (
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {filteredUsers.slice(0, 2).map((u) => (
-                  <UserCard key={u.id} user={u} onEdit={() => setEditUserId(u.id)} onRemove={() => setRemoveUserId(u.id)} />
+                  <UserCard key={u.id} user={u} onEdit={() => setEditUserId(u.id)} onRemove={() => setRemoveUserId(u.id)} canModify={hasModifyAccess} />
                 ))}
               </div>
             )}
@@ -477,12 +512,18 @@ export default function SetupPage() {
                           </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex gap-2 justify-end">
+                            {hasModifyAccess ? (
+                              <>
                             <Button size="sm" aria-label={`Edit ${u.name}`} startIcon={<PencilIcon />} onClick={() => setEditUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                               <span className="sr-only">Edit</span>
                             </Button>
                             <Button size="sm" variant="outline" aria-label={`Remove ${u.name}`} startIcon={<TrashBinIcon />} onClick={() => setRemoveUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                               <span className="sr-only">Remove</span>
                             </Button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -493,12 +534,15 @@ export default function SetupPage() {
             )}
 
             {/* Add User Modal */}
+            {hasModifyAccess && (
             <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[720px] p-5 lg:p-10">
               <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Add User</h4>
               <UserForm />
             </Modal>
+            )}
 
             {/* Edit User Modal */}
+            {hasModifyAccess && (
             <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[720px] p-5 lg:p-10">
               <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Permissions</h4>
               {editUserId && (
@@ -514,8 +558,10 @@ export default function SetupPage() {
                 />
               )}
             </Modal>
+            )}
 
             {/* Remove User Modal */}
+            {hasModifyAccess && (
             <Modal isOpen={!!removeUserId} onClose={() => setRemoveUserId(null)} className="max-w-[520px] p-5 lg:p-8">
               <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Removal</h4>
               <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to remove access for this user?</p>
@@ -529,6 +575,7 @@ export default function SetupPage() {
                 }} aria-label="Confirm removal">Remove</Button>
               </div>
             </Modal>
+            )}
           </div>
         )}
 
@@ -592,6 +639,8 @@ export default function SetupPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-2 justify-end">
+                          {hasModifyAccess ? (
+                            <>
                           <Button
                             size="sm"
                             onClick={() => openEdit(chapters.indexOf(c))}
@@ -611,6 +660,10 @@ export default function SetupPage() {
                           >
                             <span className="sr-only">Delete</span>
                           </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -627,6 +680,7 @@ export default function SetupPage() {
         )}
       </ComponentCard>
 
+      {hasModifyAccess && (
       <Modal isOpen={editingIndex !== null} onClose={closeEdit} className="max-w-[700px] p-5 lg:p-10">
         <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Chapter</h4>
         {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
@@ -657,7 +711,9 @@ export default function SetupPage() {
           </div>
         </form>
       </Modal>
+      )}
 
+      {hasModifyAccess && (
       <Modal isOpen={pendingDeleteIndex !== null} onClose={cancelDelete} className="max-w-[520px] p-5 lg:p-8">
         <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Delete</h4>
         <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete this chapter? This action cannot be undone.</p>
@@ -666,6 +722,7 @@ export default function SetupPage() {
           <Button size="sm" onClick={performDelete} disabled={deleteLoading} aria-label="Confirm delete">{deleteLoading ? "Deleting..." : "Delete"}</Button>
         </div>
       </Modal>
+      )}
       <style jsx>{`
         .tab-list {
           display: flex;
@@ -685,11 +742,13 @@ export default function SetupPage() {
 }
 
 function RealTimeUsers() {
+  const { data: session } = useSession();
+  const hasModifyAccess = canModify(session?.user);
   const { data, isLoading, error } = useUsersList();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [values, setValues] = useState<{ userid: number; email: string | null; firstname: string | null; lastname: string | null; department: string | null; type: string | null; blocked: boolean | null; password?: string }>({ userid: 0, email: null, firstname: null, lastname: null, department: null, type: "staff", blocked: false });
+  const [values, setValues] = useState<{ userid: number; email: string | null; firstname: string | null; lastname: string | null; department: string | null; type: string | null; blocked: boolean | null; password?: string }>({ userid: 0, email: null, firstname: null, lastname: null, department: null, type: "admin", blocked: false });
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   if (isLoading) {
@@ -777,6 +836,8 @@ function RealTimeUsers() {
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex gap-2 justify-center">
+                    {hasModifyAccess ? (
+                      <>
                     <button
                       aria-label={`Edit ${u.email ?? "user"}`}
                       onClick={() => openEdit(u)}
@@ -791,6 +852,10 @@ function RealTimeUsers() {
                     >
                       <TrashBinIcon className="w-4 h-4 text-gray-700" />
                     </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -798,6 +863,7 @@ function RealTimeUsers() {
           </tbody>
         </table>
       </div>
+      {hasModifyAccess && (
       <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} className="max-w-[720px] p-5 lg:p-10">
         <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit User</h4>
         {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
@@ -821,7 +887,7 @@ function RealTimeUsers() {
             </div>
             <div>
               <Label>Type</Label>
-              <Select defaultValue={values.type ?? "staff"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "staff", label: "Staff" }, { value: "user", label: "User" }]} />
+              <Select defaultValue={values.type ?? "admin"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "admin", label: "Admin" }, { value: "viewer", label: "Viewer" }]} />
             </div>
             <div className="flex items-center gap-2">
               <Checkbox checked={!!values.blocked} onChange={(c) => setValues((v) => ({ ...v, blocked: c }))} label="Blocked" />
@@ -838,7 +904,9 @@ function RealTimeUsers() {
           </div>
         </form>
       </Modal>
+      )}
 
+      {hasModifyAccess && (
       <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} className="max-w-[520px] p-5 lg:p-8">
         <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Delete</h4>
         <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete this user?</p>
@@ -847,6 +915,7 @@ function RealTimeUsers() {
           <Button size="sm" onClick={performDelete} aria-label="Confirm delete">Delete</Button>
         </div>
       </Modal>
+      )}
     </div>
   );
 }

@@ -123,12 +123,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const db = uw.dbUser;
         const alumniDb = uw.alumniDb;
         
-        // Check if user is staff
-        if (db && String(db.type || "").toLowerCase() === "staff") {
+        // Check if user is admin or viewer
+        // Admin has full access, viewer has view-only access
+        // Note: "user" type is treated as "viewer" for backward compatibility
+        if (db) {
+          const userType = String(db.type || "").toLowerCase().trim();
+          if (userType === "admin" || userType === "viewer" || userType === "user") {
           if (db.blocked) {
             return "/signin?error=USER_BLOCKED";
           }
           return true; // Allow sign in, redirect handled by client
+          }
         }
         
         // Check if user is alumni
@@ -139,7 +144,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return true; // Allow sign in, redirect handled by client
         }
         
-        // If neither staff nor alumni, deny sign in
+        // If neither staff/viewer nor alumni, deny sign in
         return false;
       }
       return false;
@@ -152,14 +157,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const at: AugmentedToken = token as AugmentedToken;
           at.userId = db.userid;
           at.department = db.department;
-          at.type = db.type;
+          // Normalize "user" type to "viewer" for consistency
+          const userType = String(db.type || "").toLowerCase().trim();
+          at.type = userType === "user" ? "viewer" : db.type;
           at.blocked = db.blocked;
           at.firstName = db.firstname;
           at.lastName = db.lastname;
           token.email = db.email || token.email;
           token.name = `${db.firstname ?? ""} ${db.lastname ?? ""}`.trim();
           try {
-            console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)}`);
+            console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
           } catch {}
         } else {
           const au = (user as unknown as { sapid?: string | null; alumniDb?: {
@@ -211,7 +218,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     const at: AugmentedToken = token as AugmentedToken;
                     at.userId = dbUser.userid;
                     at.department = dbUser.department;
-                    at.type = dbUser.type;
+                    // Normalize "user" type to "viewer" for consistency
+                    const userType = String(dbUser.type || "").toLowerCase().trim();
+                    at.type = userType === "user" ? "viewer" : dbUser.type;
                     at.blocked = dbUser.blocked;
                     at.firstName = dbUser.firstname;
                     at.lastName = dbUser.lastname;
@@ -270,7 +279,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         s.user.email = String(token.email || "");
         s.user.userId = at.userId;
         s.user.department = at.department;
-        s.user.type = at.type;
+        // Normalize "user" type to "viewer" for consistency (already normalized in JWT, but ensure it here too)
+        const tokenType = String(at.type || "").toLowerCase().trim();
+        s.user.type = tokenType === "user" ? "viewer" : at.type;
         s.user.blocked = at.blocked;
         s.user.firstName = at.firstName;
         s.user.lastName = at.lastName;

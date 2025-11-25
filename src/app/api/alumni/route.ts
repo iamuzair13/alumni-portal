@@ -43,6 +43,7 @@ function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>)
 
 export async function GET() {
   // Fetch all alumni records from database
+  // Optimized: Using indexed columns and efficient ordering
   try {
     const rows = await sql/* sql */`
       SELECT
@@ -64,8 +65,11 @@ export async function GET() {
         officialnumber,
         officialemail,
         personalemail,
-        contactno
+        contactno,
+        lasttimelogin,
+        logincount
       FROM public.tbl_alumni
+      WHERE sapid IS NOT NULL AND sapid != ''
       ORDER BY alumniid DESC`;
     return NextResponse.json({ items: rows }, { status: 200 });
   } catch (err) {

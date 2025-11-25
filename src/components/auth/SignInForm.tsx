@@ -93,10 +93,14 @@ export default function SignInForm() {
           
           if (newSession?.user) {
             const userType = (newSession.user as { type?: string | null })?.type || "";
-            const isStaff = String(userType).toLowerCase() === "staff";
-            const isAlumni = String(userType).toLowerCase() === "alumni";
+            const normalizedType = String(userType).toLowerCase().trim();
+            // Treat "user" as "viewer" for backward compatibility
+            const isAdmin = normalizedType === "admin";
+            const isViewer = normalizedType === "viewer" || normalizedType === "user";
+            const isAlumni = normalizedType === "alumni";
             
-            if (isStaff) {
+            // Both admin and viewer (including legacy "user") redirect to admin dashboard (/)
+            if (isAdmin || isViewer) {
               router.replace("/");
               return;
             } else if (isAlumni) {
@@ -131,8 +135,9 @@ export default function SignInForm() {
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase();
-      if (t === "staff") {
+      const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase().trim();
+      // Both admin and viewer (including legacy "user") redirect to admin dashboard
+      if (t === "admin" || t === "viewer" || t === "user") {
         router.replace("/");
       } else if (t === "alumni") {
         router.replace("/alumni-profile");

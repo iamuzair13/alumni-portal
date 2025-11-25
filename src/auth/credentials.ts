@@ -22,8 +22,8 @@ export async function hashPassword(plain: string): Promise<string> {
 
 export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   if (!stored) return false;
-  // Compare as plain text
-  return stored === plain;
+  // Compare as plain text (trim both to handle whitespace issues)
+  return stored.trim() === plain.trim();
 }
 
 const RATE_LIMIT = new Map<string, { count: number; last: number }>();
@@ -96,23 +96,43 @@ export async function authenticateCredentials(identifier: string, password: stri
       throw new Error("DB_CONNECTION_ERROR");
     }
     const dbUser: (DbUser & { password: string | null }) | undefined = rows[0] as (DbUser & { password: string | null }) | undefined;
-    if (dbUser && (dbUser.type || "").toLowerCase() === "staff") {
+    
+    // If user exists in tbl_users, handle them (regardless of type)
+    if (dbUser) {
+      // Check if user is blocked
       if (dbUser.blocked) {
         log("FAIL", "account blocked");
         throw new Error("USER_BLOCKED");
       }
+      
+      // Verify password
       const stored = dbUser.password || "";
       const ok = await verifyPassword(password, stored);
       if (!ok) {
         log("FAIL", "invalid password");
         throw new Error("INVALID_PASSWORD");
       }
+      
+      // Allow admin and viewer types to login via credentials
+      // Admin has full access, viewer has view-only access
+      // Note: "user" type is treated as "viewer" for backward compatibility
+      const userType = (dbUser.type || "").toLowerCase().trim();
+      if (userType !== "admin" && userType !== "viewer" && userType !== "user") {
+        log("FAIL", `user type is not admin, viewer, or user: ${userType}`);
+        throw new Error("USER_NOT_STAFF");
+      }
+      
+      // Normalize "user" type to "viewer" for consistency
+      if (userType === "user") {
+        dbUser.type = "viewer";
+      }
+      
       const u: UserWithDbLike = {
         email: dbUser.email || identifier.trim(),
         name: `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim() || undefined,
         dbUser,
       };
-      log("OK", "staff credentials verified");
+      log("OK", `${userType} credentials verified`);
       try {
         await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
       } catch {}

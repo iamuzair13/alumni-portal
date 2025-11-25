@@ -21,6 +21,8 @@ export type AlumniListItem = {
   officialemail?: string | null;
   personalemail?: string | null;
   contactno?: string | null;
+  lasttimelogin?: string | null;
+  logincount?: number | null;
 };
 
 export async function getAlumniList(signal?: AbortSignal): Promise<AlumniListItem[]> {
@@ -37,10 +39,11 @@ export function useAlumniList() {
   return useQuery({
     queryKey: ["alumnilist"],
     queryFn: ({ signal }) => getAlumniList(signal),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: "always",
+    staleTime: 5 * 60 * 1000, // 5 minutes - data is fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache for 10 minutes
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: true, // Refetch when network reconnects
+    refetchOnMount: true, // Only refetch if data is stale
   });
 }
 

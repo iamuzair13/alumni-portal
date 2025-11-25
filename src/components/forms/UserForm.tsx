@@ -7,7 +7,7 @@ type UserFormValues = {
   firstname?: string;
   lastname?: string;
   department?: string;
-  type: string; // should be "staff" for admin users
+  type: string; // should be "admin" for admin users, "viewer" for view-only users
   blocked?: boolean;
   csrf: string;
 };
@@ -25,7 +25,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export default function UserForm() {
   const queryClient = useQueryClient();
-  const [values, setValues] = useState<UserFormValues>({ email: "", password: "", firstname: "", lastname: "", department: "", type: "staff", blocked: false, csrf: "" });
+  const [values, setValues] = useState<UserFormValues>({ email: "", password: "", firstname: "", lastname: "", department: "", type: "admin", blocked: false, csrf: "" });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function UserForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save user");
       setMessage(`Saved. New User ID: ${data.userid}`);
-      setValues({ email: "", password: "", firstname: "", lastname: "", department: "", type: "staff", blocked: false, csrf: values.csrf });
+      setValues({ email: "", password: "", firstname: "", lastname: "", department: "", type: "admin", blocked: false, csrf: values.csrf });
       try {
         await queryClient.invalidateQueries({ queryKey: ["users", "list"] });
       } catch {}
@@ -83,7 +83,7 @@ export default function UserForm() {
         </div>
       )}
 
-      <input type="hidden" name="staff" value="staff" />
+      <input type="hidden" name="csrf" value={values.csrf} />
       <input type="hidden" name="csrf" value={values.csrf} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -111,8 +111,8 @@ export default function UserForm() {
         <div>
           <label htmlFor="type" className={labelBase}>Type</label>
           <select id="type" className={inputBase} value={values.type} onChange={(e) => setValues((v) => ({ ...v, type: e.target.value }))}>
-            <option value="staff">Staff (Admin)</option>
-            <option value="user">User</option>
+            <option value="admin">Admin</option>
+            <option value="viewer">Viewer</option>
           </select>
         </div>
         <div className="flex items-center gap-2">

@@ -36,6 +36,10 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "INVALID_EMAIL_FORMAT" }, { status: 400 });
     }
     if (body.password && String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
+    // Normalize "user" type to "viewer" for consistency
+    const userType = body.type ? String(body.type).toLowerCase().trim() : null;
+    const normalizedType = userType === "user" ? "viewer" : (userType || null);
+    
     await sql/* sql */`
       UPDATE public.tbl_users
       SET
@@ -44,7 +48,7 @@ export async function PUT(req: Request) {
         firstname = ${body.firstname ?? null},
         lastname = ${body.lastname ?? null},
         department = ${body.department ?? null},
-        type = ${body.type ?? null},
+        type = ${normalizedType},
         blocked = ${body.blocked ?? null}
       WHERE userid = ${id}`;
     return NextResponse.json({ ok: true }, { status: 200 });
