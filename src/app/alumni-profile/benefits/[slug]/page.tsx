@@ -2,14 +2,13 @@ import { notFound } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import React from "react";
 import BackButton from "@/components/ui/BackButton";
-import PageBanner from "@/components/ui/PageBanner";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
     title: "Fee Discounts & Scholarships",
-    description: "Access to library resources, research databases, and academic support services.",
+    description: "Avail special tuition and admission discounts offered to UOL alumni.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Academic: Fee Discounts & Scholarships</h3>
       <p class="mb-6">As a valued UOL alumnus, you are eligible for academic scholarships and fee discounts on select programs and courses. These benefits support your continued learning and professional growth while rewarding your connection with UOL. To apply and learn more, the details below</p>
@@ -109,7 +108,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "healthcare-benefits": {
     title: "Healthcare Benefits",
-    description: "Comprehensive health insurance and wellness programs for alumni members.",
+    description: "Avail comprehensive health insurance and wellness programs as an alumni member.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Healthcare:</h3>
       <p class="mb-6">We care about your health and wellbeing. Our alumni healthcare benefits provide comprehensive medical consultation and diagnostic services at University of Lahore Hospital and Sehat Medical Complexes.</p>
@@ -144,7 +143,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "identity-inclusion": {
     title: "Identity & Inclusion",
-    description: "Foster a sense of belonging and celebrate diversity within our alumni community.",
+    description: "Avail UOL library access (on-campus &amp; online) and a permanent UOL alumni email.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Identity & Inclusion: UOL Facilities Access & Memberships (Alumni)</h3>
       <p class="mb-6">As a valued member of our alumni community, you have access to exclusive facilities and memberships designed to support your continued connection with the University of Lahore.</p>
@@ -257,7 +256,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "merchant-promotions": {
     title: "Merchant and Business Promotions",
-    description: "Exclusive discounts and special offers from partner businesses and merchants.",
+    description: "Exclusive partner discounts and offers available for alumni with the Alumni Card.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Merchant Discounts & Alumni Businesses Promotion:</h3>
       <p class="mb-6">Enjoy exclusive discounts from partnered merchants and get support for launching your alumni business or start-up through UOL Alumni platforms.</p>
@@ -296,7 +295,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "career-mentorship": {
     title: "Career and Mentorship",
-    description: "Professional development opportunities and mentorship programs for career growth.",
+    description: " Avail exclusive career and professional development opportunities.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Career: Mentorship, Employment, Career Progression & Recognition</h3>
       <p class="mb-6">Advance your career with our comprehensive professional development and mentorship programs designed to support your growth at every stage, from mentorship and job opportunities to start-up support.</p>
@@ -410,7 +409,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "recognition": {
     title: "Recognition",
-    description: "Honor outstanding achievements and contributions of our distinguished alumni.",
+    description: " Avail opportunities to be honored for achievements via awards and alumni spotlights.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Recognition:</h3>
       <p class="mb-6">We celebrate the remarkable achievements and contributions of our alumni community through various recognition programs, awards, and spotlight features.</p>
@@ -518,7 +517,6 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
 
-          <PageBanner title="Benefits" />
           <div className="min-w-screen mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
             <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8 md:p-10">
               <div className="mb-6">

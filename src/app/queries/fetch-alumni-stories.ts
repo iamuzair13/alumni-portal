@@ -14,13 +14,36 @@ export type AlumniStoryItem = {
 export const alumniStoriesKey = ["alumni", "stories", "list"] as const;
 
 export async function getAlumniStories(signal?: AbortSignal): Promise<AlumniStoryItem[]> {
-  const res = await fetch("/api/alumni-stories", { signal, headers: { accept: "application/json" } });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || "Failed to fetch alumni stories");
+  try {
+    const res = await fetch("/api/alumni-stories", { signal, headers: { accept: "application/json" } });
+    if (!res.ok) {
+      // Try to parse error message from JSON
+      let errorMessage = "Failed to fetch alumni stories";
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        // If JSON parsing fails, try text
+        try {
+          const errorText = await res.text();
+          errorMessage = errorText || errorMessage;
+        } catch {
+          // Use default message
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    const data = (await res.json()) as { items: AlumniStoryItem[] };
+    return data.items ?? [];
+  } catch (err) {
+    // If it's an abort error, re-throw it
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw err;
+    }
+    // For other errors, log and re-throw with a user-friendly message
+    console.error("[Alumni Stories] Error fetching stories:", err);
+    throw new Error(err instanceof Error ? err.message : "Failed to load alumni stories. Please try again later.");
   }
-  const data = (await res.json()) as { items: AlumniStoryItem[] };
-  return data.items ?? [];
 }
 
 export function useAlumniStories() {

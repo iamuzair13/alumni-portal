@@ -399,3 +399,27 @@ export async function sendGymMembershipEmail(
   return await sendEmail({ to: alumniEmail, subject, html });
 }
 
+export async function sendSwimmingPoolMembershipEmail(
+  alumniEmail: string,
+  alumniName: string,
+  month: string
+): Promise<boolean> {
+  const subject = "Swimming Pool Facility Discount Confirmation";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
+      Thank you for applying for the UOL Swimming Pool Facility.
+    </p>
+    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
+      Being an alumni of UOL, you are availing a special discount on your swimming pool fee for ${month}. Your application has been received and is currently being processed. You will be notified once your access is activated.
+    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      If you have any questions, feel free to contact us.
+    </p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+

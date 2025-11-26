@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/dbconnect";
+import { sql, retryDbOperation } from "@/lib/dbconnect";
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     const alumniid = Number(id);
-    const rows = await sql/* sql */`
+    
+    if (isNaN(alumniid)) {
+      return NextResponse.json({ message: "Invalid story ID" }, { status: 400 });
+    }
+    
+    const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         s.alumniid,
         s.alumnistories,
@@ -16,11 +21,15 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         a.degreetitle,
         a.academicsession
       FROM public.tblalumnistories s
-      JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+      INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
       WHERE s.alumniid = ${alumniid}
-      LIMIT 1`;
+        AND s.alumnistories IS NOT NULL
+        AND s.alumnistories != ''
+      LIMIT 1`);
+    
     const r = rows[0];
     if (!r) return NextResponse.json({ message: "Not found" }, { status: 404 });
+    
     const result = {
       id: String(r.alumniid ?? ""),
       date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
@@ -33,6 +42,24 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     return NextResponse.json(result, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch story";
+    console.error("[API] Error fetching alumni story:", msg, err);
+    
+    // Check for connection timeout errors
+    const isConnectionError = err instanceof Error && (
+      err.message.includes('CONNECT_TIMEOUT') ||
+      err.message.includes('ETIMEDOUT') ||
+      err.message.includes('timeout') ||
+      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+      (err as Error & { code?: string }).code === 'ETIMEDOUT'
+    );
+    
+    if (isConnectionError) {
+      return NextResponse.json({ 
+        error: "Database connection timeout. Please try again in a moment.",
+        retryable: true
+      }, { status: 503 });
+    }
+    
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

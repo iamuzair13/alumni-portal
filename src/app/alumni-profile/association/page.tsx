@@ -98,8 +98,8 @@ export default async function AssociationPage({ searchParams }: { searchParams: 
           </div>
         )}
         <PageBanner title="Alumni Association" />
-        <div className="min-w-screen mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+        <div className="min-w-screen mx-auto flex justify-center  px-4 sm:px-6 md:px-8 lg:px-10 py-8">
+          <div className="bg-white max-w-4xl rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-slate-900">Apply for Alumni Association</h1>
               <BackButton />

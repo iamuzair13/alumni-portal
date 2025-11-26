@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories";
-import { sql } from "@/lib/dbconnect";
+import { sql, retryDbOperation } from "@/lib/dbconnect";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 import { sendSuccessStoryEmail } from "@/lib/email";
@@ -34,7 +34,7 @@ type StoryRow = {
 
 export async function GET() {
   try {
-    const rows = await sql/* sql */`
+    const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         s.alumniid,
         s.alumnistories,
@@ -46,9 +46,13 @@ export async function GET() {
         a.academicsession,
         a.image1
       FROM public.tblalumnistories s
-      JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
-      ORDER BY s.createdat DESC
-      LIMIT 200` as StoryRow[];
+      INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+      WHERE s.alumnistories IS NOT NULL 
+        AND s.alumnistories != ''
+        AND a.alumniname IS NOT NULL
+      ORDER BY s.createdat DESC NULLS LAST
+      LIMIT 200` as StoryRow[]);
+    
     const items = rows.map((r): StoryItem => {
       const id = String(r.alumniid ?? "");
       const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
@@ -62,7 +66,26 @@ export async function GET() {
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch stories";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[API] Error fetching alumni stories:", msg, err);
+    
+    // Check for connection timeout errors
+    const isConnectionError = err instanceof Error && (
+      err.message.includes('CONNECT_TIMEOUT') ||
+      err.message.includes('ETIMEDOUT') ||
+      err.message.includes('timeout') ||
+      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+      (err as Error & { code?: string }).code === 'ETIMEDOUT'
+    );
+    
+    if (isConnectionError) {
+      return NextResponse.json({ 
+        error: "Database connection timeout. Please try again in a moment.",
+        retryable: true,
+        items: [] // Return empty array so UI doesn't break
+      }, { status: 503 });
+    }
+    
+    return NextResponse.json({ error: msg, items: [] }, { status: 500 });
   }
 }
 

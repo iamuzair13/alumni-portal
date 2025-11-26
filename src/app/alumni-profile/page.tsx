@@ -549,7 +549,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           {[
             {
               title: "Academic Benefits",
-              description: "Access to library resources, research databases, and academic support services.",
+              description: "Avail special tuition and admission discounts offered to UOL alumni.",
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-indigo-700" viewBox="0 0 24 24">
                   <path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12z"/>
@@ -560,7 +560,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Healthcare Benefits",
-              description: "Avail exclusive health benefits and support services for you and your loved ones as a UOL alumnus.",
+              description: "Avail comprehensive health insurance and wellness programs as an alumni member.",
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-emerald-700" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -590,7 +590,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Merchant and Business Promotions",
-              description: "Exclusive discounts and special offers from UOL’s partner businesses and merchants only for alumni with Alumni Card.",
+              description: "Exclusive partner discounts and offers available for alumni with the Alumni Card.",
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-orange-700" viewBox="0 0 24 24">
                   <path d="M7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM1 2v2h2l3.6 7.59-1.35 2.45c-.15.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
@@ -600,7 +600,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Career and Mentorship",
-              description: "Access professional development, mentorship, career opportunities, and start-up support designed exclusively for UOL alumni.",
+              description: " Avail exclusive career and professional development opportunities.",
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-teal-700" viewBox="0 0 24 24">
                   <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
@@ -620,7 +620,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             },
             {
               title: "Recognition",
-              description: "Honor outstanding achievements and contributions of our distinguished alumni.",
+              description: " Avail opportunities to be honored for achievements via awards and alumni spotlights.",
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-amber-700" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
