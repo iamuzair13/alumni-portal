@@ -1,4 +1,6 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const dynamicParams = true;
 import type { Viewport } from "next";
 export const viewport: Viewport = {
   width: "device-width",
