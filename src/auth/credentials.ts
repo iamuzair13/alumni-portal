@@ -23,7 +23,22 @@ export async function hashPassword(plain: string): Promise<string> {
 export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   if (!stored) return false;
   // Compare as plain text (trim both to handle whitespace issues)
-  return stored.trim() === plain.trim();
+  // Also normalize line endings and handle potential encoding differences
+  const normalizedStored = stored.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalizedPlain = plain.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  
+  // Direct comparison
+  if (normalizedStored === normalizedPlain) return true;
+  
+  // Try with different encodings (in case of encoding issues on different platforms)
+  try {
+    // Compare byte-by-byte to handle any encoding issues
+    const storedBytes = Buffer.from(normalizedStored, 'utf8');
+    const plainBytes = Buffer.from(normalizedPlain, 'utf8');
+    if (storedBytes.equals(plainBytes)) return true;
+  } catch {}
+  
+  return false;
 }
 
 const RATE_LIMIT = new Map<string, { count: number; last: number }>();
@@ -90,26 +105,56 @@ export async function authenticateCredentials(identifier: string, password: stri
   if (isEmail) {
     let rows;
     try {
-      rows = await sql/* sql */`SELECT userid, email, password, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${identifier.trim()} LIMIT 1`;
+      // Use case-insensitive email matching and normalize type field
+      const emailLower = identifier.trim().toLowerCase();
+      rows = await sql/* sql */`
+        SELECT 
+          userid, 
+          email, 
+          password, 
+          firstname, 
+          lastname, 
+          department, 
+          LOWER(TRIM(COALESCE(type, ''))) as type_normalized,
+          type as type_original,
+          blocked, 
+          lastlogindatetime 
+        FROM public.tbl_users 
+        WHERE LOWER(TRIM(email)) = ${emailLower}
+        LIMIT 1
+      `;
     } catch (err) {
       log("FAIL", `db error: ${err instanceof Error ? err.message : String(err)}`);
       throw new Error("DB_CONNECTION_ERROR");
     }
-    const dbUser: (DbUser & { password: string | null }) | undefined = rows[0] as (DbUser & { password: string | null }) | undefined;
+    const dbUserRow = rows[0] as ((DbUser & { password: string | null; type_normalized: string | null; type_original: string | null }) | undefined);
     
     // If user exists in tbl_users, handle them (regardless of type)
-    if (dbUser) {
+    if (dbUserRow) {
+      // Reconstruct dbUser with normalized type
+      const dbUser: DbUser & { password: string | null } = {
+        userid: dbUserRow.userid,
+        email: dbUserRow.email,
+        password: dbUserRow.password,
+        firstname: dbUserRow.firstname,
+        lastname: dbUserRow.lastname,
+        department: dbUserRow.department,
+        type: dbUserRow.type_normalized || dbUserRow.type_original || null,
+        blocked: dbUserRow.blocked,
+        lastlogindatetime: dbUserRow.lastlogindatetime,
+      };
+      
       // Check if user is blocked
       if (dbUser.blocked) {
         log("FAIL", "account blocked");
         throw new Error("USER_BLOCKED");
       }
       
-      // Verify password
+      // Verify password - handle potential encoding issues
       const stored = dbUser.password || "";
       const ok = await verifyPassword(password, stored);
       if (!ok) {
-        log("FAIL", "invalid password");
+        log("FAIL", `invalid password (stored length: ${stored.length}, provided length: ${password.length})`);
         throw new Error("INVALID_PASSWORD");
       }
       
@@ -118,15 +163,23 @@ export async function authenticateCredentials(identifier: string, password: stri
       // Admin has full access to data but cannot manage users
       // Viewer has view-only access
       // Note: "user" type is treated as "viewer" for backward compatibility
+      // Use the normalized type from database query
       const userType = (dbUser.type || "").toLowerCase().trim();
-      if (userType !== "admin" && userType !== "superadmin" && userType !== "viewer" && userType !== "user") {
-        log("FAIL", `user type is not admin, superadmin, viewer, or user: ${userType}`);
+      
+      // Also check for variations like "super admin" with space
+      const normalizedType = userType.replace(/\s+/g, ""); // Remove spaces
+      
+      if (normalizedType !== "admin" && normalizedType !== "superadmin" && normalizedType !== "viewer" && normalizedType !== "user") {
+        log("FAIL", `user type is not admin, superadmin, viewer, or user: original="${dbUserRow.type_original}", normalized="${userType}", spaces_removed="${normalizedType}"`);
         throw new Error("USER_NOT_STAFF");
       }
       
       // Normalize "user" type to "viewer" for consistency
-      if (userType === "user") {
+      if (normalizedType === "user") {
         dbUser.type = "viewer";
+      } else {
+        // Ensure type is lowercase for consistency
+        dbUser.type = normalizedType;
       }
       
       const u: UserWithDbLike = {
@@ -134,7 +187,7 @@ export async function authenticateCredentials(identifier: string, password: stri
         name: `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim() || undefined,
         dbUser,
       };
-      log("OK", `${userType} credentials verified`);
+      log("OK", `${normalizedType} credentials verified (original type: ${dbUserRow.type_original})`);
       try {
         await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
       } catch {}
