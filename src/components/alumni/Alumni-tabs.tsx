@@ -10,9 +10,10 @@ import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { isAdminUser, canModify } from "@/lib/alumniProfile";
-import { useAlumniListPaginated, getAlumniCounts, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
+import { useAlumniListPaginated, getAlumniCounts, getAlumniList, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
+import * as XLSX from "xlsx";
 
 type TabKey =
   | "total"
@@ -362,6 +363,134 @@ export const AlumniTabs: React.FC = () => {
   const queryClient = useQueryClient();
   const [mutatingIds, setMutatingIds] = useState<Set<string>>(new Set());
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export to Excel function
+  const handleExportToExcel = useCallback(async () => {
+    try {
+      setIsExporting(true);
+      
+      // First, get the total count to know how many pages we need
+      const firstPage = await getAlumniList(
+        undefined,
+        debouncedQuery || undefined,
+        1,
+        500, // Max limit per API call
+        statusFilter
+      );
+      
+      const totalRecords = firstPage.total;
+      const limit = 500; // Max per page
+      const totalPages = Math.ceil(totalRecords / limit);
+      
+      // Fetch all pages
+      const allItems: AlumniListItem[] = [...firstPage.items];
+      
+      // Fetch remaining pages if there are more
+      if (totalPages > 1) {
+        const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+        const pagePromises = remainingPages.map((page) =>
+          getAlumniList(
+            undefined,
+            debouncedQuery || undefined,
+            page,
+            limit,
+            statusFilter
+          )
+        );
+        
+        const remainingData = await Promise.all(pagePromises);
+        remainingData.forEach((data) => {
+          allItems.push(...data.items);
+        });
+      }
+
+      // Apply client-side filtering for "active" and "inactive" tabs
+      let itemsToExport = allItems;
+      if (selected === "active") {
+        itemsToExport = allItems.filter((i) => {
+          const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
+          return hasLoggedIn;
+        });
+      } else if (selected === "inactive") {
+        itemsToExport = allItems.filter((i) => {
+          const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
+          return !hasLoggedIn;
+        });
+      }
+
+      // Map the data to Excel format
+      const excelData = itemsToExport.map((item: AlumniListItem) => ({
+        "SAP ID": item.sapid || "",
+        "Registration No": item.registrationno || "",
+        "Full Name": item.alumniname || "",
+        "Email (Personal)": item.personalemail || "",
+        "Email (Official)": item.officialemail || "",
+        "Contact No": item.contactno || "",
+        "Faculty": item.facultyname || "",
+        "Department": item.departmentname || "",
+        "Campus": item.campusname || "",
+        "Degree Title": item.degreetitle || "",
+        "Year of Ending": item.yearofending || "",
+        "Country": item.country || "",
+        "City": item.city || "",
+        "Employment Status": item.employeed || "",
+        "Organization": item.nameoforganization || "",
+        "Designation": item.designation || "",
+        "Official Number": item.officialnumber || "",
+        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : item.verify === "pending" || item.verify === null || item.verify === "" ? "Under Approval" : item.verify || "",
+        "Last Login": item.lasttimelogin || "",
+        "Login Count": item.logincount || 0,
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 12 }, // SAP ID
+        { wch: 15 }, // Registration No
+        { wch: 25 }, // Full Name
+        { wch: 30 }, // Email (Personal)
+        { wch: 30 }, // Email (Official)
+        { wch: 15 }, // Contact No
+        { wch: 25 }, // Faculty
+        { wch: 25 }, // Department
+        { wch: 20 }, // Campus
+        { wch: 25 }, // Degree Title
+        { wch: 12 }, // Year of Ending
+        { wch: 20 }, // Country
+        { wch: 20 }, // City
+        { wch: 18 }, // Employment Status
+        { wch: 30 }, // Organization
+        { wch: 25 }, // Designation
+        { wch: 15 }, // Official Number
+        { wch: 18 }, // Verification Status
+        { wch: 20 }, // Last Login
+        { wch: 12 }, // Login Count
+      ];
+      ws["!cols"] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Alumni List");
+
+      // Generate filename with current date and filters
+      const dateStr = new Date().toISOString().split("T")[0];
+      const statusStr = statusFilter ? `_${statusFilter}` : "";
+      const searchStr = debouncedQuery ? `_search` : "";
+      const filename = `alumni_export${statusStr}${searchStr}_${dateStr}.xlsx`;
+
+      // Write and download
+      XLSX.writeFile(wb, filename);
+      
+      setIsExporting(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      setIsExporting(false);
+      alert("Failed to export data. Please try again.");
+    }
+  }, [debouncedQuery, statusFilter, selected]);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const startMut = useCallback((id: string) => {
@@ -707,13 +836,37 @@ export const AlumniTabs: React.FC = () => {
                 />
               </div>
             </div>
-            {/* Background refetch indicator */}
-            {isFetching && !isLoading && (
-              <div className="flex items-center gap-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 px-4 py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
-                <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span>Updating...</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Export Button */}
+              <button
+                type="button"
+                onClick={handleExportToExcel}
+                disabled={isExporting || isLoading}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                aria-label="Export to Excel"
+              >
+                {isExporting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Export Excel</span>
+                  </>
+                )}
+              </button>
+              {/* Background refetch indicator */}
+              {isFetching && !isLoading && (
+                <div className="flex items-center gap-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 px-4 py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
+                  <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <span>Updating...</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

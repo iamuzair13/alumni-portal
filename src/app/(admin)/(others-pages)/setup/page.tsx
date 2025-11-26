@@ -555,7 +555,24 @@ function RealTimeUsers() {
     try {
       setSaving(true);
       setErrorMsg(null);
-      const res = await fetch(`/api/users/${values.userid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+      
+      // Check if viewer is editing their own row
+      const isOwnRow = currentUserId && Number(currentUserId) === values.userid;
+      
+      // Prepare payload - viewers can only update password, email, firstname, lastname
+      const payload = hasModifyAccess 
+        ? values 
+        : isOwnRow 
+          ? {
+              userid: values.userid,
+              email: values.email,
+              firstname: values.firstname,
+              lastname: values.lastname,
+              password: values.password,
+            }
+          : values;
+      
+      const res = await fetch(`/api/users/${values.userid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to update user");
       setEditOpen(false);
@@ -631,26 +648,35 @@ function RealTimeUsers() {
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex gap-2 justify-center">
-                    {hasModifyAccess ? (
-                      <>
-                    <button
-                      aria-label={`Edit ${u.email ?? "user"}`}
-                      onClick={() => openEdit(u)}
-                      className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                    >
-                      <PencilIcon className="w-4 h-4 text-gray-700" />
-                    </button>
-                    <button
-                      aria-label={`Delete ${u.email ?? "user"}`}
-                      onClick={() => setDeleteId(u.userid)}
-                      className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                    >
-                      <TrashBinIcon className="w-4 h-4 text-gray-700" />
-                    </button>
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
-                    )}
+                    {(() => {
+                      // Check if viewer is viewing their own row
+                      const isOwnRow = currentUserId && Number(currentUserId) === u.userid;
+                      const canEdit = hasModifyAccess || isOwnRow;
+                      
+                      if (canEdit) {
+                        return (
+                          <>
+                            <button
+                              aria-label={`Edit ${u.email ?? "user"}`}
+                              onClick={() => openEdit(u)}
+                              className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            >
+                              <PencilIcon className="w-4 h-4 text-gray-700" />
+                            </button>
+                            {hasModifyAccess && (
+                              <button
+                                aria-label={`Delete ${u.email ?? "user"}`}
+                                onClick={() => setDeleteId(u.userid)}
+                                className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              >
+                                <TrashBinIcon className="w-4 h-4 text-gray-700" />
+                              </button>
+                            )}
+                          </>
+                        );
+                      }
+                      return <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>;
+                    })()}
                   </div>
                 </td>
               </tr>
@@ -658,48 +684,77 @@ function RealTimeUsers() {
           </tbody>
         </table>
       </div>
-      {hasModifyAccess && (
-      <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} className="max-w-[720px] p-5 lg:p-10">
-        <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit User</h4>
-        {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
-        <form className="space-y-4" aria-label="Edit user form" onSubmit={(e) => { e.preventDefault(); saveEdit(); }}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={values.email ?? ""} onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))} />
-            </div>
-            <div>
-              <Label>First Name</Label>
-              <Input type="text" value={values.firstname ?? ""} onChange={(e) => setValues((v) => ({ ...v, firstname: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Last Name</Label>
-              <Input type="text" value={values.lastname ?? ""} onChange={(e) => setValues((v) => ({ ...v, lastname: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Department</Label>
-              <Input type="text" value={values.department ?? ""} onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Type</Label>
-              <Select defaultValue={values.type ?? "admin"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "admin", label: "Admin" }, { value: "viewer", label: "Viewer" }]} />
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox checked={!!values.blocked} onChange={(c) => setValues((v) => ({ ...v, blocked: c }))} label="Blocked" />
-            </div>
-            <div className="md:col-span-2">
-              <Label>New Password (optional)</Label>
-              <Input type="password" value={values.password ?? ""} onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))} placeholder="Leave empty to keep existing password" />
-              <p className="mt-1 text-xs text-neutral-600">Minimum 8 characters</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-end w-full gap-3 mt-4">
-            <Button size="sm" variant="outline" onClick={() => setEditOpen(false)} aria-label="Cancel editing">Cancel</Button>
-            <Button size="sm" onClick={saveEdit} disabled={saving} aria-label="Save changes">{saving ? "Saving..." : "Save"}</Button>
-          </div>
-        </form>
-      </Modal>
-      )}
+      {(() => {
+        // Check if viewer is editing their own row
+        const isOwnRow = currentUserId && Number(currentUserId) === values.userid;
+        const canEdit = hasModifyAccess || isOwnRow;
+        
+        if (!canEdit) return null;
+        
+        return (
+          <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} className="max-w-[720px] p-5 lg:p-10">
+            <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">
+              {isOwnRow && !hasModifyAccess ? "Edit My Password" : "Edit User"}
+            </h4>
+            {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
+            <form className="space-y-4" aria-label="Edit user form" onSubmit={(e) => { e.preventDefault(); saveEdit(); }}>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Email</Label>
+                  <Input 
+                    type="email" 
+                    value={values.email ?? ""} 
+                    onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))} 
+                    disabled={!!(isOwnRow && !hasModifyAccess)}
+                  />
+                </div>
+                <div>
+                  <Label>First Name</Label>
+                  <Input 
+                    type="text" 
+                    value={values.firstname ?? ""} 
+                    onChange={(e) => setValues((v) => ({ ...v, firstname: e.target.value }))} 
+                    disabled={!!(isOwnRow && !hasModifyAccess)}
+                  />
+                </div>
+                <div>
+                  <Label>Last Name</Label>
+                  <Input 
+                    type="text" 
+                    value={values.lastname ?? ""} 
+                    onChange={(e) => setValues((v) => ({ ...v, lastname: e.target.value }))} 
+                    disabled={!!(isOwnRow && !hasModifyAccess)}
+                  />
+                </div>
+                {hasModifyAccess && (
+                  <>
+                    <div>
+                      <Label>Department</Label>
+                      <Input type="text" value={values.department ?? ""} onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Type</Label>
+                      <Select defaultValue={values.type ?? "admin"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "admin", label: "Admin" }, { value: "viewer", label: "Viewer" }]} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={!!values.blocked} onChange={(c) => setValues((v) => ({ ...v, blocked: c }))} label="Blocked" />
+                    </div>
+                  </>
+                )}
+                <div className="md:col-span-2">
+                  <Label>New Password (optional)</Label>
+                  <Input type="password" value={values.password ?? ""} onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))} placeholder="Leave empty to keep existing password" />
+                  <p className="mt-1 text-xs text-neutral-600">Minimum 8 characters</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end w-full gap-3 mt-4">
+                <Button size="sm" variant="outline" onClick={() => setEditOpen(false)} aria-label="Cancel editing">Cancel</Button>
+                <Button size="sm" onClick={saveEdit} disabled={saving} aria-label="Save changes">{saving ? "Saving..." : "Save"}</Button>
+              </div>
+            </form>
+          </Modal>
+        );
+      })()}
 
       {hasModifyAccess && (
       <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} className="max-w-[520px] p-5 lg:p-8">
