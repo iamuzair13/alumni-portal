@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { alumniRegistrationComprehensiveSchema } from "@/lib/alumniRegistration";
-import { sql } from "@/lib/dbconnect";
+import { sql, retryDbOperation } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { isAdminUser } from "@/lib/alumniProfile";
 
 // Map DB row -> form values (partial; missing columns set undefined)
 interface DbAlumniRow {
@@ -15,6 +17,7 @@ interface DbAlumniRow {
   cnicpassport?: string | null;
   contactno?: string | null;
   personalemail?: string | null;
+  universityemail?: string | null;
   password?: string | null;
   address?: string | null;
   province?: string | null;
@@ -87,9 +90,47 @@ function mapFromDb(row: DbAlumniRow) {
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
-    const rows = await sql/* sql */`
-      SELECT * FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+    const session = await auth();
+    const isAdmin = isAdminUser(session?.user);
+    
+    const normalizedIdentifier = String(sapid || "").trim();
+    
+    // First try to find by SAP ID
+    let rows = await sql/* sql */`
+      SELECT * FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
+    
+    // If not found by SAP ID, try registration number
+    if (!rows[0]) {
+      rows = await sql/* sql */`
+        SELECT * FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
+    }
+    
     if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    
+    // If not admin, check if user owns this profile (by email, SAP ID, or registration number)
+    if (!isAdmin && session?.user) {
+      const userEmail = session.user.email ? String(session.user.email) : null;
+      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
+      const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null;
+      const row = rows[0] as DbAlumniRow;
+      
+      const isOwnerBySapid = userSapid && userSapid.toLowerCase().trim() === normalizedIdentifier.toLowerCase().trim();
+      const isOwnerByRegNo = userRegNo && userRegNo.toLowerCase().trim() === normalizedIdentifier.toLowerCase().trim();
+      const isOwnerByEmail = userEmail && (
+        String(row.personalemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
+        String(row.universityemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
+        String(row.officialemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim()
+      );
+      
+      // Also check if the identifier matches the row's SAP ID or registration number
+      const identifierMatchesRow = normalizedIdentifier.toLowerCase().trim() === String(row.sapid ?? "").toLowerCase().trim() ||
+                                   normalizedIdentifier.toLowerCase().trim() === String(row.registrationno ?? "").toLowerCase().trim();
+      
+      if (!isOwnerBySapid && !isOwnerByRegNo && !isOwnerByEmail && !identifierMatchesRow) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+    
     const formVals = mapFromDb(rows[0]);
     const row = rows[0] as DbAlumniRow;
     // Include image1 and social links in the response
@@ -119,6 +160,24 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }
     const v = parsed.data;
     const contactno = `${v.countryCode} ${v.phoneNumber}`.trim();
+    const normalizedIdentifier = String(sapid || "").trim();
+    
+    // First try to find by SAP ID, then by registration number
+    let lookupResult = await sql/* sql */`
+      SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
+    
+    if (!lookupResult[0]) {
+      lookupResult = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
+    }
+    
+    if (!lookupResult[0]) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    
+    const alumniId = lookupResult[0].alumniid as number;
+    
+    // Update using alumniid (primary key) for reliability
     const res = await sql/* sql */`
       UPDATE public.tbl_alumni SET
         registrationno = ${v.registrationNo}, alumniname = ${v.name}, gender = ${v.gender}, fathername = ${v.fatherName ?? null},
@@ -129,8 +188,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         industry = ${v.sector ?? null}, nameoforganization = ${v.organization ?? null}, designation = ${v.designation ?? null},
         totalyearsofexpereince = ${v.totalExperienceYears ?? null}, officialemail = ${v.officialEmail ?? null}, officialnumber = ${v.officialPhone ?? null},
         datasource = ${v.source ?? null}, verify = ${v.verified === true ? "true" : v.verified === false ? "false" : null}, alumnistatus = ${v.category ?? null}
-      WHERE sapid = ${sapid}
-      RETURNING alumniid, sapid`;
+      WHERE alumniid = ${alumniId}
+      RETURNING alumniid, sapid, registrationno`;
     if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ ok: true, updated: res[0] }, { status: 200 });
   } catch (err) {
@@ -143,30 +202,122 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
   try {
     const { sapid } = await ctx.params;
     
-    console.log("[API] DELETE request received for SAP ID:", sapid);
+    console.log("[API] DELETE request received for identifier:", sapid);
     
-    // Validate sapid
+    // Validate identifier (could be SAP ID or registration number)
     if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      console.error("[API] Invalid SAP ID provided:", sapid);
-      return NextResponse.json({ error: "Invalid SAP ID" }, { status: 400 });
+      console.error("[API] Invalid identifier provided:", sapid);
+      return NextResponse.json({ error: "Invalid identifier" }, { status: 400 });
     }
     
-    const normalizedSapid = String(sapid).trim();
-    console.log("[API] Attempting to delete alumni with SAP ID:", normalizedSapid);
+    const normalizedIdentifier = String(sapid).trim();
+    console.log("[API] Attempting to delete alumni with identifier:", normalizedIdentifier);
     
-    const res = await sql/* sql */`
-      DELETE FROM public.tbl_alumni WHERE sapid = ${normalizedSapid} RETURNING alumniid`;
+    // First, try to get the alumniid using SAP ID
+    // Use retry logic for connection timeouts
+    let lookupResult = await retryDbOperation(async () => await sql/* sql */`
+      SELECT alumniid, sapid, registrationno, alumniname 
+      FROM public.tbl_alumni 
+      WHERE sapid = ${normalizedIdentifier} 
+      LIMIT 1`);
     
-    if (!res[0]) {
-      console.warn("[API] No alumni found with SAP ID:", normalizedSapid);
+    // If not found by SAP ID, try registration number
+    if (!lookupResult[0]) {
+      console.log("[API] Not found by SAP ID, trying registration number:", normalizedIdentifier);
+      lookupResult = await retryDbOperation(async () => await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, alumniname 
+        FROM public.tbl_alumni 
+        WHERE registrationno = ${normalizedIdentifier} 
+        LIMIT 1`);
+    }
+    
+    if (!lookupResult[0]) {
+      console.warn("[API] No alumni found with SAP ID or Registration Number:", normalizedIdentifier);
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     
-    console.log("[API] Successfully deleted alumni with SAP ID:", normalizedSapid, "Alumni ID:", res[0].alumniid);
-    return NextResponse.json({ ok: true, deletedId: res[0].alumniid }, { status: 200 });
+    const alumniId = lookupResult[0].alumniid as number;
+    const foundSapid = lookupResult[0].sapid as string | null;
+    const foundRegNo = lookupResult[0].registrationno as string | null;
+    const foundName = lookupResult[0].alumniname as string | null;
+    
+    console.log("[API] Found alumni - ID:", alumniId, "SAP ID:", foundSapid, "Registration No:", foundRegNo, "Name:", foundName);
+    
+    // Use a transaction to ensure atomic deletion and handle foreign key cascades properly
+    // Delete by alumniid (primary key) which is more efficient and required for FK relationships
+    // Use retry logic for connection timeouts
+    const result = await retryDbOperation(async () => await sql.begin(async (tx) => {
+      // First, manually delete records from tables without ON DELETE CASCADE
+      // These tables don't have CASCADE, so we need to delete them explicitly
+      try {
+        await tx/* sql */`
+          DELETE FROM public.alumni_memberships WHERE id = ${alumniId}`;
+        console.log("[API] Deleted alumni_memberships records for alumni ID:", alumniId);
+      } catch {
+        // Ignore if no records exist or table doesn't exist
+        console.log("[API] No alumni_memberships records to delete or table doesn't exist");
+      }
+      
+      try {
+        await tx/* sql */`
+          DELETE FROM public.alumni_scholarships WHERE id = ${alumniId}`;
+        console.log("[API] Deleted alumni_scholarships records for alumni ID:", alumniId);
+      } catch {
+        // Ignore if no records exist or table doesn't exist
+        console.log("[API] No alumni_scholarships records to delete or table doesn't exist");
+      }
+      
+      // Delete the alumni record by alumniid
+      // Foreign key constraints with ON DELETE CASCADE will automatically delete related records
+      // (tblcard, tblchapters, tblalumnitalks, tblalumnistories, alumni_chapter)
+      const deleteResult = await tx/* sql */`
+        DELETE FROM public.tbl_alumni 
+        WHERE alumniid = ${alumniId} 
+        RETURNING alumniid, sapid, alumniname`;
+      
+      if (!deleteResult[0]) {
+        throw new Error("Failed to delete alumni record");
+      }
+      
+      return deleteResult[0];
+    }));
+    
+    console.log("[API] Successfully deleted alumni - ID:", result.alumniid, "SAP ID:", result.sapid, "Registration No:", foundRegNo, "Name:", result.alumniname);
+    return NextResponse.json({ 
+      ok: true, 
+      deletedId: result.alumniid,
+      sapid: result.sapid,
+      registrationno: foundRegNo,
+      name: result.alumniname
+    }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete alumni";
     console.error("[API] Error deleting alumni:", message, err);
+    
+    // Check for specific error types
+    if (err instanceof Error) {
+      // Check for connection timeout errors
+      const isConnectionError = err.message.includes("CONNECT_TIMEOUT") ||
+        err.message.includes("ETIMEDOUT") ||
+        err.message.includes("timeout") ||
+        (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+        (err as Error & { code?: string }).code === 'ETIMEDOUT';
+      
+      if (isConnectionError) {
+        return NextResponse.json({ 
+          error: "Database connection timeout. Please try again in a moment.",
+          retryable: true
+        }, { status: 503 }); // Service Unavailable
+      }
+      
+      // Check for foreign key constraint errors
+      if (err.message.includes("foreign key") || err.message.includes("constraint")) {
+        return NextResponse.json({ 
+          error: "Cannot delete alumni: There are related records that prevent deletion. Please remove related data first." 
+        }, { status: 409 });
+      }
+    }
+    
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -189,10 +340,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     // First, get the current alumni record to check if password exists and get email
     // The identifier might be sapid, registrationno, or alumniid (as string)
     // Try to find by sapid first, then by registrationno, then by alumniid
+    const normalizedIdentifier = String(sapid || "").trim();
+    
     let currentRecord = await sql/* sql */`
       SELECT alumniid, password, alumniname, personalemail, officialemail, universityemail, verify, sapid, registrationno
       FROM public.tbl_alumni 
-      WHERE sapid = ${sapid} 
+      WHERE sapid = ${normalizedIdentifier} 
       LIMIT 1
     `;
     
@@ -201,17 +354,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       currentRecord = await sql/* sql */`
         SELECT alumniid, password, alumniname, personalemail, officialemail, universityemail, verify, sapid, registrationno
         FROM public.tbl_alumni 
-        WHERE registrationno = ${sapid} 
+        WHERE registrationno = ${normalizedIdentifier} 
         LIMIT 1
       `;
     }
     
     // If still not found, try alumniid (if the identifier is numeric)
-    if (!currentRecord[0] && !isNaN(Number(sapid))) {
+    if (!currentRecord[0] && !isNaN(Number(normalizedIdentifier))) {
       currentRecord = await sql/* sql */`
         SELECT alumniid, password, alumniname, personalemail, officialemail, universityemail, verify, sapid, registrationno
         FROM public.tbl_alumni 
-        WHERE alumniid = ${Number(sapid)} 
+        WHERE alumniid = ${Number(normalizedIdentifier)} 
         LIMIT 1
       `;
     }

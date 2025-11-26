@@ -44,26 +44,6 @@ const STORAGE_KEY_USERS = "setup_users_v1";
 
 type ToastItem = { id: string; type: "success" | "error"; message: string };
 
-type Chapter = {
-  category: string;
-  code: string;
-  title: string;
-  location: string;
-  whatsapp: string;
-};
-
-const INITIAL_CHAPTERS: Chapter[] = [
-  { category: "Region", code: "AUS", title: "Chapter Australia", location: "Sydney, Australia", whatsapp: "+61 400 123 456" },
-  { category: "Region", code: "EU", title: "Chapter Europe", location: "Berlin, Germany", whatsapp: "+49 151 234 567" },
-  { category: "Region", code: "USA", title: "Chapter USA", location: "New York, USA", whatsapp: "+1 917 555 0123" },
-  { category: "Region", code: "UK", title: "Chapter United Kingdom", location: "London, UK", whatsapp: "+44 7700 900123" },
-  { category: "Region", code: "CA", title: "Chapter Canada", location: "Toronto, Canada", whatsapp: "+1 416 555 0199" },
-  { category: "Region", code: "MENA", title: "Chapter Middle East", location: "Dubai, UAE", whatsapp: "+971 50 123 4567" },
-  { category: "Region", code: "AFR", title: "Chapter Africa", location: "Nairobi, Kenya", whatsapp: "+254 712 345 678" },
-  { category: "Region", code: "SA", title: "Chapter South Asia", location: "Lahore, Pakistan", whatsapp: "+92 300 123 4567" },
-  { category: "Region", code: "SEA", title: "Chapter Southeast Asia", location: "Singapore", whatsapp: "+65 8123 4567" },
-  { category: "Region", code: "CHN", title: "Chapter China", location: "Shanghai, China", whatsapp: "+86 138 0013 8000" },
-];
 
 export default function SetupPage() {
   const { data: session } = useSession();
@@ -72,18 +52,9 @@ export default function SetupPage() {
 
   const TABS = [
     { key: "users", label: "Users" },
-    { key: "chapters", label: "Chapters" },
   ] as const;
 
   const [selected, setSelected] = useState<typeof TABS[number]["key"]>("users");
-  const [chapters, setChapters] = useState<Chapter[]>(INITIAL_CHAPTERS);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
-  const [editData, setEditData] = useState<Chapter | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Users management state
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -297,68 +268,6 @@ export default function SetupPage() {
     );
   };
 
-  const filteredChapters = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return chapters;
-    return chapters.filter((c) =>
-      [c.title, c.location, c.code, c.category, c.whatsapp]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [chapters, searchQuery]);
-
-  const openEdit = (idx: number) => {
-    setEditingIndex(idx);
-    setEditData({ ...chapters[idx] });
-    setErrorMsg(null);
-  };
-  const closeEdit = () => {
-    setEditingIndex(null);
-    setEditData(null);
-    setIsSaving(false);
-    setErrorMsg(null);
-  };
-  const saveEdit = async () => {
-    if (!editData) return;
-    if (!editData.code.trim() || !editData.title.trim()) {
-      setErrorMsg("Code and Title are required.");
-      return;
-    }
-    try {
-      setIsSaving(true);
-      await new Promise((r) => setTimeout(r, 600));
-      if (editingIndex !== null) {
-        const next = [...chapters];
-        next[editingIndex] = { ...editData };
-        setChapters(next);
-      }
-      closeEdit();
-    } catch {
-      setErrorMsg("Failed to save changes. Please try again.");
-      setIsSaving(false);
-    }
-  };
-
-  const confirmDelete = (idx: number) => {
-    setPendingDeleteIndex(idx);
-  };
-  const cancelDelete = () => {
-    setPendingDeleteIndex(null);
-    setDeleteLoading(false);
-  };
-  const performDelete = async () => {
-    if (pendingDeleteIndex === null) return;
-    try {
-      setDeleteLoading(true);
-      await new Promise((r) => setTimeout(r, 500));
-      const next = chapters.filter((_, i) => i !== pendingDeleteIndex);
-      setChapters(next);
-      cancelDelete();
-    } catch {
-      setDeleteLoading(false);
-    }
-  };
 
   return (
     <div className="">
@@ -583,146 +492,8 @@ export default function SetupPage() {
         
         
 
-        {selected === "chapters" && (
-          <div className="mt-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 w-full sm:w-1/2">
-                <Label className="sr-only">Search</Label>
-                <Input
-                  type="text"
-                  placeholder="Search chapters by title, location, code"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search chapters"
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                />
-                {searchQuery && (
-                  <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} aria-label="Clear search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
-                    Clear
-                  </Button>
-                )}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300">{filteredChapters.length} result(s)</div>
-            </div>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Chapters list">
-                <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
-                  <tr className="border-b border-gray-200 dark:border-white/[0.06]">
-                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Sr.No.</th>
-                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Category</th>
-                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Code</th>
-                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Title</th>
-                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Location</th>
-                    <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">WhatsApp</th>
-                    <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
-                  {filteredChapters.map((c, i) => (
-                    <tr key={`${c.code}-${i}`} className="odd:bg-gray-50">
-                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{i + 1}</td>
-                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.category}</td>
-                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.code}</td>
-                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.title}</td>
-                      <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{c.location}</td>
-                      <td className="px-4 py-3 border-r border-gray-200 text-blue-600 text-[13px] text-start dark:text-blue-300">
-                        <a
-                          href={`https://wa.me/${c.whatsapp.replace(/[^\d]/g, "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline"
-                          aria-label={`Open WhatsApp for ${c.title}`}
-                        >
-                          {c.whatsapp}
-                        </a>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex gap-2 justify-end">
-                          {hasModifyAccess ? (
-                            <>
-                          <Button
-                            size="sm"
-                            onClick={() => openEdit(chapters.indexOf(c))}
-                            aria-label={`Edit ${c.title}`}
-                            startIcon={<PencilIcon />}
-                            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                          >
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => confirmDelete(chapters.indexOf(c))}
-                            aria-label={`Delete ${c.title}`}
-                            startIcon={<TrashBinIcon />}
-                            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                          >
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                            </>
-                          ) : (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredChapters.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-[13px] text-gray-600 dark:text-gray-300">No chapters found</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </ComponentCard>
 
-      {hasModifyAccess && (
-      <Modal isOpen={editingIndex !== null} onClose={closeEdit} className="max-w-[700px] p-5 lg:p-10">
-        <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Chapter</h4>
-        {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
-        <form className="space-y-4" aria-label="Edit chapter form">
-          <div>
-            <Label>Category</Label>
-            <Input type="text" value={editData?.category || ""} onChange={(e) => setEditData((prev) => ({ ...(prev as Chapter), category: e.target.value }))} />
-          </div>
-          <div>
-            <Label>Code</Label>
-            <Input type="text" value={editData?.code || ""} onChange={(e) => setEditData((prev) => ({ ...(prev as Chapter), code: e.target.value.toUpperCase() }))} />
-          </div>
-          <div>
-            <Label>Title</Label>
-            <Input type="text" value={editData?.title || ""} onChange={(e) => setEditData((prev) => ({ ...(prev as Chapter), title: e.target.value }))} />
-          </div>
-          <div>
-            <Label>Location</Label>
-            <Input type="text" value={editData?.location || ""} onChange={(e) => setEditData((prev) => ({ ...(prev as Chapter), location: e.target.value }))} />
-          </div>
-          <div>
-            <Label>WhatsApp</Label>
-            <Input type="text" value={editData?.whatsapp || ""} onChange={(e) => setEditData((prev) => ({ ...(prev as Chapter), whatsapp: e.target.value }))} />
-          </div>
-          <div className="flex items-center justify-end w-full gap-3 mt-4">
-            <Button size="sm" variant="outline" onClick={closeEdit} aria-label="Cancel editing">Cancel</Button>
-            <Button size="sm" onClick={saveEdit} disabled={isSaving} aria-label="Save changes">{isSaving ? "Saving..." : "Save"}</Button>
-          </div>
-        </form>
-      </Modal>
-      )}
-
-      {hasModifyAccess && (
-      <Modal isOpen={pendingDeleteIndex !== null} onClose={cancelDelete} className="max-w-[520px] p-5 lg:p-8">
-        <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Delete</h4>
-        <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete this chapter? This action cannot be undone.</p>
-        <div className="flex items-center justify-end w-full gap-3 mt-6">
-          <Button size="sm" variant="outline" onClick={cancelDelete} aria-label="Cancel delete">Cancel</Button>
-          <Button size="sm" onClick={performDelete} disabled={deleteLoading} aria-label="Confirm delete">{deleteLoading ? "Deleting..." : "Delete"}</Button>
-        </div>
-      </Modal>
-      )}
       <style jsx>{`
         .tab-list {
           display: flex;
@@ -744,6 +515,8 @@ export default function SetupPage() {
 function RealTimeUsers() {
   const { data: session } = useSession();
   const hasModifyAccess = canModify(session?.user);
+  const isAdmin = isAdminUser(session?.user);
+  const currentUserId = (session?.user as { userId?: number })?.userId;
   const { data, isLoading, error } = useUsersList();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
@@ -815,7 +588,8 @@ function RealTimeUsers() {
           <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 dark:text-gray-300">Email</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Email</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Password</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Type</th>
               <th scope="col" className="px-4 py-3 text-center text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
@@ -832,6 +606,27 @@ function RealTimeUsers() {
                 </td>
                 
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.email ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 font-mono text-xs">
+                  {(() => {
+                    // Admins can see all passwords
+                    if (isAdmin) {
+                      return (
+                        <span className="text-gray-700 dark:text-gray-300" title="Password visible to admin">{u.password || ""}</span>
+                      );
+                    }
+                    // Viewers can only see their own password
+                    const isOwnPassword = currentUserId && Number(currentUserId) === u.userid;
+                    if (isOwnPassword && u.password) {
+                      return (
+                        <span className="text-gray-700 dark:text-gray-300" title="Your password">{u.password}</span>
+                      );
+                    }
+                    // Hide password for other users
+                    return (
+                      <span className="text-gray-400 italic" title="Password hidden">••••••••</span>
+                    );
+                  })()}
+                </td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.department ?? "-"}</td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
                 <td className="px-4 py-3 text-right">

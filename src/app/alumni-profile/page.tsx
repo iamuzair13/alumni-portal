@@ -37,13 +37,21 @@ type Profile = {
 async function getProfile(searchParams: { sapid?: string }) {
   const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
   try {
+    const session = await auth();
+    const isAdmin = isAdminUser(session?.user);
+    
     if (sapid) {
+      // Admins can view any profile by SAP ID, regardless of verification status
       const rows = await sql/* sql */`
         SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
         FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
-    const session = await auth();
+    
+    // If admin and no sapid provided, return undefined (admins need to specify sapid to view profiles)
+    if (isAdmin) {
+      return undefined;
+    }
     
     // First try to get SAP ID from session (if alumni logged in with SAP ID)
     const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
@@ -54,7 +62,7 @@ async function getProfile(searchParams: { sapid?: string }) {
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
-    // Fallback to email lookup (backward compatibility)
+    // Fallback to email lookup (backward compatibility) - only for alumni users
     const email = session?.user?.email ? String(session.user.email) : undefined;
     if (!email) return undefined;
     const rows = await sql/* sql */`
@@ -228,6 +236,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
                   <ProfileDetailsClient sapId={sapId} />
+                ) : isAdmin ? (
+                  <div className="w-full p-8 text-center">
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-2">Select an Alumni Profile</h3>
+                      <p className="text-blue-700 mb-4">
+                        To view an alumni profile, please select a profile from the alumni list or use the URL with a SAP ID parameter.
+                      </p>
+                      <Link
+                        href="/"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Go to Alumni List
+                      </Link>
+                    </div>
+                  </div>
                 ) : (
                   <ProfileDetailsServer
                     name={name}

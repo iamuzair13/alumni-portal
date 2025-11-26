@@ -31,6 +31,10 @@ export type TblAlumniForm = {
   country: string | null;
   province: string | null;
   city: string | null;
+  homeCity: string | null;
+  homeCountry: string | null;
+  workCity: string | null;
+  workCountry: string | null;
   address: string | null;
   academicsession: string | null;
   degreetitle: string | null;
@@ -153,6 +157,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       country: "Pakistan",
       province: null,
       city: null,
+      homeCity: null,
+      homeCountry: "Pakistan",
+      workCity: null,
+      workCountry: null,
       address: null,
       academicsession: null,
       degreetitle: null,
@@ -199,17 +207,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [citySearch, setCitySearch] = useState("");
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [homeCitySearch, setHomeCitySearch] = useState("");
+  const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false);
   const [sectorOtherSelected, setSectorOtherSelected] = useState(false);
 
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
   const selectedFaculty = watch("facultyname") || "";
   const selectedDepartment = watch("departmentname") || "";
-  const selectedCountry = watch("country") || "";
-  const selectedProvince = watch("province") || "";
-  const selectedCity = watch("city") || "";
+  const selectedHomeCountry = watch("homeCountry") || "";
+  const selectedHomeProvince = watch("province") || "";
+  const selectedHomeCity = watch("homeCity") || "";
   const deptOptions = useMemo(() => getDepartmentsByFaculty(selectedFaculty), [selectedFaculty]);
   const programOptions = useMemo(() => {
     if (selectedFaculty && selectedDepartment && selectedDepartment !== "other") {
@@ -218,38 +226,39 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     return [];
   }, [selectedFaculty, selectedDepartment]);
   
-  // Get cities for selected province
-  const provinceCities = useMemo(() => {
-    if (selectedCountry === "Pakistan" && selectedProvince) {
-      return getCitiesByProvince(selectedProvince);
+  // Get cities for selected province (for home city)
+  const homeProvinceCities = useMemo(() => {
+    if (selectedHomeCountry === "Pakistan" && selectedHomeProvince) {
+      return getCitiesByProvince(selectedHomeProvince);
     }
     return [];
-  }, [selectedCountry, selectedProvince]);
+  }, [selectedHomeCountry, selectedHomeProvince]);
   
-  // Filter cities based on search input and selected province
-  const filteredCities = useMemo(() => {
+  // Filter cities based on search input and selected province (for home city)
+  const filteredHomeCities = useMemo(() => {
     // If no province selected, show no cities
-    if (selectedCountry === "Pakistan" && !selectedProvince) {
+    if (selectedHomeCountry === "Pakistan" && !selectedHomeProvince) {
       return [];
     }
     
     // If province is selected, filter cities from that province
-    if (selectedCountry === "Pakistan" && selectedProvince && provinceCities.length > 0) {
-      if (!citySearch.trim()) {
-        return provinceCities; // Show all cities if no search text
+    if (selectedHomeCountry === "Pakistan" && selectedHomeProvince && homeProvinceCities.length > 0) {
+      if (!homeCitySearch.trim()) {
+        return homeProvinceCities; // Show all cities if no search text
       }
-      const searchLower = citySearch.toLowerCase();
-      return provinceCities.filter(city => 
+      const searchLower = homeCitySearch.toLowerCase();
+      return homeProvinceCities.filter(city => 
         city.toLowerCase().includes(searchLower)
       );
     }
     
     return [];
-  }, [citySearch, selectedCountry, selectedProvince, provinceCities]);
+  }, [homeCitySearch, selectedHomeCountry, selectedHomeProvince, homeProvinceCities]);
+
   
-  // Province options based on selected country
-  const provinceOptions = useMemo(() => {
-    if (selectedCountry === "Pakistan") {
+  // Province options based on selected home country
+  const homeProvinceOptions = useMemo(() => {
+    if (selectedHomeCountry === "Pakistan") {
       return [
         { value: "Punjab", label: "Punjab" },
         { value: "Sindh", label: "Sindh" },
@@ -259,11 +268,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         { value: "GB", label: "Gilgit-Baltistan" },
         { value: "AJK", label: "Azad Kashmir" },
       ];
-    } else if (selectedCountry && selectedCountry !== "" && selectedCountry !== "Select") {
+    } else if (selectedHomeCountry && selectedHomeCountry !== "" && selectedHomeCountry !== "Select") {
       return [{ value: "Other", label: "Other" }];
     }
     return [];
-  }, [selectedCountry]);
+  }, [selectedHomeCountry]);
+
   
   // Reset department and program when faculty changes
   useEffect(() => {
@@ -283,46 +293,47 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
   }, [employeedVal]);
 
-  // Reset province and city when country changes
+  // Reset home province and city when home country changes
   useEffect(() => {
-    if (selectedCountry && selectedCountry !== "Pakistan") {
+    if (selectedHomeCountry && selectedHomeCountry !== "Pakistan") {
       setValue("province", "");
-      setValue("city", "");
-      setCitySearch("");
+      setValue("homeCity", "");
+      setHomeCitySearch("");
     }
-  }, [selectedCountry, setValue]);
+  }, [selectedHomeCountry, setValue]);
   
-  // Reset city when province changes
+  // Reset home city when province changes
   useEffect(() => {
-    if (selectedCountry === "Pakistan" && selectedProvince) {
+    if (selectedHomeCountry === "Pakistan" && selectedHomeProvince) {
       // Only reset if current city is not in the new province's cities
-      const currentCity = selectedCity || "";
-      const validCities = getCitiesByProvince(selectedProvince);
+      const currentCity = selectedHomeCity || "";
+      const validCities = getCitiesByProvince(selectedHomeProvince);
       if (currentCity && !validCities.includes(currentCity)) {
-        setValue("city", "");
-        setCitySearch("");
+        setValue("homeCity", "");
+        setHomeCitySearch("");
       }
-    } else if (selectedCountry === "Pakistan" && !selectedProvince) {
+    } else if (selectedHomeCountry === "Pakistan" && !selectedHomeProvince) {
       // Clear city if province is cleared
-      setValue("city", "");
-      setCitySearch("");
+      setValue("homeCity", "");
+      setHomeCitySearch("");
     }
-  }, [selectedProvince, selectedCountry, selectedCity, setValue]);
+  }, [selectedHomeProvince, selectedHomeCountry, selectedHomeCity, setValue]);
   
-  // Initialize citySearch from form value when city changes (but not during active typing)
+  // Initialize homeCitySearch from form value when homeCity changes (but not during active typing)
   useEffect(() => {
-    if (selectedCountry === "Pakistan" && selectedCity) {
-      const cityStr = String(selectedCity).trim();
-      // Only sync if citySearch is empty or if the selectedCity doesn't match current citySearch
+    if (selectedHomeCountry === "Pakistan" && selectedHomeCity) {
+      const cityStr = String(selectedHomeCity).trim();
+      // Only sync if homeCitySearch is empty or if the selectedHomeCity doesn't match current homeCitySearch
       // This prevents overwriting user input while typing
-      if (citySearch === "" || citySearch !== cityStr) {
-        setCitySearch(cityStr);
+      if (homeCitySearch === "" || homeCitySearch !== cityStr) {
+        setHomeCitySearch(cityStr);
       }
-    } else if (!selectedCity) {
-      setCitySearch("");
+    } else if (!selectedHomeCity) {
+      setHomeCitySearch("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity, selectedCountry]);
+  }, [selectedHomeCity, selectedHomeCountry]);
+
 
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -339,7 +350,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
     
     // Validate Personal Information section (only trigger fields that are actually required)
-    const fieldsToValidate: Array<keyof TblAlumniForm> = ["alumniname", "fathername", "gender", "cnicpassport", "contactno", "personalemail", "city", "country"];
+    const fieldsToValidate: Array<keyof TblAlumniForm> = ["alumniname", "fathername", "gender", "cnicpassport", "contactno", "personalemail", "homeCity", "homeCountry"];
     
     // Only validate the provided field (registrationno OR sapid), not both
     if (regNo) {
@@ -370,12 +381,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     // Only validate work fields if employed
     if ((employeedVal || "").toLowerCase() === "employed") {
-      workFieldsToValidate.push("industry", "nameoforganization", "designation", "totalyearsofexpereince", "city", "country");
+      workFieldsToValidate.push("industry", "nameoforganization", "designation", "totalyearsofexpereince", "workCity", "workCountry");
     }
     
     // Validate higher education fields if pursuing higher education
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      workFieldsToValidate.push("highereducationdegreetitle", "highereducationinstitute", "highereducationprogram", "city", "country");
+      workFieldsToValidate.push("highereducationdegreetitle", "highereducationinstitute", "highereducationprogram", "workCity", "workCountry");
     }
     
     const workOk = await trigger(workFieldsToValidate);
@@ -404,8 +415,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         "highereducationdegreetitle",
         "highereducationinstitute",
         "highereducationprogram",
-        "city",
-        "country",
+        "workCity",
+        "workCountry",
       ];
       for (const f of fields) {
         const val = watch(f);
@@ -437,6 +448,20 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       }
       if (!payload.datasource || String(payload.datasource).trim() === "") {
         payload.datasource = "Alumni";
+      }
+      
+      // Map work city/country to database city/country if provided, otherwise use home city/country
+      // The database only has one city and country field, so we prioritize work location when provided
+      if (payload.workCity && String(payload.workCity).trim() !== "") {
+        payload.city = payload.workCity;
+      } else if (payload.homeCity && String(payload.homeCity).trim() !== "") {
+        payload.city = payload.homeCity;
+      }
+      
+      if (payload.workCountry && String(payload.workCountry).trim() !== "") {
+        payload.country = payload.workCountry;
+      } else if (payload.homeCountry && String(payload.homeCountry).trim() !== "") {
+        payload.country = payload.homeCountry;
       }
       
       // Check if SAP ID or Registration # exists
@@ -778,15 +803,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.country && <p className="mt-1 text-xs text-red-600">Country is required</p>}
             </div>
             <div>
-              <label className={labelBase}>Province {selectedCountry === "Pakistan" ? "*" : ""}</label>
-              {selectedCountry === "Pakistan" ? (
+              <label className={labelBase}>Province {selectedHomeCountry === "Pakistan" ? "*" : ""}</label>
+              {selectedHomeCountry === "Pakistan" ? (
                 <select 
                   className={inputBase} 
-                  {...register("province", { required: selectedCountry === "Pakistan" })}
-                  key={`province-${selectedCountry || "none"}`}
+                  {...register("province", { required: selectedHomeCountry === "Pakistan" })}
+                  key={`province-${selectedHomeCountry || "none"}`}
                 > 
                   <option value="">Select</option>
-                  {provinceOptions.map((opt) => (
+                  {homeProvinceOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -800,21 +825,21 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   {...register("province", { maxLength: 50 })} 
                 />
               )}
-              {errors.province && selectedCountry === "Pakistan" && (
+              {errors.province && selectedHomeCountry === "Pakistan" && (
                 <p className="mt-1 text-xs text-red-600">Province is required</p>
               )}
             </div>
             <div className="relative">
               <label className={labelBase}>Home City *</label>
-              {selectedCountry === "Pakistan" ? (
+              {selectedHomeCountry === "Pakistan" ? (
                 <>
-                  {!selectedProvince ? (
+                  {!selectedHomeProvince ? (
                     <div className="mt-1 p-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500">
                       Please select a province first
                     </div>
                   ) : (
                     <Controller
-                      name="city"
+                      name="homeCity"
                       control={control}
                       rules={{ 
                         required: "City is required",
@@ -835,26 +860,26 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           <input 
                             type="text" 
                             className={inputBase} 
-                            value={citySearch}
+                            value={homeCitySearch}
                             onChange={(e) => {
                               const value = e.target.value;
-                              setCitySearch(value);
-                              setShowCityDropdown(true);
+                              setHomeCitySearch(value);
+                              setShowHomeCityDropdown(true);
                               
                               // Always update form value immediately to ensure validation works
                               // This fixes the issue where validation runs before blur
                               const trimmedValue = value.trim();
                               
                               // Check if the typed value exactly matches a city (case-insensitive)
-                              const matchingCity = provinceCities.find(c => c.toLowerCase() === trimmedValue.toLowerCase());
+                              const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedValue.toLowerCase());
                               if (matchingCity) {
                                 // Update form value with exact match
                                 field.onChange(matchingCity);
-                                setCitySearch(matchingCity);
-                                setShowCityDropdown(false);
+                                setHomeCitySearch(matchingCity);
+                                setShowHomeCityDropdown(false);
                                 // Trigger validation to clear any error messages
                                 setTimeout(() => {
-                                  trigger("city");
+                                  trigger("homeCity");
                                 }, 0);
                               } else if (trimmedValue === "") {
                                 // Clear form value if input is empty
@@ -865,81 +890,81 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                 field.onChange(trimmedValue);
                                 // Trigger validation to update error state
                                 setTimeout(() => {
-                                  trigger("city");
+                                  trigger("homeCity");
                                 }, 0);
                               }
                             }}
                             onFocus={() => {
-                              if (selectedProvince) {
-                                setShowCityDropdown(true);
+                              if (selectedHomeProvince) {
+                                setShowHomeCityDropdown(true);
                               }
                             }}
                             onBlur={(e) => {
                               // Don't close if clicking inside dropdown
                               const relatedTarget = e.relatedTarget as HTMLElement;
-                              if (relatedTarget && relatedTarget.closest('.city-dropdown')) {
+                              if (relatedTarget && relatedTarget.closest('.home-city-dropdown')) {
                                 return;
                               }
                               // Delay to allow dropdown click
                               setTimeout(() => {
-                                setShowCityDropdown(false);
-                                const trimmedSearch = citySearch.trim();
+                                setShowHomeCityDropdown(false);
+                                const trimmedSearch = homeCitySearch.trim();
                                 
                                 // If the typed value matches a city in the list, use it
-                                const matchingCity = provinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
+                                const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
                                 if (matchingCity) {
                                   field.onChange(matchingCity);
-                                  setCitySearch(matchingCity);
+                                  setHomeCitySearch(matchingCity);
                                   // Trigger validation to clear any error messages
                                   setTimeout(() => {
-                                    trigger("city");
+                                    trigger("homeCity");
                                   }, 0);
                                 } else if (trimmedSearch === "") {
                                   field.onChange("");
                                 } else {
                                   // If typed value doesn't match exactly, accept it as-is (user might be typing a valid city not in list)
                                   // But first check if it's close to any city
-                                  const closeMatch = provinceCities.find(c => 
+                                  const closeMatch = homeProvinceCities.find(c => 
                                     c.toLowerCase().startsWith(trimmedSearch.toLowerCase()) ||
                                     trimmedSearch.toLowerCase().startsWith(c.toLowerCase())
                                   );
                                   if (closeMatch && trimmedSearch.length >= 3) {
                                     // Auto-complete if close match found
                                     field.onChange(closeMatch);
-                                    setCitySearch(closeMatch);
+                                    setHomeCitySearch(closeMatch);
                                     // Trigger validation to clear any error messages
                                     setTimeout(() => {
-                                      trigger("city");
+                                      trigger("homeCity");
                                     }, 0);
                                   } else {
                                     // Accept the typed value as-is (already set in onChange, but ensure it's set)
                                     field.onChange(trimmedSearch);
                                     // Trigger validation to update error state
                                     setTimeout(() => {
-                                      trigger("city");
+                                      trigger("homeCity");
                                     }, 0);
                                   }
                                 }
                               }, 200);
                             }}
-                            placeholder={`Type to search cities in ${selectedProvince}...`}
-                            disabled={!selectedProvince}
+                            placeholder={`Type to search cities in ${selectedHomeProvince}...`}
+                            disabled={!selectedHomeProvince}
                           />
-                          {showCityDropdown && selectedProvince && filteredCities.length > 0 && (
-                            <div className="city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {filteredCities.map((city) => (
+                          {showHomeCityDropdown && selectedHomeProvince && filteredHomeCities.length > 0 && (
+                            <div className="home-city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                              {filteredHomeCities.map((city) => (
                                 <button
                                   key={city}
                                   type="button"
                                   className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                                   onMouseDown={(e) => {
                                     e.preventDefault(); // Prevent input blur
-                                    setCitySearch(city);
+                                    setHomeCitySearch(city);
                                     field.onChange(city);
-                                    setShowCityDropdown(false);
+                                    setShowHomeCityDropdown(false);
                                     // Trigger validation to clear any error messages
                                     setTimeout(() => {
-                                      trigger("city");
+                                      trigger("homeCity");
                                     }, 0);
                                   }}
                                 >
@@ -948,9 +973,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                               ))}
                             </div>
                           )}
-                          {showCityDropdown && selectedProvince && filteredCities.length === 0 && citySearch.trim() && (
-                            <div className="city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-sm text-gray-500">
-                              No cities found matching &quot;{citySearch}&quot;
+                          {showHomeCityDropdown && selectedHomeProvince && filteredHomeCities.length === 0 && homeCitySearch.trim() && (
+                            <div className="home-city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-sm text-gray-500">
+                              No cities found matching &quot;{homeCitySearch}&quot;
                             </div>
                           )}
                         </>
@@ -963,10 +988,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   type="text" 
                   className={inputBase} 
                   placeholder="Enter city name"
-                  {...register("city", { required: true, maxLength: 50 })} 
+                  {...register("homeCity", { required: true, maxLength: 50 })} 
                 />
               )}
-              {errors.city && <p className="mt-1 text-xs text-red-600">City is required</p>}
+              {errors.homeCity && <p className="mt-1 text-xs text-red-600">City is required</p>}
             </div>
           </div>
         </section>
@@ -1165,38 +1190,44 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input 
                     type="text" 
                     className={inputBase} 
-                    {...register("city", { 
+                    placeholder="Enter work city name"
+                    {...register("workCity", { 
                       required: "Work city is required", 
-                      maxLength: 50,
-                      validate: (value) => {
-                        if (!value || String(value).trim() === "") {
-                          return "Work city is required";
-                        }
-                        return true;
-                      }
+                      maxLength: 50 
                     })} 
                   />
-                  {errors.city && (
-                    <p className="mt-1 text-xs text-red-600">{errors.city.message || "Work city is required"}</p>
+                  {errors.workCity && (
+                    <p className="mt-1 text-xs text-red-600">{errors.workCity.message || "Work city is required"}</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">Overrides Home City and maps to `city`.</p>
+                  <p className="mt-1 text-xs text-neutral-600">Work location city (independent from home city).</p>
                 </div>
                 <div>
                   <label className={labelBase}>Work Country *</label>
-                  <select className={inputBase} {...register("country", { required: true })}>
-                    <option value="">Select</option>
-                    <option value="Pakistan">Pakistan</option>
-                    <option value="United Arab Emirates">United Arab Emirates</option>
-                    <option value="Saudi Arabia">Saudi Arabia</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  {errors.country && (
+                  <Controller
+                    name="workCountry"
+                    control={control}
+                    rules={{ required: "Work country is required" }}
+                    render={({ field }) => (
+                      <select 
+                        className={inputBase} 
+                        {...field}
+                        value={field.value || ""}
+                      >
+                        <option value="">Select</option>
+                        <option value="Pakistan">Pakistan</option>
+                        <option value="United Arab Emirates">United Arab Emirates</option>
+                        <option value="Saudi Arabia">Saudi Arabia</option>
+                        <option value="United States">United States</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    )}
+                  />
+                  {errors.workCountry && (
                     <p className="mt-1 text-xs text-red-600">Work country is required</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">Overrides Home Country and maps to `country`.</p>
+                  <p className="mt-1 text-xs text-neutral-600">Work location country (independent from home country).</p>
                 </div>
               </>
             )}
@@ -1237,7 +1268,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input 
                     type="text" 
                     className={inputBase} 
-                    {...register("city", { 
+                    {...register("workCity", { 
                       required: "City is required", 
                       maxLength: 50,
                       validate: (value) => {
@@ -1249,29 +1280,40 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     })} 
                     placeholder="e.g. Lahore"
                   />
-                  {errors.city && (
-                    <p className="mt-1 text-xs text-red-600">{errors.city.message || "City is required"}</p>
+                  {errors.workCity && (
+                    <p className="mt-1 text-xs text-red-600">{errors.workCity.message || "City is required"}</p>
                   )}
                   <p className="mt-1 text-xs text-neutral-600">City where you are pursuing higher education.</p>
                 </div>
 
                 <div>
                   <label className={labelBase}>Country *</label>
-                  <select className={inputBase} {...register("country", { required: true })}>
-                    <option value="">Select</option>
-                    <option value="Pakistan">Pakistan</option>
-                    <option value="United Arab Emirates">United Arab Emirates</option>
-                    <option value="Saudi Arabia">Saudi Arabia</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Germany">Germany</option>
-                    <option value="Malaysia">Malaysia</option>
-                    <option value="Turkey">Turkey</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  {errors.country && (
+                  <Controller
+                    name="workCountry"
+                    control={control}
+                    rules={{ required: "Country is required" }}
+                    render={({ field }) => (
+                      <select 
+                        className={inputBase} 
+                        {...field}
+                        value={field.value || ""}
+                      >
+                        <option value="">Select</option>
+                        <option value="Pakistan">Pakistan</option>
+                        <option value="United Arab Emirates">United Arab Emirates</option>
+                        <option value="Saudi Arabia">Saudi Arabia</option>
+                        <option value="United States">United States</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Germany">Germany</option>
+                        <option value="Malaysia">Malaysia</option>
+                        <option value="Turkey">Turkey</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    )}
+                  />
+                  {errors.workCountry && (
                     <p className="mt-1 text-xs text-red-600">Country is required</p>
                   )}
                   <p className="mt-1 text-xs text-neutral-600">Country where you are pursuing higher education.</p>

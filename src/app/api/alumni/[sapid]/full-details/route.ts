@@ -14,8 +14,17 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
 
     // Fetch all details from tbl_alumni
-    const rows = await sql/* sql */`
-      SELECT * FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+    // Try SAP ID first, then registration number
+    const normalizedIdentifier = String(sapid || "").trim();
+    
+    let rows = await sql/* sql */`
+      SELECT * FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
+    
+    // If not found by SAP ID, try registration number
+    if (!rows[0]) {
+      rows = await sql/* sql */`
+        SELECT * FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
+    }
     
     if (!rows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
@@ -23,18 +32,27 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
 
     const row = rows[0] as Record<string, unknown>;
 
-    // Verify the user has access to this profile (either owns it by SAP ID or email, or is admin)
+    // Verify the user has access to this profile (either owns it by SAP ID, registration number, or email, or is admin)
     const userEmail = session.user.email ? String(session.user.email) : null;
     const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
-    const requestedSapid = String(sapid || "").toLowerCase().trim();
+    const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null;
+    const requestedIdentifier = normalizedIdentifier.toLowerCase().trim();
     const dbSapid = String(row.sapid ?? "").toLowerCase().trim();
+    const dbRegNo = String(row.registrationno ?? "").toLowerCase().trim();
     
     // Check ownership by SAP ID first (since users now log in with SAP ID)
-    // Compare both: session SAP ID with requested SAP ID, and session SAP ID with database SAP ID
+    // Compare both: session SAP ID with requested identifier, and session SAP ID with database SAP ID
     const isOwnerBySapid = userSapid && (
-      userSapid.toLowerCase().trim() === requestedSapid ||
+      userSapid.toLowerCase().trim() === requestedIdentifier ||
       dbSapid === userSapid.toLowerCase().trim() ||
-      requestedSapid === dbSapid // Allow if requested SAP ID matches database SAP ID
+      requestedIdentifier === dbSapid // Allow if requested identifier matches database SAP ID
+    );
+    
+    // Check ownership by registration number
+    const isOwnerByRegNo = userRegNo && (
+      userRegNo.toLowerCase().trim() === requestedIdentifier ||
+      dbRegNo === userRegNo.toLowerCase().trim() ||
+      requestedIdentifier === dbRegNo // Allow if requested identifier matches database registration number
     );
     
     // Check ownership by email (backward compatibility)
@@ -44,12 +62,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       String(row.officialemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim()
     );
     
-    const isOwner = isOwnerBySapid || isOwnerByEmail;
+    const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
     const isAdmin = isAdminUser(session.user);
 
     // Debug logging
     console.log("[API] Full details auth check:", {
-      requestedSapid,
+      requestedIdentifier,
       userSapid,
       dbSapid,
       userEmail,

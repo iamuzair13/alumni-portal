@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/dbconnect";
+import { sql, retryDbOperation } from "@/lib/dbconnect";
 
 export async function GET(req: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     let result;
     
     if (searchTerm) {
-      result = await sql/* sql */`
+      result = await retryDbOperation(async () => await sql/* sql */`
         SELECT 
           COUNT(*) as total,
           -- Verified: verify = 'true' (string)
@@ -52,9 +52,9 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTerm}
           )
-      `;
+      `);
     } else {
-      result = await sql/* sql */`
+      result = await retryDbOperation(async () => await sql/* sql */`
         SELECT 
           COUNT(*) as total,
           -- Verified: verify = 'true' (string)
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
           END) as inactive
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '' OR verify = 'pending')
-      `;
+      `);
     }
 
     const row = result[0] as {
@@ -122,6 +122,23 @@ export async function GET(req: Request) {
     return NextResponse.json(response, { status: 200 });
   } catch (err) {
     console.error("[API] Error fetching counts:", err);
+    
+    // Check for connection timeout errors
+    const isConnectionError = err instanceof Error && (
+      err.message.includes('CONNECT_TIMEOUT') ||
+      err.message.includes('ETIMEDOUT') ||
+      err.message.includes('timeout') ||
+      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+      (err as Error & { code?: string }).code === 'ETIMEDOUT'
+    );
+    
+    if (isConnectionError) {
+      return NextResponse.json({ 
+        error: "Database connection timeout. Please try again in a moment.",
+        retryable: true
+      }, { status: 503 }); // Service Unavailable
+    }
+    
     const message = err instanceof Error ? err.message : "Failed to fetch counts";
     return NextResponse.json({ error: message }, { status: 500 });
   }

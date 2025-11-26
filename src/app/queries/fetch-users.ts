@@ -10,6 +10,7 @@ export type AdminUser = {
   type: string | null;
   blocked: boolean | null;
   lastlogindatetime: string | null;
+  password?: string | null;
 };
 
 export async function getUsersList(signal?: AbortSignal): Promise<AdminUser[]> {
