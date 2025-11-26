@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 export type AlumniStoryItem = {
   id: string;
   date: string;
+  title: string;
   name: string;
   program: string;
   session: string;

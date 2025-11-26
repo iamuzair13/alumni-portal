@@ -10,6 +10,7 @@ export const storyFormSchema = z.object({
   department: z.string().trim().min(1, "Department is required"),
   passingYear: z.number().int().min(1900).max(2100).optional(),
   contactNumber: z.string().trim().max(50).optional(),
+  storyTitle: z.string().trim().min(1, "Story title is required").max(200, "Title must be under 200 chars"),
   storyHtml: z.string().trim().min(1, "Story is required"),
 });
 
@@ -23,6 +24,7 @@ export const storyServerSchema = z.object({
   department: z.string().trim().min(1),
   passingYear: z.number().int().min(1900).max(2100).optional(),
   contactNumber: z.string().trim().max(50).optional(),
+  storyTitle: z.string().trim().min(1).max(200),
   storyHtml: z.string().trim().min(1),
 });
 

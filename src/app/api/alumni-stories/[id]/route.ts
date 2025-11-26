@@ -14,6 +14,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       SELECT 
         s.alumniid,
         s.alumnistories,
+        COALESCE(s.storytitle, a.alumniname) as storytitle,
         s.alumniimage,
         s.status,
         s.createdat,
@@ -30,7 +31,18 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         AND TRIM(a.alumniname) != ''
       LIMIT 1`);
     
-    const r = rows[0];
+    const r = rows[0] as {
+      alumniid: number;
+      alumnistories: string | null;
+      storytitle: string | null;
+      alumniimage: string | null;
+      status: string | null;
+      createdat: string | null;
+      alumniname: string | null;
+      degreetitle: string | null;
+      academicsession: string | null;
+    } | undefined;
+    
     if (!r) {
       return NextResponse.json({ 
         message: "Story not found. This story may not exist or may have been removed.",
@@ -41,6 +53,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     const result = {
       id: String(r.alumniid ?? ""),
       date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
+      title: String(r.storytitle ?? r.alumniname ?? ""),
       name: String(r.alumniname ?? ""),
       program: String(r.degreetitle ?? ""),
       session: String(r.academicsession ?? ""),

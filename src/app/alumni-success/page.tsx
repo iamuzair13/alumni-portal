@@ -32,7 +32,7 @@ export default function Page() {
   const storiesData = Array.isArray(data) ? data : [];
   const items: SuccessStory[] = storiesData.map((s: AlumniStoryItem) => ({
     id: s.id,
-    title: sanitizeText(s.name),
+    title: sanitizeText(s.title || s.name), // Use title if available, fallback to name
     short: sanitizeText(s.shortDescription).slice(0, 200),
     imageUrl: s.imageUrl,
     program: sanitizeText(s.program),

@@ -8,6 +8,7 @@ import { sql } from "@/lib/dbconnect";
 type DetailItem = {
   id: string;
   date: string;
+  title: string;
   name: string;
   program: string;
   session: string;
@@ -81,7 +82,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
 
   const data = (await res.json()) as DetailItem;
-  const title = sanitizeText(data.name);
+  const title = sanitizeText(data.title || data.name); // Use title if available, fallback to name
   const storyHtml = sanitizeHtml(data.shortDescription);
   const meta = {
     program: sanitizeText(data.program),

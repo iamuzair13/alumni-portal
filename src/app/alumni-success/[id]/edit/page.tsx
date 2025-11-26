@@ -83,7 +83,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
       WHERE alumniid = ${storyAlumniId}
       LIMIT 1`,
     sql/* sql */`
-      SELECT alumnistories FROM public.tblalumnistories
+      SELECT alumnistories, storytitle FROM public.tblalumnistories
       WHERE alumniid = ${storyAlumniId}
       LIMIT 1`
   ]);
@@ -102,6 +102,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
 
   const storyData = storyRows[0] as {
     alumnistories: string | null;
+    storytitle: string | null;
   } | undefined;
 
   if (!r) {
@@ -132,6 +133,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   const passingYear = r?.yearofending ?? null;
   const contactNumber = String(r?.contactno ?? "");
   const existingStory = String(storyData?.alumnistories ?? "");
+  const existingTitle = String(storyData?.storytitle ?? "");
 
   return (
     <>
@@ -162,6 +164,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
               passingYear={passingYear}
               contactNumber={contactNumber}
               existingStory={existingStory}
+              existingTitle={existingTitle}
               storyId={id}
             />
           </div>

@@ -13,6 +13,7 @@ const purify = DOMPurify(window as any);
 type StoryItem = {
   id: string;
   date: string;
+  title: string;
   name: string;
   program: string;
   session: string;
@@ -23,6 +24,7 @@ type StoryItem = {
 type StoryRow = {
   alumniid: number;
   alumnistories: string | null;
+  storytitle: string | null;
   alumniimage: string | null;
   status: string | null;
   createdat: string | null;
@@ -38,6 +40,7 @@ export async function GET() {
       SELECT 
         s.alumniid,
         s.alumnistories,
+        COALESCE(s.storytitle, a.alumniname) as storytitle,
         s.alumniimage,
         s.status,
         s.createdat,
@@ -58,12 +61,13 @@ export async function GET() {
     const items = rows.map((r): StoryItem => {
       const id = String(r.alumniid ?? "");
       const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
+      const title = String(r.storytitle ?? r.alumniname ?? "");
       const name = String(r.alumniname ?? "");
       const program = String(r.degreetitle ?? "");
       const session = String(r.academicsession ?? "");
       const shortDescription = String(r.alumnistories ?? "");
       const imageUrl = String(r.alumniimage ?? r.image1 ?? "");
-      return { id, date, name, program, session, shortDescription, imageUrl };
+      return { id, date, title, name, program, session, shortDescription, imageUrl };
     });
     
     // Always return items array, even if empty (no stories is a valid state)
@@ -107,7 +111,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = storyServerSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ message: "Validation failed", issues: parsed.error.format() }, { status: 422 });
+      console.error("[API] Story validation failed:", JSON.stringify(parsed.error.format(), null, 2));
+      console.error("[API] Received body:", JSON.stringify(body, null, 2));
+      return NextResponse.json({ 
+        message: "Validation failed", 
+        issues: parsed.error.format(),
+        received: body 
+      }, { status: 422 });
     }
     const v: ServerStoryPayload = parsed.data;
     const createdAt = new Date();
@@ -134,10 +144,11 @@ export async function POST(req: Request) {
     }
 
     await sql/* sql */`
-      INSERT INTO public.tblalumnistories (alumniid, alumnistories, alumniimage, status, createdat)
-      VALUES (${alumniId}, ${cleanHtml}, ${null}, ${null}, ${createdAt.toISOString()})
+      INSERT INTO public.tblalumnistories (alumniid, alumnistories, storytitle, alumniimage, status, createdat)
+      VALUES (${alumniId}, ${cleanHtml}, ${v.storyTitle}, ${null}, ${null}, ${createdAt.toISOString()})
       ON CONFLICT (alumniid) DO UPDATE SET
         alumnistories = EXCLUDED.alumnistories,
+        storytitle = EXCLUDED.storytitle,
         createdat = EXCLUDED.createdat`;
     
     // Send confirmation email

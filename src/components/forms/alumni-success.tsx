@@ -20,8 +20,17 @@ type Props = {
   passingYear: number | null;
   contactNumber: string;
   existingStory?: string;
+  existingTitle?: string;
   storyId?: string;
 };
+
+// Helper function to check if HTML has actual content (not just empty tags)
+function hasContent(html: string): boolean {
+  if (!html || html.trim() === "") return false;
+  // Remove all HTML tags and check if there's actual text content
+  const textContent = html.replace(/<[^>]*>/g, "").trim();
+  return textContent.length > 0;
+}
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -29,7 +38,11 @@ const schema = z.object({
   department: z.string().min(1, "Department is required"),
   passingYear: z.number().int().min(1900).max(2100).optional().nullable(),
   contactNumber: z.string().max(50).optional(),
-  storyHtml: z.string().min(1, "Story is required"),
+  storyTitle: z.string().min(1, "Story title is required").max(200, "Title must be under 200 characters"),
+  storyHtml: z.string().refine(
+    (val) => hasContent(val),
+    { message: "Story is required. Please enter your success story." }
+  ),
 });
 
 type FormVals = z.infer<typeof schema>;
@@ -48,6 +61,7 @@ export default function AlumniSuccessForm({
   passingYear,
   contactNumber: initialContactNumber,
   existingStory = "",
+  existingTitle = "",
   storyId
 }: Props) {
   const router = useRouter();
@@ -65,12 +79,14 @@ export default function AlumniSuccessForm({
       department: department || "",
       passingYear: passingYear || null,
       contactNumber: initialContactNumber || "",
+      storyTitle: existingTitle || "",
       storyHtml: existingStory || "",
     },
     mode: "onChange",
   });
 
   // Tiptap editor configuration
+  // Note: immediatelyRender: false is required for SSR compatibility in Next.js
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -98,6 +114,8 @@ export default function AlumniSuccessForm({
         class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
       },
     },
+    // Ensure editor is editable
+    editable: true,
   });
 
   // Update editor content when existingStory changes (for edit mode)
@@ -109,10 +127,27 @@ export default function AlumniSuccessForm({
   }, [editor, existingStory, setValue]);
 
   const onSubmit = async (vals: FormVals) => {
+    // Get the latest HTML from editor if available
+    const htmlContent = editor?.getHTML() || vals.storyHtml;
+    
+    // Check if content is actually empty
+    if (!hasContent(htmlContent)) {
+      toast.error("Please enter your success story before submitting.", {
+        duration: 3000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      return;
+    }
+
     const loadingToast = toast.loading(storyId ? "Updating your story..." : "Submitting your success story...");
     try {
       // Sanitize HTML using DOMPurify (client-side)
-      const sanitizedHtml = DOMPurify.sanitize(vals.storyHtml, {
+      const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
         ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
         ALLOWED_ATTR: ["href", "target", "rel"],
       });
@@ -125,6 +160,7 @@ export default function AlumniSuccessForm({
         department: vals.department,
         passingYear: vals.passingYear || null,
         contactNumber: vals.contactNumber || null,
+        storyTitle: vals.storyTitle,
         storyHtml: sanitizedHtml,
       };
 
@@ -297,6 +333,33 @@ export default function AlumniSuccessForm({
             {errors.contactNumber && <span className={errorText}>{errors.contactNumber.message}</span>}
           </div>
 
+          {/* Story Title */}
+          <div className="md:col-span-2">
+            <label htmlFor="storyTitle" className={labelBase}>
+              Story Title
+              <span className="text-rose-600 ml-1">*</span>
+            </label>
+            <div className="relative flex items-center">
+              <Controller
+                name="storyTitle"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    id="storyTitle"
+                    type="text"
+                    {...field}
+                    className={`${inputBase} ${errors.storyTitle ? "border-rose-500 bg-rose-50" : ""}`}
+                    placeholder="Enter a title for your success story"
+                    aria-label="Story Title"
+                    maxLength={200}
+                  />
+                )}
+              />
+            </div>
+            {errors.storyTitle && <span className={errorText}>{errors.storyTitle.message}</span>}
+            <p className="mt-1 text-xs text-gray-500">Give your story a compelling title that captures the essence of your success.</p>
+          </div>
+
           {/* Story - Tiptap Editor */}
           <div className="md:col-span-2">
             <label htmlFor="storyHtml" className={labelBase}>
@@ -308,87 +371,96 @@ export default function AlumniSuccessForm({
               control={control}
               render={({ field }) => (
                 <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-                  {/* Toolbar */}
-                  <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+                  {/* Toolbar - Only show if editor is ready */}
+                  {editor && (
+                    <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 ${
-                    editor?.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                    editor.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
                   }`}
                   title="Heading 1"
+                  aria-label="Heading 1"
                 >
                   H1
                 </button>
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 ${
-                    editor?.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                    editor.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
                   }`}
                   title="Heading 2"
+                  aria-label="Heading 2"
                 >
                   H2
                 </button>
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 ${
-                    editor?.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                    editor.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
                   }`}
                   title="Heading 3"
+                  aria-label="Heading 3"
                 >
                   H3
                 </button>
                 <div className="w-px h-6 bg-gray-300 mx-1" />
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold ${
-                    editor?.isActive("bold") ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors ${
+                    editor.isActive("bold") ? "bg-gray-300" : ""
                   }`}
                   title="Bold"
+                  aria-label="Bold"
                 >
                   <strong>B</strong>
                 </button>
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic ${
-                    editor?.isActive("italic") ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors ${
+                    editor.isActive("italic") ? "bg-gray-300" : ""
                   }`}
                   title="Italic"
+                  aria-label="Italic"
                 >
                   <em>I</em>
                 </button>
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleUnderline().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline ${
-                    editor?.isActive("underline") ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleUnderline().run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors ${
+                    editor.isActive("underline") ? "bg-gray-300" : ""
                   }`}
                   title="Underline"
+                  aria-label="Underline"
                 >
                   <u>U</u>
                 </button>
                 <div className="w-px h-6 bg-gray-300 mx-1" />
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 ${
-                    editor?.isActive("bulletList") ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleBulletList().run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                    editor.isActive("bulletList") ? "bg-gray-300" : ""
                   }`}
                   title="Bullet List"
+                  aria-label="Bullet List"
                 >
                   •
                 </button>
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 ${
-                    editor?.isActive("orderedList") ? "bg-gray-300" : ""
+                  onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                    editor.isActive("orderedList") ? "bg-gray-300" : ""
                   }`}
                   title="Numbered List"
+                  aria-label="Numbered List"
                 >
                   1.
                 </button>
@@ -397,30 +469,39 @@ export default function AlumniSuccessForm({
                   type="button"
                   onClick={() => {
                     const url = window.prompt("Enter URL:");
-                    if (url) {
-                      editor?.chain().focus().setLink({ href: url }).run();
+                    if (url && url.trim()) {
+                      editor.chain().focus().setLink({ href: url.trim() }).run();
                     }
                   }}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 ${
-                    editor?.isActive("link") ? "bg-gray-300" : ""
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                    editor.isActive("link") ? "bg-gray-300" : ""
                   }`}
                   title="Insert Link"
+                  aria-label="Insert Link"
                 >
                   🔗
                 </button>
                 <button
                   type="button"
-                  onClick={() => editor?.chain().focus().unsetLink().run()}
-                  className="px-3 py-1.5 text-sm rounded hover:bg-gray-200"
+                  onClick={() => editor.chain().focus().unsetLink().run()}
+                  className="px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Remove Link"
-                  disabled={!editor?.isActive("link")}
+                  aria-label="Remove Link"
+                  disabled={!editor.isActive("link")}
                 >
                   Unlink
                 </button>
               </div>
+              )}
               {/* Editor Content */}
               <div className="min-h-[300px] max-h-[500px] overflow-y-auto">
-                <EditorContent editor={editor} />
+                {editor ? (
+                  <EditorContent editor={editor} />
+                ) : (
+                  <div className="min-h-[300px] p-4 flex items-center justify-center text-gray-400">
+                    <p>Loading editor...</p>
+                  </div>
+                )}
               </div>
               <input type="hidden" {...field} value={field.value || ""} />
             </div>
@@ -433,9 +514,18 @@ export default function AlumniSuccessForm({
 
         {/* Submit Button */}
         <div className="md:col-span-2 flex items-center gap-3 mt-6">
-          <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting}>
+          <button 
+            type="submit" 
+            className={buttonPrimary} 
+            disabled={isSubmitting || !editor} 
+            aria-busy={isSubmitting}
+            aria-label={storyId ? "Update Story" : "Submit Story"}
+          >
             {isSubmitting ? (storyId ? "Updating..." : "Submitting...") : (storyId ? "Update Story" : "Submit Story")}
           </button>
+          {!editor && (
+            <p className="text-xs text-gray-500">Please wait for the editor to load...</p>
+          )}
         </div>
       </form>
     </div>
