@@ -49,7 +49,9 @@ export async function GET() {
       INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
       WHERE s.alumnistories IS NOT NULL 
         AND s.alumnistories != ''
+        AND TRIM(s.alumnistories) != ''
         AND a.alumniname IS NOT NULL
+        AND TRIM(a.alumniname) != ''
       ORDER BY s.createdat DESC NULLS LAST
       LIMIT 200` as StoryRow[]);
     
@@ -63,6 +65,8 @@ export async function GET() {
       const imageUrl = String(r.alumniimage ?? r.image1 ?? "");
       return { id, date, name, program, session, shortDescription, imageUrl };
     });
+    
+    // Always return items array, even if empty (no stories is a valid state)
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch stories";
@@ -77,15 +81,24 @@ export async function GET() {
       (err as Error & { code?: string }).code === 'ETIMEDOUT'
     );
     
+    // For any error, return empty array so UI can handle it gracefully
+    // This prevents the "Failed to fetch" error from breaking the page
     if (isConnectionError) {
+      console.warn("[API] Database connection timeout, returning empty stories list");
       return NextResponse.json({ 
+        items: [], // Return empty array so UI shows "no stories" instead of error
         error: "Database connection timeout. Please try again in a moment.",
-        retryable: true,
-        items: [] // Return empty array so UI doesn't break
-      }, { status: 503 });
+        retryable: true
+      }, { status: 200 }); // Return 200 with empty array so client doesn't treat it as error
     }
     
-    return NextResponse.json({ error: msg, items: [] }, { status: 500 });
+    // For other errors, also return empty array with 200 status
+    // The client can check if items.length === 0 to show appropriate message
+    console.warn("[API] Error fetching stories, returning empty list:", msg);
+    return NextResponse.json({ 
+      items: [], // Return empty array so UI shows "no stories" instead of error
+      error: msg 
+    }, { status: 200 }); // Return 200 so client doesn't treat it as error
   }
 }
 

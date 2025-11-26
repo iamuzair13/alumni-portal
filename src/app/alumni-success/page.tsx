@@ -27,7 +27,10 @@ function sanitizeText(input: string): string {
 
 export default function Page() {
   const { data, isLoading, isFetching, isError, error } = useAlumniStories();
-  const items: SuccessStory[] = (data ?? []).map((s: AlumniStoryItem) => ({
+  // Always ensure we have an array, even if data is undefined or error occurred
+  // Since getAlumniStories returns empty array on errors, data should always be an array
+  const storiesData = Array.isArray(data) ? data : [];
+  const items: SuccessStory[] = storiesData.map((s: AlumniStoryItem) => ({
     id: s.id,
     title: sanitizeText(s.name),
     short: sanitizeText(s.shortDescription).slice(0, 200),
@@ -69,23 +72,38 @@ export default function Page() {
               </div>
             )}
 
-            {isError && (
-              <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700">
-                {error?.message || "Failed to load stories"}
+            {/* Show error only if there's a real error and we're not loading */}
+            {isError && !isLoading && error && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-700 mb-4">
+                <div className="flex items-start gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 mt-0.5 flex-shrink-0">
+                    <path className="fill-current" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                  </svg>
+                  <div>
+                    <p className="font-medium">Unable to load stories</p>
+                    <p className="text-sm mt-1">{error?.message || "Please try again later or add your story below."}</p>
+                  </div>
+                </div>
               </div>
             )}
 
-            {!isLoading && !isError && items.length === 0 && (
+            {/* Show empty state when no stories (whether from error or no data) */}
+            {!isLoading && !isFetching && items.length === 0 && (
               <div className="text-center py-12">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16 mx-auto text-gray-400 mb-4">
                   <path className="fill-current" d="M4 3h12a2 2 0 012 2v11a2 2 0 01-2 2H9l-5 3V5a2 2 0 012-2zm3 5h8v2H7V8zm0 4h8v2H7v-2z" />
                 </svg>
                 <p className="text-gray-600 text-lg">No success stories yet.</p>
-                <p className="text-gray-500 text-sm mt-2">Be the first to share your story!</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  {isError ? "Unable to load stories at the moment." : "Be the first to share your story!"}
+                </p>
                 <Link 
                   href="/alumni-success/new" 
-                  className="mt-4 inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                  className="mt-4 inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 mr-2 fill-current">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                  </svg>
                   Add Your Story
                 </Link>
               </div>

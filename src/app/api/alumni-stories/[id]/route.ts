@@ -25,10 +25,18 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       WHERE s.alumniid = ${alumniid}
         AND s.alumnistories IS NOT NULL
         AND s.alumnistories != ''
+        AND TRIM(s.alumnistories) != ''
+        AND a.alumniname IS NOT NULL
+        AND TRIM(a.alumniname) != ''
       LIMIT 1`);
     
     const r = rows[0];
-    if (!r) return NextResponse.json({ message: "Not found" }, { status: 404 });
+    if (!r) {
+      return NextResponse.json({ 
+        message: "Story not found. This story may not exist or may have been removed.",
+        error: "NOT_FOUND"
+      }, { status: 404 });
+    }
     
     const result = {
       id: String(r.alumniid ?? ""),
@@ -68,12 +76,42 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const { id } = await ctx.params;
     const alumniid = Number(id);
-    const res = await sql/* sql */`
-      DELETE FROM public.tblalumnistories WHERE alumniid = ${alumniid} RETURNING alumniid`;
-    if (!res[0]) return NextResponse.json({ message: "Not found" }, { status: 404 });
+    
+    if (isNaN(alumniid)) {
+      return NextResponse.json({ message: "Invalid story ID" }, { status: 400 });
+    }
+    
+    const res = await retryDbOperation(async () => await sql/* sql */`
+      DELETE FROM public.tblalumnistories WHERE alumniid = ${alumniid} RETURNING alumniid`);
+    
+    if (!res[0]) {
+      return NextResponse.json({ 
+        message: "Story not found",
+        error: "NOT_FOUND"
+      }, { status: 404 });
+    }
+    
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete";
+    console.error("[API] Error deleting alumni story:", msg, err);
+    
+    // Check for connection timeout errors
+    const isConnectionError = err instanceof Error && (
+      err.message.includes('CONNECT_TIMEOUT') ||
+      err.message.includes('ETIMEDOUT') ||
+      err.message.includes('timeout') ||
+      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+      (err as Error & { code?: string }).code === 'ETIMEDOUT'
+    );
+    
+    if (isConnectionError) {
+      return NextResponse.json({ 
+        error: "Database connection timeout. Please try again in a moment.",
+        retryable: true
+      }, { status: 503 });
+    }
+    
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
