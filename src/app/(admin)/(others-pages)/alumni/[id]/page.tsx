@@ -175,9 +175,18 @@ export default function AlumniProfilePage() {
 
   return (
     <ComponentCard title="Alumni Profile" className="">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-gray-500">ID: {id}</span>
-        <button type="button" onClick={() => setRefreshTick((x) => x + 1)} className="rounded-md px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Refresh</button>
+      <div className="flex items-center justify-between mb-6">
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">ID: <span className="font-mono text-gray-900 dark:text-gray-100">{id}</span></span>
+        <button 
+          type="button" 
+          onClick={() => setRefreshTick((x) => x + 1)} 
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm hover:shadow-md"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
       </div>
       {content}
     </ComponentCard>
@@ -186,9 +195,9 @@ export default function AlumniProfilePage() {
 
 function Field({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="flex flex-col">
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
-      <div className="mt-1 text-sm text-gray-800 dark:text-white/90">{value ?? "-"}</div>
+    <div className="flex flex-col p-4 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 shadow-sm hover:shadow-md transition-shadow">
+      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">{label}</span>
+      <div className="text-sm font-medium text-gray-900 dark:text-white/90">{value ?? "-"}</div>
     </div>
   );
 }

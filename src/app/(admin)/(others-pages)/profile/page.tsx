@@ -1,4 +1,5 @@
 import UserMetaCard from "@/components/user-profile/UserMetaCard";
+import ComponentCard from "@/components/common/ComponentCard";
 import { Metadata } from "next";
 import React from "react";
 import { auth } from "@/lib/auth";
@@ -31,8 +32,8 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
   const error = !sapid ? "Missing alumni ID (sapid). Open a profile via the alumni list or ensure you are signed in." : null;
 
   return (
-    <div>
-      <div className="rounded-2xl border border-gray-200 bg-white  dark:border-gray-800 dark:bg-white/[0.03]">
+    <ComponentCard title="Profile" className="">
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
 
         {/* Existing profile cards layout retained */}
         {sapid ? (
@@ -43,7 +44,7 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
         ) : (
           <div
             role="alert"
-            className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800"
+            className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200"
           >
             {error}
           </div>
@@ -51,7 +52,7 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
 
         {/* Error state */}
         {error && (
-          <div role="alert" className="mt-6 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+          <div role="alert" className="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-200">
             {error}
           </div>
         )}
@@ -59,6 +60,6 @@ export default async function Profile({ searchParams }: ProfilePageProps) {
         {/* Schema-driven profile details */}
         
       </div>
-    </div>
+    </ComponentCard>
   );
 }

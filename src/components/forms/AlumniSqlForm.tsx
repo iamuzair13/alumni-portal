@@ -1213,15 +1213,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                         {...field}
                         value={field.value || ""}
                       >
-                        <option value="">Select</option>
-                        <option value="Pakistan">Pakistan</option>
-                        <option value="United Arab Emirates">United Arab Emirates</option>
-                        <option value="Saudi Arabia">Saudi Arabia</option>
-                        <option value="United States">United States</option>
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Other">Other</option>
-                      </select>
+                    <option value="">Select</option>
+                    <option value="Pakistan">Pakistan</option>
+                    <option value="United Arab Emirates">United Arab Emirates</option>
+                    <option value="Saudi Arabia">Saudi Arabia</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Other">Other</option>
+                  </select>
                     )}
                   />
                   {errors.workCountry && (
@@ -1298,19 +1298,19 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                         {...field}
                         value={field.value || ""}
                       >
-                        <option value="">Select</option>
-                        <option value="Pakistan">Pakistan</option>
-                        <option value="United Arab Emirates">United Arab Emirates</option>
-                        <option value="Saudi Arabia">Saudi Arabia</option>
-                        <option value="United States">United States</option>
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Australia">Australia</option>
-                        <option value="Germany">Germany</option>
-                        <option value="Malaysia">Malaysia</option>
-                        <option value="Turkey">Turkey</option>
-                        <option value="Other">Other</option>
-                      </select>
+                    <option value="">Select</option>
+                    <option value="Pakistan">Pakistan</option>
+                    <option value="United Arab Emirates">United Arab Emirates</option>
+                    <option value="Saudi Arabia">Saudi Arabia</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Australia">Australia</option>
+                    <option value="Germany">Germany</option>
+                    <option value="Malaysia">Malaysia</option>
+                    <option value="Turkey">Turkey</option>
+                    <option value="Other">Other</option>
+                  </select>
                     )}
                   />
                   {errors.workCountry && (

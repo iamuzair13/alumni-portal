@@ -16,7 +16,7 @@ export const alumniStoriesKey = ["alumni", "stories", "list"] as const;
 
 export async function getAlumniStories(signal?: AbortSignal): Promise<AlumniStoryItem[]> {
   try {
-    const res = await fetch("/api/alumni-stories", { signal, headers: { accept: "application/json" } });
+  const res = await fetch("/api/alumni-stories", { signal, headers: { accept: "application/json" } });
     
     // Parse response regardless of status code
     const data = await res.json().catch(() => ({ items: [] })) as { items?: AlumniStoryItem[]; error?: string };

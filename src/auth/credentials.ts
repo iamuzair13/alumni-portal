@@ -113,12 +113,14 @@ export async function authenticateCredentials(identifier: string, password: stri
         throw new Error("INVALID_PASSWORD");
       }
       
-      // Allow admin and viewer types to login via credentials
-      // Admin has full access, viewer has view-only access
+      // Allow admin, superadmin, and viewer types to login via credentials
+      // Super Admin has full access including user management
+      // Admin has full access to data but cannot manage users
+      // Viewer has view-only access
       // Note: "user" type is treated as "viewer" for backward compatibility
       const userType = (dbUser.type || "").toLowerCase().trim();
-      if (userType !== "admin" && userType !== "viewer" && userType !== "user") {
-        log("FAIL", `user type is not admin, viewer, or user: ${userType}`);
+      if (userType !== "admin" && userType !== "superadmin" && userType !== "viewer" && userType !== "user") {
+        log("FAIL", `user type is not admin, superadmin, viewer, or user: ${userType}`);
         throw new Error("USER_NOT_STAFF");
       }
       

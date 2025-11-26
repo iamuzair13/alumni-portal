@@ -7,7 +7,7 @@ import { sql } from "@/lib/dbconnect";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
-    title: "Fee Discounts & Scholarships",
+    title: "Alumni Fee Discounts & Scholarships",
     description: "Avail special tuition and admission discounts offered to UOL alumni.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Academic: Fee Discounts & Scholarships</h3>
@@ -416,7 +416,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "recognition": {
     title: "Recognition",
-    description: " Avail opportunities to be honored for achievements via awards and alumni spotlights.",
+    description: " Avail opportunities to be honored for achievements via awards and spotlights.",
     content: `
       <h3 class="text-xl font-semibold mb-4">Recognition:</h3>
       <p class="mb-6">We celebrate the remarkable achievements and contributions of our alumni community through various recognition programs, awards, and spotlight features.</p>

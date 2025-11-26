@@ -15,7 +15,7 @@ import UserForm from "@/components/forms/UserForm";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AdminUser } from "@/app/queries/fetch-users";
 import { useSession } from "next-auth/react";
-import { canModify, isAdminUser } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -48,7 +48,9 @@ type ToastItem = { id: string; type: "success" | "error"; message: string };
 export default function SetupPage() {
   const { data: session } = useSession();
   const isAdmin = isAdminUser(session?.user);
+  const isSuperAdmin = isSuperAdminUser(session?.user);
   const hasModifyAccess = canModify(session?.user);
+  const canManage = canManageUsers(session?.user);
 
   const TABS = [
     { key: "users", label: "Users" },
@@ -275,15 +277,20 @@ export default function SetupPage() {
         {/* Role indicator */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            {isAdmin ? (
+            {isSuperAdmin ? (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300">
+                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                Super Admin - Full Permissions
+              </span>
+            ) : isAdmin ? (
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                Admin Access - Full Permissions
+                Admin - Modify Permission
               </span>
             ) : (
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                 <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-                Viewer Access - Read Only
+                Viewer - View Permission Only
               </span>
             )}
           </div>
@@ -351,14 +358,14 @@ export default function SetupPage() {
                   <Button size="sm" variant="outline" onClick={() => setUserSearch("")} aria-label="Clear user search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Clear</Button>
                 )}
               </div>
-              {hasModifyAccess && (
+              {canManage && (
               <div className="flex items-center gap-2">
                 <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
               </div>
               )}
-              {!hasModifyAccess && (
+              {!canManage && (
                 <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span>Viewer access - Read only</span>
+                  <span>{isAdmin ? "Admin access - Cannot manage users" : "Viewer access - Read only"}</span>
                 </div>
               )}
             </div>
@@ -421,7 +428,7 @@ export default function SetupPage() {
                           </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex gap-2 justify-end">
-                            {hasModifyAccess ? (
+                            {canManage ? (
                               <>
                             <Button size="sm" aria-label={`Edit ${u.name}`} startIcon={<PencilIcon />} onClick={() => setEditUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                               <span className="sr-only">Edit</span>
@@ -431,7 +438,7 @@ export default function SetupPage() {
                             </Button>
                               </>
                             ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{isAdmin ? "Admin - Cannot manage users" : "View only"}</span>
                             )}
                           </div>
                         </td>
@@ -443,7 +450,7 @@ export default function SetupPage() {
             )}
 
             {/* Add User Modal */}
-            {hasModifyAccess && (
+            {canManage && (
             <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[720px] p-5 lg:p-10">
               <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Add User</h4>
               <UserForm />
@@ -451,7 +458,7 @@ export default function SetupPage() {
             )}
 
             {/* Edit User Modal */}
-            {hasModifyAccess && (
+            {canManage && (
             <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[720px] p-5 lg:p-10">
               <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Permissions</h4>
               {editUserId && (
@@ -470,7 +477,7 @@ export default function SetupPage() {
             )}
 
             {/* Remove User Modal */}
-            {hasModifyAccess && (
+            {canManage && (
             <Modal isOpen={!!removeUserId} onClose={() => setRemoveUserId(null)} className="max-w-[520px] p-5 lg:p-8">
               <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Removal</h4>
               <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to remove access for this user?</p>
@@ -515,7 +522,9 @@ export default function SetupPage() {
 function RealTimeUsers() {
   const { data: session } = useSession();
   const hasModifyAccess = canModify(session?.user);
+  const canManage = canManageUsers(session?.user);
   const isAdmin = isAdminUser(session?.user);
+  const isSuperAdmin = isSuperAdminUser(session?.user);
   const currentUserId = (session?.user as { userId?: number })?.userId;
   const { data, isLoading, error } = useUsersList();
   const queryClient = useQueryClient();
@@ -556,11 +565,13 @@ function RealTimeUsers() {
       setSaving(true);
       setErrorMsg(null);
       
-      // Check if viewer is editing their own row
+      // Check if viewer/admin is editing their own row
       const isOwnRow = currentUserId && Number(currentUserId) === values.userid;
       
-      // Prepare payload - viewers can only update password, email, firstname, lastname
-      const payload = hasModifyAccess 
+      // Prepare payload - only Super Admin can update all fields
+      // Admins can only update their own password, email, firstname, lastname
+      // Viewers can only update their own password, email, firstname, lastname
+      const payload = canManage 
         ? values 
         : isOwnRow 
           ? {
@@ -625,13 +636,13 @@ function RealTimeUsers() {
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.email ?? "-"}</td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 font-mono text-xs">
                   {(() => {
-                    // Admins can see all passwords
-                    if (isAdmin) {
+                    // Super Admin can see all passwords
+                    if (isSuperAdmin) {
                       return (
-                        <span className="text-gray-700 dark:text-gray-300" title="Password visible to admin">{u.password || ""}</span>
+                        <span className="text-gray-700 dark:text-gray-300" title="Password visible to super admin">{u.password || ""}</span>
                       );
                     }
-                    // Viewers can only see their own password
+                    // Admins and viewers can only see their own password
                     const isOwnPassword = currentUserId && Number(currentUserId) === u.userid;
                     if (isOwnPassword && u.password) {
                       return (
@@ -649,9 +660,10 @@ function RealTimeUsers() {
                 <td className="px-4 py-3 text-right">
                   <div className="flex gap-2 justify-center">
                     {(() => {
-                      // Check if viewer is viewing their own row
+                      // Check if viewer/admin is viewing their own row
                       const isOwnRow = currentUserId && Number(currentUserId) === u.userid;
-                      const canEdit = hasModifyAccess || isOwnRow;
+                      // Only Super Admin can manage users, or users can edit their own account
+                      const canEdit = canManage || isOwnRow;
                       
                       if (canEdit) {
                         return (
@@ -663,7 +675,7 @@ function RealTimeUsers() {
                             >
                               <PencilIcon className="w-4 h-4 text-gray-700" />
                             </button>
-                            {hasModifyAccess && (
+                            {canManage && (
                               <button
                                 aria-label={`Delete ${u.email ?? "user"}`}
                                 onClick={() => setDeleteId(u.userid)}
@@ -675,7 +687,7 @@ function RealTimeUsers() {
                           </>
                         );
                       }
-                      return <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>;
+                      return <span className="text-xs text-gray-500 dark:text-gray-400">{isAdmin ? "Admin - Cannot manage users" : "View only"}</span>;
                     })()}
                   </div>
                 </td>
@@ -694,7 +706,7 @@ function RealTimeUsers() {
         return (
           <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} className="max-w-[720px] p-5 lg:p-10">
             <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">
-              {isOwnRow && !hasModifyAccess ? "Edit My Password" : "Edit User"}
+              {isOwnRow && !canManage ? "Edit My Password" : "Edit User"}
             </h4>
             {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
             <form className="space-y-4" aria-label="Edit user form" onSubmit={(e) => { e.preventDefault(); saveEdit(); }}>
@@ -726,7 +738,7 @@ function RealTimeUsers() {
                     disabled={!!(isOwnRow && !hasModifyAccess)}
                   />
                 </div>
-                {hasModifyAccess && (
+                {canManage && (
                   <>
                     <div>
                       <Label>Department</Label>
@@ -734,10 +746,22 @@ function RealTimeUsers() {
                     </div>
                     <div>
                       <Label>Type</Label>
-                      <Select defaultValue={values.type ?? "admin"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "admin", label: "Admin" }, { value: "viewer", label: "Viewer" }]} />
+                      <Select defaultValue={values.type ?? "admin"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "superadmin", label: "Super Admin" }, { value: "admin", label: "Admin" }, { value: "viewer", label: "Viewer" }]} />
                     </div>
                     <div className="flex items-center gap-2">
                       <Checkbox checked={!!values.blocked} onChange={(c) => setValues((v) => ({ ...v, blocked: c }))} label="Blocked" />
+                    </div>
+                  </>
+                )}
+                {isAdmin && !canManage && (
+                  <>
+                    <div>
+                      <Label>Department</Label>
+                      <Input type="text" value={values.department ?? ""} onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))} disabled />
+                    </div>
+                    <div>
+                      <Label>Type</Label>
+                      <Input type="text" value={values.type ?? ""} disabled />
                     </div>
                   </>
                 )}
@@ -756,7 +780,7 @@ function RealTimeUsers() {
         );
       })()}
 
-      {hasModifyAccess && (
+      {canManage && (
       <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} className="max-w-[520px] p-5 lg:p-8">
         <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Delete</h4>
         <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete this user?</p>

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
 
 type UserBody = {
   email: string;
@@ -26,6 +28,14 @@ function rateLimitPrune() {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    const isSuperAdmin = isSuperAdminUser(session?.user);
+    
+    // Only Super Admin can create users
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: "FORBIDDEN: Only Super Admin can create users" }, { status: 403 });
+    }
+    
     const ip = (req as unknown as { ip?: string }).ip || req.headers.get("x-forwarded-for") || "unknown";
     rateLimitPrune();
     const key = `create-user|${String(ip)}`;
@@ -51,6 +61,20 @@ export async function POST(req: Request) {
     const match = cookies.match(/csrf_token=([^;]+)/);
     const cookieCsrf = match?.[1] ?? "";
     if (!cookieCsrf || cookieCsrf !== String(body.csrf || "")) return NextResponse.json({ error: "CSRF_INVALID" }, { status: 400 });
+
+    // Check if trying to create Super Admin
+    const userType = String(body.type || "viewer").trim().toLowerCase();
+    if (userType === "superadmin") {
+      // Check if there's already a Super Admin
+      const existingSuperAdmin = await sql/* sql */`
+        SELECT userid FROM public.tbl_users 
+        WHERE LOWER(TRIM(type)) = 'superadmin'
+        LIMIT 1` as { userid: number }[];
+      
+      if (existingSuperAdmin.length > 0) {
+        return NextResponse.json({ error: "ONLY_ONE_SUPER_ADMIN: There can only be one Super Admin. Please transfer the role from the existing Super Admin first." }, { status: 400 });
+      }
+    }
 
     const rows = await sql/* sql */`
       INSERT INTO public.tbl_users (email, password, firstname, lastname, department, type, blocked, lastlogindatetime)

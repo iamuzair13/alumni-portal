@@ -836,34 +836,37 @@ export const AlumniTabs: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               {/* Export Button */}
               <button
                 type="button"
                 onClick={handleExportToExcel}
                 disabled={isExporting || isLoading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-green-600 text-white text-xs sm:text-sm font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
                 aria-label="Export to Excel"
               >
                 {isExporting ? (
                   <>
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Exporting...</span>
+                    <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="hidden sm:inline">Exporting...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span>Export Excel</span>
+                    <span className="hidden sm:inline">Export Excel</span>
+                    <span className="sm:hidden">Export</span>
                   </>
                 )}
               </button>
               {/* Background refetch indicator */}
               {isFetching && !isLoading && (
-                <div className="flex items-center gap-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 px-4 py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
-                  <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span>Updating...</span>
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
+                  <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="hidden sm:inline">Updating...</span>
+                  <span className="sm:hidden">...</span>
                 </div>
               )}
             </div>
@@ -871,31 +874,32 @@ export const AlumniTabs: React.FC = () => {
         </div>
 
         {/* Table Section */}
-        <div className="px-6 pb-8">
+        <div className="px-3 sm:px-1 pb-8">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
             <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto">
-              <Table className="min-w-full">
+              <div className="min-w-[800px]">
+                <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
                       Full Name
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
                       SAP ID / Registration
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">
                       Email
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
                       Faculty
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
                       Department
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">
                       Status
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
                       Actions
                     </TableCell>
                   </TableRow>
@@ -904,26 +908,26 @@ export const AlumniTabs: React.FC = () => {
                   {isLoading && (
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
-                        <TableCell className="px-6 py-5">
-                          <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        <TableCell className="px-3 sm:px-6 py-5">
+                          <div className="h-5 w-32 sm:w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
-                        <TableCell className="px-6 py-5">
-                          <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        <TableCell className="px-3 sm:px-6 py-5">
+                          <div className="h-5 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
-                        <TableCell className="px-6 py-5">
-                          <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                          <div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
-                        <TableCell className="px-6 py-5">
-                          <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                          <div className="h-5 w-28 sm:w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
-                        <TableCell className="px-6 py-5">
-                          <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                          <div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
-                        <TableCell className="px-6 py-5">
-                          <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
+                        <TableCell className="px-3 sm:px-6 py-5">
+                          <div className="h-7 w-20 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                         </TableCell>
-                        <TableCell className="px-6 py-5">
-                          <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                        <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                          <div className="h-9 w-24 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                         </TableCell>
                       </TableRow>
                     ))
@@ -1005,29 +1009,41 @@ export const AlumniTabs: React.FC = () => {
                     onClick={() => setSelectedRowId(alum.id)}
                     aria-selected={selectedRowId === alum.id}
                   >
-                    <TableCell className="px-6 py-5 text-start">
-                      <div className="flex items-center gap-3">
-                        <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{alum.name || "-"}</span>
+                    <TableCell className="px-3 sm:px-6 py-5 text-start">
+                      <div className="flex flex-col gap-1">
+                        <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{alum.name || "-"}</span>
+                        {/* Show email on small screens when hidden in table */}
+                        <a 
+                          href={alum.email ? `mailto:${alum.email}` : "#"} 
+                          className={`lg:hidden text-xs ${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate" : "text-gray-400"}`}
+                        >
+                          {alum.email || ""}
+                        </a>
+                        {/* Show faculty and department on small screens when hidden in table */}
+                        <div className="md:hidden flex flex-col gap-0.5 text-xs text-gray-600 dark:text-gray-400">
+                          {alum.faculty && <span className="truncate">{alum.faculty}</span>}
+                          {alum.department && <span className="truncate">{alum.department}</span>}
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
-                      {sapIdRegNo}
+                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                      <span className="truncate block max-w-[120px] sm:max-w-none">{sapIdRegNo}</span>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
                       <a 
                         href={alum.email ? `mailto:${alum.email}` : "#"} 
-                        className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
+                        className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]" : "text-gray-400"}`}
                       >
                         {alum.email || "-"}
                       </a>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                      {alum.faculty || "-"}
+                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                      <span className="truncate block max-w-[120px]">{alum.faculty || "-"}</span>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                      {alum.department || "-"}
+                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                      <span className="truncate block max-w-[120px]">{alum.department || "-"}</span>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-start">
+                    <TableCell className="px-3 sm:px-6 py-5 text-start">
                       <Badge 
                         size="sm" 
                         color={
@@ -1045,8 +1061,12 @@ export const AlumniTabs: React.FC = () => {
                           : "Under Approval"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-end">
-                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
+                    <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
+                      selectedRowId === alum.id 
+                        ? "bg-blue-50/80 dark:bg-blue-900/30" 
+                        : "bg-white dark:bg-gray-800/30"
+                    }`}>
+                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
                         {(() => {
                           const isBusy = mutatingIds.has(alum.id);
                           const canPerformActions = canModify(session?.user);
@@ -1060,11 +1080,11 @@ export const AlumniTabs: React.FC = () => {
                                 onClick={() => handleView(alum.id)}
                                 disabled={isBusy}
                                 aria-disabled={isBusy}
-                                className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded hover:text-blue-600 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                                className={`p-1.5 sm:p-2 text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
                                 aria-label="View"
                                 title="View"
                               >
-                                <EyeIcon className="h-5 w-5" />
+                                <EyeIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                               </button>
                             );
                           }
@@ -1123,11 +1143,11 @@ export const AlumniTabs: React.FC = () => {
                               onClick={onClick}
                               disabled={isBusy}
                               aria-disabled={isBusy}
-                              className={`p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                              className={`p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
                               aria-label={label}
                               title={label}
                             >
-                              <Icon className="h-5 w-5" />
+                              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
                           ));
                         })()}
@@ -1138,9 +1158,9 @@ export const AlumniTabs: React.FC = () => {
                 })}
               </TableBody>
             </Table>
+              </div>
+            </div>
           </div>
-          
-        </div>
         </div>
         {/* Live region for action feedback */}
         <div className="px-6" aria-live="polite" aria-atomic="true">

@@ -123,12 +123,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const db = uw.dbUser;
         const alumniDb = uw.alumniDb;
         
-        // Check if user is admin or viewer
-        // Admin has full access, viewer has view-only access
+        // Check if user is admin, superadmin, or viewer
+        // Super Admin has full access including user management
+        // Admin has full access to data but cannot manage users
+        // Viewer has view-only access
         // Note: "user" type is treated as "viewer" for backward compatibility
         if (db) {
           const userType = String(db.type || "").toLowerCase().trim();
-          if (userType === "admin" || userType === "viewer" || userType === "user") {
+          if (userType === "admin" || userType === "superadmin" || userType === "viewer" || userType === "user") {
           if (db.blocked) {
             return "/signin?error=USER_BLOCKED";
           }

@@ -111,9 +111,13 @@ export default function UserForm() {
         <div>
           <label htmlFor="type" className={labelBase}>Type</label>
           <select id="type" className={inputBase} value={values.type} onChange={(e) => setValues((v) => ({ ...v, type: e.target.value }))}>
+            <option value="superadmin">Super Admin</option>
             <option value="admin">Admin</option>
             <option value="viewer">Viewer</option>
           </select>
+          {values.type === "superadmin" && (
+            <p className="mt-1 text-xs text-amber-600">Note: Only one Super Admin can exist. If one already exists, this will fail.</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <input id="blocked" type="checkbox" className="h-4 w-4" checked={!!values.blocked} onChange={(e) => setValues((v) => ({ ...v, blocked: e.target.checked }))} />

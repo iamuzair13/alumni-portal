@@ -97,11 +97,12 @@ export default function SignInForm() {
             const normalizedType = String(userType).toLowerCase().trim();
             // Treat "user" as "viewer" for backward compatibility
             const isAdmin = normalizedType === "admin";
+            const isSuperAdmin = normalizedType === "superadmin";
             const isViewer = normalizedType === "viewer" || normalizedType === "user";
             const isAlumni = normalizedType === "alumni";
             
-            // Both admin and viewer (including legacy "user") redirect to admin dashboard (/)
-            if (isAdmin || isViewer) {
+            // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard (/)
+            if (isAdmin || isSuperAdmin || isViewer) {
               router.replace("/");
               return;
             } else if (isAlumni) {
@@ -113,8 +114,18 @@ export default function SignInForm() {
           attempts++;
         }
         
-        // If we can't determine type, redirect to alumni profile as default for alumni users
-        // (Staff users should have been caught earlier)
+        // If we can't determine type, check one more time and redirect accordingly
+        const finalSession = await fetch("/api/auth/session").then(r => r.json()).catch(() => null);
+        if (finalSession?.user) {
+          const userType = (finalSession.user as { type?: string | null })?.type || "";
+          const normalizedType = String(userType).toLowerCase().trim();
+          const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
+          if (isStaff) {
+            router.replace("/");
+            return;
+          }
+        }
+        // Default to alumni profile for alumni users
         router.replace("/alumni-profile");
       };
       
@@ -123,7 +134,24 @@ export default function SignInForm() {
       } catch (ve) {
         const msg = ve instanceof Error ? ve.message : String(ve);
         setVerificationError(msg || "Failed to verify session");
-        router.replace("/alumni-profile"); // Default redirect
+        // Try to determine user type for redirect
+        try {
+          const finalSession = await fetch("/api/auth/session").then(r => r.json()).catch(() => null);
+          if (finalSession?.user) {
+            const userType = (finalSession.user as { type?: string | null })?.type || "";
+            const normalizedType = String(userType).toLowerCase().trim();
+            const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
+            if (isStaff) {
+              router.replace("/");
+            } else {
+              router.replace("/alumni-profile");
+            }
+          } else {
+            router.replace("/alumni-profile"); // Default redirect
+          }
+        } catch {
+          router.replace("/alumni-profile"); // Default redirect on error
+        }
       } finally {
         setIsVerifying(false);
       }
@@ -137,8 +165,8 @@ export default function SignInForm() {
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
       const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase().trim();
-      // Both admin and viewer (including legacy "user") redirect to admin dashboard
-      if (t === "admin" || t === "viewer" || t === "user") {
+      // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard
+      if (t === "admin" || t === "superadmin" || t === "viewer" || t === "user") {
         router.replace("/");
       } else if (t === "alumni") {
         router.replace("/alumni-profile");

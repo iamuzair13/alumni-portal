@@ -1,5 +1,10 @@
 import type { Session } from "next-auth";
 
+export function isSuperAdminUser(user: Session["user"] | null | undefined): boolean {
+  const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
+  return t === "superadmin";
+}
+
 export function isAdminUser(user: Session["user"] | null | undefined): boolean {
   const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   return t === "admin";
@@ -13,15 +18,20 @@ export function isViewerUser(user: Session["user"] | null | undefined): boolean 
 }
 
 export function canModify(user: Session["user"] | null | undefined): boolean {
-  // Only admins can modify data, viewers (including legacy "user") cannot
-  return isAdminUser(user);
+  // Only admins and super admins can modify data, viewers (including legacy "user") cannot
+  return isAdminUser(user) || isSuperAdminUser(user);
+}
+
+export function canManageUsers(user: Session["user"] | null | undefined): boolean {
+  // Only super admins can manage users (add/edit/delete)
+  return isSuperAdminUser(user);
 }
 
 export function computeLoginBanner(user: Session["user"] | null | undefined): { show: boolean; message: string } {
   const email = user?.email ? String(user.email) : "";
   const type = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   if (!email) return { show: true, message: "Please sign in to view your alumni profile." };
-  if (type === "admin" || type === "viewer") return { show: false, message: "" };
+  if (type === "admin" || type === "superadmin" || type === "viewer") return { show: false, message: "" };
   if (type !== "alumni") return { show: true, message: "Only alumni accounts can access this page." };
   return { show: false, message: "" };
 }

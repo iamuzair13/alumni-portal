@@ -163,22 +163,17 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
                       onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/64"; }}
                     />
                   </TableCell>
-                  {/* add action button to view full story(create new component having full information of the student) and delete story */}
-                  <TableCell className="px-4 py-3 text-start">
-                    <div className="flex items-center gap-4 justify-start">
+                  {/* Action buttons matching setup page style */}
+                  <TableCell className="px-4 py-3 text-end">
+                    <div className="flex items-center gap-2 justify-end">
                       {/* View icon button */}
                       <Link
                         href={`/alumni-stories/${story.id}`}
                         aria-label={`View story for ${story.name}`}
                         title="View story"
-                        className="inline-flex items-center justify-center rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2980b9] dark:focus:ring-offset-gray-900"
+                        className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                       >
-                        <span
-                          className="min-w-[48px] min-h-[48px] p-2 text-[#3498db] hover:text-[#2980b9]"
-                        >
-                          <EyeIcon className="w-6 h-6" />
-                          <span className="sr-only">View story</span>
-                        </span>
+                        <EyeIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
                       </Link>
 
                       {/* Delete icon button */}
@@ -188,29 +183,17 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
                         disabled={Boolean(deletingIds?.has(story.id))}
                         aria-label={`Delete story for ${story.name}`}
                         title="Delete story"
-                        className="inline-flex items-center justify-center rounded-xl transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#c0392b] disabled:opacity-60 disabled:cursor-not-allowed dark:focus:ring-offset-gray-900"
+                        className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                         aria-disabled={Boolean(deletingIds?.has(story.id))}
                         aria-busy={Boolean(deletingIds?.has(story.id))}
                       >
                         {deletingIds?.has(story.id) ? (
-                          <span className="min-w-[48px] min-h-[48px] p-2 text-[#e74c3c]">
-                            {/* Spinner */}
-                            <svg
-                              className="w-6 h-6 animate-spin"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
-                              <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="4" opacity="0.75" />
-                            </svg>
-                            <span className="sr-only">Deleting…</span>
-                          </span>
+                          <svg className="w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
                         ) : (
-                          <span className="min-w-[48px] min-h-[48px] p-2 text-[#e74c3c] hover:text-[#c0392b]">
-                            <TrashBinIcon className="w-6 h-6" />
-                            <span className="sr-only">Delete story</span>
-                          </span>
+                          <TrashBinIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
                         )}
                       </button>
                     </div>

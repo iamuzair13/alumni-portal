@@ -5,13 +5,13 @@ import postgres from 'postgres'
 let sqlInstance: ReturnType<typeof postgres> | null = null;
 
 function initSql() {
-  if (!process.env.DATABASE_URL) {
+if (!process.env.DATABASE_URL) {
     // During build time, return a mock that will throw at runtime
     // This allows the build to complete without DATABASE_URL
     if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
       // Only throw in production if not on Vercel (which sets DATABASE_URL)
-      throw new Error('DATABASE_URL environment variable is not set')
-    }
+  throw new Error('DATABASE_URL environment variable is not set')
+}
     // For build time, create a connection that will fail gracefully
     return postgres('postgresql://placeholder', {
       max: 1,
@@ -22,8 +22,8 @@ function initSql() {
   
   if (!sqlInstance) {
     sqlInstance = postgres(process.env.DATABASE_URL, {
-      max: 10,
-      idle_timeout: 20,
+  max: 10,
+  idle_timeout: 20,
       connect_timeout: 30, // Increased from 10 to 30 seconds
       max_lifetime: 60 * 30, // 30 minutes
       prepare: false, // Disable prepared statements for better connection handling

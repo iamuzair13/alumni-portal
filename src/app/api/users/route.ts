@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 
 import { auth } from "@/lib/auth";
-import { isAdminUser } from "@/lib/alumniProfile";
+import { isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
 
 type DbUser = {
   userid: number;
@@ -20,16 +20,48 @@ export async function GET() {
   try {
     const session = await auth();
     const isAdmin = isAdminUser(session?.user);
+    const isSuperAdmin = isSuperAdminUser(session?.user);
     
     // Get current user's ID from session
     const currentUserId = (session?.user as { userId?: number })?.userId;
     
-    if (isAdmin) {
-      // Admins can see all passwords
+    if (isSuperAdmin) {
+      // Super Admin can see all passwords
       const rows = await sql/* sql */`
         SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime, password
         FROM public.tbl_users
         ORDER BY userid DESC` as DbUser[];
+      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+    } else if (isAdmin && currentUserId) {
+      // Admins can only see their own password
+      const userIdNum = Number(currentUserId);
+      if (isNaN(userIdNum)) {
+        // Invalid user ID, return without passwords
+        const rows = await sql/* sql */`
+          SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
+          FROM public.tbl_users
+          ORDER BY userid DESC` as DbUser[];
+        return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+      }
+      
+      // Fetch all users, but only include password for the current admin user
+      const rows = await sql/* sql */`
+        SELECT 
+          userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          type, 
+          blocked, 
+          lastlogindatetime,
+          CASE 
+            WHEN userid = ${userIdNum} THEN password 
+            ELSE NULL 
+          END as password
+        FROM public.tbl_users
+        ORDER BY userid DESC` as DbUser[];
+      
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     } else if (currentUserId) {
       // Viewers can only see their own password
@@ -78,6 +110,14 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
+    const session = await auth();
+    const isSuperAdmin = isSuperAdminUser(session?.user);
+    
+    // Only Super Admin can manage users
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: "FORBIDDEN: Only Super Admin can manage users" }, { status: 403 });
+    }
+    
     const body = await req.json();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (body.email && !emailRegex.test(String(body.email))) {
@@ -86,6 +126,21 @@ export async function PUT(req: Request) {
     if (body.password && String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
     const userid = Number(body.userid);
     if (!userid || Number.isNaN(userid)) return NextResponse.json({ error: "INVALID_USERID" }, { status: 400 });
+    
+    // Check if trying to set Super Admin role
+    const newType = body.type ? String(body.type).toLowerCase().trim() : null;
+    if (newType === "superadmin") {
+      // Check if there's already a Super Admin
+      const existingSuperAdmin = await sql/* sql */`
+        SELECT userid FROM public.tbl_users 
+        WHERE LOWER(TRIM(type)) = 'superadmin' AND userid != ${userid}
+        LIMIT 1` as { userid: number }[];
+      
+      if (existingSuperAdmin.length > 0) {
+        return NextResponse.json({ error: "ONLY_ONE_SUPER_ADMIN: There can only be one Super Admin. Please transfer the role from the existing Super Admin first." }, { status: 400 });
+      }
+    }
+    
     await sql/* sql */`
       UPDATE public.tbl_users
       SET

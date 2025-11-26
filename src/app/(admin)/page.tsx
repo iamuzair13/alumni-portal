@@ -18,8 +18,8 @@ export default async function Dashboard() {
   function hasType(u: unknown): u is { type?: string } { return typeof u === "object" && u !== null && "type" in u; }
   const role = String(hasType(session.user) ? session.user.type ?? "" : "").toLowerCase().trim();
 
-  // Allow both admin and viewer (including legacy "user") to access admin dashboard
-  if (role !== "admin" && role !== "viewer" && role !== "user") {
+  // Allow admin, superadmin, and viewer (including legacy "user") to access admin dashboard
+  if (role !== "admin" && role !== "superadmin" && role !== "viewer" && role !== "user") {
     redirect("/alumni-profile");
   }
 
