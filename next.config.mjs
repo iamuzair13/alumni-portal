@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+import dotenv from 'dotenv';
+dotenv.config();
+
 const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
   .split(",")
   .map((s) => s.trim())
