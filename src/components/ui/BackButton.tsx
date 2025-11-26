@@ -17,7 +17,11 @@ function BackButtonContent() {
       return;
     }
 
-    // Check if there's a valid referrer from our own domain
+    const currentPath = window.location.pathname;
+    const isAlumniProfileSubPage = currentPath.startsWith("/alumni-profile/") && 
+                                    currentPath !== "/alumni-profile";
+    
+    // Check referrer to see if we came from a valid page
     const referrer = document.referrer;
     const currentUrl = window.location.href;
     
@@ -28,16 +32,26 @@ function BackButtonContent() {
       !referrer.includes("/signin") &&
       !referrer.includes("/signup");
 
-    if (isValidReferrer) {
-      // Use browser back if we have a valid referrer
+    // For alumni-profile sub-pages, always try browser back first
+    // This ensures we go back to where the user came from (even if from same page)
+    if (isAlumniProfileSubPage) {
+      // If we have a valid referrer, use browser back
+      if (isValidReferrer) {
+        router.back();
+        return;
+      }
+      
+      // Even without a referrer, try browser back (might have come from client-side navigation)
+      // Next.js router.back() is safe - it won't break if there's no history
       router.back();
-    } else {
-      // Fallback: navigate to profile page with sapid if available
-      const profileUrl = sapId 
-        ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}`
-        : "/alumni-profile";
-      router.push(profileUrl);
+      return;
     }
+
+    // For other pages or if no valid referrer, navigate to profile page with sapid if available
+    const profileUrl = sapId 
+      ? `/alumni-profile?sapid=${encodeURIComponent(sapId)}`
+      : "/alumni-profile";
+    router.push(profileUrl);
   };
 
   return (
