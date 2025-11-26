@@ -289,66 +289,88 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   };
 
   return (
-    <ComponentCard className="">
-      {/* Filters & Search */}
-      <div className="p-4 rounded-xl border border-neutral-200 bg-white">
+    <ComponentCard className="p-0">
+      <div className="flex flex-col gap-8">
+       
 
-
-      
-      </div>
-
-      {/* Content */}
-      <div className="min-h-[200px] mt-4">
-        {error && (
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4 p-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: Math.min(pageSize, 8) }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-xl border border-neutral-200 p-4 bg-neutral-50">
-                <div className="h-6 w-2/3 bg-neutral-200 rounded mb-3" />
-                <div className="h-4 w-1/2 bg-neutral-200 rounded mb-2" />
-                <div className="h-4 w-1/3 bg-neutral-200 rounded" />
+        {/* Content */}
+        <div className="px-6 pb-8">
+          <div className="min-h-[200px]">
+            {error && (
+              <div role="alert" className="rounded-xl border border-red-200/80 bg-red-50/80 dark:bg-red-900/20 dark:border-red-800/50 px-4 py-3 text-sm font-medium text-red-800 dark:text-red-200 shadow-sm mb-4">
+                {error}
               </div>
-            ))}
+            )}
+
+            {loading ? (
+              <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
+                <div className="p-6">
+                  <div className="grid grid-cols-1 gap-4">
+                    {Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
+                      <div key={i} className="animate-pulse rounded-xl border border-gray-200 p-4 bg-gray-50 dark:bg-gray-800/30">
+                        <div className="h-5 w-2/3 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
+                        <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+                        <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-700 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <AlumniDataTable
+                items={cards}
+                loading={loading}
+                error={error}
+                defaultPageSize={pageSize}
+                onRowAction={(item, key) => handleAction(item, key)}
+              />
+            )}
           </div>
-        ) : (
-          <AlumniDataTable
-            items={cards}
-            loading={loading}
-            error={error}
-            defaultPageSize={pageSize}
-            onRowAction={(item, key) => handleAction(item, key)}
-          />
-        )}
-      </div>
-
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between gap-3 mt-2">
-        <div className="text-sm text-neutral-600">
-          Page {currentPage} of {Math.max(1, Math.ceil(total / pageSize))}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="rounded-md border border-neutral-200 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-neutral-200 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
-            onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(total / pageSize)), p + 1))}
-            disabled={currentPage >= Math.max(1, Math.ceil(total / pageSize))}
-          >
-            Next
-          </button>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            {(() => {
+              const start = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+              const end = Math.min(start + (cards.length - 1), total);
+              return `Showing ${start.toLocaleString()}-${end.toLocaleString()} of ${total.toLocaleString()}`;
+            })()}
+          </span>
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
+            <select
+              id="page-size"
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              value={pageSize}
+              onChange={() => {
+                setCurrentPage(1);
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(total / pageSize)), p + 1))}
+                disabled={currentPage >= Math.max(1, Math.ceil(total / pageSize))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </ComponentCard>

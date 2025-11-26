@@ -390,8 +390,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     }
   };
 
-  const headerClass = "px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300";
-
   function toTitleCase(s: string | undefined): string {
     const v = String(s || "").toLowerCase();
     return v.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -436,23 +434,36 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
-      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <label className="w-full sm:w-1/2">
-          <span className="sr-only">Search alumni</span>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, degree, company, contact..."
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-            aria-label="Search alumni"
-          />
-        </label>
+      <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+        <div className="flex-1 w-full sm:max-w-lg">
+          <label htmlFor="alumni-card-table-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
+            Search Alumni Cards
+          </label>
+          <div className="relative">
+            <svg 
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              id="alumni-card-table-search"
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, degree, company, contact..."
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+              aria-label="Search alumni"
+            />
+          </div>
+        </div>
         <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size-select">Items per page:</label>
+          <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size-select">Items per page:</label>
           <select
             id="page-size-select"
-            className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
             aria-label="Items per page"
@@ -465,47 +476,83 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         </div>
       </div>
 
-      <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
+      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
         <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live="polite">
           <div className="min-w-full xl:min-w-full">
-            <Table className="min-w-full border border-gray-200 dark:border-gray-800">
-              <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
-                <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
-                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("name")} aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Name</TableCell>
-                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("id")} aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>SAP ID</TableCell>
-                  <TableCell isHeader className={headerClass}>Mobile No</TableCell>
-                  <TableCell isHeader className={headerClass}>Active Email</TableCell>
-                  <TableCell isHeader className={headerClass} onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
-                  <TableCell isHeader className={headerClass}>Card Status</TableCell>
-                 
+            <Table className="min-w-full">
+              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm whitespace-nowrap">
+                <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("name")} aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Name</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("id")} aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>SAP ID</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Mobile No</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Active Email</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Card Status</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
-              <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
+              <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                 {effectiveLoading && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
-                     <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+                      <TableCell className="px-6 py-5">
+                        <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
+                      </TableCell>
+                      <TableCell className="px-6 py-5">
+                        <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-5 py-4 text-red-600 border-r border-gray-200" colSpan={10}>{effectiveError}</TableCell>
+                    <TableCell className="px-6 py-16 text-center" colSpan={7}>
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-red-600 dark:text-red-400 mb-1">{effectiveError}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-500">Please try again</p>
+                        </div>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 )}
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={10}>
-                      No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}. Try adjusting your search or filters.
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                          <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-gray-700 dark:text-gray-300">No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Try adjusting your search or filters</p>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
@@ -513,22 +560,31 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => (
                   <TableRow
                     key={`${alum.id}-${idx}`}
-                    className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] odd:bg-gray-50 ${selectedRowId === alum.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                    className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
                     onClick={() => setSelectedRowId(alum.id)}
                     aria-selected={selectedRowId === alum.id}
                   >
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
-                      <div className="flex items-center gap-3 w-max">
-                        <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{toTitleCase(alum.name)}</span>
+                    <TableCell className="px-6 py-5 text-start">
+                      <div className="flex items-center gap-3">
+                        <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{toTitleCase(alum.name)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatSapId(alum.id)}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatEmail(alum.email)}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200 text-start"><StatusSelect sapId={alum.id} /></TableCell>
-                    <TableCell className="px-4 py-3 text-end">
-                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                      {formatSapId(alum.id)}
+                    </TableCell>
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                      <a 
+                        href={alum.email ? `mailto:${alum.email}` : "#"} 
+                        className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
+                      >
+                        {formatEmail(alum.email)}
+                      </a>
+                    </TableCell>
+                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
+                    <TableCell className="px-6 py-5 text-start"><StatusSelect sapId={alum.id} /></TableCell>
+                    <TableCell className="px-6 py-5 text-end">
+                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
                         {(() => {
                           const actions: Array<{ key: "view"; label: string; icon: React.ComponentType<{ className?: string }>; hover?: string; onClick: () => void }> = [
                             { key: "view", label: "View", icon: EyeIcon, hover: "hover:text-blue-600", onClick: () => { router.push(`/alumni/${alum.id}`); onRowAction?.(alum, "view"); } },
@@ -538,7 +594,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                               key={`${alum.id}-action-${key}-${i}`}
                               type="button"
                               onClick={onClick}
-                              className={`text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded ${hover ?? "hover:text-gray-700"}`}
+                              className={`p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                               aria-label={label}
                               title={label}
                             >
@@ -554,20 +610,28 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </Table>
           </div>
         </div>
-      <div className="flex items-center justify-between p-4">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {(() => {
-            const start = (currentPage - 1) * pageSize + 1;
-            const end = start + pageItems.length - 1;
-            return `Showing ${pageItems.length ? start : 0}-${pageItems.length ? end : 0} of ${total}`;
-          })()}
-        </span>
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))}
-        />
-      </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            {(() => {
+              const start = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+              const end = Math.min(start + pageItems.length - 1, total);
+              return `Showing ${start.toLocaleString()}-${end.toLocaleString()} of ${total.toLocaleString()}`;
+            })()}
+          </span>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(p) => {
+              const newPage = Math.max(1, Math.min(totalPages, p));
+              setCurrentPage(newPage);
+              // Scroll to top of table when page changes
+              const tableContainer = document.querySelector('.custom-scrollbar');
+              if (tableContainer) {
+                tableContainer.scrollTop = 0;
+              }
+            }}
+          />
+        </div>
       </div>
     </section>
   );

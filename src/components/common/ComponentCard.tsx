@@ -15,22 +15,22 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
 }) => {
   return (
     <div
-      className={`py-2 px-2 bg-gray-100 min-h-screen dark:border-gray-800 dark:bg-white/[0.03] ${className}`}
+      className={`bg-slate-50 py-10 dark:bg-gray-900/50 min-h-screen ${className}`}
     >
       {(title || desc) && (
-        <div className="p-4 sm:p-6">
+        <div className="px-6 pt-8 pb-4">
           {title && (
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">{title}</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white/90 mb-2">{title}</h2>
           )}
           {desc && (
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{desc}</p>
+            <p className="text-sm text-slate-600 dark:text-gray-300">{desc}</p>
           )}
         </div>
       )}
      
 
       {/* Card Body */}
-      <div className=" border-gray-100 dark:border-gray-800 ">
+      <div className="px-6 pb-8">
         <div className="space-y-6">{children}</div>
       </div>
     </div>

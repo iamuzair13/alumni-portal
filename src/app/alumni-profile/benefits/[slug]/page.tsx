@@ -222,7 +222,14 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <li>Free registration for select competitions</li>
                 </ul>
               </td>
-              <td class="border border-gray-300 px-4 py-3"></td>
+              <td class="border border-gray-300 px-4   py-3">
+                <a href="/alumni-profile/swimming-pool-membership" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Apply for Swimming Pool
+                </a>
+              </td>
             </tr>
             <tr>
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">UOL Qalandars Cricket Club Membership</td>
@@ -499,6 +506,10 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     content = content.replace(
       'href="/alumni-profile/gym-membership"',
       `href="/alumni-profile/gym-membership?sapid=${encodeURIComponent(sapId)}"`
+    );
+    content = content.replace(
+      'href="/alumni-profile/swimming-pool-membership"',
+      `href="/alumni-profile/swimming-pool-membership?sapid=${encodeURIComponent(sapId)}"`
     );
   }
 

@@ -327,16 +327,63 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                           </div>
                         </div>
                         {cardStatus === "active" ? (
-                          <div className="mt-4">
-                            <AlumniCardTemplate
-                              studentName={name}
-                              department={dept}
-                              faculty={faculty}
-                              alumniId={sapId || "UOL-AL-0000"}
-                              validity={validity}
-                              photoUrl={photoUrl}
-                            />
-                          </div>
+                          <>
+                            <div className="mt-4">
+                              <AlumniCardTemplate
+                                studentName={name}
+                                department={dept}
+                                faculty={faculty}
+                                alumniId={sapId || "UOL-AL-0000"}
+                                validity={validity}
+                                photoUrl={photoUrl}
+                              />
+                            </div>
+                            {validity && (() => {
+                              // Parse validity date (format: "YYYY-12" means December of that year)
+                              const [year] = validity.split("-").map(Number);
+                              // Create date for last day of December (December 31st of that year)
+                              const expiryDate = new Date(year, 11, 31); // December 31st (month is 0-indexed, so 11 = December)
+                              expiryDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const isExpired = today > expiryDate;
+                              const formattedExpiry = expiryDate.toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              });
+                              
+                              return (
+                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                      Card Expiry Date:
+                                    </span>
+                                    <span className={`text-sm font-semibold ${
+                                      isExpired 
+                                        ? "text-rose-600 dark:text-rose-400" 
+                                        : "text-gray-900 dark:text-gray-100"
+                                    }`}>
+                                      {formattedExpiry}
+                                    </span>
+                                  </div>
+                                  {isExpired && (
+                                    <Link
+                                      href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
+                                      className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                    >
+                                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M23 4v6h-6"></path>
+                                        <path d="M1 20v-6h6"></path>
+                                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                      </svg>
+                                      Renew Card
+                                    </Link>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </>
                         ) : (
                           <>
                             <div className="mt-4">

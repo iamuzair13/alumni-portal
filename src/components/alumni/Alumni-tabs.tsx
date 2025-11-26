@@ -603,7 +603,7 @@ export const AlumniTabs: React.FC = () => {
     <ComponentCard className="p-0">
       <div className="flex flex-col gap-8">
         {/* Stats Cards Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 pt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 pt-2">
           {TABS.map((tab, idx) => {
             const statCount = (() => {
               switch (tab.key) {
@@ -662,7 +662,7 @@ export const AlumniTabs: React.FC = () => {
                 }}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h6 className={`text-xs font-bold uppercase tracking-wider ${isSelected ? statusStyles.labelText : 'text-gray-500 dark:text-gray-400'}`}>
+                  <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
                     {tab.label}
                   </h6>
                   {isSelected && (
@@ -672,7 +672,7 @@ export const AlumniTabs: React.FC = () => {
                 {isLoadingCounts && !countsData ? (
                   <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
                 ) : (
-                  <h3 className={`text-4xl font-extrabold tracking-tight ${isSelected ? statusStyles.labelText : 'text-gray-900 dark:text-gray-100'}`}>
+                  <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
                     {statCount.toLocaleString()}
                   </h3>
                 )}
