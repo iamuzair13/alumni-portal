@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails, currentUserImageKey } from "@/app/queries/alumni-profile";
+import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails, alumniFullDetailsKey, currentUserImageKey } from "@/app/queries/alumni-profile";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProgress } from "@bprogress/react";
 import toast from "react-hot-toast";
@@ -46,7 +46,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   // Normalize avatar path for Next.js Image component
   // Use image2 first (most recent upload), then image1 (for AlumniCardTemplate)
   const rawAvatar = String(
-    (fullDetails as unknown as { image2?: string })?.image2 ?? 
+    fullDetails?.image2 ?? 
     fullDetails?.image1 ?? 
     (data as unknown as { image2?: string; image1?: string })?.image2 ??
     (data as unknown as { image1?: string })?.image1 ?? 
@@ -190,8 +190,14 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
       // Invalidate and refetch the profile data to show the updated image
       await queryClient.invalidateQueries({ queryKey: alumniProfileKey(sapId) });
+      // Invalidate and refetch full details query to update profile picture immediately
+      await queryClient.invalidateQueries({ queryKey: alumniFullDetailsKey(sapId) });
+      // Force refetch full details to get the latest image2
+      await queryClient.refetchQueries({ queryKey: alumniFullDetailsKey(sapId) });
       // Also invalidate current user image query to update header
       await queryClient.invalidateQueries({ queryKey: currentUserImageKey() });
+      // Force refetch current user image to update header immediately
+      await queryClient.refetchQueries({ queryKey: currentUserImageKey() });
       
       // Refresh the page after a short delay to show the updated image
       setTimeout(() => {

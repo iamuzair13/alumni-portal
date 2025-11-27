@@ -364,6 +364,7 @@ export default function Home() {
             className="flex w-full flex-col items-center gap-10 rounded-3xl bg-white/70 p-10 shadow-xl shadow-emerald-900/10"
           >
             <div className="relative aspect-7/4 w-full max-w-[550px] overflow-hidden rounded-3xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={frontTemplate}
                 alt="Alumni card front template"
@@ -395,7 +396,7 @@ export default function Home() {
               </div>
 
               <div className="absolute right-[42px] top-[50px] flex h-[214px] w-[158px] items-center justify-center overflow-hidden ">
-              
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photoPreview || ""}
                     alt={formData.studentName || "Student"}
@@ -403,11 +404,11 @@ export default function Home() {
                     height={195}
                     className="h-full w-full object-cover"
                   />
-              
               </div>
             </div>
 
             <div className="relative aspect-7/4 w-full max-w-[520px] overflow-hidden rounded-3xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={backTemplate}
                 alt="Alumni card back template"

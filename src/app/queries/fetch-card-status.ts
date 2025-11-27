@@ -11,6 +11,7 @@ export type CardData = {
   cardaddress: string | null;
   status: CardStatus | null;
   cardpicture: string | null;
+  card_image: string | null;
   createdat: string | null;
 };
 

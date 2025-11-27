@@ -22,6 +22,7 @@ import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
 type Profile = {
   alumniname: string | null;
   image1: string | null;
+  image2: string | null;
   campusname: string | null;
   facultyname: string | null;
   departmentname: string | null;
@@ -43,7 +44,7 @@ async function getProfile(searchParams: { sapid?: string }) {
     if (sapid) {
       // Admins can view any profile by SAP ID, regardless of verification status
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
+        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
         FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
@@ -57,7 +58,7 @@ async function getProfile(searchParams: { sapid?: string }) {
     const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
     if (sessionSapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
+        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
         FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
@@ -66,7 +67,7 @@ async function getProfile(searchParams: { sapid?: string }) {
     const email = session?.user?.email ? String(session.user.email) : undefined;
     if (!email) return undefined;
     const rows = await sql/* sql */`
-      SELECT alumniname, image1, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
+      SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
       FROM public.tbl_alumni 
       WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
       ORDER BY alumniid DESC LIMIT 1`;
@@ -94,27 +95,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
   
-  // Fetch image2 (most recent upload) for profile/header display
-  // image1 is preserved for AlumniCardTemplate
-  let image2: string | null = null;
-  if (p) {
-    try {
-      const sapidForImage = sp?.sapid || (session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined);
-      if (sapidForImage) {
-        const image2Rows = await sql/* sql */`
-          SELECT image2 FROM public.tbl_alumni 
-          WHERE sapid = ${sapidForImage} 
-          LIMIT 1`;
-        image2 = (image2Rows[0] as { image2: string | null } | undefined)?.image2 ?? null;
-      }
-    } catch {
-      // Ignore error, use image1 as fallback
-    }
-  }
-  
   // Normalize avatar path for Next.js Image component
   // Priority: database image2 (most recent) > image1 > Google image > default
-  const rawAvatar = (image2 && image2.trim() !== "") ? image2 : ((p?.image1 && p.image1.trim() !== "") ? p.image1 : (googleImage ?? "/images/person.jpg"));
+  const rawAvatar = (p?.image2 && p.image2.trim() !== "") ? p.image2 : ((p?.image1 && p.image1.trim() !== "") ? p.image1 : (googleImage ?? "/images/person.jpg"));
   const avatar = (() => {
     // If empty or falsy, return default image
     if (!rawAvatar || rawAvatar.trim() === "" || rawAvatar === "null" || rawAvatar === "undefined") {
@@ -174,7 +157,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const alumniId = String(sapRows[0]?.alumniid ?? "");
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
-  let cardPicture: string | null = null;
+let cardPicture: string | null = null;
+let cardImageFile: string | null = null;
   if (isAdmin) {
     cardStatus = "active";
     cardStatusError = null;
@@ -183,12 +167,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
       if (sapId) {
         // Preload validation now uses sapid to check existing tblcard association
         const cr = await sql/* sql */`
-          SELECT c.status, c.cardpicture FROM public.tblcard c
+          SELECT c.status, c.cardpicture, c.card_image FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE a.sapid = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
         const raw = String(cr[0]?.status ?? "").toLowerCase().trim();
         cardPicture = cr[0]?.cardpicture ?? null;
+        cardImageFile = cr[0]?.card_image ?? null;
         // Map database statuses to CardStatus
         if (raw === "delivered") {
           cardStatus = "active";
@@ -211,21 +196,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     }
   }
 
-  // Get photo URL for card template - prioritize card picture, then profile image
-  const photoUrl = (() => {
-    if (cardPicture && cardPicture.trim()) {
-      const cardPic = cardPicture.trim();
-      if (cardPic.startsWith("/") || cardPic.startsWith("http")) return cardPic;
-      return `/images/cards/${cardPic}`;
+  // Card template images: prefer thumbnail/profile image first, then dedicated card image
+  const profileImageFilename = (() => {
+    if (p?.image1 && p.image1.trim() && p.image1.trim().toLowerCase() !== "null") {
+      return p.image1.trim();
     }
-    if (p?.image1 && p.image1.trim()) {
-      let img1 = p.image1.trim();
-      // Fix typo: replace "tumbnail" with "thumbnail" if present
-      img1 = img1.replace(/\/tumbnail\//g, "/thumbnail/");
-      if (img1.startsWith("/") || img1.startsWith("http")) return img1;
-      if (img1.includes("/")) return img1.startsWith("/") ? img1 : `/${img1}`;
-      // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
-      return `/images/alumni-images/thumbnail/${img1}`;
+    return undefined;
+  })();
+  const cardTemplateImageFilename = (() => {
+    const raw = (cardImageFile ?? cardPicture) ?? null;
+    if (raw && raw.trim() && raw.trim().toLowerCase() !== "null") {
+      return raw.trim();
     }
     return undefined;
   })();
@@ -250,7 +231,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   }
 
   // Fetch chapters for verified alumni (both for alumni and admin views)
-  const chapters: string[] = [];
+  let chapters: string[] = [];
   let chaptersError: string | null = null;
   let isVerified: boolean = false;
   if (alumniId) {
@@ -278,6 +259,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
           if (chapterRec.chapter2) chapters.push(String(chapterRec.chapter2));
           if (chapterRec.chapter3) chapters.push(String(chapterRec.chapter3));
         }
+        // Remove duplicate chapters (case-insensitive) while preserving original case
+        const seen = new Set<string>();
+        chapters = chapters
+          .map(ch => ch.trim())
+          .filter(ch => {
+            if (!ch || ch === "") return false;
+            const lower = ch.toLowerCase();
+            if (seen.has(lower)) {
+              return false; // Duplicate, filter it out
+            }
+            seen.add(lower);
+            return true; // Keep this one
+          });
       }
     } catch (e) {
       chaptersError = e instanceof Error ? e.message : "Failed to load chapters";
@@ -419,7 +413,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                                 faculty={faculty}
                                 alumniId={sapId || "UOL-AL-0000"}
                                 validity={validity}
-                                photoUrl={photoUrl}
+                                photoUrl={profileImageFilename}
+                                cardImage={cardTemplateImageFilename}
                               />
                             </div>
                             {validity && (() => {
@@ -571,7 +566,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
             {
               title: "Alumni Chapters",
               decription: "Keep your UOL connection alive by joining national and international alumni chapters.",
-              action: "Apply now",
+              action: "View",
               color: "text-green-700",
               bg: "bg-green-100",
               icon: (
@@ -642,7 +637,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                   </>
                 ) : c.title === "Alumni Chapters" ? (
                   <Link
-                    href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
+                    href={sapId ? `/alumni-profile/my-chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/my-chapters`}
                     className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {c.action}

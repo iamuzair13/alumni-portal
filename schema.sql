@@ -82,9 +82,7 @@ create table public.tbl_alumni (
   officialemail character varying(100) null,
   officialnumber character varying(50) null,
   work_city text null,
-  supervisordesignation character varying(100) null,
   work_country text null,
-  supervisornumber character varying(50) null,
   image1 character varying(200) null,
   cv character varying(200) null,
   aboutme text null,
@@ -115,23 +113,28 @@ create table public.tblchapters (
   id serial not null,
   chapter_whatsapp text null,
   national_chapter text null,
-  international_chapter text null
+  international_chapter text null,
+  chapter_image text null,
+  is_active boolean null,
+  description text null,
+  constraint tblchapters_pkey primary key (id)
 ) TABLESPACE pg_default;
 
 -- ================================================
 -- TABLE: tblcard
 -- ================================================
-CREATE TABLE public.tblcard (
-  cardid SERIAL,
-  alumniid INT NOT NULL,
-  cardpicture VARCHAR(50),
-  cardaddress VARCHAR(200),
-  cnicno VARCHAR(50),
-  status VARCHAR(50),
-  createdat TIMESTAMP,
-  PRIMARY KEY (alumniid),
-  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
-);
+create table public.tblcard (
+  cardid serial not null,
+  alumniid integer not null,
+  cardpicture character varying(50) null,
+  cardaddress character varying(200) null,
+  cnicno character varying(50) null,
+  status character varying(50) null,
+  createdat timestamp without time zone null,
+  card_image text null,
+  constraint tblcard_pkey primary key (alumniid),
+  constraint tblcard_alumniid_fkey foreign KEY (alumniid) references tbl_alumni (alumniid) on delete CASCADE
+) TABLESPACE pg_default;
 
 -- ================================================
 -- TABLE: tblalumnitalks

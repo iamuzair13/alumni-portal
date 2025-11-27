@@ -5,7 +5,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
   try {
     const { sapid } = await ctx.params;
     const rows = await sql/* sql */`
-      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.createdat
+      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
       WHERE a.sapid = ${sapid}

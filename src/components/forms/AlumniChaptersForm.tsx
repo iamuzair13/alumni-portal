@@ -32,15 +32,17 @@ const nationalChapters = [
 ];
 
 const internationalChapters = [
-  { value: 'KSA', label: 'KSA' },
+  { value: 'Saudi Arabia Chapter', label: 'Saudi Arabia Chapter' },
   { value: 'Kuwait', label: 'Kuwait' },
-  { value: 'UAE', label: 'UAE' },
-  { value: 'UK', label: 'UK' },
+  { value: 'United Arab Emirates Chapter', label: 'United Arab Emirates Chapter' },
+  { value: 'United Kingdom Chapter', label: 'United Kingdom Chapter' },
   { value: 'Bahrain', label: 'Bahrain' },
-  { value: 'Canada', label: 'Canada' },
-  { value: 'USA', label: 'USA' },
+  { value: 'Canada Chapter', label: 'Canada Chapter' },
+  { value: 'United States Chapter', label: 'United States Chapter' },
   { value: 'Qatar', label: 'Qatar' },
-  { value: 'Germany & Austria', label: 'Germany & Austria' },
+  { value: 'Germany-Austria Chapter', label: 'Germany-Austria Chapter' },
+  { value: 'China Chapter', label: 'China Chapter' },
+  { value: 'Italy Chapter', label: 'Italy Chapter' },
 ];
 
 // Combine all chapters with their types and flag components

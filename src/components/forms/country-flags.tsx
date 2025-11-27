@@ -140,24 +140,59 @@ export const AustriaFlag: React.FC<{ className?: string }> = ({ className = "w-6
   </svg>
 );
 
+export const ChinaFlag: React.FC<{ className?: string }> = ({ className = "w-6 h-4" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" className={className}>
+    <rect x="1" y="4" width="30" height="24" rx="4" ry="4" fill="#DE2910"></rect>
+    <path d="M27,4H5c-2.209,0-4,1.791-4,4V24c0,2.209,1.791,4,4,4H27c2.209,0,4-1.791,4-4V8c0-2.209-1.791-4-4-4Zm3,20c0,1.654-1.346,3-3,3H5c-1.654,0-3-1.346-3-3V8c0-1.654,1.346-3,3-3H27c1.654,0,3,1.346,3,3V24Z" opacity=".15"></path>
+    {/* Large star */}
+    <path d="M10,10l1.5,4.5l4.5,1.5l-4.5,1.5l-1.5,4.5l-1.5-4.5l-4.5-1.5l4.5-1.5l1.5-4.5Z" fill="#FFDE00"></path>
+    {/* Small stars */}
+    <path d="M20,8l.8,2.4l2.4,.8l-2.4,.8l-.8,2.4l-.8-2.4l-2.4-.8l2.4-.8l.8-2.4Z" fill="#FFDE00"></path>
+    <path d="M22,14l.8,2.4l2.4,.8l-2.4,.8l-.8,2.4l-.8-2.4l-2.4-.8l2.4-.8l.8-2.4Z" fill="#FFDE00"></path>
+    <path d="M20,20l.8,2.4l2.4,.8l-2.4,.8l-.8,2.4l-.8-2.4l-2.4-.8l2.4-.8l.8-2.4Z" fill="#FFDE00"></path>
+    <path d="M16,18l.8,2.4l2.4,.8l-2.4,.8l-.8,2.4l-.8-2.4l-2.4-.8l2.4-.8l.8-2.4Z" fill="#FFDE00"></path>
+  </svg>
+);
+
+export const ItalyFlag: React.FC<{ className?: string }> = ({ className = "w-6 h-4" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" className={className}>
+    <rect x="1" y="4" width="30" height="24" rx="4" ry="4" fill="#009246"></rect>
+    <path d="M27,4H5c-2.209,0-4,1.791-4,4V24c0,2.209,1.791,4,4,4H27c2.209,0,4-1.791,4-4V8c0-2.209-1.791-4-4-4Zm3,20c0,1.654-1.346,3-3,3H5c-1.654,0-3-1.346-3-3V8c0-1.654,1.346-3,3-3H27c1.654,0,3,1.346,3,3V24Z" opacity=".15"></path>
+    <rect x="1" y="4" width="10" height="24" fill="#009246"></rect>
+    <rect x="11" y="4" width="10" height="24" fill="#fff"></rect>
+    <rect x="21" y="4" width="10" height="24" fill="#CE2B37"></rect>
+  </svg>
+);
+
 // Flag mapping function
 export const getCountryFlag = (country: string): React.ComponentType<{ className?: string }> => {
   const flagMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    // Old mappings for backward compatibility
     'KSA': SaudiArabiaFlag,
     'Saudi Arabia': SaudiArabiaFlag,
+    'Saudi Arabia Chapter': SaudiArabiaFlag,
     'United Kingdom': UnitedKingdomFlag,
     'UK': UnitedKingdomFlag,
+    'United Kingdom Chapter': UnitedKingdomFlag,
     'Kuwait': KuwaitFlag,
     'UAE': UAEFlag,
     'United Arab Emirates': UAEFlag,
+    'United Arab Emirates Chapter': UAEFlag,
     'Bahrain': BahrainFlag,
     'Canada': CanadaFlag,
+    'Canada Chapter': CanadaFlag,
     'USA': USAFlag,
     'United States': USAFlag,
+    'United States Chapter': USAFlag,
     'Qatar': QatarFlag,
     'Germany': GermanyFlag,
     'Austria': AustriaFlag,
     'Germany & Austria': GermanyFlag,
+    'Germany-Austria Chapter': GermanyFlag,
+    'China': ChinaFlag,
+    'China Chapter': ChinaFlag,
+    'Italy': ItalyFlag,
+    'Italy Chapter': ItalyFlag,
   };
   return flagMap[country] || SaudiArabiaFlag; // Default to Saudi Arabia if not found
 };

@@ -63,12 +63,12 @@ async function getCardStatus(sapId: string) {
   if (!sapId) return null;
   try {
     const rows = await sql/* sql */`
-      SELECT c.status, c.cardpicture
+      SELECT c.status, c.cardpicture, c.card_image
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
       WHERE a.sapid = ${sapId}
       ORDER BY c.cardid DESC LIMIT 1`;
-    return rows[0] as { status: string | null; cardpicture: string | null } | undefined;
+    return rows[0] as { status: string | null; cardpicture: string | null; card_image: string | null } | undefined;
   } catch {
     return null;
   }
@@ -124,6 +124,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   // Get card status and card picture
   let cardStatus: string | null = null;
   let cardPicture: string | null = null;
+  let cardImageFilename: string | null = null;
   let cardStatusError: string | null = null;
   
   if (sapId && sapId !== "") {
@@ -132,6 +133,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
       if (cardData) {
         cardStatus = cardData.status;
         cardPicture = cardData.cardpicture;
+        cardImageFilename = cardData.card_image ?? cardData.cardpicture ?? null;
       }
     } catch (e) {
       cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
@@ -143,26 +145,17 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   const normalizedStatus = cardStatus ? String(cardStatus).trim().toLowerCase() : "";
   const showTemplate = normalizedStatus === "delivered" || normalizedStatus === "active";
   
-  // Get photo URL - prioritize card picture, then profile image
-  // cardpicture is just a filename, image1 might be a path or filename
-  const photoUrl = (() => {
-    if (cardPicture && cardPicture.trim()) {
-      // Card picture - check if it's already a full path or just filename
-      const cardPic = cardPicture.trim();
-      if (cardPic.startsWith("/") || cardPic.startsWith("http")) return cardPic;
-      // Assume card pictures are in /images/cards/ or /images/profile/
-      return `/images/cards/${cardPic}`;
+  const profileImageFilename = (() => {
+    if (p?.image1 && p.image1.trim() && p.image1.trim().toLowerCase() !== "null") {
+      return p.image1.trim();
     }
-    if (p?.image1 && p.image1.trim()) {
-      // Profile image - check if it's already a full path or just filename
-      let img1 = p.image1.trim();
-      // Fix typo: replace "tumbnail" with "thumbnail" if present
-      img1 = img1.replace(/\/tumbnail\//g, "/thumbnail/");
-      if (img1.startsWith("/") || img1.startsWith("http")) return img1;
-      // Check if it contains a path separator (already a path)
-      if (img1.includes("/")) return img1.startsWith("/") ? img1 : `/${img1}`;
-      // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
-      return `/images/alumni-images/thumbnail/${img1}`;
+    return undefined;
+  })();
+
+  const cardTemplateImageFilename = (() => {
+    const raw = cardImageFilename ?? cardPicture ?? null;
+    if (raw && raw.trim() && raw.trim().toLowerCase() !== "null") {
+      return raw.trim();
     }
     return undefined;
   })();
@@ -222,7 +215,8 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
                 faculty={faculty}
                 alumniId={sapId || "UOL-AL-0000"}
                 validity={validity}
-                photoUrl={photoUrl}
+                photoUrl={profileImageFilename}
+                cardImage={cardTemplateImageFilename}
               />
             ) : (
               <AlumniCardForm

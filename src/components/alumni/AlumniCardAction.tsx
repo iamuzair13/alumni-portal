@@ -20,6 +20,7 @@ type CardRow = {
   cardaddress: string | null;
   status: string | null;
   cardpicture: string | null;
+  card_image: string | null;
   createdat: string | null;
 };
 

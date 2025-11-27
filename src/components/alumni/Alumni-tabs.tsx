@@ -201,21 +201,21 @@ export const AlumniTabs: React.FC = () => {
     retryDelay: 1000, // Wait 1 second between retries
   });
   
-  const rawItems = paginatedData?.items ?? [];
   const totalRecords = paginatedData?.total ?? 0;
 
   // Map server items to UI shape (optimized for performance)
   // Use paginated items for display
   const items: AlumniItem[] = useMemo(() => {
-    if (!rawItems || rawItems.length === 0) return [];
+    const sourceItems = paginatedData?.items ?? [];
+    if (!sourceItems || sourceItems.length === 0) return [];
     
     // Pre-allocate array for better performance
     const result: AlumniItem[] = [];
-    result.length = rawItems.length;
+    result.length = sourceItems.length;
     let idx = 0;
     
-    for (let i = 0; i < rawItems.length; i++) {
-      const r = rawItems[i];
+    for (let i = 0; i < sourceItems.length; i++) {
+      const r = sourceItems[i];
       
       // Allow records with either sapid OR registrationno for all tabs
       // This includes "Under Approval" records that might have null sapid
@@ -291,7 +291,7 @@ export const AlumniTabs: React.FC = () => {
     
     // Trim array to actual size
     return result.slice(0, idx);
-  }, [rawItems]);
+  }, [paginatedData]);
 
   // Use counts from server (lightweight query) - always use server data for real-time accuracy
   const counts = useMemo(() => {

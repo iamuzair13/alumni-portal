@@ -17,7 +17,8 @@ type AlumniCardTemplateProps = {
   faculty: string;
   alumniId: string;
   validity?: string; // Format: YYYY-MM or MM/YYYY
-  photoUrl?: string; // URL to the profile picture
+  photoUrl?: string | null; // Profile/thumbnail image filename or path
+  cardImage?: string | null; // Dedicated card image filename or path
 };
 
 export default function AlumniCardTemplate({
@@ -27,40 +28,96 @@ export default function AlumniCardTemplate({
   alumniId,
   validity,
   photoUrl,
+  cardImage,
 }: AlumniCardTemplateProps) {
-  const [imageError, setImageError] = useState(false);
-  
-  // Normalize photo URL
-  const normalizedPhotoUrl = useMemo(() => {
-    if (imageError) return "/images/person.jpg";
-    if (!photoUrl || !photoUrl.trim()) return "/images/person.jpg";
-    
-    let imagePath = photoUrl.trim();
-    
-    // Fix typo: replace "tumbnail" with "thumbnail" if present
+  const [imageIndex, setImageIndex] = useState(0);
+
+  const normalizeImagePath = (raw: string | null | undefined, type: "thumbnail" | "card"): string | null => {
+    if (!raw) return null;
+    let imagePath = raw.trim();
+    if (!imagePath || imagePath.toLowerCase() === "null" || imagePath.toLowerCase() === "undefined") {
+      return null;
+    }
     imagePath = imagePath.replace(/\/tumbnail\//g, "/thumbnail/");
-    
-    // If already a valid path (starts with / or http), return as-is
     if (imagePath.startsWith("/") || imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
       return imagePath;
     }
-    
-    // If it's just a filename, prepend the alumni images thumbnail directory
-    // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
     if (!imagePath.includes("/")) {
-      return `/images/alumni-images/thumbnail/${imagePath}`;
+      const base = type === "card" ? "/images/alumni-images/card" : "/images/alumni-images/thumbnail";
+      return `${base}/${imagePath}`;
+    }
+    return imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+  };
+
+  const imageCandidates = useMemo(() => {
+    const candidates: string[] = [];
+    
+    // Priority 1: Check "card" directory and "card_image" column in tblcard
+    // Only add if cardImage (from card_image column) has a value
+    const cardImageStr = cardImage ? String(cardImage).trim() : "";
+    if (cardImageStr && cardImageStr.toLowerCase() !== "null" && cardImageStr.toLowerCase() !== "undefined") {
+      const cardImg = normalizeImagePath(cardImageStr, "card");
+      if (cardImg) {
+        candidates.push(cardImg); // /images/alumni-images/card/{cardImage}
+      }
     }
     
-    // If it's a relative path without leading slash, add it
-    return `/${imagePath}`;
-  }, [photoUrl, imageError]);
-  
-  // Reset image error when photoUrl changes
-  useEffect(() => {
-    if (photoUrl) {
-      setImageError(false);
+    // Priority 2: Check "thumbnail" directory and "image1" column in tbl_alumni
+    // Only add if photoUrl (from image1 column) has a value
+    const photoUrlStr = photoUrl ? String(photoUrl).trim() : "";
+    if (photoUrlStr && photoUrlStr.toLowerCase() !== "null" && photoUrlStr.toLowerCase() !== "undefined") {
+      const thumbnail = normalizeImagePath(photoUrlStr, "thumbnail");
+      if (thumbnail) {
+        candidates.push(thumbnail); // /images/alumni-images/thumbnail/{photoUrl}
+      }
     }
-  }, [photoUrl]);
+    
+    // Priority 3: Fallback image (always include)
+    candidates.push("/images/person.jpg");
+    
+    // Debug logging (remove in production if needed)
+    if (typeof window !== "undefined") {
+      console.log("[AlumniCardTemplate] Image candidates:", {
+        cardImage,
+        photoUrl,
+        cardImageStr,
+        photoUrlStr,
+        candidates,
+        cardImageNormalized: cardImageStr ? normalizeImagePath(cardImageStr, "card") : null,
+        photoUrlNormalized: photoUrlStr ? normalizeImagePath(photoUrlStr, "thumbnail") : null,
+      });
+    }
+    
+    return candidates;
+  }, [cardImage, photoUrl]);
+
+  useEffect(() => {
+    setImageIndex(0);
+    // Debug logging
+    if (typeof window !== "undefined") {
+      console.log("[AlumniCardTemplate] Image props changed:", { cardImage, photoUrl });
+    }
+  }, [photoUrl, cardImage]);
+
+  const activeImageSrc = imageCandidates[imageIndex] || "/images/person.jpg";
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.currentTarget;
+    console.warn("[AlumniCardTemplate] Image failed to load:", {
+      src: target.src,
+      index: imageIndex,
+      totalCandidates: imageCandidates.length,
+      candidates: imageCandidates,
+    });
+    setImageIndex((prev) => {
+      const next = prev + 1;
+      if (next < imageCandidates.length) {
+        console.log("[AlumniCardTemplate] Trying next image candidate:", imageCandidates[next]);
+        return next;
+      }
+      console.warn("[AlumniCardTemplate] All image candidates failed, using fallback");
+      return prev; // Stay on last candidate (fallback)
+    });
+  };
   // Format validity date
   const formattedValidity = (() => {
     if (!validity) return "MM/YYYY";
@@ -87,6 +144,7 @@ export default function AlumniCardTemplate({
     <div className={`${roboto.className} w-full`}>
       {/* Front of Card Only */}
       <div className="relative w-full overflow-hidden rounded-lg shadow-md">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={frontTemplate}
           alt="Alumni card front template"
@@ -110,17 +168,20 @@ export default function AlumniCardTemplate({
           <span>{formattedValidity}</span>
         </div>
 
-        <div className="absolute right-8 top-10 flex h-[180px] w-[135px] items-center justify-center overflow-hidden rounded">
+        <div className="absolute right-[25px] top-7 flex h-[120px] w-[100x] items-center justify-center overflow-hidden rounded bg-gray-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={normalizedPhotoUrl}
+            key={`${activeImageSrc}-${imageIndex}`}
+            src={activeImageSrc}
             alt={studentName || "Alumni"}
             className="h-full w-full object-cover"
-            onError={() => {
-              // Set error state to trigger fallback to default image
-              if (!imageError) {
-                setImageError(true);
+            onError={handleImageError}
+            onLoad={() => {
+              if (typeof window !== "undefined") {
+                console.log("[AlumniCardTemplate] Image loaded successfully:", activeImageSrc);
               }
             }}
+            style={{ display: "block" }}
           />
         </div>
       </div>

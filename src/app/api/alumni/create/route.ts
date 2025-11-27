@@ -40,10 +40,6 @@ type TblAlumniBody = {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
-  supervisorname: string | null;
-  supervisordesignation: string | null;
-  supervisoremail: string | null;
-  supervisornumber: string | null;
   image1: string | null;
   cv: string | null;
   aboutme: string | null;
@@ -271,10 +267,8 @@ export async function POST(req: Request) {
           totalyearsofexpereince,
           officialemail,
           officialnumber,
-          supervisorname,
-          supervisordesignation,
-          supervisoremail,
-          supervisornumber,
+          work_city,
+          work_country,
           image1,
           cv,
           aboutme,
@@ -332,10 +326,8 @@ export async function POST(req: Request) {
           ${truncateExperience(body.totalyearsofexpereince)},
           ${clean(body.officialemail)},
           ${clean(body.officialnumber)},
-          ${clean(body.supervisorname)},
-          ${clean(body.supervisordesignation)},
-          ${clean(body.supervisoremail)},
-          ${clean(body.supervisornumber)},
+          ${clean((body as { workCity?: string | null }).workCity ?? null)},
+          ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
           ${clean(body.image1)},
           ${clean(body.cv)},
           ${clean(body.aboutme)},
@@ -386,6 +378,65 @@ export async function POST(req: Request) {
       
       return alumniId;
     });
+
+    // Automatically store home city in chapter1 and work city in chapter2
+    if (id) {
+      try {
+        // Get home city from body
+        const homeCity = body.city ? String(body.city).trim() : null;
+        
+        // Get work city from body or fetch from database
+        let workCity = (body as { workCity?: string | null }).workCity 
+          ? String((body as { workCity?: string | null }).workCity).trim() 
+          : null;
+
+        // If workCity wasn't in body, fetch it from the database (it was just saved)
+        if (!workCity) {
+          const workCityRow = await sql/* sql */`
+            SELECT work_city FROM public.tbl_alumni 
+            WHERE alumniid = ${id} 
+            LIMIT 1
+          `;
+          workCity = workCityRow[0]?.work_city 
+            ? String(workCityRow[0].work_city).trim() 
+            : null;
+        }
+
+        // Only create chapter record if at least one city is provided
+        if (homeCity || workCity) {
+          // Check if a record already exists for this alumni
+          const existingChapter = await sql/* sql */`
+            SELECT id FROM public.alumni_chapter 
+            WHERE id = ${id}
+          `;
+
+          if (existingChapter.length > 0) {
+            // Update existing record - only update if city is provided
+            await sql/* sql */`
+              UPDATE public.alumni_chapter 
+              SET 
+                "chapter1" = COALESCE(${homeCity}, "chapter1"),
+                "chapter2" = COALESCE(${workCity}, "chapter2")
+              WHERE id = ${id}
+            `;
+          } else {
+            // Insert new record
+            await sql/* sql */`
+              INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+              VALUES (${id}, ${homeCity}, ${workCity}, NULL)
+            `;
+          }
+          console.log("[API] Automatically stored cities in chapters:", { 
+            alumniId: id, 
+            chapter1: homeCity, 
+            chapter2: workCity 
+          });
+        }
+      } catch (chapterError) {
+        // Don't fail the registration if chapter insertion fails
+        console.error("[API] Error storing cities in chapters:", chapterError);
+      }
+    }
 
     // DO NOT send welcome email on registration
     // Email will be sent when admin verifies or unverifies the alumni

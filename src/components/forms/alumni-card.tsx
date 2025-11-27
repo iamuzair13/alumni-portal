@@ -51,6 +51,7 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
   const router = useRouter();
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
     defaultValues: { preference: "Collect" },
@@ -82,19 +83,23 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
   const onSubmit = async (vals: FormVals) => {
     setFileError(null);
     try {
+      if (!selectedFile) {
+        setFileError("Profile picture is required");
+        return;
+      }
       const loadingToast = toast.loading("Submitting your alumni card application...");
       
-      const payload = {
-        alumniId,
-        cnicno: vals.cnic,
-        cardaddress: vals.preference === "Deliver" ? vals.address : "", // Only include address if delivery is selected
-        status: vals.preference,
-        cardpicture: vals.pictureName.slice(0, 50),
-      };
+      const formData = new FormData();
+      formData.append("alumniId", String(alumniId));
+      formData.append("sapId", String(sapId || ""));
+      formData.append("cnicno", vals.cnic);
+      formData.append("cardaddress", vals.preference === "Deliver" ? vals.address ?? "" : "");
+      formData.append("status", vals.preference);
+      formData.append("image", selectedFile);
+
       const res = await fetch("/api/alumni-cards", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
       
       toast.dismiss(loadingToast);
@@ -126,7 +131,17 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       
       reset();
       setPreviewUrl(null);
-      try { localStorage.setItem("alumni-card-last", JSON.stringify(payload)); } catch {}
+      setSelectedFile(null);
+      setValue("pictureName", "");
+      try {
+        const payload = {
+          alumniId,
+          cnicno: vals.cnic,
+          cardaddress: vals.preference === "Deliver" ? vals.address : "",
+          status: vals.preference,
+        };
+        localStorage.setItem("alumni-card-last", JSON.stringify(payload));
+      } catch {}
       
       // Navigate back to profile page
       setTimeout(() => {
@@ -227,11 +242,13 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
                 setFileError(v.error || "Invalid file");
                 setPreviewUrl(null);
                 setValue("pictureName", "");
+                setSelectedFile(null);
                 return;
               }
               setFileError(null);
               setPreviewUrl(file ? URL.createObjectURL(file) : null);
               setValue("pictureName", file?.name || "");
+              setSelectedFile(file ?? null);
             }}
             disabled={isSubmitting}
           />

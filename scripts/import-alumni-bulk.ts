@@ -153,10 +153,6 @@ function mapRowToAlumni(row: any, rowIndex: number = 0): {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
-  supervisorname: string | null;
-  supervisordesignation: string | null;
-  supervisoremail: string | null;
-  supervisornumber: string | null;
   image1: string | null;
   cv: string | null;
   aboutme: string | null;
@@ -262,10 +258,6 @@ function mapRowToAlumni(row: any, rowIndex: number = 0): {
     totalyearsofexpereince: clean(getColumnValue(row, 'totalyearsofexpereince')),
     officialemail: cleanEmail(getColumnValue(row, 'officialemail')),
     officialnumber: clean(getColumnValue(row, 'officialnumber')),
-    supervisorname: clean(getColumnValue(row, 'supervisorname')),
-    supervisordesignation: clean(getColumnValue(row, 'supervisordesignation')),
-    supervisoremail: cleanEmail(getColumnValue(row, 'supervisoremail')),
-    supervisornumber: clean(getColumnValue(row, 'supervisornumber')),
     image1: clean(getColumnValue(row, 'image1')),
     cv: clean(getColumnValue(row, 'cv')),
     aboutme: clean(getColumnValue(row, 'aboutme')),
@@ -349,10 +341,6 @@ async function insertBatch(records: any[], batchNumber: number, overwrite: boole
                   totalyearsofexpereince = ${record.totalyearsofexpereince ?? null},
                   officialemail = ${record.officialemail ?? null},
                   officialnumber = ${record.officialnumber ?? null},
-                  supervisorname = ${record.supervisorname ?? null},
-                  supervisordesignation = ${record.supervisordesignation ?? null},
-                  supervisoremail = ${record.supervisoremail ?? null},
-                  supervisornumber = ${record.supervisornumber ?? null},
                   image1 = ${record.image1 ?? null},
                   cv = ${record.cv ?? null},
                   aboutme = ${record.aboutme ?? null},
@@ -403,7 +391,6 @@ async function insertBatch(records: any[], batchNumber: number, overwrite: boole
               degreetitle, cgpa, yearofstarting, yearofending, facultyname, campusname,
               departmentname, majorsubject, industry, employeed, nameoforganization,
               designation, totalyearsofexpereince, officialemail, officialnumber,
-              supervisorname, supervisordesignation, supervisoremail, supervisornumber,
               image1, cv, aboutme, lasttimelogin, logincount, verify, emailsendcount,
               emailsendstatus, createddatetime, facebook, instagram, youtube, linkedin,
               datasource, alumnistatus, degree_title, higher_education_institute_name,
@@ -420,8 +407,7 @@ async function insertBatch(records: any[], batchNumber: number, overwrite: boole
               ${record.campusname ?? null}, ${record.departmentname ?? null}, ${record.majorsubject ?? null},
               ${record.industry ?? null}, ${record.employeed ?? null}, ${record.nameoforganization ?? null},
               ${record.designation ?? null}, ${record.totalyearsofexpereince ?? null}, ${record.officialemail ?? null},
-              ${record.officialnumber ?? null}, ${record.supervisorname ?? null}, ${record.supervisordesignation ?? null},
-              ${record.supervisoremail ?? null}, ${record.supervisornumber ?? null}, ${record.image1 ?? null},
+              ${record.officialnumber ?? null}, ${record.image1 ?? null},
               ${record.cv ?? null}, ${record.aboutme ?? null}, ${record.lasttimelogin ?? null}, ${record.logincount ?? null},
               ${record.verify ?? null}, ${record.emailsendcount ?? null}, ${record.emailsendstatus ?? null},
               ${record.createddatetime ?? null}, ${record.facebook ?? null}, ${record.instagram ?? null},

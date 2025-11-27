@@ -71,14 +71,26 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
     return trimmedPath;
   };
 
-  // Sync avatar when prop changes and normalize it
+  // Use image2 first (most recent upload), then image1, then initialAvatar prop
+  // This ensures profile picture shows the latest uploaded image
+  const avatarFromDb = useMemo(() => {
+    const image2 = (fullDetails as unknown as { image2?: string | null })?.image2;
+    const image1 = fullDetails?.image1;
+    const raw = (image2 && image2.trim() !== "" && image2.toLowerCase() !== "null") 
+      ? image2 
+      : ((image1 && image1.trim() !== "" && image1.toLowerCase() !== "null") 
+        ? image1 
+        : initialAvatar);
+    return normalizeImagePath(raw);
+  }, [fullDetails, initialAvatar]);
+
+  // Sync avatar when data changes
   useEffect(() => {
-    if (initialAvatar) {
-      const normalized = normalizeImagePath(initialAvatar);
-      setAvatar(normalized);
+    if (avatarFromDb) {
+      setAvatar(avatarFromDb);
       setImageError(false); // Reset error when avatar changes
     }
-  }, [initialAvatar]);
+  }, [avatarFromDb]);
   
   // Use fallback if image error occurred
   const displayAvatar = imageError ? "/images/person.jpg" : avatar;
@@ -403,7 +415,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
         </div>
         {/* Chapters Section */}
         <div className="mt-6 pt-4 border-t border-gray-100">
-          <h5 className="text-lg font-semibold text-red-800 mb-3">Alumni Chapters</h5>
+          <h5 className="text-lg font-semibold text-red-800 mb-3">Member of </h5>
           {chaptersError ? (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg">
               <p className="text-sm text-rose-700">{chaptersError}</p>
@@ -430,7 +442,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                     />
                   </svg>
                   <span className="text-sm font-medium text-green-800">
-                    Member of {chapter}
+                    {chapter}
                   </span>
                 </div>
               ))}

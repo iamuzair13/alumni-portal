@@ -52,10 +52,6 @@ export type TblAlumniForm = {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
-  supervisorname: string | null;
-  supervisordesignation: string | null;
-  supervisoremail: string | null;
-  supervisornumber: string | null;
   image1: string | null;
   cv: string | null;
   aboutme: string | null;
@@ -178,10 +174,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       totalyearsofexpereince: null,
       officialemail: null,
       officialnumber: null,
-      supervisorname: null,
-      supervisordesignation: null,
-      supervisoremail: null,
-      supervisornumber: null,
       image1: null,
       cv: null,
       aboutme: null,
