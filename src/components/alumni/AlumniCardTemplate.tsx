@@ -59,19 +59,19 @@ export default function AlumniCardTemplate({
           className="w-full h-auto object-contain"
         />
 
-        <div className="absolute left-4 right-[35%] top-13 flex flex-col justify-center items-start  gap-0.8 text-[13px] leading-tight text-[#0f7a3a]">
-          <span className="text-base font-semibold tracking-tight">
+        <div className="absolute left-3 right-[35%] top-11 flex flex-col justify-center items-start  gap-0.9 text-[13px] leading-tight text-[#0f7a3a]">
+          <span className="text-[12px] font-semibold tracking-tight">
             {studentName || "Alumni Name"}
           </span>
-          <span className="font-semibold text-12 leading-tight flex justify-start items-start text-left">
+          <span className=" text-[10px] leading-tight flex justify-start items-start text-left">
             {department || "Department"}
           </span>
-          <span className="font-semibold text-xs">
+          <span className=" text-[10px]">
             {faculty || "Faculty"}
           </span>
         </div>
 
-        <div className="absolute bottom-16 left-20 flex flex-col text-xs font-medium text-[#0f7a3a]">
+        <div className="absolute bottom-12 left-20 flex flex-col text-[8px] font-medium text-[#0f7a3a]">
           <span>{alumniId || "UOL-AL-0000"}</span>
           <span>{formattedValidity}</span>
         </div>
@@ -79,7 +79,7 @@ export default function AlumniCardTemplate({
         <div className="absolute right-8 top-10 flex h-[180px] w-[135px] items-center justify-center overflow-hidden rounded">
           {photoUrl ? (
             <img
-              src={photoUrl}
+              src={photoUrl || "./images/person.jpg"}
               alt={studentName || "Alumni"}
               className="h-full w-full object-cover"
             />
