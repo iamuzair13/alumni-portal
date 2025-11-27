@@ -38,10 +38,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     // Generate unique filename
     const timestamp = Date.now();
     const extension = file.name.split(".").pop() || "jpg";
-    const filename = `profile_${sapid}_${timestamp}.${extension}`;
+    const filename = `${sapid}-${timestamp}.${extension}`;
     
     // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), "public", "images", "profile");
+    // Images are stored in /public/images/alumni-images/thumbnail/
+    const uploadsDir = join(process.cwd(), "public", "images", "alumni-images", "thumbnail");
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true });
     }
@@ -52,13 +53,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Update database with relative path
-    const imagePath = `/images/profile/${filename}`;
-    await sql/* sql */`
-      UPDATE public.tbl_alumni 
-      SET image1 = ${imagePath}
-      WHERE sapid = ${sapid}`;
+    // Check if image1 already has a value
+    // If image1 is empty/null, save to image1; otherwise save to image2
+    // image1 is used in AlumniCardTemplate, so we preserve it
+    const currentData = await sql/* sql */`
+      SELECT image1, image2 FROM public.tbl_alumni 
+      WHERE sapid = ${sapid} LIMIT 1` as Array<{ image1: string | null; image2: string | null }>;
+    
+    const currentImage1 = currentData[0]?.image1;
+    
+    if (!currentImage1 || currentImage1.trim() === "") {
+      // image1 is empty, save to image1
+      await sql/* sql */`
+        UPDATE public.tbl_alumni 
+        SET image1 = ${filename}
+        WHERE sapid = ${sapid}`;
+    } else {
+      // image1 has value, save to image2
+      await sql/* sql */`
+        UPDATE public.tbl_alumni 
+        SET image2 = ${filename}
+        WHERE sapid = ${sapid}`;
+    }
 
+    // Return the full path for immediate display
+    const imagePath = `/images/alumni-images/thumbnail/${filename}`;
     return NextResponse.json({ 
       ok: true, 
       imagePath,

@@ -9,13 +9,21 @@ import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
-export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
+type ProfileDetailsClientProps = {
+  sapId: string;
+  chapters?: string[];
+  isVerified?: boolean;
+  chaptersError?: string | null;
+};
+
+export default function ProfileDetailsClient({ sapId, chapters = [], isVerified = false, chaptersError }: ProfileDetailsClientProps) {
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
   const { data: fullDetails, isLoading: isLoadingFullDetails } = useAlumniFullDetails(sapId);
   const queryClient = useQueryClient();
   const { start, stop } = useProgress();
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate profile completion percentage
@@ -34,7 +42,49 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
   // Use fullDetails for displaying profile summary as it has the raw database values
   // Fallback to data (mapped profile) if fullDetails is not available yet
   const name = String(fullDetails?.alumniname ?? data?.name ?? "").trim();
-  const avatar = String(fullDetails?.image1 ?? (data as unknown as { image1?: string })?.image1 ?? "").trim() || "/images/person.jpg";
+  
+  // Normalize avatar path for Next.js Image component
+  // Use image2 first (most recent upload), then image1 (for AlumniCardTemplate)
+  const rawAvatar = String(
+    (fullDetails as unknown as { image2?: string })?.image2 ?? 
+    fullDetails?.image1 ?? 
+    (data as unknown as { image2?: string; image1?: string })?.image2 ??
+    (data as unknown as { image1?: string })?.image1 ?? 
+    ""
+  ).trim();
+  const avatar = useMemo(() => {
+    // If image error occurred, always use fallback
+    if (imageError) return "/images/person.jpg";
+    
+    // If empty or falsy, return default image
+    if (!rawAvatar || rawAvatar === "" || rawAvatar === "null" || rawAvatar === "undefined") {
+      return "/images/person.jpg";
+    }
+    
+    // Fix typo: replace "tumbnail" with "thumbnail" if present
+    let imagePath = rawAvatar.replace(/\/tumbnail\//g, "/thumbnail/");
+    
+    // Normalize image path for Next.js Image component
+    // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
+    // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+    if (!imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
+      // If it's just a filename, prepend the alumni images thumbnail directory
+      if (!imagePath.includes("/")) {
+        imagePath = `/images/alumni-images/thumbnail/${imagePath}`;
+      } else {
+        // If it's a relative path without leading slash, add it
+        imagePath = `/${imagePath}`;
+      }
+    }
+    return imagePath;
+  }, [rawAvatar, imageError]);
+  
+  // Reset image error when avatar changes
+  useEffect(() => {
+    if (rawAvatar && rawAvatar.trim() !== "" && rawAvatar !== "null" && rawAvatar !== "undefined") {
+      setImageError(false);
+    }
+  }, [rawAvatar]);
   const faculty = String(fullDetails?.facultyname ?? data?.faculty ?? "").trim();
   const dept = String(fullDetails?.departmentname ?? data?.department ?? "").trim();
   const program = String(fullDetails?.degreetitle ?? data?.program ?? "").trim();
@@ -212,7 +262,20 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
             <div className="flex flex-col items-center">
               <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 -mt-16 sm:-mt-10 md:-mt-8 group">
                 <div className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
-                  <Image src={avatar} alt={name || "alumni"} width={160} height={160} sizes="(max-width: 640px) 8rem, (max-width: 768px) 10rem, 10rem" className="w-full h-full object-cover" />
+                  <Image 
+                    src={avatar} 
+                    alt={name || "alumni"} 
+                    width={160} 
+                    height={160} 
+                    sizes="(max-width: 640px) 8rem, (max-width: 768px) 10rem, 10rem" 
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      // Set error state to trigger fallback to default image
+                      if (!imageError) {
+                        setImageError(true);
+                      }
+                    }}
+                  />
                 </div>
                 <button
                   type="button"
@@ -359,6 +422,76 @@ export default function ProfileDetailsClient({ sapId }: { sapId: string }) {
                 </svg>
               </Link>
             </div>
+          </div>
+          {/* Chapters Section */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <h5 className="text-lg font-semibold text-red-800 mb-3">Alumni Chapters</h5>
+            {chaptersError ? (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                <p className="text-sm text-rose-700">{chaptersError}</p>
+              </div>
+            ) : isVerified && chapters.length > 0 ? (
+              <div className="space-y-2">
+                {chapters.map((chapter, index) => (
+                  <div
+                    key={index}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg mr-2 mb-2"
+                  >
+                    <svg
+                      className="w-5 h-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium text-green-800">
+                      Member of {chapter}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : isVerified && chapters.length === 0 ? (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-600 mb-3">
+                  You are not currently a member of any alumni chapter.
+                </p>
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-600 text-sm font-medium rounded-lg cursor-not-allowed"
+                  aria-label="Apply for chapter (functionality coming soon)"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Apply for Chapter
+                </button>
+              </div>
+            ) : !isVerified ? (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-700">
+                  Your account needs to be verified before you can view or apply for chapters.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

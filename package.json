@@ -11,7 +11,8 @@
     "import-alumni": "tsx scripts/import-alumni-bulk.ts",
     "set-super-admin": "tsx scripts/set-initial-super-admin.ts",
     "reset-super-admin-password": "tsx scripts/reset-super-admin-password.ts",
-    "test-super-admin-login": "tsx scripts/test-super-admin-login.ts"
+    "test-super-admin-login": "tsx scripts/test-super-admin-login.ts",
+    "insert-chapters": "tsx scripts/insert-chapters.ts"
   },
   "dependencies": {
     "@bprogress/core": "^1.3.4",

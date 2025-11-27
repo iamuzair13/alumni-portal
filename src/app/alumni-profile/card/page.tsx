@@ -155,12 +155,14 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
     }
     if (p?.image1 && p.image1.trim()) {
       // Profile image - check if it's already a full path or just filename
-      const img1 = p.image1.trim();
+      let img1 = p.image1.trim();
+      // Fix typo: replace "tumbnail" with "thumbnail" if present
+      img1 = img1.replace(/\/tumbnail\//g, "/thumbnail/");
       if (img1.startsWith("/") || img1.startsWith("http")) return img1;
       // Check if it contains a path separator (already a path)
       if (img1.includes("/")) return img1.startsWith("/") ? img1 : `/${img1}`;
-      // Otherwise assume it's in images/profile
-      return `/images/profile/${img1}`;
+      // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+      return `/images/alumni-images/thumbnail/${img1}`;
     }
     return undefined;
   })();

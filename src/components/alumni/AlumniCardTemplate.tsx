@@ -1,6 +1,7 @@
 "use client";
 
 import { Roboto } from "next/font/google";
+import { useState, useMemo, useEffect } from "react";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -27,6 +28,39 @@ export default function AlumniCardTemplate({
   validity,
   photoUrl,
 }: AlumniCardTemplateProps) {
+  const [imageError, setImageError] = useState(false);
+  
+  // Normalize photo URL
+  const normalizedPhotoUrl = useMemo(() => {
+    if (imageError) return "/images/person.jpg";
+    if (!photoUrl || !photoUrl.trim()) return "/images/person.jpg";
+    
+    let imagePath = photoUrl.trim();
+    
+    // Fix typo: replace "tumbnail" with "thumbnail" if present
+    imagePath = imagePath.replace(/\/tumbnail\//g, "/thumbnail/");
+    
+    // If already a valid path (starts with / or http), return as-is
+    if (imagePath.startsWith("/") || imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+    
+    // If it's just a filename, prepend the alumni images thumbnail directory
+    // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+    if (!imagePath.includes("/")) {
+      return `/images/alumni-images/thumbnail/${imagePath}`;
+    }
+    
+    // If it's a relative path without leading slash, add it
+    return `/${imagePath}`;
+  }, [photoUrl, imageError]);
+  
+  // Reset image error when photoUrl changes
+  useEffect(() => {
+    if (photoUrl) {
+      setImageError(false);
+    }
+  }, [photoUrl]);
   // Format validity date
   const formattedValidity = (() => {
     if (!validity) return "MM/YYYY";
@@ -77,17 +111,17 @@ export default function AlumniCardTemplate({
         </div>
 
         <div className="absolute right-8 top-10 flex h-[180px] w-[135px] items-center justify-center overflow-hidden rounded">
-          {photoUrl ? (
-            <img
-              src={photoUrl || "./images/person.jpg"}
-              alt={studentName || "Alumni"}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-              No Photo
-            </div>
-          )}
+          <img
+            src={normalizedPhotoUrl}
+            alt={studentName || "Alumni"}
+            className="h-full w-full object-cover"
+            onError={() => {
+              // Set error state to trigger fallback to default image
+              if (!imageError) {
+                setImageError(true);
+              }
+            }}
+          />
         </div>
       </div>
     </div>

@@ -16,8 +16,9 @@ export async function GET() {
     
     if (sessionSapid) {
       // Use SAP ID if available
+      // Return image2 if it exists (most recent), otherwise image1
       rows = await sql/* sql */`
-        SELECT image1 FROM public.tbl_alumni 
+        SELECT image1, image2 FROM public.tbl_alumni 
         WHERE sapid = ${sessionSapid} LIMIT 1`;
     } else {
       // Fallback to email lookup (backward compatibility)
@@ -27,7 +28,7 @@ export async function GET() {
       }
       
       rows = await sql/* sql */`
-        SELECT image1 FROM public.tbl_alumni 
+        SELECT image1, image2 FROM public.tbl_alumni 
         WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
         ORDER BY alumniid DESC LIMIT 1`;
     }
@@ -36,10 +37,11 @@ export async function GET() {
       return NextResponse.json({ image: null }, { status: 200 });
     }
 
-    const row = rows[0] as { image1: string | null };
+    const row = rows[0] as { image1: string | null; image2: string | null };
     
-    // Return the image path with cache busting timestamp
-    const image = row.image1 || null;
+    // Return image2 if it exists (most recent upload), otherwise image1
+    // This is for profile/header display
+    const image = (row.image2 && row.image2.trim() !== "") ? row.image2 : (row.image1 || null);
     
     return NextResponse.json({ 
       image,

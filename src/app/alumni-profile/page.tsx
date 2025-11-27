@@ -93,8 +93,51 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const isAdmin = isAdminUser(session?.user);
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
-  // Priority: database image1 > Google image > default
-  const avatar = (p?.image1 && p.image1.trim() !== "") ? p.image1 : (googleImage ?? "/images/person.jpg");
+  
+  // Fetch image2 (most recent upload) for profile/header display
+  // image1 is preserved for AlumniCardTemplate
+  let image2: string | null = null;
+  if (p) {
+    try {
+      const sapidForImage = sp?.sapid || (session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined);
+      if (sapidForImage) {
+        const image2Rows = await sql/* sql */`
+          SELECT image2 FROM public.tbl_alumni 
+          WHERE sapid = ${sapidForImage} 
+          LIMIT 1`;
+        image2 = (image2Rows[0] as { image2: string | null } | undefined)?.image2 ?? null;
+      }
+    } catch {
+      // Ignore error, use image1 as fallback
+    }
+  }
+  
+  // Normalize avatar path for Next.js Image component
+  // Priority: database image2 (most recent) > image1 > Google image > default
+  const rawAvatar = (image2 && image2.trim() !== "") ? image2 : ((p?.image1 && p.image1.trim() !== "") ? p.image1 : (googleImage ?? "/images/person.jpg"));
+  const avatar = (() => {
+    // If empty or falsy, return default image
+    if (!rawAvatar || rawAvatar.trim() === "" || rawAvatar === "null" || rawAvatar === "undefined") {
+      return "/images/person.jpg";
+    }
+    
+    let trimmedPath = rawAvatar.trim();
+    
+    // Fix typo: replace "tumbnail" with "thumbnail" if present
+    trimmedPath = trimmedPath.replace(/\/tumbnail\//g, "/thumbnail/");
+    
+    // If already a valid path (starts with / or http), return as-is
+    if (trimmedPath.startsWith("/") || trimmedPath.startsWith("http://") || trimmedPath.startsWith("https://")) {
+      return trimmedPath;
+    }
+    // If it's just a filename, prepend the alumni images thumbnail directory
+    // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+    if (!trimmedPath.includes("/")) {
+      return `/images/alumni-images/thumbnail/${trimmedPath}`;
+    }
+    // If it's a relative path without leading slash, add it
+    return `/${trimmedPath}`;
+  })();
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const program = p?.degreetitle ?? "";
@@ -176,10 +219,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
       return `/images/cards/${cardPic}`;
     }
     if (p?.image1 && p.image1.trim()) {
-      const img1 = p.image1.trim();
+      let img1 = p.image1.trim();
+      // Fix typo: replace "tumbnail" with "thumbnail" if present
+      img1 = img1.replace(/\/tumbnail\//g, "/thumbnail/");
       if (img1.startsWith("/") || img1.startsWith("http")) return img1;
       if (img1.includes("/")) return img1.startsWith("/") ? img1 : `/${img1}`;
-      return `/images/profile/${img1}`;
+      // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+      return `/images/alumni-images/thumbnail/${img1}`;
     }
     return undefined;
   })();
@@ -200,6 +246,41 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
       }
     } catch (e) {
       mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
+    }
+  }
+
+  // Fetch chapters for verified alumni (both for alumni and admin views)
+  const chapters: string[] = [];
+  let chaptersError: string | null = null;
+  let isVerified: boolean = false;
+  if (alumniId) {
+    try {
+      // Check if alumni is verified and fetch chapters
+      const verifyRows = await sql/* sql */`
+        SELECT verify FROM public.tbl_alumni WHERE alumniid = ${alumniId} LIMIT 1`;
+      const verifyValue = verifyRows[0]?.verify;
+      // Alumni is verified if verify is not null, not 'pending', and not empty string
+      // For admins, always show chapters if they exist (regardless of verification status)
+      isVerified = isAdmin || (verifyValue !== null && 
+                   verifyValue !== undefined && 
+                   String(verifyValue).trim().toLowerCase() !== 'pending' && 
+                   String(verifyValue).trim() !== '');
+      
+      if (isVerified || isAdmin) {
+        const chapterRows = await sql/* sql */`
+          SELECT "chapter1", "chapter2", "chapter3"
+          FROM public.alumni_chapter
+          WHERE id = ${alumniId}
+          LIMIT 1`;
+        const chapterRec = chapterRows[0] as { chapter1?: string | null; chapter2?: string | null; chapter3?: string | null } | undefined;
+        if (chapterRec) {
+          if (chapterRec.chapter1) chapters.push(String(chapterRec.chapter1));
+          if (chapterRec.chapter2) chapters.push(String(chapterRec.chapter2));
+          if (chapterRec.chapter3) chapters.push(String(chapterRec.chapter3));
+        }
+      }
+    } catch (e) {
+      chaptersError = e instanceof Error ? e.message : "Failed to load chapters";
     }
   }
   return (
@@ -235,7 +316,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
-                  <ProfileDetailsClient sapId={sapId} />
+                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} />
                 ) : isAdmin ? (
                   <div className="w-full p-8 text-center">
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
@@ -264,6 +345,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
                     instagram={p?.instagram}
                     youtube={p?.youtube}
                     linkedin={p?.linkedin}
+                    chapters={chapters}
+                    isVerified={isVerified}
+                    chaptersError={chaptersError}
                   />
                 )}
                 </div>

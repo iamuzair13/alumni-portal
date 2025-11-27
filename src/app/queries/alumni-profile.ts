@@ -49,6 +49,7 @@ export type AlumniFullDetails = {
   supervisoremail: string | null;
   supervisornumber: string | null;
   image1: string | null;
+  image2: string | null;
   cv: string | null;
   aboutme: string | null;
   lasttimelogin: string | null;

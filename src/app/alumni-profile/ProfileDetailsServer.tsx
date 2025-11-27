@@ -23,9 +23,12 @@ type Props = {
   instagram?: string | null;
   youtube?: string | null;
   linkedin?: string | null;
+  chapters?: string[];
+  isVerified?: boolean;
+  chaptersError?: string | null;
 };
 
-export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, program, facebook, instagram, youtube, linkedin }: Props) {
+export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, program, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError }: Props) {
   const { start, stop } = useProgress();
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
   const queryClient = useQueryClient();
@@ -33,6 +36,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
   const [uploading, setUploading] = useState(false);
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate profile completion percentage
@@ -40,12 +44,44 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
     return calculateProfileCompletion(fullDetails);
   }, [fullDetails]);
 
-  // Sync avatar when prop changes
+  // Normalize avatar path helper
+  const normalizeImagePath = (imagePath: string): string => {
+    // If empty or falsy, return default image
+    if (!imagePath || imagePath.trim() === "" || imagePath === "null" || imagePath === "undefined") {
+      return "/images/person.jpg";
+    }
+    
+    let trimmedPath = imagePath.trim();
+    
+    // Fix typo: replace "tumbnail" with "thumbnail" if present
+    trimmedPath = trimmedPath.replace(/\/tumbnail\//g, "/thumbnail/");
+    
+    // Normalize image path for Next.js Image component
+    // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
+    // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+    if (!trimmedPath.startsWith("/") && !trimmedPath.startsWith("http://") && !trimmedPath.startsWith("https://")) {
+      // If it's just a filename, prepend the alumni images thumbnail directory
+      if (!trimmedPath.includes("/")) {
+        return `/images/alumni-images/thumbnail/${trimmedPath}`;
+      } else {
+        // If it's a relative path without leading slash, add it
+        return `/${trimmedPath}`;
+      }
+    }
+    return trimmedPath;
+  };
+
+  // Sync avatar when prop changes and normalize it
   useEffect(() => {
     if (initialAvatar) {
-      setAvatar(initialAvatar);
+      const normalized = normalizeImagePath(initialAvatar);
+      setAvatar(normalized);
+      setImageError(false); // Reset error when avatar changes
     }
   }, [initialAvatar]);
+  
+  // Use fallback if image error occurred
+  const displayAvatar = imageError ? "/images/person.jpg" : avatar;
 
   useEffect(() => {
     // Show progress on mount
@@ -195,12 +231,18 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             <div className="relative w-32 h-32 -mt-16 sm:-mt-10 group">
               <div className="w-32 h-32 rounded-full border-4 border-red-600 bg-gray-100 overflow-hidden">
                 <Image
-                  src={avatar}
+                  src={displayAvatar}
                   alt={name || "alumni"}
                   width={128}
                   height={128}
                   sizes="(max-width: 640px) 8rem, (max-width: 768px) 8rem, 8rem"
                   className="w-full h-full object-cover"
+                  onError={() => {
+                    // Set error state to trigger fallback to default image
+                    if (!imageError) {
+                      setImageError(true);
+                    }
+                  }}
                 />
               </div>
               {sapId && (
@@ -358,6 +400,76 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
               </Link>
             </div>
           )}
+        </div>
+        {/* Chapters Section */}
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          <h5 className="text-lg font-semibold text-red-800 mb-3">Alumni Chapters</h5>
+          {chaptersError ? (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg">
+              <p className="text-sm text-rose-700">{chaptersError}</p>
+            </div>
+          ) : isVerified && chapters.length > 0 ? (
+            <div className="space-y-2">
+              {chapters.map((chapter, index) => (
+                <div
+                  key={index}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg mr-2 mb-2"
+                >
+                  <svg
+                    className="w-5 h-5 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium text-green-800">
+                    Member of {chapter}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : isVerified && chapters.length === 0 ? (
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-sm text-gray-600 mb-3">
+                You are not currently a member of any alumni chapter.
+              </p>
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-600 text-sm font-medium rounded-lg cursor-not-allowed"
+                aria-label="Apply for chapter (functionality coming soon)"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Apply for Chapter
+              </button>
+            </div>
+          ) : !isVerified ? (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-700">
+                Your account needs to be verified before you can view or apply for chapters.
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

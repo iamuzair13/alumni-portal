@@ -15,18 +15,20 @@ type AlumniChaptersFormValues = {
 
 
 const nationalChapters = [
-  { value: 'kasur', label: 'Kasur' },
-  { value: 'Rawalpindi', label: 'Rawalpindi' },
-  { value: 'Karachi', label: 'Karachi' },
-  { value: 'Islamabad', label: 'Islamabad' },
-  { value: 'Peshawar', label: 'Peshawar' },
-  { value: 'Quetta', label: 'Quetta' },
-  { value: 'Multan', label: 'Multan' },
-  { value: 'Faisalabad', label: 'Faisalabad' },
-  { value: 'DG khan', label: 'DG Khan' },
-  { value: 'Sahiwal', label: 'Sahiwal' },
-  { value: 'Gilgit', label: 'Gilgit' },
-  { value: 'Sargodha', label: 'Sargodha' },
+  { value: 'Lahore & Surrounding Chapter', label: 'Lahore & Surrounding Chapter' },
+  { value: 'RGujranwala–Gujrat–Sialkot Chapter', label: 'Gujranwala–Gujrat–Sialkot Chapter' },
+  { value: 'Faisalabad Chapter', label: 'Faisalabad Chapter' },
+  { value: 'Sargodha–Khushab Chapter', label: 'Sargodha–Khushab Chapter' },
+  { value: 'Multan Chapter', label: 'Multan Chapter' },
+  { value: 'Bahawalpur–Bahawalnagar Chapter', label: 'Bahawalpur–Bahawalnagar Chapter' },
+  { value: 'Sahiwal–Pakpattan Chapter', label: 'Sahiwal–Pakpattan Chapter' },
+  { value: 'Southern Punjab Chapter', label: 'Southern Punjab Chapter' },
+  { value: 'Islamabad–Rawalpindi Chapter', label: 'Islamabad–Rawalpindi Chapter' },
+  { value: 'Peshawar & Northern KP Chapter', label: 'Peshawar & Northern KP Chapter' },
+  { value: 'Kashmir Chapter', label: 'Kashmir Chapter' },
+  { value: 'Sindh Chapter', label: 'Sindh Chapter' },
+  { value: 'Balochistan Chapter', label: 'Balochistan Chapter' },
+  { value: 'Northern Pakistan Chapter', label: 'Northern Pakistan Chapter' },
 ];
 
 const internationalChapters = [

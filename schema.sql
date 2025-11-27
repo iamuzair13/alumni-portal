@@ -45,7 +45,7 @@ create table public.alumni_scholarships (
 create table public.tbl_alumni (
   alumniid serial not null,
   alumniemail character varying(150) not null,
-  password character varying(50) null,
+  password text null,
   todaydate timestamp without time zone null,
   registrationno character varying(20) null,
   sapid character varying(20) null,
@@ -57,9 +57,9 @@ create table public.tbl_alumni (
   cnicpassport character varying(50) null,
   contactno character varying(50) null,
   contactno1 character varying(50) null,
-  contactno1show boolean null,
+  contactno1show text null,
   personalemail character varying(100) null,
-  personalemailshow boolean null,
+  personalemailshow text null,
   universityemail character varying(100) null,
   country character varying(50) null,
   province character varying(50) null,
@@ -81,16 +81,16 @@ create table public.tbl_alumni (
   totalyearsofexpereince character varying(10) null,
   officialemail character varying(100) null,
   officialnumber character varying(50) null,
-  supervisorname character varying(250) null,
+  work_city text null,
   supervisordesignation character varying(100) null,
-  supervisoremail character varying(150) null,
+  work_country text null,
   supervisornumber character varying(50) null,
   image1 character varying(200) null,
   cv character varying(200) null,
   aboutme text null,
   lasttimelogin character varying(50) null,
   logincount integer null,
-  verify character varying(10) null,
+  verify character varying null,
   emailsendcount smallint null,
   emailsendstatus character varying(100) null,
   createddatetime character varying(50) null,
@@ -103,21 +103,20 @@ create table public.tbl_alumni (
   higher_education_institute_name text null,
   degree_title text null,
   is_scholarship text null,
-  father_cnic text null,
   higher_education_program text null,
+  father_cnic text null,
+  image2 text null,
   constraint tbl_alumni_pkey primary key (alumniid)
 ) TABLESPACE pg_default;
-
 -- ================================================
 -- TABLE: tblchapters
 -- ================================================
-CREATE TABLE public.tblchapters (
-  id SERIAL,
-  alumniid INT NOT NULL,
-  linkedin VARCHAR(300),
-  PRIMARY KEY (alumniid),
-  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
-);
+create table public.tblchapters (
+  id serial not null,
+  chapter_whatsapp text null,
+  national_chapter text null,
+  international_chapter text null
+) TABLESPACE pg_default;
 
 -- ================================================
 -- TABLE: tblcard

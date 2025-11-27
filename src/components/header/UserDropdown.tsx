@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useSession, signOut } from "next-auth/react";
@@ -10,6 +10,7 @@ import { useCurrentUserImage } from "@/app/queries/alumni-profile";
 export default function UserDropdown() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const router = useRouter();
 
   const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
@@ -18,11 +19,43 @@ export default function UserDropdown() {
   // Fetch current user's profile image from database for alumni users
   const { data: userImageData } = useCurrentUserImage(isAlumni && status === "authenticated");
   
+  // Reset image error when image data changes
+  useEffect(() => {
+    if (userImageData?.image) {
+      setImageError(false);
+    }
+  }, [userImageData?.image]);
+  
   // Determine which image to use: database image for alumni, session image for others
   const profileImage = useMemo(() => {
+    // If image error occurred, always use fallback
+    if (imageError) return "/images/person.jpg";
+    
     if (isAlumni && userImageData?.image) {
-      // Use database image with cache busting timestamp
-      return `${userImageData.image}${userImageData.image.includes('?') ? '&' : '?'}t=${userImageData.timestamp || Date.now()}`;
+      let imagePath = userImageData.image.trim();
+      
+      // If empty after trim, fallback to default
+      if (!imagePath) return "/images/person.jpg";
+      
+      // Fix typo: replace "tumbnail" with "thumbnail" if present
+      imagePath = imagePath.replace(/\/tumbnail\//g, "/thumbnail/");
+      
+      // Normalize image path for Next.js Image component
+      // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
+      // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+      if (!imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
+        // If it's just a filename, prepend the alumni images thumbnail directory
+        if (!imagePath.includes("/")) {
+          imagePath = `/images/alumni-images/thumbnail/${imagePath}`;
+        } else {
+          // If it's a relative path without leading slash, add it
+          imagePath = `/${imagePath}`;
+        }
+      }
+      
+      // Add cache busting timestamp
+      const separator = imagePath.includes('?') ? '&' : '?';
+      return `${imagePath}${separator}t=${userImageData.timestamp || Date.now()}`;
     }
     // Fallback to session image or Google image, then default
     const sessionImage = session?.user?.image;
@@ -30,7 +63,7 @@ export default function UserDropdown() {
       return sessionImage;
     }
     return "/images/person.jpg";
-  }, [isAlumni, userImageData, session?.user?.image]);
+  }, [isAlumni, userImageData, session?.user?.image, imageError]);
 
 function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   e.stopPropagation();
@@ -54,6 +87,12 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
             src={profileImage}
             alt="User"
             key={profileImage} // Force re-render when image changes
+            onError={() => {
+              // Set error state to trigger fallback to default image
+              if (!imageError) {
+                setImageError(true);
+              }
+            }}
           />
         </span>
 
