@@ -151,7 +151,7 @@ export default function AlumniCardTemplate({
           className="w-full h-auto object-contain"
         />
 
-        <div className="absolute left-3 right-[35%] top-11 flex flex-col justify-center items-start  gap-0.9 text-[13px] leading-tight text-[#0f7a3a]">
+        <div className="absolute left-3 right-[35%] top-11 flex flex-col justify-center items-start  gap-1 text-[13px] leading-tight text-[#0f7a3a]">
           <span className="text-[12px] font-semibold tracking-tight">
             {studentName || "Alumni Name"}
           </span>
