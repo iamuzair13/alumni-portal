@@ -390,7 +390,6 @@ const FACULTY_OPTIONS = [
   "Faculty of Information Technology",
   "Faculty of Medicine & Dentistry",
   "Faculty of Law",
-  "Centre for Microcredential-Based Skill Development",
   "Faculty of Engineering & Technology",
   "Faculty of Management Sciences",
   "Faculty of Sciences",
@@ -398,7 +397,6 @@ const FACULTY_OPTIONS = [
   "Faculty of Arts & Architecture",
   "Faculty of Social Sciences",
   "Faculty of Pharmacy",
-  "International Qualifications",
   "Faculty of Allied Health Sciences",
 ];
 

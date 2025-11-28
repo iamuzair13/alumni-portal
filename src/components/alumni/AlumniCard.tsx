@@ -266,6 +266,7 @@ import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import { useCardStatus, useUpdateCardStatus } from "@/app/queries/fetch-card-status";
 import { useCardApplicants } from "@/app/queries/fetch-card-applicants";
+import PrintCardButton from "./PrintCardButton";
 
 type SortDirection = "asc" | "desc";
 type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id";
@@ -432,6 +433,33 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     );
   };
 
+  const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
+    const { data: cardData } = useCardStatus(sapId);
+    const cardStatus = (cardData?.status ?? "pending") as "pending" | "rejected" | "delivered";
+    const isDelivered = cardStatus === "delivered";
+
+    return (
+      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
+            onRowAction?.(alumItem, "view");
+          }}
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+          aria-label="View"
+          title="View"
+        >
+          <EyeIcon className="h-5 w-5" />
+        </button>
+        {isDelivered && (
+          <PrintCardButton sapId={sapId} studentName={studentName} />
+        )}
+      </div>
+    );
+  };
+
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
       <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
@@ -584,25 +612,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                     <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
                     <TableCell className="px-6 py-5 text-start"><StatusSelect sapId={alum.id} /></TableCell>
                     <TableCell className="px-6 py-5 text-end">
-                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
-                        {(() => {
-                          const actions: Array<{ key: "view"; label: string; icon: React.ComponentType<{ className?: string }>; hover?: string; onClick: () => void }> = [
-                            { key: "view", label: "View", icon: EyeIcon, hover: "hover:text-blue-600", onClick: () => { router.push(`/alumni/${alum.id}`); onRowAction?.(alum, "view"); } },
-                          ];
-                          return actions.map(({ key, label, icon: Icon, onClick, hover }, i) => (
-                            <button
-                              key={`${alum.id}-action-${key}-${i}`}
-                              type="button"
-                              onClick={onClick}
-                              className={`p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50`}
-                              aria-label={label}
-                              title={label}
-                            >
-                              <Icon className="h-5 w-5" />
-                            </button>
-                          ));
-                        })()}
-                      </div>
+                      <RowActions sapId={alum.id} studentName={alum.name} alumItem={alum} />
                     </TableCell>
                   </TableRow>
                 ))}

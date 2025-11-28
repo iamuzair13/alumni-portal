@@ -8,11 +8,11 @@ export const viewport: Viewport = {
 
 import { sql } from "@/lib/dbconnect";
 import AlumniCardForm from "@/components/forms/alumni-card";
-import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
+import AlumniCardTemplateWrapper from "@/components/alumni/AlumniCardTemplateWrapper";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner } from "@/lib/alumniProfile";
+import { computeLoginBanner, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
@@ -164,6 +164,9 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
   const validity = validityYear ? `${validityYear}-12` : undefined;
 
+  // Check if user is admin or superadmin
+  const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
+
   return (
     <>
       <div className="bg-slate-100 overflow-x-hidden min-h-screen">
@@ -209,7 +212,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
               <BackButton />
             </div>
             {showTemplate ? (
-              <AlumniCardTemplate
+              <AlumniCardTemplateWrapper
                 studentName={name}
                 department={dept}
                 faculty={faculty}
@@ -217,6 +220,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
                 validity={validity}
                 photoUrl={profileImageFilename}
                 cardImage={cardTemplateImageFilename}
+                isAdmin={isAdmin}
               />
             ) : (
               <AlumniCardForm

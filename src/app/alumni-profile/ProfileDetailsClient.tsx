@@ -14,9 +14,11 @@ type ProfileDetailsClientProps = {
   chapters?: string[];
   isVerified?: boolean;
   chaptersError?: string | null;
+  associationTitle?: string | null;
+  associationError?: string | null;
 };
 
-export default function ProfileDetailsClient({ sapId, chapters = [], isVerified = false, chaptersError }: ProfileDetailsClientProps) {
+export default function ProfileDetailsClient({ sapId, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null }: ProfileDetailsClientProps) {
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
   const { data: fullDetails, isLoading: isLoadingFullDetails } = useAlumniFullDetails(sapId);
   const queryClient = useQueryClient();
@@ -351,6 +353,87 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
             </div>
             <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
               <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold">{name}</h4>
+              
+              {/* Chapters and Association Section - Right after name */}
+              <div className="mt-3 mb-4">
+                {/* Error Messages */}
+                {(chaptersError || associationError) && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg mb-3">
+                    <p className="text-sm text-rose-700">{chaptersError || associationError}</p>
+                  </div>
+                )}
+
+                {/* Not Verified Message */}
+                {!isVerified && !chaptersError && !associationError && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-3">
+                    <p className="text-sm text-amber-700">
+                      Your account needs to be verified before you can view or apply for chapters and associations.
+                    </p>
+                  </div>
+                )}
+
+                {/* Verified: Show Chapters and Associations */}
+                {isVerified && !chaptersError && !associationError && (
+                  <div className="flex flex-wrap gap-2">
+                    {/* Chapters */}
+                    {chapters.map((chapter, index) => (
+                      <div
+                        key={index}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg"
+                      >
+                        <svg
+                          className="w-4 h-4 text-green-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span className="text-xs font-medium text-green-800">
+                          {chapter}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Association Membership */}
+                    {associationTitle && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                        <svg
+                          className="w-4 h-4 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 20h-10a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        <span className="text-xs font-medium text-blue-800">
+                          Member of {associationTitle}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* No Memberships Message */}
+                    {chapters.length === 0 && !associationTitle && (
+                      <div className="text-xs text-gray-500 italic">
+                        Not a member of any chapter or association
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
                 {[{ href: facebook || "#", label: "Facebook", svg: (
                   <svg role="img" aria-label="Facebook" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 155.139 155.139"><path d="M89.584 155.139V84.378h23.742l3.562-27.585H89.584V39.184c0-7.984 2.208-13.425 13.67-13.425l14.595-.006V1.08C115.325.752 106.661 0 96.577 0 75.52 0 61.104 12.853 61.104 36.452v20.341H37.29v27.585h23.814v70.761h28.48z"/></svg>
@@ -428,76 +511,6 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 </svg>
               </Link>
             </div>
-          </div>
-          {/* Chapters Section */}
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <h5 className="text-lg font-semibold text-red-800 mb-3">Alumni Chapters</h5>
-            {chaptersError ? (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg">
-                <p className="text-sm text-rose-700">{chaptersError}</p>
-              </div>
-            ) : isVerified && chapters.length > 0 ? (
-              <div className="space-y-2">
-                {chapters.map((chapter, index) => (
-                  <div
-                    key={index}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg mr-2 mb-2"
-                  >
-                    <svg
-                      className="w-5 h-5 text-green-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span className="text-sm font-medium text-green-800">
-                      Member of {chapter}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : isVerified && chapters.length === 0 ? (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <p className="text-sm text-gray-600 mb-3">
-                  You are not currently a member of any alumni chapter.
-                </p>
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-600 text-sm font-medium rounded-lg cursor-not-allowed"
-                  aria-label="Apply for chapter (functionality coming soon)"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Apply for Chapter
-                </button>
-              </div>
-            ) : !isVerified ? (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-700">
-                  Your account needs to be verified before you can view or apply for chapters.
-                </p>
-              </div>
-            ) : null}
           </div>
         </div>
       </div>

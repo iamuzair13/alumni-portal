@@ -9,7 +9,7 @@ import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { isAdminUser, canModify } from "@/lib/alumniProfile";
+import { canModify } from "@/lib/alumniProfile";
 import { useAlumniListPaginated, getAlumniCounts, getAlumniList, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
@@ -723,10 +723,8 @@ export const AlumniTabs: React.FC = () => {
   }, [pendingAction, mutatingIds, executePendingAction]);
 
   const handleView = useCallback((sapid: string) => {
-    const isAdmin = isAdminUser(session?.user);
-    const url = isAdmin ? `/alumni-profile?sapid=${encodeURIComponent(sapid)}&modal=` : `/alumni-profile?sapid=${encodeURIComponent(sapid)}`;
-    router.push(url);
-  }, [router, session]);
+    router.push(`/alumni-profile?sapid=${encodeURIComponent(sapid)}`);
+  }, [router]);
 
   return (
     <ComponentCard className="p-0">

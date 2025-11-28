@@ -277,6 +277,29 @@ let cardImageFile: string | null = null;
       chaptersError = e instanceof Error ? e.message : "Failed to load chapters";
     }
   }
+
+  // Fetch association membership for alumni
+  let associationTitle: string | null = null;
+  let associationError: string | null = null;
+  if (alumniId) {
+    try {
+      const associationRows = await sql/* sql */`
+        SELECT a.title
+        FROM public.tbl_associations a
+        INNER JOIN public.tbl_alumni al ON al.association_id = a.id
+        WHERE al.alumniid = ${alumniId}
+        LIMIT 1`;
+      const associationRec = associationRows[0] as { title?: string | null } | undefined;
+      if (associationRec?.title) {
+        associationTitle = String(associationRec.title).trim();
+        if (associationTitle === "" || associationTitle.toLowerCase() === "null") {
+          associationTitle = null;
+        }
+      }
+    } catch (e) {
+      associationError = e instanceof Error ? e.message : "Failed to load association membership";
+    }
+  }
   return (
     <>
     <div className=" bg-slate-100 overflow-x-hidden">
@@ -310,7 +333,7 @@ let cardImageFile: string | null = null;
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
-                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} />
+                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} />
                 ) : isAdmin ? (
                   <div className="w-full p-8 text-center">
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
@@ -342,6 +365,8 @@ let cardImageFile: string | null = null;
                     chapters={chapters}
                     isVerified={isVerified}
                     chaptersError={chaptersError}
+                    associationTitle={associationTitle}
+                    associationError={associationError}
                   />
                 )}
                 </div>
