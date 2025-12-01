@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { isAdminUser } from "@/lib/alumniProfile";
+import { canModify } from "@/lib/alumniProfile";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -32,30 +32,24 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
 
     const row = rows[0] as Record<string, unknown>;
 
-    // Verify the user has access to this profile (either owns it by SAP ID, registration number, or email, or is admin)
+    // SECURITY: Verify the user has access to this profile
+    // User must either own the record (by SAP ID, registration number, or email) OR be an admin
     const userEmail = session.user.email ? String(session.user.email) : null;
     const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
     const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null;
-    const requestedIdentifier = normalizedIdentifier.toLowerCase().trim();
     const dbSapid = String(row.sapid ?? "").toLowerCase().trim();
     const dbRegNo = String(row.registrationno ?? "").toLowerCase().trim();
     
-    // Check ownership by SAP ID first (since users now log in with SAP ID)
-    // Compare both: session SAP ID with requested identifier, and session SAP ID with database SAP ID
-    const isOwnerBySapid = userSapid && (
-      userSapid.toLowerCase().trim() === requestedIdentifier ||
-      dbSapid === userSapid.toLowerCase().trim() ||
-      requestedIdentifier === dbSapid // Allow if requested identifier matches database SAP ID
-    );
+    // SECURITY: Check ownership by comparing user's credentials with database record
+    // Only allow access if user's SAP ID matches the record's SAP ID
+    const isOwnerBySapid = userSapid && dbSapid === userSapid.toLowerCase().trim();
     
-    // Check ownership by registration number
-    const isOwnerByRegNo = userRegNo && (
-      userRegNo.toLowerCase().trim() === requestedIdentifier ||
-      dbRegNo === userRegNo.toLowerCase().trim() ||
-      requestedIdentifier === dbRegNo // Allow if requested identifier matches database registration number
-    );
+    // SECURITY: Check ownership by registration number
+    // Only allow access if user's registration number matches the record's registration number
+    const isOwnerByRegNo = userRegNo && dbRegNo === userRegNo.toLowerCase().trim();
     
-    // Check ownership by email (backward compatibility)
+    // SECURITY: Check ownership by email (backward compatibility)
+    // Only allow access if user's email matches one of the record's emails
     const isOwnerByEmail = userEmail && (
       String(row.personalemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
       String(row.universityemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
@@ -63,26 +57,27 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     );
     
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
-    const isAdmin = isAdminUser(session.user);
+    const canAccess = canModify(session.user); // Checks for both admin and superadmin
 
     // Debug logging
     console.log("[API] Full details auth check:", {
-      requestedIdentifier,
+      requestedIdentifier: normalizedIdentifier,
       userSapid,
       dbSapid,
       userEmail,
       isOwnerBySapid,
       isOwnerByEmail,
       isOwner,
-      isAdmin
+      canAccess,
+      userType: (session.user as { type?: string })?.type
     });
 
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !canAccess) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Return all fields from tbl_alumni
-    // Note: password is fetched from database but will be masked in UI for security
+    // SECURITY: Never return password in API response - it's sensitive data
     return NextResponse.json({ 
       item: {
         alumniid: row.alumniid ?? null,
@@ -137,7 +132,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        password: row.password ?? null, // Fetch actual password from database
+        // SECURITY: Password is intentionally excluded from response
         father_cnic: row.father_cnic ?? null,
       }
     }, { status: 200 });

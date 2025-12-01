@@ -127,19 +127,9 @@ export async function PUT(req: Request) {
     const userid = Number(body.userid);
     if (!userid || Number.isNaN(userid)) return NextResponse.json({ error: "INVALID_USERID" }, { status: 400 });
     
-    // Check if trying to set Super Admin role
-    const newType = body.type ? String(body.type).toLowerCase().trim() : null;
-    if (newType === "superadmin") {
-      // Check if there's already a Super Admin
-      const existingSuperAdmin = await sql/* sql */`
-        SELECT userid FROM public.tbl_users 
-        WHERE LOWER(TRIM(type)) = 'superadmin' AND userid != ${userid}
-        LIMIT 1` as { userid: number }[];
-      
-      if (existingSuperAdmin.length > 0) {
-        return NextResponse.json({ error: "ONLY_ONE_SUPER_ADMIN: There can only be one Super Admin. Please transfer the role from the existing Super Admin first." }, { status: 400 });
-      }
-    }
+    // Note: Multiple superadmins are now allowed
+    // Normalize user type
+    const normalizedType = body.type ? String(body.type).toLowerCase().trim() : null;
     
     await sql/* sql */`
       UPDATE public.tbl_users
@@ -149,7 +139,7 @@ export async function PUT(req: Request) {
         firstname = ${body.firstname ?? null},
         lastname = ${body.lastname ?? null},
         department = ${body.department ?? null},
-        type = ${body.type ?? null},
+        type = ${normalizedType},
         blocked = ${body.blocked ?? null}
       WHERE userid = ${userid}`;
     return NextResponse.json({ ok: true }, { status: 200 });

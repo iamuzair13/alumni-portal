@@ -58,7 +58,7 @@ function mapFromDb(row: DbAlumniRow) {
     countryCode: (row.contactno ?? "+92").split(" ")[0] ?? "+92",
     phoneNumber: (row.contactno ?? "").split(" ")[1] ?? "",
     personalEmail: row.personalemail ?? "",
-    password: row.password ?? "",
+    // SECURITY: Password removed - never return passwords in API responses
     address: row.address ?? undefined,
     province: row.province ?? undefined,
     homeCity: row.city ?? "",
@@ -133,10 +133,13 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const formVals = mapFromDb(rows[0]);
     const row = rows[0] as DbAlumniRow;
+    // SECURITY: Remove password from response - it's sensitive data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...safeFormVals } = formVals;
     // Include image1 and social links in the response
     return NextResponse.json({ 
       item: {
-        ...formVals,
+        ...safeFormVals,
         image1: row.image1 ?? undefined,
         facebook: row.facebook ?? undefined,
         instagram: row.instagram ?? undefined,

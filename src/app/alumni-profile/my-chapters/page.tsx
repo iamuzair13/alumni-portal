@@ -224,15 +224,15 @@ export default async function MyChaptersPage({ searchParams }: { searchParams: P
                       </svg>
                       Apply for Leadership
                     </Link>
-                    <Link
-                      href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 fill-current">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-                      </svg>
-                      Apply to Other Chapters
-                    </Link>
+                  <Link
+                    href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                    </svg>
+                    Apply to Other Chapters
+                  </Link>
                   </div>
                 </div>
               </>

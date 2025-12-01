@@ -347,15 +347,195 @@ export async function GET(req: Request) {
   }
 }
 
+/**
+ * POST /api/alumni
+ * 
+ * Alumni Registration Endpoint
+ * 
+ * REGISTRATION RULES (Updated):
+ * Validation now depends ONLY on verify_status of the alumni record.
+ * 
+ * Rules:
+ * 1. If alumni record exists AND verify = 'true':
+ *    → Block registration
+ *    → Return error: "This alumni is already verified and cannot register again."
+ * 
+ * 2. If alumni record exists AND verify = 'false'/'pending'/null:
+ *    → Allow registration
+ *    → Overwrite existing record with new submitted data
+ *    → Keep the same record ID (alumniid)
+ * 
+ * 3. If no alumni record exists:
+ *    → Create new record normally
+ * 
+ * NOTE: Duplicate checks on CNIC/SADID, email, or other fields have been removed.
+ * Format validation (email format, CNIC format, etc.) still applies via schema validation.
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    
+    // Parse and validate the request body using the schema
+    // Note: Schema validation still applies for data format (email format, CNIC format, etc.)
+    // but we no longer block registration based on duplicate CNIC/email/SAP ID
     const parsed = alumniRegistrationComprehensiveSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     const v = parsed.data;
     const d = mapToDb(v);
+    
+    // Check if alumni record already exists by SAP ID OR Registration Number
+    // Both identifiers are checked - if either matches, we update the existing record
+    let existingRecord: { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null } | null = null;
+    
+    const regNo = d.registrationno ? String(d.registrationno).trim() : null;
+    const sapId = d.sapid ? String(d.sapid).trim() : null;
+    
+    // Check for existing record by either Registration Number OR SAP ID
+    if (regNo || sapId) {
+      let checkQuery;
+      if (regNo && sapId) {
+        // Check by both identifiers
+        checkQuery = sql/* sql */`
+          SELECT alumniid, verify, registrationno, sapid
+          FROM public.tbl_alumni 
+          WHERE registrationno = ${regNo} OR sapid = ${sapId}
+          LIMIT 1
+        `;
+      } else if (regNo) {
+        // Check only by Registration Number
+        checkQuery = sql/* sql */`
+          SELECT alumniid, verify, registrationno, sapid
+          FROM public.tbl_alumni 
+          WHERE registrationno = ${regNo}
+          LIMIT 1
+        `;
+      } else {
+        // Check only by SAP ID
+        checkQuery = sql/* sql */`
+          SELECT alumniid, verify, registrationno, sapid
+          FROM public.tbl_alumni 
+          WHERE sapid = ${sapId}
+          LIMIT 1
+        `;
+      }
+      
+      const checkResult = await checkQuery;
+      if (checkResult.length > 0) {
+        existingRecord = checkResult[0] as { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null };
+        console.log("[API] /api/alumni POST - Found existing record:", {
+          alumniid: existingRecord.alumniid,
+          verify: existingRecord.verify,
+          registrationno: existingRecord.registrationno,
+          sapid: existingRecord.sapid,
+          matchedBy: regNo && String(existingRecord.registrationno).trim() === regNo ? 'registrationno' : 'sapid'
+        });
+      }
+    }
+    
+    // RULE 1: If alumni exists and verify = 'true', block registration
+    if (existingRecord) {
+      // Normalize verify status: handle null, empty string, and various case variations
+      const rawVerify = existingRecord.verify;
+      let verifyStatus: string | null = null;
+      
+      if (rawVerify !== null && rawVerify !== undefined) {
+        const verifyStr = String(rawVerify).trim();
+        if (verifyStr.length > 0) {
+          verifyStatus = verifyStr.toLowerCase();
+        }
+      }
+      
+      console.log("[API] /api/alumni POST - Verify status check:", {
+        rawVerify,
+        verifyStatus,
+        isTrue: verifyStatus === "true",
+        willBlock: verifyStatus === "true"
+      });
+      
+      if (verifyStatus === "true") {
+        console.log("[API] /api/alumni POST - BLOCKING: Alumni is verified (verify='true'), cannot re-register");
+        return NextResponse.json({ 
+          error: "This alumni is already verified and cannot register again.",
+          existingRecord: {
+            alumniid: existingRecord.alumniid,
+            sapid: existingRecord.sapid,
+            registrationno: existingRecord.registrationno
+          }
+        }, { status: 403 });
+      }
+      
+      // RULE 2: If alumni exists and verify = 'false'/'pending'/null, allow registration and overwrite
+      // Update the existing record with new data, keeping the same alumniid
+      // IMPORTANT: Always set verify = 'pending' when re-registering (regardless of payload)
+      console.log("[API] /api/alumni POST - ALLOWING: Alumni exists but verify is not 'true', allowing re-registration:", {
+        verify: rawVerify,
+        verifyStatus,
+        willUpdate: true,
+        willSetVerifyToPending: true
+      });
+      
+      const alumniId = existingRecord.alumniid;
+      
+      const updateResult = await sql/* sql */`
+        UPDATE public.tbl_alumni SET
+          registrationno = ${d.registrationno},
+          sapid = ${d.sapid},
+          alumniname = ${d.alumniname},
+          gender = ${d.gender},
+          fathername = ${d.fathername},
+          dateofbirth = ${d.dateofbirth},
+          maritalstatus = ${d.maritalstatus},
+          cnicpassport = ${d.cnicpassport},
+          contactno = ${d.contactno},
+          personalemail = ${d.personalemail},
+          password = ${d.password},
+          address = ${d.address},
+          province = ${d.province},
+          city = ${d.city},
+          country = ${d.country},
+          campusname = ${d.campusname},
+          facultyname = ${d.facultyname},
+          departmentname = ${d.departmentname},
+          degreetitle = ${d.degreetitle},
+          yearofending = ${d.yearofending},
+          employeed = ${d.employeed},
+          industry = ${d.industry},
+          nameoforganization = ${d.nameoforganization},
+          designation = ${d.designation},
+          totalyearsofexpereince = ${d.totalyearsofexpereince},
+          officialemail = ${d.officialemail},
+          officialnumber = ${d.officialnumber},
+          datasource = ${d.datasource},
+          verify = ${'pending'}, /* Always set verify = 'pending' for re-registration (Under Approval) */
+          alumnistatus = ${d.alumnistatus},
+          todaydate = ${d.todaydate}
+        WHERE alumniid = ${alumniId}
+        RETURNING alumniid, registrationno, sapid, verify
+      `;
+      
+      const updated = updateResult[0];
+      console.log("[API] /api/alumni POST - Updated existing record:", {
+        alumniid: updated.alumniid,
+        verify: updated.verify,
+        previousVerify: existingRecord.verify
+      });
+      
+      return NextResponse.json({ 
+        ok: true, 
+        updated: true,
+        message: "Alumni record updated successfully. Status set to 'Under Approval'.",
+        created: {
+          alumniid: updated.alumniid,
+          registrationno: updated.registrationno,
+          sapid: updated.sapid,
+          verify: updated.verify
+        }
+      }, { status: 200 });
+    }
+    
+    // RULE 3: If no alumni record exists, create a new record normally
     const rows = await sql/* sql */`
       INSERT INTO public.tbl_alumni (
         registrationno, sapid, alumniname, gender, fathername, dateofbirth, maritalstatus,
@@ -370,11 +550,12 @@ export async function POST(req: Request) {
         ${d.nameoforganization}, ${d.designation}, ${d.totalyearsofexpereince}, ${d.officialemail}, ${d.officialnumber},
         ${d.datasource}, ${d.verify}, ${d.alumnistatus}, ${d.todaydate}
       )
-      RETURNING alumniid, registrationno, sapid`;
+      RETURNING alumniid, registrationno, sapid, verify`;
     const created = rows[0];
     return NextResponse.json({ ok: true, created }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create alumni";
+    console.error("[API] Registration error:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

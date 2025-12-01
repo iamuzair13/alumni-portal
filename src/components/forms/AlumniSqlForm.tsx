@@ -557,18 +557,20 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       
       toast.dismiss(loadingToast);
       
-      if (checkRes.ok && checkData.exists) {
+      // Only block if alumni exists AND is verified (cannot re-register)
+      // If alumni exists but is NOT verified (pending/false/null), allow registration (will update existing record)
+      if (checkRes.ok && checkData.exists && !checkData.canRegister) {
         const alumni = checkData.alumni;
         let errorMsg = "";
         
         if (regNo && alumni?.registrationno === regNo && sapId && alumni?.sapid === sapId) {
-          errorMsg = "User with this Registration Number and SAP ID is already registered. Please use different credentials or contact support if you believe this is an error.";
+          errorMsg = "This alumni is already verified and cannot register again. Please contact support if you need assistance.";
         } else if (regNo && alumni?.registrationno === regNo) {
-          errorMsg = "User with this Registration Number is already registered. Please use a different Registration Number or contact support if you believe this is an error.";
+          errorMsg = "This alumni is already verified and cannot register again. Please contact support if you need assistance.";
         } else if (sapId && alumni?.sapid === sapId) {
-          errorMsg = "User with this SAP ID is already registered. Please use a different SAP ID or contact support if you believe this is an error.";
+          errorMsg = "This alumni is already verified and cannot register again. Please contact support if you need assistance.";
         } else {
-          errorMsg = "User with these credentials is already registered. Please use different credentials or contact support if you believe this is an error.";
+          errorMsg = "This alumni is already verified and cannot register again. Please contact support if you need assistance.";
         }
         
         toast.error(errorMsg, {
@@ -584,6 +586,20 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         setSubmitError(errorMsg);
         setSubmitting(false);
         return;
+      }
+      
+      // If alumni exists but can register (not verified), show info message but allow registration
+      if (checkRes.ok && checkData.exists && checkData.canRegister) {
+        toast("Updating existing registration. Your status will be set to 'Under Approval'.", {
+          duration: 4000,
+          icon: 'ℹ️',
+          style: {
+            background: '#dbeafe',
+            color: '#1e40af',
+            padding: '16px',
+            borderRadius: '8px',
+          },
+        });
       }
       
       if (!checkRes.ok) {
@@ -646,7 +662,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       }
       
       setSubmitMsg(json.generatedPassword 
-        ? `Registration successful! Your Alumni ID is ${json.alumniid}. A password has been generated and sent to your email. Please check your inbox for login credentials.`
+        ? `Registration successful! Your Alumni ID is ${json.alumniid}. You will be notified via email when your registration is approved.`
         : `Registration successful! Your Alumni ID is ${json.alumniid}. Redirecting to sign in...`);
       
       // Reset form

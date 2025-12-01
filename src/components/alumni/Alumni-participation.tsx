@@ -415,16 +415,16 @@ export const AlumniParticipation: React.FC = () => {
                             { label: "Role", key: "role" as SortKey, align: "text-start" },
                           ]
                         : [
-                            { label: "Name", key: "name" as SortKey, align: "text-start" },
-                            { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
-                            { label: "Email", key: "email" as SortKey, align: "text-start" },
-                            { label: "Department", key: "department" as SortKey, align: "text-start" },
-                            { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
-                            { label: "Program", key: "program" as SortKey, align: "text-start" },
-                            { label: "Topics", key: "topics" as SortKey, align: "text-start" },
-                            { label: "Areas", key: "areas" as SortKey, align: "text-start" },
-                            { label: "Day", key: "day" as SortKey, align: "text-start" },
-                            { label: "Time", key: "time" as SortKey, align: "text-start" },
+                        { label: "Name", key: "name" as SortKey, align: "text-start" },
+                        { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
+                        { label: "Email", key: "email" as SortKey, align: "text-start" },
+                        { label: "Department", key: "department" as SortKey, align: "text-start" },
+                        { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
+                        { label: "Program", key: "program" as SortKey, align: "text-start" },
+                        { label: "Topics", key: "topics" as SortKey, align: "text-start" },
+                        { label: "Areas", key: "areas" as SortKey, align: "text-start" },
+                        { label: "Day", key: "day" as SortKey, align: "text-start" },
+                        { label: "Time", key: "time" as SortKey, align: "text-start" },
                           ]
                       ) as { label: string; key: SortKey; align: string }[]
                     ).map(({ label, key, align }) => {
@@ -474,11 +474,11 @@ export const AlumniParticipation: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
-                          <TableCell className="px-4 py-3"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
                           <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                          <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                          <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                         </>
                       )}
                     </TableRow>

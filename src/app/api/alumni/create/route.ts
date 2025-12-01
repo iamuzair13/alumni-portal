@@ -66,19 +66,48 @@ type TblAlumniBody = {
   scholarship: string | null;
 };
 
+/**
+ * POST /api/alumni/create
+ * 
+ * Alumni Registration Endpoint (Public - No Login Required)
+ * 
+ * This endpoint allows public registration without requiring authentication.
+ * Access assignment validation only applies to logged-in admin/viewer users.
+ */
 export async function POST(req: Request) {
   try {
+    // Get session if available (optional - registration is public)
     const session = await auth();
     const body = (await req.json()) as TblAlumniBody;
     
+    // Check if user is alumni - alumni can self-register without access assignment checks
+    const userType = session?.user ? ((session.user as { type?: string | null })?.type ? String((session.user as { type?: string | null }).type).toLowerCase().trim() : "") : "";
+    const isAlumni = userType === "alumni";
+    
     // Validate user has access to the selected faculty/department/program
-    if (body.facultyname && body.departmentname && body.degreetitle) {
+    // Only apply this check if user is logged in as admin/viewer (not for public registration)
+    // Skip this check for:
+    // - Alumni users (they can register themselves)
+    // - Super admins (they have full access)
+    // - Unauthenticated users (public registration allowed)
+    // NOTE: This check is skipped for public registration (no session) and alumni self-registration
+    console.log("[API] Access assignment check:", {
+      hasSession: !!session,
+      isAlumni,
+      isSuperAdmin: session?.user ? isSuperAdminUser(session.user) : false,
+      hasFacultyDeptProgram: !!(body.facultyname && body.departmentname && body.degreetitle),
+      willCheckAccess: !!(body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && !isSuperAdminUser(session.user))
+    });
+    
+    if (body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && !isSuperAdminUser(session.user)) {
       const faculty = String(body.facultyname).trim();
       const department = String(body.departmentname).trim();
       const program = String(body.degreetitle).trim();
       
+      console.log("[API] Checking access assignment for:", { faculty, department, program });
+      
       // Super admins can add to any faculty/department/program
-      if (!isSuperAdminUser(session?.user)) {
+      if (!isSuperAdminUser(session.user)) {
         const userId = getUserIdFromSession(session);
         if (userId) {
           const assignments = await getUserAccessAssignments(userId);
@@ -142,44 +171,14 @@ export async function POST(req: Request) {
               error: `You do not have permission to add alumni to ${faculty} > ${department} > ${program}. Please select a faculty, department, and program you have access to.` 
             }, { status: 403 });
           }
-        } else {
-          return NextResponse.json({ 
-            error: "You must be logged in to add alumni." 
-          }, { status: 401 });
         }
+        // If no userId but user is logged in (shouldn't happen for admin/viewer), allow registration
+        // This handles edge cases gracefully
       }
     }
     
-    // Check for duplicate email or SAP ID before inserting
-    if (body.personalemail || body.sapid || body.registrationno) {
-      const emailCheck = body.personalemail ? await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE personalemail = ${String(body.personalemail).trim()} 
-        LIMIT 1
-      ` : [];
-      
-      const sapidCheck = body.sapid ? await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE sapid = ${String(body.sapid).trim()} 
-        LIMIT 1
-      ` : [];
-      
-      const regNoCheck = body.registrationno ? await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE registrationno = ${String(body.registrationno).trim()} 
-        LIMIT 1
-      ` : [];
-      
-      if (emailCheck.length > 0) {
-        return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
-      }
-      if (sapidCheck.length > 0) {
-        return NextResponse.json({ error: "An account with this SAP ID already exists" }, { status: 400 });
-      }
-      if (regNoCheck.length > 0) {
-        return NextResponse.json({ error: "An account with this Registration Number already exists" }, { status: 400 });
-      }
-    }
+    // NOTE: Duplicate checks based on email/SAP ID/Registration Number have been removed.
+    // Registration logic now depends ONLY on verify_status (see rules above).
 
     // Server-side validation
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -257,38 +256,182 @@ export async function POST(req: Request) {
       ? body.alumniemail
       : body.personalemail;
 
-    // Check for duplicate email or SAP ID before inserting
-    if (body.personalemail || body.sapid || body.registrationno) {
-      const emailCheck = body.personalemail ? await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE personalemail = ${String(body.personalemail).trim()} 
-        LIMIT 1
-      ` : [];
-      
-      const sapidCheck = body.sapid ? await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE sapid = ${String(body.sapid).trim()} 
-        LIMIT 1
-      ` : [];
-      
-      const regNoCheck = body.registrationno ? await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE registrationno = ${String(body.registrationno).trim()} 
-        LIMIT 1
-      ` : [];
-      
-      if (emailCheck.length > 0) {
-        return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
+    // REGISTRATION RULES: Validation depends ONLY on verify_status
+    // 1. If alumni exists and verify = 'true' → Block registration
+    // 2. If alumni exists and verify = 'pending'/'false'/null → Allow registration, overwrite, set verify = 'pending'
+    // 3. If no alumni record exists → Create new record, set verify = 'pending'
+    
+    // Check if alumni record already exists by Registration Number OR SAP ID
+    // Both identifiers are checked - if either matches, we update the existing record
+    // Note: regNo and sapId are already declared above (lines 187-188)
+    let existingRecord: { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null } | null = null;
+    
+    // Check for existing record by either Registration Number OR SAP ID
+    // Use existing regNo and sapId variables (empty string means not provided)
+    if (regNo || sapId) {
+      let checkQuery;
+      if (regNo && sapId) {
+        // Check by both identifiers
+        checkQuery = sql/* sql */`
+          SELECT alumniid, verify, registrationno, sapid
+          FROM public.tbl_alumni 
+          WHERE registrationno = ${regNo} OR sapid = ${sapId}
+          LIMIT 1
+        `;
+      } else if (regNo) {
+        // Check only by Registration Number
+        checkQuery = sql/* sql */`
+          SELECT alumniid, verify, registrationno, sapid
+          FROM public.tbl_alumni 
+          WHERE registrationno = ${regNo}
+          LIMIT 1
+        `;
+      } else {
+        // Check only by SAP ID
+        checkQuery = sql/* sql */`
+          SELECT alumniid, verify, registrationno, sapid
+          FROM public.tbl_alumni 
+          WHERE sapid = ${sapId}
+          LIMIT 1
+        `;
       }
-      if (sapidCheck.length > 0) {
-        return NextResponse.json({ error: "An account with this SAP ID already exists" }, { status: 400 });
-      }
-      if (regNoCheck.length > 0) {
-        return NextResponse.json({ error: "An account with this Registration Number already exists" }, { status: 400 });
+      
+      const checkResult = await checkQuery;
+      if (checkResult.length > 0) {
+        existingRecord = checkResult[0] as { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null };
+        console.log("[API] Found existing record:", {
+          alumniid: existingRecord.alumniid,
+          verify: existingRecord.verify,
+          verifyType: typeof existingRecord.verify,
+          registrationno: existingRecord.registrationno,
+          sapid: existingRecord.sapid,
+          matchedBy: regNo && String(existingRecord.registrationno).trim() === regNo ? 'registrationno' : 'sapid'
+        });
       }
     }
+    
+    // RULE 1: If alumni exists and verify = 'true', block registration
+    if (existingRecord) {
+      // Normalize verify status: handle null, empty string, and various case variations
+      const rawVerify = existingRecord.verify;
+      let verifyStatus: string | null = null;
+      
+      if (rawVerify !== null && rawVerify !== undefined) {
+        const verifyStr = String(rawVerify).trim();
+        if (verifyStr.length > 0) {
+          verifyStatus = verifyStr.toLowerCase();
+        }
+      }
+      
+      console.log("[API] Verify status check:", {
+        rawVerify,
+        verifyStatus,
+        isTrue: verifyStatus === "true",
+        willBlock: verifyStatus === "true"
+      });
+      
+      // Block only if verify is exactly 'true' (case-insensitive)
+      if (verifyStatus === "true") {
+        console.log("[API] BLOCKING: Alumni is verified (verify='true'), cannot re-register");
+        return NextResponse.json({ 
+          error: "This alumni is already verified and cannot register again.",
+          existingRecord: {
+            alumniid: existingRecord.alumniid,
+            sapid: existingRecord.sapid,
+            registrationno: existingRecord.registrationno
+          }
+        }, { status: 403 });
+      }
+      
+      // RULE 2: If alumni exists and verify = 'pending'/'false'/null, allow registration and overwrite
+      console.log("[API] ALLOWING: Alumni exists but verify is not 'true', allowing re-registration:", {
+        verify: rawVerify,
+        verifyStatus,
+        willUpdate: true
+      });
+      
+      // Continue to update logic below (will be handled in the transaction)
+      // We'll modify the INSERT to be an UPDATE when existingRecord is found
+    } else {
+      console.log("[API] No existing record found, will create new record");
+    }
+
+    // Track whether this is an update or insert for proper response status
+    let isUpdate = false;
 
     const id = await sql.begin(async (tx) => {
+      // RULE 2: If existing record found (verify = 'pending'/'false'/null), UPDATE it
+      if (existingRecord) {
+        isUpdate = true;
+        const existingAlumniId = existingRecord.alumniid;
+        
+        // Update existing record with new data, set verify = 'pending'
+        const updateResult = await tx/* sql */`
+          UPDATE public.tbl_alumni SET
+            alumniemail = ${clean(normalizedAlumniEmail)},
+            password = ${plainPassword},
+            todaydate = ${todayDateValue},
+            registrationno = ${clean(body.registrationno)},
+            sapid = ${clean(body.sapid)},
+            alumniname = ${clean(body.alumniname)},
+            gender = ${clean(body.gender)},
+            fathername = ${clean(body.fathername)},
+            dateofbirth = ${clean(body.dateofbirth)},
+            maritalstatus = ${clean(body.maritalstatus)},
+            cnicpassport = ${clean(body.cnicpassport)},
+            contactno = ${clean(body.contactno)},
+            contactno1 = ${clean(body.contactno1)},
+            contactno1show = ${body.contactno1show ?? null},
+            personalemail = ${clean(body.personalemail)},
+            personalemailshow = ${body.personalemailshow ?? null},
+            universityemail = ${clean(body.universityemail)},
+            country = ${clean(body.country)},
+            province = ${clean(body.province)},
+            city = ${clean(body.city)},
+            address = ${clean(body.address)},
+            academicsession = ${clean(body.academicsession)},
+            degreetitle = ${clean(body.degreetitle)},
+            cgpa = ${body.cgpa ?? null},
+            yearofstarting = ${body.yearofstarting ?? null},
+            yearofending = ${body.yearofending ?? null},
+            facultyname = ${clean(body.facultyname)},
+            campusname = ${clean(body.campusname)},
+            departmentname = ${clean(body.departmentname)},
+            majorsubject = ${clean(body.majorsubject)},
+            industry = ${clean(body.industry)},
+            employeed = ${mapEmployeed(body.employeed)},
+            nameoforganization = ${clean(body.nameoforganization)},
+            designation = ${clean(body.designation)},
+            totalyearsofexpereince = ${truncateExperience(body.totalyearsofexpereince)},
+            officialemail = ${clean(body.officialemail)},
+            officialnumber = ${clean(body.officialnumber)},
+            work_city = ${clean((body as { workCity?: string | null }).workCity ?? null)},
+            work_country = ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
+            image1 = ${clean(body.image1)},
+            cv = ${clean(body.cv)},
+            aboutme = ${clean(body.aboutme)},
+            verify = ${'pending'}, /* Set verify = 'pending' for re-registration (Under Approval) */
+            datasource = ${clean(body.datasource)},
+            alumnistatus = ${clean(body.alumnistatus)},
+            degree_title = ${clean(body.highereducationdegreetitle)},
+            higher_education_institute_name = ${clean(body.highereducationinstitute)},
+            higher_education_program = ${clean(body.highereducationprogram)},
+            is_scholarship = ${clean(body.scholarship)}
+          WHERE alumniid = ${existingAlumniId}
+          RETURNING alumniid, verify
+        `;
+        
+        const updated = updateResult[0];
+        console.log("[API] Updated existing alumni record:", {
+          alumniid: updated.alumniid,
+          verify: updated.verify,
+          previousVerify: existingRecord.verify
+        });
+        
+        return updated.alumniid;
+      }
+      
+      // RULE 3: If no existing record, create new record
       // Reset sequence if needed to prevent duplicate key errors
       // This ensures the sequence is at least as high as the highest existing alumniid
       try {
@@ -555,12 +698,26 @@ export async function POST(req: Request) {
     }
 
     // Return the generated password if it was auto-generated (for client-side display)
-    const response: { alumniid: number; generatedPassword?: string } = { alumniid: id! };
+    const response: { 
+      alumniid: number; 
+      generatedPassword?: string;
+      updated?: boolean;
+      message?: string;
+    } = { alumniid: id! };
+    
     if (generatedPassword) {
       response.generatedPassword = generatedPassword;
     }
 
+    // Set appropriate response based on whether it was an update or new record
+    if (isUpdate) {
+      response.updated = true;
+      response.message = "Alumni record updated successfully. Status set to 'Under Approval'.";
+      return NextResponse.json(response, { status: 200 });
+    } else {
+      response.message = "Alumni registered successfully. Status set to 'Under Approval'.";
     return NextResponse.json(response, { status: 201 });
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     const stack = err instanceof Error ? err.stack : undefined;

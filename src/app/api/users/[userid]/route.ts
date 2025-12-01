@@ -119,18 +119,7 @@ export async function PUT(req: Request) {
     const userType = body.type ? String(body.type).toLowerCase().trim() : null;
     const normalizedType = userType === "user" ? "viewer" : (userType || null);
     
-    // Check if trying to set Super Admin role
-    if (normalizedType === "superadmin") {
-      // Check if there's already a Super Admin
-      const existingSuperAdmin = await sql/* sql */`
-        SELECT userid FROM public.tbl_users 
-        WHERE LOWER(TRIM(type)) = 'superadmin' AND userid != ${id}
-        LIMIT 1` as { userid: number }[];
-      
-      if (existingSuperAdmin.length > 0) {
-        return NextResponse.json({ error: "ONLY_ONE_SUPER_ADMIN: There can only be one Super Admin. Please transfer the role from the existing Super Admin first." }, { status: 400 });
-      }
-    }
+    // Note: Multiple superadmins are now allowed
     
     // For viewers updating their own account, only allow password, email, firstname, lastname
     // Super Admin can update all fields
@@ -308,7 +297,7 @@ export async function DELETE(req: Request) {
     const idStr = url.pathname.split("/").pop() || "";
     const id = Number(idStr);
     
-    // Check if trying to delete a Super Admin
+    // Safety check: Prevent deleting the last Super Admin to ensure system always has at least one
     const userToDelete = await sql/* sql */`
       SELECT type FROM public.tbl_users WHERE userid = ${id} LIMIT 1
     ` as { type: string | null }[];
@@ -316,14 +305,14 @@ export async function DELETE(req: Request) {
     if (userToDelete.length > 0) {
       const userType = String(userToDelete[0]?.type || "").toLowerCase().trim();
       if (userType === "superadmin") {
-        // Check if there's another Super Admin (shouldn't happen, but safety check)
+        // Check if there's at least one other Super Admin
         const otherSuperAdmin = await sql/* sql */`
           SELECT userid FROM public.tbl_users 
           WHERE LOWER(TRIM(type)) = 'superadmin' AND userid != ${id}
           LIMIT 1` as { userid: number }[];
         
         if (otherSuperAdmin.length === 0) {
-          return NextResponse.json({ error: "CANNOT_DELETE_SUPER_ADMIN: Cannot delete the only Super Admin. Please transfer the Super Admin role to another user first." }, { status: 400 });
+          return NextResponse.json({ error: "CANNOT_DELETE_LAST_SUPER_ADMIN: Cannot delete the last Super Admin. Please ensure at least one Super Admin exists in the system." }, { status: 400 });
         }
       }
     }

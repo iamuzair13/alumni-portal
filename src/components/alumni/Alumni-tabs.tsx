@@ -4,7 +4,8 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
-import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon } from "@/icons";
+import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon } from "@/icons";
+import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
@@ -123,6 +124,7 @@ export const AlumniTabs: React.FC = () => {
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [additionalFilter, setAdditionalFilter] = useState<"unverified" | "inactive" | "">("");
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   
   // Confirmation modal state
   const confirmModal = useModal();
@@ -1091,161 +1093,192 @@ export const AlumniTabs: React.FC = () => {
                   })();
 
                   return (
-                  <TableRow
-                    key={`${alum.id}-${idx}`}
-                    className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
-                    onClick={() => setSelectedRowId(alum.id)}
-                    aria-selected={selectedRowId === alum.id}
-                  >
-                    <TableCell className="px-3 sm:px-6 py-5 text-start">
-                      <div className="flex flex-col gap-1">
-                        <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{alum.name || "-"}</span>
-                        {/* Show email on small screens when hidden in table */}
-                        <a 
-                          href={alum.email ? `mailto:${alum.email}` : "#"} 
-                          className={`lg:hidden text-xs ${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate" : "text-gray-400"}`}
-                        >
-                          {alum.email || ""}
-                        </a>
-                        {/* Show faculty, department, and program on small screens when hidden in table */}
-                        <div className="md:hidden flex flex-col gap-0.5 text-xs text-gray-600 dark:text-gray-400">
-                          {alum.faculty && <span className="truncate">{alum.faculty}</span>}
-                          {alum.department && <span className="truncate">{alum.department}</span>}
-                          {alum.program && <span className="truncate">{alum.program}</span>}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
-                      <span className="truncate block max-w-[120px] sm:max-w-none">{sapIdRegNo}</span>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                      <a 
-                        href={alum.email ? `mailto:${alum.email}` : "#"} 
-                        className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]" : "text-gray-400"}`}
+                    <React.Fragment key={`${alum.id}-fragment-${idx}`}>
+                      <TableRow
+                        key={`${alum.id}-${idx}`}
+                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
+                        onClick={() => setSelectedRowId(alum.id)}
+                        aria-selected={selectedRowId === alum.id}
                       >
-                        {alum.email || "-"}
-                      </a>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
-                      <span className="truncate block max-w-[120px]">{alum.faculty || "-"}</span>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
-                      <span className="truncate block max-w-[120px]">{alum.department || "-"}</span>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
-                      <span className="truncate block max-w-[150px]">{alum.program || "-"}</span>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 text-start">
-                      <Badge 
-                        size="sm" 
-                        color={
-                          alum.verifyStatus === "verified" 
-                            ? "success" 
-                            : alum.verifyStatus === "unverified" 
-                            ? "error" 
-                            : "warning"
-                        }
-                      >
-                        {alum.verifyStatus === "verified" 
-                          ? "Verified" 
-                          : alum.verifyStatus === "unverified" 
-                          ? "Unverified" 
-                          : "Under Approval"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
-                      selectedRowId === alum.id 
-                        ? "bg-blue-50/80 dark:bg-blue-900/30" 
-                        : "bg-white dark:bg-gray-800/30"
-                    }`}>
-                      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
-                        {(() => {
-                          const isBusy = mutatingIds.has(alum.id);
-                          const canPerformActions = canModify(session?.user);
-                          
-                          // For viewers, only show View button
-                          if (!canPerformActions) {
-                            return (
-                              <button
-                                key={`${alum.id}-action-view`}
-                                type="button"
-                                onClick={() => handleView(alum.id)}
-                                disabled={isBusy}
-                                aria-disabled={isBusy}
-                                className={`p-1.5 sm:p-2 text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
-                                aria-label="View"
-                                title="View"
-                              >
-                                <EyeIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                              </button>
-                            );
-                          }
-                          
-                          // For admins, show all actions based on status
-                          // In "total" tab, show both verify and unverify options based on current status
-                          // In other tabs, show context-appropriate actions
-                          let actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }>;
-                          
-                          if (selected === "total") {
-                            // Total tab: show all relevant actions
-                            if (alum.verifyStatus === "verified") {
-                              // Verified: can unverify, delete, view
-                              actions = [
-                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                              ];
-                            } else if (alum.verifyStatus === "unverified") {
-                              // Unverified: can verify, delete, view
-                              actions = [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                              ];
-                            } else {
-                              // Under approval: can verify, unverify, delete, view
-                              actions = [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                              ];
-                            }
-                          } else {
-                            // Other tabs: show context-appropriate actions
-                            if (alum.verifyStatus === "verified") {
-                              actions = [
-                                { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                              ];
-                            } else {
-                              actions = [
-                                { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                              ];
-                            }
-                          }
-                          
-                          return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
-                            <button
-                              key={`${alum.id}-action-${i}`}
-                              type="button"
-                              onClick={onClick}
-                              disabled={isBusy}
-                              aria-disabled={isBusy}
-                              className={`p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
-                              aria-label={label}
-                              title={label}
+                        <TableCell className="px-3 sm:px-6 py-5 text-start">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              {canModify(session?.user) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedRowId(expandedRowId === alum.id ? null : alum.id);
+                                  }}
+                                  className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+                                    expandedRowId === alum.id
+                                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
+                                  }`}
+                                  aria-label={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
+                                  title={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
+                                >
+                                  <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === alum.id ? "rotate-45" : ""}`} />
+                                </button>
+                              )}
+                              <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{alum.name || "-"}</span>
+                            </div>
+                            {/* Show email on small screens when hidden in table */}
+                            <a 
+                              href={alum.email ? `mailto:${alum.email}` : "#"} 
+                              className={`lg:hidden text-xs ${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate" : "text-gray-400"}`}
                             >
-                              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                          ));
-                        })()}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                              {alum.email || ""}
+                            </a>
+                            {/* Show faculty, department, and program on small screens when hidden in table */}
+                            <div className="md:hidden flex flex-col gap-0.5 text-xs text-gray-600 dark:text-gray-400">
+                              {alum.faculty && <span className="truncate">{alum.faculty}</span>}
+                              {alum.department && <span className="truncate">{alum.department}</span>}
+                              {alum.program && <span className="truncate">{alum.program}</span>}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                          <span className="truncate block max-w-[120px] sm:max-w-none">{sapIdRegNo}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          <a 
+                            href={alum.email ? `mailto:${alum.email}` : "#"} 
+                            className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]" : "text-gray-400"}`}
+                          >
+                            {alum.email || "-"}
+                          </a>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                          <span className="truncate block max-w-[120px]">{alum.faculty || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                          <span className="truncate block max-w-[120px]">{alum.department || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                          <span className="truncate block max-w-[150px]">{alum.program || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-start">
+                          <Badge 
+                            size="sm" 
+                            color={
+                              alum.verifyStatus === "verified" 
+                                ? "success" 
+                                : alum.verifyStatus === "unverified" 
+                                ? "error" 
+                                : "warning"
+                            }
+                          >
+                            {alum.verifyStatus === "verified" 
+                              ? "Verified" 
+                              : alum.verifyStatus === "unverified" 
+                              ? "Unverified" 
+                              : "Under Approval"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
+                          selectedRowId === alum.id 
+                            ? "bg-blue-50/80 dark:bg-blue-900/30" 
+                            : "bg-white dark:bg-gray-800/30"
+                        }`}>
+                          <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
+                            {(() => {
+                              const isBusy = mutatingIds.has(alum.id);
+                              const canPerformActions = canModify(session?.user);
+                              
+                              // For viewers, only show View button
+                              if (!canPerformActions) {
+                                return (
+                                  <button
+                                    key={`${alum.id}-action-view`}
+                                    type="button"
+                                    onClick={() => handleView(alum.id)}
+                                    disabled={isBusy}
+                                    aria-disabled={isBusy}
+                                    className={`p-1.5 sm:p-2 text-gray-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    aria-label="View"
+                                    title="View"
+                                  >
+                                    <EyeIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                  </button>
+                                );
+                              }
+                              
+                              // For admins, show all actions based on status
+                              // In "total" tab, show both verify and unverify options based on current status
+                              // In other tabs, show context-appropriate actions
+                              let actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }>;
+                              
+                              if (selected === "total") {
+                                // Total tab: show all relevant actions
+                                if (alum.verifyStatus === "verified") {
+                                  // Verified: can unverify, delete, view
+                                  actions = [
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
+                                  ];
+                                } else if (alum.verifyStatus === "unverified") {
+                                  // Unverified: can verify, delete, view
+                                  actions = [
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
+                                  ];
+                                } else {
+                                  // Under approval: can verify, unverify, delete, view
+                                  actions = [
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
+                                  ];
+                                }
+                              } else {
+                                // Other tabs: show context-appropriate actions
+                                if (alum.verifyStatus === "verified") {
+                                  actions = [
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
+                                  ];
+                                } else {
+                                  actions = [
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
+                                  ];
+                                }
+                              }
+                              
+                              return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
+                                <button
+                                  key={`${alum.id}-action-${i}`}
+                                  type="button"
+                                  onClick={onClick}
+                                  disabled={isBusy}
+                                  aria-disabled={isBusy}
+                                  className={`p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+                                  aria-label={label}
+                                  title={label}
+                                >
+                                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {expandedRowId === alum.id && canModify(session?.user) && (
+                        <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
+                          <TableCell colSpan={8} className=" py-6 overflow-x-hidden max-w-full">
+                            <div className="max-w-full overflow-x-hidden ">
+                              <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
