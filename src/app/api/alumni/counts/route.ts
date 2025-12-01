@@ -68,6 +68,7 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTerm}
           )
       `);
     } else {

@@ -894,6 +894,9 @@ export const AlumniTabs: React.FC = () => {
                     <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
                       Department
                     </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell">
+                      Program
+                    </TableCell>
                     <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">
                       Status
                     </TableCell>
@@ -921,6 +924,9 @@ export const AlumniTabs: React.FC = () => {
                         <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
                           <div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                          <div className="h-5 w-36 sm:w-44 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5">
                           <div className="h-7 w-20 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                         </TableCell>
@@ -932,7 +938,7 @@ export const AlumniTabs: React.FC = () => {
                   )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={7}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={8}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -969,7 +975,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1017,10 +1023,11 @@ export const AlumniTabs: React.FC = () => {
                         >
                           {alum.email || ""}
                         </a>
-                        {/* Show faculty and department on small screens when hidden in table */}
+                        {/* Show faculty, department, and program on small screens when hidden in table */}
                         <div className="md:hidden flex flex-col gap-0.5 text-xs text-gray-600 dark:text-gray-400">
                           {alum.faculty && <span className="truncate">{alum.faculty}</span>}
                           {alum.department && <span className="truncate">{alum.department}</span>}
+                          {alum.program && <span className="truncate">{alum.program}</span>}
                         </div>
                       </div>
                     </TableCell>
@@ -1040,6 +1047,9 @@ export const AlumniTabs: React.FC = () => {
                     </TableCell>
                     <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
                       <span className="truncate block max-w-[120px]">{alum.department || "-"}</span>
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                      <span className="truncate block max-w-[150px]">{alum.program || "-"}</span>
                     </TableCell>
                     <TableCell className="px-3 sm:px-6 py-5 text-start">
                       <Badge 
