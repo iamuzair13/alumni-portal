@@ -301,8 +301,8 @@ export async function buildAccessFilterSQL(
         }
       } else {
         console.log("[buildAccessFilterSQL]   ⚠️ Department assignment skipped - program-level assignments exist for this department");
-      }
     }
+  }
   }
   
   // REMOVED: Department-level fallback for program assignments

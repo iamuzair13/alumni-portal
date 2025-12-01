@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { GroupIcon, EyeIcon, TrashBinIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -7,6 +7,8 @@ import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useAlumniParticipationList } from "@/app/queries/fetch-alumni-participation";
 import type { MentorshipItem } from "@/app/queries/fetch-alumni-participation";
+import { useAlumniAssociationList } from "@/app/queries/fetch-alumni-association";
+import type { AssociationItem } from "@/app/queries/fetch-alumni-association";
 import { useQueryClient } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/modal";
 import { useSession } from "next-auth/react";
@@ -61,7 +63,8 @@ const STATUS_CLASS_MAP: Record<
 export const AlumniParticipation: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("talkMentorship");
   const router = useRouter();
-  const { data, isLoading, error } = useAlumniParticipationList();
+  const { data: participationData, isLoading: isLoadingParticipation, error: participationError } = useAlumniParticipationList();
+  const { data: associationData, isLoading: isLoadingAssociation, error: associationError } = useAlumniAssociationList();
   const qc = useQueryClient();
   const { data: session } = useSession();
   const canPerformActions = canModify(session?.user);
@@ -70,6 +73,7 @@ export const AlumniParticipation: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Icon mapping (replicates Alumni-tabs typed map; using GroupIcon consistently)
   const ICON_COMPONENT_MAP: Record<
@@ -88,14 +92,15 @@ export const AlumniParticipation: React.FC = () => {
     department?: string | null;
     faculty?: string | null;
     program?: string | null;
-    topics: string[];
-    areas: string[];
-    day: string;
-    time: string;
+    topics?: string[];
+    areas?: string[];
+    day?: string;
+    time?: string;
+    role?: string | null;
     level: TabKey[];
   };
   const PARTICIPANTS = useMemo<TableItem[]>(() => {
-    const items = (data ?? []) as MentorshipItem[];
+    const items = (participationData ?? []) as MentorshipItem[];
     return items.map((it) => {
       const level: TabKey[] = ["talkMentorship"];
       if (it.day && it.time) level.push("alumniChapters");
@@ -113,7 +118,21 @@ export const AlumniParticipation: React.FC = () => {
         level,
       } as TableItem;
     });
-  }, [data]);
+  }, [participationData]);
+
+  const ASSOCIATIONS = useMemo<TableItem[]>(() => {
+    const items = (associationData ?? []) as AssociationItem[];
+    return items.map((it) => ({
+      id: it.sapid,
+      name: it.name,
+      email: it.email ?? undefined,
+      department: it.department ?? null,
+      faculty: it.faculty ?? null,
+      program: it.program ?? null,
+      role: it.role ?? null,
+      level: ["alumniAssociation"] as TabKey[],
+    })) as TableItem[];
+  }, [associationData]);
 
   async function deleteMentorshipBySapId(sapid: string) {
     setDeleting(true);
@@ -143,10 +162,12 @@ export const AlumniParticipation: React.FC = () => {
     }
   }
 
-  const filteredParticipants = useMemo(
-    () => PARTICIPANTS.filter((p) => p.level.includes(selected)),
-    [PARTICIPANTS, selected]
-  );
+  const filteredParticipants = useMemo(() => {
+    if (selected === "alumniAssociation") {
+      return ASSOCIATIONS;
+    }
+    return PARTICIPANTS.filter((p) => p.level.includes(selected));
+  }, [PARTICIPANTS, ASSOCIATIONS, selected]);
 
   type SortKey = keyof TableItem;
   type SortDir = "asc" | "desc";
@@ -156,8 +177,10 @@ export const AlumniParticipation: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const loading = isLoading;
-  const errorMsg = error instanceof Error ? error.message : null;
+  const loading = selected === "alumniAssociation" ? isLoadingAssociation : isLoadingParticipation;
+  const errorMsg = selected === "alumniAssociation" 
+    ? (associationError instanceof Error ? associationError.message : null)
+    : (participationError instanceof Error ? participationError.message : null);
 
   const sortedParticipants = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
@@ -189,6 +212,103 @@ export const AlumniParticipation: React.FC = () => {
   const end = start + pageSize;
   const pageItems = sortedParticipants.slice(start, end);
 
+  const handleExportToExcel = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      // Dynamically import xlsx to avoid server-side bundling issues
+      const XLSX = await import("xlsx");
+      
+      let itemsToExport: TableItem[] = [];
+      let filename = "";
+
+      if (selected === "alumniAssociation") {
+        // Export association data
+        itemsToExport = ASSOCIATIONS;
+        filename = "alumni_association_export";
+      } else if (selected === "talkMentorship") {
+        // Export talks/mentorship data
+        itemsToExport = PARTICIPANTS.filter((p) => p.level.includes("talkMentorship"));
+        filename = "alumni_talks_export";
+      } else {
+        // Export chapters data (from participation)
+        itemsToExport = PARTICIPANTS.filter((p) => p.level.includes("alumniChapters"));
+        filename = "alumni_chapters_participation_export";
+      }
+
+      // Map to Excel format based on selected tab
+      const excelData = itemsToExport.map((item) => {
+        if (selected === "alumniAssociation") {
+          return {
+            "SAP ID": item.id || "",
+            "Full Name": item.name || "",
+            "Email": item.email || "",
+            "Faculty": item.faculty || "",
+            "Department": item.department || "",
+            "Program": item.program || "",
+            "Role": item.role || "",
+          };
+        } else {
+          return {
+            "SAP ID": item.id || "",
+            "Full Name": item.name || "",
+            "Email": item.email || "",
+            "Faculty": item.faculty || "",
+            "Department": item.department || "",
+            "Program": item.program || "",
+            "Topics": item.topics?.join(", ") || "",
+            "Areas": item.areas?.join(", ") || "",
+            "Day": item.day || "",
+            "Time": item.time || "",
+          };
+        }
+      });
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      if (selected === "alumniAssociation") {
+        ws["!cols"] = [
+          { wch: 12 }, // SAP ID
+          { wch: 25 }, // Full Name
+          { wch: 30 }, // Email
+          { wch: 25 }, // Faculty
+          { wch: 25 }, // Department
+          { wch: 30 }, // Program
+          { wch: 20 }, // Role
+        ];
+      } else {
+        ws["!cols"] = [
+          { wch: 12 }, // SAP ID
+          { wch: 25 }, // Full Name
+          { wch: 30 }, // Email
+          { wch: 25 }, // Faculty
+          { wch: 25 }, // Department
+          { wch: 30 }, // Program
+          { wch: 40 }, // Topics
+          { wch: 30 }, // Areas
+          { wch: 15 }, // Day
+          { wch: 15 }, // Time
+        ];
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, selected === "alumniAssociation" ? "Association" : selected === "talkMentorship" ? "Talks" : "Chapters");
+
+      // Generate filename
+      const dateStr = new Date().toISOString().split("T")[0];
+      const finalFilename = `${filename}_${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, finalFilename);
+      setIsExporting(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      setIsExporting(false);
+      alert("Failed to export data. Please try again.");
+    }
+  }, [isExporting, selected, ASSOCIATIONS, PARTICIPANTS]);
+
   return (
     <ComponentCard className="">
       <div className="flex flex-col gap-6">
@@ -199,7 +319,11 @@ export const AlumniParticipation: React.FC = () => {
             aria-label="Alumni participation categories"
           >
             {TABS.map((tab, idx) => {
-              const stat = { count: PARTICIPANTS.filter((p) => p.level.includes(tab.key)).length };
+              const stat = { 
+                count: tab.key === "alumniAssociation" 
+                  ? ASSOCIATIONS.length 
+                  : PARTICIPANTS.filter((p) => p.level.includes(tab.key)).length 
+              };
               const statusClasses = STATUS_CLASS_MAP[tab.key];
               const Icon = ICON_COMPONENT_MAP[tab.key];
               return (
@@ -248,6 +372,31 @@ export const AlumniParticipation: React.FC = () => {
             <span className="text-sm">{deleteError}</span>
           </div>
         )}
+        <div className="flex items-center justify-end mb-4">
+          <button
+            type="button"
+            onClick={handleExportToExcel}
+            disabled={isExporting || loading || filteredParticipants.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isExporting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Excel
+              </>
+            )}
+          </button>
+        </div>
         <div className="overflow-hidden rounded-2xl bg-white dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live={loading ? "polite" : undefined}>
             <div className="min-w-full xl:min-w-full">
@@ -255,18 +404,29 @@ export const AlumniParticipation: React.FC = () => {
                 <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
                   <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
                     {(
-                      [
-                        { label: "Name", key: "name" as SortKey, align: "text-start" },
-                        { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
-                        { label: "Email", key: "email" as SortKey, align: "text-start" },
-                        { label: "Department", key: "department" as SortKey, align: "text-start" },
-                        { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
-                        { label: "Program", key: "program" as SortKey, align: "text-start" },
-                        { label: "Topics", key: "topics" as SortKey, align: "text-start" },
-                        { label: "Areas", key: "areas" as SortKey, align: "text-start" },
-                        { label: "Day", key: "day" as SortKey, align: "text-start" },
-                        { label: "Time", key: "time" as SortKey, align: "text-start" },
-                      ] as { label: string; key: SortKey; align: string }[]
+                      (selected === "alumniAssociation"
+                        ? [
+                            { label: "Name", key: "name" as SortKey, align: "text-start" },
+                            { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
+                            { label: "Email", key: "email" as SortKey, align: "text-start" },
+                            { label: "Department", key: "department" as SortKey, align: "text-start" },
+                            { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
+                            { label: "Program", key: "program" as SortKey, align: "text-start" },
+                            { label: "Role", key: "role" as SortKey, align: "text-start" },
+                          ]
+                        : [
+                            { label: "Name", key: "name" as SortKey, align: "text-start" },
+                            { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
+                            { label: "Email", key: "email" as SortKey, align: "text-start" },
+                            { label: "Department", key: "department" as SortKey, align: "text-start" },
+                            { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
+                            { label: "Program", key: "program" as SortKey, align: "text-start" },
+                            { label: "Topics", key: "topics" as SortKey, align: "text-start" },
+                            { label: "Areas", key: "areas" as SortKey, align: "text-start" },
+                            { label: "Day", key: "day" as SortKey, align: "text-start" },
+                            { label: "Time", key: "time" as SortKey, align: "text-start" },
+                          ]
+                      ) as { label: string; key: SortKey; align: string }[]
                     ).map(({ label, key, align }) => {
                       const ariaSort = sortKey === key ? (sortDir === "asc" ? "ascending" : "descending") : "none";
                       return (
@@ -307,21 +467,31 @@ export const AlumniParticipation: React.FC = () => {
                       <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                      <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      {selected === "alumniAssociation" ? (
+                        <>
+                          <TableCell className="px-4 py-3"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
+                          <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="px-4 py-3"><div className="h-5 w-56 bg-gray-200 animate-pulse rounded" /></TableCell>
+                          <TableCell className="px-4 py-3"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
+                          <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                          <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
+                          <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))
                 )}
                 {!loading && errorMsg && (
                   <TableRow>
-                    <TableCell className="px-4 py-3 text-red-600" colSpan={10}>{errorMsg}</TableCell>
+                    <TableCell className="px-4 py-3 text-red-600" colSpan={selected === "alumniAssociation" ? 7 : 10}>{errorMsg}</TableCell>
                   </TableRow>
                 )}
                 {!loading && !errorMsg && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-4 py-6 text-gray-600 dark:text-gray-400" colSpan={10}>
+                    <TableCell className="px-4 py-6 text-gray-600 dark:text-gray-400" colSpan={selected === "alumniAssociation" ? 7 : 10}>
                       No alumni found for this category.
                     </TableCell>
                   </TableRow>
@@ -350,10 +520,16 @@ export const AlumniParticipation: React.FC = () => {
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.faculty ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.program ?? "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.topics.join(", ") || "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.areas.join(", ") || "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.day}</TableCell>
-                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.time}</TableCell>
+                    {selected === "alumniAssociation" ? (
+                      <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.role ?? "-"}</TableCell>
+                    ) : (
+                      <>
+                        <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.topics?.join(", ") || "-"}</TableCell>
+                        <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.areas?.join(", ") || "-"}</TableCell>
+                        <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.day ?? "-"}</TableCell>
+                        <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.time ?? "-"}</TableCell>
+                      </>
+                    )}
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                             {(() => {

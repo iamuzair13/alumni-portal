@@ -343,11 +343,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             try {
               console.warn(`[auth] jwt refresh failed for userId=${String(at.userId)}, keeping existing token data`);
             } catch {}
-          }
-        } else {
-          try {
-            console.warn(`[auth] jwt without user, token email=${String(token.email)}`);
-          } catch {}
+        }
+      } else {
+        try {
+          console.warn(`[auth] jwt without user, token email=${String(token.email)}`);
+        } catch {}
         }
       }
       return token;

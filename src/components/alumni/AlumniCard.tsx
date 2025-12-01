@@ -294,6 +294,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
+  const [isExporting, setIsExporting] = React.useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const { data: applicants, isLoading: applicantsLoading, isError: applicantsError, error: applicantsErrorObj } = useCardApplicants();
 
   React.useEffect(() => {
@@ -312,7 +314,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         faculty: String(r.facultyname ?? ""),
         passingYear: Number(r.yearofending ?? 0),
         workCountry: "",
-        status: "pending",
+        status: (r.status ? String(r.status).trim().toLowerCase() : "pending") as CardStatus,
         createdAt: String(r.createdat ?? ""),
         department: String(r.departmentname ?? ""),
       })) as AlumniListItem[];
@@ -324,9 +326,30 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const effectiveError: string | null = error ?? (applicantsError ? (applicantsErrorObj?.message || "Failed to load applicants") : null);
 
   const filtered = React.useMemo(() => {
-    if (!debouncedQuery) return baseItems;
+    let filteredByStatus = baseItems;
+    
+    // Filter by status - strict matching
+    if (statusFilter !== "all") {
+      const filterStatus = statusFilter.toLowerCase().trim();
+      filteredByStatus = baseItems.filter((i) => {
+        // Get the actual status from the item, normalize it
+        // Handle null, undefined, empty string, or actual status value
+        let itemStatus: string;
+        if (!i.status || String(i.status).trim() === "") {
+          itemStatus = "pending";
+        } else {
+          itemStatus = String(i.status).trim().toLowerCase();
+        }
+        // Only match if statuses are exactly equal
+        const matches = itemStatus === filterStatus;
+        return matches;
+      });
+    }
+    
+    // Filter by search query
+    if (!debouncedQuery) return filteredByStatus;
     const q = debouncedQuery.toLowerCase();
-    return baseItems.filter((i) => {
+    return filteredByStatus.filter((i) => {
       const contact = `${i.email ?? ""} ${i.mobile ?? ""}`.toLowerCase();
       return (
         i.name.toLowerCase().includes(q) ||
@@ -337,7 +360,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         contact.includes(q)
       );
     });
-  }, [baseItems, debouncedQuery]);
+  }, [baseItems, debouncedQuery, statusFilter]);
 
   const sorted = React.useMemo(() => {
     const arr = [...filtered];
@@ -380,7 +403,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, sortKey, sortDir, pageSize]);
+  }, [debouncedQuery, sortKey, sortDir, pageSize, statusFilter]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -404,6 +427,95 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const v = String(e || "");
     return v.includes("@") ? v : "-";
   }
+
+  const handleExportToExcel = React.useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      // Dynamically import xlsx to avoid server-side bundling issues
+      const XLSX = await import("xlsx");
+      
+      // Fetch all applicants from API
+      const res = await fetch("/api/alumni-cards/applicants", { headers: { "accept": "application/json" } });
+      if (!res.ok) throw new Error("Failed to fetch data");
+      const data = (await res.json()) as { items: Array<{ sapid: string; alumniname: string; email: string | null; degreetitle: string | null; facultyname: string | null; departmentname: string | null; yearofending: number | null; status: string; createdat: string | Date | null }> };
+      const allItems = data.items ?? [];
+
+      // Filter by status if needed (based on current view)
+      // Note: The status filter would need to be passed as a prop or determined from the current view
+      // For now, we'll export all items and let the user filter in Excel if needed
+      
+      // Filter by status - strict matching
+      let itemsToExport = allItems;
+      if (statusFilter !== "all") {
+        const filterStatus = statusFilter.toLowerCase().trim();
+        itemsToExport = allItems.filter((item) => {
+          const itemStatus = item.status ? String(item.status).trim().toLowerCase() : "pending";
+          return itemStatus === filterStatus;
+        });
+      }
+      
+      // Apply search filter if any
+      if (debouncedQuery) {
+        itemsToExport = itemsToExport.filter((item) => {
+          const q = debouncedQuery.toLowerCase();
+          return (
+            item.sapid?.toLowerCase().includes(q) ||
+            item.alumniname?.toLowerCase().includes(q) ||
+            item.email?.toLowerCase().includes(q) ||
+            item.degreetitle?.toLowerCase().includes(q) ||
+            item.facultyname?.toLowerCase().includes(q) ||
+            item.departmentname?.toLowerCase().includes(q)
+          );
+        });
+      }
+
+      // Map to Excel format
+      const excelData = itemsToExport.map((item) => ({
+        "SAP ID": item.sapid || "",
+        "Full Name": item.alumniname || "",
+        "Email": item.email || "",
+        "Faculty": item.facultyname || "",
+        "Department": item.departmentname || "",
+        "Program": item.degreetitle || "",
+        "Year of Ending": item.yearofending || "",
+        "Status": item.status || "",
+        "Created At": item.createdat ? (typeof item.createdat === "string" ? item.createdat : new Date(item.createdat).toISOString().split("T")[0]) : "",
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      ws["!cols"] = [
+        { wch: 12 }, // SAP ID
+        { wch: 25 }, // Full Name
+        { wch: 30 }, // Email
+        { wch: 25 }, // Faculty
+        { wch: 25 }, // Department
+        { wch: 30 }, // Program
+        { wch: 15 }, // Year of Ending
+        { wch: 15 }, // Status
+        { wch: 20 }, // Created At
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "Alumni Cards");
+
+      // Generate filename with status
+      const dateStr = new Date().toISOString().split("T")[0];
+      const searchStr = debouncedQuery ? `_search` : "";
+      const statusStr = statusFilter !== "all" ? `_${statusFilter}` : "";
+      const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      setIsExporting(false);
+    } catch (error) {
+      console.error("Export error:", error);
+      setIsExporting(false);
+      alert("Failed to export data. Please try again.");
+    }
+  }, [isExporting, debouncedQuery, statusFilter]);
 
   const StatusSelect: React.FC<{ sapId: string }> = ({ sapId }) => {
     const { data, isFetching, isLoading, error } = useCardStatus(sapId);
@@ -488,6 +600,42 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="status-filter-select">Status:</label>
+          <select
+            id="status-filter-select"
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
+            <option value="delivered">Delivered</option>
+          </select>
+          <button
+            type="button"
+            onClick={handleExportToExcel}
+            disabled={isExporting || effectiveLoading || filtered.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isExporting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Excel
+              </>
+            )}
+          </button>
           <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size-select">Items per page:</label>
           <select
             id="page-size-select"

@@ -780,8 +780,8 @@ export const AlumniTabs: React.FC = () => {
                 `}
                 onClick={() => {
                   if (!isDisabled) {
-                    console.log("[AlumniTabs] Tab clicked:", tab.key);
-                    setSelected(tab.key);
+                  console.log("[AlumniTabs] Tab clicked:", tab.key);
+                  setSelected(tab.key);
                     // Clear additional filter when switching tabs
                     setAdditionalFilter("");
                   }
@@ -835,22 +835,22 @@ export const AlumniTabs: React.FC = () => {
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <svg 
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    id="alumni-search"
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                <svg 
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  id="alumni-search"
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
-                  />
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+                />
                 </div>
                 <div className="relative">
                   <label htmlFor="alumni-filter" className="sr-only">Filter</label>

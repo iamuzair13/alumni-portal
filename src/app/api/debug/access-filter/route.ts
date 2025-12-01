@@ -40,10 +40,10 @@ export async function GET() {
 
     alumniSamples.forEach((row) => {
       const r = row as {
-        facultyname: string | null;
-        departmentname: string | null;
-        degreetitle: string | null;
-        count: number | string;
+      facultyname: string | null;
+      departmentname: string | null;
+      degreetitle: string | null;
+      count: number | string;
       };
       if (r.facultyname) {
         const normalized = r.facultyname.trim().toLowerCase();

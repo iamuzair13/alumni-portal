@@ -709,108 +709,141 @@ let cardImageFile: string | null = null;
 
 
       <div className="p-10 bg-slate-100">
-        <h2 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-3">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-slate-900 mb-3 flex items-center gap-3">
           Perks &amp; Benefits
-          <span className="ml-3 px-3 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 font-medium border border-yellow-200">
+            <span className="ml-3 px-4 py-1.5 text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm">
             Alumni card is required to avail these benefits
           </span>
         </h2>
+          <p className="text-lg text-slate-600 mt-2">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[
             {
               title: "Academic Benefits",
               description: "Avail special tuition and admission discounts offered to UOL alumni.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-indigo-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-indigo-600" viewBox="0 0 24 24">
                   <path d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12z"/>
                   <path d="M7 8h10v2H7zm0 4h7v2H7z"/>
                 </svg>
               ),
               slug: "academic-benefits",
+              gradient: "from-indigo-50 to-indigo-100",
+              borderColor: "border-indigo-200",
+              iconBg: "bg-indigo-100",
             },
             {
               title: "Healthcare Benefits",
               description: "Avail comprehensive health insurance and wellness programs as an alumni member.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-emerald-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-emerald-600" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                 </svg>
               ),
               slug: "healthcare-benefits",
+              gradient: "from-emerald-50 to-emerald-100",
+              borderColor: "border-emerald-200",
+              iconBg: "bg-emerald-100",
             },
             {
               title: "Identity & Inclusion",
               description: "Avail UOL library access (on-campus &amp; online) and a permanent UOL alumni email.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-purple-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-purple-600" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                 </svg>
               ),
               slug: "identity-inclusion",
+              gradient: "from-purple-50 to-purple-100",
+              borderColor: "border-purple-200",
+              iconBg: "bg-purple-100",
             },
             {
               title: "Campus Facilities and Memberships",
               description: "Enjoy access to gym, sports facilities, and exclusive campus amenities.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-blue-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-blue-600" viewBox="0 0 24 24">
                   <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
                 </svg>
               ),
               slug: "campus-facilities",
+              gradient: "from-blue-50 to-blue-100",
+              borderColor: "border-blue-200",
+              iconBg: "bg-blue-100",
             },
             {
               title: "Merchant and Business Promotions",
               description: "Exclusive partner discounts and offers available for alumni with the Alumni Card.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-orange-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-orange-600" viewBox="0 0 24 24">
                   <path d="M7 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM1 2v2h2l3.6 7.59-1.35 2.45c-.15.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                 </svg>
               ),
               slug: "merchant-promotions",
+              gradient: "from-orange-50 to-orange-100",
+              borderColor: "border-orange-200",
+              iconBg: "bg-orange-100",
             },
             {
               title: "Career and Mentorship",
               description: " Avail exclusive career and professional development opportunities.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-teal-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-teal-600" viewBox="0 0 24 24">
                   <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                 </svg>
               ),
               slug: "career-mentorship",
+              gradient: "from-teal-50 to-teal-100",
+              borderColor: "border-teal-200",
+              iconBg: "bg-teal-100",
             },
             {
               title: "Chapters & Engagement Events",
               description: "You can join chapters based on their city or country to connect locally and globally.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-rose-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-rose-600" viewBox="0 0 24 24">
                   <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                 </svg>
               ),
               slug: "chapters-events",
+              gradient: "from-rose-50 to-rose-100",
+              borderColor: "border-rose-200",
+              iconBg: "bg-rose-100",
             },
             {
               title: "Recognition",
               description: " Avail opportunities to be honored for achievements via awards and spotlights.",
               icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 fill-amber-700" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-amber-600" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
               ),
               slug: "recognition",
+              gradient: "from-amber-50 to-amber-100",
+              borderColor: "border-amber-200",
+              iconBg: "bg-amber-100",
             },
           ].map((benefit, idx) => (
             <Link
               key={idx}
               href={`/alumni-profile/benefits/${benefit.slug}`}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow duration-200 cursor-pointer"
+              className="group bg-white border-2 border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
             >
-              <div className="p-6">
-                <div>
+              <div className={`bg-gradient-to-br ${benefit.gradient} p-6 border-b-2 ${benefit.borderColor}`}>
+                <div className={`w-16 h-16 ${benefit.iconBg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                   {benefit.icon}
                 </div>
-                <div className="mt-4">
-                  <h4 className="text-base font-semibold text-slate-900">{benefit.title}</h4>
-                  <p className="mt-2 text-sm text-slate-500 leading-relaxed">{benefit.description}</p>
+                <h4 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors">{benefit.title}</h4>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-slate-600 leading-relaxed">{benefit.description}</p>
+                <div className="mt-4 flex items-center text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+                  <span>Learn more</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             </Link>

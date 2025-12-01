@@ -8,7 +8,6 @@ export const viewport: Viewport = {
 
 import { sql } from "@/lib/dbconnect";
 import AlumniChaptersForm from "@/components/forms/AlumniChaptersForm";
-import AlumniAssociationForm from "@/components/forms/AlumniAssociationForm";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
@@ -144,19 +143,6 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
               contactNumber={contact}
               alumniId={alumniId}
             />
-            
-            {/* Alumni Association Form Section */}
-            <div className="mt-12 pt-12 border-t border-gray-200">
-              <div className="mb-7 max-w-4xl mx-auto">
-                <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-2">
-                  Apply for Alumni Association Leadership Role
-                </h2>
-                <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Interested in taking on a leadership role? You can also apply for a position in the Alumni Association from here. This is optional and separate from your chapter membership.
-                </p>
-              </div>
-              <AlumniAssociationForm alumniId={alumniId} />
-            </div>
           </div>
         </div>
       </div>

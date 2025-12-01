@@ -115,11 +115,11 @@ async function getAlumniChapters(searchParams: AlumniProfileSearchParams) {
       // Convert numeric IDs to integers to match the id column type
       const intIds = chapterIds.map(id => Math.floor(id));
       chapterDetails = await sql<ChapterRow[]>/* sql */`
-        SELECT id, national_chapter, international_chapter, chapter_image, description, chapter_whatsapp, is_active
-        FROM public.tblchapters
+      SELECT id, national_chapter, international_chapter, chapter_image, description, chapter_whatsapp, is_active
+      FROM public.tblchapters
         WHERE id = ANY(${intIds})
-        ORDER BY COALESCE(national_chapter, international_chapter)
-      `;
+      ORDER BY COALESCE(national_chapter, international_chapter)
+    `;
     }
     
     // Build chapters array from fetched details
@@ -213,16 +213,27 @@ export default async function MyChaptersPage({ searchParams }: { searchParams: P
                   ))}
                 </div>
                 
-                <div className="mt-8 pt-8 border-t border-gray-200 text-center">
-                  <Link
-                    href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 fill-current">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-                    </svg>
-                    Apply to Other Chapters
-                  </Link>
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <Link
+                      href={sapId ? `/alumni-profile/chapter-leadership?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapter-leadership`}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                      </svg>
+                      Apply for Leadership
+                    </Link>
+                    <Link
+                      href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                      </svg>
+                      Apply to Other Chapters
+                    </Link>
+                  </div>
                 </div>
               </>
             )}

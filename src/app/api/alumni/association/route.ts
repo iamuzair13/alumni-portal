@@ -27,8 +27,8 @@ export async function GET() {
         ass.q3 as role,
         ass.createddatetime
       FROM public.tbl_alumni a
-      JOIN public.tblalumniassociation ass ON ass.alumniid = a.alumniid
-      WHERE 1=1
+      JOIN public.tblalumniassociation ass ON ass.id = a.association_job
+      WHERE a.association_job IS NOT NULL
         ${accessFilterCondition}
       ORDER BY ass.createddatetime DESC NULLS LAST, a.alumniid DESC`;
     
@@ -86,32 +86,40 @@ export async function POST(request: NextRequest) {
     const roleDisplayName = roleDisplayNames[role] || role;
 
     // Check if a record already exists for this alumni
-    // Note: You may need to create a table for this, or store it in an existing table
-    // For now, we'll check if there's an alumni_association table or similar
-    // If not, we'll create a simple storage solution
-    
-    // Check if a record already exists for this alumni in tblalumniassociation
-    // Using q3 field to store the role (VARCHAR(50))
-    const existingRecord = await sql/* sql */`
-      SELECT alumniid FROM public.tblalumniassociation 
+    // tbl_alumni.association_job references tblalumniassociation.id
+    const existingAssociationJob = await sql/* sql */`
+      SELECT association_job FROM public.tbl_alumni 
       WHERE alumniid = ${alumniId}
       LIMIT 1
     `;
 
-    if (existingRecord.length > 0) {
-      // Update existing record
+    const associationJobId = existingAssociationJob[0]?.association_job;
+
+    if (associationJobId) {
+      // Update existing record in tblalumniassociation
       await sql/* sql */`
         UPDATE public.tblalumniassociation 
         SET q3 = ${roleDisplayName},
             createddatetime = NOW()
-        WHERE alumniid = ${alumniId}
+        WHERE id = ${associationJobId}
       `;
     } else {
-      // Insert new record
-      await sql/* sql */`
-        INSERT INTO public.tblalumniassociation (alumniid, q3, createddatetime)
-        VALUES (${alumniId}, ${roleDisplayName}, NOW())
+      // Insert new record into tblalumniassociation
+      const insertResult = await sql/* sql */`
+        INSERT INTO public.tblalumniassociation (q3, createddatetime)
+        VALUES (${roleDisplayName}, NOW())
+        RETURNING id
       `;
+      const newAssociationJobId = insertResult[0]?.id;
+      
+      if (newAssociationJobId) {
+        // Update tbl_alumni.association_job with the new ID
+        await sql/* sql */`
+          UPDATE public.tbl_alumni 
+          SET association_job = ${newAssociationJobId}
+          WHERE alumniid = ${alumniId}
+        `;
+      }
     }
 
     // Send confirmation email
