@@ -125,10 +125,12 @@ export async function GET(req: Request) {
         underApproval: 0,
         active: 0,
         inactive: 0,
+        category: { aPlus: 0, a: 0, b: 0, c: 0 },
       }, { status: 200 });
     }
 
     // Convert to numbers
+    // Category counts will be added later when data is available
     const response = {
       total: Number(row.total || 0),
       verified: Number(row.verified || 0),
@@ -136,6 +138,7 @@ export async function GET(req: Request) {
       underApproval: Number(row.under_approval || 0),
       active: Number(row.active || 0),
       inactive: Number(row.inactive || 0),
+      category: { aPlus: 0, a: 0, b: 0, c: 0 }, // Placeholder - will be updated when category data is available
     };
 
     return NextResponse.json(response, { status: 200 });

@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET() {
   try {
+    const session = await auth();
+    
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
     const rows = await sql/* sql */`
       SELECT 
         a.alumniid,
@@ -17,6 +25,8 @@ export async function GET() {
         c.createdat
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      WHERE 1=1
+        ${accessFilterCondition}
       ORDER BY c.createdat DESC`;
     return NextResponse.json({ items: rows }, { status: 200 });
   } catch (err) {

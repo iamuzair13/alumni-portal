@@ -4,6 +4,8 @@ import { sql, retryDbOperation } from "@/lib/dbconnect";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 import { sendSuccessStoryEmail } from "@/lib/email";
+import { auth } from "@/lib/auth";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 // Configure DOMPurify for server-side sanitization
 const window = new JSDOM("").window;
@@ -36,6 +38,12 @@ type StoryRow = {
 
 export async function GET() {
   try {
+    const session = await auth();
+    
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
     const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         s.alumniid,
@@ -55,6 +63,7 @@ export async function GET() {
         AND TRIM(s.alumnistories) != ''
         AND a.alumniname IS NOT NULL
         AND TRIM(a.alumniname) != ''
+        ${accessFilterCondition}
       ORDER BY s.createdat DESC NULLS LAST
       LIMIT 200` as StoryRow[]);
     

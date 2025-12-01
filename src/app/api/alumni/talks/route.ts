@@ -3,9 +3,16 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { validatePayload } from "./validation";
 import { sendMentorshipApplicationEmail } from "@/lib/email";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET() {
   try {
+    const session = await auth();
+    
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
     const rows = await sql/* sql */`
       SELECT 
         a.alumniid,
@@ -23,6 +30,8 @@ export async function GET() {
         t.activity
       FROM public.tbl_alumni a
       JOIN public.tblalumnitalks t ON t.alumniid = a.alumniid
+      WHERE 1=1
+        ${accessFilterCondition}
       ORDER BY t.alumniid DESC`;
     const typedRows = rows as unknown as {
       sapid: string;

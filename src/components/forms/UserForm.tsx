@@ -320,9 +320,17 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
         setAvailablePrograms(programsArray);
         
         // Restore loaded programs if in edit mode, otherwise filter
+        // Use case-insensitive matching for better compatibility
         if (isEditMode && loadedPrograms.length > 0) {
-          const programsSet = new Set(programsArray);
-          const validProgs = loadedPrograms.filter(p => programsSet.has(p));
+          const programsSet = new Set(programsArray.map(p => p.toLowerCase().trim()));
+          const validProgs = loadedPrograms.filter(p => {
+            const normalized = p.toLowerCase().trim();
+            return Array.from(programsSet).some(prog => prog === normalized);
+          }).map(p => {
+            // Find the exact match from programsArray (preserve original casing)
+            const normalized = p.toLowerCase().trim();
+            return programsArray.find(prog => prog.toLowerCase().trim() === normalized) || p;
+          });
           setSelectedPrograms(validProgs);
           // Check if all programs should be marked as "All"
           if (validProgs.length === programsArray.length && programsArray.length > 0 && programsArray.every(p => validProgs.includes(p))) {
@@ -331,8 +339,16 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
           // Clear loaded programs after restoring
           setLoadedPrograms([]);
         } else {
-          const programsSet = new Set(programsArray);
-          setSelectedPrograms((prev) => prev.filter((prog) => programsSet.has(prog)));
+          // Use case-insensitive matching
+          const programsSet = new Set(programsArray.map(p => p.toLowerCase().trim()));
+          setSelectedPrograms((prev) => prev.filter((prog) => {
+            const normalized = prog.toLowerCase().trim();
+            return Array.from(programsSet).some(p => p === normalized);
+          }).map(prog => {
+            // Find the exact match from programsArray (preserve original casing)
+            const normalized = prog.toLowerCase().trim();
+            return programsArray.find(p => p.toLowerCase().trim() === normalized) || prog;
+          }));
           
           // If all departments are selected, automatically set all programs
           if (allDepartmentsSelected && programsArray.length > 0) {
@@ -477,10 +493,35 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
               }
               
               // Case 4: Specific selections (some faculties/departments/programs)
+              // When programs are selected, we need to ensure they're properly associated with their departments
+              // Filter programs to only include those that belong to selected departments
+              const validPrograms: string[] = [];
+              if (selectedPrograms.length > 0 && selectedDepartments.length > 0) {
+                for (const program of selectedPrograms) {
+                  // Check if this program belongs to any of the selected departments
+                  let programFound = false;
+                  for (const dept of selectedDepartments) {
+                    for (const faculty of selectedFaculties) {
+                      const deptPrograms = getProgramsByFacultyAndDepartment(faculty, dept);
+                      // Use case-insensitive matching
+                      const normalizedProgram = program.toLowerCase().trim();
+                      if (deptPrograms.some(p => p.toLowerCase().trim() === normalizedProgram)) {
+                        programFound = true;
+                        break;
+                      }
+                    }
+                    if (programFound) break;
+                  }
+                  if (programFound) {
+                    validPrograms.push(program);
+                  }
+                }
+              }
+              
               return {
                 faculties: selectedFaculties,
                 departments: selectedDepartments.length > 0 ? selectedDepartments : [],
-                programs: selectedPrograms.length > 0 ? selectedPrograms : [],
+                programs: validPrograms.length > 0 ? validPrograms : (selectedPrograms.length > 0 ? selectedPrograms : []),
               };
             })()
           : undefined;

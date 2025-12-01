@@ -125,6 +125,18 @@ export async function GET(req: Request) {
       // For under approval, show all records with verify = 'pending' (even if sapid/registrationno is null)
       verifyFilter = sql`AND verify = 'pending'`;
       console.log("[API] Filtering for under approval alumni (verify = 'pending', including null sapid/registrationno)");
+    } else if (status === "active") {
+      // Active: has logged in (has lasttimelogin OR logincount > 0)
+      verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
+      console.log("[API] Filtering for active alumni (has logged in)");
+    } else if (status === "inactive") {
+      // Inactive: never logged in (no lasttimelogin AND logincount is 0 or null)
+      verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
+      console.log("[API] Filtering for inactive alumni (never logged in)");
+    } else if (status === "category") {
+      // Category tab - for now return empty (data will be added later)
+      verifyFilter = sql`AND 1 = 0`; // Return no results for now
+      console.log("[API] Category tab - no data available yet");
     } else {
       // For "total" and other tabs, include records with either sapid OR registrationno
       console.log("[API] No status filter applied, status:", status);

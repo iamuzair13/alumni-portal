@@ -127,8 +127,13 @@ export async function POST(req: Request) {
               const deptFaculties = findFacultyForDepartment(department);
               for (const faculty of deptFaculties) {
                 // Verify that the program actually belongs to this department before creating assignment
+                // Use case-insensitive matching
                 const validPrograms = getProgramsByFacultyAndDepartment(faculty, department);
-                if (validPrograms.includes(program)) {
+                const normalizedProgram = program.toLowerCase().trim();
+                const programMatches = validPrograms.some(
+                  (p) => p.toLowerCase().trim() === normalizedProgram
+                );
+                if (programMatches) {
                   await sql/* sql */`
                     INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
                     VALUES (${userId}, ${faculty}, ${department}, ${program})

@@ -18,18 +18,16 @@ import * as XLSX from "xlsx";
 type TabKey =
   | "total"
   | "verified"
-  | "unverified"
   | "underApproval"
   | "active"
-  | "inactive";
+  | "category";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "total", label: "Total" },
   { key: "verified", label: "Verified" },
-  { key: "unverified", label: "Unverified" },
   { key: "underApproval", label: "Under Approval" },
   { key: "active", label: "Active" },
-  { key: "inactive", label: "Inactive" },
+  { key: "category", label: "Category" },
 ];
 
 // Counts are computed dynamically from fetched data
@@ -61,14 +59,6 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-emerald-700 dark:text-emerald-200",
     labelText: "text-emerald-600 dark:text-emerald-300",
   },
-  unverified: {
-    selectedContainer:
-      "border-rose-500 bg-rose-50 dark:border-rose-500 dark:bg-rose-900/20",
-    hoverBorder: "hover:border-rose-400",
-    iconBg: "bg-rose-100 dark:bg-rose-800",
-    iconColor: "text-rose-700 dark:text-rose-200",
-    labelText: "text-rose-600 dark:text-rose-300",
-  },
   underApproval: {
     selectedContainer:
       "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
@@ -85,13 +75,13 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-indigo-700 dark:text-indigo-200",
     labelText: "text-indigo-600 dark:text-indigo-300",
   },
-  inactive: {
+  category: {
     selectedContainer:
-      "border-gray-500 bg-gray-50 dark:border-gray-500 dark:bg-gray-900/20",
-    hoverBorder: "hover:border-gray-400",
-    iconBg: "bg-gray-100 dark:bg-gray-800",
-    iconColor: "text-gray-700 dark:text-gray-200",
-    labelText: "text-gray-600 dark:text-gray-300",
+      "border-purple-500 bg-purple-50 dark:border-purple-500 dark:bg-purple-900/20",
+    hoverBorder: "hover:border-purple-400",
+    iconBg: "bg-purple-100 dark:bg-purple-800",
+    iconColor: "text-purple-700 dark:text-purple-200",
+    labelText: "text-purple-600 dark:text-purple-300",
   },
 };
 
@@ -132,6 +122,7 @@ export const AlumniTabs: React.FC = () => {
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [additionalFilter, setAdditionalFilter] = useState<"unverified" | "inactive" | "">("");
   
   // Confirmation modal state
   const confirmModal = useModal();
@@ -148,17 +139,23 @@ export const AlumniTabs: React.FC = () => {
 
   // Determine status filter based on selected tab
   const statusFilter = useMemo(() => {
+    // If additional filter is set, use it (takes precedence)
+    if (additionalFilter === "unverified") return "unverified";
+    if (additionalFilter === "inactive") return "inactive";
+    
+    // Otherwise use tab-based filter
     if (selected === "verified") return "verified";
-    if (selected === "unverified") return "unverified";
     if (selected === "underApproval") return "underApproval";
-    return undefined; // No filter for "total", "active", "inactive"
-  }, [selected]);
+    if (selected === "active") return "active";
+    if (selected === "category") return "category";
+    return undefined; // No filter for "total"
+  }, [selected, additionalFilter]);
 
-  // Reset page to 1 when tab changes
+  // Reset page to 1 when tab changes or filter changes
   useEffect(() => {
-    console.log("[AlumniTabs] Tab changed to:", selected, "Status filter:", statusFilter);
+    console.log("[AlumniTabs] Tab changed to:", selected, "Additional filter:", additionalFilter, "Status filter:", statusFilter);
     setCurrentPage(1);
-  }, [selected, statusFilter]);
+  }, [selected, additionalFilter, statusFilter]);
 
   // React Query: fetch paginated list for table display with status filter
   const {
@@ -304,6 +301,7 @@ export const AlumniTabs: React.FC = () => {
         underApproval: countsData.underApproval || 0,
         active: countsData.active || 0,
         inactive: countsData.inactive || 0,
+        category: countsData.category || { aPlus: 0, a: 0, b: 0, c: 0 },
       };
     }
     // Fallback: use total from paginated response while counts are loading
@@ -314,6 +312,7 @@ export const AlumniTabs: React.FC = () => {
       underApproval: 0,
       active: 0,
       inactive: 0,
+      category: { aPlus: 0, a: 0, b: 0, c: 0 },
     };
   }, [countsData, totalRecords]);
 
@@ -321,9 +320,14 @@ export const AlumniTabs: React.FC = () => {
   const filteredItems = useMemo(() => {
     // Since search is handled server-side, we only filter by tab status
     const base = items;
+    
+    // If additional filter is set, items are already filtered server-side
+    if (additionalFilter === "unverified" || additionalFilter === "inactive") {
+      return base;
+    }
+    
     switch (selected) {
       case "verified":
-      case "unverified":
       case "underApproval":
         // These are now filtered server-side, so return all items (they're already filtered)
         return base;
@@ -333,17 +337,14 @@ export const AlumniTabs: React.FC = () => {
           const hasLoggedIn = (i.lastLoginTime && i.lastLoginTime.trim() !== "") || (i.loginCount && i.loginCount > 0);
           return hasLoggedIn;
         });
-      case "inactive":
-        // Inactive: users who have never logged in
-        return base.filter((i) => {
-          const hasLoggedIn = (i.lastLoginTime && i.lastLoginTime.trim() !== "") || (i.loginCount && i.loginCount > 0);
-          return !hasLoggedIn;
-        });
+      case "category":
+        // Category tab - for now return empty array (data will be added later)
+        return [];
       case "total":
       default:
         return base;
     }
-  }, [items, selected]);
+  }, [items, selected, additionalFilter]);
 
   // Pagination derived values - use server-side pagination
   const total = totalRecords; // Use total from server
@@ -405,18 +406,25 @@ export const AlumniTabs: React.FC = () => {
         });
       }
 
-      // Apply client-side filtering for "active" and "inactive" tabs
+      // Apply client-side filtering for "active" tab and additional filters
       let itemsToExport = allItems;
-      if (selected === "active") {
+      if (additionalFilter === "unverified") {
         itemsToExport = allItems.filter((i) => {
-          const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
-          return hasLoggedIn;
+          return i.verify === "false" || (i.verify && String(i.verify).toLowerCase() === "false");
         });
-      } else if (selected === "inactive") {
+      } else if (additionalFilter === "inactive") {
         itemsToExport = allItems.filter((i) => {
           const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
           return !hasLoggedIn;
         });
+      } else if (selected === "active") {
+        itemsToExport = allItems.filter((i) => {
+          const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
+          return hasLoggedIn;
+        });
+      } else if (selected === "category") {
+        // Category tab - no data yet
+        itemsToExport = [];
       }
 
       // Map the data to Excel format
@@ -490,7 +498,7 @@ export const AlumniTabs: React.FC = () => {
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }
-  }, [debouncedQuery, statusFilter, selected]);
+  }, [debouncedQuery, statusFilter, selected, additionalFilter]);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const startMut = useCallback((id: string) => {
@@ -738,39 +746,49 @@ export const AlumniTabs: React.FC = () => {
                   return counts.total;
                 case "verified":
                   return counts.verified;
-                case "unverified":
-                  return counts.unverified;
                 case "underApproval":
                   return counts.underApproval;
                 case "active":
                   return counts.active;
-                case "inactive":
+                case "category":
+                  // For category tab, show total count of all categories
+                  const catCounts = counts.category || { aPlus: 0, a: 0, b: 0, c: 0 };
+                  return (catCounts.aPlus || 0) + (catCounts.a || 0) + (catCounts.b || 0) + (catCounts.c || 0);
                 default:
-                  return counts.inactive;
+                  return 0;
               }
             })();
             
             const isSelected = selected === tab.key;
             const statusStyles = STATUS_CLASS_MAP[tab.key];
+            const isCategoryTab = tab.key === "category";
+            const isDisabled = isCategoryTab;
            
             return (
               <button
                 key={tab.key}
                 type="button"
+                disabled={isDisabled}
                 className={`
                   relative group rounded-2xl p-6 text-left transition-all duration-300 ease-out
                   ${isSelected 
-                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
+                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
                     : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
                   }
+                  ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
                 `}
                 onClick={() => {
-                  console.log("[AlumniTabs] Tab clicked:", tab.key);
-                  setSelected(tab.key);
+                  if (!isDisabled) {
+                    console.log("[AlumniTabs] Tab clicked:", tab.key);
+                    setSelected(tab.key);
+                    // Clear additional filter when switching tabs
+                    setAdditionalFilter("");
+                  }
                 }}
                 role="tab"
                 aria-selected={isSelected}
+                aria-disabled={isDisabled}
                 aria-label={`${tab.label} (${statCount.toLocaleString()})`}
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -815,23 +833,46 @@ export const AlumniTabs: React.FC = () => {
               <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
                 Search Alumni
               </label>
-              <div className="relative">
-                <svg 
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  id="alumni-search"
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <svg 
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    id="alumni-search"
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+                  />
+                </div>
+                <div className="relative">
+                  <label htmlFor="alumni-filter" className="sr-only">Filter</label>
+                  <select
+                    id="alumni-filter"
+                    value={additionalFilter}
+                    onChange={(e) => setAdditionalFilter(e.target.value as "unverified" | "inactive" | "")}
+                    className="h-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer min-w-[140px]"
+                  >
+                    <option value="">All Status</option>
+                    <option value="unverified">Unverified</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                  <svg 
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 pointer-events-none" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -906,6 +947,49 @@ export const AlumniTabs: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+                  {selected === "category" && !isLoading && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-6">
+                          <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div className="text-center">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Category Tab</h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Category data will be available soon.</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                              <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-200 dark:border-purple-700">
+                                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300 mb-1">
+                                  {counts.category?.aPlus || 0}
+                                </div>
+                                <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">A+</div>
+                              </div>
+                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700">
+                                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-1">
+                                  {counts.category?.a || 0}
+                                </div>
+                                <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">A</div>
+                              </div>
+                              <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700">
+                                <div className="text-2xl font-bold text-green-700 dark:text-green-300 mb-1">
+                                  {counts.category?.b || 0}
+                                </div>
+                                <div className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">B</div>
+                              </div>
+                              <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-xl p-4 border border-amber-200 dark:border-amber-700">
+                                <div className="text-2xl font-bold text-amber-700 dark:text-amber-300 mb-1">
+                                  {counts.category?.c || 0}
+                                </div>
+                                <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">C</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {isLoading && (
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">

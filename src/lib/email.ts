@@ -423,3 +423,78 @@ export async function sendSwimmingPoolMembershipEmail(
   return await sendEmail({ to: alumniEmail, subject, html });
 }
 
+export async function sendAlumniCardApplicationReceivedEmail(
+  alumniEmail: string,
+  alumniName: string
+): Promise<boolean> {
+  const subject = "Alumni Card Application Received – Thank You!";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
+      Thank you for applying for the UOL Alumni Card.
+    </p>
+    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
+      This is an auto-generated email to confirm that we have successfully received your application.
+    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      Our team has begun processing your request. You will be notified via email/SMS once your alumni card is ready for collection or dispatch.
+    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      If you have any questions in the meantime, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
+    </p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
+export async function sendAlumniCardOnHoldEmail(
+  alumniEmail: string,
+  alumniName: string
+): Promise<boolean> {
+  const subject = "Alumni Card Application On Hold – Action Required";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
+      Thank you for applying for the UOL Alumni Card.
+    </p>
+    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
+      After reviewing your application, we found that certain required information/documents are missing or do not meet the necessary criteria.
+    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      Therefore, your application is currently on hold.
+    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      If you need assistance or clarification, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
+    </p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
+export async function sendAlumniCardActivatedEmail(
+  alumniEmail: string,
+  alumniName: string
+): Promise<boolean> {
+  const subject = "Alumni Card Activated – Ready for Collection/Delivery";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
+      Great news! Your UOL Alumni Card has been activated and is ready.
+    </p>
+    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
+      Your alumni card has been processed and is now active. You will be notified via email/SMS with details about collection or delivery.
+    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      If you have any questions, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
+    </p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+

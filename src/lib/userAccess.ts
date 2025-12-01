@@ -1,6 +1,10 @@
 import { sql } from "@/lib/dbconnect";
 import type { Session } from "next-auth";
 import { isSuperAdminUser } from "./alumniProfile";
+import { 
+  findMatchingPrograms, 
+  buildProgramMatchPattern
+} from "./programMatching";
 
 export type UserAccessAssignment = {
   faculty_name: string | null;
@@ -110,7 +114,7 @@ export async function buildAccessFilterSQL(
   
   // Program-level access (case-insensitive comparison with TRIM to handle whitespace)
   // Program access can work with or without faculty/department specified
-  // Track which departments have program-level assignments (for fallback to department-level if no matches)
+  // Track which departments have program-level assignments (to prevent department-level access from being added)
   const departmentsWithProgramAssignments = new Set<string>();
   
   if (programLevel.length > 0) {
@@ -120,7 +124,8 @@ export async function buildAccessFilterSQL(
       const normalizedDept = (item.department || "").trim();
       const normalizedProgram = (item.program || "").trim();
       
-      // Track this department for potential fallback
+      // Track this department to prevent department-level access from being added
+      // When a specific program is assigned, users should ONLY see that program, not all programs in the department
       if (normalizedDept) {
         departmentsWithProgramAssignments.add(`${normalizedFaculty.toLowerCase()}|${normalizedDept.toLowerCase()}`);
       }
@@ -136,50 +141,134 @@ export async function buildAccessFilterSQL(
         continue; // Skip if program is empty
       }
       
-      // Build condition based on what's specified
-      // Use more flexible matching: try exact match first, but also check if program name is contained in degreetitle
-      // This handles cases where degreetitle might be "BS in Cardiac Perfusion Technology" vs assignment "BS Cardiac Perfusion Technology"
-      // Create a pattern that matches the program name with optional words in between (like "in", "of", etc.)
-      // Use a simpler approach: match if the program name (all words) appears in the degreetitle
-      // This handles cases like "BS Cardiac Perfusion Technology" matching "BS in Cardiac Perfusion Technology"
-      const programWords = normalizedProgram.split(/\s+/).filter(w => w.length > 0 && w.length > 1); // Filter out single character words
-      // Build pattern: each word must appear, but allow any characters between them
-      const programPattern = programWords.length > 0 
-        ? `%${programWords.join('%')}%` // Match all words in sequence with any characters in between
-        : `%${normalizedProgram}%`;
+      // Use improved program matching from programMatching.ts
+      // Find all matching programs from the database structure (mock-programs.json contains actual database values)
+      // Use a lower threshold (0.4) to catch more variations, but prioritize higher similarity matches
+      const matchingPrograms = findMatchingPrograms(
+        normalizedProgram,
+        normalizedFaculty || null,
+        normalizedDept || null,
+        0.4 // Lower threshold to catch more variations
+      );
+      
+      console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "matching programs in database structure");
+      if (matchingPrograms.length > 0) {
+        console.log("[buildAccessFilterSQL]     Top matches:", matchingPrograms.slice(0, 5).map(m => `"${m.program}" (${(m.similarity * 100).toFixed(0)}%)`));
+      }
+      
+      // Build SQL condition that matches the assigned program OR any similar programs found in database
+      // The program names from mock-programs.json are the actual values in degreetitle
+      const programNamesToMatch: string[] = [];
+      
+      // Always include the assigned program name (exact match) - this is what was selected in the dropdown
+      // This ensures that if the program name in the database matches exactly, it will be found
+      programNamesToMatch.push(normalizedProgram);
+      
+      // Add all matching programs from database (these are actual degreetitle values)
+      // Include programs with at least 40% similarity, but prioritize higher similarity
+      // These are the actual program names that exist in the database (from mock-programs.json)
+      const allMatchingPrograms = matchingPrograms
+        .filter(m => m.similarity >= 0.4) // Include programs with at least 40% similarity
+        .map(m => m.program);
+      
+      // Add unique program names (avoid duplicates, preserve original casing from database)
+      // These program names are the actual values in tbl_alumni.degreetitle
+      for (const prog of allMatchingPrograms) {
+        const normalized = prog.toLowerCase().trim();
+        // Only add if not already in the list (case-insensitive check)
+        if (!programNamesToMatch.some(p => p.toLowerCase().trim() === normalized)) {
+          programNamesToMatch.push(prog); // Use original casing from database
+        }
+      }
+      
+      // If no matching programs found, we still have the assigned program name
+      // This ensures we always have at least one program to match against
+      
+      // Build pattern for flexible matching (extract keywords from assigned program)
+      const normalizedPattern = buildProgramMatchPattern(normalizedProgram);
+      
+      // Build SQL condition that matches any of these program names
+      // Create individual conditions for each program variation
+      const programConditions: ReturnType<typeof sql>[] = [];
+      
+      // First, add exact matches for all program variations
+      for (const prog of programNamesToMatch) {
+        // Exact match (case-insensitive, trimmed) - this is the most reliable
+        programConditions.push(
+          sql`LOWER(TRIM(degreetitle)) = LOWER(${prog.trim()})`
+        );
+      }
+      
+      // Then add pattern-based matching for the assigned program and top matches
+      // This catches variations in formatting, spacing, etc.
+      const topProgramsForPattern = programNamesToMatch.slice(0, 5); // Limit to top 5 to avoid query complexity
+      for (const prog of topProgramsForPattern) {
+        const progPattern = buildProgramMatchPattern(prog);
+        programConditions.push(
+          sql`LOWER(degreetitle) LIKE LOWER(${progPattern})`
+        );
+      }
+      
+      // Combine all program conditions with OR using recursive approach
+      const combineProgramConditions = (conditions: ReturnType<typeof sql>[]): ReturnType<typeof sql> => {
+        if (conditions.length === 0) {
+          return sql`LOWER(TRIM(degreetitle)) = LOWER(${normalizedProgram})`;
+        }
+        if (conditions.length === 1) {
+          return conditions[0];
+        }
+        if (conditions.length === 2) {
+          return sql`${conditions[0]} OR ${conditions[1]}`;
+        }
+        const mid = Math.ceil(conditions.length / 2);
+        const left = combineProgramConditions(conditions.slice(0, mid));
+        const right = combineProgramConditions(conditions.slice(mid));
+        return sql`${left} OR ${right}`;
+      };
+      
+      const programCondition = combineProgramConditions(programConditions);
+      
+      // Also add the original pattern-based matching as a final fallback
+      const finalProgramCondition = sql`(${programCondition} OR LOWER(degreetitle) LIKE LOWER(${normalizedPattern}))`;
+      
+      console.log("[buildAccessFilterSQL]   ✅ Program matching summary:");
+      console.log("[buildAccessFilterSQL]     Assigned program:", normalizedProgram);
+      console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database structure");
+      console.log("[buildAccessFilterSQL]     Using", programNamesToMatch.length, "program names for matching");
+      if (matchingPrograms.length > 0) {
+        console.log("[buildAccessFilterSQL]     Top matches:", matchingPrograms.slice(0, 5).map(m => `"${m.program}" (${(m.similarity * 100).toFixed(0)}%)`));
+      }
       
       if (normalizedFaculty && normalizedDept) {
         // All three specified: faculty + department + program
-        // Strict matching: exact match OR word-based pattern (handles "BS in X" vs "BS X")
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + department + program (strict matching)");
-        console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Pattern:", programPattern);
+        // Improved matching using program matching utility
+        console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + department + program (improved matching)");
         conditionsArray.push(
-          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND (LOWER(TRIM(degreetitle)) = LOWER(${normalizedProgram}) OR LOWER(degreetitle) LIKE LOWER(${programPattern})))`
+          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
         );
       } else if (normalizedFaculty) {
         // Faculty + program (no department)
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + program (strict matching)");
+        console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + program (improved matching)");
         console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Pattern:", programPattern);
+        console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
         conditionsArray.push(
-          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND (LOWER(TRIM(degreetitle)) = LOWER(${normalizedProgram}) OR LOWER(degreetitle) LIKE LOWER(${programPattern})))`
+          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
         );
       } else if (normalizedDept) {
         // Department + program (no faculty)
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: department + program (strict matching)");
+        console.log("[buildAccessFilterSQL]   ✅ Adding condition: department + program (improved matching)");
         console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Pattern:", programPattern);
+        console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
         conditionsArray.push(
-          sql`(departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND (LOWER(TRIM(degreetitle)) = LOWER(${normalizedProgram}) OR LOWER(degreetitle) LIKE LOWER(${programPattern})))`
+          sql`(departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
         );
       } else {
         // Program only (no faculty or department)
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: program only (strict matching)");
+        console.log("[buildAccessFilterSQL]   ✅ Adding condition: program only (improved matching)");
         console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Pattern:", programPattern);
+        console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
         conditionsArray.push(
-          sql`(degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND (LOWER(TRIM(degreetitle)) = LOWER(${normalizedProgram}) OR LOWER(degreetitle) LIKE LOWER(${programPattern})))`
+          sql`(degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
         );
       }
     }
@@ -216,82 +305,11 @@ export async function buildAccessFilterSQL(
     }
   }
   
-  // IMPORTANT: Add department-level fallback ONLY for departments with program assignments
-  // This handles cases where program names in assignments don't match database values exactly
-  // The fallback ensures users can still see alumni from their assigned departments
-  // But it's added as a separate OR condition, so program-level matches take precedence when they work
-  if (programLevel.length > 0) {
-    console.log("[buildAccessFilterSQL] 🔄 Adding department-level fallback for program assignments");
-    console.log("[buildAccessFilterSQL]   This ensures access even if program names don't match exactly");
-    
-    // Group program assignments by department (faculty + department combination)
-    const deptGroups = new Map<string, { faculty: string; department: string }>();
-    const facultyGroups = new Set<string>();
-    
-    for (const item of programLevel) {
-      const normalizedFaculty = (item.faculty || "").trim();
-      const normalizedDept = (item.department || "").trim();
-      
-      if (normalizedFaculty && normalizedDept) {
-        // Faculty + Department + Program
-        const deptKey = `${normalizedFaculty.toLowerCase()}|${normalizedDept.toLowerCase()}`;
-        if (!deptGroups.has(deptKey)) {
-          deptGroups.set(deptKey, { faculty: normalizedFaculty, department: normalizedDept });
-        }
-      } else if (normalizedFaculty && !normalizedDept) {
-        // Faculty + Program (no department)
-        facultyGroups.add(normalizedFaculty.toLowerCase());
-      }
-    }
-    
-    // Add department-level conditions as fallback for each unique department
-    // This allows users to see all programs in the department if specific program names don't match
-    for (const [, { faculty, department }] of deptGroups.entries()) {
-      // Check if this department-level condition already exists (from departmentLevel assignments)
-      const alreadyExists = departmentLevel.some(d => {
-        const dFaculty = (d.faculty || "").trim().toLowerCase();
-        const dDept = (d.department || "").trim().toLowerCase();
-        return dFaculty === faculty.toLowerCase() && dDept === department.toLowerCase();
-      });
-      
-      if (!alreadyExists) {
-        console.log("[buildAccessFilterSQL]   ✅ Adding fallback: department-level access", {
-          faculty,
-          department,
-          reason: "Program names may not match exactly - fallback ensures access to department"
-        });
-        conditionsArray.push(
-          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${faculty}) AND departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${department}))`
-        );
-      } else {
-        console.log("[buildAccessFilterSQL]   ⏭️ Skipping fallback - department-level access already exists", {
-          faculty,
-          department
-        });
-      }
-    }
-    
-    // Add faculty-level fallback for program + faculty assignments (no department)
-    for (const facultyLower of facultyGroups) {
-      // Find the original faculty name from programLevel
-      const originalFaculty = programLevel.find(p => 
-        (p.faculty || "").trim().toLowerCase() === facultyLower && !p.department
-      )?.faculty;
-      
-      if (originalFaculty) {
-        const normalizedFaculty = originalFaculty.trim();
-        const alreadyExists = facultyOnly.some(f => f.toLowerCase() === normalizedFaculty.toLowerCase());
-        if (!alreadyExists) {
-          console.log("[buildAccessFilterSQL]   ✅ Adding fallback: faculty-level access", {
-            faculty: normalizedFaculty
-          });
-          conditionsArray.push(
-            sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}))`
-          );
-        }
-      }
-    }
-  }
+  // REMOVED: Department-level fallback for program assignments
+  // When a specific program is selected, users should ONLY see that program (and its variations)
+  // The improved program matching logic should handle variations in program names
+  // If program names don't match, it's better to show no data than to show all programs in the department
+  // This ensures strict program-level access control
   
   // Faculty-level access (case-insensitive comparison with TRIM to handle whitespace)
   if (facultyOnly.length > 0) {

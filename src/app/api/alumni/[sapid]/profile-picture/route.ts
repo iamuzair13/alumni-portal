@@ -41,8 +41,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     const filename = `${sapid}-${timestamp}.${extension}`;
     
     // Create uploads directory if it doesn't exist
-    // Images are stored in /public/images/alumni-images/thumbnail/
-    const uploadsDir = join(process.cwd(), "public", "images", "alumni-images", "thumbnail");
+    // Images are stored in /public/images/
+    const uploadsDir = join(process.cwd(), "public", "images");
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true });
     }
@@ -77,7 +77,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     }
 
     // Return the full path for immediate display
-    const imagePath = `/images/alumni-images/thumbnail/${filename}`;
+    const imagePath = `/images/${filename}`;
     return NextResponse.json({ 
       ok: true, 
       imagePath,

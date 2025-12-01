@@ -152,6 +152,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return false;
     },
     async jwt({ token, user }) {
+      // If user is provided (initial sign-in), use that data
       if (user) {
         const uw: UserWithDb = user as UserWithDb;
         const db = uw.dbUser;
@@ -268,9 +269,86 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
         }
       } else {
-        try {
-          console.warn(`[auth] jwt without user, token email=${String(token.email)}`);
-        } catch {}
+        // Token refresh: fetch latest user data from database to ensure role changes are reflected
+        // This ensures that when a user's role is changed (e.g., admin to viewer), the session is updated
+        const at: AugmentedToken = token as AugmentedToken;
+        if (at.userId && token.email) {
+          try {
+            const { sql } = await import("@/lib/dbconnect");
+            const rows = await sql/* sql */`
+              SELECT userid, email, firstname, lastname, department, type, blocked 
+              FROM public.tbl_users 
+              WHERE userid = ${at.userId} 
+              LIMIT 1
+            ` as DbUser[];
+            
+            const dbUser = rows[0];
+            if (dbUser) {
+              // Update token with latest database values
+              at.userId = dbUser.userid;
+              at.department = dbUser.department;
+              // Normalize "user" type to "viewer" for consistency
+              const userType = String(dbUser.type || "").toLowerCase().trim();
+              at.type = userType === "user" ? "viewer" : dbUser.type;
+              at.blocked = dbUser.blocked;
+              at.firstName = dbUser.firstname;
+              at.lastName = dbUser.lastname;
+              token.email = dbUser.email || token.email;
+              token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
+              
+              try {
+                console.info(`[auth] jwt refreshed userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
+              } catch {}
+            } else {
+              // User not found in database - might be alumni, try that
+              const arows = await sql/* sql */`
+                SELECT alumniid, sapid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail 
+                FROM public.tbl_alumni 
+                WHERE alumniemail = ${String(token.email)} OR personalemail = ${String(token.email)} OR universityemail = ${String(token.email)} 
+                LIMIT 1
+              ` as Array<{
+                alumniid: number;
+                sapid: string | null;
+                alumniname: string | null;
+                departmentname: string | null;
+                facultyname: string | null;
+                degreetitle: string | null;
+                yearofending: number | null;
+                campusname: string | null;
+                alumnistatus: string | null;
+                verify: string | boolean | null;
+                alumniemail: string | null;
+                personalemail: string | null;
+                officialemail: string | null;
+                universityemail: string | null;
+              }>;
+              
+              const alumni = arows[0];
+              if (alumni) {
+                at.userId = alumni.alumniid;
+                at.department = alumni.departmentname ?? null;
+                at.type = "alumni";
+                at.blocked = String(alumni.alumnistatus || "").toLowerCase() === "blocked";
+                at.sapid = alumni.sapid ?? null;
+                const fullName = String(alumni.alumniname || "").trim();
+                const [firstName, ...rest] = fullName.split(" ");
+                at.firstName = firstName || null;
+                at.lastName = rest.join(" ") || null;
+                token.email = (alumni.alumniemail || alumni.personalemail || alumni.officialemail || alumni.universityemail || token.email) || undefined;
+                token.name = fullName || token.name;
+              }
+            }
+          } catch {
+            // If database fetch fails, keep existing token data
+            try {
+              console.warn(`[auth] jwt refresh failed for userId=${String(at.userId)}, keeping existing token data`);
+            } catch {}
+          }
+        } else {
+          try {
+            console.warn(`[auth] jwt without user, token email=${String(token.email)}`);
+          } catch {}
+        }
       }
       return token;
     },

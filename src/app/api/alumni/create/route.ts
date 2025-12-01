@@ -1,6 +1,10 @@
 import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
 import generateEasyPassword from "@/lib/passwordUtils";
+import { auth } from "@/lib/auth";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { getUserAccessAssignments, getUserIdFromSession } from "@/lib/userAccess";
+import { validateProgramAssignment, getFacultyByDepartment } from "@/data/programs-departments";
 
 type TblAlumniBody = {
   alumniemail: string | null;
@@ -64,7 +68,87 @@ type TblAlumniBody = {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
     const body = (await req.json()) as TblAlumniBody;
+    
+    // Validate user has access to the selected faculty/department/program
+    if (body.facultyname && body.departmentname && body.degreetitle) {
+      const faculty = String(body.facultyname).trim();
+      const department = String(body.departmentname).trim();
+      const program = String(body.degreetitle).trim();
+      
+      // Super admins can add to any faculty/department/program
+      if (!isSuperAdminUser(session?.user)) {
+        const userId = getUserIdFromSession(session);
+        if (userId) {
+          const assignments = await getUserAccessAssignments(userId);
+          
+          if (assignments.length === 0) {
+            return NextResponse.json({ 
+              error: "You do not have permission to add alumni. Please contact an administrator." 
+            }, { status: 403 });
+          }
+          
+          // Check if user has access to this specific combination
+          let hasAccess = false;
+          
+          // Check program-level access
+          const programAccess = assignments.find(a => 
+            a.program_name && 
+            a.program_name.toLowerCase().trim() === program.toLowerCase().trim() &&
+            (!a.department_name || a.department_name.toLowerCase().trim() === department.toLowerCase().trim()) &&
+            (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
+          );
+          
+          if (programAccess) {
+            hasAccess = true;
+          } else {
+            // Check department-level access
+            const deptAccess = assignments.find(a => 
+              a.department_name && 
+              !a.program_name &&
+              a.department_name.toLowerCase().trim() === department.toLowerCase().trim() &&
+              (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
+            );
+            
+            if (deptAccess) {
+              // Verify the program actually belongs to this department
+              if (validateProgramAssignment(faculty, department, program)) {
+                hasAccess = true;
+              }
+            } else {
+              // Check faculty-level access
+              const facultyAccess = assignments.find(a => 
+                a.faculty_name && 
+                !a.department_name && 
+                !a.program_name &&
+                a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim()
+              );
+              
+              if (facultyAccess) {
+                // Verify the department and program belong to this faculty
+                const deptFaculty = getFacultyByDepartment(department);
+                if (deptFaculty && deptFaculty.toLowerCase().trim() === faculty.toLowerCase().trim()) {
+                  if (validateProgramAssignment(faculty, department, program)) {
+                    hasAccess = true;
+                  }
+                }
+              }
+            }
+          }
+          
+          if (!hasAccess) {
+            return NextResponse.json({ 
+              error: `You do not have permission to add alumni to ${faculty} > ${department} > ${program}. Please select a faculty, department, and program you have access to.` 
+            }, { status: 403 });
+          }
+        } else {
+          return NextResponse.json({ 
+            error: "You must be logged in to add alumni." 
+          }, { status: 401 });
+        }
+      }
+    }
     
     // Check for duplicate email or SAP ID before inserting
     if (body.personalemail || body.sapid || body.registrationno) {

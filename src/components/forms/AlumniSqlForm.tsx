@@ -202,6 +202,38 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [homeCitySearch, setHomeCitySearch] = useState("");
   const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false);
   const [sectorOtherSelected, setSectorOtherSelected] = useState(false);
+  const [userAccess, setUserAccess] = useState<{
+    isSuperAdmin: boolean;
+    faculties: string[];
+    departments: string[];
+    programs: string[];
+  } | null>(null);
+  const [loadingAccess, setLoadingAccess] = useState(true);
+
+  // Fetch user access assignments
+  useEffect(() => {
+    const fetchAccess = async () => {
+      try {
+        const res = await fetch("/api/users/current/access-assignments", {
+          headers: { "accept": "application/json" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserAccess(data);
+        } else {
+          // If not authenticated or error, assume no restrictions (for public forms)
+          setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
+        }
+      } catch (err) {
+        console.error("Failed to fetch user access:", err);
+        // On error, assume no restrictions
+        setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
+      } finally {
+        setLoadingAccess(false);
+      }
+    };
+    fetchAccess();
+  }, []);
 
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
@@ -210,13 +242,65 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const selectedHomeCountry = watch("homeCountry") || "";
   const selectedHomeProvince = watch("province") || "";
   const selectedHomeCity = watch("homeCity") || "";
-  const deptOptions = useMemo(() => getDepartmentsByFaculty(selectedFaculty), [selectedFaculty]);
-  const programOptions = useMemo(() => {
-    if (selectedFaculty && selectedDepartment && selectedDepartment !== "other") {
-      return getProgramsByFacultyAndDepartment(selectedFaculty, selectedDepartment);
+  
+  // Filter faculties based on user access
+  const availableFaculties = useMemo(() => {
+    const allFaculties = getFaculties();
+    if (!userAccess || userAccess.isSuperAdmin) {
+      return allFaculties;
     }
-    return [];
-  }, [selectedFaculty, selectedDepartment]);
+    if (userAccess.faculties.length === 0) {
+      return []; // No access
+    }
+    return allFaculties.filter(f => 
+      userAccess.faculties.some(af => af.toLowerCase().trim() === f.toLowerCase().trim())
+    );
+  }, [userAccess]);
+
+  // Filter departments based on user access and selected faculty
+  const deptOptions = useMemo(() => {
+    const allDepts = getDepartmentsByFaculty(selectedFaculty);
+    if (!userAccess || userAccess.isSuperAdmin) {
+      return allDepts;
+    }
+    if (userAccess.departments.length === 0) {
+      // If no department-level access, check if we have faculty-level access
+      if (selectedFaculty && userAccess.faculties.some(f => 
+        f.toLowerCase().trim() === selectedFaculty.toLowerCase().trim()
+      )) {
+        return allDepts; // Show all departments in the faculty
+      }
+      return [];
+    }
+    // Filter departments that are in the selected faculty AND in user's access
+    return allDepts.filter(d => 
+      userAccess.departments.some(ad => ad.toLowerCase().trim() === d.toLowerCase().trim())
+    );
+  }, [selectedFaculty, userAccess]);
+
+  // Filter programs based on user access, selected faculty and department
+  const programOptions = useMemo(() => {
+    if (!selectedFaculty || !selectedDepartment || selectedDepartment === "other") {
+      return [];
+    }
+    const allPrograms = getProgramsByFacultyAndDepartment(selectedFaculty, selectedDepartment);
+    if (!userAccess || userAccess.isSuperAdmin) {
+      return allPrograms;
+    }
+    if (userAccess.programs.length === 0) {
+      // If no program-level access, check if we have department-level access
+      if (userAccess.departments.some(d => 
+        d.toLowerCase().trim() === selectedDepartment.toLowerCase().trim()
+      )) {
+        return allPrograms; // Show all programs in the department
+      }
+      return [];
+    }
+    // Filter programs that are in the selected department AND in user's access
+    return allPrograms.filter(p => 
+      userAccess.programs.some(ap => ap.toLowerCase().trim() === p.toLowerCase().trim())
+    );
+  }, [selectedFaculty, selectedDepartment, userAccess]);
   
   // Get cities for selected province (for home city)
   const homeProvinceCities = useMemo(() => {
@@ -1006,20 +1090,39 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             <div>
               <label className={labelBase}>Faculty *</label>
-              <select className={inputBase} {...register("facultyname", { required: true })}>
-                <option value="">Select</option>
-                {getFaculties().map((faculty) => (
+              <select 
+                className={inputBase} 
+                {...register("facultyname", { required: true })}
+                disabled={loadingAccess || (userAccess ? (!userAccess.isSuperAdmin && availableFaculties.length === 0) : false)}
+              >
+                <option value="">
+                  {loadingAccess ? "Loading..." : 
+                   userAccess && !userAccess.isSuperAdmin && availableFaculties.length === 0 
+                     ? "No access to any faculty" 
+                     : "Select"}
+                </option>
+                {availableFaculties.map((faculty) => (
                   <option key={faculty} value={faculty}>{faculty}</option>
                 ))}
-                <option value="other">Other</option>
+                {userAccess?.isSuperAdmin && <option value="other">Other</option>}
               </select>
               {errors.facultyname && <p className="mt-1 text-xs text-red-600">Faculty is required</p>}
             </div>
             <div>
               <label className={labelBase}>Department *</label>
-              <select className={inputBase} {...register("departmentname", { required: true })}>
-                <option value="">Select</option>
-                <option value="other">Other</option>
+              <select 
+                className={inputBase} 
+                {...register("departmentname", { required: true })}
+                disabled={loadingAccess || !selectedFaculty || (userAccess ? (!userAccess.isSuperAdmin && deptOptions.length === 0) : false)}
+              >
+                <option value="">
+                  {loadingAccess ? "Loading..." :
+                   !selectedFaculty ? "Select Faculty first" :
+                   userAccess && !userAccess.isSuperAdmin && deptOptions.length === 0 
+                     ? "No access to any department in this faculty" 
+                     : "Select"}
+                </option>
+                {userAccess?.isSuperAdmin && <option value="other">Other</option>}
                 {deptOptions.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -1031,13 +1134,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               <select 
                 className={inputBase} 
                 {...register("degreetitle", { required: true })}
-                disabled={!selectedFaculty || !selectedDepartment || selectedDepartment === "other" || programOptions.length === 0}
+                disabled={loadingAccess || !selectedFaculty || !selectedDepartment || selectedDepartment === "other" || programOptions.length === 0 || (userAccess ? (!userAccess.isSuperAdmin && programOptions.length === 0) : false)}
               >
                 <option value="">
-                  {!selectedFaculty ? "Select Faculty first" : 
+                  {loadingAccess ? "Loading..." :
+                   !selectedFaculty ? "Select Faculty first" : 
                    !selectedDepartment ? "Select Department first" : 
                    selectedDepartment === "other" ? "Other Department Selected" :
-                   programOptions.length === 0 ? "No Programs Available" : "Select Program"}
+                   userAccess && !userAccess.isSuperAdmin && programOptions.length === 0 
+                     ? "No access to any program in this department" 
+                     : programOptions.length === 0 ? "No Programs Available" 
+                     : "Select Program"}
                 </option>
                 {programOptions.map((program) => (
                   <option key={program} value={program}>{program}</option>

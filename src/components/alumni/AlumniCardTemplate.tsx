@@ -32,19 +32,22 @@ export default function AlumniCardTemplate({
 }: AlumniCardTemplateProps) {
   const [imageIndex, setImageIndex] = useState(0);
 
-  const normalizeImagePath = (raw: string | null | undefined, type: "thumbnail" | "card"): string | null => {
+  const normalizeImagePath = (raw: string | null | undefined): string | null => {
     if (!raw) return null;
     let imagePath = raw.trim();
     if (!imagePath || imagePath.toLowerCase() === "null" || imagePath.toLowerCase() === "undefined") {
       return null;
     }
-    imagePath = imagePath.replace(/\/tumbnail\//g, "/thumbnail/");
+    // Remove old path references
+    imagePath = imagePath.replace(/\/tumbnail\//g, "/");
+    imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
+    imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
     if (imagePath.startsWith("/") || imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
       return imagePath;
     }
     if (!imagePath.includes("/")) {
-      const base = type === "card" ? "/images/alumni-images/card" : "/images/alumni-images/thumbnail";
-      return `${base}/${imagePath}`;
+      // Images are now stored directly in /images/
+      return `/images/${imagePath}`;
     }
     return imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
   };
@@ -56,7 +59,7 @@ export default function AlumniCardTemplate({
     // Only add if cardImage (from card_image column) has a value
     const cardImageStr = cardImage ? String(cardImage).trim() : "";
     if (cardImageStr && cardImageStr.toLowerCase() !== "null" && cardImageStr.toLowerCase() !== "undefined") {
-      const cardImg = normalizeImagePath(cardImageStr, "card");
+      const cardImg = normalizeImagePath(cardImageStr);
       if (cardImg) {
         candidates.push(cardImg); // /images/alumni-images/card/{cardImage}
       }
@@ -66,7 +69,7 @@ export default function AlumniCardTemplate({
     // Only add if photoUrl (from image1 column) has a value
     const photoUrlStr = photoUrl ? String(photoUrl).trim() : "";
     if (photoUrlStr && photoUrlStr.toLowerCase() !== "null" && photoUrlStr.toLowerCase() !== "undefined") {
-      const thumbnail = normalizeImagePath(photoUrlStr, "thumbnail");
+      const thumbnail = normalizeImagePath(photoUrlStr);
       if (thumbnail) {
         candidates.push(thumbnail); // /images/alumni-images/thumbnail/{photoUrl}
       }
@@ -83,8 +86,8 @@ export default function AlumniCardTemplate({
         cardImageStr,
         photoUrlStr,
         candidates,
-        cardImageNormalized: cardImageStr ? normalizeImagePath(cardImageStr, "card") : null,
-        photoUrlNormalized: photoUrlStr ? normalizeImagePath(photoUrlStr, "thumbnail") : null,
+        cardImageNormalized: cardImageStr ? normalizeImagePath(cardImageStr) : null,
+        photoUrlNormalized: photoUrlStr ? normalizeImagePath(photoUrlStr) : null,
       });
     }
     

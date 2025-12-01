@@ -162,12 +162,51 @@ export async function PUT(req: Request) {
     // Update access assignments if provided and user is Super Admin
     // Only Super Admin can modify access assignments
     if (isSuperAdmin && body.accessAssignments !== undefined && normalizedType && (normalizedType === "admin" || normalizedType === "viewer")) {
-      // Delete existing access assignments for this user
+      // ALWAYS delete existing access assignments first when accessAssignments is provided
+      // This ensures old assignments are removed even if new ones are empty or invalid
+      // This is critical: when programs are removed, old assignments must be deleted
+      console.log("[user update] Deleting existing access assignments for user", id);
+      
+      // First, check what assignments exist before deletion (for logging)
+      const existingAssignments = await sql/* sql */`
+        SELECT faculty_name, department_name, program_name 
+        FROM public.user_access_assignments 
+        WHERE userid = ${id}
+      ` as Array<{ faculty_name: string | null; department_name: string | null; program_name: string | null }>;
+      
+      console.log("[user update] Found", existingAssignments.length, "existing assignments to delete");
+      if (existingAssignments.length > 0) {
+        console.log("[user update] Existing assignments:", existingAssignments.map(a => 
+          `${a.faculty_name || 'N/A'}/${a.department_name || 'N/A'}/${a.program_name || 'N/A'}`
+        ));
+      }
+      
+      // Delete all existing assignments
       await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
       
-      // Add new access assignments if provided
+      // Verify deletion
+      const remainingAssignments = await sql/* sql */`
+        SELECT COUNT(*) as count 
+        FROM public.user_access_assignments 
+        WHERE userid = ${id}
+      ` as Array<{ count: number | string }>;
+      
+      const remainingCount = Number(remainingAssignments[0]?.count || 0);
+      if (remainingCount > 0) {
+        console.error("[user update] WARNING: Failed to delete all assignments. Remaining:", remainingCount);
+      } else {
+        console.log("[user update] Successfully deleted all existing assignments");
+      }
+      
+      // Add new access assignments if provided and valid
       if (body.accessAssignments && typeof body.accessAssignments === 'object') {
         const { faculties, departments, programs } = body.accessAssignments as { faculties?: string[]; departments?: string[]; programs?: string[] };
+        
+        console.log("[user update] Adding new access assignments:", {
+          faculties: faculties?.length || 0,
+          departments: departments?.length || 0,
+          programs: programs?.length || 0
+        });
         
         if (faculties && faculties.length > 0) {
           // Helper: Find which faculty a department belongs to
@@ -190,8 +229,13 @@ export async function PUT(req: Request) {
                 const deptFaculties = findFacultyForDepartment(department);
                 for (const faculty of deptFaculties) {
                   // Verify that the program actually belongs to this department before creating assignment
+                  // Use case-insensitive matching
                   const validPrograms = getProgramsByFacultyAndDepartment(faculty, department);
-                  if (validPrograms.includes(program)) {
+                  const normalizedProgram = program.toLowerCase().trim();
+                  const programMatches = validPrograms.some(
+                    (p) => p.toLowerCase().trim() === normalizedProgram
+                  );
+                  if (programMatches) {
                     await sql/* sql */`
                       INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
                       VALUES (${id}, ${faculty}, ${department}, ${program})
@@ -225,10 +269,21 @@ export async function PUT(req: Request) {
               `;
             }
           }
+        } else {
+          // If accessAssignments is an empty object or has no faculties, no new assignments are created
+          // The DELETE above ensures old assignments are removed
+          console.log("[user update] No new access assignments to add (empty or invalid)");
+          console.log("[user update] Old assignments have been deleted - user will have no access");
         }
+      } else {
+        // If accessAssignments is null, empty, or invalid, ensure all assignments are removed
+        // This handles cases where programs are removed and accessAssignments becomes empty
+        console.log("[user update] Access assignments is null/empty - ensuring all old assignments are removed");
+        // Note: DELETE already executed above, but we log it here for clarity
       }
     } else if (isSuperAdmin && body.accessAssignments === null && normalizedType) {
       // If accessAssignments is explicitly null, remove all assignments (e.g., when changing to superadmin)
+      console.log("[user update] Removing all access assignments (user type change or explicit null)");
       await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
     }
     

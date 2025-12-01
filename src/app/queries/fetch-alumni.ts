@@ -81,6 +81,12 @@ export type AlumniCounts = {
   underApproval: number;
   active: number;
   inactive: number;
+  category: {
+    aPlus: number;
+    a: number;
+    b: number;
+    c: number;
+  };
 };
 
 export async function getAlumniCounts(signal?: AbortSignal, search?: string): Promise<AlumniCounts> {

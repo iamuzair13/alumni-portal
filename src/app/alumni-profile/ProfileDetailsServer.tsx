@@ -55,16 +55,18 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
     
     let trimmedPath = imagePath.trim();
     
-    // Fix typo: replace "tumbnail" with "thumbnail" if present
-    trimmedPath = trimmedPath.replace(/\/tumbnail\//g, "/thumbnail/");
+    // Remove old path references
+    trimmedPath = trimmedPath.replace(/\/tumbnail\//g, "/");
+    trimmedPath = trimmedPath.replace(/\/alumni-images\/thumbnail\//g, "/");
+    trimmedPath = trimmedPath.replace(/\/alumni-images\/card\//g, "/");
     
     // Normalize image path for Next.js Image component
     // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
-    // Images are stored in /public/images/alumni-images/thumbnail/(imagename.extention)
+    // Images are stored in /public/images/(imagename.extention)
     if (!trimmedPath.startsWith("/") && !trimmedPath.startsWith("http://") && !trimmedPath.startsWith("https://")) {
-      // If it's just a filename, prepend the alumni images thumbnail directory
+      // If it's just a filename, prepend the images directory
       if (!trimmedPath.includes("/")) {
-        return `/images/alumni-images/thumbnail/${trimmedPath}`;
+        return `/images/${trimmedPath}`;
       } else {
         // If it's a relative path without leading slash, add it
         return `/${trimmedPath}`;

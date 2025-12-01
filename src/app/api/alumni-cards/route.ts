@@ -3,8 +3,9 @@ import { sql } from "@/lib/dbconnect";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
+import { sendAlumniCardApplicationReceivedEmail } from "@/lib/email";
 
-const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images", "alumni-images", "card");
+const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -59,6 +60,12 @@ export async function POST(req: Request) {
       if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
         return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
       }
+      // Check if this is a new application (no existing record)
+      const existingCard = await sql/* sql */`
+        SELECT cardid FROM public.tblcard WHERE alumniid = ${alumniId} LIMIT 1
+      `;
+      const isNewApplication = existingCard.length === 0;
+
       const rows = await sql/* sql */`
         INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat)
         VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW())
@@ -70,6 +77,40 @@ export async function POST(req: Request) {
             card_image = EXCLUDED.card_image,
             createdat = NOW()
         RETURNING cardid`;
+      
+      // Send email notification for new applications
+      if (isNewApplication) {
+        try {
+          const alumniData = await sql/* sql */`
+            SELECT alumniname, personalemail, officialemail, universityemail
+            FROM public.tbl_alumni
+            WHERE alumniid = ${alumniId}
+            LIMIT 1
+          ` as Array<{
+            alumniname: string | null;
+            personalemail: string | null;
+            officialemail: string | null;
+            universityemail: string | null;
+          }>;
+          
+          const alumni = alumniData[0];
+          if (alumni) {
+            const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
+            const alumniName = alumni.alumniname || "Alumni";
+            
+            if (alumniEmail) {
+              // Send email asynchronously (don't wait for it to complete)
+              sendAlumniCardApplicationReceivedEmail(alumniEmail, alumniName).catch((err) => {
+                console.error("[API] Failed to send alumni card application received email:", err);
+              });
+            }
+          }
+        } catch (emailError) {
+          // Don't fail the request if email fails
+          console.error("[API] Error sending alumni card application received email:", emailError);
+        }
+      }
+      
       return NextResponse.json({ cardid: rows[0]?.cardid }, { status: 201 });
     }
 
@@ -92,6 +133,12 @@ export async function POST(req: Request) {
 
     const storedFilename = await saveCardImage(image, sapId || String(alumniId));
 
+    // Check if this is a new application (no existing record)
+    const existingCard = await sql/* sql */`
+      SELECT cardid FROM public.tblcard WHERE alumniid = ${alumniId} LIMIT 1
+    `;
+    const isNewApplication = existingCard.length === 0;
+
     const rows = await sql/* sql */`
       INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat)
       VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${storedFilename}, ${storedFilename}, NOW())
@@ -103,6 +150,40 @@ export async function POST(req: Request) {
           card_image = EXCLUDED.card_image,
           createdat = NOW()
       RETURNING cardid`;
+    
+    // Send email notification for new applications
+    if (isNewApplication) {
+      try {
+        const alumniData = await sql/* sql */`
+          SELECT alumniname, personalemail, officialemail, universityemail
+          FROM public.tbl_alumni
+          WHERE alumniid = ${alumniId}
+          LIMIT 1
+        ` as Array<{
+          alumniname: string | null;
+          personalemail: string | null;
+          officialemail: string | null;
+          universityemail: string | null;
+        }>;
+        
+        const alumni = alumniData[0];
+        if (alumni) {
+          const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
+          const alumniName = alumni.alumniname || "Alumni";
+          
+          if (alumniEmail) {
+            // Send email asynchronously (don't wait for it to complete)
+            sendAlumniCardApplicationReceivedEmail(alumniEmail, alumniName).catch((err) => {
+              console.error("[API] Failed to send alumni card application received email:", err);
+            });
+          }
+        }
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error("[API] Error sending alumni card application received email:", emailError);
+      }
+    }
+    
     return NextResponse.json({ cardid: rows[0]?.cardid, image: storedFilename }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create card";

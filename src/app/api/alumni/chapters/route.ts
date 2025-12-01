@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { sendChaptersApplicationEmail } from "@/lib/email";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET() {
   try {
+    const session = await auth();
+    
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
     const rows = await sql/* sql */`
       SELECT 
         a.alumniid,
@@ -28,6 +35,8 @@ export async function GET() {
       LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
       LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
       LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
+      WHERE 1=1
+        ${accessFilterCondition}
       ORDER BY a.alumniid DESC`;
     
     const items = rows.map((r: Record<string, unknown>) => {

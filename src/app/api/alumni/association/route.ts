@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { sendAssociationApplicationEmail } from "@/lib/email";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET() {
   try {
+    const session = await auth();
+    
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
     const rows = await sql/* sql */`
       SELECT 
         a.alumniid,
@@ -21,6 +28,8 @@ export async function GET() {
         ass.createddatetime
       FROM public.tbl_alumni a
       JOIN public.tblalumniassociation ass ON ass.alumniid = a.alumniid
+      WHERE 1=1
+        ${accessFilterCondition}
       ORDER BY ass.createddatetime DESC NULLS LAST, a.alumniid DESC`;
     
     const items = rows.map((r: Record<string, unknown>) => ({
