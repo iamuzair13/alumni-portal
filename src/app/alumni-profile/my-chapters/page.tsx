@@ -65,44 +65,39 @@ async function getAlumniChapters(searchParams: AlumniProfileSearchParams) {
       return { chapters: [], error: null };
     }
     
-    // Get user's chapters from alumni_chapter table
+    // Get user's chapters from alumni_chapter table (now stores chapter IDs)
     const chapterRows = await sql/* sql */`
       SELECT "chapter1", "chapter2", "chapter3"
       FROM public.alumni_chapter
       WHERE id = ${alumniId}
       LIMIT 1`;
     
-    const chapterRec = chapterRows[0] as { chapter1?: string | null; chapter2?: string | null; chapter3?: string | null } | undefined;
+    const chapterRec = chapterRows[0] as { chapter1?: number | null; chapter2?: number | null; chapter3?: number | null } | undefined;
     
     if (!chapterRec) {
       return { chapters: [], error: null };
     }
     
-    // Collect unique chapter names (case-insensitive)
-    const userChapters: string[] = [];
-    const seen = new Set<string>();
+    // Collect unique chapter IDs (handle both numeric and string types)
+    const chapterIds: number[] = [];
+    const seen = new Set<number>();
     
     [chapterRec.chapter1, chapterRec.chapter2, chapterRec.chapter3].forEach(ch => {
-      if (ch) {
-        const trimmed = String(ch).trim();
-        if (trimmed && !seen.has(trimmed.toLowerCase())) {
-          seen.add(trimmed.toLowerCase());
-          userChapters.push(trimmed);
+      if (ch !== null && ch !== undefined) {
+        // Convert to number if it's a string
+        const chapterId = typeof ch === 'number' ? ch : (typeof ch === 'string' ? parseFloat(ch) : Number(ch));
+        if (!isNaN(chapterId) && chapterId > 0 && !seen.has(chapterId)) {
+          seen.add(chapterId);
+          chapterIds.push(chapterId);
         }
       }
     });
     
-    if (userChapters.length === 0) {
+    if (chapterIds.length === 0) {
       return { chapters: [], error: null };
     }
     
-    // Fetch chapter details from tblchapters
-    // Match by either national_chapter or international_chapter
-    if (userChapters.length === 0) {
-      return { chapters: [], error: null };
-    }
-    
-    // Fetch all chapters from tblchapters
+    // Fetch chapter details from tblchapters using IDs
     type ChapterRow = {
       id: number;
       national_chapter: string | null;
@@ -113,86 +108,39 @@ async function getAlumniChapters(searchParams: AlumniProfileSearchParams) {
       is_active: boolean | null;
     };
     
-    const allChapters = await sql<ChapterRow[]>/* sql */`
-      SELECT id, national_chapter, international_chapter, chapter_image, description, chapter_whatsapp, is_active
-      FROM public.tblchapters
-      WHERE (is_active = true OR is_active IS NULL)
-      ORDER BY COALESCE(national_chapter, international_chapter)
-    `;
+    // Build query with IN clause - handle empty array case
+    let chapterDetails: ChapterRow[] = [];
+    if (chapterIds.length > 0) {
+      // The postgres library handles arrays automatically when passed directly
+      // Convert numeric IDs to integers to match the id column type
+      const intIds = chapterIds.map(id => Math.floor(id));
+      chapterDetails = await sql<ChapterRow[]>/* sql */`
+        SELECT id, national_chapter, international_chapter, chapter_image, description, chapter_whatsapp, is_active
+        FROM public.tblchapters
+        WHERE id = ANY(${intIds})
+        ORDER BY COALESCE(national_chapter, international_chapter)
+      `;
+    }
     
-    // Normalize user chapters for comparison (trim and lowercase)
-    const userChaptersNormalized = userChapters.map(ch => ch.trim().toLowerCase());
+    // Build chapters array from fetched details
+    const chapters: Chapter[] = chapterDetails.map((ch) => ({
+      id: ch.id,
+      national_chapter: ch.national_chapter,
+      international_chapter: ch.international_chapter,
+      chapter_image: ch.chapter_image,
+      description: ch.description,
+      chapter_whatsapp: ch.chapter_whatsapp,
+      is_active: ch.is_active,
+    }));
     
-    // Create a map of chapters from tblchapters for quick lookup
-    const chaptersMap = new Map<string, ChapterRow>();
-    allChapters.forEach((ch) => {
-      const national = ch.national_chapter ? String(ch.national_chapter).trim().toLowerCase() : null;
-      const international = ch.international_chapter ? String(ch.international_chapter).trim().toLowerCase() : null;
-      if (national) chaptersMap.set(national, ch);
-      if (international) chaptersMap.set(international, ch);
-    });
-    
-    // Build chapters array - show ALL user chapters, with details if available in tblchapters
-    const chapters: Chapter[] = userChapters.map((chapterName) => {
-      const normalized = chapterName.trim().toLowerCase();
-      const chapterDetails = chaptersMap.get(normalized);
-      
-      if (chapterDetails) {
-        // Chapter exists in tblchapters - use full details
-        return {
-          id: chapterDetails.id,
-          national_chapter: chapterDetails.national_chapter,
-          international_chapter: chapterDetails.international_chapter,
-          chapter_image: chapterDetails.chapter_image,
-          description: chapterDetails.description,
-          chapter_whatsapp: chapterDetails.chapter_whatsapp,
-          is_active: chapterDetails.is_active,
-        };
-      } else {
-        // Chapter doesn't exist in tblchapters - create basic entry
-        // Try to determine if it's national or international by checking if it matches any pattern
-        // For now, we'll assume it could be either
-        return {
-          id: 0, // No ID since it's not in tblchapters
-          national_chapter: chapterName, // Assume national by default
-          international_chapter: null,
-          chapter_image: null,
-          description: null,
-          chapter_whatsapp: null,
-          is_active: true,
-        };
-      }
-    });
-    
-    // Sort: chapters with details first, then basic ones
+    // Sort: national chapters first, then international
     chapters.sort((a, b) => {
-      const aHasDetails = a.id > 0;
-      const bHasDetails = b.id > 0;
-      if (aHasDetails && !bHasDetails) return -1;
-      if (!aHasDetails && bHasDetails) return 1;
-      
-      // Then sort by national first
       const aIsNational = !!a.national_chapter;
       const bIsNational = !!b.national_chapter;
       if (aIsNational && !bIsNational) return -1;
       if (!aIsNational && bIsNational) return 1;
-      
       return 0;
     });
-    
-    // Debug logging (remove in production if needed)
-    console.log("[My Chapters] User chapters from DB:", userChapters);
-    console.log("[My Chapters] Normalized user chapters:", userChaptersNormalized);
-    console.log("[My Chapters] Total chapters in tblchapters:", allChapters.length);
-    console.log("[My Chapters] Final chapters count:", chapters.length);
-    console.log("[My Chapters] Sample chapter data:", chapters.length > 0 ? {
-      id: chapters[0].id,
-      national: chapters[0].national_chapter,
-      international: chapters[0].international_chapter,
-      image: chapters[0].chapter_image,
-      description: chapters[0].description,
-      whatsapp: chapters[0].chapter_whatsapp
-    } : "No chapters");
     
     return { chapters, error: null };
   } catch (e) {

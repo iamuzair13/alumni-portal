@@ -28,7 +28,7 @@ export type Faculty = {
 // Complete structure: Faculty -> Department -> Programs
 export const facultyDepartmentPrograms: Faculty[] = [
   {
-    name: "Faculty of Alllied health sciences",
+    name: "Faculty of Allied Health Sciences",
     departments: [
       {
         name: "University Institute of Radiological Sciences & Medical Imaging Technology",
@@ -162,7 +162,7 @@ export const facultyDepartmentPrograms: Faculty[] = [
     ],
   },
   {
-    name: "FIT",
+    name: "Faculty of Information Technology",
     departments: [
       {
         name: "Department of Computer Science & Information Technology",
@@ -230,7 +230,7 @@ export const facultyDepartmentPrograms: Faculty[] = [
     ],
   },
   {
-    name: "Faculty of language and literature",
+    name: "Faculty of Languages & Literature",
     departments: [
       {
         name: "Department of English Language & Literature",
@@ -251,7 +251,7 @@ export const facultyDepartmentPrograms: Faculty[] = [
     ],
   },
   {
-    name: "Faculty of Mangement sciences",
+    name: "Faculty of Management Sciences",
     departments: [
       {
         name: "Lahore Business School",
@@ -353,7 +353,7 @@ export const facultyDepartmentPrograms: Faculty[] = [
     ],
   },
   {
-    name: "Faculty of medicine and Dentistry",
+    name: "Faculty of Medicine & Dentistry",
     departments: [
       {
         name: "University College of Medicine and Dentistry",

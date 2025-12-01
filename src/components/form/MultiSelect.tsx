@@ -40,14 +40,37 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   };
 
   const removeOption = (index: number, value: string) => {
-    const newSelectedOptions = selectedOptions.filter((opt) => opt !== value);
-    setSelectedOptions(newSelectedOptions);
-    if (onChange) onChange(newSelectedOptions);
+    // Check if removing "All" option
+    const allOption = options.find(opt => opt.value.includes("__ALL_"));
+    if (allOption && value === allOption.value) {
+      // If removing "All", clear all selections
+      setSelectedOptions([]);
+      if (onChange) onChange([]);
+    } else {
+      const newSelectedOptions = selectedOptions.filter((opt) => opt !== value);
+      setSelectedOptions(newSelectedOptions);
+      if (onChange) onChange(newSelectedOptions);
+    }
   };
 
-  const selectedValuesText = selectedOptions.map(
-    (value) => options.find((option) => option.value === value)?.text || ""
-  );
+  // Check if "All" option exists and if all items are selected
+  const allOption = options.find(opt => opt.value.includes("__ALL_"));
+  const regularOptions = options.filter(opt => !opt.value.includes("__ALL_"));
+  const allOptionValue = allOption?.value;
+  
+  // Check if "All" marker is selected OR all regular options are selected
+  const hasAllMarker = allOptionValue && selectedOptions.includes(allOptionValue);
+  const allRegularSelected = regularOptions.length > 0 && 
+    regularOptions.every(opt => selectedOptions.includes(opt.value));
+  
+  const isAllSelected = hasAllMarker || allRegularSelected;
+  
+  const selectedValuesText = isAllSelected && allOption
+    ? [allOption.text] // Show only "All" if it's selected
+    : selectedOptions
+        .filter(value => !value.includes("__ALL_")) // Filter out "All" marker
+        .map((value) => options.find((option) => option.value === value)?.text || "")
+        .filter(Boolean);
 
   return (
     <div className="w-full">
@@ -58,8 +81,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       <div className="relative z-20 inline-block w-full">
         <div className="relative flex flex-col items-center">
           <div onClick={toggleDropdown}  className="w-full">
-            <div className="mb-2 flex h-11 rounded-lg border border-gray-300 py-1.5 pl-3 pr-3 shadow-theme-xs outline-hidden transition focus:border-brand-300 focus:shadow-focus-ring dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-300">
-              <div className="flex flex-wrap flex-auto gap-2">
+            <div className="mb-2 flex min-h-11 rounded-lg border border-gray-300 py-1.5 pl-3 pr-3 shadow-theme-xs outline-hidden transition focus:border-brand-300 focus:shadow-focus-ring dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-300">
+              <div className="flex flex-wrap flex-auto gap-2 max-h-32 overflow-y-auto">
                 {selectedValuesText.length > 0 ? (
                   selectedValuesText.map((text, index) => (
                     <div
@@ -69,9 +92,15 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                       <span className="flex-initial max-w-full">{text}</span>
                       <div className="flex flex-row-reverse flex-auto">
                         <div
-                          onClick={() =>
-                            removeOption(index, selectedOptions[index])
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const valueToRemove = isAllSelected 
+                              ? allOption?.value 
+                              : selectedOptions[index];
+                            if (valueToRemove) {
+                              removeOption(index, valueToRemove);
+                            }
+                          }}
                           className="pl-2 text-gray-500 cursor-pointer group-hover:text-gray-400 dark:text-gray-400"
                         >
                           <svg

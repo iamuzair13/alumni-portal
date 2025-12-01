@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { getDepartmentsByFaculty, getProgramsByFacultyAndDepartment } from "@/data/programs-departments";
 
 type UserBody = {
   email: string;
@@ -12,6 +13,11 @@ type UserBody = {
   type: string; // expect "admin" for admin, "viewer" for view-only
   blocked?: boolean | null;
   csrf?: string;
+  accessAssignments?: {
+    faculties: string[];
+    departments: string[];
+    programs: string[];
+  };
 };
 
 const RATE_LIMIT = new Map<string, { count: number; last: number }>();
@@ -88,7 +94,79 @@ export async function POST(req: Request) {
         ${Boolean(body.blocked ?? false)},
         ${new Date().toISOString()}
       ) RETURNING userid` as { userid: number }[];
-    return NextResponse.json({ userid: rows[0]?.userid }, { status: 201 });
+    
+    const userId = rows[0]?.userid;
+    if (!userId) {
+      return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+    }
+    
+    // Save access assignments if provided (for admin/viewer roles)
+    if ((userType === "admin" || userType === "viewer") && body.accessAssignments) {
+      const { faculties, departments, programs } = body.accessAssignments;
+      
+      // If faculties are provided, create access assignments
+      if (faculties && faculties.length > 0) {
+        // Helper: Find which faculty a department belongs to
+        const findFacultyForDepartment = (dept: string): string[] => {
+          const result: string[] = [];
+          for (const faculty of faculties) {
+            const depts = getDepartmentsByFaculty(faculty);
+            if (depts.includes(dept)) {
+              result.push(faculty);
+            }
+          }
+          return result;
+        };
+        
+        // If specific programs are selected, create program-level assignments
+        // Only create assignments for programs that actually belong to the selected departments
+        if (programs && programs.length > 0 && departments && departments.length > 0) {
+          for (const program of programs) {
+            for (const department of departments) {
+              // Find which faculty this department belongs to (from selected faculties)
+              const deptFaculties = findFacultyForDepartment(department);
+              for (const faculty of deptFaculties) {
+                // Verify that the program actually belongs to this department before creating assignment
+                const validPrograms = getProgramsByFacultyAndDepartment(faculty, department);
+                if (validPrograms.includes(program)) {
+                  await sql/* sql */`
+                    INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+                    VALUES (${userId}, ${faculty}, ${department}, ${program})
+                    ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+                  `;
+                }
+              }
+            }
+          }
+        }
+        // If specific departments are selected (but no programs), create department-level assignments
+        else if (departments && departments.length > 0) {
+          for (const department of departments) {
+            // Find which faculty this department belongs to (from selected faculties)
+            const deptFaculties = findFacultyForDepartment(department);
+            for (const faculty of deptFaculties) {
+              await sql/* sql */`
+                INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+                VALUES (${userId}, ${faculty}, ${department}, NULL)
+                ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+              `;
+            }
+          }
+        }
+        // If only faculties are selected (no departments), create faculty-level assignments (access to all departments/programs)
+        else {
+          for (const faculty of faculties) {
+            await sql/* sql */`
+              INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+              VALUES (${userId}, ${faculty}, NULL, NULL)
+              ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+            `;
+          }
+        }
+      }
+    }
+    
+    return NextResponse.json({ userid: userId }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json({ error: message }, { status: 500 });

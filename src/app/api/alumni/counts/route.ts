@@ -1,11 +1,27 @@
 import { NextResponse } from "next/server";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET(req: Request) {
   try {
+    const session = await auth();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const searchTerm = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
+
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    
+    // Debug logging
+    console.log("[alumni/counts] Access filter:", {
+      hasFilter: accessFilter.hasFilter,
+      isSuperAdmin: !accessFilter.hasFilter
+    });
+    
+    // Build access filter condition for WHERE clause
+    // Wrap the entire OR chain in parentheses since AND has higher precedence than OR
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
 
     // Verify field is now VARCHAR(10) - handle as string only
     let result;
@@ -43,6 +59,7 @@ export async function GET(req: Request) {
           END) as inactive
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+          ${accessFilterCondition}
           AND (
             LOWER(sapid) LIKE ${searchTerm}
             OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTerm}
@@ -86,6 +103,7 @@ export async function GET(req: Request) {
           END) as inactive
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '' OR verify = 'pending')
+          ${accessFilterCondition}
       `);
     }
 

@@ -17,18 +17,24 @@ export async function GET() {
         a.officialemail,
         a.universityemail,
         a.registrationno,
-        c."chapter1",
-        c."chapter2",
-        c."chapter3"
+        ac."chapter1",
+        ac."chapter2",
+        ac."chapter3",
+        COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
+        COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
+        COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
       FROM public.tbl_alumni a
-      JOIN public.alumni_chapter c ON c.id = a.alumniid
+      JOIN public.alumni_chapter ac ON ac.id = a.alumniid
+      LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
+      LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
+      LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
       ORDER BY a.alumniid DESC`;
     
     const items = rows.map((r: Record<string, unknown>) => {
       const chapters: string[] = [];
-      if (r.chapter1) chapters.push(String(r.chapter1));
-      if (r.chapter2) chapters.push(String(r.chapter2));
-      if (r.chapter3) chapters.push(String(r.chapter3));
+      if (r.chapter1_name) chapters.push(String(r.chapter1_name));
+      if (r.chapter2_name) chapters.push(String(r.chapter2_name));
+      if (r.chapter3_name) chapters.push(String(r.chapter3_name));
       
       return {
         sapid: String(r.sapid ?? ""),
@@ -79,10 +85,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract chapters (up to 3)
-    const chapter1 = chapters[0] || null;
-    const chapter2 = chapters[1] || null;
-    const chapter3 = chapters[2] || null;
+    // Extract chapters (up to 3) - convert to numeric IDs
+    const chapter1 = chapters[0] ? Number(chapters[0]) : null;
+    const chapter2 = chapters[1] ? Number(chapters[1]) : null;
+    const chapter3 = chapters[2] ? Number(chapters[2]) : null;
+    
+    // Validate that all chapter IDs are valid numbers
+    if (chapter1 !== null && (isNaN(chapter1) || chapter1 <= 0)) {
+      return NextResponse.json(
+        { error: "Invalid chapter ID provided" },
+        { status: 400 }
+      );
+    }
+    if (chapter2 !== null && (isNaN(chapter2) || chapter2 <= 0)) {
+      return NextResponse.json(
+        { error: "Invalid chapter ID provided" },
+        { status: 400 }
+      );
+    }
+    if (chapter3 !== null && (isNaN(chapter3) || chapter3 <= 0)) {
+      return NextResponse.json(
+        { error: "Invalid chapter ID provided" },
+        { status: 400 }
+      );
+    }
 
     // Check if a record already exists for this alumni
     const existingRecord = await sql/* sql */`

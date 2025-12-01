@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { getUserAccessAssignments } from "@/lib/userAccess";
+import { getDepartmentsByFaculty, getProgramsByFacultyAndDepartment } from "@/data/programs-departments";
 
 type DbUser = {
   userid: number;
@@ -20,7 +22,48 @@ export async function GET(req: Request) {
     const idStr = url.pathname.split("/").pop() || "";
     const id = Number(idStr);
     const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE userid = ${id} LIMIT 1` as DbUser[];
-    return NextResponse.json({ item: rows[0] ?? null }, { status: 200 });
+    const user = rows[0] ?? null;
+    
+    if (!user) {
+      return NextResponse.json({ item: null }, { status: 200 });
+    }
+    
+    // Fetch access assignments if user is admin/viewer
+    const userType = user.type?.toLowerCase().trim();
+    let accessAssignments = undefined;
+    if (userType === "admin" || userType === "viewer") {
+      const assignments = await getUserAccessAssignments(user.userid);
+      // Transform assignments to arrays
+      const faculties = new Set<string>();
+      const departments = new Set<string>();
+      const programs = new Set<string>();
+      
+      assignments.forEach(assign => {
+        if (assign.faculty_name && !assign.department_name && !assign.program_name) {
+          faculties.add(assign.faculty_name);
+        } else if (assign.department_name && !assign.program_name) {
+          departments.add(assign.department_name);
+          if (assign.faculty_name) faculties.add(assign.faculty_name);
+        } else if (assign.program_name) {
+          programs.add(assign.program_name);
+          if (assign.department_name) departments.add(assign.department_name);
+          if (assign.faculty_name) faculties.add(assign.faculty_name);
+        }
+      });
+      
+      accessAssignments = {
+        faculties: Array.from(faculties),
+        departments: Array.from(departments),
+        programs: Array.from(programs),
+      };
+    }
+    
+    return NextResponse.json({ 
+      item: {
+        ...user,
+        accessAssignments
+      }
+    }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -114,6 +157,79 @@ export async function PUT(req: Request) {
           type = ${normalizedType},
           blocked = ${body.blocked ?? null}
         WHERE userid = ${id}`;
+    }
+    
+    // Update access assignments if provided and user is Super Admin
+    // Only Super Admin can modify access assignments
+    if (isSuperAdmin && body.accessAssignments !== undefined && normalizedType && (normalizedType === "admin" || normalizedType === "viewer")) {
+      // Delete existing access assignments for this user
+      await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
+      
+      // Add new access assignments if provided
+      if (body.accessAssignments && typeof body.accessAssignments === 'object') {
+        const { faculties, departments, programs } = body.accessAssignments as { faculties?: string[]; departments?: string[]; programs?: string[] };
+        
+        if (faculties && faculties.length > 0) {
+          // Helper: Find which faculty a department belongs to
+          const findFacultyForDepartment = (dept: string): string[] => {
+            const result: string[] = [];
+            for (const faculty of faculties) {
+              const depts = getDepartmentsByFaculty(faculty);
+              if (depts.includes(dept)) {
+                result.push(faculty);
+              }
+            }
+            return result;
+          };
+          
+          // If specific programs are selected, create program-level assignments
+          // Only create assignments for programs that actually belong to the selected departments
+          if (programs && programs.length > 0 && departments && departments.length > 0) {
+            for (const program of programs) {
+              for (const department of departments) {
+                const deptFaculties = findFacultyForDepartment(department);
+                for (const faculty of deptFaculties) {
+                  // Verify that the program actually belongs to this department before creating assignment
+                  const validPrograms = getProgramsByFacultyAndDepartment(faculty, department);
+                  if (validPrograms.includes(program)) {
+                    await sql/* sql */`
+                      INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+                      VALUES (${id}, ${faculty}, ${department}, ${program})
+                      ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+                    `;
+                  }
+                }
+              }
+            }
+          }
+          // If specific departments are selected (but no programs), create department-level assignments
+          else if (departments && departments.length > 0) {
+            for (const department of departments) {
+              const deptFaculties = findFacultyForDepartment(department);
+              for (const faculty of deptFaculties) {
+                await sql/* sql */`
+                  INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+                  VALUES (${id}, ${faculty}, ${department}, NULL)
+                  ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+                `;
+              }
+            }
+          }
+          // If only faculties are selected (no departments), create faculty-level assignments
+          else {
+            for (const faculty of faculties) {
+              await sql/* sql */`
+                INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+                VALUES (${id}, ${faculty}, NULL, NULL)
+                ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+              `;
+            }
+          }
+        }
+      }
+    } else if (isSuperAdmin && body.accessAssignments === null && normalizedType) {
+      // If accessAssignments is explicitly null, remove all assignments (e.g., when changing to superadmin)
+      await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
     }
     
     return NextResponse.json({ ok: true }, { status: 200 });

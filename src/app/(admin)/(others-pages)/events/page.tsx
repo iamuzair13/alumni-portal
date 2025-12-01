@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Events
- * Displays events with tabbed navigation, search, pagination, and actions.
- * View: Shows a responsive table; Add: Provides an event creation form.
- * Integrates with `/api/events` and `/api/events/[id]` for data and deletion.
+ * Events Page
+ * Enhanced UI matching Alumni-tabs.tsx styling
+ * View: Shows a responsive table with search and filters
+ * Add: Provides an event creation form with image uploads
  */
-
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useState } from "react";
@@ -19,21 +18,29 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEventsList, eventsKey, type EventListItem } from "@/app/queries/fetch-events";
-// Note: events page defines its own schema locally to mirror alumni stories patterns
+import Label from "@/components/form/Label";
+import { TrashBinIcon } from "@/icons";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+import toast from "react-hot-toast";
 
 // TypeScript typings for Events
 type EventItem = {
   id: string;
-  date: string | Date; // formatted to YYYY-MM-DD
-  title: string; // event title
-  venue: string; // event venue/location
-  shortDescription: string; // brief summary
-  imageUrl: string; // cover image
-  startTimeUTC?: string; // ISO UTC with seconds
-  endTimeUTC?: string; // ISO UTC with seconds
+  category: string;
+  fromDate: string | null;
+  toDate: string | null;
+  eventTime: string | null;
+  shortDescription: string;
+  description: string | null;
+  image1: string;
+  image2?: string | null;
+  image3?: string | null;
+  image4?: string | null;
+  image5?: string | null;
 };
 
-// Tabs typing: maintain same tab styling and interaction model
+// Tabs typing
 type TabKey = "viewEvents" | "addEvent";
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -41,34 +48,34 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "addEvent", label: "Add Event" },
 ];
 
-// Fetched via TanStack Query
+// Event category options
+const EVENT_CATEGORY_OPTIONS = [
+  "alumni homecoming",
+  "alumni awards",
+  "alumni meetups",
+  "alumni talk",
+  "news",
+  "upcoming events",
+];
 
-// Helper to format date safely to YYYY-MM-DD (removed unused)
-
-function formatLocalDateTime(utcIso?: string): string {
-  if (!utcIso) return "-";
+// Helper to format date safely
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "-";
   try {
-    const d = new Date(utcIso);
-    return d.toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+    const d = new Date(dateStr);
+    return d.toLocaleDateString([], { year: "numeric", month: "short", day: "2-digit" });
   } catch {
-    return "-";
+    return dateStr;
   }
 }
 
-// Convert local datetime without seconds (YYYY-MM-DDTHH:MM) to ISO UTC with seconds
-function localToUtcIsoWithSeconds(localNoSeconds: string): string | null {
-  try {
-    const s = localNoSeconds.length === 16 ? `${localNoSeconds}:00` : localNoSeconds;
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toISOString().replace(/\.\d{3}Z$/, "Z");
-  } catch {
-    return null;
-  }
+// Helper to format time
+function formatTime(timeStr: string | null | undefined): string {
+  if (!timeStr) return "-";
+  return timeStr;
 }
 
-// Stories table component with identical styling conventions, responsive design,
-// pagination, and accessibility
+// Events table component with enhanced styling
 type EventListProps = {
   items: EventItem[];
   loading?: boolean;
@@ -98,88 +105,135 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
   const paged = safeItems.slice(startIdx, startIdx + pageSize);
 
   return (
-    <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
-      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
-        <div className="min-w-[950px] xl:min-w-full">
-          <Table className="min-w-full border border-gray-200 dark:border-gray-800">
-            <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
-              <TableRow>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SrNo.</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Start Time</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">End Time</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Title</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Venue</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Short Description</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Image</TableCell>
-                <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Actions</TableCell>
+    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
+      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto">
+        <div className="min-w-[900px]">
+          <Table className="min-w-full">
+            <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+              <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Sr. No.
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Category
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  From Date
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  To Date
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Event Time
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Short Description
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Image
+                </TableCell>
+                <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHeader>
 
-            <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
+            <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
               {loading && (
                 Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                  <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-12 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-36 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-64 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-10 w-10 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-9 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
+                  <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-5 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-5 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5">
+                      <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                      <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                    </TableCell>
                   </TableRow>
                 ))
               )}
               {!loading && paged.length === 0 && (
                 <TableRow>
-                  <TableCell className="px-5 py-6 text-gray-600 dark:text-gray-400 border-r border-gray-200" colSpan={8}>
-                    {emptyMessage || "No events found"}
+                  <TableCell className="px-6 py-16 text-center" colSpan={8}>
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-gray-700 dark:text-gray-300">{emptyMessage || "No events found"}</p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
               {!loading && paged.map((evt, idx) => (
-              <TableRow key={evt.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.04]">
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
-                    <span className="block text-gray-800 text-theme-sm dark:text-white/90">{startIdx + idx + 1}</span>
+                <TableRow
+                  key={evt.id}
+                  className="hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"
+                >
+                  <TableCell className="px-3 sm:px-6 py-5 text-start">
+                    <span className="block text-gray-800 text-sm dark:text-white/90">{startIdx + idx + 1}</span>
                   </TableCell>
-
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
-                    {formatLocalDateTime(evt.startTimeUTC)}
+                  <TableCell className="px-3 sm:px-6 py-5 text-start">
+                    <span className="block text-gray-800 text-sm font-medium dark:text-white/90 capitalize">{evt.category || "-"}</span>
                   </TableCell>
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
-                    {formatLocalDateTime(evt.endTimeUTC)}
+                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    {formatDate(evt.fromDate)}
                   </TableCell>
-
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-800 text-start text-theme-sm dark:text-white/90">
-                    {evt.title || "-"}
+                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    {formatDate(evt.toDate)}
                   </TableCell>
-
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
-                    {evt.venue || "-"}
+                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    {formatTime(evt.eventTime)}
                   </TableCell>
-
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-gray-600 text-start text-theme-sm dark:text-gray-300">
+                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
                     <span className="line-clamp-2">{evt.shortDescription || "-"}</span>
                   </TableCell>
-
-                  <TableCell className="px-4 py-3 border-r border-gray-200 text-start">
-                    <img
-                      src={evt.imageUrl || "https://via.placeholder.com/64"}
-                      alt={`${evt.title} image`}
-                      className="w-10 h-10 rounded-lg object-cover"
-                      loading="lazy"
-                    />
+                  <TableCell className="px-3 sm:px-6 py-5 text-start">
+                    {evt.image1 ? (
+                      <img
+                        src={`/images/alumni-images/thumbnail/${evt.image1}`}
+                        alt={`${evt.category} event`}
+                        className="w-12 h-12 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/64";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        <span className="text-xs text-gray-400">No image</span>
+                      </div>
+                    )}
                   </TableCell>
-                  {/* Action buttons matching setup page style */}
-                  <TableCell className="px-4 py-3 text-end">
-                    <div className="flex items-center gap-2 justify-end">
+                  <TableCell className="px-3 sm:px-6 py-5 text-end sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                    <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 justify-end">
                       <Link
                         href={`/events/${evt.id}`}
-                        className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
-                        aria-label={`View full event ${evt.title}`}
+                        className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                        aria-label="View event"
                         title="View event"
                       >
-                        <svg className="w-4 h-4 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
@@ -188,19 +242,14 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                         type="button"
                         onClick={() => onDelete?.(evt.id)}
                         disabled={Boolean(deletingIds?.has(evt.id))}
-                        className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
-                        aria-label={`Delete event ${evt.title}`}
+                        className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Delete event"
                         title="Delete event"
                       >
                         {deletingIds?.has(evt.id) ? (
-                          <svg className="w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
+                          <div className="h-4 w-4 sm:h-5 sm:w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <svg className="w-4 h-4 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <TrashBinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                         )}
                       </button>
                     </div>
@@ -209,29 +258,44 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               ))}
             </TableBody>
           </Table>
-          <div className="flex items-center justify-between p-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
               {(() => {
                 const start = (currentPage - 1) * pageSize + 1;
                 const end = start + paged.length - 1;
                 const total = safeItems.length;
-                return `Showing ${paged.length ? start : 0}-${paged.length ? end : 0} of ${total}`;
+                return `Showing ${paged.length ? start : 0}-${paged.length ? end : 0} of ${total.toLocaleString()}`;
               })()}
             </span>
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
               <select
                 id="page-size"
-                className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
+                onChange={(e) => {
+                  const newPageSize = Number(e.target.value);
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }}
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
               </select>
-              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => {
+                  const newPage = Math.max(1, Math.min(totalPages, p));
+                  setCurrentPage(newPage);
+                  const tableContainer = document.querySelector('.custom-scrollbar');
+                  if (tableContainer) {
+                    tableContainer.scrollTop = 0;
+                  }
+                }}
+              />
             </div>
           </div>
         </div>
@@ -240,264 +304,74 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
   );
 };
 
-// Default export function name preserved
-export default function EventsPage() {
-  const [selected, setSelected] = useState<TabKey>("viewEvents");
-  const queryClient = useQueryClient();
-  const { data: rawEvents, isLoading, isFetching, isError, error } = useEventsList();
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [upcomingOnly, setUpcomingOnly] = useState<boolean>(false);
-
-  const filteredEvents = useMemo<EventItem[]>(() => {
-    const q = searchQuery.trim().toLowerCase();
-    let list = events;
-    try {
-      if (q) {
-        list = list.filter((e) => {
-          const fields = [e.title, e.venue, e.shortDescription].map((v) => String(v || "").toLowerCase());
-          return fields.some((f) => f.includes(q));
-        });
-      }
-
-      if (upcomingOnly) {
-        const now = Date.now();
-        list = list.filter((e) => {
-          const end = e.endTimeUTC ? new Date(e.endTimeUTC).getTime() : (e.date ? new Date(e.date as string).getTime() : 0);
-          return end >= now;
-        });
-      }
-
-      list = [...list].sort((a, b) => {
-        const sa = a.startTimeUTC ? new Date(a.startTimeUTC).getTime() : 0;
-        const sb = b.startTimeUTC ? new Date(b.startTimeUTC).getTime() : 0;
-        return sortOrder === "asc" ? sa - sb : sb - sa;
-      });
-
-      return list;
-    } catch {
-      return events;
-    }
-  }, [events, searchQuery, upcomingOnly, sortOrder]);
-
-  useEffect(() => {
-    const mapped: EventItem[] = (rawEvents ?? []).map((e: EventListItem) => ({
-      id: e.id,
-      date: e.startTimeUTC ?? "",
-      title: e.title,
-      venue: e.venue ?? "",
-      shortDescription: e.shortDescription ?? "",
-      imageUrl: e.imageUrl ?? "",
-      startTimeUTC: e.startTimeUTC,
-      endTimeUTC: e.endTimeUTC,
-    }));
-    setEvents(mapped);
-  }, [rawEvents]);
-
-  return (
-    <ComponentCard title="Events" className="">
-      {/* Tabs navigation: identical styling and accessible keyboard interaction */}
-      <div
-        className="tab-list flex flex-wrap gap-4 lg:gap-6 justify-start"
-        role="tablist"
-        aria-label="Stories filters"
-      >
-        {TABS.map((tab, idx) => (
-          <button
-            key={tab.key}
-            className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm ${
-              selected === tab.key
-                ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
-                : "border-gray-200 bg-slate-100 text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
-            }`}
-            onClick={() => setSelected(tab.key)}
-            role="tab"
-            aria-selected={selected === tab.key}
-            tabIndex={selected === tab.key ? 0 : -1}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowRight") {
-                e.preventDefault();
-                const nextIdx = (idx + 1) % TABS.length;
-                setSelected(TABS[nextIdx].key);
-              } else if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                setSelected(TABS[prevIdx].key);
-              } else if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setSelected(tab.key);
-              }
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6">
-        {selected === "viewEvents" && (
-          <div className="flex flex-wrap gap-3 items-center mb-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-300" htmlFor="events-search">
-                Search:
-              </label>
-              <input
-                id="events-search"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Title, venue, description"
-                className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                aria-label="Search events by title, venue, or description"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-300" htmlFor="sort-time">Sort:</label>
-              <select
-                id="sort-time"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value === "asc" ? "asc" : "desc")}
-                className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                aria-label="Sort events by start time"
-              >
-                <option value="asc">Start Time (oldest)</option>
-                <option value="desc">Start Time (newest)</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-300" htmlFor="upcoming-only">Upcoming only</label>
-              <input
-                id="upcoming-only"
-                type="checkbox"
-                checked={upcomingOnly}
-                onChange={(e) => setUpcomingOnly(e.target.checked)}
-                aria-label="Filter upcoming events"
-              />
-            </div>
-          </div>
-        )}
-        {selected === "viewEvents" && (
-          <EventTable
-            items={filteredEvents}
-            loading={isLoading || isFetching}
-            emptyMessage={isError ? (error?.message ?? "Failed to load events") : "No events available"}
-            deletingIds={deletingIds}
-            onDelete={async (id: string) => {
-              try {
-                setDeletingIds((prev) => new Set(prev).add(id));
-                const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
-                if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                await queryClient.invalidateQueries({ queryKey: eventsKey });
-              } catch (err) {
-                console.error("Failed to delete event:", err);
-                alert("Failed to delete. Please try again.");
-              } finally {
-                setDeletingIds((prev) => {
-                  const next = new Set(prev);
-                  next.delete(id);
-                  return next;
-                });
-              }
-            }}
-          />
-        )}
-
-        {selected === "addEvent" && (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 dark:border-white/10 dark:bg-white/[0.02]">
-            <AddEventForm />
-          </div>
-        )}
-      </div>
-    </ComponentCard>
-  );
-}
-
-// Event options
-const EVENT_CATEGORY_OPTIONS = [
-  "Seminar",
-  "Workshop",
-  "Webinar",
-  "Meetup",
-  "Conference",
-];
-
-function sanitizeHtml(input: string): string {
-  // Very basic sanitation: allow b, i, u, br, a tags; strip others
-  // Note: For production, use a robust sanitizer like DOMPurify.
-  const allowed = /<(\/?)(b|i|u|br|a)([^>]*)>/gi;
-  return input
-    .replace(/<script[^>]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*?>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, (tag) => (allowed.test(tag) ? tag : ""));
-}
-
-const inputBaseClass =
-  "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300";
-const buttonPrimaryClass =
-  "inline-flex items-center rounded-xl border border-blue-500 bg-blue-50 px-4 py-2 text-blue-700 hover:bg-blue-100 transition-colors dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200";
-const buttonSecondaryClass =
-  "inline-flex items-center rounded-xl border border-gray-300 bg-slate-100 px-4 py-2 text-gray-700 hover:bg-gray-200 transition-colors dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300";
-
-type NewEventPayload = {
-  title: string;
-  venue: string;
-  organizer: string;
-  cityCountry: string;
+// Form schema
+type EventFormValues = {
   category: string;
-  shortHtml: string;
+  fromDate: string;
+  toDate: string;
+  eventTime: string;
+  shortDescription: string;
   description: string;
-  isFeatured: boolean;
-  date: string; // YYYY-MM-DD
-  startTime: string; // local datetime without seconds; YYYY-MM-DDTHH:MM
-  endTime: string; // local datetime without seconds; YYYY-MM-DDTHH:MM
-  imageFile?: File | undefined;
+  image1: File | null;
+  image2?: File | null;
+  image3?: File | null;
+  image4?: File | null;
+  image5?: File | null;
 };
 
-const eventFormSchema = z
-  .object({
-    title: z.string().min(2, "Title is required").max(80, "Title must be under 80 characters"),
-    venue: z.string().min(2, "Venue is required").max(80, "Venue must be under 80 characters"),
-    organizer: z.string().min(2, "Organizer is required").max(80, "Organizer must be under 80 characters"),
-    cityCountry: z.string().min(2, "City/Country is required").max(80, "City/Country must be under 80 characters"),
-    category: z.string().min(2, "Category is required"),
-    shortHtml: z.string().min(10, "Short info must be at least 10 characters").max(2000, "Too long"),
-    description: z.string().min(100, "Description must be at least 100 characters").max(5000, "Too long"),
-    // Keep isFeatured required in schema to align input/output types
-    isFeatured: z.boolean(),
-    
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Date must be YYYY-MM-DD"),
-    startTime: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u, "Use YYYY-MM-DDTHH:MM"),
-    endTime: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u, "Use YYYY-MM-DDTHH:MM"),
-    imageFile: z
-      .any()
-      .refine((f) => f === undefined || f instanceof File, { message: "Invalid file" })
-      .refine((f) => !f || ["image/png", "image/jpeg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
-      .refine((f) => !f || (f as File).size <= 2 * 1024 * 1024, { message: "Max size 2MB" })
-      .optional(),
+const eventFormSchema = z.object({
+  category: z.string().min(1, "Category is required"),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "From date is required"),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "To date is required"),
+  eventTime: z.string().regex(/^\d{2}:\d{2}$/u, "Event time is required (HH:MM format)"),
+  shortDescription: z.string().min(1, "Short description is required").max(500, "Short description must be 500 characters or less"),
+  description: z.string().min(1, "Description is required"),
+  image1: z
+    .any()
+    .refine((f) => f instanceof File, { message: "Image 1 is required" })
+    .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+    .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" }),
+  image2: z
+    .any()
+    .refine((f) => !f || f instanceof File, { message: "Invalid file" })
+    .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+    .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" })
+    .nullable()
+    .optional(),
+  image3: z
+    .any()
+    .refine((f) => !f || f instanceof File, { message: "Invalid file" })
+    .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+    .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" })
+    .nullable()
+    .optional(),
+  image4: z
+    .any()
+    .refine((f) => !f || f instanceof File, { message: "Invalid file" })
+    .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+    .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" })
+    .nullable()
+    .optional(),
+  image5: z
+    .any()
+    .refine((f) => !f || f instanceof File, { message: "Invalid file" })
+    .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+    .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" })
+    .nullable()
+    .optional(),
+}).refine((data) => {
+  if (data.toDate && data.fromDate) {
+    return new Date(data.toDate) >= new Date(data.fromDate);
+  }
+  return true;
+}, { message: "To date must be on or after from date", path: ["toDate"] });
 
-  })
-  .refine((vals) => {
-    try {
-      const s = new Date(vals.startTime.length === 16 ? `${vals.startTime}:00` : vals.startTime);
-      const e = new Date(vals.endTime.length === 16 ? `${vals.endTime}:00` : vals.endTime);
-      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return false;
-      return e.getTime() > s.getTime();
-    } catch {
-      return false;
-    }
-  }, { message: "End time must be after start time", path: ["endTime"] });
-
+// Add Event Form Component
 const AddEventForm: React.FC = () => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
 
   const {
     register,
@@ -507,222 +381,539 @@ const AddEventForm: React.FC = () => {
     formState: { errors, isSubmitting },
     setValue,
     watch,
-  } = useForm<NewEventPayload>({
+  } = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      title: "",
-      venue: "",
-      organizer: "",
-      cityCountry: "",
       category: "",
-      shortHtml: "",
+      fromDate: "",
+      toDate: "",
+      eventTime: "",
+      shortDescription: "",
       description: "",
-      isFeatured: false,
-      date: "",
-      startTime: "",
-      endTime: "",
-      imageFile: undefined,
+      image1: null,
+      image2: undefined,
+      image3: undefined,
+      image4: undefined,
+      image5: undefined,
     },
     mode: "onChange",
   });
 
-  useEffect(() => {
-    const f = watch("imageFile");
-    if (f && f instanceof File) {
-      const url = URL.createObjectURL(f);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-    setPreviewUrl(null);
-    return () => {};
-  }, [watch]);
+  // Watch all image fields for preview
+  const image1 = watch("image1");
+  const image2 = watch("image2");
+  const image3 = watch("image3");
+  const image4 = watch("image4");
+  const image5 = watch("image5");
 
-  const onSubmit = async (data: NewEventPayload) => {
+  useEffect(() => {
+    const urls: Record<number, string> = {};
+    const images = [image1, image2, image3, image4, image5];
+    
+    images.forEach((img, idx) => {
+      if (img && img instanceof File) {
+        const url = URL.createObjectURL(img);
+        urls[idx + 1] = url;
+      }
+    });
+
+    setPreviewUrls(urls);
+    return () => {
+      Object.values(urls).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [image1, image2, image3, image4, image5]);
+
+  const onSubmit = async (data: EventFormValues) => {
     setServerMsg(null);
     setServerError(null);
+
     try {
-      const startIso = localToUtcIsoWithSeconds(data.startTime);
-      const endIso = localToUtcIsoWithSeconds(data.endTime);
-      if (!startIso || !endIso) {
-        throw new Error("Invalid start/end time");
-      }
-      const payload = {
-        ...data,
-        shortHtml: sanitizeHtml(data.shortHtml || ""),
-        shortDescription: (data.shortHtml || "").replace(/<[^>]+>/g, "").slice(0, 160).trim(),
-        startTimeUTC: startIso,
-        endTimeUTC: endIso,
-        // Do not send local fields to server in final payload
-        startTime: undefined,
-        endTime: undefined,
-        imageFile: undefined, // send image separately or URL in real implementation
-      };
+      // Create FormData for file uploads
+      const formData = new FormData();
+      formData.append("category", data.category);
+      formData.append("fromDate", data.fromDate);
+      formData.append("toDate", data.toDate);
+      formData.append("eventTime", data.eventTime);
+      formData.append("shortDescription", data.shortDescription);
+      formData.append("description", data.description);
+      
+      if (data.image1) formData.append("image1", data.image1);
+      if (data.image2) formData.append("image2", data.image2);
+      if (data.image3) formData.append("image3", data.image3);
+      if (data.image4) formData.append("image4", data.image4);
+      if (data.image5) formData.append("image5", data.image5);
+
       const res = await fetch("/api/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
+
+      const responseData = await res.json();
+      
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || `Failed (${res.status})`);
+        throw new Error(responseData?.error || responseData?.message || `Failed (${res.status})`);
       }
-      setServerMsg("Event saved successfully.");
+
+      setServerMsg("Event created successfully!");
+      toast.success("Event created successfully!");
       reset();
-      setPreviewUrl(null);
+      Object.keys(previewUrls).forEach(key => URL.revokeObjectURL(previewUrls[parseInt(key)]));
+      setPreviewUrls({});
+      
+      // Invalidate queries to refresh the list
+      await queryClient.invalidateQueries({ queryKey: eventsKey });
+      
+      // Reset form after short delay
+      setTimeout(() => {
+        setServerMsg(null);
+      }, 3000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unexpected error while saving.";
       setServerError(msg);
+      toast.error(msg);
     }
   };
 
-  const imageFile = watch("imageFile");
-  useEffect(() => {
-    if (imageFile && imageFile instanceof File) {
-      const url = URL.createObjectURL(imageFile);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [imageFile]);
+  const handleImageChange = (imageNum: 1 | 2 | 3 | 4 | 5, file: File | null) => {
+    const fieldName = `image${imageNum}` as keyof EventFormValues;
+    setValue(fieldName, file);
+    setServerError(null);
+  };
 
   return (
-    <form className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Add event form" onSubmit={handleSubmit(onSubmit)}>
-      {/* Image upload */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="event-image" className="text-sm text-gray-600 dark:text-gray-300">Image (JPG/PNG, max 2MB)</label>
-        <Controller
-          name="imageFile"
-          control={control}
-          render={({ field }) => (
-            <input
-              id="event-image"
-              type="file"
-              accept="image/png, image/jpeg"
-              className={inputBaseClass}
-              aria-label="Upload image"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) {
-                  field.onChange(undefined);
-                  return;
-                }
-                const isValidType = ["image/png", "image/jpeg"].includes(file.type);
-                const isValidSize = file.size <= 2 * 1024 * 1024;
-                if (!isValidType || !isValidSize) {
-                  setServerError(!isValidType ? "Invalid image type. Use JPG/PNG." : "Image exceeds 2MB size limit.");
-                  e.target.value = "";
-                  setValue("imageFile", undefined);
-                  setPreviewUrl(null);
-                  return;
-                }
-                setServerError(null);
-                field.onChange(file);
-              }}
-            />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" aria-label="Add event form">
+      {(serverMsg || serverError) && (
+        <div className="rounded-lg border p-4" aria-live="polite" aria-atomic="true">
+          {serverMsg && (
+            <div role="status" className="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded p-2">
+              {serverMsg}
+            </div>
           )}
-        />
-        {previewUrl && (
-          <img src={previewUrl} alt="Selected image preview" className="mt-2 h-16 w-16 rounded-md object-cover border border-gray-200 dark:border-gray-700" />
-        )}
-        {errors.imageFile && <span className="text-xs text-red-600">{errors.imageFile.message as string}</span>}
-      </div>
+          {serverError && (
+            <div role="alert" className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">
+              {serverError}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Title */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="title" className="text-sm text-gray-600 dark:text-gray-300">Title</label>
-        <input id="title" className={inputBaseClass} aria-label="Title" {...register("title")} />
-        {errors.title && <span className="text-xs text-red-600">{errors.title.message}</span>}
-      </div>
+      <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+        {/* Category */}
+        <div>
+          <Label htmlFor="category">Category *</Label>
+          <select
+            id="category"
+            className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+            {...register("category")}
+          >
+            <option value="">Select category</option>
+            {EVENT_CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </option>
+            ))}
+          </select>
+          {errors.category && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.category.message}</p>}
+        </div>
 
-      {/* Venue */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="venue" className="text-sm text-gray-600 dark:text-gray-300">Venue</label>
-        <input id="venue" className={inputBaseClass} aria-label="Venue" {...register("venue")} />
-        {errors.venue && <span className="text-xs text-red-600">{errors.venue.message}</span>}
-      </div>
+        {/* Event Time */}
+        <div>
+          <Label htmlFor="eventTime">Event Time *</Label>
+          <input
+            id="eventTime"
+            type="time"
+            className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+              errors.eventTime ? "border-red-500 dark:border-red-500" : "border-gray-300"
+            }`}
+            {...register("eventTime")}
+          />
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Format: HH:MM</p>
+          {errors.eventTime && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.eventTime.message}</p>}
+        </div>
 
-      {/* Organizer */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="organizer" className="text-sm text-gray-600 dark:text-gray-300">Organizer</label>
-        <input id="organizer" className={inputBaseClass} aria-label="Organizer" {...register("organizer")} />
-        {errors.organizer && <span className="text-xs text-red-600">{errors.organizer.message}</span>}
-      </div>
+        {/* From Date */}
+        <div>
+          <Label htmlFor="fromDate">From Date *</Label>
+          <input
+            id="fromDate"
+            type="date"
+            className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+              errors.fromDate ? "border-red-500 dark:border-red-500" : "border-gray-300"
+            }`}
+            {...register("fromDate")}
+          />
+          {errors.fromDate && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.fromDate.message}</p>}
+        </div>
 
-      {/* Category */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="category" className="text-sm text-gray-600 dark:text-gray-300">Category</label>
-        <select id="category" className={inputBaseClass} aria-label="Category" {...register("category")}>
-          <option value="">Select category</option>
-          {EVENT_CATEGORY_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-        {errors.category && <span className="text-xs text-red-600">{errors.category.message as string}</span>}
-      </div>
+        {/* To Date */}
+        <div>
+          <Label htmlFor="toDate">To Date *</Label>
+          <input
+            id="toDate"
+            type="date"
+            className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+              errors.toDate ? "border-red-500 dark:border-red-500" : "border-gray-300"
+            }`}
+            {...register("toDate")}
+          />
+          {errors.toDate && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.toDate.message}</p>}
+        </div>
 
-      {/* City, Country */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="cityCountry" className="text-sm text-gray-600 dark:text-gray-300">City, Country</label>
-        <input id="cityCountry" className={inputBaseClass} aria-label="City, Country" placeholder="e.g., Lahore, Pakistan" {...register("cityCountry")} />
-        {errors.cityCountry && <span className="text-xs text-red-600">{errors.cityCountry.message}</span>}
-      </div>
+        {/* Short Description */}
+        <div className="sm:col-span-2">
+          <Label htmlFor="shortDescription">Short Description *</Label>
+          <input
+            id="shortDescription"
+            type="text"
+            className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+              errors.shortDescription ? "border-red-500 dark:border-red-500" : "border-gray-300"
+            }`}
+            placeholder="Brief description (max 500 characters)"
+            {...register("shortDescription")}
+          />
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Maximum 500 characters</p>
+          {errors.shortDescription && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.shortDescription.message}</p>}
+        </div>
 
-      {/* Short Info (rich text) */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="shortHtml" className="text-sm text-gray-600 dark:text-gray-300">Short Info (supports basic HTML)</label>
-        <textarea id="shortHtml" className={`${inputBaseClass} min-h-[90px]`} aria-label="Short info" {...register("shortHtml")} />
-        {errors.shortHtml && <span className="text-xs text-red-600">{errors.shortHtml.message}</span>}
-      </div>
+        {/* Description */}
+        <div className="sm:col-span-2">
+          <Label htmlFor="description">Description *</Label>
+          <textarea
+            id="description"
+            rows={6}
+            className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 min-h-[150px]"
+            {...register("description")}
+            placeholder="Full event description"
+          />
+          {errors.description && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.description.message}</p>}
+        </div>
 
-      {/* Description */}
-      <div className="md:col-span-2 flex flex-col gap-2">
-        <label htmlFor="description" className="text-sm text-gray-600 dark:text-gray-300">Description</label>
-        <textarea id="description" rows={4} className={inputBaseClass} aria-label="Description" {...register("description")} />
-        {errors.description && <span className="text-xs text-red-600">{errors.description.message}</span>}
-      </div>
-
-      {/* Featured toggle */}
-      <div className="flex items-center gap-3">
-        <label htmlFor="isFeatured" className="text-sm text-gray-600 dark:text-gray-300">Feature on home</label>
-        <input id="isFeatured" type="checkbox" aria-label="Feature on homepage" {...register("isFeatured")} />
-        {errors.isFeatured && <span className="text-xs text-red-600">{errors.isFeatured.message as string}</span>}
-      </div>
-
-      {/* Date */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="date" className="text-sm text-gray-600 dark:text-gray-300">Date</label>
-        <input id="date" type="date" className={inputBaseClass} aria-label="Date" {...register("date")} />
-        {errors.date && <span className="text-xs text-red-600">{errors.date.message as string}</span>}
-      </div>
-
-      {/* Start Time */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="startTime" className="text-sm text-gray-600 dark:text-gray-300">Start time</label>
-        <input id="startTime" type="datetime-local" step={60} className={inputBaseClass} aria-label="Start time" {...register("startTime")} />
-        {errors.startTime && <span className="text-xs text-red-600">{errors.startTime.message as string}</span>}
-      </div>
-
-      {/* End Time */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="endTime" className="text-sm text-gray-600 dark:text-gray-300">End time</label>
-        <input id="endTime" type="datetime-local" step={60} className={inputBaseClass} aria-label="End time" {...register("endTime")} />
-        {errors.endTime && <span className="text-xs text-red-600">{errors.endTime.message as string}</span>}
-      </div>
-
-      {/* Feedback */}
-      <div className="md:col-span-2 mt-2">
-        {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700">{serverMsg}</div>}
-        {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700">{serverError}</div>}
+        {/* Images Section */}
+        <div className="sm:col-span-2 space-y-5 rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800/50">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Event Images</h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Upload images for the event. Image 1 is required. Additional images are optional.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Image 1 - Required */}
+            {[1, 2, 3, 4, 5].map((num) => (
+              <div key={num}>
+                <Label htmlFor={`image${num}`}>
+                  Image {num} {num === 1 ? "*" : ""}
+                </Label>
+                <Controller
+                  name={`image${num}` as keyof EventFormValues}
+                  control={control}
+                  render={() => (
+                    <>
+                      <input
+                        id={`image${num}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg"
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          handleImageChange(num as 1 | 2 | 3 | 4 | 5, file);
+                        }}
+                      />
+                      {previewUrls[num] && (
+                        <div className="mt-2">
+                          <img
+                            src={previewUrls[num]}
+                            alt={`Preview ${num}`}
+                            className="h-24 w-full rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                />
+                {errors[`image${num}` as keyof EventFormValues] && (
+                  <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">
+                    {String(errors[`image${num}` as keyof EventFormValues]?.message || "")}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Actions */}
-      <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2">
-        <button type="reset" className={buttonSecondaryClass} onClick={() => { reset(); setPreviewUrl(null); }}>
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={() => {
+            reset();
+            Object.keys(previewUrls).forEach(key => URL.revokeObjectURL(previewUrls[parseInt(key)]));
+            setPreviewUrls({});
+            setServerMsg(null);
+            setServerError(null);
+          }}
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
           Reset
         </button>
-        <button type="submit" className={buttonPrimaryClass} disabled={isSubmitting} aria-busy={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save Event"}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-brand-500 dark:hover:bg-brand-600"
+        >
+          {isSubmitting ? "Creating..." : "Create Event"}
         </button>
       </div>
     </form>
   );
 };
+
+// Default export function
+export default function EventsPage() {
+  const [selected, setSelected] = useState<TabKey>("viewEvents");
+  const queryClient = useQueryClient();
+  const { data: rawEvents, isLoading, isFetching, isError, error } = useEventsList();
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedQuery, setDebouncedQuery] = useState<string>("");
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const deleteModal = useModal();
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Map server events to our format
+  useEffect(() => {
+    const mapped: EventItem[] = (rawEvents ?? []).map((e: EventListItem) => ({
+      id: e.id,
+      category: e.category || "",
+      fromDate: e.startTimeUTC ? new Date(e.startTimeUTC).toISOString().split('T')[0] : null,
+      toDate: e.endTimeUTC ? new Date(e.endTimeUTC).toISOString().split('T')[0] : null,
+      eventTime: e.startTimeUTC ? new Date(e.startTimeUTC).toTimeString().slice(0, 5) : null,
+      shortDescription: e.shortDescription || "",
+      description: null, // Not in current API response
+      image1: e.imageUrl || "",
+      image2: null,
+      image3: null,
+      image4: null,
+      image5: null,
+    }));
+    setEvents(mapped);
+  }, [rawEvents]);
+
+  // Filter events by search query
+  const filteredEvents = useMemo<EventItem[]>(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return events;
+    
+    return events.filter((e) => {
+      const searchFields = [
+        e.category,
+        e.shortDescription,
+        e.description,
+      ].map(v => String(v || "").toLowerCase());
+      return searchFields.some(f => f.includes(q));
+    });
+  }, [events, debouncedQuery]);
+
+  const handleDelete = async (id: string) => {
+    setDeletingEventId(id);
+    deleteModal.openModal();
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingEventId) return;
+    
+    try {
+      setDeletingIds((prev) => new Set(prev).add(deletingEventId));
+      const res = await fetch(`/api/events/${deletingEventId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+      await queryClient.invalidateQueries({ queryKey: eventsKey });
+      toast.success("Event deleted successfully!");
+      deleteModal.closeModal();
+      setDeletingEventId(null);
+    } catch (err) {
+      console.error("Failed to delete event:", err);
+      toast.error("Failed to delete event. Please try again.");
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deletingEventId);
+        return next;
+      });
+    }
+  };
+
+  return (
+    <ComponentCard className="p-0">
+      <div className="flex flex-col gap-8">
+        {/* Tabs navigation */}
+        <div className="px-6 pt-2">
+          <div
+            className="tab-list flex flex-wrap gap-4"
+            role="tablist"
+            aria-label="Events sections"
+          >
+            {TABS.map((tab, idx) => (
+              <button
+                key={tab.key}
+                className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                  selected === tab.key
+                    ? "bg-white text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
+                    : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
+                }`}
+                onClick={() => setSelected(tab.key)}
+                role="tab"
+                aria-selected={selected === tab.key}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    const nextIdx = (idx + 1) % TABS.length;
+                    setSelected(TABS[nextIdx].key);
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    const prevIdx = (idx - 1 + TABS.length) % TABS.length;
+                    setSelected(TABS[prevIdx].key);
+                  } else if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(tab.key);
+                  }
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className="px-6 pb-8">
+          {selected === "viewEvents" && (
+            <>
+              {/* Search Section */}
+              <div className="mb-6">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+                  <div className="flex-1 w-full sm:max-w-lg">
+                    <label htmlFor="events-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
+                      Search Events
+                    </label>
+                    <div className="relative">
+                      <svg
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <input
+                        id="events-search"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by category, description..."
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+                  {isFetching && !isLoading && (
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-xl border border-gray-200/80 dark:border-gray-600/80 shadow-sm">
+                      <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      <span className="hidden sm:inline">Updating...</span>
+                      <span className="sm:hidden">...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Events Table */}
+              <EventTable
+                items={filteredEvents}
+                loading={isLoading || isFetching}
+                emptyMessage={isError ? (error?.message ?? "Failed to load events") : "No events found"}
+                deletingIds={deletingIds}
+                onDelete={handleDelete}
+              />
+            </>
+          )}
+
+          {selected === "addEvent" && (
+            <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <AddEventForm />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => {
+          if (!deletingIds.has(deletingEventId || "")) {
+            deleteModal.closeModal();
+            setDeletingEventId(null);
+          }
+        }}
+        className="max-w-lg mx-auto"
+        showCloseButton={true}
+      >
+        <div className="p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+              <TrashBinIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                Confirm Deletion
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-6">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Are you sure you want to delete this event? This will permanently remove the event record.
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              disabled={deletingIds.has(deletingEventId || "")}
+              onClick={() => {
+                if (!deletingIds.has(deletingEventId || "")) {
+                  deleteModal.closeModal();
+                  setDeletingEventId(null);
+                }
+              }}
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deletingIds.has(deletingEventId || "")}
+              onClick={confirmDelete}
+              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              {deletingIds.has(deletingEventId || "") ? (
+                <span className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Deleting...
+                </span>
+              ) : (
+                "Delete"
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </ComponentCard>
+  );
+}

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { alumniRegistrationComprehensiveSchema } from "@/lib/alumniRegistration";
 import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 // Helper: map validated payload to DB columns
 function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>) {
@@ -45,6 +47,7 @@ export async function GET(req: Request) {
   // Fetch alumni records with pagination and optional filtering
   // Optimized: Using indexed columns and efficient ordering
   try {
+    const session = await auth();
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500); // Max 500 per page for performance
@@ -52,6 +55,24 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || ""; // Filter by verify status: "verified", "unverified", "underApproval"
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
+    
+    // Build access filter for admin/viewer users
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    
+    // Debug logging
+    console.log("[alumni/route] Access filter:", {
+      hasFilter: accessFilter.hasFilter,
+      isSuperAdmin: !accessFilter.hasFilter
+    });
+    
+    // Log the actual SQL condition for debugging (if it's a program-level filter)
+    if (accessFilter.hasFilter && accessFilter.sql) {
+      console.log("[alumni/route] Access filter SQL condition is active");
+    }
+    
+    // Build access filter condition for WHERE clause
+    // Wrap the entire OR chain in parentheses since AND has higher precedence than OR
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
     // If only counts are needed, return early with just counts
     if (getCountsOnly) {
@@ -61,6 +82,7 @@ export async function GET(req: Request) {
             SELECT COUNT(*) as total
             FROM public.tbl_alumni
             WHERE sapid IS NOT NULL AND sapid != ''
+              ${accessFilterCondition}
               AND (
                 LOWER(sapid) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTermForCount}
@@ -69,11 +91,13 @@ export async function GET(req: Request) {
                 OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTermForCount}
               )`
         : sql/* sql */`
             SELECT COUNT(*) as total
             FROM public.tbl_alumni
-            WHERE sapid IS NOT NULL AND sapid != ''`;
+            WHERE sapid IS NOT NULL AND sapid != ''
+              ${accessFilterCondition}`;
       
       const countResult = await countQuery;
       const total = Number(countResult[0]?.total || 0);
@@ -141,6 +165,7 @@ export async function GET(req: Request) {
         FROM public.tbl_alumni
         WHERE ${baseWhere}
           ${verifyFilter}
+          ${accessFilterCondition}
           AND (
             LOWER(sapid) LIKE ${searchTerm}
             OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTerm}
@@ -149,6 +174,7 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTerm}
           )
         ORDER BY alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
@@ -179,6 +205,7 @@ export async function GET(req: Request) {
       FROM public.tbl_alumni
       WHERE ${baseWhere}
         ${verifyFilter}
+        ${accessFilterCondition}
         ORDER BY alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
     }
@@ -275,6 +302,7 @@ export async function GET(req: Request) {
           FROM public.tbl_alumni
           WHERE ${baseWhere}
             ${verifyFilter}
+            ${accessFilterCondition}
             AND (
               LOWER(sapid) LIKE ${searchTermForCount}
               OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTermForCount}
@@ -288,7 +316,8 @@ export async function GET(req: Request) {
               SELECT COUNT(*) as total
               FROM public.tbl_alumni
               WHERE ${baseWhere}
-                ${verifyFilter}`;
+                ${verifyFilter}
+                ${accessFilterCondition}`;
     
     const countResult = await countQuery;
     const total = countResult[0]?.total || 0;

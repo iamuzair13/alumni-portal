@@ -248,16 +248,33 @@ let cardImageFile: string | null = null;
                    String(verifyValue).trim() !== '');
       
       if (isVerified || isAdmin) {
+        // Join with tblchapters to get chapter names
         const chapterRows = await sql/* sql */`
-          SELECT "chapter1", "chapter2", "chapter3"
-          FROM public.alumni_chapter
-          WHERE id = ${alumniId}
+          SELECT 
+            ac."chapter1",
+            ac."chapter2",
+            ac."chapter3",
+            COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
+            COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
+            COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
+          FROM public.alumni_chapter ac
+          LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
+          LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
+          LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
+          WHERE ac.id = ${alumniId}
           LIMIT 1`;
-        const chapterRec = chapterRows[0] as { chapter1?: string | null; chapter2?: string | null; chapter3?: string | null } | undefined;
+        const chapterRec = chapterRows[0] as { 
+          chapter1?: number | null; 
+          chapter2?: number | null; 
+          chapter3?: number | null;
+          chapter1_name?: string | null;
+          chapter2_name?: string | null;
+          chapter3_name?: string | null;
+        } | undefined;
         if (chapterRec) {
-          if (chapterRec.chapter1) chapters.push(String(chapterRec.chapter1));
-          if (chapterRec.chapter2) chapters.push(String(chapterRec.chapter2));
-          if (chapterRec.chapter3) chapters.push(String(chapterRec.chapter3));
+          if (chapterRec.chapter1_name) chapters.push(String(chapterRec.chapter1_name));
+          if (chapterRec.chapter2_name) chapters.push(String(chapterRec.chapter2_name));
+          if (chapterRec.chapter3_name) chapters.push(String(chapterRec.chapter3_name));
         }
         // Remove duplicate chapters (case-insensitive) while preserving original case
         const seen = new Set<string>();

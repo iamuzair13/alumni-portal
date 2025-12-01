@@ -126,7 +126,7 @@ const benefitsData: Record<string, { title: string; description: string; content
             <tr>
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Medical Consultation, Diagnostic Services at University of Lahore Hospital (ULH)</td>
               <td class="border border-gray-300 px-4 py-3 text-gray-700" rowspan="2">Alumni and family members (Spouse, Children, Parents)</td>
-              <td class="border border-gray-300 px-4 py-3 text-gray-700" rowspan="2">Same discount % & services, as offered to UOL students or staff (whichever is better)</td>
+              <td class="border border-gray-300 px-4 py-3 text-gray-700" rowspan="2">Same discount % & services, as offered to UOL students</td>
             </tr>
             <tr class="bg-gray-50">
               <td class="border border-gray-300 px-4 py-3 font-medium text-gray-900">Medical Consultation, Diagnostic Services at all UOL SMCs (Sehat Medical Complexes)</td>

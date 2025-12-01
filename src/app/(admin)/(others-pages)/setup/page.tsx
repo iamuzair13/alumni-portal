@@ -451,8 +451,11 @@ export default function SetupPage() {
 
             {/* Add User Modal */}
             {canManage && (
-            <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[720px] p-5 lg:p-10">
-              <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Add User</h4>
+            <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
+              <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <h4 className="text-2xl font-bold text-gray-900 dark:text-white">Add New User</h4>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Create a new user account with appropriate access permissions</p>
+              </div>
               <UserForm />
             </Modal>
             )}
@@ -521,18 +524,14 @@ export default function SetupPage() {
 
 function RealTimeUsers() {
   const { data: session } = useSession();
-  const hasModifyAccess = canModify(session?.user);
   const canManage = canManageUsers(session?.user);
   const isAdmin = isAdminUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const currentUserId = (session?.user as { userId?: number })?.userId;
   const { data, isLoading, error } = useUsersList();
   const queryClient = useQueryClient();
-  const [editOpen, setEditOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [values, setValues] = useState<{ userid: number; email: string | null; firstname: string | null; lastname: string | null; department: string | null; type: string | null; blocked: boolean | null; password?: string }>({ userid: 0, email: null, firstname: null, lastname: null, department: null, type: "admin", blocked: false });
-  const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   if (isLoading) {
     return (
       <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
@@ -555,45 +554,9 @@ function RealTimeUsers() {
       </div>
     );
   }
-  async function openEdit(u: AdminUser) {
-    setValues({ userid: u.userid, email: u.email, firstname: u.firstname, lastname: u.lastname, department: u.department, type: u.type, blocked: !!u.blocked });
-    setEditOpen(true);
-  }
-
-  async function saveEdit() {
-    try {
-      setSaving(true);
-      setErrorMsg(null);
-      
-      // Check if viewer/admin is editing their own row
-      const isOwnRow = currentUserId && Number(currentUserId) === values.userid;
-      
-      // Prepare payload - only Super Admin can update all fields
-      // Admins can only update their own password, email, firstname, lastname
-      // Viewers can only update their own password, email, firstname, lastname
-      const payload = canManage 
-        ? values 
-        : isOwnRow 
-          ? {
-              userid: values.userid,
-              email: values.email,
-              firstname: values.firstname,
-              lastname: values.lastname,
-              password: values.password,
-            }
-          : values;
-      
-      const res = await fetch(`/api/users/${values.userid}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to update user");
-      setEditOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["users", "list"] });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg);
-    } finally {
-      setSaving(false);
-    }
+  
+  function openEdit(u: AdminUser) {
+    setEditUserId(u.userid);
   }
 
   async function performDelete() {
@@ -696,89 +659,22 @@ function RealTimeUsers() {
           </tbody>
         </table>
       </div>
-      {(() => {
-        // Check if viewer is editing their own row
-        const isOwnRow = currentUserId && Number(currentUserId) === values.userid;
-        const canEdit = hasModifyAccess || isOwnRow;
-        
-        if (!canEdit) return null;
-        
-        return (
-          <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} className="max-w-[720px] p-5 lg:p-10">
-            <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">
-              {isOwnRow && !canManage ? "Edit My Password" : "Edit User"}
-            </h4>
-            {errorMsg && <p className="mb-3 text-sm text-error-500 dark:text-error-400" role="alert">{errorMsg}</p>}
-            <form className="space-y-4" aria-label="Edit user form" onSubmit={(e) => { e.preventDefault(); saveEdit(); }}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <Label>Email</Label>
-                  <Input 
-                    type="email" 
-                    value={values.email ?? ""} 
-                    onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))} 
-                    disabled={!!(isOwnRow && !hasModifyAccess)}
-                  />
-                </div>
-                <div>
-                  <Label>First Name</Label>
-                  <Input 
-                    type="text" 
-                    value={values.firstname ?? ""} 
-                    onChange={(e) => setValues((v) => ({ ...v, firstname: e.target.value }))} 
-                    disabled={!!(isOwnRow && !hasModifyAccess)}
-                  />
-                </div>
-                <div>
-                  <Label>Last Name</Label>
-                  <Input 
-                    type="text" 
-                    value={values.lastname ?? ""} 
-                    onChange={(e) => setValues((v) => ({ ...v, lastname: e.target.value }))} 
-                    disabled={!!(isOwnRow && !hasModifyAccess)}
-                  />
-                </div>
-                {canManage && (
-                  <>
-                    <div>
-                      <Label>Department</Label>
-                      <Input type="text" value={values.department ?? ""} onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))} />
-                    </div>
-                    <div>
-                      <Label>Type</Label>
-                      <Select defaultValue={values.type ?? "admin"} onChange={(v) => setValues((val) => ({ ...val, type: v }))} options={[{ value: "superadmin", label: "Super Admin" }, { value: "admin", label: "Admin" }, { value: "viewer", label: "Viewer" }]} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox checked={!!values.blocked} onChange={(c) => setValues((v) => ({ ...v, blocked: c }))} label="Blocked" />
-                    </div>
-                  </>
-                )}
-                {isAdmin && !canManage && (
-                  <>
-                    <div>
-                      <Label>Department</Label>
-                      <Input type="text" value={values.department ?? ""} onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))} disabled />
-                    </div>
-                    <div>
-                      <Label>Type</Label>
-                      <Input type="text" value={values.type ?? ""} disabled />
-                    </div>
-                  </>
-                )}
-                <div className="md:col-span-2">
-                  <Label>New Password (optional)</Label>
-                  <Input type="password" value={values.password ?? ""} onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))} placeholder="Leave empty to keep existing password" />
-                  <p className="mt-1 text-xs text-neutral-600">Minimum 8 characters</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end w-full gap-3 mt-4">
-                <Button size="sm" variant="outline" onClick={() => setEditOpen(false)} aria-label="Cancel editing">Cancel</Button>
-                <Button size="sm" onClick={saveEdit} disabled={saving} aria-label="Save changes">{saving ? "Saving..." : "Save"}</Button>
-              </div>
-            </form>
-          </Modal>
-        );
-      })()}
+      {/* Edit User Modal with UserForm */}
+      {editUserId && canManage && (
+        <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
+          <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <h4 className="text-2xl font-bold text-gray-900 dark:text-white">Edit User</h4>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Update user account and access permissions</p>
+          </div>
+          <UserForm 
+            userId={editUserId} 
+            onSuccess={() => {
+              setEditUserId(null);
+              queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+            }}
+          />
+        </Modal>
+      )}
 
       {canManage && (
       <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)} className="max-w-[520px] p-5 lg:p-8">
