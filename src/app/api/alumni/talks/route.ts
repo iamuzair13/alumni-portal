@@ -187,21 +187,57 @@ export async function PUT(req: Request) {
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
     
     // Try to find alumni by SAP ID first, then by email
-    let alumRows: Array<{ alumniid: number }> = [];
+    let alumRows: Array<{ alumniid: number; sapid: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }> = [];
     
     if (userSapid) {
       alumRows = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
+        SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
     }
     
     if (alumRows.length === 0 && email) {
       alumRows = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email} OR alumniemail = ${email}
+        SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email} OR alumniemail = ${email}
         ORDER BY alumniid DESC LIMIT 1`;
     }
     
     const alumniid = alumRows[0]?.alumniid as number | undefined;
     if (!alumniid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
+    
+    // SECURITY: Check if user is admin/superadmin or owns this alumni record
+    const { canModify } = await import("@/lib/alumniProfile");
+    const isAdmin = canModify(session.user);
+    
+    if (!isAdmin) {
+      // If not admin, verify ownership
+      const row = alumRows[0];
+      const isOwnerBySapid = userSapid && row.sapid && userSapid.toLowerCase().trim() === row.sapid.toLowerCase().trim();
+      const isOwnerByEmail = email && (
+        (row.personalemail && row.personalemail.toLowerCase().trim() === email.toLowerCase().trim()) ||
+        (row.universityemail && row.universityemail.toLowerCase().trim() === email.toLowerCase().trim()) ||
+        (row.officialemail && row.officialemail.toLowerCase().trim() === email.toLowerCase().trim())
+      );
+      
+      if (!isOwnerBySapid && !isOwnerByEmail) {
+        return NextResponse.json({ error: "Forbidden: You can only update your own talks" }, { status: 403 });
+      }
+    } else {
+      // For admin/viewer users, check access filter
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${alumniid} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
+      }
+    }
     const topicStr = v.data.topics.join(", ").slice(0, 500);
     const activityStr = v.data.areas.join(", ").slice(0, 50);
     const dayStr = v.data.day.slice(0, 20);
@@ -221,41 +257,46 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.email) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    if (!session?.user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    
+    // SECURITY: Only admins/superadmins can delete talks (viewers and alumni cannot)
+    const { canModify } = await import("@/lib/alumniProfile");
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins can delete talks" }, { status: 403 });
+    }
+    
     const url = new URL(req.url);
     const maybeSapId = url.searchParams.get("sapid");
-    const type = String((session.user as unknown as { type?: string | null })?.type || "").toLowerCase();
+    
     if (maybeSapId) {
-      // Only admin can modify (viewer has view-only access)
-      if (type !== "admin") return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
       const arows = await sql/* sql */`
         SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${maybeSapId} LIMIT 1`;
       const aid = arows[0]?.alumniid as number | undefined;
       if (!aid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
+      
+      // SECURITY: Check access filter for admin/viewer users
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${aid} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
+      }
+      
       await sql/* sql */`DELETE FROM public.tblalumnitalks WHERE alumniid = ${aid}`;
       return NextResponse.json({ ok: true }, { status: 200 });
     }
-    const email = session.user.email ? String(session.user.email) : null;
-    const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
     
-    // Try to find alumni by SAP ID first, then by email
-    let alumRows: Array<{ alumniid: number }> = [];
-    
-    if (userSapid) {
-      alumRows = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
-    }
-    
-    if (alumRows.length === 0 && email) {
-      alumRows = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email} OR alumniemail = ${email}
-        ORDER BY alumniid DESC LIMIT 1`;
-    }
-    
-    const alumniid = alumRows[0]?.alumniid as number | undefined;
-    if (!alumniid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
-    await sql/* sql */`DELETE FROM public.tblalumnitalks WHERE alumniid = ${alumniid}`;
-    return NextResponse.json({ ok: true }, { status: 200 });
+    // If no sapid parameter, this endpoint should not be used (require sapid parameter)
+    return NextResponse.json({ error: "SAP ID parameter is required" }, { status: 400 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete";
     return NextResponse.json({ error: msg }, { status: 500 });

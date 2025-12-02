@@ -19,8 +19,19 @@ type DbUser = {
 export async function GET() {
   try {
     const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     const isAdmin = isAdminUser(session?.user);
     const isSuperAdmin = isSuperAdminUser(session?.user);
+    
+    // SECURITY: Only admins and superadmins can see user list (viewers cannot)
+    if (!isAdmin && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Only admins can view user list" }, { status: 403 });
+    }
     
     // Get current user's ID from session
     const currentUserId = (session?.user as { userId?: number })?.userId;
@@ -45,37 +56,6 @@ export async function GET() {
       }
       
       // Fetch all users, but only include password for the current admin user
-      const rows = await sql/* sql */`
-        SELECT 
-          userid, 
-          email, 
-          firstname, 
-          lastname, 
-          department, 
-          type, 
-          blocked, 
-          lastlogindatetime,
-          CASE 
-            WHEN userid = ${userIdNum} THEN password 
-            ELSE NULL 
-          END as password
-        FROM public.tbl_users
-        ORDER BY userid DESC` as DbUser[];
-      
-      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
-    } else if (currentUserId) {
-      // Viewers can only see their own password
-      const userIdNum = Number(currentUserId);
-      if (isNaN(userIdNum)) {
-        // Invalid user ID, return without passwords
-        const rows = await sql/* sql */`
-          SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
-          FROM public.tbl_users
-          ORDER BY userid DESC` as DbUser[];
-        return NextResponse.json({ items: rows ?? [] }, { status: 200 });
-      }
-      
-      // Fetch all users, but only include password for the current user
       const rows = await sql/* sql */`
         SELECT 
           userid, 

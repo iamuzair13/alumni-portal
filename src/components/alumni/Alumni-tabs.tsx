@@ -191,7 +191,7 @@ export const AlumniTabs: React.FC = () => {
   } = useQuery<AlumniCounts, Error>({
     queryKey: ["alumnilist-counts", debouncedQuery],
     queryFn: ({ signal }) => getAlumniCounts(signal, debouncedQuery || undefined),
-    staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh for 2 minutes
+    staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchInterval: false, // Disable auto-refetch interval
@@ -520,8 +520,8 @@ export const AlumniTabs: React.FC = () => {
       if (!old) return old;
       return old.map((it) => (it.sapid === sapid ? { ...it, verify: verify ? "true" : "false" } : it));
     });
-    // Invalidate counts to refetch real-time data
-    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] });
+    // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
+    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
   }, [queryClient]);
 
   const removeFromCache = useCallback((sapid: string) => {
@@ -529,8 +529,8 @@ export const AlumniTabs: React.FC = () => {
       if (!old) return old;
       return old.filter((it) => it.sapid !== sapid);
     });
-    // Invalidate counts to refetch real-time data
-    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] });
+    // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
+    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
   }, [queryClient]);
 
   // Open confirmation modal for verify

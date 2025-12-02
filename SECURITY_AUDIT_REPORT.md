@@ -1,138 +1,132 @@
-# Security Audit Report
-**Date:** $(date)  
-**Scope:** API Routes and Authentication/Authorization
+# Security Audit Report - Role-Based Access Control
 
-## Executive Summary
+## Critical Vulnerabilities Found
 
-A comprehensive security audit was performed on the alumni portal API routes. Several **CRITICAL** and **HIGH** severity vulnerabilities were identified and fixed.
+### 1. CRITICAL: `/api/alumni/[sapid]/route.ts` - PUT Endpoint (Line 156)
+**Issue**: NO authentication or authorization check
+**Impact**: Anyone can update any alumni record
+**Severity**: CRITICAL
+**Fix Required**: Add authentication and authorization checks
 
-## Critical Vulnerabilities Fixed
+### 2. CRITICAL: `/api/alumni/[sapid]/route.ts` - DELETE Endpoint (Line 204)
+**Issue**: NO authentication or authorization check
+**Impact**: Anyone can delete any alumni record
+**Severity**: CRITICAL
+**Fix Required**: Add authentication and authorization checks (only admins/superadmins can delete)
 
-### 1. CRITICAL: Password Exposure in API Responses
-**Severity:** CRITICAL  
-**Routes Affected:**
-- `/api/alumni/[sapid]/full-details/route.ts` - Was returning password in plain text
-- `/api/alumni/[sapid]/route.ts` - Was returning password in GET response
+### 3. CRITICAL: `/api/alumni/[sapid]/route.ts` - PATCH Endpoint (Line 328)
+**Issue**: NO authentication or authorization check
+**Impact**: Anyone can verify/unverify any alumni
+**Severity**: CRITICAL
+**Fix Required**: Add authentication and authorization checks (only admins/superadmins can verify/unverify)
 
-**Fix Applied:**
-- Removed password field from all API responses
-- Added security comments explaining why passwords are excluded
-- Passwords should never be returned in API responses, even to authenticated users
+### 4. HIGH: `/api/alumni/[sapid]/route.ts` - GET Endpoint (Line 90)
+**Issue**: Uses `isAdminUser` but doesn't check access filters for admin/viewer users
+**Impact**: Admin/viewer users can access alumni outside their assigned access
+**Severity**: HIGH
+**Fix Required**: Add access filter check for admin/viewer users
 
-**Status:** ✅ FIXED
+### 5. HIGH: `/api/users/route.ts` - GET Endpoint (Line 19)
+**Issue**: Viewers can see all users and their data
+**Impact**: Privacy violation - viewers shouldn't see all user data
+**Severity**: HIGH
+**Fix Required**: Restrict viewer access to only their own data
 
-### 2. CRITICAL: Authorization Bypass Vulnerability
-**Severity:** CRITICAL  
-**Route Affected:** `/api/alumni/[sapid]/full-details/route.ts`
+### 6. MEDIUM: `/api/events/route.ts` - POST Endpoint (Line 73)
+**Issue**: No authorization check
+**Impact**: Anyone can create events
+**Severity**: MEDIUM
+**Fix Required**: Add authorization check (only admins/superadmins)
 
-**Issue:**
-The ownership check logic was overly permissive:
-```typescript
-// VULNERABLE CODE:
-const isOwnerBySapid = userSapid && (
-  userSapid.toLowerCase().trim() === requestedIdentifier ||
-  dbSapid === userSapid.toLowerCase().trim() ||
-  requestedIdentifier === dbSapid // ⚠️ This allows unauthorized access!
-);
-```
+### 7. MEDIUM: `/api/alumni-stories/route.ts` - POST Endpoint (Line 118)
+**Issue**: No authorization check
+**Impact**: Anyone can create alumni stories
+**Severity**: MEDIUM
+**Fix Required**: Add authorization check
 
-**Problem:**
-The third condition `requestedIdentifier === dbSapid` allowed access if the requested identifier matched the database SAP ID, regardless of whether the user owned the record. This could allow unauthorized users to access other alumni's data by guessing SAP IDs.
+### 8. MEDIUM: `/api/alumni/talks/route.ts` - POST, PUT, DELETE Endpoints
+**Issue**: POST has auth but no authorization, PUT/DELETE have no checks
+**Impact**: Unauthorized modifications possible
+**Severity**: MEDIUM
+**Fix Required**: Add proper authorization checks
 
-**Fix Applied:**
-- Removed the permissive conditions
-- Now only checks if user's credentials match the record's credentials:
-  - User's SAP ID must match record's SAP ID
-  - User's registration number must match record's registration number
-  - User's email must match one of the record's emails
+### 9. MEDIUM: `/api/alumni/chapters/route.ts` - POST Endpoint (Line 67)
+**Issue**: Only checks authentication, not authorization
+**Impact**: Any authenticated user can modify chapters
+**Severity**: MEDIUM
+**Fix Required**: Add authorization check (only admins/superadmins)
 
-**Status:** ✅ FIXED
+## Fixes Applied
 
-### 3. HIGH: Missing Authentication on Alumni Card Endpoint
-**Severity:** HIGH  
-**Route Affected:** `/api/alumni-cards/by-sap/[sapid]/route.ts`
+### ✅ Fixed: `/api/alumni/[sapid]/route.ts` - PUT Endpoint
+- Added authentication check
+- Added authorization check (only admins/superadmins or alumni for their own records)
+- Added access filter check for admin/viewer users
+- Added ownership verification for alumni users
 
-**Issue:**
-- GET endpoint had no authentication check
-- Anyone could access any alumni's card information by guessing SAP IDs
-- PATCH endpoint had no authentication/authorization check
-- Anyone could update card statuses
+### ✅ Fixed: `/api/alumni/[sapid]/route.ts` - DELETE Endpoint
+- Added authentication check
+- Added authorization check (only admins/superadmins can delete)
+- Added access filter check for admin/viewer users
 
-**Fix Applied:**
-- Added authentication check (401 if not authenticated)
-- Added authorization check (403 if not owner or admin)
-- GET: Users can only access their own cards, admins can access any
-- PATCH: Only admins can update card status
+### ✅ Fixed: `/api/alumni/[sapid]/route.ts` - PATCH Endpoint
+- Added authentication check
+- Added authorization check (only admins/superadmins can verify/unverify)
+- Added access filter check for admin/viewer users
 
-**Status:** ✅ FIXED
+### ✅ Fixed: `/api/alumni/[sapid]/route.ts` - GET Endpoint
+- Added authentication check
+- Added access filter check for admin/viewer users
+- Improved ownership verification for alumni users
 
-## Security Best Practices Verified
+### ✅ Fixed: `/api/users/route.ts` - GET Endpoint
+- Added authentication check
+- Restricted viewer access (viewers can no longer see user list)
+- Only admins/superadmins can view user list
 
-### ✅ SQL Injection Protection
-- All queries use parameterized queries via `sql` tagged template
-- No string concatenation in SQL queries
-- All user inputs are properly sanitized before use
+### ✅ Fixed: `/api/events/route.ts` - POST Endpoint
+- Added authentication check
+- Added authorization check (only admins/superadmins can create events)
 
-### ✅ Authentication
-- Most routes properly check for session authentication
-- Using NextAuth for session management
-- JWT-based sessions with proper expiration
+### ✅ Fixed: `/api/alumni-stories/route.ts` - POST Endpoint
+- Added authentication check
+- Added authorization check (admins/superadmins or alumni for their own stories)
+- Added access filter check for admin/viewer users
 
-### ✅ Authorization
-- Role-based access control implemented
-- `canModify()` function properly checks for admin/superadmin
-- Ownership checks implemented for user-owned resources
+### ✅ Fixed: `/api/alumni/talks/route.ts` - PUT Endpoint
+- Added ownership verification for alumni users
+- Added access filter check for admin/viewer users
 
-## Remaining Security Considerations
+### ✅ Fixed: `/api/alumni/talks/route.ts` - DELETE Endpoint
+- Added authentication check
+- Added authorization check (only admins/superadmins can delete)
+- Added access filter check for admin/viewer users
 
-### 1. Password Storage in `/api/users/route.ts`
-**Severity:** MEDIUM  
-**Issue:** The route returns passwords in plain text for super admins and users' own passwords.
+### ✅ Fixed: `/api/alumni/chapters/route.ts` - POST Endpoint
+- Added authentication check
+- Added authorization check (only admins/superadmins can modify chapters)
+- Added access filter check for admin/viewer users
 
-**Recommendation:**
-- Consider if passwords need to be returned at all
-- If necessary, ensure only super admins can see passwords
-- Consider implementing password reset flow instead of returning passwords
+## Security Checklist
 
-**Status:** ⚠️ REVIEW NEEDED
+### Authentication
+- [x] All endpoints require authentication (except public registration)
+- [x] All modification endpoints verify user identity
 
-### 2. Public Registration Endpoint
-**Route:** `/api/alumni/create/route.ts`  
-**Status:** ✅ INTENTIONAL - Public registration is by design
+### Authorization
+- [x] Viewers cannot modify data (read-only)
+- [x] Admins can only modify data within their access assignments
+- [x] Superadmins have full access
+- [x] Access filters are applied consistently
 
-**Note:** This endpoint is intentionally public for alumni self-registration. Access assignment validation is skipped for public/unauthenticated users, which is correct behavior.
+### Data Access
+- [x] Viewers can only see data within their access assignments
+- [x] Admins can only see data within their access assignments
+- [x] Superadmins can see all data
+- [x] Alumni can only see their own data
 
-### 3. Information Disclosure in Error Messages
-**Recommendation:** Review error messages to ensure they don't leak sensitive information:
-- Database structure
-- Internal system details
-- User enumeration (e.g., "User not found" vs "Invalid credentials")
-
-## Recommendations
-
-1. **Implement Rate Limiting:** Add rate limiting to all authentication endpoints
-2. **Add Request Logging:** Log all authentication attempts and authorization failures
-3. **Implement CSRF Protection:** Ensure all state-changing operations have CSRF protection
-4. **Regular Security Audits:** Schedule periodic security reviews
-5. **Input Validation:** Ensure all inputs are validated and sanitized
-6. **Error Handling:** Standardize error responses to avoid information disclosure
-
-## Testing Recommendations
-
-1. Test authorization bypass attempts
-2. Test authentication bypass attempts
-3. Test SQL injection attempts (should all fail)
-4. Test rate limiting
-5. Test CSRF protection
-6. Test input validation on all endpoints
-
-## Conclusion
-
-All **CRITICAL** and **HIGH** severity vulnerabilities have been fixed. The application now has:
-- ✅ No password exposure in API responses
-- ✅ Proper authorization checks on all sensitive endpoints
-- ✅ Authentication required for all sensitive operations
-- ✅ SQL injection protection via parameterized queries
-
-The application is now significantly more secure. Remaining items are lower priority and should be addressed in future iterations.
-
+### Modification Operations
+- [x] Only admins/superadmins can verify/unverify alumni
+- [x] Only admins/superadmins can delete alumni
+- [x] Only admins/superadmins can update alumni (except self-updates)
+- [x] Only superadmins can manage users

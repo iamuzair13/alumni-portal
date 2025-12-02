@@ -117,6 +117,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     const body = await req.json();
     const parsed = storyServerSchema.safeParse(body);
     if (!parsed.success) {
@@ -138,10 +145,49 @@ export async function POST(req: Request) {
     });
 
     const alumniRows = await sql/* sql */`
-      SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1` as { alumniid: number }[];
+      SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1` as { alumniid: number; sapid: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }[];
     const alumniId = alumniRows[0]?.alumniid;
     if (!alumniId) {
       return NextResponse.json({ message: "SAP ID not found in tbl_alumni" }, { status: 404 });
+    }
+    
+    // SECURITY: Check if user is admin/superadmin or owns this alumni record
+    const { canModify } = await import("@/lib/alumniProfile");
+    const isAdmin = canModify(session.user);
+    
+    if (!isAdmin) {
+      // If not admin, verify ownership
+      const userEmail = session.user.email ? String(session.user.email) : null;
+      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
+      const row = alumniRows[0];
+      
+      const isOwnerBySapid = userSapid && row.sapid && userSapid.toLowerCase().trim() === row.sapid.toLowerCase().trim();
+      const isOwnerByEmail = userEmail && (
+        (row.personalemail && row.personalemail.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
+        (row.universityemail && row.universityemail.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
+        (row.officialemail && row.officialemail.toLowerCase().trim() === userEmail.toLowerCase().trim())
+      );
+      
+      if (!isOwnerBySapid && !isOwnerByEmail) {
+        return NextResponse.json({ error: "Forbidden: You can only create stories for your own profile" }, { status: 403 });
+      }
+    } else {
+      // For admin/viewer users, check access filter
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${alumniId} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
+      }
     }
 
     // Update contact number if provided

@@ -67,8 +67,14 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // SECURITY: Only admins/superadmins can modify chapter assignments
+    const { canModify } = await import("@/lib/alumniProfile");
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins can modify chapter assignments" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -117,6 +123,23 @@ export async function POST(request: NextRequest) {
         { error: "Invalid chapter ID provided" },
         { status: 400 }
       );
+    }
+    
+    // SECURITY: Check access filter for admin/viewer users
+    const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    
+    if (accessFilter.hasFilter && accessFilter.sql) {
+      const accessCheck = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE alumniid = ${alumniId} 
+        AND (${accessFilter.sql})
+        LIMIT 1
+      `;
+      
+      if (!accessCheck[0]) {
+        return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+      }
     }
 
     // Check if a record already exists for this alumni

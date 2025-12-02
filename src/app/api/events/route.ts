@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -72,6 +73,19 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // SECURITY: Only admins/superadmins can create events
+    const { canModify } = await import("@/lib/alumniProfile");
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins can create events" }, { status: 403 });
+    }
+    
     // Parse FormData
     const formData = await req.formData();
 

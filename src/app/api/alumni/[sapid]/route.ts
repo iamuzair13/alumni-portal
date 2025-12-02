@@ -91,7 +91,16 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
   try {
     const { sapid } = await ctx.params;
     const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     const isAdmin = isAdminUser(session?.user);
+    const { isViewerUser } = await import("@/lib/alumniProfile");
+    const isViewer = isViewerUser(session?.user);
+    const isAdminOrViewer = isAdmin || isViewer;
     
     const normalizedIdentifier = String(sapid || "").trim();
     
@@ -107,12 +116,38 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
     
-    // If not admin, check if user owns this profile (by email, SAP ID, or registration number)
-    if (!isAdmin && session?.user) {
+    const row = rows[0] as DbAlumniRow;
+    const userType = String((session?.user as { type?: string })?.type || "").toLowerCase().trim();
+    const isAlumni = userType === "alumni";
+    
+    // SECURITY: For admin/viewer users, check access filter
+    if (isAdminOrViewer) {
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const alumniId = (row as { alumniid?: number }).alumniid;
+        if (!alumniId) {
+          return NextResponse.json({ error: "Invalid alumni record" }, { status: 400 });
+        }
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${alumniId} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
+      }
+    }
+    
+    // If not admin and not alumni, check if user owns this profile (by email, SAP ID, or registration number)
+    if (!isAdmin && !isAlumni && session?.user) {
       const userEmail = session.user.email ? String(session.user.email) : null;
       const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
       const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null;
-      const row = rows[0] as DbAlumniRow;
       
       const isOwnerBySapid = userSapid && userSapid.toLowerCase().trim() === normalizedIdentifier.toLowerCase().trim();
       const isOwnerByRegNo = userRegNo && userRegNo.toLowerCase().trim() === normalizedIdentifier.toLowerCase().trim();
@@ -131,8 +166,26 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       }
     }
     
+    // If alumni, check if they own this profile
+    if (isAlumni && session?.user) {
+      const userEmail = session.user.email ? String(session.user.email) : null;
+      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
+      const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null;
+      
+      const isOwnerBySapid = userSapid && userSapid.toLowerCase().trim() === normalizedIdentifier.toLowerCase().trim();
+      const isOwnerByRegNo = userRegNo && userRegNo.toLowerCase().trim() === normalizedIdentifier.toLowerCase().trim();
+      const isOwnerByEmail = userEmail && (
+        String(row.personalemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
+        String(row.universityemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
+        String(row.officialemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim()
+      );
+      
+      if (!isOwnerBySapid && !isOwnerByRegNo && !isOwnerByEmail) {
+        return NextResponse.json({ error: "Forbidden: You can only access your own profile" }, { status: 403 });
+      }
+    }
+    
     const formVals = mapFromDb(rows[0]);
-    const row = rows[0] as DbAlumniRow;
     // SECURITY: Remove password from response - it's sensitive data
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeFormVals } = formVals;
@@ -156,6 +209,23 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
 export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
+    const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // SECURITY: Only admins/superadmins can update alumni records (viewers are read-only)
+    // Alumni can update their own records
+    const userType = String((session.user as { type?: string })?.type || "").toLowerCase().trim();
+    const isAdmin = userType === "admin" || userType === "superadmin";
+    const isAlumni = userType === "alumni";
+    
+    if (!isAdmin && !isAlumni) {
+      return NextResponse.json({ error: "Forbidden: Only admins or alumni can update records" }, { status: 403 });
+    }
+    
     const body = await req.json();
     const parsed = alumniRegistrationComprehensiveSchema.safeParse(body);
     if (!parsed.success) {
@@ -167,18 +237,68 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     
     // First try to find by SAP ID, then by registration number
     let lookupResult = await sql/* sql */`
-      SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
+      SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail 
+      FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
     
     if (!lookupResult[0]) {
       lookupResult = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
+        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail 
+        FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
     }
     
     if (!lookupResult[0]) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     
-    const alumniId = lookupResult[0].alumniid as number;
+    const row = lookupResult[0] as {
+      alumniid: number;
+      sapid: string | null;
+      registrationno: string | null;
+      personalemail: string | null;
+      universityemail: string | null;
+      officialemail: string | null;
+    };
+    
+    // SECURITY: If alumni user, verify they own this record
+    if (isAlumni && !isAdmin) {
+      const userEmail = session.user.email ? String(session.user.email) : null;
+      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null;
+      const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null;
+      
+      const isOwnerBySapid = userSapid && row.sapid && userSapid.toLowerCase().trim() === row.sapid.toLowerCase().trim();
+      const isOwnerByRegNo = userRegNo && row.registrationno && userRegNo.toLowerCase().trim() === row.registrationno.toLowerCase().trim();
+      const isOwnerByEmail = userEmail && (
+        (row.personalemail && row.personalemail.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
+        (row.universityemail && row.universityemail.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
+        (row.officialemail && row.officialemail.toLowerCase().trim() === userEmail.toLowerCase().trim())
+      );
+      
+      if (!isOwnerBySapid && !isOwnerByRegNo && !isOwnerByEmail) {
+        return NextResponse.json({ error: "Forbidden: You can only update your own record" }, { status: 403 });
+      }
+    }
+    
+    // SECURITY: For admin/viewer users, check access filter
+    if (isAdmin) {
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        // Check if this alumni record is within the user's access
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${row.alumniid} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
+      }
+    }
+    
+    const alumniId = row.alumniid;
     
     // Update using alumniid (primary key) for reliability
     const res = await sql/* sql */`
@@ -204,6 +324,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
 export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
+    const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // SECURITY: Only admins/superadmins can delete alumni records (viewers and alumni cannot)
+    const { canModify } = await import("@/lib/alumniProfile");
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins can delete alumni records" }, { status: 403 });
+    }
     
     console.log("[API] DELETE request received for identifier:", sapid);
     
@@ -215,6 +347,10 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     
     const normalizedIdentifier = String(sapid).trim();
     console.log("[API] Attempting to delete alumni with identifier:", normalizedIdentifier);
+    
+    // SECURITY: Check access filter for admin/viewer users
+    const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+    const accessFilter = await buildAccessFilterSQL(session, "");
     
     // First, try to get the alumniid using SAP ID
     // Use retry logic for connection timeouts
@@ -245,6 +381,20 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     const foundName = lookupResult[0].alumniname as string | null;
     
     console.log("[API] Found alumni - ID:", alumniId, "SAP ID:", foundSapid, "Registration No:", foundRegNo, "Name:", foundName);
+    
+    // SECURITY: Verify admin/viewer has access to this alumni record
+    if (accessFilter.hasFilter && accessFilter.sql) {
+      const accessCheck = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE alumniid = ${alumniId} 
+        AND (${accessFilter.sql})
+        LIMIT 1
+      `;
+      
+      if (!accessCheck[0]) {
+        return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+      }
+    }
     
     // Use a transaction to ensure atomic deletion and handle foreign key cascades properly
     // Delete by alumniid (primary key) which is more efficient and required for FK relationships
@@ -328,6 +478,19 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
 export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
+    const session = await auth();
+    
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // SECURITY: Only admins/superadmins can verify/unverify alumni (viewers and alumni cannot)
+    const { canModify } = await import("@/lib/alumniProfile");
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins can verify/unverify alumni" }, { status: 403 });
+    }
+    
     const body = await req.json();
     const { verify } = body ?? {};
     if (verify === undefined) {
@@ -385,6 +548,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       universityemail: string | null;
       verify: string | boolean | null;
     };
+    
+    // SECURITY: Check access filter for admin/viewer users
+    const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+    const accessFilter = await buildAccessFilterSQL(session, "");
+    
+    if (accessFilter.hasFilter && accessFilter.sql) {
+      const accessCheck = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni 
+        WHERE alumniid = ${current.alumniid} 
+        AND (${accessFilter.sql})
+        LIMIT 1
+      `;
+      
+      if (!accessCheck[0]) {
+        return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+      }
+    }
     
     // Check if this is a status change from 'pending' (under approval) to verified/unverified
     const wasUnderApproval = current.verify === null || current.verify === undefined || 
