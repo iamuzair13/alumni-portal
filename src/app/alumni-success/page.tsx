@@ -118,12 +118,18 @@ export default function Page() {
                     className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 group"
                   >
                     <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden">
-                      {story.imageUrl ? (
+                      {story.imageUrl && story.imageUrl.trim() !== "" && story.imageUrl !== "null" ? (
                         <Image
-                          src={story.imageUrl.startsWith('/') ? story.imageUrl : `/images/${story.imageUrl}`}
+                          src={(() => {
+                            const img = story.imageUrl.trim();
+                            if (img.startsWith('http')) return img;
+                            if (img.startsWith('/')) return img;
+                            return `/images/${img}`;
+                          })()}
                           alt={story.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-200"
+                          unoptimized
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';

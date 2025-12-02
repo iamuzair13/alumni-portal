@@ -236,13 +236,20 @@ export default function StoryDetailPage() {
                 <img
                   src={(function () {
                     const u = (imagePreviewUrl || form.imageUrl || "").trim();
-                    if (!u) return "https://via.placeholder.com/128";
+                    if (!u || u === "null") return "https://via.placeholder.com/128";
                     try {
-                      const abs = /^https?:\/\//i.test(u);
-                      if (!abs) return u;
-                      const t = new URL(u);
-                      if (t.protocol === "http:") t.protocol = "https:";
-                      return t.toString();
+                      // If it's an absolute URL (http/https), use it as is
+                      if (/^https?:\/\//i.test(u)) {
+                        const t = new URL(u);
+                        if (t.protocol === "http:") t.protocol = "https:";
+                        return t.toString();
+                      }
+                      // If it starts with /, use it as is
+                      if (u.startsWith('/')) {
+                        return u;
+                      }
+                      // Otherwise, assume it's a filename and prepend /images/
+                      return `/images/${u}`;
                     } catch {
                       return "https://via.placeholder.com/128";
                     }

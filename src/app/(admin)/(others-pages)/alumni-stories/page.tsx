@@ -250,7 +250,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
 export default function AlumniPage() {
   const [selected, setSelected] = useState<TabKey>("viewStories");
   const queryClient = useQueryClient();
-  const { data: rawStories, isLoading, isFetching, isError, error } = useAlumniStories();
+  const { data: rawStories, isLoading, isFetching, isError, error, refetch } = useAlumniStories();
   const [stories, setStories] = useState<Story[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -282,6 +282,13 @@ export default function AlumniPage() {
     }));
     setStories(mapped);
   }, [rawStories]);
+
+  // Ensure data is fetched on mount
+  useEffect(() => {
+    if (!isLoading && !rawStories && !isError) {
+      refetch();
+    }
+  }, [isLoading, rawStories, isError, refetch]);
 
   return (
     <ComponentCard title="Alumni Stories" className="">
@@ -340,6 +347,33 @@ export default function AlumniPage() {
                 aria-label="Search stories by name, program, session, or description"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
+                refetch();
+              }}
+              disabled={isFetching}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              aria-label="Refresh stories list"
+            >
+              {isFetching ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </>
+              )}
+            </button>
           </div>
         )}
         {selected === "viewStories" && (
@@ -359,7 +393,8 @@ export default function AlumniPage() {
                 setDeletingIds((prev) => new Set(prev).add(id));
                 const res = await fetch(`/api/alumni-stories/${id}`, { method: "DELETE" });
                 if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
+                await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
+                await queryClient.refetchQueries({ queryKey: alumniStoriesKey, exact: false });
                 setActionMessage("Story deleted successfully.");
               } catch (err) {
                 const msg = err instanceof Error ? err.message : "Failed to delete. Please try again.";
@@ -546,7 +581,8 @@ const AddStoryForm: React.FC = () => {
         throw new Error(err?.message || `Failed (${res.status})`);
       }
       setServerMsg("Story saved successfully.");
-      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
+      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
+      await queryClient.refetchQueries({ queryKey: alumniStoriesKey, exact: false });
       reset();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unexpected error while saving.";
@@ -642,13 +678,20 @@ const AddStoryForm: React.FC = () => {
 };
 function safeImageSrc(input?: string): string {
   const u = String(input || "").trim();
-  if (!u) return "https://via.placeholder.com/64";
+  if (!u || u === "null") return "https://via.placeholder.com/64";
   try {
-    const isAbsolute = /^https?:\/\//i.test(u);
-    if (!isAbsolute) return u;
-    const parsed = new URL(u);
-    if (parsed.protocol === "http:") parsed.protocol = "https:";
-    return parsed.toString();
+    // If it's an absolute URL (http/https), use it as is
+    if (/^https?:\/\//i.test(u)) {
+      const parsed = new URL(u);
+      if (parsed.protocol === "http:") parsed.protocol = "https:";
+      return parsed.toString();
+    }
+    // If it starts with /, use it as is
+    if (u.startsWith('/')) {
+      return u;
+    }
+    // Otherwise, assume it's a filename and prepend /images/
+    return `/images/${u}`;
   } catch {
     return "https://via.placeholder.com/64";
   }

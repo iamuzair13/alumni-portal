@@ -42,7 +42,73 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const storyAlumniId = Number(id);
+  const storyId = Number(id);
+  
+  if (isNaN(storyId)) {
+    return (
+      <>
+        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+          <div className="border bg-white relative z-50">
+            <AppHeader />
+          </div>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+              <Alert variant="error" title="Invalid Story ID" message="The story ID is invalid." />
+              <Link href="/alumni-success" className="mt-4 inline-block text-blue-600 hover:text-blue-700">
+                ← Back to Stories
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Fetch story first to get alumni ID
+  const storyRows = await sql/* sql */`
+    SELECT s.alumniid, s.alumnistories, s.storytitle, a.sapid, a.alumniname, a.facultyname, a.departmentname, a.yearofending, a.contactno, a.personalemail, a.officialemail, a.universityemail
+    FROM public.tblalumnistories s
+    INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+    WHERE s.id = ${storyId}
+    LIMIT 1
+  `;
+  
+  if (!storyRows[0]) {
+    return (
+      <>
+        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+          <div className="border bg-white relative z-50">
+            <AppHeader />
+          </div>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+              <Alert variant="error" title="Story Not Found" message="The story you're trying to edit does not exist." />
+              <Link href="/alumni-success" className="mt-4 inline-block text-blue-600 hover:text-blue-700">
+                ← Back to Stories
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+  
+  const storyData = storyRows[0] as {
+    alumniid: number;
+    alumnistories: string | null;
+    storytitle: string | null;
+    sapid: string | null;
+    alumniname: string | null;
+    facultyname: string | null;
+    departmentname: string | null;
+    yearofending: number | null;
+    contactno: string | null;
+    personalemail: string | null;
+    officialemail: string | null;
+    universityemail: string | null;
+  };
+  
+  const storyAlumniId = Number(storyData.alumniid);
   
   // Verify ownership
   let isOwner = false;
@@ -77,35 +143,8 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  // Fetch user data and existing story
-  const [userRows, storyRows] = await Promise.all([
-    sql/* sql */`
-      SELECT sapid, alumniname, facultyname, departmentname, yearofending, contactno, personalemail, officialemail, universityemail
-      FROM public.tbl_alumni 
-      WHERE alumniid = ${storyAlumniId}
-      LIMIT 1`,
-    sql/* sql */`
-      SELECT alumnistories, storytitle FROM public.tblalumnistories
-      WHERE alumniid = ${storyAlumniId}
-      LIMIT 1`
-  ]);
-
-  const r = userRows[0] as {
-    sapid: string | null;
-    alumniname: string | null;
-    facultyname: string | null;
-    departmentname: string | null;
-    yearofending: number | null;
-    contactno: string | null;
-    personalemail: string | null;
-    officialemail: string | null;
-    universityemail: string | null;
-  } | undefined;
-
-  const storyData = storyRows[0] as {
-    alumnistories: string | null;
-    storytitle: string | null;
-  } | undefined;
+  // Use data from story query
+  const r = storyData;
 
   if (!r) {
     return (
@@ -134,8 +173,8 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   const department = String(r?.departmentname ?? "");
   const passingYear = r?.yearofending ?? null;
   const contactNumber = String(r?.contactno ?? "");
-  const existingStory = String(storyData?.alumnistories ?? "");
-  const existingTitle = String(storyData?.storytitle ?? "");
+  const existingStory = String(r?.alumnistories ?? "");
+  const existingTitle = String(r?.storytitle ?? "");
 
   return (
     <>

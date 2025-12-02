@@ -6,6 +6,9 @@ import { JSDOM } from "jsdom";
 import { sendSuccessStoryEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 // Configure DOMPurify for server-side sanitization
 const window = new JSDOM("").window;
@@ -24,11 +27,13 @@ type StoryItem = {
 };
 
 type StoryRow = {
+  id: number;
   alumniid: number;
   alumnistories: string | null;
-  alumniimage: string | null;
+  story_image: string | null;
   status: string | null;
   createdat: string | null;
+  storytitle: string | null;
   alumniname: string | null;
   degreetitle: string | null;
   academicsession: string | null;
@@ -94,11 +99,13 @@ export async function GET() {
     
     const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
+        s.id,
         s.alumniid,
         s.alumnistories,
-        s.alumniimage,
+        s.story_image,
         s.status,
         s.createdat,
+        s.storytitle,
         a.alumniname,
         a.degreetitle,
         a.academicsession,
@@ -116,14 +123,14 @@ export async function GET() {
       LIMIT 200` as StoryRow[]);
     
     const items = rows.map((r): StoryItem => {
-      const id = String(r.alumniid ?? "");
+      const id = String(r.id ?? "");
       const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
-      const title = String(r.alumniname ?? "");
+      const title = String(r.storytitle ?? r.alumniname ?? "");
       const name = String(r.alumniname ?? "");
       const program = String(r.degreetitle ?? "");
       const session = String(r.academicsession ?? "");
       const shortDescription = String(r.alumnistories ?? "");
-      const imageUrl = String(r.alumniimage ?? r.image1 ?? "");
+      const imageUrl = String(r.story_image ?? r.image1 ?? "");
       return { id, date, title, name, program, session, shortDescription, imageUrl };
     });
     
@@ -172,18 +179,104 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    const body = await req.json();
-    const parsed = storyServerSchema.safeParse(body);
-    if (!parsed.success) {
-      console.error("[API] Story validation failed:", JSON.stringify(parsed.error.format(), null, 2));
-      console.error("[API] Received body:", JSON.stringify(body, null, 2));
-      return NextResponse.json({ 
-        message: "Validation failed", 
-        issues: parsed.error.format(),
-        received: body 
-      }, { status: 422 });
+    // Check if request is FormData (for image upload) or JSON
+    const contentType = req.headers.get("content-type") || "";
+    let v: ServerStoryPayload;
+    let storyImageFilename: string | null = null;
+    
+    if (contentType.includes("multipart/form-data")) {
+      // Handle FormData with image upload
+      const formData = await req.formData();
+      
+      // Extract form fields
+      const sapId = String(formData.get("sapId") || "");
+      const name = String(formData.get("name") || "");
+      const email = String(formData.get("email") || "");
+      const faculty = String(formData.get("faculty") || "");
+      const department = String(formData.get("department") || "");
+      const passingYear = formData.get("passingYear") ? Number(formData.get("passingYear")) : null;
+      const contactNumber = formData.get("contactNumber") ? String(formData.get("contactNumber")) : null;
+      const storyTitle = String(formData.get("storyTitle") || "");
+      const storyHtml = String(formData.get("storyHtml") || "");
+      const imageFile = formData.get("storyImage") as File | null;
+      
+      // Validate and save image if provided
+      if (imageFile && imageFile.size > 0) {
+        // Validate file type
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+        if (!allowedTypes.includes(imageFile.type)) {
+          return NextResponse.json({ 
+            error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." 
+          }, { status: 400 });
+        }
+        
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (imageFile.size > maxSize) {
+          return NextResponse.json({ 
+            error: "File size exceeds 5MB limit" 
+          }, { status: 400 });
+        }
+        
+        // Generate unique filename (max 50 chars as per schema VARCHAR(50))
+        const timestamp = Date.now();
+        const extension = imageFile.name.split(".").pop() || "jpg";
+        // Format: story-{timestamp}.{ext} - ensure it fits in VARCHAR(50)
+        const baseFilename = `story-${timestamp}.${extension}`;
+        storyImageFilename = baseFilename.length > 50 ? baseFilename.slice(0, 50) : baseFilename;
+        
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = join(process.cwd(), "public", "images");
+        if (!existsSync(uploadsDir)) {
+          await mkdir(uploadsDir, { recursive: true });
+        }
+        
+        // Save file
+        const filePath = join(uploadsDir, storyImageFilename);
+        const bytes = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await writeFile(filePath, buffer);
+        
+        console.log(`[API] Story image saved: ${storyImageFilename}`);
+      }
+      
+      // Build payload object for validation
+      const payload = {
+        sapId,
+        name,
+        email,
+        faculty,
+        department,
+        passingYear,
+        contactNumber,
+        storyTitle,
+        storyHtml,
+      };
+      
+      const parsed = storyServerSchema.safeParse(payload);
+      if (!parsed.success) {
+        console.error("[API] Story validation failed:", JSON.stringify(parsed.error.format(), null, 2));
+        return NextResponse.json({ 
+          message: "Validation failed", 
+          issues: parsed.error.format()
+        }, { status: 422 });
+      }
+      v = parsed.data;
+    } else {
+      // Handle JSON request (backward compatibility)
+      const body = await req.json();
+      const parsed = storyServerSchema.safeParse(body);
+      if (!parsed.success) {
+        console.error("[API] Story validation failed:", JSON.stringify(parsed.error.format(), null, 2));
+        console.error("[API] Received body:", JSON.stringify(body, null, 2));
+        return NextResponse.json({ 
+          message: "Validation failed", 
+          issues: parsed.error.format(),
+          received: body 
+        }, { status: 422 });
+      }
+      v = parsed.data;
     }
-    const v: ServerStoryPayload = parsed.data;
     
     // Sanitize HTML using DOMPurify
     const cleanHtml = purify.sanitize(String(v.storyHtml || ""), {
@@ -255,38 +348,41 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Insert/update story according to schema.sql structure
-      // Schema columns: alumniid (PK), alumnistories (TEXT), alumniimage (VARCHAR(50)), status (VARCHAR(20)), createdat (TIMESTAMP)
-      console.log(`[API] Attempting to save story for alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
+      // Insert new story - allow multiple stories per alumni
+      // Schema columns: id (PK, auto-increment), alumniid (FK), alumnistories (TEXT), story_image (VARCHAR(50)), status (VARCHAR(20)), createdat (TIMESTAMP), storytitle (TEXT)
+      console.log(`[API] Attempting to save new story for alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
       console.log(`[API] Story content length: ${cleanHtml.length} characters`);
+      console.log(`[API] Story image: ${storyImageFilename || 'none'}`);
       
       const result = await sql/* sql */`
-        INSERT INTO public.tblalumnistories (alumniid, alumnistories, alumniimage, status, createdat)
-        VALUES (${alumniId}, ${cleanHtml}, NULL, NULL, NOW())
-        ON CONFLICT (alumniid) DO UPDATE SET
-          alumnistories = EXCLUDED.alumnistories,
-          createdat = NOW()`;
+        INSERT INTO public.tblalumnistories (alumniid, alumnistories, story_image, status, createdat, storytitle)
+        VALUES (${alumniId}, ${cleanHtml}, ${storyImageFilename}, NULL, NOW(), ${v.storyTitle})
+        RETURNING id`;
       
-      console.log(`[API] Story saved successfully for alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
+      const newStoryId = result[0] ? Number((result[0] as { id: number }).id) : null;
+      console.log(`[API] Story saved successfully - Story ID: ${newStoryId}, Alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
       console.log(`[API] Database operation completed. Rows affected:`, Array.isArray(result) ? result.length : 'N/A');
       
       // Verify the story was saved by querying it back
-      const verifyQuery = await sql/* sql */`
-        SELECT s.alumniid, s.alumnistories, a.alumniname
-        FROM public.tblalumnistories s
-        INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
-        WHERE s.alumniid = ${alumniId}
-        LIMIT 1
-      `;
-      console.log(`[API] Verification query result:`, verifyQuery.length > 0 ? 'Story found in database' : 'Story NOT found in database');
-      if (verifyQuery.length > 0) {
-        const story = verifyQuery[0] as { alumniid: number; alumnistories: string | null; alumniname: string | null };
-        console.log(`[API] Story details:`, {
-          alumniid: story.alumniid,
-          contentLength: story.alumnistories?.length || 0,
-          hasContent: story.alumnistories ? story.alumnistories.length > 0 : false,
-          alumniname: story.alumniname || 'NULL'
-        });
+      if (newStoryId) {
+        const verifyQuery = await sql/* sql */`
+          SELECT s.id, s.alumniid, s.alumnistories, a.alumniname
+          FROM public.tblalumnistories s
+          INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+          WHERE s.id = ${newStoryId}
+          LIMIT 1
+        `;
+        console.log(`[API] Verification query result:`, verifyQuery.length > 0 ? 'Story found in database' : 'Story NOT found in database');
+        if (verifyQuery.length > 0) {
+          const story = verifyQuery[0] as { id: number; alumniid: number; alumnistories: string | null; alumniname: string | null };
+          console.log(`[API] Story details:`, {
+            storyId: story.id,
+            alumniid: story.alumniid,
+            contentLength: story.alumnistories?.length || 0,
+            hasContent: story.alumnistories ? story.alumnistories.length > 0 : false,
+            alumniname: story.alumniname || 'NULL'
+          });
+        }
       }
     } catch (dbError) {
       console.error("[API] Database error saving story:", dbError);

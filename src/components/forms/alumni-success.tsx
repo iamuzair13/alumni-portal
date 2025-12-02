@@ -68,6 +68,10 @@ export default function AlumniSuccessForm({
 }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
   const { 
     handleSubmit, 
     control, 
@@ -129,6 +133,50 @@ export default function AlumniSuccessForm({
     }
   }, [editor, existingStory, setValue]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.", {
+        duration: 3000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error("File size exceeds 5MB limit. Please choose a smaller image.", {
+        duration: 3000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      return;
+    }
+
+    setImageFile(file);
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+  };
+
   const onSubmit = async (vals: FormVals) => {
     // Get the latest HTML from editor if available
     const htmlContent = editor?.getHTML() || vals.storyHtml;
@@ -155,23 +203,44 @@ export default function AlumniSuccessForm({
         ALLOWED_ATTR: ["href", "target", "rel"],
       });
 
-      const payload = {
-        sapId,
-        name: vals.name,
-        email,
-        faculty: vals.faculty,
-        department: vals.department,
-        passingYear: vals.passingYear || null,
-        contactNumber: vals.contactNumber || null,
-        storyTitle: vals.storyTitle,
-        storyHtml: sanitizedHtml,
-      };
+      // Use FormData if image is present, otherwise use JSON
+      let res: Response;
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("sapId", sapId);
+        formData.append("name", vals.name);
+        formData.append("email", email);
+        formData.append("faculty", vals.faculty);
+        formData.append("department", vals.department);
+        if (vals.passingYear) formData.append("passingYear", String(vals.passingYear));
+        if (vals.contactNumber) formData.append("contactNumber", vals.contactNumber);
+        formData.append("storyTitle", vals.storyTitle);
+        formData.append("storyHtml", sanitizedHtml);
+        formData.append("storyImage", imageFile);
 
-      const res = await fetch("/api/alumni-stories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        res = await fetch(storyId ? `/api/alumni-stories/${encodeURIComponent(storyId)}` : "/api/alumni-stories", {
+          method: storyId ? "PUT" : "POST",
+          body: formData,
+        });
+      } else {
+        const payload = {
+          sapId,
+          name: vals.name,
+          email,
+          faculty: vals.faculty,
+          department: vals.department,
+          passingYear: vals.passingYear || null,
+          contactNumber: vals.contactNumber || null,
+          storyTitle: vals.storyTitle,
+          storyHtml: sanitizedHtml,
+        };
+
+        res = await fetch("/api/alumni-stories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
       
       toast.dismiss(loadingToast);
       
@@ -196,6 +265,11 @@ export default function AlumniSuccessForm({
       
       reset();
       editor?.commands.clearContent();
+      setImageFile(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       
       // Navigate back to story detail page if editing, otherwise to stories list
       setTimeout(() => {
@@ -516,6 +590,63 @@ export default function AlumniSuccessForm({
         />
             {errors.storyHtml && <span className={errorText}>{errors.storyHtml.message}</span>}
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">You can format your story with headings, bold, italic, lists, and links.</p>
+          </div>
+
+          {/* Story Image - Optional */}
+          <div className="md:col-span-2">
+            <label htmlFor="storyImage" className={labelBase}>
+              Story Image (Optional)
+            </label>
+            <div className="space-y-3">
+              <input
+                ref={fileInputRef}
+                id="storyImage"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+                aria-label="Upload story image"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {imageFile ? "Change Image" : "Choose Image"}
+              </button>
+              {imagePreview && (
+                <div className="mt-3">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Preview:</p>
+                  <div className="relative inline-block">
+                    <img
+                      src={imagePreview}
+                      alt="Story preview"
+                      className="max-w-full h-auto max-h-64 rounded-lg border border-gray-200 dark:border-gray-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = "";
+                        }
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      aria-label="Remove image"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">Upload an image to accompany your story (JPEG, PNG, GIF, or WebP, max 5MB)</p>
+            </div>
           </div>
         </div>
 

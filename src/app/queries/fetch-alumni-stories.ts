@@ -52,11 +52,11 @@ export function useAlumniStories() {
   return useQuery<AlumniStoryItem[], Error>({
     queryKey: alumniStoriesKey,
     queryFn: ({ signal }) => getAlumniStories(signal),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-    refetchOnMount: true, // Only refetch if data is stale
+    staleTime: 30 * 1000, // 30 seconds - shorter for admin pages to see updates faster
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to the tab
+    refetchOnReconnect: true, // Refetch when network reconnects
+    refetchOnMount: true, // Always refetch when component mounts
     retry: 2, // Retry failed requests 2 times
     retryDelay: 1000, // Wait 1 second between retries
     // Return empty array as default so UI doesn't break

@@ -204,15 +204,15 @@ CREATE TABLE public.tblalumnitalks (
 -- ================================================
 -- TABLE: tblalumnistories
 -- ================================================
-CREATE TABLE public.tblalumnistories (
-  alumniid INT NOT NULL PRIMARY KEY,
-  alumnistories TEXT,
-  alumniimage VARCHAR(50),
-  status VARCHAR(20),
-  createdat TIMESTAMP,
-  FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid) ON DELETE CASCADE
-);
-
+create table public.tblalumnistories (
+  alumniid integer not null,
+  alumnistories text null,
+  story_image character varying(50) null,
+  status character varying(20) null,
+  createdat timestamp without time zone null,
+  storytitle text null,
+  constraint tblalumnistories_pkey primary key (alumniid)
+) TABLESPACE pg_default;
 -- ================================================
 -- TABLE: tblalumniassociation
 -- ================================================

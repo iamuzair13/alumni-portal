@@ -41,13 +41,24 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   let isOwner = false;
   if (email) {
     try {
-      const storyAlumniId = Number(id);
-      const userRows = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE (personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email})
-        AND alumniid = ${storyAlumniId}
+      const storyId = Number(id);
+      // First get the story to find the alumni ID
+      const storyRows = await sql/* sql */`
+        SELECT s.alumniid 
+        FROM public.tblalumnistories s
+        WHERE s.id = ${storyId}
         LIMIT 1`;
-      isOwner = userRows.length > 0;
+      
+      if (storyRows[0]) {
+        const storyAlumniId = Number((storyRows[0] as { alumniid: number }).alumniid);
+        // Check if current user owns this alumni record
+        const userRows = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE (personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email})
+          AND alumniid = ${storyAlumniId}
+          LIMIT 1`;
+        isOwner = userRows.length > 0;
+      }
     } catch {
       isOwner = false;
     }
@@ -99,13 +110,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             {/* Header Image */}
-            {data.imageUrl && (
+            {data.imageUrl && data.imageUrl.trim() !== "" && data.imageUrl !== "null" && (
               <div className="relative h-64 w-full bg-gradient-to-br from-blue-50 to-indigo-100">
                 <Image
-                  src={data.imageUrl.startsWith('/') ? data.imageUrl : `/images/${data.imageUrl}`}
+                  src={data.imageUrl.startsWith('http') ? data.imageUrl : data.imageUrl.startsWith('/') ? data.imageUrl : `/images/${data.imageUrl}`}
                   alt={title}
                   fill
                   className="object-cover"
+                  unoptimized
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
