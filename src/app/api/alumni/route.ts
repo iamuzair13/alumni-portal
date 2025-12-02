@@ -385,63 +385,128 @@ export async function POST(req: Request) {
     const v = parsed.data;
     const d = mapToDb(v);
     
-    // Check if alumni record already exists by SAP ID OR Registration Number
-    // Both identifiers are treated equally - if either matches, it's the same alumni
-    let existingRecord: { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null } | null = null;
+    // Check if alumni record already exists by ANY identifier:
+    // - SAP ID, Registration Number, CNIC/Passport, Phone Number, or Email (personal/university/official/alumni)
+    // If ANY identifier matches, we update the existing record
+    let existingRecord: { 
+      alumniid: number; 
+      verify: string | null; 
+      registrationno: string | null; 
+      sapid: string | null;
+      cnicpassport: string | null;
+      contactno: string | null;
+      personalemail: string | null;
+      universityemail: string | null;
+      officialemail: string | null;
+      alumniemail: string | null;
+    } | null = null;
     
+    // Extract all identifier fields
     const regNo = d.registrationno ? String(d.registrationno).trim() : null;
     const sapId = d.sapid ? String(d.sapid).trim() : null;
+    const cnic = d.cnicpassport ? String(d.cnicpassport).trim() : null;
+    const phone = d.contactno ? String(d.contactno).trim() : null;
+    const personalEmail = d.personalemail ? String(d.personalemail).trim().toLowerCase() : null;
+    const officialEmail = d.officialemail ? String(d.officialemail).trim().toLowerCase() : null;
     
-    // Check for existing record by either Registration Number OR SAP ID
-    // SAP ID is treated as a primary identifier, same as registration number
-    if (regNo || sapId) {
-      let checkQuery;
-      if (regNo && sapId) {
-        // Check by both identifiers - if EITHER matches, it's the same alumni
-        checkQuery = sql/* sql */`
-          SELECT alumniid, verify, registrationno, sapid
-          FROM public.tbl_alumni 
-          WHERE (registrationno = ${regNo} AND registrationno IS NOT NULL AND registrationno != '')
-             OR (sapid = ${sapId} AND sapid IS NOT NULL AND sapid != '')
-          LIMIT 1
-        `;
-      } else if (regNo) {
-        // Check only by Registration Number
-        checkQuery = sql/* sql */`
-          SELECT alumniid, verify, registrationno, sapid
-          FROM public.tbl_alumni 
-          WHERE registrationno = ${regNo} AND registrationno IS NOT NULL AND registrationno != ''
-          LIMIT 1
-        `;
-      } else {
-        // Check only by SAP ID - SAP ID is treated as a primary identifier
-        checkQuery = sql/* sql */`
-          SELECT alumniid, verify, registrationno, sapid
-          FROM public.tbl_alumni 
-          WHERE sapid = ${sapId} AND sapid IS NOT NULL AND sapid != ''
-          LIMIT 1
-        `;
-      }
+    // Build query conditions for all identifiers using sql fragments
+    const conditions: ReturnType<typeof sql>[] = [];
+    
+    if (regNo) {
+      conditions.push(sql`(registrationno = ${regNo} AND registrationno IS NOT NULL AND registrationno != '')`);
+    }
+    if (sapId) {
+      conditions.push(sql`(sapid = ${sapId} AND sapid IS NOT NULL AND sapid != '')`);
+    }
+    if (cnic) {
+      conditions.push(sql`(cnicpassport = ${cnic} AND cnicpassport IS NOT NULL AND cnicpassport != '')`);
+    }
+    if (phone) {
+      conditions.push(sql`(contactno = ${phone} AND contactno IS NOT NULL AND contactno != '')`);
+    }
+    if (personalEmail) {
+      conditions.push(sql`(LOWER(personalemail) = ${personalEmail} AND personalemail IS NOT NULL AND personalemail != '')`);
+    }
+    if (officialEmail) {
+      conditions.push(sql`(LOWER(officialemail) = ${officialEmail} AND officialemail IS NOT NULL AND officialemail != '')`);
+    }
+    
+    // Check for existing record if we have at least one identifier
+    if (conditions.length > 0) {
+      // Combine all conditions with OR
+      const whereCondition = conditions.reduce((acc, condition, index) => {
+        if (index === 0) return condition;
+        return sql`${acc} OR ${condition}`;
+      });
+      
+      const checkQuery = sql/* sql */`
+        SELECT alumniid, verify, registrationno, sapid, cnicpassport, contactno, 
+               personalemail, universityemail, officialemail, alumniemail
+        FROM public.tbl_alumni 
+        WHERE ${whereCondition}
+        LIMIT 1
+      `;
       
       const checkResult = await checkQuery;
       if (checkResult.length > 0) {
-        existingRecord = checkResult[0] as { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null };
+        existingRecord = checkResult[0] as {
+          alumniid: number; 
+          verify: string | null; 
+          registrationno: string | null; 
+          sapid: string | null;
+          cnicpassport: string | null;
+          contactno: string | null;
+          personalemail: string | null;
+          universityemail: string | null;
+          officialemail: string | null;
+          alumniemail: string | null;
+        };
         
         // Determine which identifier matched
-        const matchedByRegNo = regNo && existingRecord.registrationno && 
-          String(existingRecord.registrationno).trim().toLowerCase() === regNo.toLowerCase();
-        const matchedBySapId = sapId && existingRecord.sapid && 
-          String(existingRecord.sapid).trim().toLowerCase() === sapId.toLowerCase();
-        const matchedBy = matchedByRegNo ? 'registrationno' : (matchedBySapId ? 'sapid' : 'unknown');
+        const matchedBy: string[] = [];
+        if (regNo && existingRecord.registrationno && 
+            String(existingRecord.registrationno).trim().toLowerCase() === regNo.toLowerCase()) {
+          matchedBy.push('registrationno');
+        }
+        if (sapId && existingRecord.sapid && 
+            String(existingRecord.sapid).trim().toLowerCase() === sapId.toLowerCase()) {
+          matchedBy.push('sapid');
+        }
+        if (cnic && existingRecord.cnicpassport && 
+            String(existingRecord.cnicpassport).trim().toLowerCase() === cnic.toLowerCase()) {
+          matchedBy.push('cnicpassport');
+        }
+        if (phone && existingRecord.contactno && 
+            String(existingRecord.contactno).trim().toLowerCase() === phone.toLowerCase()) {
+          matchedBy.push('contactno');
+        }
+        if (personalEmail && existingRecord.personalemail && 
+            String(existingRecord.personalemail).trim().toLowerCase() === personalEmail) {
+          matchedBy.push('personalemail');
+        }
+        if (officialEmail && existingRecord.officialemail && 
+            String(existingRecord.officialemail).trim().toLowerCase() === officialEmail) {
+          matchedBy.push('officialemail');
+        }
         
         console.log("[API] /api/alumni POST - Found existing record:", {
           alumniid: existingRecord.alumniid,
           verify: existingRecord.verify,
           registrationno: existingRecord.registrationno,
           sapid: existingRecord.sapid,
-          matchedBy,
-          incomingRegNo: regNo,
-          incomingSapId: sapId
+          cnicpassport: existingRecord.cnicpassport,
+          contactno: existingRecord.contactno,
+          personalemail: existingRecord.personalemail,
+          officialemail: existingRecord.officialemail,
+          matchedBy: matchedBy.length > 0 ? matchedBy.join(', ') : 'unknown',
+          incomingIdentifiers: {
+            regNo: regNo || null,
+            sapId: sapId || null,
+            cnic: cnic || null,
+            phone: phone || null,
+            personalEmail: personalEmail || null,
+            officialEmail: officialEmail || null
+          }
         });
       }
     }
@@ -492,31 +557,54 @@ export async function POST(req: Request) {
       const alumniId = existingRecord.alumniid;
       
       // Preserve identifier fields: if incoming value is missing, keep the existing value
-      // This prevents losing sapid or registrationno when re-registering with only one identifier
+      // This prevents losing any identifier when re-registering with only some identifiers
       const preservedRegNo = d.registrationno ?? existingRecord.registrationno;
       const preservedSapId = d.sapid ?? existingRecord.sapid;
+      const preservedCnic = d.cnicpassport ?? existingRecord.cnicpassport;
+      const preservedPhone = d.contactno ?? existingRecord.contactno;
+      const preservedPersonalEmail = d.personalemail ?? existingRecord.personalemail;
+      const preservedOfficialEmail = d.officialemail ?? existingRecord.officialemail;
       
       console.log("[API] /api/alumni POST - Preserving identifier fields:", {
-        existingRegNo: existingRecord.registrationno,
-        existingSapId: existingRecord.sapid,
-        incomingRegNo: d.registrationno,
-        incomingSapId: d.sapid,
-        preservedRegNo,
-        preservedSapId
+        existing: {
+          regNo: existingRecord.registrationno,
+          sapId: existingRecord.sapid,
+          cnic: existingRecord.cnicpassport,
+          phone: existingRecord.contactno,
+          personalEmail: existingRecord.personalemail,
+          officialEmail: existingRecord.officialemail
+        },
+        incoming: {
+          regNo: d.registrationno,
+          sapId: d.sapid,
+          cnic: d.cnicpassport,
+          phone: d.contactno,
+          personalEmail: d.personalemail,
+          officialEmail: d.officialemail
+        },
+        preserved: {
+          regNo: preservedRegNo,
+          sapId: preservedSapId,
+          cnic: preservedCnic,
+          phone: preservedPhone,
+          personalEmail: preservedPersonalEmail,
+          officialEmail: preservedOfficialEmail
+        }
       });
       
       const updateResult = await sql/* sql */`
         UPDATE public.tbl_alumni SET
           registrationno = ${preservedRegNo},
           sapid = ${preservedSapId},
+          cnicpassport = ${preservedCnic},
+          contactno = ${preservedPhone},
+          personalemail = ${preservedPersonalEmail},
+          officialemail = ${preservedOfficialEmail},
           alumniname = ${d.alumniname},
           gender = ${d.gender},
           fathername = ${d.fathername},
           dateofbirth = ${d.dateofbirth},
           maritalstatus = ${d.maritalstatus},
-          cnicpassport = ${d.cnicpassport},
-          contactno = ${d.contactno},
-          personalemail = ${d.personalemail},
           password = ${d.password},
           address = ${d.address},
           province = ${d.province},
