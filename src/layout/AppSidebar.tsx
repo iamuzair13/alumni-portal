@@ -38,6 +38,11 @@ const navItems: NavItem[] = [
     path: "/events",
   },
   {
+    icon: <DocsIcon />,
+    name: "Leadership", 
+    path: "/leadership",
+  },
+  {
     icon: <PlugInIcon />,
     name: "Setup", //add dropdown with users and locations
     path : "/setup",	

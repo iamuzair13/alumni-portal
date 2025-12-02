@@ -83,47 +83,66 @@ export async function POST(request: NextRequest) {
     };
 
     const postDisplayName = postDisplayNames[post] || post;
+    const alumniIdNum = Number(alumniId);
+    if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
+      return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
+    }
 
-    // Check if chapter_leadership already exists for this alumni
-    const alumniRecord = await sql/* sql */`
-      SELECT chapter_leadership FROM public.tbl_alumni 
-      WHERE alumniid = ${alumniId}
+    // Check if alumni already has a pending application (by alumniid)
+    const pendingApp = await sql/* sql */`
+      SELECT id, status FROM public.chapter_leadership 
+      WHERE alumniid = ${alumniIdNum} AND status = 'pending'
       LIMIT 1
     `;
+    
+    if (pendingApp && pendingApp.length > 0) {
+      return NextResponse.json({ 
+        error: "You already have a pending application. Please wait for admin approval." 
+      }, { status: 400 });
+    }
 
-    const existingChapterLeadershipId = alumniRecord[0]?.chapter_leadership;
+    // Check if alumni already has an approved leadership position
+    const approvedApp = await sql/* sql */`
+      SELECT cl.id, cl.status 
+      FROM public.chapter_leadership cl
+      INNER JOIN public.tbl_alumni a ON a.chapter_leadership = cl.id
+      WHERE a.alumniid = ${alumniIdNum} AND cl.status = 'approved'
+      LIMIT 1
+    `;
+    
+    if (approvedApp && approvedApp.length > 0) {
+      return NextResponse.json({ 
+        error: "You are already approved as a leader. No further application is required." 
+      }, { status: 400 });
+    }
 
-    if (existingChapterLeadershipId) {
-      // Update existing record in chapter_leadership
-      await sql/* sql */`
-        UPDATE public.chapter_leadership 
-        SET post = ${postDisplayName},
-            created_at = NOW()
-        WHERE id = ${existingChapterLeadershipId}
-      `;
-    } else {
-      // Insert new record into chapter_leadership
-      const newChapterLeadership = await sql/* sql */`
-        INSERT INTO public.chapter_leadership (post, created_at)
-        VALUES (${postDisplayName}, NOW())
-        RETURNING id
-      `;
-      
-      const newChapterLeadershipId = newChapterLeadership[0]?.id;
-      
-      if (newChapterLeadershipId) {
-        // Update tbl_alumni to link to the new chapter_leadership record
-        await sql/* sql */`
-          UPDATE public.tbl_alumni 
-          SET chapter_leadership = ${newChapterLeadershipId}
-          WHERE alumniid = ${alumniId}
-        `;
-      }
+    // Also check if there's a rejected application that we should allow resubmission
+    // (Optional: you might want to block resubmission of rejected apps too)
+
+    // Insert new record with status='pending' (DO NOT link to tbl_alumni yet)
+    // Store alumniid for reference (aligned with schema)
+    // Use INSERT with ON CONFLICT to prevent duplicates (if unique constraint exists)
+    const newChapterLeadership = await sql/* sql */`
+      INSERT INTO public.chapter_leadership (post, created_at, status, updated_at, alumniid)
+      VALUES (${postDisplayName}, NOW(), 'pending', NOW(), ${alumniIdNum})
+      RETURNING id, status
+    `;
+    
+    if (!newChapterLeadership || newChapterLeadership.length === 0) {
+      throw new Error("Failed to create chapter leadership record");
+    }
+    
+    const createdRecord = newChapterLeadership[0] as { id: number; status: string };
+    console.log(`[Chapter Leadership] Application created - ID: ${createdRecord.id}, Status: ${createdRecord.status}, Alumni ID: ${alumniIdNum}`);
+    
+    // Verify the record was created with 'pending' status
+    if (createdRecord.status !== 'pending') {
+      console.error(`[Chapter Leadership] WARNING: Application was created with status '${createdRecord.status}' instead of 'pending'!`);
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: "Application submitted successfully" 
+      message: "Application submitted successfully. It is now pending admin approval." 
     });
   } catch (error) {
     console.error("Error submitting chapter leadership application:", error);

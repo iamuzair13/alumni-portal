@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
 
 type AlumniAssociationFormValues = {
   role: string;
@@ -39,10 +40,27 @@ type Props = {
   alumniId: string;
 };
 
+async function fetchFormSettings() {
+  const res = await fetch("/api/leadership/settings");
+  if (!res.ok) {
+    return { chapter_leadership: true, association_leadership: true };
+  }
+  return res.json();
+}
+
 export default function AlumniAssociationForm({ alumniId }: Props) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
+
+  // Check if form is enabled
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["leadership-settings"],
+    queryFn: fetchFormSettings,
+    staleTime: 60 * 1000,
+  });
+
+  const isFormEnabled = settings?.association_leadership ?? true;
 
   const {
     register,
@@ -53,6 +71,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
     defaultValues: {
       role: "",
     },
+    disabled: !isFormEnabled,
   });
 
   const role = watch("role");
@@ -63,6 +82,11 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
   }, [role]);
 
   const onSubmit = async (data: AlumniAssociationFormValues) => {
+    // Prevent double submission
+    if (isSubmitting) {
+      return;
+    }
+
     if (!alumniId) {
       toast.error("Alumni ID is required. Please log in again.");
       return;
@@ -143,6 +167,34 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
   };
 
   const selectedRoleDetails = selectedRole ? ROLE_DETAILS[selectedRole] : null;
+
+  if (settingsLoading) {
+    return (
+      <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="flex items-center justify-center py-8">
+          <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isFormEnabled) {
+    return (
+      <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="rounded-lg border-2 border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 p-8 text-center">
+          <div className="mb-4">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Applications will open soon.</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Association leadership applications are currently disabled. Please check back later.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">

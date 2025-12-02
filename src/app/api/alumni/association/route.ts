@@ -84,42 +84,57 @@ export async function POST(request: NextRequest) {
     };
 
     const roleDisplayName = roleDisplayNames[role] || role;
+    const alumniIdNum = Number(alumniId);
+    if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
+      return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
+    }
 
-    // Check if a record already exists for this alumni
-    // tbl_alumni.association_job references tblalumniassociation.id
-    const existingAssociationJob = await sql/* sql */`
-      SELECT association_job FROM public.tbl_alumni 
-      WHERE alumniid = ${alumniId}
+    // Check if alumni already has a pending application (by alumni_id)
+    const pendingApp = await sql/* sql */`
+      SELECT id, status FROM public.tblalumniassociation 
+      WHERE alumni_id = ${alumniIdNum} AND status = 'pending'
       LIMIT 1
     `;
+    
+    if (pendingApp && pendingApp.length > 0) {
+      return NextResponse.json({ 
+        error: "You already have a pending application. Please wait for admin approval." 
+      }, { status: 400 });
+    }
 
-    const associationJobId = existingAssociationJob[0]?.association_job;
+    // Check if alumni already has an approved leadership position
+    const approvedApp = await sql/* sql */`
+      SELECT ass.id, ass.status 
+      FROM public.tblalumniassociation ass
+      INNER JOIN public.tbl_alumni a ON a.association_job = ass.id
+      WHERE a.alumniid = ${alumniIdNum} AND ass.status = 'approved'
+      LIMIT 1
+    `;
+    
+    if (approvedApp && approvedApp.length > 0) {
+      return NextResponse.json({ 
+        error: "You are already approved as a leader. No further application is required." 
+      }, { status: 400 });
+    }
 
-    if (associationJobId) {
-      // Update existing record in tblalumniassociation
-      await sql/* sql */`
-        UPDATE public.tblalumniassociation 
-        SET q3 = ${roleDisplayName},
-            createddatetime = NOW()
-        WHERE id = ${associationJobId}
-      `;
-    } else {
-      // Insert new record into tblalumniassociation
-      const insertResult = await sql/* sql */`
-        INSERT INTO public.tblalumniassociation (q3, createddatetime)
-        VALUES (${roleDisplayName}, NOW())
-        RETURNING id
-      `;
-      const newAssociationJobId = insertResult[0]?.id;
-      
-      if (newAssociationJobId) {
-        // Update tbl_alumni.association_job with the new ID
-        await sql/* sql */`
-          UPDATE public.tbl_alumni 
-          SET association_job = ${newAssociationJobId}
-          WHERE alumniid = ${alumniId}
-        `;
-      }
+    // Insert new record with status='pending' (DO NOT link to tbl_alumni yet)
+    // Aligned with schema - add status, rejection_reason, updated_at, alumni_id
+    const insertResult = await sql/* sql */`
+      INSERT INTO public.tblalumniassociation (q3, createddatetime, status, alumni_id)
+      VALUES (${roleDisplayName}, NOW(), 'pending', ${alumniIdNum})
+      RETURNING id, status
+    `;
+    
+    if (!insertResult || insertResult.length === 0) {
+      throw new Error("Failed to create association leadership record");
+    }
+    
+    const createdRecord = insertResult[0] as { id: number; status: string };
+    console.log(`[Association Leadership] Application created - ID: ${createdRecord.id}, Status: ${createdRecord.status}, Alumni ID: ${alumniIdNum}`);
+    
+    // Verify the record was created with 'pending' status
+    if (createdRecord.status !== 'pending') {
+      console.error(`[Association Leadership] WARNING: Application was created with status '${createdRecord.status}' instead of 'pending'!`);
     }
 
     // Send confirmation email
@@ -155,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: "Application submitted successfully" 
+      message: "Application submitted successfully. It is now pending admin approval." 
     });
   } catch (error) {
     console.error("Error submitting alumni association application:", error);
