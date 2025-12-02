@@ -228,7 +228,8 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       
       // Invalidate all alumni-related queries to ensure fresh data (including the list and counts)
       await queryClient.invalidateQueries({ queryKey: ["alumni"] });
-      await queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }); // Refresh counts
+      await queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
+      await queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Force immediate refetch
       await queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
       
       // If SAP ID was changed, update our current identifier

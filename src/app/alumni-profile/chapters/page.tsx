@@ -9,6 +9,7 @@ export const viewport: Viewport = {
 import { sql } from "@/lib/dbconnect";
 import AlumniChaptersForm from "@/components/forms/AlumniChaptersForm";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
@@ -60,6 +61,13 @@ async function getProfile(searchParams: { sapid?: string }) {
 type AlumniProfileSearchParams = { sapid?: string };
 
 export default async function ChaptersPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
+  const session = await auth();
+  
+  // Redirect to signin if no session
+  if (!session?.user) {
+    redirect("/signin");
+  }
+  
   const sp = await searchParams;
   let p: Profile | undefined;
   let profileError: string | null = null;

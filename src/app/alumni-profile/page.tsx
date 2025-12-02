@@ -9,6 +9,7 @@ export const viewport: Viewport = {
 import { sql } from "@/lib/dbconnect";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
@@ -82,6 +83,13 @@ type AlumniProfileSearchParams = { sapid?: string; modal?: string };
 
 
 export default async function Page({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
+  const session = await auth();
+  
+  // Redirect to signin if no session
+  if (!session?.user) {
+    redirect("/signin");
+  }
+  
   const sp = await searchParams;
   let p: Profile | undefined;
   let profileError: string | null = null;
@@ -90,7 +98,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   } catch (e) {
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
-  const session = await auth();
   const isAdmin = isAdminUser(session?.user);
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
@@ -161,7 +168,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   let cardStatusError: string | null = null;
 let cardPicture: string | null = null;
 let cardImageFile: string | null = null;
-  if (isAdmin) {
+  // Always check card status from database - don't auto-activate for admins or new users
+  // New users should see "Apply" button until they actually apply for a card
+  if (false) { // Disabled: was auto-setting to "active" for admins
+    // This was causing new users to see active card instead of Apply button
     cardStatus = "active";
     cardStatusError = null;
   } else {

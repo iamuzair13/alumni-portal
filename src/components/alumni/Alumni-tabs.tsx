@@ -193,8 +193,9 @@ export const AlumniTabs: React.FC = () => {
     queryFn: ({ signal }) => getAlumniCounts(signal, debouncedQuery || undefined),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchInterval: false, // Disable auto-refetch interval
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchOnReconnect: true, // Refetch when network reconnects
+    refetchOnMount: true, // Always refetch when component mounts
     enabled: true, // Always enabled
     retry: 2, // Retry failed requests 2 times
     retryDelay: 1000, // Wait 1 second between retries
@@ -521,7 +522,15 @@ export const AlumniTabs: React.FC = () => {
       return old.map((it) => (it.sapid === sapid ? { ...it, verify: verify ? "true" : "false" } : it));
     });
     // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
-    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
+    queryClient.invalidateQueries({ 
+      queryKey: ["alumnilist-counts"], 
+      exact: false 
+    });
+    // Force refetch to get immediate updates
+    queryClient.refetchQueries({ 
+      queryKey: ["alumnilist-counts"], 
+      exact: false 
+    });
   }, [queryClient]);
 
   const removeFromCache = useCallback((sapid: string) => {
@@ -530,7 +539,15 @@ export const AlumniTabs: React.FC = () => {
       return old.filter((it) => it.sapid !== sapid);
     });
     // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
-    queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
+    queryClient.invalidateQueries({ 
+      queryKey: ["alumnilist-counts"], 
+      exact: false 
+    });
+    // Force refetch to get immediate updates
+    queryClient.refetchQueries({ 
+      queryKey: ["alumnilist-counts"], 
+      exact: false 
+    });
   }, [queryClient]);
 
   // Open confirmation modal for verify
@@ -570,7 +587,8 @@ export const AlumniTabs: React.FC = () => {
       }
       setActionMessage("Alumni verified successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
-      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }); // Refresh counts
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
+      queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Force immediate refetch
       queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
     } catch (e: unknown) {
       // revert
@@ -616,7 +634,8 @@ export const AlumniTabs: React.FC = () => {
       console.log("[AlumniTabs] Unverify response:", responseData);
       setActionMessage("Alumni marked as unverified.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
-      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }); // Refresh counts
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
+      queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Force immediate refetch
       queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
     } catch (e: unknown) {
       // revert
@@ -665,7 +684,8 @@ export const AlumniTabs: React.FC = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] }),
         queryClient.invalidateQueries({ queryKey: ["alumnilist"] }),
-        queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"] }) // Refresh counts
+        queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }), // Refresh counts
+        queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }) // Force immediate refetch
       ]);
     } catch (e: unknown) {
       // rollback

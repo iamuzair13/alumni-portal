@@ -9,6 +9,7 @@ export const viewport: Viewport = {
 import { sql } from "@/lib/dbconnect";
 import AlumniChapterLeadershipForm from "@/components/forms/AlumniChapterLeadershipForm";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
@@ -18,8 +19,14 @@ import PageBanner from "@/components/ui/PageBanner";
 type AlumniProfileSearchParams = { sapid?: string };
 
 export default async function ChapterLeadershipPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
-  await searchParams; // Await to handle the promise, but we don't use it in this component
   const session = await auth();
+  
+  // Redirect to signin if no session
+  if (!session?.user) {
+    redirect("/signin");
+  }
+  
+  await searchParams; // Await to handle the promise, but we don't use it in this component
   
   // Get SAP ID from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;

@@ -10,6 +10,7 @@ import { sql } from "@/lib/dbconnect";
 import AlumniCardForm from "@/components/forms/alumni-card";
 import AlumniCardTemplateWrapper from "@/components/alumni/AlumniCardTemplateWrapper";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
@@ -77,6 +78,13 @@ async function getCardStatus(sapId: string) {
 type AlumniProfileSearchParams = { sapid?: string };
 
 export default async function CardPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
+  const session = await auth();
+  
+  // Redirect to signin if no session
+  if (!session?.user) {
+    redirect("/signin");
+  }
+  
   const sp = await searchParams;
   let p: Profile | undefined;
   let profileError: string | null = null;

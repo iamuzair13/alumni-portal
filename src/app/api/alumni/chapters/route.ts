@@ -197,10 +197,38 @@ export async function POST(request: NextRequest) {
         const alumniName = alumni.alumniname || "Alumni";
         
         if (alumniEmail) {
-          // Send email asynchronously (don't wait for it to complete)
-          sendChaptersApplicationEmail(alumniEmail, alumniName, chapters).catch((err) => {
-            console.error("[API] Failed to send chapters application email:", err);
-          });
+          // Fetch chapter names from tblchapters using the chapter IDs
+          const chapterIds = [chapter1, chapter2, chapter3].filter((id): id is number => id !== null);
+          
+          if (chapterIds.length > 0) {
+            // Query each chapter individually to get names
+            const chapterNames: string[] = [];
+            
+            for (const chapterId of chapterIds) {
+              try {
+                const chapterRows = await sql/* sql */`
+                  SELECT COALESCE(national_chapter, international_chapter) as chapter_name
+                  FROM public.tblchapters
+                  WHERE id = ${chapterId}
+                  LIMIT 1
+                `;
+                
+                const chapter = chapterRows[0] as { chapter_name: string | null } | undefined;
+                if (chapter?.chapter_name) {
+                  chapterNames.push(chapter.chapter_name);
+                }
+              } catch (err) {
+                console.error(`[API] Failed to fetch chapter name for ID ${chapterId}:`, err);
+              }
+            }
+            
+            // Send email asynchronously (don't wait for it to complete)
+            if (chapterNames.length > 0) {
+              sendChaptersApplicationEmail(alumniEmail, alumniName, chapterNames).catch((err) => {
+                console.error("[API] Failed to send chapters application email:", err);
+              });
+            }
+          }
         }
       }
     } catch (emailError) {

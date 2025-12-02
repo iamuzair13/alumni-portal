@@ -8,6 +8,7 @@ export const viewport: Viewport = {
 
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
@@ -152,8 +153,14 @@ async function getAlumniChapters(searchParams: AlumniProfileSearchParams) {
 }
 
 export default async function MyChaptersPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
-  const sp = await searchParams;
   const session = await auth();
+  
+  // Redirect to signin if no session
+  if (!session?.user) {
+    redirect("/signin");
+  }
+  
+  const sp = await searchParams;
   const { chapters, error } = await getAlumniChapters(sp);
   
   // Get SAP ID for the apply button link
