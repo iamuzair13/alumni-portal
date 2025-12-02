@@ -937,7 +937,7 @@ export const AlumniTabs: React.FC = () => {
         {/* Table Section */}
         <div className="px-3 sm:px-1 pb-8">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-            <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto">
+            <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto relative">
               <div className="min-w-[800px]">
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
@@ -1291,9 +1291,11 @@ export const AlumniTabs: React.FC = () => {
                       </TableRow>
                       {expandedRowId === alum.id && canModify(session?.user) && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={8} className=" py-6 overflow-x-hidden max-w-full">
-                            <div className="max-w-full overflow-x-hidden ">
-                              <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
+                          <TableCell colSpan={8} className="px-0 py-6">
+                            <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
+                              <div className=" w-full max-w-full overflow-x-hidden flex flex-row justify-start">
+                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

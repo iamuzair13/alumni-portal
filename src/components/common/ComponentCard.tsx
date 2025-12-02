@@ -13,12 +13,13 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
   className = "",
   desc = "",
 }) => {
+  const hasNoPadding = className.includes("p-0");
   return (
     <div
       className={`bg-slate-50 dark:bg-gray-900/50 min-h-screen ${className}`}
     >
       {(title || desc) && (
-        <div className="px-6 pt-8 pb-6">
+        <div className={hasNoPadding ? "" : "px-6 pt-8 pb-6"}>
           {title && (
             <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white/90 mb-2 tracking-tight">{title}</h2>
           )}
@@ -30,8 +31,8 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
      
 
       {/* Card Body */}
-      <div className="px-6 pb-8">
-        <div className="space-y-6">{children}</div>
+      <div className={hasNoPadding ? "" : "px-6 pb-8"}>
+        <div className={hasNoPadding ? "" : "space-y-6"}>{children}</div>
       </div>
     </div>
   );

@@ -281,7 +281,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800/50 rounded mx-auto border border-gray-200 dark:border-gray-700 p-3 overflow-x-hidden max-w-4xl w-full">
+    <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700 p-3 overflow-x-hidden max-w-4xl w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
         <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100">Alumni Details</h3>
         <div className="flex items-center gap-2">

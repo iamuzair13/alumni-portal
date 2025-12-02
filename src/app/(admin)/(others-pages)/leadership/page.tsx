@@ -644,8 +644,8 @@ export default function LeadershipPage() {
         {/* Table Section - Matching Alumni Tabs styling */}
         <div className="px-3 sm:px-1 pb-8">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-            <div className="w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto">
-              <div className="w-full">
+            <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto relative">
+              <div className="min-w-[800px]">
                 {selectedTab === "applications" ? (
                   <ApplicationsTable
                     applications={filteredApplications}
@@ -690,93 +690,212 @@ function ApplicationsTable({
 }) {
   if (loading) {
     return (
-      <div className="p-8 text-center text-gray-500">
-        <div className="inline-block h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="mt-4">Loading applications...</p>
-      </div>
+      <Table className="min-w-full">
+        <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+          <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">
+                {null}
+              </TableCell>
+            )}
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">SAP ID</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Name</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">Email</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Faculty</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Department</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Type</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Position</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Applied At</TableCell>
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+              {isAdmin && (
+                <TableCell className="px-3 sm:px-6 py-5"><div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              )}
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-32 sm:w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell"><div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell"><div className="h-5 w-28 sm:w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell"><div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-20 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              {isAdmin && (
+                <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                  <div className="h-9 w-24 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     );
   }
 
   if (applications.length === 0) {
-    return <div className="p-8 text-center text-gray-500">No applications found</div>;
+    return (
+      <Table className="min-w-full">
+        <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+          <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">SAP ID</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Name</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">Email</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Faculty</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Department</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Type</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Position</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Applied At</TableCell>
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={isAdmin ? 10 : 9} className="px-6 py-16 text-center text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-700 dark:text-gray-300">No applications found</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Try adjusting your search or filters</p>
+                </div>
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    );
   }
 
   return (
-    <Table className="w-full table-auto">
+    <Table className="min-w-full">
       <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
         <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
             SAP ID
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
             Name
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">
             Email
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
             Faculty
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
             Department
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
             Type
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
             Position
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
             Applied At
           </TableCell>
           {isAdmin && (
-            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
               Actions
             </TableCell>
           )}
         </TableRow>
       </TableHeader>
-      <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.06]">
+      <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
         {applications.map((app) => (
-          <TableRow key={`${app.type}-${app.id}`} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{app.sapId}</TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{app.name}</TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 break-words">{app.email}</TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{app.faculty || "-"}</TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{app.department || "-"}</TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+          <TableRow key={`${app.type}-${app.id}`} className="hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20">
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-5 text-start">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Applications don't have expand functionality, but keeping structure consistent
+                  }}
+                  className="flex items-center justify-center w-6 h-6 rounded transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 opacity-50 cursor-not-allowed"
+                  aria-label="Expand details"
+                  title="Expand details"
+                  disabled
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              </TableCell>
+            )}
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs whitespace-nowrap">
+              <span className="truncate block max-w-[120px] sm:max-w-none">{app.sapId}</span>
+            </TableCell>
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+              <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{app.name || "-"}</span>
+              {/* Show email on small screens when hidden in table */}
+              <a 
+                href={app.email ? `mailto:${app.email}` : "#"} 
+                className={`lg:hidden text-xs ${app.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate" : "text-gray-400"}`}
+              >
+                {app.email || ""}
+              </a>
+            </TableCell>
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+              <a 
+                href={app.email ? `mailto:${app.email}` : "#"} 
+                className={`${app.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]" : "text-gray-400"}`}
+              >
+                {app.email || "-"}
+              </a>
+            </TableCell>
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+              <span className="truncate block max-w-[120px]">{app.faculty || "-"}</span>
+            </TableCell>
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+              <span className="truncate block max-w-[120px]">{app.department || "-"}</span>
+            </TableCell>
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 whitespace-nowrap">
               {app.type === "chapter" ? "Chapter Leadership" : "Association Leadership"}
             </TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{app.position}</TableCell>
-            <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+              <span className="truncate block max-w-[120px]">{app.position}</span>
+            </TableCell>
+            <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 whitespace-nowrap">
               {new Date(app.createdAt).toLocaleDateString()}
             </TableCell>
             {isAdmin && (
-              <TableCell className="px-3 sm:px-6 py-4">
-                <div className="flex items-center gap-2">
+              <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 bg-white dark:bg-gray-800/30`}>
+                <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
                   <button
                     onClick={() => onAction("approve", app.id, app.type)}
                     disabled={processingIds.has(app.id)}
-                    className="rounded-lg bg-green-500 p-1.5 text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Approve"
                     title="Approve"
                   >
-                    <CheckLineIcon className="w-4 h-4" />
+                    <CheckLineIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                   <button
                     onClick={() => onAction("reject", app.id, app.type)}
                     disabled={processingIds.has(app.id)}
-                    className="rounded-lg bg-yellow-500 p-1.5 text-white hover:bg-yellow-600 disabled:opacity-50 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Reject"
                     title="Reject"
                   >
-                    <CloseLineIcon className="w-4 h-4" />
+                    <CloseLineIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                   <button
                     onClick={() => onAction("delete", app.id, app.type)}
                     disabled={processingIds.has(app.id)}
-                    className="rounded-lg bg-red-500 p-1.5 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Delete"
                     title="Delete"
                   >
-                    <TrashBinIcon className="w-4 h-4" />
+                    <TrashBinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                 </div>
               </TableCell>
@@ -818,98 +937,233 @@ function MembersTable({
 }) {
   if (loading) {
     return (
-      <div className="p-8 text-center text-gray-500">
-        <div className="inline-block h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="mt-4">Loading members...</p>
-      </div>
+      <Table className="min-w-full">
+        <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+          <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">
+                {null}
+              </TableCell>
+            )}
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">SAP ID</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Name</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">Email</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Faculty</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Department</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell">Program</TableCell>
+            {type === "chapter" && (
+              <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Chapters</TableCell>
+            )}
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Position</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Joined At</TableCell>
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+              {isAdmin && (
+                <TableCell className="px-3 sm:px-6 py-5"><div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              )}
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-32 sm:w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell"><div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell"><div className="h-5 w-28 sm:w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell"><div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell"><div className="h-5 w-36 sm:w-44 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              {type === "chapter" && (
+                <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              )}
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-20 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              <TableCell className="px-3 sm:px-6 py-5"><div className="h-5 w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" /></TableCell>
+              {isAdmin && (
+                <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                  <div className="h-9 w-24 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     );
   }
 
   if (members.length === 0) {
-    return <div className="p-8 text-center text-gray-500">No members found</div>;
+    const colCount = type === "chapter" ? (isAdmin ? 11 : 9) : (isAdmin ? 10 : 8);
+    return (
+      <Table className="min-w-full">
+        <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+          <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">
+                {null}
+              </TableCell>
+            )}
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">SAP ID</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Name</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">Email</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Faculty</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">Department</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell">Program</TableCell>
+            {type === "chapter" && (
+              <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">Chapters</TableCell>
+            )}
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Position</TableCell>
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">Joined At</TableCell>
+            {isAdmin && (
+              <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
+            )}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell colSpan={colCount} className="px-6 py-16 text-center text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-700 dark:text-gray-300">No members found</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Try adjusting your search or filters</p>
+                </div>
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    );
   }
 
   return (
-    <Table className="w-full table-auto">
+    <Table className="min-w-full">
       <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
         <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
             SAP ID
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
             Name
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">
             Email
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
             Faculty
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
             Department
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell">
             Program
           </TableCell>
           {type === "chapter" && (
-            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
               Chapters
             </TableCell>
           )}
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
             Position
           </TableCell>
-          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+          <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
             Joined At
           </TableCell>
           {isAdmin && (
-            <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
               Actions
             </TableCell>
           )}
         </TableRow>
       </TableHeader>
-      <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.06]">
+      <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
         {members.map((member) => (
           <React.Fragment key={member.id}>
-            <TableRow className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{member.sapId}</TableCell>
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{member.name}</TableCell>
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 break-words">{member.email}</TableCell>
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{member.faculty || "-"}</TableCell>
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{member.department || "-"}</TableCell>
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{member.program || "-"}</TableCell>
-              {type === "chapter" && (
-                <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 break-words">
-                  {member.chapters?.join(", ") || "-"}
+            <TableRow className="hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20">
+              {isAdmin && (
+                <TableCell className="px-3 sm:px-6 py-5 text-start">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExpand(expandedMemberId === member.id ? null : member.id);
+                    }}
+                    className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+                      expandedMemberId === member.id
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
+                    }`}
+                    aria-label={expandedMemberId === member.id ? "Collapse details" : "Expand details"}
+                    title={expandedMemberId === member.id ? "Collapse details" : "Expand details"}
+                  >
+                    <PlusIcon className={`w-4 h-4 transition-transform ${expandedMemberId === member.id ? "rotate-45" : ""}`} />
+                  </button>
                 </TableCell>
               )}
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300">{member.position}</TableCell>
-              <TableCell className="px-3 sm:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs whitespace-nowrap">
+                <span className="truncate block max-w-[120px] sm:max-w-none">{member.sapId}</span>
+              </TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 text-start">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{member.name || "-"}</span>
+                  </div>
+                  {/* Show email on small screens when hidden in table */}
+                  <a 
+                    href={member.email ? `mailto:${member.email}` : "#"} 
+                    className={`lg:hidden text-xs ${member.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate" : "text-gray-400"}`}
+                  >
+                    {member.email || ""}
+                  </a>
+                  {/* Show faculty, department, and program on small screens when hidden in table */}
+                  <div className="md:hidden flex flex-col gap-0.5 text-xs text-gray-600 dark:text-gray-400">
+                    {member.faculty && <span className="truncate">{member.faculty}</span>}
+                    {member.department && <span className="truncate">{member.department}</span>}
+                    {member.program && <span className="truncate">{member.program}</span>}
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                <a 
+                  href={member.email ? `mailto:${member.email}` : "#"} 
+                  className={`${member.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors truncate block max-w-[180px]" : "text-gray-400"}`}
+                >
+                  {member.email || "-"}
+                </a>
+              </TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                <span className="truncate block max-w-[120px]">{member.faculty || "-"}</span>
+              </TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                <span className="truncate block max-w-[120px]">{member.department || "-"}</span>
+              </TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
+                <span className="truncate block max-w-[150px]">{member.program || "-"}</span>
+              </TableCell>
+              {type === "chapter" && (
+                <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 break-words">
+                  <span className="truncate block max-w-[150px]">{member.chapters?.join(", ") || "-"}</span>
+                </TableCell>
+              )}
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                <span className="truncate block max-w-[120px]">{member.position}</span>
+              </TableCell>
+              <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 whitespace-nowrap">
                 {new Date(member.createdAt).toLocaleDateString()}
               </TableCell>
               {isAdmin && (
-                <TableCell className="px-3 sm:px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onExpand(expandedMemberId === member.id ? null : member.id)}
-                      className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
-                        expandedMemberId === member.id
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
-                      }`}
-                      aria-label={expandedMemberId === member.id ? "Collapse details" : "Expand details"}
-                      title={expandedMemberId === member.id ? "Collapse details" : "Expand details"}
-                    >
-                      <PlusIcon className={`w-4 h-4 transition-transform ${expandedMemberId === member.id ? "rotate-45" : ""}`} />
-                    </button>
+                <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 bg-white dark:bg-gray-800/30`}>
+                  <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
                     <button
                       onClick={() => onDelete(member.id, type)}
                       disabled={processingIds.has(member.id)}
-                      className="rounded-lg bg-red-500 p-1.5 text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                      className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Delete"
                       title="Delete"
                     >
-                      <TrashBinIcon className="w-4 h-4" />
+                      <TrashBinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                   </div>
                 </TableCell>
@@ -917,8 +1171,12 @@ function MembersTable({
             </TableRow>
             {expandedMemberId === member.id && (
               <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
-                <TableCell colSpan={type === "chapter" ? 10 : 9} className="px-3 sm:px-6 py-6">
-                  <LeadershipMemberDetails sapId={member.sapId} onClose={() => onExpand(null)} />
+                <TableCell colSpan={type === "chapter" ? (isAdmin ? 11 : 9) : (isAdmin ? 10 : 8)} className="px-0 py-6">
+                  <div className="w-full overflow-x-hidden">
+                    <div className="px-3 sm:px-6 w-full max-w-full overflow-x-hidden">
+                      <LeadershipMemberDetails sapId={member.sapId} onClose={() => onExpand(null)} />
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
