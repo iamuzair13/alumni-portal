@@ -10,6 +10,8 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import DOMPurify from "dompurify";
+import { useQueryClient } from "@tanstack/react-query";
+import { alumniStoriesKey } from "@/app/queries/fetch-alumni-stories";
 
 type Props = {
   sapId: string;
@@ -65,6 +67,7 @@ export default function AlumniSuccessForm({
   storyId
 }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { 
     handleSubmit, 
     control, 
@@ -176,6 +179,10 @@ export default function AlumniSuccessForm({
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.message || `Failed (${res.status})`);
       }
+      
+      // Invalidate and refetch stories to show the new/updated story
+      await queryClient.invalidateQueries({ queryKey: alumniStoriesKey });
+      await queryClient.refetchQueries({ queryKey: alumniStoriesKey });
       
       toast.success(storyId ? "Story updated successfully!" : "Success story submitted successfully!", {
         duration: 4000,

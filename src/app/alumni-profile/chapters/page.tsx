@@ -76,7 +76,6 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
   } catch (e) {
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
-  const session = await auth();
   const contact = p?.contactno ?? "";
   // Get SAP ID from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;

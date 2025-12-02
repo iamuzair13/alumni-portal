@@ -233,21 +233,22 @@ create table public.tblalumniassociation (
 -- ================================================
 -- TABLE: tblstories
 -- ================================================
-CREATE TABLE public.tblstories (
-  id SERIAL PRIMARY KEY,
-  alumniname VARCHAR(50),
-  alumnisession VARCHAR(50),
-  alumnifaculty VARCHAR(50),
-  alumnicompany VARCHAR(50),
-  alumnidesignation VARCHAR(50),
-  alumnicitycountry VARCHAR(50),
-  alumnistories TEXT,
-  alumnishortstories VARCHAR(500),
-  alumnistoriesdate DATE,
-  alumniimage1 VARCHAR(50),
-  alumnishowhome VARCHAR(10)
-);
-
+create table public.tblstories (
+  id serial not null,
+  alumniname character varying(50) null,
+  alumnisession character varying(50) null,
+  alumnifaculty character varying(50) null,
+  alumnicompany character varying(50) null,
+  alumnidesignation character varying(50) null,
+  alumnicitycountry character varying(50) null,
+  alumnistories text null,
+  alumnishortstories character varying(500) null,
+  alumnistoriesdate date null,
+  alumniimage1 character varying(50) null,
+  alumnishowhome character varying(10) null,
+  constraint tblstories_pkey primary key (id),
+  constraint tblstories_id_fkey foreign KEY (id) references tbl_alumni (alumniid)
+) TABLESPACE pg_default;
 -- ================================================
 -- TABLE: tbl_events
 -- ================================================

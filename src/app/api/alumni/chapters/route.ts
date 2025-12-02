@@ -71,17 +71,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    // SECURITY: Only admins/superadmins can modify chapter assignments
-    const { canModify } = await import("@/lib/alumniProfile");
-    if (!canModify(session.user)) {
-      return NextResponse.json({ error: "Forbidden: Only admins can modify chapter assignments" }, { status: 403 });
-    }
-
     const body = await request.json();
     const { alumniId, chapters, contactNumber } = body;
 
     if (!alumniId) {
       return NextResponse.json({ error: "Alumni ID is required" }, { status: 400 });
+    }
+
+    // SECURITY: Authorization check
+    // - Admins/superadmins can modify any alumni's chapter assignments
+    // - Alumni can only modify their own chapter assignments
+    const { canModify } = await import("@/lib/alumniProfile");
+    const isAdminOrSuperAdmin = canModify(session.user);
+    
+    if (!isAdminOrSuperAdmin) {
+      // For non-admin users, verify they are modifying their own record
+      // Get the user's alumni ID from session (SAP ID or email lookup)
+      let userAlumniId: number | null = null;
+      
+      // Try to get SAP ID from session
+      const sessionSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+      
+      if (sessionSapid) {
+        const sapRows = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE sapid = ${sessionSapid} 
+          LIMIT 1
+        `;
+        if (sapRows[0]) {
+          userAlumniId = Number((sapRows[0] as { alumniid: number }).alumniid);
+        }
+      }
+      
+      // Fallback to email lookup if SAP ID not found
+      if (userAlumniId === null && session.user?.email) {
+        const email = String(session.user.email);
+        const emailRows = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
+          ORDER BY alumniid DESC 
+          LIMIT 1
+        `;
+        if (emailRows[0]) {
+          userAlumniId = Number((emailRows[0] as { alumniid: number }).alumniid);
+        }
+      }
+      
+      // Verify that the requested alumniId matches the user's own alumni ID
+      if (userAlumniId === null || userAlumniId !== Number(alumniId)) {
+        return NextResponse.json({ error: "Forbidden: You can only modify your own chapter assignments" }, { status: 403 });
+      }
     }
 
     // Validate that at least one chapter is selected
@@ -125,20 +164,23 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // SECURITY: Check access filter for admin/viewer users
-    const { buildAccessFilterSQL } = await import("@/lib/userAccess");
-    const accessFilter = await buildAccessFilterSQL(session, "");
-    
-    if (accessFilter.hasFilter && accessFilter.sql) {
-      const accessCheck = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE alumniid = ${alumniId} 
-        AND (${accessFilter.sql})
-        LIMIT 1
-      `;
+    // SECURITY: Check access filter for admin/viewer users only
+    // (Alumni users have already been verified to own the record above)
+    if (isAdminOrSuperAdmin) {
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
       
-      if (!accessCheck[0]) {
-        return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${alumniId} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
       }
     }
 

@@ -26,7 +26,6 @@ type StoryItem = {
 type StoryRow = {
   alumniid: number;
   alumnistories: string | null;
-  storytitle: string | null;
   alumniimage: string | null;
   status: string | null;
   createdat: string | null;
@@ -40,15 +39,63 @@ export async function GET() {
   try {
     const session = await auth();
     
-    // Build access filter for admin/viewer users
-    const accessFilter = await buildAccessFilterSQL(session, "");
+    // Check if user is alumni - alumni users should see only their own story
+    const userType = session?.user ? String((session.user as { type?: string })?.type || "").toLowerCase().trim() : "";
+    const isAlumni = userType === "alumni";
+    
+    // For alumni users, get their alumni ID to filter stories
+    let alumniIdFilter: ReturnType<typeof sql> | null = null;
+    if (isAlumni && session?.user) {
+      // Get SAP ID from session
+      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null;
+      const userEmail = session.user.email ? String(session.user.email) : null;
+      
+      if (userSapid) {
+        // Try to get alumni ID from SAP ID
+        const sapRows = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE sapid = ${userSapid} 
+          LIMIT 1
+        `;
+        if (sapRows[0]) {
+          const alumniId = Number((sapRows[0] as { alumniid: number }).alumniid);
+          alumniIdFilter = sql` AND s.alumniid = ${alumniId}`;
+          console.log(`[API GET] User is alumni - filtering by own alumni ID: ${alumniId}`);
+        }
+      }
+      
+      // Fallback to email lookup if SAP ID not found
+      if (!alumniIdFilter && userEmail) {
+        const emailRows = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE personalemail = ${userEmail} OR officialemail = ${userEmail} OR universityemail = ${userEmail}
+          ORDER BY alumniid DESC 
+          LIMIT 1
+        `;
+        if (emailRows[0]) {
+          const alumniId = Number((emailRows[0] as { alumniid: number }).alumniid);
+          alumniIdFilter = sql` AND s.alumniid = ${alumniId}`;
+          console.log(`[API GET] User is alumni - filtering by own alumni ID (from email): ${alumniId}`);
+        }
+      }
+      
+      if (!alumniIdFilter) {
+        console.log(`[API GET] User is alumni but alumni ID not found - returning empty results`);
+        // Return empty array if alumni ID not found
+        return NextResponse.json({ items: [] }, { status: 200 });
+      }
+    }
+    
+    // Build access filter only for admin/viewer users (not for alumni)
+    const accessFilter = isAlumni 
+      ? { hasFilter: false, sql: null } 
+      : await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
     const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         s.alumniid,
         s.alumnistories,
-        COALESCE(s.storytitle, a.alumniname) as storytitle,
         s.alumniimage,
         s.status,
         s.createdat,
@@ -61,8 +108,9 @@ export async function GET() {
       WHERE s.alumnistories IS NOT NULL 
         AND s.alumnistories != ''
         AND TRIM(s.alumnistories) != ''
-        AND a.alumniname IS NOT NULL
-        AND TRIM(a.alumniname) != ''
+        AND LENGTH(TRIM(REGEXP_REPLACE(s.alumnistories, '<[^>]+>', '', 'g'))) > 0
+        AND COALESCE(a.alumniname, '') != ''
+        ${alumniIdFilter || sql``}
         ${accessFilterCondition}
       ORDER BY s.createdat DESC NULLS LAST
       LIMIT 200` as StoryRow[]);
@@ -70,7 +118,7 @@ export async function GET() {
     const items = rows.map((r): StoryItem => {
       const id = String(r.alumniid ?? "");
       const date = r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString();
-      const title = String(r.storytitle ?? r.alumniname ?? "");
+      const title = String(r.alumniname ?? "");
       const name = String(r.alumniname ?? "");
       const program = String(r.degreetitle ?? "");
       const session = String(r.academicsession ?? "");
@@ -136,13 +184,21 @@ export async function POST(req: Request) {
       }, { status: 422 });
     }
     const v: ServerStoryPayload = parsed.data;
-    const createdAt = new Date();
     
     // Sanitize HTML using DOMPurify
     const cleanHtml = purify.sanitize(String(v.storyHtml || ""), {
       ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
       ALLOWED_ATTR: ["href", "target", "rel"],
     });
+    
+    // Check if content is actually empty after sanitization
+    // Remove HTML tags and check if there's any text content
+    const textContent = cleanHtml.replace(/<[^>]+>/g, "").trim();
+    if (!textContent || textContent.length === 0) {
+      return NextResponse.json({ 
+        message: "Story content is required and cannot be empty after sanitization" 
+      }, { status: 400 });
+    }
 
     const alumniRows = await sql/* sql */`
       SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${v.sapId} LIMIT 1` as { alumniid: number; sapid: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }[];
@@ -198,13 +254,55 @@ export async function POST(req: Request) {
         WHERE alumniid = ${alumniId}`;
     }
 
-    await sql/* sql */`
-      INSERT INTO public.tblalumnistories (alumniid, alumnistories, storytitle, alumniimage, status, createdat)
-      VALUES (${alumniId}, ${cleanHtml}, ${v.storyTitle}, ${null}, ${null}, ${createdAt.toISOString()})
-      ON CONFLICT (alumniid) DO UPDATE SET
-        alumnistories = EXCLUDED.alumnistories,
-        storytitle = EXCLUDED.storytitle,
-        createdat = EXCLUDED.createdat`;
+    try {
+      // Insert/update story according to schema.sql structure
+      // Schema columns: alumniid (PK), alumnistories (TEXT), alumniimage (VARCHAR(50)), status (VARCHAR(20)), createdat (TIMESTAMP)
+      console.log(`[API] Attempting to save story for alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
+      console.log(`[API] Story content length: ${cleanHtml.length} characters`);
+      
+      const result = await sql/* sql */`
+        INSERT INTO public.tblalumnistories (alumniid, alumnistories, alumniimage, status, createdat)
+        VALUES (${alumniId}, ${cleanHtml}, NULL, NULL, NOW())
+        ON CONFLICT (alumniid) DO UPDATE SET
+          alumnistories = EXCLUDED.alumnistories,
+          createdat = NOW()`;
+      
+      console.log(`[API] Story saved successfully for alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
+      console.log(`[API] Database operation completed. Rows affected:`, Array.isArray(result) ? result.length : 'N/A');
+      
+      // Verify the story was saved by querying it back
+      const verifyQuery = await sql/* sql */`
+        SELECT s.alumniid, s.alumnistories, a.alumniname
+        FROM public.tblalumnistories s
+        INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+        WHERE s.alumniid = ${alumniId}
+        LIMIT 1
+      `;
+      console.log(`[API] Verification query result:`, verifyQuery.length > 0 ? 'Story found in database' : 'Story NOT found in database');
+      if (verifyQuery.length > 0) {
+        const story = verifyQuery[0] as { alumniid: number; alumnistories: string | null; alumniname: string | null };
+        console.log(`[API] Story details:`, {
+          alumniid: story.alumniid,
+          contentLength: story.alumnistories?.length || 0,
+          hasContent: story.alumnistories ? story.alumnistories.length > 0 : false,
+          alumniname: story.alumniname || 'NULL'
+        });
+      }
+    } catch (dbError) {
+      console.error("[API] Database error saving story:", dbError);
+      console.error("[API] Error details:", {
+        message: dbError instanceof Error ? dbError.message : "Unknown error",
+        stack: dbError instanceof Error ? dbError.stack : undefined,
+        alumniId,
+        sapId: v.sapId,
+        contentLength: cleanHtml.length
+      });
+      return NextResponse.json({ 
+        message: "Failed to save story to database",
+        error: dbError instanceof Error ? dbError.message : "Unknown database error",
+        details: process.env.NODE_ENV === 'development' ? (dbError instanceof Error ? dbError.stack : undefined) : undefined
+      }, { status: 500 });
+    }
     
     // Send confirmation email
     try {
@@ -237,9 +335,13 @@ export async function POST(req: Request) {
       console.error("[API] Error sending success story email:", emailError);
     }
     
-    return NextResponse.json({ ok: true, alumniid: alumniId }, { status: 201 });
+    return NextResponse.json({ ok: true, alumniid: alumniId, message: "Story saved successfully" }, { status: 201 });
   } catch (err) {
+    console.error("[API] Error in POST /api/alumni-stories:", err);
     const msg = err instanceof Error ? err.message : "Invalid JSON";
-    return NextResponse.json({ message: msg }, { status: 400 });
+    const statusCode = err instanceof Error && msg.includes("Unauthorized") ? 401 :
+                      err instanceof Error && msg.includes("Forbidden") ? 403 :
+                      err instanceof Error && msg.includes("not found") ? 404 : 400;
+    return NextResponse.json({ message: msg, error: err instanceof Error ? err.stack : undefined }, { status: statusCode });
   }
 }

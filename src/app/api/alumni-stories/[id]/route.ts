@@ -14,7 +14,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       SELECT 
         s.alumniid,
         s.alumnistories,
-        COALESCE(s.storytitle, a.alumniname) as storytitle,
         s.alumniimage,
         s.status,
         s.createdat,
@@ -34,7 +33,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     const r = rows[0] as {
       alumniid: number;
       alumnistories: string | null;
-      storytitle: string | null;
       alumniimage: string | null;
       status: string | null;
       createdat: string | null;
@@ -53,7 +51,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     const result = {
       id: String(r.alumniid ?? ""),
       date: r.createdat ? new Date(r.createdat).toISOString() : new Date().toISOString(),
-      title: String(r.storytitle ?? r.alumniname ?? ""),
+      title: String(r.alumniname ?? ""),
       name: String(r.alumniname ?? ""),
       program: String(r.degreetitle ?? ""),
       session: String(r.academicsession ?? ""),

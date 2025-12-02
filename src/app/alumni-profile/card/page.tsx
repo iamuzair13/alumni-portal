@@ -93,7 +93,6 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   } catch (e) {
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
-  const session = await auth();
   const name = p?.alumniname ?? "";
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
