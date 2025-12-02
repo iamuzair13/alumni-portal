@@ -11,6 +11,12 @@ import { useAlumniFullDetails, currentUserImageKey } from "@/app/queries/alumni-
 import { useQueryClient } from "@tanstack/react-query";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 
+type LeadershipInfo = {
+  type: "chapter" | "association" | null;
+  role: string | null;
+  roleDisplay: string | null;
+};
+
 type Props = {
   name: string;
   avatar: string;
@@ -28,9 +34,11 @@ type Props = {
   chaptersError?: string | null;
   associationTitle?: string | null;
   associationError?: string | null;
+  leadershipInfo?: LeadershipInfo;
+  leadershipError?: string | null;
 };
 
-export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, program, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null }: Props) {
+export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, program, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: Props) {
   const { start, stop } = useProgress();
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
   const queryClient = useQueryClient();
@@ -334,7 +342,48 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             )}
           </div>
           <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
-            <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-2">
+              <h4 className="text-slate-900 text-2xl font-bold">{name}</h4>
+              
+              {/* Leadership Label - Prominent Badge */}
+              {leadershipInfo?.roleDisplay && leadershipInfo.type && (
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm shadow-md ${
+                  leadershipInfo.role?.toLowerCase().includes("president") 
+                    ? leadershipInfo.type === "chapter"
+                      ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white border-2 border-purple-800"
+                      : "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white border-2 border-indigo-800"
+                    : leadershipInfo.role?.toLowerCase().includes("vice") 
+                    ? leadershipInfo.type === "chapter"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white border-2 border-blue-800"
+                      : "bg-gradient-to-r from-cyan-600 to-cyan-700 text-white border-2 border-cyan-800"
+                    : leadershipInfo.type === "chapter"
+                      ? "bg-gradient-to-r from-green-600 to-green-700 text-white border-2 border-green-800"
+                      : "bg-gradient-to-r from-teal-600 to-teal-700 text-white border-2 border-teal-800"
+                }`}>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                    />
+                  </svg>
+                  <span>{leadershipInfo.roleDisplay}</span>
+                </div>
+              )}
+              
+              {leadershipError && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg">
+                  <span className="text-xs text-rose-700">{leadershipError}</span>
+                </div>
+              )}
+            </div>
             
             {/* Chapters and Association Section - Right after name */}
             <div className="mt-3 mb-4">

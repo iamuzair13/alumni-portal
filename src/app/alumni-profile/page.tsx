@@ -329,6 +329,76 @@ let cardImageFile: string | null = null;
       associationError = e instanceof Error ? e.message : "Failed to load association membership";
     }
   }
+
+  // Fetch leadership information for alumni
+  type LeadershipInfo = {
+    type: "chapter" | "association" | null;
+    role: string | null;
+    roleDisplay: string | null;
+  };
+  
+  let leadershipInfo: LeadershipInfo = { type: null, role: null, roleDisplay: null };
+  let leadershipError: string | null = null;
+  
+  if (alumniId) {
+    try {
+      // Check for chapter leadership first
+      const chapterLeadershipRows = await sql/* sql */`
+        SELECT cl.post, cl.status
+        FROM public.chapter_leadership cl
+        INNER JOIN public.tbl_alumni a ON a.chapter_leadership = cl.id
+        WHERE a.alumniid = ${alumniId} AND cl.status = 'approved'
+        LIMIT 1
+      `;
+      
+      if (chapterLeadershipRows && chapterLeadershipRows.length > 0) {
+        const post = String(chapterLeadershipRows[0]?.post || "").trim();
+        if (post) {
+          // Map role to display name for chapter leadership
+          const chapterRoleMap: Record<string, string> = {
+            "President": "Chapter President",
+            "Vice President": "Chapter Vice President",
+            "Coordinator": "Chapter Coordinator",
+          };
+          
+          leadershipInfo = {
+            type: "chapter",
+            role: post,
+            roleDisplay: chapterRoleMap[post] || post,
+          };
+        }
+      } else {
+        // Check for association leadership
+        const associationLeadershipRows = await sql/* sql */`
+          SELECT ass.q3 as role, ass.status
+          FROM public.tblalumniassociation ass
+          INNER JOIN public.tbl_alumni a ON a.association_job = ass.id
+          WHERE a.alumniid = ${alumniId} AND ass.status = 'approved'
+          LIMIT 1
+        `;
+        
+        if (associationLeadershipRows && associationLeadershipRows.length > 0) {
+          const role = String(associationLeadershipRows[0]?.role || "").trim();
+          if (role) {
+            // Map role to display name
+            const roleMap: Record<string, string> = {
+              "President": "Association President",
+              "Vice President": "Association Vice President",
+              "Coordinator": "Association Coordinator",
+            };
+            
+            leadershipInfo = {
+              type: "association",
+              role: role,
+              roleDisplay: roleMap[role] || role,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      leadershipError = e instanceof Error ? e.message : "Failed to load leadership information";
+    }
+  }
   return (
     <>
     <div className=" bg-slate-100 overflow-x-hidden">
@@ -362,7 +432,7 @@ let cardImageFile: string | null = null;
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
-                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} />
+                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} leadershipInfo={leadershipInfo} leadershipError={leadershipError} />
                 ) : isAdmin ? (
                   <div className="w-full p-8 text-center">
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
@@ -396,6 +466,8 @@ let cardImageFile: string | null = null;
                     chaptersError={chaptersError}
                     associationTitle={associationTitle}
                     associationError={associationError}
+                    leadershipInfo={leadershipInfo}
+                    leadershipError={leadershipError}
                   />
                 )}
                 </div>
