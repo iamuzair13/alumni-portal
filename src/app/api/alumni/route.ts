@@ -386,21 +386,23 @@ export async function POST(req: Request) {
     const d = mapToDb(v);
     
     // Check if alumni record already exists by SAP ID OR Registration Number
-    // Both identifiers are checked - if either matches, we update the existing record
+    // Both identifiers are treated equally - if either matches, it's the same alumni
     let existingRecord: { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null } | null = null;
     
     const regNo = d.registrationno ? String(d.registrationno).trim() : null;
     const sapId = d.sapid ? String(d.sapid).trim() : null;
     
     // Check for existing record by either Registration Number OR SAP ID
+    // SAP ID is treated as a primary identifier, same as registration number
     if (regNo || sapId) {
       let checkQuery;
       if (regNo && sapId) {
-        // Check by both identifiers
+        // Check by both identifiers - if EITHER matches, it's the same alumni
         checkQuery = sql/* sql */`
           SELECT alumniid, verify, registrationno, sapid
           FROM public.tbl_alumni 
-          WHERE registrationno = ${regNo} OR sapid = ${sapId}
+          WHERE (registrationno = ${regNo} AND registrationno IS NOT NULL AND registrationno != '')
+             OR (sapid = ${sapId} AND sapid IS NOT NULL AND sapid != '')
           LIMIT 1
         `;
       } else if (regNo) {
@@ -408,15 +410,15 @@ export async function POST(req: Request) {
         checkQuery = sql/* sql */`
           SELECT alumniid, verify, registrationno, sapid
           FROM public.tbl_alumni 
-          WHERE registrationno = ${regNo}
+          WHERE registrationno = ${regNo} AND registrationno IS NOT NULL AND registrationno != ''
           LIMIT 1
         `;
       } else {
-        // Check only by SAP ID
+        // Check only by SAP ID - SAP ID is treated as a primary identifier
         checkQuery = sql/* sql */`
           SELECT alumniid, verify, registrationno, sapid
           FROM public.tbl_alumni 
-          WHERE sapid = ${sapId}
+          WHERE sapid = ${sapId} AND sapid IS NOT NULL AND sapid != ''
           LIMIT 1
         `;
       }
@@ -424,12 +426,22 @@ export async function POST(req: Request) {
       const checkResult = await checkQuery;
       if (checkResult.length > 0) {
         existingRecord = checkResult[0] as { alumniid: number; verify: string | null; registrationno: string | null; sapid: string | null };
+        
+        // Determine which identifier matched
+        const matchedByRegNo = regNo && existingRecord.registrationno && 
+          String(existingRecord.registrationno).trim().toLowerCase() === regNo.toLowerCase();
+        const matchedBySapId = sapId && existingRecord.sapid && 
+          String(existingRecord.sapid).trim().toLowerCase() === sapId.toLowerCase();
+        const matchedBy = matchedByRegNo ? 'registrationno' : (matchedBySapId ? 'sapid' : 'unknown');
+        
         console.log("[API] /api/alumni POST - Found existing record:", {
           alumniid: existingRecord.alumniid,
           verify: existingRecord.verify,
           registrationno: existingRecord.registrationno,
           sapid: existingRecord.sapid,
-          matchedBy: regNo && String(existingRecord.registrationno).trim() === regNo ? 'registrationno' : 'sapid'
+          matchedBy,
+          incomingRegNo: regNo,
+          incomingSapId: sapId
         });
       }
     }
@@ -469,6 +481,7 @@ export async function POST(req: Request) {
       // RULE 2: If alumni exists and verify = 'false'/'pending'/null, allow registration and overwrite
       // Update the existing record with new data, keeping the same alumniid
       // IMPORTANT: Always set verify = 'pending' when re-registering (regardless of payload)
+      // IMPORTANT: Preserve identifier fields - if incoming value is missing, keep the existing value
       console.log("[API] /api/alumni POST - ALLOWING: Alumni exists but verify is not 'true', allowing re-registration:", {
         verify: rawVerify,
         verifyStatus,
@@ -478,10 +491,24 @@ export async function POST(req: Request) {
       
       const alumniId = existingRecord.alumniid;
       
+      // Preserve identifier fields: if incoming value is missing, keep the existing value
+      // This prevents losing sapid or registrationno when re-registering with only one identifier
+      const preservedRegNo = d.registrationno ?? existingRecord.registrationno;
+      const preservedSapId = d.sapid ?? existingRecord.sapid;
+      
+      console.log("[API] /api/alumni POST - Preserving identifier fields:", {
+        existingRegNo: existingRecord.registrationno,
+        existingSapId: existingRecord.sapid,
+        incomingRegNo: d.registrationno,
+        incomingSapId: d.sapid,
+        preservedRegNo,
+        preservedSapId
+      });
+      
       const updateResult = await sql/* sql */`
         UPDATE public.tbl_alumni SET
-          registrationno = ${d.registrationno},
-          sapid = ${d.sapid},
+          registrationno = ${preservedRegNo},
+          sapid = ${preservedSapId},
           alumniname = ${d.alumniname},
           gender = ${d.gender},
           fathername = ${d.fathername},
