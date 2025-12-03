@@ -3,6 +3,9 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { sendAlumniCardOnHoldEmail, sendAlumniCardActivatedEmail } from "@/lib/email";
+import { unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -149,6 +152,99 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     }
     
     return NextResponse.json({ cardid: rows[0].cardid }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
+  try {
+    const { sapid } = await ctx.params;
+    const session = await auth();
+    
+    // SECURITY: Verify authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // SECURITY: Only admins can delete cards
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins can delete cards" }, { status: 403 });
+    }
+    
+    const normalizedSapid = String(sapid || "").trim();
+    
+    // Get card data including image paths before deletion
+    const cardRows = await sql/* sql */`
+      SELECT c.cardid, c.alumniid, c.cardpicture, c.card_image
+      FROM public.tblcard c
+      JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      WHERE a.sapid = ${normalizedSapid}
+      LIMIT 1
+    ` as Array<{
+      cardid: number;
+      alumniid: number;
+      cardpicture: string | null;
+      card_image: string | null;
+    }>;
+    
+    if (!cardRows[0]) {
+      return NextResponse.json({ message: "Card not found" }, { status: 404 });
+    }
+    
+    const cardData = cardRows[0];
+    
+    // Delete card images from filesystem if they exist
+    const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
+    try {
+      if (cardData.cardpicture) {
+        const cardPicturePath = join(CARD_UPLOAD_DIR, cardData.cardpicture);
+        if (existsSync(cardPicturePath)) {
+          await unlink(cardPicturePath).catch((err) => {
+            console.error("[API] Failed to delete cardpicture:", err);
+          });
+        }
+      }
+      if (cardData.card_image) {
+        // card_image might be a full path or just filename
+        let cardImagePath: string;
+        if (cardData.card_image.startsWith("/") || cardData.card_image.includes("\\")) {
+          // Full path
+          cardImagePath = cardData.card_image.startsWith(process.cwd()) 
+            ? cardData.card_image 
+            : join(process.cwd(), cardData.card_image.replace(/^\//, ""));
+        } else {
+          // Just filename
+          cardImagePath = join(CARD_UPLOAD_DIR, cardData.card_image);
+        }
+        if (existsSync(cardImagePath)) {
+          await unlink(cardImagePath).catch((err) => {
+            console.error("[API] Failed to delete card_image:", err);
+          });
+        }
+      }
+    } catch (fileError) {
+      // Log but don't fail the request if file deletion fails
+      console.error("[API] Error deleting card images:", fileError);
+    }
+    
+    // Delete the card record from database
+    const deleteRows = await sql/* sql */`
+      DELETE FROM public.tblcard c
+      USING public.tbl_alumni a
+      WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
+      RETURNING c.cardid
+    `;
+    
+    if (!deleteRows[0]) {
+      return NextResponse.json({ message: "Card not found" }, { status: 404 });
+    }
+    
+    return NextResponse.json({ 
+      message: "Card deleted successfully",
+      cardid: deleteRows[0].cardid 
+    }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed";
     return NextResponse.json({ error: msg }, { status: 500 });

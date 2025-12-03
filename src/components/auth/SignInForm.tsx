@@ -32,7 +32,7 @@ export default function SignInForm() {
     else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
     else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
     else if (err === "INVALID_EMAIL") setErrorMessage("Invalid email received from provider");
-    else if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID or Email is required");
+    else if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID, Registration Number, or Email is required");
     else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
     else setErrorMessage(null);
   }, [params]);
@@ -45,7 +45,7 @@ export default function SignInForm() {
       setIsLoading(true);
       const nextErrors: FormErrors = {};
       if (!identifier.trim()) {
-        nextErrors.identifier = "SAP ID or Email is required";
+        nextErrors.identifier = "SAP ID, Registration Number, or Email is required";
       }
       if (!password) {
         nextErrors.password = "Password is required";
@@ -64,10 +64,10 @@ export default function SignInForm() {
       
       if (result?.error) {
         const err = result.error ?? "LOGIN_FAILED";
-        if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID or Email is required");
+        if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID, Registration Number, or Email is required");
         else if (err === "INVALID_EMAIL_FORMAT") setErrorMessage("Invalid email format (staff only)");
         else if (err === "INVALID_PASSWORD") setErrorMessage("Incorrect password");
-        else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID not found");
+        else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID or Registration Number not found");
         else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
         else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
         else if (err === "UNDER_APPROVAL") setErrorMessage("Your account is under approval. You will receive an email once it's verified.");
@@ -215,14 +215,14 @@ export default function SignInForm() {
     </Modal>
     </div>
 
-            <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="SAP ID or Email sign in form">
+            <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="SAP ID, Registration Number, or Email sign in form">
               <div>
-                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">SAP ID</label>
+                <label htmlFor="identifier" className="block text-sm font-medium text-slate-700">SAP ID or Registration Number</label>
                 <input
                   id="identifier"
                   type="text"
                   autoComplete="username"
-                  placeholder="Enter SAP ID"
+                  placeholder="Enter SAP ID or Registration Number"
                   required
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                   value={identifier}

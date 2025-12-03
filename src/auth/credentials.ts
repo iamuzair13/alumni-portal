@@ -212,6 +212,7 @@ export async function authenticateCredentials(identifier: string, password: stri
   const a = arows[0] as {
     alumniid: number;
     sapid: string | null;
+    registrationno: string | null;
     alumniemail: string | null;
     personalemail: string | null;
     officialemail: string | null;

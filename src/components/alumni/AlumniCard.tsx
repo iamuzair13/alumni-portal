@@ -1,7 +1,11 @@
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon } from "@/icons";
+import { useSession } from "next-auth/react";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon } from "@/icons";
+import { canModify } from "@/lib/alumniProfile";
+import { Modal } from "@/components/ui/modal";
+import { useQueryClient } from "@tanstack/react-query";
 
 
 export type CardStatus = "active" | "pending" | "declined" | "all";
@@ -546,29 +550,137 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   };
 
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
+    const { data: session } = useSession();
     const { data: cardData } = useCardStatus(sapId);
+    const queryClient = useQueryClient();
+    const [isDeleting, setIsDeleting] = React.useState(false);
+    const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+    const [deleteError, setDeleteError] = React.useState<string | null>(null);
+    
     const cardStatus = (cardData?.status ?? "pending") as "pending" | "rejected" | "delivered";
     const isDelivered = cardStatus === "delivered";
+    const isAdmin = canModify(session?.user);
+
+    const handleDelete = async () => {
+      if (!sapId || sapId.trim() === "") {
+        setDeleteError("Invalid SAP ID");
+        return;
+      }
+
+      setIsDeleting(true);
+      setDeleteError(null);
+
+      try {
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ error: "Failed to delete card" }));
+          throw new Error(errorData.error || `Failed to delete: ${res.status}`);
+        }
+
+        // Invalidate queries to refresh the list
+        queryClient.invalidateQueries({ queryKey: ["alumni-cards", "applicants"] });
+        queryClient.invalidateQueries({ queryKey: ["alumni-cards", "status", sapId] });
+        
+        setShowDeleteModal(false);
+        // Optionally show success message or trigger a callback
+        onRowAction?.(alumItem, "delete");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to delete card";
+        setDeleteError(msg);
+        console.error("[AlumniCard] Delete error:", err);
+      } finally {
+        setIsDeleting(false);
+      }
+    };
 
     return (
-      <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
-            onRowAction?.(alumItem, "view");
+      <>
+        <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
+              onRowAction?.(alumItem, "view");
+            }}
+            className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+            aria-label="View"
+            title="View"
+          >
+            <EyeIcon className="h-5 w-5" />
+          </button>
+          {isDelivered && (
+            <PrintCardButton sapId={sapId} studentName={studentName} />
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteModal(true);
+              }}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              aria-label="Delete Card"
+              title="Delete Card"
+            >
+              <TrashBinIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+        
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setDeleteError(null);
           }}
-          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50"
-          aria-label="View"
-          title="View"
+          showCloseButton={true}
         >
-          <EyeIcon className="h-5 w-5" />
-        </button>
-        {isDelivered && (
-          <PrintCardButton sapId={sapId} studentName={studentName} />
-        )}
-      </div>
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Delete Alumni Card
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">
+              Are you sure you want to delete the card for <strong>{studentName}</strong> (SAP ID: {sapId})?
+              <br />
+              <span className="text-sm text-amber-600 dark:text-amber-400 mt-2 block">
+                This will delete the card record and associated images. The alumni record will not be affected.
+              </span>
+            </p>
+            
+            {deleteError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                {deleteError}
+              </div>
+            )}
+            
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? "Deleting..." : "Delete Card"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      </>
     );
   };
 
