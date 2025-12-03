@@ -44,6 +44,7 @@ interface AugmentedToken extends JWT {
   firstName?: string | null;
   lastName?: string | null;
   sapid?: string | null; // Add SAP ID for alumni
+  registrationno?: string | null; // Add registration number for alumni
 }
 
 interface AugmentedSession extends Session {
@@ -55,6 +56,7 @@ interface AugmentedSession extends Session {
     firstName?: string | null;
     lastName?: string | null;
     sapid?: string | null; // Add SAP ID for alumni
+    registrationno?: string | null; // Add registration number for alumni
   };
 }
 
@@ -172,9 +174,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
           } catch {}
         } else {
-          const au = (user as unknown as { sapid?: string | null; alumniDb?: {
+          const au = (user as unknown as { sapid?: string | null; registrationno?: string | null; alumniDb?: {
             alumniid: number;
             sapid: string | null;
+            registrationno: string | null;
             alumniname: string | null;
             departmentname: string | null;
             facultyname: string | null;
@@ -195,6 +198,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             at.type = "alumni";
             at.blocked = String(au.alumnistatus || "").toLowerCase() === "blocked";
             at.sapid = au.sapid ?? null; // Store SAP ID in token
+            at.registrationno = au.registrationno ?? null; // Store registration number in token
             const fullName = String(au.alumniname || "").trim();
             const [firstName, ...rest] = fullName.split(" ");
             at.firstName = firstName || null;
@@ -202,11 +206,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.email = (au.alumniemail || au.personalemail || au.officialemail || au.universityemail || token.email) || undefined;
             token.name = fullName || token.name;
           } else {
-            // Check if user has sapid at top level (from credentials)
+            // Check if user has sapid or registrationno at top level (from credentials)
             const userSapid = (user as unknown as { sapid?: string | null }).sapid;
-            if (userSapid) {
+            const userRegistrationNo = (user as unknown as { registrationno?: string | null }).registrationno;
+            if (userSapid || userRegistrationNo) {
               const at: AugmentedToken = token as AugmentedToken;
-              at.sapid = userSapid;
+              at.sapid = userSapid ?? null;
+              at.registrationno = userRegistrationNo ?? null;
             }
             
             // Fallback: try to find by email if we don't have alumniDb or sapid
@@ -231,10 +237,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
                   } else {
                     const { sql } = await import("@/lib/dbconnect");
-                    const arows = await sql/* sql */`SELECT alumniid, sapid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
+                    const arows = await sql/* sql */`SELECT alumniid, sapid, registrationno, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail FROM public.tbl_alumni WHERE alumniemail = ${email} OR personalemail = ${email} OR universityemail = ${email} LIMIT 1`;
                     const a = arows[0] as {
                       alumniid: number;
                       sapid: string | null;
+                      registrationno: string | null;
                       alumniname: string | null;
                       departmentname: string | null;
                       facultyname: string | null;
@@ -255,6 +262,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                       at.type = "alumni";
                       at.blocked = String(a.alumnistatus || "").toLowerCase() === "blocked";
                       at.sapid = a.sapid ?? null; // Store SAP ID in token
+                      at.registrationno = a.registrationno ?? null; // Store registration number in token
                       const fullName = String(a.alumniname || "").trim();
                       const [firstName, ...rest] = fullName.split(" ");
                       at.firstName = firstName || null;
@@ -302,13 +310,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             } else {
               // User not found in database - might be alumni, try that
               const arows = await sql/* sql */`
-                SELECT alumniid, sapid, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail 
+                SELECT alumniid, sapid, registrationno, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail 
                 FROM public.tbl_alumni 
                 WHERE alumniemail = ${String(token.email)} OR personalemail = ${String(token.email)} OR universityemail = ${String(token.email)} 
                 LIMIT 1
               ` as Array<{
                 alumniid: number;
                 sapid: string | null;
+                registrationno: string | null;
                 alumniname: string | null;
                 departmentname: string | null;
                 facultyname: string | null;
@@ -330,6 +339,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 at.type = "alumni";
                 at.blocked = String(alumni.alumnistatus || "").toLowerCase() === "blocked";
                 at.sapid = alumni.sapid ?? null;
+                at.registrationno = alumni.registrationno ?? null;
                 const fullName = String(alumni.alumniname || "").trim();
                 const [firstName, ...rest] = fullName.split(" ");
                 at.firstName = firstName || null;
@@ -366,9 +376,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         s.user.firstName = at.firstName;
         s.user.lastName = at.lastName;
         s.user.sapid = at.sapid ?? null; // Store SAP ID in session
+        s.user.registrationno = at.registrationno ?? null; // Store registration number in session
         s.user.name = `${at.firstName ?? ""} ${at.lastName ?? ""}`.trim();
         try {
-          console.info(`[auth] session set userId=${String(s.user.userId)} email=${String(s.user.email)} sapid=${String(s.user.sapid || '')}`);
+          console.info(`[auth] session set userId=${String(s.user.userId)} email=${String(s.user.email)} sapid=${String(s.user.sapid || '')} registrationno=${String(s.user.registrationno || '')}`);
         } catch {}
       } else {
         try {

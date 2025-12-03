@@ -10,16 +10,21 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // First try to get SAP ID from session (if alumni logged in with SAP ID)
+    // First try to get SAP ID or registration number from session
     const sessionSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined;
+    const sessionRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined;
     let rows;
     
     if (sessionSapid) {
       // Use SAP ID if available
-      // Return image2 if it exists (most recent), otherwise image1
       rows = await sql/* sql */`
         SELECT image1, image2 FROM public.tbl_alumni 
         WHERE sapid = ${sessionSapid} LIMIT 1`;
+    } else if (sessionRegNo) {
+      // Use registration number if available
+      rows = await sql/* sql */`
+        SELECT image1, image2 FROM public.tbl_alumni 
+        WHERE registrationno = ${sessionRegNo} LIMIT 1`;
     } else {
       // Fallback to email lookup (backward compatibility)
       const email = session?.user?.email ? String(session.user.email) : undefined;

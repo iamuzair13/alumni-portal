@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
 import AppHeader from "@/layout/AppHeader";
 import Image from "next/image";
@@ -13,7 +14,15 @@ import { Toaster, toast } from "react-hot-toast";
 
 function MoreDetailsContent() {
   const searchParams = useSearchParams();
-  const sapId = searchParams.get("sapid") || "";
+  const { data: session } = useSession();
+  
+  // Get identifier from URL params, or fallback to session (SAP ID or registration number)
+  const urlSapId = searchParams.get("sapid") || "";
+  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+  const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
+  
+  // Use URL param if available, otherwise use session SAP ID, otherwise use registration number
+  const sapId = urlSapId || sessionSapid || sessionRegNo || "";
 
   const { data, isLoading, isError, error, refetch } = useAlumniFullDetails(sapId || undefined);
   const updateMutation = useUpdateAlumniFields(sapId || undefined);

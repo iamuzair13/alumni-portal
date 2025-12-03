@@ -75,8 +75,9 @@ export async function POST(req: Request) {
     
     const email = session.user.email ? String(session.user.email) : null;
     const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
+    const userRegNo = session.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : null) : null;
     
-    if (!email && !userSapid) {
+    if (!email && !userSapid && !userRegNo) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
     
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
     const v = validatePayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
 
-    // Try to find alumni by SAP ID first (more reliable), then by email
+    // Try to find alumni by SAP ID first (more reliable), then by registration number, then by email
     let alumRows: Array<{ alumniid: number; facultyname: string | null; degreetitle: string | null; departmentname: string | null; linkedin?: string | null }> = [];
     
     if (userSapid) {
@@ -94,7 +95,15 @@ export async function POST(req: Request) {
         LIMIT 1`;
     }
     
-    // If not found by SAP ID, try by email
+    // If not found by SAP ID, try by registration number
+    if (alumRows.length === 0 && userRegNo) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid, facultyname, degreetitle, departmentname, linkedin FROM public.tbl_alumni 
+        WHERE registrationno = ${userRegNo}
+        LIMIT 1`;
+    }
+    
+    // If not found by SAP ID or registration number, try by email
     if (alumRows.length === 0 && email) {
       alumRows = await sql/* sql */`
         SELECT alumniid, facultyname, degreetitle, departmentname, linkedin FROM public.tbl_alumni 
@@ -179,19 +188,26 @@ export async function PUT(req: Request) {
     
     const email = session.user.email ? String(session.user.email) : null;
     const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
+    const userRegNo = session.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : null) : null;
     
-    if (!email && !userSapid) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    if (!email && !userSapid && !userRegNo) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     
     const body = await req.json();
     const v = validatePayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
     
-    // Try to find alumni by SAP ID first, then by email
-    let alumRows: Array<{ alumniid: number; sapid: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }> = [];
+    // Try to find alumni by SAP ID first, then by registration number, then by email
+    let alumRows: Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }> = [];
     
     if (userSapid) {
       alumRows = await sql/* sql */`
-        SELECT alumniid, sapid, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
+        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE sapid = ${userSapid} LIMIT 1`;
+    }
+    
+    // If not found by SAP ID, try by registration number
+    if (alumRows.length === 0 && userRegNo) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail FROM public.tbl_alumni WHERE registrationno = ${userRegNo} LIMIT 1`;
     }
     
     if (alumRows.length === 0 && email) {
@@ -211,13 +227,14 @@ export async function PUT(req: Request) {
       // If not admin, verify ownership
       const row = alumRows[0];
       const isOwnerBySapid = userSapid && row.sapid && userSapid.toLowerCase().trim() === row.sapid.toLowerCase().trim();
+      const isOwnerByRegNo = userRegNo && row.registrationno && userRegNo.toLowerCase().trim() === String(row.registrationno ?? "").toLowerCase().trim();
       const isOwnerByEmail = email && (
         (row.personalemail && row.personalemail.toLowerCase().trim() === email.toLowerCase().trim()) ||
         (row.universityemail && row.universityemail.toLowerCase().trim() === email.toLowerCase().trim()) ||
         (row.officialemail && row.officialemail.toLowerCase().trim() === email.toLowerCase().trim())
       );
       
-      if (!isOwnerBySapid && !isOwnerByEmail) {
+      if (!isOwnerBySapid && !isOwnerByRegNo && !isOwnerByEmail) {
         return NextResponse.json({ error: "Forbidden: You can only update your own talks" }, { status: 403 });
       }
     } else {
@@ -270,7 +287,7 @@ export async function DELETE(req: Request) {
     
     if (maybeSapId) {
       const arows = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${maybeSapId} LIMIT 1`;
+        SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${maybeSapId} OR registrationno = ${maybeSapId} LIMIT 1`;
       const aid = arows[0]?.alumniid as number | undefined;
       if (!aid) return NextResponse.json({ error: "ALUMNI_NOT_FOUND" }, { status: 404 });
       

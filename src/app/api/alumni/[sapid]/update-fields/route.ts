@@ -11,11 +11,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const normalizedIdentifier = String(sapid || "").trim();
     console.log("[API] Update fields request for identifier:", normalizedIdentifier);
     
-    // Verify the user is authenticated (by email or SAP ID)
+    // Verify the user is authenticated (by email, SAP ID, or registration number)
     const userEmail = session?.user?.email ? String(session.user.email) : null;
     const userSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null) : null;
+    const userRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null) : null;
     
-    if (!userEmail && !userSapid) {
+    if (!userEmail && !userSapid && !userRegNo) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -44,9 +45,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const currentPassword = row.password ? String(row.password) : null;
     const alumniId = Number(row.alumniid); // Use alumniid (primary key) for all updates
     
-    // Note: userEmail and userSapid are already declared above in the authentication check
-    // Check ownership by SAP ID first (since users now log in with SAP ID)
+    // Note: userEmail, userSapid, and userRegNo are already declared above in the authentication check
+    // Check ownership by SAP ID
     const isOwnerBySapid = userSapid && String(row.sapid ?? "").toLowerCase().trim() === userSapid.toLowerCase().trim();
+    
+    // Check ownership by registration number
+    const isOwnerByRegNo = userRegNo && String(row.registrationno ?? "").toLowerCase().trim() === userRegNo.toLowerCase().trim();
     
     // Check ownership by email (backward compatibility)
     const isOwnerByEmail = userEmail && (
@@ -55,7 +59,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       String(row.officialemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim()
     );
     
-    const isOwner = isOwnerBySapid || isOwnerByEmail;
+    const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
 
     if (!isOwner && !canModify(session?.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

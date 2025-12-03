@@ -12,8 +12,9 @@ export async function POST(req: Request) {
     
     const email = session.user.email ? String(session.user.email) : null;
     const userSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null) : null;
+    const userRegNo = session.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : null) : null;
     
-    if (!email && !userSapid) {
+    if (!email && !userSapid && !userRegNo) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
     
@@ -36,6 +37,12 @@ export async function POST(req: Request) {
         SELECT alumniid, alumniname, personalemail, officialemail, universityemail
         FROM public.tbl_alumni 
         WHERE sapid = ${userSapid} AND alumniid = ${parseInt(String(alumniId), 10)}
+        LIMIT 1`;
+    } else if (userRegNo) {
+      alumRows = await sql/* sql */`
+        SELECT alumniid, alumniname, personalemail, officialemail, universityemail
+        FROM public.tbl_alumni 
+        WHERE registrationno = ${userRegNo} AND alumniid = ${parseInt(String(alumniId), 10)}
         LIMIT 1`;
     }
     

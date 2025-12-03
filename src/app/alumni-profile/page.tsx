@@ -56,11 +56,21 @@ async function getProfile(searchParams: { sapid?: string }) {
     }
     
     // First try to get SAP ID from session (if alumni logged in with SAP ID)
+    // Get SAP ID or registration number from session
     const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+    const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
+    
     if (sessionSapid) {
       const rows = await sql/* sql */`
         SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
         FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
+      if (rows[0]) return rows[0] as Profile | undefined;
+    }
+    
+    if (sessionRegNo) {
+      const rows = await sql/* sql */`
+        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
+        FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
@@ -134,8 +144,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const dept = p?.departmentname ?? "";
   const program = p?.degreetitle ?? "";
   const contact = p?.contactno ?? "";
-  // Get SAP ID from session first, then from search params, then from email lookup
+  // Get SAP ID or registration number from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+  const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
   const email = session?.user?.email ? String(session.user.email) : undefined;
   
   let sapRows: Array<{ alumniid: number; sapid: string }> = [];
@@ -150,6 +161,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     } catch (e) {
       sapError = e instanceof Error ? e.message : "Failed to load SAP ID from session";
     }
+  } else if (sessionRegNo) {
+    // If we have registration number from session, use it
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni 
+        WHERE registrationno = ${sessionRegNo} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from registration number";
+    }
   } else if (email) {
     // Fallback to email lookup (backward compatibility)
     try {
@@ -162,7 +182,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     }
   }
   
-  const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? sessionSapid ?? "").trim();
+  // Use SAP ID if available, otherwise use registration number as identifier
+  // The API endpoints support both SAP ID and registration number
+  const sapId = String(
+    sapRows[0]?.sapid ?? 
+    sp?.sapid ?? 
+    sessionSapid ?? 
+    sessionRegNo ?? 
+    ""
+  ).trim();
   const alumniId = String(sapRows[0]?.alumniid ?? "");
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
@@ -829,19 +857,7 @@ let cardImageFile: string | null = null;
               borderColor: "border-emerald-200",
               iconBg: "bg-emerald-100",
             },
-            {
-              title: "Identity & Inclusion",
-              description: "Avail UOL library access (on-campus &amp; online) and a permanent UOL alumni email.",
-              icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-purple-600" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                </svg>
-              ),
-              slug: "identity-inclusion",
-              gradient: "from-purple-50 to-purple-100",
-              borderColor: "border-purple-200",
-              iconBg: "bg-purple-100",
-            },
+           
             {
               title: "Campus Facilities and Memberships",
               description: "Enjoy access to gym, sports facilities, and exclusive campus amenities.",
@@ -895,7 +911,7 @@ let cardImageFile: string | null = null;
               iconBg: "bg-rose-100",
             },
             {
-              title: "Recognition",
+              title: "Identity, Inclusion & Recognition",
               description: " Avail opportunities to be honored for achievements via awards and spotlights.",
               icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-amber-600" viewBox="0 0 24 24">

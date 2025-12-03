@@ -42,6 +42,12 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
   const { start, stop } = useProgress();
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
   const queryClient = useQueryClient();
+  // Get SAP ID and Registration Number from fullDetails
+  const sapIdValue = String(fullDetails?.sapid ?? "").trim();
+  const registrationNoValue = String(fullDetails?.registrationno ?? "").trim();
+  // Determine if both are available
+  const hasSapId = sapIdValue && sapIdValue !== "";
+  const hasRegNo = registrationNoValue && registrationNoValue !== "";
   const [avatar, setAvatar] = useState(initialAvatar);
   const [uploading, setUploading] = useState(false);
   const [showSocialForm, setShowSocialForm] = useState(false);
@@ -527,7 +533,15 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
         <div className="mt-6 pt-4 border-t border-gray-100">
           <h5 className="text-lg font-semibold text-red-800 mb-3">Profile Details</h5>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 text-sm text-slate-700">
-            <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {safeText(sapId) || "N/A"}</div>
+            {hasSapId && (
+              <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {safeText(sapIdValue) || "N/A"}</div>
+            )}
+            {hasRegNo && (
+              <div className="col-span-1"><span className="font-semibold">Registration Number:</span> <br/> {safeText(registrationNoValue) || "N/A"}</div>
+            )}
+            {!hasSapId && !hasRegNo && (
+              <div className="col-span-1"><span className="font-semibold">SAP ID/Registration Number:</span> <br/> N/A</div>
+            )}
             <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {formatPhone(contact) || "Not provided"}</div>
             <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {safeText(faculty) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>

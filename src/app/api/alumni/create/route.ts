@@ -759,13 +759,11 @@ export async function POST(req: Request) {
       return alumniId;
     });
 
-    // Automatically store home city in chapter1 and work city in chapter2
+    // Automatically assign chapters based on home city and work city, and association based on faculty
     if (id) {
       try {
-        // Get home city from body
+        // Get home city and work city
         const homeCity = body.city ? String(body.city).trim() : null;
-        
-        // Get work city from body or fetch from database
         let workCity = (body as { workCity?: string | null }).workCity 
           ? String((body as { workCity?: string | null }).workCity).trim() 
           : null;
@@ -782,8 +780,84 @@ export async function POST(req: Request) {
             : null;
         }
 
-        // Only create chapter record if at least one city is provided
-        if (homeCity || workCity) {
+        // Find chapters by matching city with chapterlocation (case-insensitive)
+        // First find in alumnichapterslocation, then map to tblchapters
+        let chapter1Id: number | null = null;
+        let chapter2Id: number | null = null;
+
+        if (homeCity) {
+          // Find chapter in alumnichapterslocation by location
+          const homeChapterLocationRows = await sql<{ chapterid: number; chaptertitle: string | null }[]>/* sql */`
+            SELECT chapterid, chaptertitle 
+            FROM public.alumnichapterslocation 
+            WHERE LOWER(TRIM(chapterlocation)) = LOWER(TRIM(${homeCity}))
+            LIMIT 1
+          `;
+          
+          if (homeChapterLocationRows.length > 0) {
+            const locationChapter = homeChapterLocationRows[0];
+            // Try to find corresponding chapter in tblchapters
+            // First try by ID (assuming chapterid might match tblchapters.id)
+            const chapterByIdRows = await sql<{ id: number }[]>/* sql */`
+              SELECT id FROM public.tblchapters WHERE id = ${locationChapter.chapterid} LIMIT 1
+            `;
+            
+            if (chapterByIdRows.length > 0) {
+              chapter1Id = chapterByIdRows[0].id;
+            } else if (locationChapter.chaptertitle) {
+              // If ID doesn't match, try to find by name
+              const chapterByNameRows = await sql<{ id: number }[]>/* sql */`
+                SELECT id FROM public.tblchapters 
+                WHERE LOWER(TRIM(COALESCE(national_chapter, international_chapter, ''))) = LOWER(TRIM(${locationChapter.chaptertitle}))
+                   OR LOWER(TRIM(COALESCE(national_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
+                   OR LOWER(TRIM(COALESCE(international_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
+                LIMIT 1
+              `;
+              if (chapterByNameRows.length > 0) {
+                chapter1Id = chapterByNameRows[0].id;
+              }
+            }
+          }
+        }
+
+        // Only assign work city chapter if it's different from home city
+        if (workCity && workCity.toLowerCase().trim() !== homeCity?.toLowerCase().trim()) {
+          // Find chapter in alumnichapterslocation by location
+          const workChapterLocationRows = await sql<{ chapterid: number; chaptertitle: string | null }[]>/* sql */`
+            SELECT chapterid, chaptertitle 
+            FROM public.alumnichapterslocation 
+            WHERE LOWER(TRIM(chapterlocation)) = LOWER(TRIM(${workCity}))
+            LIMIT 1
+          `;
+          
+          if (workChapterLocationRows.length > 0) {
+            const locationChapter = workChapterLocationRows[0];
+            // Try to find corresponding chapter in tblchapters
+            // First try by ID (assuming chapterid might match tblchapters.id)
+            const chapterByIdRows = await sql<{ id: number }[]>/* sql */`
+              SELECT id FROM public.tblchapters WHERE id = ${locationChapter.chapterid} LIMIT 1
+            `;
+            
+            if (chapterByIdRows.length > 0) {
+              chapter2Id = chapterByIdRows[0].id;
+            } else if (locationChapter.chaptertitle) {
+              // If ID doesn't match, try to find by name
+              const chapterByNameRows = await sql<{ id: number }[]>/* sql */`
+                SELECT id FROM public.tblchapters 
+                WHERE LOWER(TRIM(COALESCE(national_chapter, international_chapter, ''))) = LOWER(TRIM(${locationChapter.chaptertitle}))
+                   OR LOWER(TRIM(COALESCE(national_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
+                   OR LOWER(TRIM(COALESCE(international_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
+                LIMIT 1
+              `;
+              if (chapterByNameRows.length > 0) {
+                chapter2Id = chapterByNameRows[0].id;
+              }
+            }
+          }
+        }
+
+        // Only create/update chapter record if at least one chapter was found
+        if (chapter1Id || chapter2Id) {
           // Check if a record already exists for this alumni
           const existingChapter = await sql/* sql */`
             SELECT id FROM public.alumni_chapter 
@@ -791,30 +865,61 @@ export async function POST(req: Request) {
           `;
 
           if (existingChapter.length > 0) {
-            // Update existing record - only update if city is provided
+            // Update existing record
             await sql/* sql */`
               UPDATE public.alumni_chapter 
               SET 
-                "chapter1" = COALESCE(${homeCity}, "chapter1"),
-                "chapter2" = COALESCE(${workCity}, "chapter2")
+                "chapter1" = COALESCE(${chapter1Id}, "chapter1"),
+                "chapter2" = COALESCE(${chapter2Id}, "chapter2")
               WHERE id = ${id}
             `;
           } else {
             // Insert new record
             await sql/* sql */`
               INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
-              VALUES (${id}, ${homeCity}, ${workCity}, NULL)
+              VALUES (${id}, ${chapter1Id}, ${chapter2Id}, NULL)
             `;
           }
-          console.log("[API] Automatically stored cities in chapters:", { 
+          console.log("[API] Automatically assigned chapters:", { 
             alumniId: id, 
-            chapter1: homeCity, 
-            chapter2: workCity 
+            homeCity,
+            workCity,
+            chapter1Id, 
+            chapter2Id 
           });
         }
-      } catch (chapterError) {
-        // Don't fail the registration if chapter insertion fails
-        console.error("[API] Error storing cities in chapters:", chapterError);
+
+        // Find and assign association based on faculty
+        const facultyName = body.facultyname ? String(body.facultyname).trim() : null;
+        if (facultyName) {
+          // Try to find association by matching faculty name (case-insensitive)
+          // Associations might have faculty info in title, description, or dean field
+          const associationRows = await sql<{ id: number }[]>/* sql */`
+            SELECT id 
+            FROM public.tbl_associations 
+            WHERE LOWER(TRIM(title)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
+               OR LOWER(TRIM(description)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
+               OR LOWER(TRIM(dean)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
+            LIMIT 1
+          `;
+          
+          if (associationRows.length > 0) {
+            const associationId = associationRows[0].id;
+            await sql/* sql */`
+              UPDATE public.tbl_alumni 
+              SET association_id = ${associationId}
+              WHERE alumniid = ${id}
+            `;
+            console.log("[API] Automatically assigned association:", { 
+              alumniId: id, 
+              facultyName,
+              associationId 
+            });
+          }
+        }
+      } catch (assignmentError) {
+        // Don't fail the registration if chapter/association assignment fails
+        console.error("[API] Error assigning chapters/association:", assignmentError);
       }
     }
 

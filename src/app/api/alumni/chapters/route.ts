@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
       // Get the user's alumni ID from session (SAP ID or email lookup)
       let userAlumniId: number | null = null;
       
-      // Try to get SAP ID from session
+      // Try to get SAP ID or registration number from session
       const sessionSapid = session.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+      const sessionRegNo = session.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
       
       if (sessionSapid) {
         const sapRows = await sql/* sql */`
@@ -100,6 +101,15 @@ export async function POST(request: NextRequest) {
         `;
         if (sapRows[0]) {
           userAlumniId = Number((sapRows[0] as { alumniid: number }).alumniid);
+        }
+      } else if (sessionRegNo) {
+        const regRows = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE registrationno = ${sessionRegNo} 
+          LIMIT 1
+        `;
+        if (regRows[0]) {
+          userAlumniId = Number((regRows[0] as { alumniid: number }).alumniid);
         }
       }
       

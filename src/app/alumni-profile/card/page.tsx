@@ -37,12 +37,21 @@ async function getProfile(searchParams: { sapid?: string }) {
     }
     const session = await auth();
     
-    // First try to get SAP ID from session (if alumni logged in with SAP ID)
+    // First try to get SAP ID or registration number from session
     const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+    const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
+    
     if (sessionSapid) {
       const rows = await sql/* sql */`
         SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
         FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
+      if (rows[0]) return rows[0] as Profile | undefined;
+    }
+    
+    if (sessionRegNo) {
+      const rows = await sql/* sql */`
+        SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
+        FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
@@ -97,8 +106,9 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const program = p?.degreetitle ?? "";
-  // Get SAP ID from session first, then from search params, then from email lookup
+  // Get SAP ID or registration number from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+  const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
   const email = session?.user?.email ? String(session.user.email) : undefined;
   
   let sapRows: Array<{ alumniid: number; sapid: string }> = [];
@@ -113,6 +123,15 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
     } catch (e) {
       sapError = e instanceof Error ? e.message : "Failed to load SAP ID from session";
     }
+  } else if (sessionRegNo) {
+    // If we have registration number from session, use it
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni 
+        WHERE registrationno = ${sessionRegNo} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from registration number";
+    }
   } else if (email) {
     // Fallback to email lookup (backward compatibility)
     try {
@@ -125,7 +144,15 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
     }
   }
   
-  const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? sessionSapid ?? "").trim();
+  // Use SAP ID if available, otherwise use registration number as identifier
+  // The API endpoints support both SAP ID and registration number
+  const sapId = String(
+    sapRows[0]?.sapid ?? 
+    sp?.sapid ?? 
+    sessionSapid ?? 
+    sessionRegNo ?? 
+    ""
+  ).trim();
   const alumniId = String(sapRows[0]?.alumniid ?? "");
 
   // Get card status and card picture

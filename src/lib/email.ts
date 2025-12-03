@@ -366,7 +366,7 @@ export async function sendWelcomeEmail(
       <strong>Important:</strong> Please log in using your SAP ID or email and the password above, then change your password from your profile settings for security.
     </p>
     <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      You can access the portal at: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://alumni-portal-uol.vercel.app"}/signin" style="color: #007bff; text-decoration: underline;">Sign In</a>
+      You can access the portal at: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">Sign In</a>
     </p>
   `;
   const footer = "We look forward to your active participation in the alumni community. If you have any questions, please don't hesitate to contact us.";

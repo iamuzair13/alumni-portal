@@ -55,10 +55,12 @@ export interface UserWithDbLike {
   email?: string | null;
   name?: string | null;
   sapid?: string | null; // Add SAP ID for alumni
+  registrationno?: string | null; // Add registration number for alumni
   dbUser?: DbUser;
   alumniDb?: {
     alumniid: number;
     sapid: string | null; // Add SAP ID to alumni DB object
+    registrationno: string | null; // Add registration number to alumni DB object
     alumniname: string | null;
     departmentname: string | null;
     facultyname: string | null;
@@ -203,7 +205,21 @@ export async function authenticateCredentials(identifier: string, password: stri
       arows = await sql/* sql */`SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${identifier.trim()} OR personalemail = ${identifier.trim()} OR universityemail = ${identifier.trim()} LIMIT 1`;
     } else {
       // Use SAP ID or registration number for alumni login
-      arows = await sql/* sql */`SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE sapid = ${identifier.trim()} OR registrationno = ${identifier.trim()} LIMIT 1`;
+      // Handle both string and potential number comparisons, and ensure we check non-null values
+      // Use TRIM to handle any whitespace issues
+      const trimmedIdentifier = identifier.trim();
+      log("INFO", `Attempting alumni login with identifier: "${trimmedIdentifier}" (SAP ID or Registration Number)`);
+      arows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount 
+        FROM public.tbl_alumni 
+        WHERE (sapid IS NOT NULL AND TRIM(sapid) = ${trimmedIdentifier}) 
+           OR (registrationno IS NOT NULL AND TRIM(registrationno) = ${trimmedIdentifier})
+        LIMIT 1`;
+      if (arows.length === 0) {
+        log("FAIL", `No alumni found with SAP ID or Registration Number: "${trimmedIdentifier}"`);
+      } else {
+        log("OK", `Found alumni record with ${arows[0].sapid ? 'SAP ID' : 'Registration Number'}: "${trimmedIdentifier}"`);
+      }
     }
   } catch (err) {
     log("FAIL", `alumni db error: ${err instanceof Error ? err.message : String(err)}`);
@@ -230,7 +246,8 @@ export async function authenticateCredentials(identifier: string, password: stri
     logincount: number | null;
   } | undefined;
   if (!a) {
-    log("FAIL", `${isEmail ? 'email' : 'sapid/registrationno'} not registered (alumni)`);
+    const identifierType = isEmail ? 'email' : 'SAP ID or Registration Number';
+    log("FAIL", `${identifierType} not registered (alumni): "${identifier.trim()}"`);
     throw new Error(isEmail ? "EMAIL_NOT_REGISTERED" : "SAPID_NOT_REGISTERED");
   }
   if ((a.alumnistatus || "").toLowerCase() === "blocked") {
@@ -258,9 +275,11 @@ export async function authenticateCredentials(identifier: string, password: stri
     email: userEmail,
     name: String(a.alumniname || "") || undefined,
     sapid: a.sapid ?? null, // Store SAP ID at top level
+    registrationno: a.registrationno ?? null, // Store registration number at top level
     alumniDb: {
       alumniid: a.alumniid,
       sapid: a.sapid ?? null, // Store SAP ID in alumni DB object
+      registrationno: a.registrationno ?? null, // Store registration number in alumni DB object
       alumniname: a.alumniname ?? null,
       departmentname: a.departmentname ?? null,
       facultyname: a.facultyname ?? null,

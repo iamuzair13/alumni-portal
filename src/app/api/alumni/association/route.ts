@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     const userSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null) : null;
-    if (!session?.user?.email && !userSapid) {
+    const userRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null) : null;
+    if (!session?.user?.email && !userSapid && !userRegNo) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

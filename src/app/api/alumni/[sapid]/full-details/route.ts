@@ -76,8 +76,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Check if user is alumni (not admin)
+    const userType = (session.user as { type?: string })?.type;
+    const isAlumni = userType?.toLowerCase().trim() === "alumni";
+    
     // Return all fields from tbl_alumni
-    // SECURITY: Never return password in API response - it's sensitive data
+    // SECURITY: Only return password for alumni (owners), not for admins
     return NextResponse.json({ 
       item: {
         alumniid: row.alumniid ?? null,
@@ -132,7 +136,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        // SECURITY: Password is intentionally excluded from response
+        // SECURITY: Only return password for alumni (owners), not for admins
+        password: (isAlumni && isOwner) ? (row.password ?? null) : null,
         father_cnic: row.father_cnic ?? null,
       }
     }, { status: 200 });

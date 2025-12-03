@@ -12,7 +12,7 @@ const benefitsData: Record<string, { title: string; description: string; content
     content: `
       <div class="mb-8">
         <h3 class="text-2xl font-bold text-gray-900 mb-3">Academic: Fee Discounts & Scholarships</h3>
-        <p class="text-gray-700 text-lg leading-relaxed mb-6">As a valued UOL alumnus, you are eligible for academic scholarships and fee discounts on select programs and courses. These benefits support your continued learning and professional growth while rewarding your connection with UOL.</p>
+        <p class="text-gray-700 text-lg leading-relaxed mb-6">As a valued UOL alumnus, you are eligible for academic scholarships and fee discounts on all programs and courses. These benefits support your continued learning and professional growth while rewarding your connection with UOL.</p>
       </div>
       
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -123,7 +123,7 @@ const benefitsData: Record<string, { title: string; description: string; content
               <tbody class="divide-y divide-gray-200">
                 <tr class="hover:bg-gray-50 transition-colors">
                   <td class="px-4 py-4 font-semibold text-gray-900">Medical Consultation, Diagnostic Services at University of Lahore Hospital (ULH)</td>
-                  <td class="px-4 py-4 text-gray-700" rowspan="2">Alumni and family members (Spouse, Children, Parents)</td>
+                  <td class="px-4 py-4 text-gray-700" rowspan="2">Alumni and family members (Spouse, Children)</td>
                   <td class="px-4 py-4 text-gray-700" rowspan="2">Same discount % & services, as offered to UOL students</td>
                 </tr>
                 <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
@@ -143,7 +143,7 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
   "identity-inclusion": {
     title: "Identity & Inclusion",
-    description: "Avail UOL library access (on-campus &amp; online) and a permanent UOL alumni email.",
+    description: "Avail UOL library access (on-campus & online) and a permanent UOL alumni email.",
     content: `
       <div class="mb-8">
         <h3 class="text-2xl font-bold text-gray-900 mb-3">Identity & Inclusion: UOL Facilities Access & Memberships</h3>
@@ -164,19 +164,8 @@ const benefitsData: Record<string, { title: string; description: string; content
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">Access to UOL Library Resources</td>
-                  <td class="px-4 py-4 text-gray-700">
-                    <ul class="list-disc list-inside space-y-2">
-                      <li>Free on-campus access</li>
-                      <li>Free on-line access (digital library)</li>
-                    </ul>
-                  </td>
-                </tr>
-                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">UOL Alumni Email</td>
-                  <td class="px-4 py-4 text-gray-700">Permanent email address @alumni.uol.edu.pk</td>
-                </tr>
+                
+               
               </tbody>
             </table>
           </div>
@@ -217,7 +206,7 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <td class="px-4 py-4 font-semibold text-gray-900">UOL Gym Membership</td>
                   <td class="px-4 py-4 text-gray-700">
                     <ul class="list-disc list-inside space-y-1 text-sm">
-                      <li>Regular Membership: Same % discount as offered to UOL Staff or Students or 50% discount on rate for outsiders (whichever is better)</li>
+                      <li>Same % discount as offered to UOL Students</li>
                       <li>Free registration for select competitions</li>
                     </ul>
                   </td>
@@ -234,7 +223,7 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <td class="px-4 py-4 font-semibold text-gray-900">UOL Swimming Pool Membership</td>
                   <td class="px-4 py-4 text-gray-700">
                     <ul class="list-disc list-inside space-y-1 text-sm">
-                      <li>Regular Membership: Same % discount as offered to UOL Staff or Students or 50% discount on rate for outsiders (whichever is better)</li>
+                      <li>Same % discount as offered to UOL Students</li>
                       <li>Free registration for select competitions</li>
                     </ul>
                   </td>
@@ -251,7 +240,7 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <td class="px-4 py-4 font-semibold text-gray-900">UOL Qalandars Cricket Club Membership</td>
                   <td class="px-4 py-4 text-gray-700">
                     <ul class="list-disc list-inside space-y-1 text-sm">
-                      <li>50% Discount on Qalandars Cricket Club membership or Same % discount as offered to UOL Students (whichever is better)</li>
+                      <li>Same % discount as offered to UOL Students</li>
                       <li>Free registration for select tournaments</li>
                     </ul>
                   </td>
@@ -259,13 +248,22 @@ const benefitsData: Record<string, { title: string; description: string; content
                 </tr>
                 <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
                   <td class="px-4 py-4 font-semibold text-gray-900">Discounts at UOL Restaurants (Poet)</td>
-                  <td class="px-4 py-4 text-gray-700">Same % discount as offered to UOL Staff or Students (whichever is better)</td>
+                  <td class="px-4 py-4 text-gray-700">Same % discount as offered to UOL Students</td>
                   <td class="px-4 py-4"></td>
                 </tr>
                 <tr class="hover:bg-gray-50 transition-colors">
                   <td class="px-4 py-4 font-semibold text-gray-900">Free 3 Membership coupons to Alumni per month for Gym & Pool</td>
                   <td class="px-4 py-4 text-gray-700">Monthly draw run through portal</td>
                   <td class="px-4 py-4"></td>
+                </tr>
+                <tr class="hover:bg-gray-50 transition-colors">
+                  <td class="px-4 py-4 font-semibold text-gray-900">Access to UOL Library Resources</td>
+                  <td class="px-4 py-4 text-gray-700">
+                    <ul class="list-disc list-inside space-y-2">
+                      <li>Free on-campus access</li>
+                      <li>Free on-line access (digital library)</li>
+                    </ul>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -307,7 +305,6 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <td class="px-4 py-4 text-gray-700">
                     <ul class="list-disc list-inside space-y-2">
                       <li>Same discount % & services, as offered to UOL students.</li>
-                      <li>Refer to list of merchants with discounts on Alumni website.</li>
                     </ul>
                   </td>
                 </tr>
@@ -362,7 +359,7 @@ const benefitsData: Record<string, { title: string; description: string; content
                     </tr>
                     <tr class="hover:bg-gray-50 transition-colors">
                       <td class="px-4 py-4 font-semibold text-gray-900">Career Counselling & Job Placement Support</td>
-                      <td class="px-4 py-4 text-gray-700">One-on-one career counselling and placement support through UOL Career Services & Placement Office</td>
+                      <td class="px-4 py-4 text-gray-700">One-on-one career counselling and placement support through UOL Alumni office representative </td>
                     </tr>
                     <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
                       <td class="px-4 py-4 font-semibold text-gray-900">Invitation to Recruitment Drives</td>
@@ -461,12 +458,8 @@ const benefitsData: Record<string, { title: string; description: string; content
                   <td class="px-4 py-4 text-gray-700">Membership of Local, Regional, and International Alumni chapters, promoting Alumni community engagement, networking, and various professional & social interaction events.</td>
                 </tr>
                 <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">Alumni Associations - Special Interest Groups (SIGs)</td>
-                  <td class="px-4 py-4 text-gray-700">Membership of various UOL Alumni Associations (SIGs), focused on a specific subject or initiative, as announced on Alumni website</td>
-                </tr>
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">Advisory Roles</td>
-                  <td class="px-4 py-4 text-gray-700">Membership of advisory boards, accreditation review committees, industry panels constituted at UOL faculty-wise, or function-wise</td>
+                  <td class="px-4 py-4 font-semibold text-gray-900">Alumni Associations</td>
+                  <td class="px-4 py-4 text-gray-700">Membership of various UOL Alumni Associations, focused on a specific subject or initiative, as announced on Alumni website</td>
                 </tr>
                 <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
                   <td class="px-4 py-4 font-semibold text-gray-900">Alumni Networking Events</td>
@@ -548,6 +541,10 @@ const benefitsData: Record<string, { title: string; description: string; content
                       <li>Highlighting Alumni success stories on UOL's website and social media.</li>
                     </ul>
                   </td>
+                </tr>
+                 <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <td class="px-4 py-4 font-semibold text-gray-900">UOL Alumni Email</td>
+                  <td class="px-4 py-4 text-gray-700">Permanent email address @alumni.uol.edu.pk</td>
                 </tr>
               </tbody>
             </table>

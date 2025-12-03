@@ -102,6 +102,12 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const program = String(fullDetails?.degreetitle ?? data?.program ?? "").trim();
   // Use contactno directly from fullDetails, or try to reconstruct from mapped data
   const contact = String(fullDetails?.contactno ?? (data?.phoneNumber ? `${data?.countryCode ?? ""} ${data?.phoneNumber}`.trim() : "") ?? data?.officialPhone ?? "").trim();
+  // Get SAP ID and Registration Number from fullDetails
+  const sapIdValue = String(fullDetails?.sapid ?? "").trim();
+  const registrationNoValue = String(fullDetails?.registrationno ?? "").trim();
+  // Determine if both are available
+  const hasSapId = sapIdValue && sapIdValue !== "";
+  const hasRegNo = registrationNoValue && registrationNoValue !== "";
   const facebook = String(fullDetails?.facebook ?? (data as unknown as { facebook?: string })?.facebook ?? "").trim() || null;
   const instagram = String(fullDetails?.instagram ?? (data as unknown as { instagram?: string })?.instagram ?? "").trim() || null;
   const youtube = String(fullDetails?.youtube ?? (data as unknown as { youtube?: string })?.youtube ?? "").trim() || null;
@@ -545,7 +551,15 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
           <div className="mt-6 pt-4 border-t border-gray-100">
             <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 text-sm text-slate-700">
-              <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {sapId || "N/A"}</div>
+              {hasSapId && (
+                <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {sapIdValue}</div>
+              )}
+              {hasRegNo && (
+                <div className="col-span-1"><span className="font-semibold">Registration Number:</span> <br/> {registrationNoValue}</div>
+              )}
+              {!hasSapId && !hasRegNo && (
+                <div className="col-span-1"><span className="font-semibold">SAP ID/Registration Number:</span> <br/> N/A</div>
+              )}
               <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {contact || "Not provided"}</div>
               <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {faculty || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {dept || "N/A"}</div>

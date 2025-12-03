@@ -27,15 +27,20 @@ async function getSapId(searchParams: { sapid?: string }) {
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   if (sessionSapid) return sessionSapid;
   
+  // Try registration number from session (if alumni logged in with registration number)
+  const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
+  if (sessionRegNo) return sessionRegNo;
+  
   // Fallback to email lookup (backward compatibility)
   const email = session?.user?.email ? String(session.user.email) : undefined;
   if (!email) return "";
   try {
     const sapRows = await sql/* sql */`
-      SELECT sapid FROM public.tbl_alumni 
+      SELECT sapid, registrationno FROM public.tbl_alumni 
       WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
       ORDER BY alumniid DESC LIMIT 1`;
-    return String(sapRows[0]?.sapid ?? "");
+    // Return SAP ID if available, otherwise return registration number
+    return String(sapRows[0]?.sapid ?? sapRows[0]?.registrationno ?? "");
   } catch {
     return "";
   }
