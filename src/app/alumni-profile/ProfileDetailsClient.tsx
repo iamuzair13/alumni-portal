@@ -367,13 +367,13 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 </div>
               </Link>
             </div>
-            <div className="pt-4 sm:pt-0 sm:ml-6 flex-grow">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-2">
-                <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold">{name}</h4>
+            <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
+                <h4 className="text-slate-900 text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words">{name}</h4>
                 
                 {/* Leadership Label - Prominent Badge */}
                 {leadershipInfo?.roleDisplay && leadershipInfo.type && (
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm shadow-md ${
+                  <div className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm shadow-md ${
                     leadershipInfo.role?.toLowerCase().includes("president") 
                       ? leadershipInfo.type === "chapter"
                         ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white border-2 border-purple-800"
@@ -387,7 +387,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                         : "bg-gradient-to-r from-teal-600 to-teal-700 text-white border-2 border-teal-800"
                   }`}>
                     <svg
-                      className="w-5 h-5"
+                      className="w-4 h-4 sm:w-5 sm:h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -412,18 +412,18 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               </div>
               
               {/* Chapters and Association Section - Right after name */}
-              <div className="mt-3 mb-4">
+              <div className="mt-2 sm:mt-3 mb-3 sm:mb-4">
                 {/* Error Messages */}
                 {(chaptersError || associationError) && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg mb-3">
-                    <p className="text-sm text-rose-700">{chaptersError || associationError}</p>
+                  <div className="p-2.5 sm:p-3 bg-rose-50 border border-rose-200 rounded-lg mb-2 sm:mb-3">
+                    <p className="text-xs sm:text-sm text-rose-700">{chaptersError || associationError}</p>
                   </div>
                 )}
 
                 {/* Not Verified Message */}
                 {!isVerified && !chaptersError && !associationError && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-3">
-                    <p className="text-sm text-amber-700">
+                  <div className="p-2.5 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg mb-2 sm:mb-3">
+                    <p className="text-xs sm:text-sm text-amber-700">
                       Your account needs to be verified before you can view or apply for chapters and associations.
                     </p>
                   </div>
@@ -431,15 +431,15 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
                 {/* Verified: Show Chapters and Associations */}
                 {isVerified && !chaptersError && !associationError && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {/* Chapters */}
                     {chapters.map((chapter, index) => (
                       <div
                         key={index}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg"
+                        className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 bg-green-50 border border-green-200 rounded-lg"
                       >
                         <svg
-                          className="w-4 h-4 text-green-600"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -452,7 +452,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        <span className="text-xs font-medium text-green-800">
+                        <span className="text-xs font-medium text-green-800 break-words">
                           {chapter}
                         </span>
                       </div>
@@ -460,9 +460,9 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
                     {/* Association Membership */}
                     {associationTitle && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
                         <svg
-                          className="w-4 h-4 text-blue-600"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -475,7 +475,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                             d="M17 20h-10a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2z"
                           />
                         </svg>
-                        <span className="text-xs font-medium text-blue-800">
+                        <span className="text-xs font-medium text-blue-800 break-words">
                           Member of {associationTitle}
                         </span>
                       </div>
@@ -491,7 +491,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 )}
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3">
                 {[{ href: facebook || "#", label: "Facebook", svg: (
                   <svg role="img" aria-label="Facebook" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 155.139 155.139"><path d="M89.584 155.139V84.378h23.742l3.562-27.585H89.584V39.184c0-7.984 2.208-13.425 13.67-13.425l14.595-.006V1.08C115.325.752 106.661 0 96.577 0 75.52 0 61.104 12.853 61.104 36.452v20.341H37.29v27.585h23.814v70.761h28.48z"/></svg>
                 )}, { href: instagram || "#", label: "Instagram", svg: (
@@ -548,9 +548,9 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               )}
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <h5 className="text-lg font-semibold text-slate-800 mb-3">Profile Details</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 text-sm text-slate-700">
+          <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
+            <h5 className="text-base sm:text-lg font-semibold text-slate-800 mb-2 sm:mb-3">Profile Details</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-xs sm:text-sm text-slate-700">
               {hasSapId && (
                 <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {sapIdValue}</div>
               )}
@@ -565,10 +565,10 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {dept || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {program || "N/A"}</div>
             </div>
-            <div className="mt-4">
+            <div className="mt-3 sm:mt-4">
               <Link
                 href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 More Details
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

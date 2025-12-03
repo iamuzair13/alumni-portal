@@ -61,7 +61,7 @@ const AppHeader: React.FC = () => {
                 width={154}
                 height={32}
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="/images/logo/login-1.jpg"
                 alt="UOL Alumni Portal"
                 priority
               />
@@ -106,26 +106,7 @@ const AppHeader: React.FC = () => {
             </button>
           )}
 
-          {isAlumni && (
-            <Link href="/" className="lg:hidden">
-              <Image
-                width={154}
-                height={32}
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="UOL Alumni Portal"
-                priority
-              />
-              <Image
-                width={154}
-                height={32}
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="UOL Alumni Portal"
-                priority
-              />
-            </Link>
-          )}
+         
 
           <button
             onClick={toggleApplicationMenu}

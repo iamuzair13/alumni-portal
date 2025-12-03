@@ -455,8 +455,8 @@ let cardImageFile: string | null = null;
 
         {/* 2. Main Content Container (Max-width and Padding) */}
         {/* This container centers and holds the profile details and ID card. */}
-        <div className="min-w-screen bg-slate-100 mx-auto mt-16  px-4 sm:px-6 md:px-8 lg:px-10">
-          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-12 sm:-mt-16 md:-mt-16 gap-6 md:gap-8 p-4 sm:p-6 md:p-8">
+        <div className="w-full bg-slate-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10">
+          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-8 sm:mt-10 md:-mt-16 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8">
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
@@ -499,7 +499,7 @@ let cardImageFile: string | null = null;
                   />
                 )}
                 </div>
-                  <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-8 md:pt-10 mt-8 md:mt-0 order-2">
+                  <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-4 sm:pt-6 md:pt-8 lg:pt-10 mt-4 sm:mt-6 md:mt-0 order-2">
                     <div className={`shadow-sm border rounded-lg overflow-hidden text-center lg:mt-0 ${
                       cardStatus === "active" 
                         ? "bg-green-100 border-gray-100" 
@@ -511,9 +511,9 @@ let cardImageFile: string | null = null;
                         ? "bg-sky-50 border-sky-200" 
                         : "bg-gray-50 border-gray-200"
                     }`} aria-label="Alumni card">
-                      <div className="p-6">
-                        <div className="flex items-center justify-center gap-2 mb-3">
-                          <h3 className={`text-xl font-bold ${
+                      <div className="p-4 sm:p-5 md:p-6">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-3">
+                          <h3 className={`text-lg sm:text-xl font-bold ${
                             cardStatus === "active" 
                               ? "text-indigo-600" 
                               : cardStatus === "pending" 
@@ -560,7 +560,7 @@ let cardImageFile: string | null = null;
                         </div>
                         {cardStatus === "active" ? (
                           <>
-                            <div className="mt-4">
+                            <div className="mt-3 sm:mt-4">
                               <AlumniCardTemplate
                                 studentName={name}
                                 department={dept}
@@ -587,12 +587,12 @@ let cardImageFile: string | null = null;
                               });
                               
                               return (
-                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                  <div className="flex items-center justify-between mb-3">
+                                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-2 sm:mb-3">
                                     <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                                       Card Expiry Date:
                                     </span>
-                                    <span className={`text-sm font-semibold ${
+                                    <span className={`text-xs sm:text-sm font-semibold ${
                                       isExpired 
                                         ? "text-rose-600 dark:text-rose-400" 
                                         : "text-gray-900 dark:text-gray-100"
@@ -603,7 +603,7 @@ let cardImageFile: string | null = null;
                                   {isExpired && (
                                     <Link
                                       href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                                      className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                      className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                     >
                                       <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M23 4v6h-6"></path>
@@ -619,7 +619,7 @@ let cardImageFile: string | null = null;
                           </>
                         ) : (
                           <>
-                            <div className="mt-4">
+                            <div className="mt-3 sm:mt-4">
                               {cardStatus === "pending" ? (
                                 <p className="text-xs text-amber-700">Your application is under review.</p>
                               ) : cardStatus === "rejected" ? (
@@ -627,7 +627,7 @@ let cardImageFile: string | null = null;
                               ) : cardStatus === "full" ? (
                                 <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
                               ) : (
-                                <p className="text-xs text-gray-700 mb-3">Start your application to get your alumni card.</p>
+                                <p className="text-xs text-gray-700 mb-2 sm:mb-3">Start your application to get your alumni card.</p>
                               )}
                             </div>
                             {cardStatus === "pending" ? (
@@ -635,23 +635,23 @@ let cardImageFile: string | null = null;
                               type="button"
                               disabled
                               aria-disabled
-                              className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                             >
                               Under review
                             </button>
                           ) : cardStatus === "rejected" ? (
-                            <div className="mt-3 space-y-2">
+                            <div className="mt-2 sm:mt-3 space-y-2">
                               <button
                                 type="button"
                                 disabled
                                 aria-disabled
-                                className="inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                               >
                                 Application on hold
                               </button>
                               <button
                                 type="button"
-                                className="inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors"
+                                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors"
                                 aria-label="Contact Management"
                               >
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -665,14 +665,14 @@ let cardImageFile: string | null = null;
                               type="button"
                               disabled
                               aria-disabled
-                              className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                             >
                               Capacity Full
                             </button>
                           ) : cardStatus === "none" ? (
                             <Link
                               href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                              className="mt-3 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               Apply now
                             </Link>
@@ -687,9 +687,9 @@ let cardImageFile: string | null = null;
           {/* B. Alumni ID Card (Fixed width on larger screens) */}
         </div>
       </div>
-      <div className="p-10 text-slate-900 bg-slate-100">
-        <h4 className="text-2xl font-bold text-slate-900 mb-6">Networking & Engagement</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-6">
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-slate-900 bg-slate-100">
+        <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-4 sm:mb-5 md:mb-6">Networking & Engagement</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-4 sm:gap-5 md:gap-6">
           {[
             {
               title: "Success Story",
@@ -745,11 +745,11 @@ let cardImageFile: string | null = null;
             <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
               
           
-              <div className="p-4 text-center flex flex-col justify-between min-h-[12rem]">
-                <h3 className="text-lg font-semibold text-slate-900">{c.title}</h3>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{c.decription}</p>
+              <div className="p-3 sm:p-4 md:p-5 text-center flex flex-col justify-between min-h-[10rem] sm:min-h-[12rem]">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900">{c.title}</h3>
+                <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">{c.decription}</p>
                 {c.title === "Success Story" ? (
-                  <Link href="/alumni-success" className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
+                  <Link href="/alumni-success" className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-manipulation">
                     {c.action}
                   </Link>
                 ) : c.title === "Alumni Talk" ? (
@@ -776,14 +776,14 @@ let cardImageFile: string | null = null;
                         type="button"
                         disabled
                         aria-disabled
-                        className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-gray-300 cursor-not-allowed"
+                        className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                       >
                         Already Applied
                       </button>
                     ) : (
                       <Link
                         href={sapId ? `/alumni-profile/mentorship?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/mentorship`}
-                        className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       >
                         {c.action}
                       </Link>
@@ -792,21 +792,21 @@ let cardImageFile: string | null = null;
                 ) : c.title === "Alumni Chapters" ? (
                   <Link
                     href={sapId ? `/alumni-profile/my-chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/my-chapters`}
-                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {c.action}
                   </Link>
                 ) : c.title === "Alumni Association" ? (
                   <Link
                     href={sapId ? `/alumni-profile/association?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/association`}
-                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {c.action}
                   </Link>
                 ) : (
                   <Link
                     href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                    className="mt-4 inline-flex items-center justify-center px-4 py-2.5 w-full rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {c.action}
                   </Link>
@@ -818,17 +818,17 @@ let cardImageFile: string | null = null;
       </div>
 
 
-      <div className="p-10 bg-slate-100">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900 mb-3 flex items-center gap-3">
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
+        <div className="mb-4 sm:mb-6 md:mb-8">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           Perks &amp; Benefits
-            <span className="ml-3 px-4 py-1.5 text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm">
+            <span className="px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm">
             Alumni card is required to avail these benefits
           </span>
         </h2>
-          <p className="text-lg text-slate-600 mt-2">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
+          <p className="text-sm sm:text-base md:text-lg text-slate-600 mt-2">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
           {[
             {
               title: "Academic Benefits",
@@ -929,14 +929,14 @@ let cardImageFile: string | null = null;
               href={`/alumni-profile/benefits/${benefit.slug}`}
               className="group bg-white border-2 border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
             >
-              <div className={`bg-gradient-to-br ${benefit.gradient} p-6 border-b-2 ${benefit.borderColor}`}>
-                <div className={`w-16 h-16 ${benefit.iconBg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+              <div className={`bg-gradient-to-br ${benefit.gradient} p-4 sm:p-5 md:p-6 border-b-2 ${benefit.borderColor}`}>
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 ${benefit.iconBg} rounded-xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
                   {benefit.icon}
                 </div>
-                <h4 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors">{benefit.title}</h4>
+                <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors">{benefit.title}</h4>
               </div>
-              <div className="p-6">
-                <p className="text-sm text-slate-600 leading-relaxed">{benefit.description}</p>
+              <div className="p-4 sm:p-5 md:p-6">
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{benefit.description}</p>
                 <div className="mt-4 flex items-center text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
                   <span>Learn more</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
