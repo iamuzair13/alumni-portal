@@ -28,7 +28,7 @@ export default function SignInForm() {
   useEffect(() => {
     const err = params.get("error");
     if (err === "USER_NOT_FOUND") setErrorMessage("User not registered");
-    else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID not registered");
+    else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID or Registration Number not found");
     else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
     else if (err === "USER_BLOCKED") setErrorMessage("This account is blocked");
     else if (err === "INVALID_EMAIL") setErrorMessage("Invalid email received from provider");

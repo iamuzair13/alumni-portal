@@ -80,7 +80,7 @@ export async function authenticateCredentials(identifier: string, password: stri
   
   const log = (status: string, msg: string) => {
     const ts = new Date().toISOString();
-    try { console.info(`[auth] ${ts} ${status} identifier=${identifier} (${isEmail ? 'email' : 'sapid'}) ip=${ip} ${msg}`); } catch {}
+    try { console.info(`[auth] ${ts} ${status} identifier=${identifier} (${isEmail ? 'email' : 'sapid/registrationno'}) ip=${ip} ${msg}`); } catch {}
   };
   
   if (!identifier || !identifier.trim()) {
@@ -195,15 +195,15 @@ export async function authenticateCredentials(identifier: string, password: stri
     }
   }
 
-  // Alumni login: Use SAP ID (or email if provided, but prioritize SAP ID)
+  // Alumni login: Use SAP ID, registration number, or email
   let arows;
   try {
     if (isEmail) {
       // Try email first (for backward compatibility)
-      arows = await sql/* sql */`SELECT alumniid, sapid, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${identifier.trim()} OR personalemail = ${identifier.trim()} OR universityemail = ${identifier.trim()} LIMIT 1`;
+      arows = await sql/* sql */`SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE alumniemail = ${identifier.trim()} OR personalemail = ${identifier.trim()} OR universityemail = ${identifier.trim()} LIMIT 1`;
     } else {
-      // Use SAP ID for alumni login
-      arows = await sql/* sql */`SELECT alumniid, sapid, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE sapid = ${identifier.trim()} LIMIT 1`;
+      // Use SAP ID or registration number for alumni login
+      arows = await sql/* sql */`SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount FROM public.tbl_alumni WHERE sapid = ${identifier.trim()} OR registrationno = ${identifier.trim()} LIMIT 1`;
     }
   } catch (err) {
     log("FAIL", `alumni db error: ${err instanceof Error ? err.message : String(err)}`);
@@ -229,7 +229,7 @@ export async function authenticateCredentials(identifier: string, password: stri
     logincount: number | null;
   } | undefined;
   if (!a) {
-    log("FAIL", `${isEmail ? 'email' : 'sapid'} not registered (alumni)`);
+    log("FAIL", `${isEmail ? 'email' : 'sapid/registrationno'} not registered (alumni)`);
     throw new Error(isEmail ? "EMAIL_NOT_REGISTERED" : "SAPID_NOT_REGISTERED");
   }
   if ((a.alumnistatus || "").toLowerCase() === "blocked") {

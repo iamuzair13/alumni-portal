@@ -1232,26 +1232,23 @@ export const AlumniTabs: React.FC = () => {
                               if (selected === "total") {
                                 // Total tab: show all relevant actions
                                 if (alum.verifyStatus === "verified") {
-                                  // Verified: can unverify, delete, view
+                                  // Verified: can unverify, delete
                                   actions = [
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                     { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
-                                  // Unverified: can verify, delete, view
+                                  // Unverified: can verify, delete
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                   ];
                                 } else {
-                                  // Under approval: can verify, unverify, delete, view
+                                  // Under approval (first-time registration): can verify, unverify, delete
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                     { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                   ];
                                 }
                               } else {
@@ -1260,13 +1257,18 @@ export const AlumniTabs: React.FC = () => {
                                   actions = [
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                     { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                   ];
-                                } else {
+                                } else if (alum.verifyStatus === "unverified") {
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
-                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
+                                  ];
+                                } else {
+                                  // Under approval (first-time registration): can verify, unverify, delete
+                                  actions = [
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 }
                               }
