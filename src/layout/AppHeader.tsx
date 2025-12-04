@@ -53,7 +53,7 @@ const AppHeader: React.FC = () => {
                 width={154}
                 height={32}
                 className="dark:hidden"
-                src="/images/logo/logo.png"
+                src="/images/logo/UOL-Rebrand ID_Final-01.png"
                 alt="UOL Alumni Portal"
                 priority
               />
@@ -61,7 +61,7 @@ const AppHeader: React.FC = () => {
                 width={154}
                 height={32}
                 className="hidden dark:block"
-                src="/images/logo/login-1.jpg"
+                src="/images/logo/UOL-Rebrand ID_Final-01.png"
                 alt="UOL Alumni Portal"
                 priority
               />
