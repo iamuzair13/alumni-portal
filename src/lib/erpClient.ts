@@ -31,7 +31,15 @@ class ErpApiClient {
     };
 
     if (!this.config.apiUrl || !this.config.username || !this.config.password) {
-      console.warn("[ERP Client] Missing ERP configuration. Some features may not work.");
+      const missing = [];
+      if (!this.config.apiUrl) missing.push("ERP_API_URL");
+      if (!this.config.username) missing.push("ERP_USERNAME");
+      if (!this.config.password) missing.push("ERP_PASSWORD");
+      console.error(`[ERP Client] Missing ERP configuration: ${missing.join(", ")}`);
+      // Don't throw in constructor - let methods handle it gracefully
+      console.warn("[ERP Client] ERP client initialized but configuration is incomplete. API calls will fail.");
+    } else {
+      console.log("[ERP Client] Initialized with API URL:", this.config.apiUrl.replace(/\/studentSet\(\)$/, ""));
     }
   }
 
@@ -92,6 +100,18 @@ class ErpApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ErpApiResponse<T>> {
+    // Check configuration before making request
+    if (!this.config.apiUrl || !this.config.username || !this.config.password) {
+      const missing = [];
+      if (!this.config.apiUrl) missing.push("ERP_API_URL");
+      if (!this.config.username) missing.push("ERP_USERNAME");
+      if (!this.config.password) missing.push("ERP_PASSWORD");
+      return {
+        success: false,
+        error: `Missing ERP configuration: ${missing.join(", ")}`,
+      };
+    }
+    
     try {
       const token = await this.authenticate();
 
