@@ -100,12 +100,16 @@ class ErpApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ErpApiResponse<T>> {
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestStartTime = Date.now();
+    
     // Check configuration before making request
     if (!this.config.apiUrl || !this.config.username || !this.config.password) {
       const missing = [];
       if (!this.config.apiUrl) missing.push("ERP_API_URL");
       if (!this.config.username) missing.push("ERP_USERNAME");
       if (!this.config.password) missing.push("ERP_PASSWORD");
+      console.error(`[ERP Client ${requestId}] Missing configuration:`, missing);
       return {
         success: false,
         error: `Missing ERP configuration: ${missing.join(", ")}`,
@@ -130,12 +134,12 @@ class ErpApiClient {
           // Key-based lookup format: studentSet('1234567') or studentSet("1234567")
           // Append to base URL: baseUrl/studentSet('identifier')
           url = `${normalizedBaseUrl}${endpoint}`;
-          console.log(`[ERP Client] Constructed URL (key-based): ${url}`);
+          console.log(`[ERP Client ${requestId}] Constructed URL (key-based): ${url}`);
         } else if (endpoint.startsWith("studentSet()")) {
           // OData query format: studentSet()?$filter=...
           // Append to base URL: baseUrl/studentSet()?$filter=...
           url = `${normalizedBaseUrl}${endpoint}`;
-          console.log(`[ERP Client] Constructed URL (query): ${url}`);
+          console.log(`[ERP Client ${requestId}] Constructed URL (query): ${url}`);
         } else if (endpoint.startsWith("/")) {
           url = `${normalizedBaseUrl}${endpoint.slice(1)}`; // Remove leading / to avoid double slashes
         } else {
@@ -304,7 +308,12 @@ class ErpApiClient {
             }
             
             resultData = dataObj as T;
-            console.log("[ERP Client] Successfully parsed OData Atom XML response", Object.keys(dataObj));
+            const fieldCount = Object.keys(dataObj).length;
+            console.log(`[ERP Client ${requestId}] Successfully parsed OData Atom XML response:`, {
+              fieldCount,
+              fields: Object.keys(dataObj).slice(0, 20), // Log first 20 fields
+              sampleValues: Object.entries(dataObj).slice(0, 5).map(([k, v]) => ({ [k]: String(v).substring(0, 50) })),
+            });
           } else {
             // If no properties found, log the XML structure for debugging
             console.warn("[ERP Client] XML response but no properties element found");
@@ -344,8 +353,18 @@ class ErpApiClient {
         }
       } else if (contentType.includes("application/json") || contentType.includes("text/json")) {
         // JSON response
+        console.log(`[ERP Client ${requestId}] Detected JSON response, parsing...`);
         try {
+          const parseJsonStart = Date.now();
           const data = JSON.parse(responseText);
+          const parseJsonDuration = Date.now() - parseJsonStart;
+          
+          console.log(`[ERP Client ${requestId}] JSON parsed in ${parseJsonDuration}ms:`, {
+            hasD: !!data.d,
+            hasResults: !!(data.d?.results),
+            hasData: !!data.data,
+            topLevelKeys: Object.keys(data).slice(0, 10),
+          });
           
           // Handle OData response format
           // OData typically returns: { "d": { "results": [...] } } or { "d": { ... } }
@@ -353,12 +372,24 @@ class ErpApiClient {
           if (data.d) {
             // OData format - extract the data
             extractedData = data.d.results || data.d;
+            console.log(`[ERP Client ${requestId}] Extracted OData format:`, {
+              isArray: Array.isArray(extractedData),
+              isObject: typeof extractedData === "object",
+              keys: extractedData && typeof extractedData === "object" && !Array.isArray(extractedData) 
+                ? Object.keys(extractedData).slice(0, 10) 
+                : null,
+            });
           } else if (data.data) {
             // Alternative format
             extractedData = data.data;
+            console.log(`[ERP Client ${requestId}] Extracted alternative format`);
           }
           resultData = extractedData as T;
-        } catch {
+        } catch (parseError) {
+          console.error(`[ERP Client ${requestId}] JSON parse error:`, {
+            error: parseError instanceof Error ? parseError.message : String(parseError),
+            textPreview: responseText.substring(0, 500),
+          });
           resultData = responseText as T;
         }
       } else {
@@ -408,17 +439,29 @@ class ErpApiClient {
     // The key field is 'SapNo' (from error: "Invalid key predicate type for 'SapNo'")
     // But we use the identifier directly in the key-based lookup
     
+    const fetchStartTime = Date.now();
+    console.log(`[ERP Client] fetchStudentData started for identifier: ${trimmedIdentifier.substring(0, 10)}...`);
+    
     // Try only the format that works in Postman first
     // Format: studentSet('1234567') with single quotes
-    console.log(`[ERP Client] Trying format: studentSet('${trimmedIdentifier}')`);
+    console.log(`[ERP Client] Attempting format: studentSet('${trimmedIdentifier}')`);
     const response = await this.request(`studentSet('${trimmedIdentifier}')`);
     
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log(`[ERP Client] First attempt completed in ${fetchDuration}ms:`, {
+      success: response.success,
+      error: response.error,
+      hasData: !!response.data,
+    });
+    
     if (response.success) {
+      console.log(`[ERP Client] Successfully fetched data in ${fetchDuration}ms`);
       return response;
     }
     
     // If NOT_FOUND, return immediately (don't try other formats)
     if (response.error === "NOT_FOUND") {
+      console.log(`[ERP Client] Record not found in ERP (${fetchDuration}ms)`);
       return response;
     }
     
@@ -427,12 +470,25 @@ class ErpApiClient {
     const lastError = response.error || "";
     if (lastError.includes("Malformed URI") || lastError.includes("Invalid key predicate")) {
       console.log(`[ERP Client] Trying alternative format: studentSet("${trimmedIdentifier}")`);
+      const altStartTime = Date.now();
       const altResponse = await this.request(`studentSet("${trimmedIdentifier}")`);
+      const altDuration = Date.now() - altStartTime;
+      
+      console.log(`[ERP Client] Alternative attempt completed in ${altDuration}ms:`, {
+        success: altResponse.success,
+        error: altResponse.error,
+      });
       
       if (altResponse.success || altResponse.error === "NOT_FOUND") {
         return altResponse;
       }
     }
+    
+    const totalDuration = Date.now() - fetchStartTime;
+    console.error(`[ERP Client] Failed to fetch data after ${totalDuration}ms:`, {
+      error: response.error,
+      message: response.message,
+    });
     
     // If all formats fail, return the first error
     return response;
