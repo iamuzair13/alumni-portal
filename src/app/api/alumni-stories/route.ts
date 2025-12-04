@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { storyServerSchema, type ServerStoryPayload } from "@/lib/alumniStories";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
-import DOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
+
 import { sendSuccessStoryEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
@@ -10,10 +9,6 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 
-// Configure DOMPurify for server-side sanitization
-const window = new JSDOM("").window;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const purify = DOMPurify(window as any);
 
 type StoryItem = {
   id: string;
@@ -278,11 +273,13 @@ export async function POST(req: Request) {
       v = parsed.data;
     }
     
-    // Sanitize HTML using DOMPurify
-    const cleanHtml = purify.sanitize(String(v.storyHtml || ""), {
-      ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
-      ALLOWED_ATTR: ["href", "target", "rel"],
+    // Sanitize HTML using DOMPurify (dynamic import to avoid ES module issues)
+    const DOMPurify = (await import("isomorphic-dompurify")).default;
+    const cleanHtml = DOMPurify.sanitize(v.storyHtml, {
+      ALLOWED_TAGS: ["p","br","strong","em","u","s","ul","ol","li","h1","h2","h3","a","div"],
+      ALLOWED_ATTR: ["href","target","rel"],
     });
+    
     
     // Check if content is actually empty after sanitization
     // Remove HTML tags and check if there's any text content
