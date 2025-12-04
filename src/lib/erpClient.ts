@@ -407,15 +407,41 @@ class ErpApiClient {
         }
       }
       
+      const totalRequestDuration = Date.now() - requestStartTime;
+      const finalDataSize = resultData && typeof resultData === "object" 
+        ? JSON.stringify(resultData).length 
+        : String(resultData).length;
+      
+      console.log(`[ERP Client ${requestId}] Request completed successfully in ${totalRequestDuration}ms:`, {
+        dataSize: finalDataSize,
+        dataType: typeof resultData,
+        isArray: Array.isArray(resultData),
+        keys: resultData && typeof resultData === "object" && !Array.isArray(resultData)
+          ? Object.keys(resultData).slice(0, 10)
+          : null,
+      });
+      
       return {
         success: true,
         data: resultData,
       };
     } catch (error) {
-      console.error("[ERP Client] Request error:", error);
+      const totalRequestDuration = Date.now() - requestStartTime;
+      console.error(`[ERP Client ${requestId}] Request error after ${totalRequestDuration}ms:`, error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      // Log detailed error for debugging
+      console.error(`[ERP Client ${requestId}] Request error details:`, {
+        message: errorMessage,
+        stack: errorStack,
+        endpoint,
+        duration: totalRequestDuration,
+      });
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
       };
     }
   }
