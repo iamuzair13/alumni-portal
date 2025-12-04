@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { alumniId, chapters, contactNumber } = body;
+    const { alumniId, chapters, contactNumber, remarks } = body;
 
     if (!alumniId) {
       return NextResponse.json({ error: "Alumni ID is required" }, { status: 400 });
@@ -154,6 +154,9 @@ export async function POST(request: NextRequest) {
     const chapter2 = chapters[1] ? Number(chapters[1]) : null;
     const chapter3 = chapters[2] ? Number(chapters[2]) : null;
     
+    // Extract and clean remarks
+    const remarksText = remarks ? String(remarks).trim().slice(0, 5000) : null; // Limit to 5000 characters
+    
     // Validate that all chapter IDs are valid numbers
     if (chapter1 !== null && (isNaN(chapter1) || chapter1 <= 0)) {
       return NextResponse.json(
@@ -208,15 +211,16 @@ export async function POST(request: NextRequest) {
         SET 
           "chapter1" = ${chapter1},
           "chapter2" = ${chapter2},
-          "chapter3" = ${chapter3}
+          "chapter3" = ${chapter3},
+          remarks = ${remarksText}
         WHERE id = ${alumniId}
       `;
     } else {
       // Insert new record
       // Using quoted identifiers to handle spaces/hyphens in column names
       await sql/* sql */`
-        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
-        VALUES (${alumniId}, ${chapter1}, ${chapter2}, ${chapter3})
+        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3", remarks)
+        VALUES (${alumniId}, ${chapter1}, ${chapter2}, ${chapter3}, ${remarksText})
       `;
     }
 

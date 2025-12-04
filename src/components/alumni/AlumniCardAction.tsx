@@ -8,7 +8,6 @@ type Props = {
   sapId: string;
   faculty: string;
   department: string;
-  program: string;
   initialStatus?: "pending" | "rejected" | "delivered" | null;
   isAdmin?: boolean;
 };
@@ -33,7 +32,7 @@ export function computeButtonMode(card: CardRow | null, initialStatus?: "pending
 
  
 
-export default function AlumniCardAction({ alumniId, name, sapId, faculty, department, program, initialStatus, isAdmin = false }: Props) {
+export default function AlumniCardAction({ alumniId, name, sapId, faculty, department, initialStatus, isAdmin = false }: Props) {
   const [openForm, setOpenForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +147,7 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
               <button ref={closeFormBtnRef} aria-label="Close" className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100" onClick={() => setOpenForm(false)}>Close</button>
             </div>
             <div className="p-4 m overflow-y-auto h-[calc(100vh-56px)]">
-              <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} program={program} />
+              <AlumniCardForm alumniId={alumniId} name={name} sapId={sapId} faculty={faculty} department={department} />
             </div>
           </div>
         </dialog>

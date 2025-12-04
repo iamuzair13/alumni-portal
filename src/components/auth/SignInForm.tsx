@@ -51,11 +51,15 @@ export default function SignInForm() {
         nextErrors.password = "Password is required";
       }
       setErrors(nextErrors);
-      if (Object.keys(nextErrors).length > 0) return;
+      if (Object.keys(nextErrors).length > 0) {
+        setIsLoading(false);
+        return;
+      }
       
       const isProd = process.env.NODE_ENV === "production";
       if (isProd && typeof window !== "undefined" && window.location.protocol !== "https:") {
         setErrorMessage("Insecure connection. Use HTTPS to sign in.");
+        setIsLoading(false);
         return;
       }
       
@@ -75,6 +79,7 @@ export default function SignInForm() {
         else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
         else if (err === "DB_CONNECTION_ERROR") setErrorMessage("Server error. Please try again later.");
         else setErrorMessage("Sign-in failed");
+        setIsLoading(false);
         return;
       }
       
@@ -265,8 +270,14 @@ export default function SignInForm() {
                   aria-label="Sign in"
                   aria-busy={isLoading || isVerifying}
                   disabled={isLoading || isVerifying || status === "loading"}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-white text-sm font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60"
+                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-white text-sm font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60 flex items-center justify-center gap-2"
                 >
+                  {(isLoading || isVerifying) && (
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
                   {isLoading ? "Signing in..." : isVerifying ? "Verifying..." : "Sign In"}
                 </button>
               </div>

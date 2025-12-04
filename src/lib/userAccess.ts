@@ -41,17 +41,28 @@ export function getUserIdFromSession(session: Session | null): number | null {
 
 /**
  * Build SQL WHERE clause fragment for filtering alumni data based on user access
- * Returns { sql: null, hasFilter: false } if user is superadmin (no filtering needed)
- * Returns { sql: SQL condition, hasFilter: true } for admin/viewer with access assignments
- * Returns { sql: SQL condition (1=0), hasFilter: true } if no access
+ * Returns { sql: null, hasFilter: false } if user is superadmin, admin, or viewer (no filtering needed)
+ * Note: Admin and viewer now have the same data access as superadmin
+ * Restrictions: Admin cannot create/modify access users or see passwords of other users
  */
 export async function buildAccessFilterSQL(
   session: Session | null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _tableAlias: string = ""
 ): Promise<{ sql: ReturnType<typeof sql> | null; hasFilter: boolean }> {
-  // Super admin has full access - no filtering
+  // Super admin, admin, and viewer have full access - no filtering
+  // Admin and viewer can see all data regardless of missing faculties/departments/programs
+  // Only restrictions: Admin cannot create/modify access users or see passwords of other users
   if (isSuperAdminUser(session?.user)) {
+    return { sql: null, hasFilter: false };
+  }
+  
+  // Import isAdminUser and isViewerUser to check user type
+  const { isAdminUser, isViewerUser } = await import("./alumniProfile");
+  
+  // Admin and viewer have the same data access as superadmin (no filtering)
+  if (isAdminUser(session?.user) || isViewerUser(session?.user)) {
+    console.log("[buildAccessFilterSQL] Admin/Viewer user - granting full data access (no filtering)");
     return { sql: null, hasFilter: false };
   }
 

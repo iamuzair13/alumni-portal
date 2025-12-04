@@ -410,10 +410,7 @@ function MoreDetailsContent() {
     {
       title: "Additional Information",
       fields: [
-        { label: "About Me", value: data.aboutme, key: "aboutme", editable: false },
-        { label: "Data Source", value: data.datasource, key: "datasource", editable: false },
-        { label: "Alumni Status", value: data.alumnistatus, key: "alumnistatus", editable: false },
-        { label: "Verification Status", value: data.verify, key: "verify", editable: false },
+        { label: "About Me", value: data.aboutme, key: "aboutme", editable: true, type: "textarea" as const },
         { label: "Last Login", value: data.lasttimelogin, key: "lasttimelogin", editable: false },
         { label: "Login Count", value: data.logincount, key: "logincount", editable: false },
         { label: "Created Date", value: data.createddatetime, key: "createddatetime", editable: false },

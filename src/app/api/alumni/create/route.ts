@@ -65,6 +65,7 @@ type TblAlumniBody = {
   highereducationinstitute: string | null;
   highereducationprogram: string | null;
   scholarship: string | null;
+  chapters: number[] | null; // Array of selected chapter IDs (up to 3)
 };
 
 /**
@@ -774,134 +775,61 @@ export async function POST(req: Request) {
       return alumniId;
     });
 
-    // Automatically assign chapters based on home city and work city, and association based on faculty
+    // Save selected chapters and assign association based on faculty
     if (id) {
       try {
-        // Get home city and work city
-        const homeCity = body.city ? String(body.city).trim() : null;
-        let workCity = (body as { workCity?: string | null }).workCity 
-          ? String((body as { workCity?: string | null }).workCity).trim() 
-          : null;
-
-        // If workCity wasn't in body, fetch it from the database (it was just saved)
-        if (!workCity) {
-          const workCityRow = await sql/* sql */`
-            SELECT work_city FROM public.tbl_alumni 
-            WHERE alumniid = ${id} 
-            LIMIT 1
-          `;
-          workCity = workCityRow[0]?.work_city 
-            ? String(workCityRow[0].work_city).trim() 
-            : null;
-        }
-
-        // Find chapters by matching city with chapterlocation (case-insensitive)
-        // First find in alumnichapterslocation, then map to tblchapters
-        let chapter1Id: number | null = null;
-        let chapter2Id: number | null = null;
-
-        if (homeCity) {
-          // Find chapter in alumnichapterslocation by location
-          const homeChapterLocationRows = await sql<{ chapterid: number; chaptertitle: string | null }[]>/* sql */`
-            SELECT chapterid, chaptertitle 
-            FROM public.alumnichapterslocation 
-            WHERE LOWER(TRIM(chapterlocation)) = LOWER(TRIM(${homeCity}))
-            LIMIT 1
-          `;
+        // Save selected chapters from form (if provided)
+        if (body.chapters && Array.isArray(body.chapters) && body.chapters.length > 0) {
+          // Validate: maximum 3 chapters
+          const chapterIds = body.chapters.slice(0, 3).map(ch => Number(ch)).filter(ch => !isNaN(ch) && ch > 0);
           
-          if (homeChapterLocationRows.length > 0) {
-            const locationChapter = homeChapterLocationRows[0];
-            // Try to find corresponding chapter in tblchapters
-            // First try by ID (assuming chapterid might match tblchapters.id)
-            const chapterByIdRows = await sql<{ id: number }[]>/* sql */`
-              SELECT id FROM public.tblchapters WHERE id = ${locationChapter.chapterid} LIMIT 1
+          if (chapterIds.length > 0) {
+            // Verify all chapter IDs exist and are active
+            const validChapters = await sql<{ id: number }[]>/* sql */`
+              SELECT id FROM public.tblchapters 
+              WHERE id = ANY(${chapterIds}) AND is_active = true
             `;
             
-            if (chapterByIdRows.length > 0) {
-              chapter1Id = chapterByIdRows[0].id;
-            } else if (locationChapter.chaptertitle) {
-              // If ID doesn't match, try to find by name
-              const chapterByNameRows = await sql<{ id: number }[]>/* sql */`
-                SELECT id FROM public.tblchapters 
-                WHERE LOWER(TRIM(COALESCE(national_chapter, international_chapter, ''))) = LOWER(TRIM(${locationChapter.chaptertitle}))
-                   OR LOWER(TRIM(COALESCE(national_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
-                   OR LOWER(TRIM(COALESCE(international_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
-                LIMIT 1
-              `;
-              if (chapterByNameRows.length > 0) {
-                chapter1Id = chapterByNameRows[0].id;
-              }
-            }
-          }
-        }
-
-        // Only assign work city chapter if it's different from home city
-        if (workCity && workCity.toLowerCase().trim() !== homeCity?.toLowerCase().trim()) {
-          // Find chapter in alumnichapterslocation by location
-          const workChapterLocationRows = await sql<{ chapterid: number; chaptertitle: string | null }[]>/* sql */`
-            SELECT chapterid, chaptertitle 
-            FROM public.alumnichapterslocation 
-            WHERE LOWER(TRIM(chapterlocation)) = LOWER(TRIM(${workCity}))
-            LIMIT 1
-          `;
-          
-          if (workChapterLocationRows.length > 0) {
-            const locationChapter = workChapterLocationRows[0];
-            // Try to find corresponding chapter in tblchapters
-            // First try by ID (assuming chapterid might match tblchapters.id)
-            const chapterByIdRows = await sql<{ id: number }[]>/* sql */`
-              SELECT id FROM public.tblchapters WHERE id = ${locationChapter.chapterid} LIMIT 1
-            `;
+            const validChapterIds = validChapters.map(ch => ch.id);
             
-            if (chapterByIdRows.length > 0) {
-              chapter2Id = chapterByIdRows[0].id;
-            } else if (locationChapter.chaptertitle) {
-              // If ID doesn't match, try to find by name
-              const chapterByNameRows = await sql<{ id: number }[]>/* sql */`
-                SELECT id FROM public.tblchapters 
-                WHERE LOWER(TRIM(COALESCE(national_chapter, international_chapter, ''))) = LOWER(TRIM(${locationChapter.chaptertitle}))
-                   OR LOWER(TRIM(COALESCE(national_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
-                   OR LOWER(TRIM(COALESCE(international_chapter, ''))) LIKE LOWER(TRIM(${`%${locationChapter.chaptertitle}%`}))
-                LIMIT 1
+            if (validChapterIds.length > 0) {
+              // Prepare chapter values (up to 3)
+              const chapter1 = validChapterIds[0] || null;
+              const chapter2 = validChapterIds[1] || null;
+              const chapter3 = validChapterIds[2] || null;
+              
+              // Check if a record already exists for this alumni
+              const existingChapter = await sql/* sql */`
+                SELECT id FROM public.alumni_chapter 
+                WHERE id = ${id}
               `;
-              if (chapterByNameRows.length > 0) {
-                chapter2Id = chapterByNameRows[0].id;
+
+              if (existingChapter.length > 0) {
+                // Update existing record
+                await sql/* sql */`
+                  UPDATE public.alumni_chapter 
+                  SET 
+                    "chapter1" = ${chapter1},
+                    "chapter2" = ${chapter2},
+                    "chapter3" = ${chapter3}
+                  WHERE id = ${id}
+                `;
+              } else {
+                // Insert new record
+                await sql/* sql */`
+                  INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+                  VALUES (${id}, ${chapter1}, ${chapter2}, ${chapter3})
+                `;
               }
+              console.log("[API] Saved selected chapters:", { 
+                alumniId: id, 
+                chapterIds: validChapterIds,
+                chapter1,
+                chapter2,
+                chapter3
+              });
             }
           }
-        }
-
-        // Only create/update chapter record if at least one chapter was found
-        if (chapter1Id || chapter2Id) {
-          // Check if a record already exists for this alumni
-          const existingChapter = await sql/* sql */`
-            SELECT id FROM public.alumni_chapter 
-            WHERE id = ${id}
-          `;
-
-          if (existingChapter.length > 0) {
-            // Update existing record
-            await sql/* sql */`
-              UPDATE public.alumni_chapter 
-              SET 
-                "chapter1" = COALESCE(${chapter1Id}, "chapter1"),
-                "chapter2" = COALESCE(${chapter2Id}, "chapter2")
-              WHERE id = ${id}
-            `;
-          } else {
-            // Insert new record
-            await sql/* sql */`
-              INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
-              VALUES (${id}, ${chapter1Id}, ${chapter2Id}, NULL)
-            `;
-          }
-          console.log("[API] Automatically assigned chapters:", { 
-            alumniId: id, 
-            homeCity,
-            workCity,
-            chapter1Id, 
-            chapter2Id 
-          });
         }
 
         // Find and assign association based on faculty

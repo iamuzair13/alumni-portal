@@ -6,6 +6,7 @@ import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
 import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
+import { ErpDataDetails } from "./ErpDataDetails";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
@@ -1295,8 +1296,9 @@ export const AlumniTabs: React.FC = () => {
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
                           <TableCell colSpan={8} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
-                              <div className=" w-full max-w-full overflow-x-hidden flex flex-row justify-start">
+                              <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-3 gap-1">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
+                                <ErpDataDetails sapId={alum.id} registrationNo={alum.registrationNo} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>
                           </TableCell>

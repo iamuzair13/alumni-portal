@@ -11,6 +11,7 @@ import {
 type AlumniChaptersFormValues = {
   contactNumber: string;
   chapters: number[]; // Array to hold up to 3 selected chapter IDs
+  remarks: string; // Remarks explaining why they want to join the chapter
 };
 
 type Chapter = {
@@ -40,6 +41,7 @@ export default function AlumniChaptersForm({
   const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoadingChapters, setIsLoadingChapters] = useState(true);
+  const [, setIsLoadingCurrentChapters] = useState(true);
 
   const {
     register,
@@ -50,6 +52,7 @@ export default function AlumniChaptersForm({
     defaultValues: {
       contactNumber: initialContactNumber || "",
       chapters: [],
+      remarks: "",
     },
   });
 
@@ -93,6 +96,33 @@ export default function AlumniChaptersForm({
     };
     fetchChapters();
   }, []);
+
+  // Fetch current chapters for the alumni
+  useEffect(() => {
+    const fetchCurrentChapters = async () => {
+      if (!alumniId) {
+        setIsLoadingCurrentChapters(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/alumni/chapters/current?alumniId=${encodeURIComponent(alumniId)}`);
+        const result = await response.json();
+        if (response.ok && Array.isArray(result.chapters)) {
+          console.log("[AlumniChaptersForm] Current chapters:", result.chapters);
+          // Pre-populate selected chapters
+          setSelectedChapters(result.chapters);
+        } else {
+          console.error("[AlumniChaptersForm] Failed to fetch current chapters:", result);
+        }
+      } catch (error) {
+        console.error("[AlumniChaptersForm] Error fetching current chapters:", error);
+      } finally {
+        setIsLoadingCurrentChapters(false);
+      }
+    };
+    fetchCurrentChapters();
+  }, [alumniId]);
 
   // Auto-fill contact number on mount
   useEffect(() => {
@@ -191,6 +221,7 @@ export default function AlumniChaptersForm({
           alumniId: parseInt(alumniId, 10),
           chapters: selectedChapters, // Send array of selected chapter IDs
           contactNumber: data.contactNumber,
+          remarks: data.remarks || "",
         }),
       });
 
@@ -410,6 +441,28 @@ export default function AlumniChaptersForm({
               </div>
             )}
             {errors.chapters && <span className={errorText}>{errors.chapters.message}</span>}
+          </div>
+
+          {/* Remarks Field */}
+          <div className="md:col-span-2">
+            <label htmlFor="remarks" className={labelBase}>
+              Remarks <span className="text-gray-500 font-normal">(Why do you want to join these chapters?)</span>
+            </label>
+            <div className="relative flex items-center">
+              <textarea
+                id="remarks"
+                rows={4}
+                {...register("remarks", {
+                  maxLength: {
+                    value: 1000,
+                    message: "Remarks must be less than 1000 characters",
+                  },
+                })}
+                className={`${inputBase} ${errors.remarks ? "border-rose-500 bg-rose-50" : ""}`}
+                placeholder="Please provide your reasons for joining these chapters..."
+              />
+            </div>
+            {errors.remarks && <span className={errorText}>{errors.remarks.message}</span>}
           </div>
         </div>
 

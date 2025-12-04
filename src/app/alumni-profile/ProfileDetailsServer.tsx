@@ -24,7 +24,6 @@ type Props = {
   contact: string;
   faculty: string;
   dept: string;
-  program: string;
   facebook?: string | null;
   instagram?: string | null;
   youtube?: string | null;
@@ -38,7 +37,7 @@ type Props = {
   leadershipError?: string | null;
 };
 
-export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, program, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: Props) {
+export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: Props) {
   const { start, stop } = useProgress();
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
   const queryClient = useQueryClient();
@@ -545,7 +544,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             <div className="col-span-1"><span className="font-semibold">Phone:</span> <br/> {formatPhone(contact) || "Not provided"}</div>
             <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {safeText(faculty) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>
-            <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(program) || "N/A"}</div>
+            <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(fullDetails?.degreetitle) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Passing Year:</span> <br/> {fullDetails?.yearofending ? String(fullDetails.yearofending) : "N/A"}</div>
           </div>
           {sapId && (

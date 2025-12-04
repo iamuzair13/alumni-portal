@@ -44,6 +44,8 @@ export type AlumniFullDetails = {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
+  work_city: string | null;
+  work_country: string | null;
   organization_address: string | null;
   image1: string | null;
   image2: string | null;

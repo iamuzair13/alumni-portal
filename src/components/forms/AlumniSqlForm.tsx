@@ -75,6 +75,7 @@ export type TblAlumniForm = {
   linkedin: string | null;
   datasource: string | null;
   alumnistatus: string | null;
+  chapters: number[] | null; // Array of selected chapter IDs (up to 3)
 };
 
 const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
@@ -199,6 +200,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       highereducationinstitute: null,
       highereducationprogram: null,
       scholarship: null,
+      chapters: null,
     },
   });
 
@@ -216,6 +218,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     programs: string[];
   } | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
+  const [chapters, setChapters] = useState<Array<{ id: number; name: string; type: "national" | "international" }>>([]);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(true);
+  const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
 
   // Fetch user access assignments
   useEffect(() => {
@@ -241,6 +246,31 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     };
     fetchAccess();
   }, []);
+
+  // Fetch chapters from API
+  useEffect(() => {
+    const fetchChapters = async () => {
+      try {
+        const response = await fetch("/api/chapters/list");
+        const result = await response.json();
+        if (response.ok && result.chapters) {
+          setChapters(result.chapters);
+        } else {
+          console.error("[AlumniSqlForm] Failed to fetch chapters:", result);
+        }
+      } catch (error) {
+        console.error("[AlumniSqlForm] Error fetching chapters:", error);
+      } finally {
+        setIsLoadingChapters(false);
+      }
+    };
+    fetchChapters();
+  }, []);
+
+  // Sync selectedChapters with form value
+  useEffect(() => {
+    setValue("chapters", selectedChapters.length > 0 ? selectedChapters : null);
+  }, [selectedChapters, setValue]);
 
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed") as string;
@@ -633,6 +663,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       // Show submitting toast
       const submittingToast = toast.loading("Submitting your registration...");
       
+      // Add selected chapters to payload
+      if (selectedChapters.length > 0) {
+        payload.chapters = selectedChapters;
+      }
+
       // Send to API (server will sanitize and validate again)
       const res = await fetch("/api/alumni/create", {
         method: "POST",
@@ -1640,7 +1675,119 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           </div>
         </section>
 
-      {/* Section 4: Admin Section */}
+      {/* Section 4: Alumni Chapters */}
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold text-neutral-800">Alumni Chapters</h2>
+        <p className="mt-1 text-xs text-neutral-600">Select up to 3 chapters to join (optional).</p>
+        <div className="mt-4 space-y-4">
+          {isLoadingChapters ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
+              <span className="ml-2 text-sm text-neutral-600">Loading chapters...</span>
+            </div>
+          ) : (
+            <>
+              {/* National Chapters */}
+              {chapters.filter(ch => ch.type === "national").length > 0 && (
+                <div>
+                  <label className={labelBase}>National Chapters</label>
+                  <select
+                    className={inputBase}
+                    value=""
+                    onChange={(e) => {
+                      const chapterId = Number(e.target.value);
+                      if (chapterId && !selectedChapters.includes(chapterId)) {
+                        if (selectedChapters.length < 3) {
+                          setSelectedChapters([...selectedChapters, chapterId]);
+                        } else {
+                          toast.error("You can select up to 3 chapters only.", {
+                            duration: 3000,
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    <option value="">Select a national chapter</option>
+                    {chapters
+                      .filter(ch => ch.type === "national")
+                      .map((chapter) => (
+                        <option key={chapter.id} value={chapter.id} disabled={selectedChapters.includes(chapter.id)}>
+                          {chapter.name} {selectedChapters.includes(chapter.id) ? "(Selected)" : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* International Chapters */}
+              {chapters.filter(ch => ch.type === "international").length > 0 && (
+                <div>
+                  <label className={labelBase}>International Chapters</label>
+                  <select
+                    className={inputBase}
+                    value=""
+                    onChange={(e) => {
+                      const chapterId = Number(e.target.value);
+                      if (chapterId && !selectedChapters.includes(chapterId)) {
+                        if (selectedChapters.length < 3) {
+                          setSelectedChapters([...selectedChapters, chapterId]);
+                        } else {
+                          toast.error("You can select up to 3 chapters only.", {
+                            duration: 3000,
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    <option value="">Select an international chapter</option>
+                    {chapters
+                      .filter(ch => ch.type === "international")
+                      .map((chapter) => (
+                        <option key={chapter.id} value={chapter.id} disabled={selectedChapters.includes(chapter.id)}>
+                          {chapter.name} {selectedChapters.includes(chapter.id) ? "(Selected)" : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Selected Chapters Display */}
+              {selectedChapters.length > 0 && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                  <p className="text-xs text-gray-600 mb-2">
+                    Selected chapters ({selectedChapters.length}/3):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedChapters.map((chapterId) => {
+                      const chapter = chapters.find(ch => ch.id === chapterId);
+                      if (!chapter) return null;
+                      return (
+                        <span
+                          key={chapterId}
+                          className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                        >
+                          {chapter.name}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedChapters(selectedChapters.filter(id => id !== chapterId));
+                            }}
+                            className="ml-1 text-blue-600 hover:text-blue-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Section 5: Admin Section */}
       {!excludeAdminStep && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
@@ -1675,7 +1822,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {/* Submit and Reset Buttons */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60">Submit</button>
-        <button type="button" disabled={submitting} onClick={() => { reset(); }} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Reset</button>
+        <button type="button" disabled={submitting} onClick={() => { reset(); setSelectedChapters([]); }} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Reset</button>
       </div>
     </form>
   );

@@ -124,6 +124,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         totalyearsofexpereince: row.totalyearsofexpereince ?? null,
         officialemail: row.officialemail ?? null,
         officialnumber: row.officialnumber ?? null,
+        work_city: row.work_city ?? null,
+        work_country: row.work_country ?? null,
         organization_address: row.organization_address ?? null,
         image1: row.image1 ?? null,
         image2: row.image2 ?? null,

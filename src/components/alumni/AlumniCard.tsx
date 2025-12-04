@@ -3,6 +3,7 @@ import React from "react";
 import { useSession } from "next-auth/react";
 import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
+import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,6 +22,7 @@ export type AlumniCardItem = {
   workCountry: string;
   status: CardStatus;
   createdAt: string;
+  registrationno?: string | null;
 };
 
 export type ActionKey = "view" | "verify" | "decline" | "suspend" | "delete";
@@ -1040,8 +1042,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
                           <TableCell colSpan={8} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
-                              <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start">
+                              <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!isAdmin} />
+                                <ErpDataDetails sapId={alum.id} registrationNo={alum.registrationno ?? null} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>
                           </TableCell>

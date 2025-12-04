@@ -1,13 +1,23 @@
 "use client";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import LoadingSpinner from "./LoadingSpinner";
 
 function BackButtonContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const sapId = searchParams.get("sapid");
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Reset loading state when pathname changes (navigation completed)
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
 
   const handleBack = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
     if (typeof window === "undefined") {
       // Server-side: navigate to profile
       const profileUrl = sapId 
@@ -57,13 +67,19 @@ function BackButtonContent() {
   return (
     <button
       onClick={handleBack}
-      className="w-12 h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      disabled={isNavigating}
+      className="w-12 h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
       aria-label="Go back"
       title="Go back"
+      aria-busy={isNavigating}
     >
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-      </svg>
+      {isNavigating ? (
+        <LoadingSpinner size="md" className="text-white" />
+      ) : (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+      )}
     </button>
   );
 }

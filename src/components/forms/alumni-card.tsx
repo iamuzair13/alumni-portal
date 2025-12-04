@@ -13,23 +13,27 @@ type Props = {
   sapId: string;
   faculty: string;
   department: string;
-  program: string;
 };
 
 const schema = z.object({
-  cnic: z.string().regex(/^[0-9]{5}-[0-9]{7}-[0-9]$/, "Invalid CNIC format (xxxxx-xxxxxxx-x)"),
-  address: z.string().optional(),
-  preference: z.enum(["Collect", "Deliver"], { message: "Select a preference" }),
   pictureName: z.string().min(1, "Profile picture is required"),
+  confirmation: z.boolean().refine((val) => val === true, {
+    message: "You must confirm that the information is correct",
+  }),
+  comment: z.string().optional(),
+  addressPreference: z.enum(["Collect", "Deliver"], {
+    message: "Please select an address preference",
+  }),
+  address: z.string().optional(),
 }).refine((data) => {
   // Address is required only when preference is "Deliver"
-  if (data.preference === "Deliver") {
+  if (data.addressPreference === "Deliver") {
     return data.address && data.address.trim().length >= 10;
   }
   return true;
 }, {
   message: "Address is required and must be at least 10 characters when delivery is selected",
-  path: ["address"], // This will show the error on the address field
+  path: ["address"],
 });
 
 type FormVals = z.infer<typeof schema>;
@@ -47,36 +51,32 @@ export function validateImage(file: File | undefined): { ok: boolean; error?: st
   return { ok: true };
 }
 
-export default function AlumniCardForm({ alumniId, faculty, department, program, sapId }: Props) {
+export default function AlumniCardForm({ alumniId, name, faculty, department, sapId }: Props) {
   const router = useRouter();
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
-    defaultValues: { preference: "Collect" },
+    defaultValues: { confirmation: false, comment: "", addressPreference: "Collect", address: "" },
     mode: "onChange",
   });
 
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem("alumni-card-last");
-      if (raw) {
-        const last = JSON.parse(raw) as { cnicno?: string; cardaddress?: string; status?: string };
-        if (last.cnicno) setValue("cnic", last.cnicno);
-        if (last.cardaddress) setValue("address", last.cardaddress);
-        if (last.status && (last.status === "Collect" || last.status === "Deliver")) setValue("preference", last.status as FormVals["preference"]);
-      }
-    } catch {}
-  }, [setValue]);
+  // Watch address preference to show/hide address field
+  const addressPreference = watch("addressPreference");
 
   // Clear address when preference changes to "Collect"
-  const preference = watch("preference");
   React.useEffect(() => {
-    if (preference === "Collect") {
+    if (addressPreference === "Collect") {
       setValue("address", "");
     }
-  }, [preference, setValue]);
+  }, [addressPreference, setValue]);
+
+  // Calculate validity date (3 years from application date)
+  const validityDate = new Date();
+  validityDate.setFullYear(validityDate.getFullYear() + 3);
+  const validityDateStr = validityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const validityDateISO = validityDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
 
   
 
@@ -92,10 +92,18 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       const formData = new FormData();
       formData.append("alumniId", String(alumniId));
       formData.append("sapId", String(sapId || ""));
-      formData.append("cnicno", vals.cnic);
-      formData.append("cardaddress", vals.preference === "Deliver" ? vals.address ?? "" : "");
-      formData.append("status", vals.preference);
       formData.append("image", selectedFile);
+      if (vals.comment) {
+        formData.append("comment", vals.comment);
+      }
+      // Save address preference: if "Deliver" is selected, save the address, otherwise save "Collect from Campus"
+      if (vals.addressPreference === "Deliver" && vals.address) {
+        formData.append("cardaddress", vals.address);
+      } else {
+        formData.append("cardaddress", "Collect from Campus");
+      }
+      // Save validity date (3 years from application date)
+      formData.append("validity_date", validityDateISO);
 
       const res = await fetch("/api/alumni-cards", {
         method: "POST",
@@ -133,15 +141,10 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
       setPreviewUrl(null);
       setSelectedFile(null);
       setValue("pictureName", "");
-      try {
-        const payload = {
-          alumniId,
-          cnicno: vals.cnic,
-          cardaddress: vals.preference === "Deliver" ? vals.address : "",
-          status: vals.preference,
-        };
-        localStorage.setItem("alumni-card-last", JSON.stringify(payload));
-      } catch {}
+      setValue("confirmation", false);
+      setValue("comment", "");
+      setValue("addressPreference", "Collect");
+      setValue("address", "");
       
       // Navigate back to profile page
       setTimeout(() => {
@@ -164,6 +167,12 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
     <form className="max-w-4xl mx-auto mt-4 " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
       <div className="grid sm:grid-cols-2 gap-6">
         <div>
+          <label className={labelBase} htmlFor="name">Name</label>
+          <div className="relative flex items-center">
+            <input id="name" className={inputBase} value={name} readOnly aria-label="Name" />
+          </div>
+        </div>
+        <div>
           <label className={labelBase} htmlFor="faculty">Faculty</label>
           <div className="relative flex items-center">
             <input id="faculty" className={inputBase} value={faculty} readOnly aria-label="Faculty" />
@@ -176,57 +185,19 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
           </div>
         </div>
         <div>
-          <label className={labelBase} htmlFor="program">Program</label>
+          <label className={labelBase} htmlFor="validity">Validity</label>
           <div className="relative flex items-center">
-            <input id="program" className={inputBase} value={program} readOnly aria-label="Program" />
+            <input id="validity" type="date" className={inputBase} value={validityDateISO} readOnly aria-label="Validity" />
           </div>
+          <p className="text-xs text-gray-500 mt-1">Card will be valid until {validityDateStr} (3 years from application date)</p>
         </div>
-      </div>
-
-      <div className="grid sm:grid-cols-2 gap-6">
-        <div>
-          <label className={labelBase} htmlFor="cnic">CNIC Number</label>
-          <div className="relative flex items-center">
-            <input id="cnic" {...register("cnic")} className={inputBase} placeholder="12345-1234567-1" aria-label="CNIC" />
-          </div>
-          {errors.cnic && <p className="text-xs text-red-600 mt-1">{errors.cnic.message}</p>}
-        </div>
-        <div>
-          <label className={labelBase} htmlFor="preference">Delivery Preference</label>
-          <div className="relative flex items-center">
-            <select id="preference" {...register("preference")} className={inputBase} aria-label="Delivery preference">
-              <option value="Collect">Collect from Campus</option>
-              <option value="Deliver">Get it Delivered to Address</option>
-            </select>
-          </div>
-          {errors.preference && <p className="text-xs text-red-600 mt-1">{errors.preference.message}</p>}
-        </div>
-      </div>
-
-      <div>
-        <label className={labelBase} htmlFor="address">Postal Address</label>
-        <div className="relative flex items-center mt-4">
-          <textarea
-            id="address"
-            {...register("address")}
-            className={`${inputBase} ${watch("preference") === "Collect" ? "bg-gray-100 opacity-60 cursor-not-allowed" : ""}`}
-            rows={3}
-            aria-label="Postal Address"
-            aria-disabled={watch("preference") === "Collect"}
-            disabled={watch("preference") === "Collect"}
-          />
-        </div>
-        {watch("preference") === "Collect" && (
-          <p className="text-xs text-gray-500 mt-1">Collect you card from campus</p>
-        )}
-        {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address.message}</p>}
       </div>
 
       <div>
         <label className={labelBase} htmlFor="picture">
-          Profile Picture
+          Image
           <span className="text-red-600 ml-1">*</span>
-          <span className="ml-2 text-xs text-slate-500">Image must be headshot and blue background</span>
+          <span className="ml-2 text-xs text-slate-500">Please Upload Passport size image</span>
         </label>
         <div className="relative flex items-center">
           <input
@@ -263,7 +234,69 @@ export default function AlumniCardForm({ alumniId, faculty, department, program,
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div>
+        <label className={labelBase} htmlFor="addressPreference">Address Preference</label>
+        <div className="relative flex items-center">
+          <select id="addressPreference" {...register("addressPreference")} className={inputBase} aria-label="Address preference">
+            <option value="Collect">Collect from Campus</option>
+            <option value="Deliver">Deliver to my address</option>
+          </select>
+        </div>
+        {errors.addressPreference && <p className="text-xs text-red-600 mt-1">{errors.addressPreference.message}</p>}
+      </div>
+
+      {addressPreference === "Deliver" && (
+        <div>
+          <label className={labelBase} htmlFor="address">
+            Delivery Address
+            <span className="text-red-600 ml-1">*</span>
+          </label>
+          <div className="relative flex items-center mt-4">
+            <textarea
+              id="address"
+              {...register("address")}
+              className={inputBase}
+              rows={3}
+              placeholder="Enter your complete delivery address..."
+              aria-label="Delivery address"
+            />
+          </div>
+          {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address.message}</p>}
+        </div>
+      )}
+
+      <div>
+        <label className={labelBase} htmlFor="comment">Please mention if there is any mistake in data</label>
+        <div className="relative flex items-center mt-4">
+          <textarea
+            id="comment"
+            {...register("comment")}
+            className={inputBase}
+            rows={4}
+            placeholder="If you notice any mistakes in your information, please mention them here..."
+            aria-label="Comments about data mistakes"
+          />
+        </div>
+        {errors.comment && <p className="text-xs text-red-600 mt-1">{errors.comment.message}</p>}
+      </div>
+
+      <div className="mt-6">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            {...register("confirmation")}
+            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            aria-label="Confirm information is correct"
+          />
+          <span className="text-sm text-slate-900">
+            I confirm that the information is correct
+            <span className="text-red-600 ml-1">*</span>
+          </span>
+        </label>
+        {errors.confirmation && <p className="text-xs text-red-600 mt-1 ml-7">{errors.confirmation.message}</p>}
+      </div>
+
+      <div className="flex items-center justify-end gap-2 mt-6">
         <button type="submit" className={buttonPrimary} disabled={isSubmitting} aria-busy={isSubmitting} aria-label="Submit application">
           {isSubmitting ? "Submitting..." : "Submit"}
         </button>

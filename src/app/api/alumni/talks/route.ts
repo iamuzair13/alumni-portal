@@ -119,14 +119,28 @@ export async function POST(req: Request) {
 
     const topicStr = v.data.topics.join(", ").slice(0, 500);
     const activityStr = v.data.areas.join(", ").slice(0, 50);
-    const dayStr = v.data.day.slice(0, 20);
-    const timeStr = v.data.time.slice(0, 20);
     const majorStr = v.data.major.slice(0, 100);
+    const modeStr = v.data.mode;
+    const briefOutlineStr = v.data.briefOutline.slice(0, 5000);
+    
+    // Extract availability dates (up to 3)
+    const availability = v.data.availability.slice(0, 3);
+    const date1 = availability[0]?.date || null;
+    const timings1 = availability[0]?.timings || null;
+    const date2 = availability[1]?.date || null;
+    const timings2 = availability[1]?.timings || null;
+    const date3 = availability[2]?.date || null;
+    const timings3 = availability[2]?.timings || null;
 
     await sql.begin(async (tx) => {
       await tx/* sql */`UPDATE public.tbl_alumni SET majorsubject = ${majorStr} WHERE alumniid = ${alum.alumniid}`;
-      await tx/* sql */`INSERT INTO public.tblalumnitalks (alumniid, alumnitalks, mentorshipprogram, topic, day, timings, activity, linkedin) VALUES (
-        ${alum.alumniid}, ${"yes"}, ${"yes"}, ${topicStr}, ${dayStr}, ${timeStr}, ${activityStr}, ${alum.linkedin ?? null}
+      await tx/* sql */`INSERT INTO public.tblalumnitalks (
+        alumniid, alumnitalks, mentorshipprogram, topic, activity, linkedin, mode, brief_outline,
+        date_1, timings_1, date_2, timings_2, date_3, timings_3
+      ) VALUES (
+        ${alum.alumniid}, ${"yes"}, ${"yes"}, ${topicStr}, ${activityStr}, ${alum.linkedin ?? null},
+        ${modeStr}, ${briefOutlineStr},
+        ${date1}, ${timings1}, ${date2}, ${timings2}, ${date3}, ${timings3}
       )`;
     });
 
@@ -150,10 +164,13 @@ export async function POST(req: Request) {
         const alumniName = alumniInfo.alumniname || "Alumni";
         
         if (alumniEmail) {
-          // Parse time string (format: "HH:MM-HH:MM")
-          const timeParts = timeStr.split("-");
-          const startTime = timeParts[0] || "";
-          const endTime = timeParts[1] || "";
+          // Format availability dates for email
+          const availabilityText = availability
+            .map((avail, idx) => {
+              const [start, end] = avail.timings.split("-");
+              return `Date ${idx + 1}: ${avail.date} (${start} - ${end})`;
+            })
+            .join("\n");
           
           // Send email asynchronously (don't wait for it to complete)
           sendMentorshipApplicationEmail(
@@ -162,8 +179,8 @@ export async function POST(req: Request) {
             majorStr,
             activityStr, // This is years of experience
             topicStr,
-            dayStr,
-            `${startTime} - ${endTime}`
+            modeStr,
+            availabilityText
           ).catch((err) => {
             console.error("[API] Failed to send mentorship application email:", err);
           });
@@ -257,12 +274,33 @@ export async function PUT(req: Request) {
     }
     const topicStr = v.data.topics.join(", ").slice(0, 500);
     const activityStr = v.data.areas.join(", ").slice(0, 50);
-    const dayStr = v.data.day.slice(0, 20);
-    const timeStr = v.data.time.slice(0, 20);
     const majorStr = v.data.major.slice(0, 100);
+    const modeStr = v.data.mode;
+    const briefOutlineStr = v.data.briefOutline.slice(0, 5000);
+    
+    // Extract availability dates (up to 3)
+    const availability = v.data.availability.slice(0, 3);
+    const date1 = availability[0]?.date || null;
+    const timings1 = availability[0]?.timings || null;
+    const date2 = availability[1]?.date || null;
+    const timings2 = availability[1]?.timings || null;
+    const date3 = availability[2]?.date || null;
+    const timings3 = availability[2]?.timings || null;
+    
     await sql.begin(async (tx) => {
       await tx/* sql */`UPDATE public.tbl_alumni SET majorsubject = ${majorStr} WHERE alumniid = ${alumniid}`;
-      await tx/* sql */`UPDATE public.tblalumnitalks SET topic = ${topicStr}, day = ${dayStr}, timings = ${timeStr}, activity = ${activityStr} WHERE alumniid = ${alumniid}`;
+      await tx/* sql */`UPDATE public.tblalumnitalks SET 
+        topic = ${topicStr}, 
+        activity = ${activityStr},
+        mode = ${modeStr},
+        brief_outline = ${briefOutlineStr},
+        date_1 = ${date1},
+        timings_1 = ${timings1},
+        date_2 = ${date2},
+        timings_2 = ${timings2},
+        date_3 = ${date3},
+        timings_3 = ${timings3}
+      WHERE alumniid = ${alumniid}`;
     });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {

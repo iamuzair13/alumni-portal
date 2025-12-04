@@ -50,6 +50,8 @@ type AlumniFullData = {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
+  work_city: string | null;
+  work_country: string | null;
   image1: string | null;
   image2: string | null;
   cv: string | null;
@@ -216,6 +218,8 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           nameoforganization: formData.nameoforganization,
           designation: formData.designation,
           totalyearsofexpereince: formData.totalyearsofexpereince,
+          work_city: formData.work_city,
+          work_country: formData.work_country,
           majorsubject: formData.majorsubject,
           aboutme: formData.aboutme,
           facebook: formData.facebook,
@@ -290,7 +294,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700 p-3 overflow-x-hidden max-w-4xl w-full">
+    <div className="bg-white dark:bg-gray-800/50 rounded border ml-2 border-gray-200 dark:border-gray-700 p-3 overflow-x-hidden max-w-xl w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
         <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100">Alumni Details</h3>
         <div className="flex items-center gap-2">
@@ -385,6 +389,8 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Designation" value={data.designation} isEditing={isEditing} readOnly={readOnly} register={register} name="designation" />
           <CompactField label="Industry" value={data.industry} isEditing={isEditing} readOnly={readOnly} register={register} name="industry" />
           <CompactField label="Experience (Years)" value={data.totalyearsofexpereince} isEditing={isEditing} readOnly={readOnly} register={register} name="totalyearsofexpereince" />
+          <CompactField label="Work City" value={data.work_city} isEditing={isEditing} readOnly={readOnly} register={register} name="work_city" />
+          <CompactField label="Work Country" value={data.work_country} isEditing={isEditing} readOnly={readOnly} register={register} name="work_country" />
 
           {/* Additional Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">

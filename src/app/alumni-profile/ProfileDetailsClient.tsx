@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import Link from "next/link";
+import LoadingLink from "@/components/ui/LoadingLink";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails, alumniFullDetailsKey, currentUserImageKey } from "@/app/queries/alumni-profile";
 import { useQueryClient } from "@tanstack/react-query";
@@ -331,7 +331,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 />
               </div>
               {/* Profile Completion Progress Bar */}
-              <Link
+              <LoadingLink
                 href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
                 className="w-full max-w-[160px] sm:max-w-[180px] md:max-w-[200px] mt-4 block"
                 title="Click to complete your profile"
@@ -366,7 +366,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                       : "Almost complete!"}
                   </p>
                 </div>
-              </Link>
+              </LoadingLink>
             </div>
             <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
@@ -568,7 +568,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               <div className="col-span-1"><span className="font-semibold">Passing Year:</span> <br/> {passingYear ? String(passingYear) : "N/A"}</div>
             </div>
             <div className="mt-3 sm:mt-4">
-              <Link
+              <LoadingLink
                 href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
@@ -576,7 +576,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </Link>
+              </LoadingLink>
             </div>
           </div>
         </div>

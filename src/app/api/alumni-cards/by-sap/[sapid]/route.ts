@@ -113,7 +113,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     const currentStatus = currentCard[0].status;
     const cardData = currentCard[0];
     
-    // Update status
+    // Update status only (validity_date is set when card is created, 3 years from application date)
     const rows = await sql/* sql */`
       UPDATE public.tblcard c
       SET status = ${newStatus}

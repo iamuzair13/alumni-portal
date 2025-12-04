@@ -189,6 +189,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const universityemailVal = "universityemail" in body ? cleanValue("universityemail", body.universityemail) : undefined;
     const officialemailVal = "officialemail" in body ? cleanValue("officialemail", body.officialemail) : undefined;
     const officialnumberVal = "officialnumber" in body ? cleanValue("officialnumber", body.officialnumber) : undefined;
+    const workCityVal = "work_city" in body ? cleanValue("work_city", body.work_city) : undefined;
+    const workCountryVal = "work_country" in body ? cleanValue("work_country", body.work_country) : undefined;
     const organizationAddressVal = "organization_address" in body ? cleanValue("organization_address", body.organization_address) : undefined;
     const countryVal = "country" in body ? cleanValue("country", body.country) : undefined;
     const provinceVal = "province" in body ? cleanValue("province", body.province) : undefined;
@@ -274,6 +276,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       universityemail: universityemailVal,
       officialemail: officialemailVal,
       officialnumber: officialnumberVal,
+      work_city: workCityVal,
+      work_country: workCountryVal,
       organization_address: organizationAddressVal,
       country: countryVal,
       province: provinceVal,
@@ -376,6 +380,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       }
       if (officialnumberVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET officialnumber = ${officialnumberVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (workCityVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET work_city = ${workCityVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (workCountryVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET work_country = ${workCountryVal as string | null} WHERE alumniid = ${alumniId}`;
       }
       if (organizationAddressVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET organization_address = ${organizationAddressVal as string | null} WHERE alumniid = ${alumniId}`;

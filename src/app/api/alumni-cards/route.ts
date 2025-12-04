@@ -118,15 +118,20 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const alumniId = Number(formData.get("alumniId"));
     if (!alumniId) return NextResponse.json({ error: "alumniId required" }, { status: 400 });
-    const cnicno = String(formData.get("cnicno") || "");
-    const cardaddress = String(formData.get("cardaddress") || "");
-    const status = String(formData.get("status") || "requested");
     const sapId = String(formData.get("sapId") || "");
     const image = formData.get("image");
-
-    if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
-      return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
+    const comment = String(formData.get("comment") || "").trim() || null;
+    const cardaddress = String(formData.get("cardaddress") || "").trim() || null;
+    const validityDateStr = formData.get("validity_date") ? String(formData.get("validity_date")) : null;
+    
+    // Calculate validity date (3 years from application date) if not provided
+    let validityDate: string | null = validityDateStr;
+    if (!validityDate) {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 3);
+      validityDate = futureDate.toISOString().split('T')[0];
     }
+
     if (!(image instanceof File)) {
       return NextResponse.json({ error: "Profile image is required" }, { status: 400 });
     }
@@ -139,16 +144,21 @@ export async function POST(req: Request) {
     `;
     const isNewApplication = existingCard.length === 0;
 
+    // Set status to 'pending' for new applications
+    // Validity date is calculated as 3 years from application date
+    const status = "pending";
+
     const rows = await sql/* sql */`
-      INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat)
-      VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${storedFilename}, ${storedFilename}, NOW())
+      INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date)
+      VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate})
       ON CONFLICT (alumniid) DO UPDATE
-      SET cnicno = EXCLUDED.cnicno,
-          cardaddress = EXCLUDED.cardaddress,
-          status = EXCLUDED.status,
+      SET status = EXCLUDED.status,
           cardpicture = EXCLUDED.cardpicture,
           card_image = EXCLUDED.card_image,
-          createdat = NOW()
+          createdat = NOW(),
+          comment = EXCLUDED.comment,
+          cardaddress = EXCLUDED.cardaddress,
+          validity_date = EXCLUDED.validity_date
       RETURNING cardid`;
     
     // Send email notification for new applications

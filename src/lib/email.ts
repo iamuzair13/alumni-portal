@@ -251,8 +251,8 @@ export async function sendMentorshipApplicationEmail(
   major: string,
   area: string,
   topic: string,
-  day: string,
-  time: string
+  mode: string,
+  availability: string
 ): Promise<boolean> {
   const subject = "Alumni Talk Application Received";
   const greeting = `Dear ${alumniName},`;
@@ -274,8 +274,12 @@ export async function sendMentorshipApplicationEmail(
         <td style="padding: 8px 0; color: #555555;">${topic}</td>
       </tr>
       <tr>
-        <td style="padding: 8px 0; font-weight: bold; color: #333333;">Availability:</td>
-        <td style="padding: 8px 0; color: #555555;">${day} at ${time}</td>
+        <td style="padding: 8px 0; font-weight: bold; color: #333333;">Mode:</td>
+        <td style="padding: 8px 0; color: #555555;">${mode}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; font-weight: bold; color: #333333; vertical-align: top;">Availability:</td>
+        <td style="padding: 8px 0; color: #555555; white-space: pre-line;">${availability}</td>
       </tr>
     </table>
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">

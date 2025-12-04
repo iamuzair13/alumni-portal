@@ -9,10 +9,9 @@ type Props = {
   sapId: string;
   faculty: string;
   department: string;
-  program: string;
 };
 
-export default function AlumniCardModal({ alumniId, name, sapId, faculty, department, program }: Props) {
+export default function AlumniCardModal({ alumniId, name, sapId, faculty, department }: Props) {
 
   return (
     <dialog open className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" aria-modal="true" role="dialog">
@@ -34,7 +33,6 @@ export default function AlumniCardModal({ alumniId, name, sapId, faculty, depart
             sapId={sapId}
             faculty={faculty}
             department={department}
-            program={program}
           />
         </div>
       </div>

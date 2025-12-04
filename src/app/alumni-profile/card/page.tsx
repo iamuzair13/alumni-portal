@@ -105,7 +105,6 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   const name = p?.alumniname ?? "";
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
-  const program = p?.degreetitle ?? "";
   // Get SAP ID or registration number from session first, then from search params, then from email lookup
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
@@ -263,7 +262,6 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
                 sapId={sapId}
                 faculty={faculty}
                 department={dept}
-                program={program}
               />
             )}
           </div>
