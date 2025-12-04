@@ -8,7 +8,7 @@ type EditableFieldProps = {
   fieldKey: string;
   onUpdate?: (key: string, value: unknown) => Promise<void>;
   onValueChange?: (key: string, value: unknown) => void;
-  type?: "text" | "email" | "tel" | "number" | "textarea" | "select" | "checkbox" | "password";
+  type?: "text" | "email" | "tel" | "number" | "textarea" | "select" | "checkbox" | "password" | "date";
   options?: Array<{ value: string; label: string }>;
   disabled?: boolean;
   batchMode?: boolean;
@@ -50,7 +50,7 @@ export default function EditableField({
       return val === "true";
     } else if (type === "number") {
       return val === "" ? null : parseFloat(val);
-    } else if (type === "text" || type === "textarea" || type === "email" || type === "tel" || type === "select" || type === "password") {
+    } else if (type === "text" || type === "textarea" || type === "email" || type === "tel" || type === "select" || type === "password" || type === "date") {
       return val === "" ? null : val.trim();
     }
     return val.trim();
@@ -120,7 +120,10 @@ export default function EditableField({
       const option = options.find(opt => opt.value === String(val));
       if (option) return option.label;
     }
-    return String(val);
+    // Special handling for "Not applicable" - show as "Not applicable" (not "Not application")
+    const strVal = String(val).trim();
+    if (strVal === "Not applicable") return "Not applicable";
+    return strVal;
   };
 
   if (disabled) {

@@ -241,6 +241,7 @@ export default function EditableCountryProvinceCity({
 }: EditableCountryProvinceCityProps) {
   const [citySearch, setCitySearch] = useState("");
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [provinceCustomInput, setProvinceCustomInput] = useState(false);
 
   const selectedCountry = String(countryValue || "");
   const selectedProvince = String(provinceValue || "");
@@ -258,8 +259,18 @@ export default function EditableCountryProvinceCity({
         { value: "GB", label: "Gilgit-Baltistan" },
         { value: "AJK", label: "Azad Kashmir" },
       ];
-    } else if (selectedCountry && selectedCountry !== "" && selectedCountry !== "Select") {
-      return [{ value: "Other", label: "Other" }];
+    }
+    return [];
+  }, [selectedCountry]);
+
+  // Province dropdown options for non-Pakistan countries
+  const nonPakistanProvinceOptions = useMemo(() => {
+    if (selectedCountry && selectedCountry !== "" && selectedCountry !== "Select" && selectedCountry !== "Pakistan") {
+      return [
+        { value: "", label: "Select" },
+        { value: "Not applicable", label: "Not applicable" },
+        { value: "Specify province", label: "Specify province" },
+      ];
     }
     return [];
   }, [selectedCountry]);
@@ -303,13 +314,30 @@ export default function EditableCountryProvinceCity({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCity, selectedCountry]);
 
-  // Reset city when country or province changes
+  // Reset province and city when country changes
   useEffect(() => {
     if (selectedCountry && selectedCountry !== "Pakistan") {
+      // Don't auto-set province - let user choose "Not applicable" or specify
+      onProvinceChange("province", "");
       onCityChange("city", "");
       setCitySearch("");
+      setProvinceCustomInput(false);
+    } else {
+      setProvinceCustomInput(false);
     }
-  }, [selectedCountry, onCityChange]);
+  }, [selectedCountry, onProvinceChange, onCityChange]);
+
+  // Track if province has a custom value (not "Not applicable")
+  useEffect(() => {
+    if (selectedCountry && selectedCountry !== "Pakistan") {
+      const hasCustomValue = selectedProvince && selectedProvince !== "Not applicable" && selectedProvince.trim() !== "";
+      if (hasCustomValue) {
+        setProvinceCustomInput(true);
+      } else if (selectedProvince === "Not applicable") {
+        setProvinceCustomInput(false);
+      }
+    }
+  }, [selectedProvince, selectedCountry]);
 
   useEffect(() => {
     if (selectedCountry === "Pakistan" && selectedProvince) {
@@ -345,6 +373,51 @@ export default function EditableCountryProvinceCity({
           options={provinceOptions}
           batchMode={true}
         />
+      ) : selectedCountry && selectedCountry !== "" && selectedCountry !== "Select" ? (
+        <div className="flex flex-col group">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-gray-500">Province</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <select
+              value={selectedProvince === "Not applicable" ? "Not applicable" : (provinceCustomInput || (selectedProvince && selectedProvince !== "Not applicable" && selectedProvince.trim() !== "") ? "" : "")}
+              onChange={(e) => {
+                if (e.target.value === "Not applicable") {
+                  setProvinceCustomInput(false);
+                  onProvinceChange("province", "Not applicable");
+                } else if (e.target.value === "Specify province") {
+                  setProvinceCustomInput(true);
+                  onProvinceChange("province", "");
+                } else {
+                  onProvinceChange("province", "");
+                }
+              }}
+              className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {nonPakistanProvinceOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {(provinceCustomInput || (selectedProvince && selectedProvince !== "Not applicable" && selectedProvince.trim() !== "")) && (
+              <input
+                type="text"
+                placeholder="Enter province/state"
+                value={selectedProvince && selectedProvince !== "Not applicable" ? String(selectedProvince) : ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onProvinceChange("province", val);
+                  if (val.trim() !== "") {
+                    setProvinceCustomInput(true);
+                  }
+                }}
+                maxLength={50}
+                className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
+          </div>
+        </div>
       ) : (
         <EditableField
           label="Province"

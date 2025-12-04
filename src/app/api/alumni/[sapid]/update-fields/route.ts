@@ -189,6 +189,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const universityemailVal = "universityemail" in body ? cleanValue("universityemail", body.universityemail) : undefined;
     const officialemailVal = "officialemail" in body ? cleanValue("officialemail", body.officialemail) : undefined;
     const officialnumberVal = "officialnumber" in body ? cleanValue("officialnumber", body.officialnumber) : undefined;
+    const organizationAddressVal = "organization_address" in body ? cleanValue("organization_address", body.organization_address) : undefined;
     const countryVal = "country" in body ? cleanValue("country", body.country) : undefined;
     const provinceVal = "province" in body ? cleanValue("province", body.province) : undefined;
     const cityVal = "city" in body ? cleanValue("city", body.city) : undefined;
@@ -213,6 +214,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const instagramVal = "instagram" in body ? cleanValue("instagram", body.instagram) : undefined;
     const youtubeVal = "youtube" in body ? cleanValue("youtube", body.youtube) : undefined;
     const linkedinVal = "linkedin" in body ? cleanValue("linkedin", body.linkedin) : undefined;
+    // Higher Education fields
+    const degreeTitleVal = "degree_title" in body ? cleanValue("degree_title", body.degree_title) : undefined;
+    const higherEducationInstituteNameVal = "higher_education_institute_name" in body ? cleanValue("higher_education_institute_name", body.higher_education_institute_name) : undefined;
+    const higherEducationProgramVal = "higher_education_program" in body ? cleanValue("higher_education_program", body.higher_education_program) : undefined;
+    const higherEducationInstituteCountryVal = "higher_education_institute_country" in body ? cleanValue("higher_education_institute_country", body.higher_education_institute_country) : undefined;
+    const higherEducationInstituteCityVal = "higher_education_institute_city" in body ? cleanValue("higher_education_institute_city", body.higher_education_institute_city) : undefined;
+    const isScholarshipVal = "is_scholarship" in body ? cleanValue("is_scholarship", body.is_scholarship) : undefined;
+    const higherEducationInstituteEmailVal = "higher_education_institute_email" in body ? cleanValue("higher_education_institute_email", body.higher_education_institute_email) : undefined;
+    const higherEducationIntitureNumberVal = "higher_education_intiture_number" in body ? cleanValue("higher_education_intiture_number", body.higher_education_intiture_number) : undefined;
     
     // Handle password separately - store as plain text
     let passwordVal: string | undefined = undefined;
@@ -264,6 +274,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       universityemail: universityemailVal,
       officialemail: officialemailVal,
       officialnumber: officialnumberVal,
+      organization_address: organizationAddressVal,
       country: countryVal,
       province: provinceVal,
       city: cityVal,
@@ -288,7 +299,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       instagram: instagramVal,
       youtube: youtubeVal,
       linkedin: linkedinVal,
-      password: passwordVal
+      password: passwordVal,
+      degree_title: degreeTitleVal,
+      higher_education_institute_name: higherEducationInstituteNameVal,
+      higher_education_program: higherEducationProgramVal,
+      higher_education_institute_country: higherEducationInstituteCountryVal,
+      higher_education_institute_city: higherEducationInstituteCityVal,
+      is_scholarship: isScholarshipVal,
+      higher_education_institute_email: higherEducationInstituteEmailVal,
+      higher_education_intiture_number: higherEducationIntitureNumberVal,
     };
     
     const fieldsToUpdate = Object.entries(updateFields).filter(([, val]) => val !== undefined);
@@ -357,6 +376,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       }
       if (officialnumberVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET officialnumber = ${officialnumberVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (organizationAddressVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET organization_address = ${organizationAddressVal as string | null} WHERE alumniid = ${alumniId}`;
       }
       if (countryVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET country = ${countryVal as string | null} WHERE alumniid = ${alumniId}`;
@@ -429,6 +451,30 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       }
       if (linkedinVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET linkedin = ${linkedinVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (degreeTitleVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET degree_title = ${degreeTitleVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (higherEducationInstituteNameVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET higher_education_institute_name = ${higherEducationInstituteNameVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (higherEducationProgramVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET higher_education_program = ${higherEducationProgramVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (higherEducationInstituteCountryVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET higher_education_institute_country = ${higherEducationInstituteCountryVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (higherEducationInstituteCityVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET higher_education_institute_city = ${higherEducationInstituteCityVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (isScholarshipVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET is_scholarship = ${isScholarshipVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (higherEducationInstituteEmailVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET higher_education_institute_email = ${higherEducationInstituteEmailVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (higherEducationIntitureNumberVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET higher_education_intiture_number = ${higherEducationIntitureNumberVal as string | null} WHERE alumniid = ${alumniId}`;
       }
       if (passwordVal !== undefined) {
         console.log("[API] Updating password in database (first 20 chars):", passwordVal.substring(0, 20));

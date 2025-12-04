@@ -1,14 +1,14 @@
 "use client";
 import React from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon } from "@/icons";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon } from "@/icons";
+import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { canModify } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 
 
-export type CardStatus = "active" | "pending" | "declined" | "all";
+export type CardStatus = "active" | "pending" | "onhold" | "all";
 
 export type AlumniCardItem = {
   id: string;
@@ -56,7 +56,7 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-amber-600",
     pillBg: "bg-amber-100",
   },
-  declined: {
+  onhold: {
     color: "text-rose-700",
     bgColor: "bg-rose-50",
     ringColor: "ring-rose-200",
@@ -69,7 +69,7 @@ const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   all: GroupIcon,
   active: BoltIcon,
   pending: TimeIcon,
-  declined: LockIcon,
+  onhold: LockIcon,
 };
 
 export type AlumniCardProps = {
@@ -268,7 +268,7 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
 // Comprehensive Data Table view, matching dashboard style from Alumni-tabs
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import { useCardStatus, useUpdateCardStatus } from "@/app/queries/fetch-card-status";
+import { useCardStatus, cardStatusKey, type CardData } from "@/app/queries/fetch-card-status";
 import { useCardApplicants } from "@/app/queries/fetch-card-applicants";
 import PrintCardButton from "./PrintCardButton";
 
@@ -290,7 +290,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   defaultPageSize = 10,
   onRowAction,
 }) => {
-  const router = useRouter();
   const [query, setQuery] = React.useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = React.useState<string>("");
   const [sortKey, setSortKey] = React.useState<SortKey>("name");
@@ -298,9 +297,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
+  const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
   const [isExporting, setIsExporting] = React.useState<boolean>(false);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
-  const { data: applicants, isLoading: applicantsLoading, isError: applicantsError, error: applicantsErrorObj } = useCardApplicants();
+  const { data: session } = useSession();
+  // Only fetch if items are not provided (backward compatibility)
+  const shouldFetch = !items || items.length === 0;
+  const { data: applicantsData, isLoading: applicantsLoading, isError: applicantsError, error: applicantsErrorObj } = useCardApplicants("all", { enabled: shouldFetch });
+  const applicants = applicantsData?.items;
 
   React.useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query.trim()), 200);
@@ -308,20 +312,38 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   }, [query]);
 
   const baseItems = React.useMemo(() => {
+    // If items are provided, use them (for filtered views)
+    if (items && items.length > 0) {
+      return items;
+    }
+    // Otherwise use fetched applicants
     if (applicants && applicants.length) {
-      return applicants.map((r) => ({
-        id: String(r.sapid ?? ""),
-        name: String(r.alumniname ?? ""),
-        email: r.email ?? undefined,
-        program: String(r.degreetitle ?? ""),
-        campus: "",
-        faculty: String(r.facultyname ?? ""),
-        passingYear: Number(r.yearofending ?? 0),
-        workCountry: "",
-        status: (r.status ? String(r.status).trim().toLowerCase() : "pending") as CardStatus,
-        createdAt: String(r.createdat ?? ""),
-        department: String(r.departmentname ?? ""),
-      })) as AlumniListItem[];
+      return applicants.map((r) => {
+        // Map database status to UI status
+        let uiStatus: CardStatus = "pending";
+        const dbStatus = r.status ? String(r.status).trim().toLowerCase() : "pending";
+        if (dbStatus === "delivered") {
+          uiStatus = "active";
+        } else if (dbStatus === "rejected") {
+          uiStatus = "onhold";
+        } else if (dbStatus === "pending") {
+          uiStatus = "pending";
+        }
+        
+        return {
+          id: String(r.sapid ?? ""),
+          name: String(r.alumniname ?? ""),
+          email: r.email ?? undefined,
+          program: String(r.degreetitle ?? ""),
+          campus: "",
+          faculty: String(r.facultyname ?? ""),
+          passingYear: Number(r.yearofending ?? 0),
+          workCountry: "",
+          status: uiStatus,
+          createdAt: String(r.createdat ?? ""),
+          department: String(r.departmentname ?? ""),
+        };
+      }) as AlumniListItem[];
     }
     return items;
   }, [items, applicants]);
@@ -521,44 +543,165 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     }
   }, [isExporting, debouncedQuery, statusFilter]);
 
-  const StatusSelect: React.FC<{ sapId: string }> = ({ sapId }) => {
-    const { data, isFetching, isLoading, error } = useCardStatus(sapId);
-    const { mutateAsync, isPending } = useUpdateCardStatus(sapId);
-    const current = (data?.status ?? "pending") as "pending" | "rejected" | "delivered";
+  const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
+    const queryClient = useQueryClient();
+    const [localStatus, setLocalStatus] = React.useState<"pending" | "rejected" | "delivered" | null>(null);
+    const [isUpdating, setIsUpdating] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const hasUpdatedRef = React.useRef(false);
+    
+    // Map UI status (from items list) to DB status
+    const getDbStatusFromUI = (uiStatus?: CardStatus): "pending" | "rejected" | "delivered" => {
+      if (uiStatus === "active") return "delivered";
+      if (uiStatus === "onhold") return "rejected";
+      return "pending";
+    };
+    
+    // Get initial DB status from item prop or fetch from API
+    const initialDbStatus = initialStatus ? getDbStatusFromUI(initialStatus) : null;
+    
+    // Only fetch if we don't have initial status from props
+    const { data, isLoading } = useCardStatus(initialDbStatus ? undefined : sapId);
+    
+    // Initialize local state from props first, then from fetched data
+    React.useEffect(() => {
+      if (initialDbStatus && !hasUpdatedRef.current) {
+        setLocalStatus(initialDbStatus);
+        return;
+      }
+      
+      // Only initialize from API if we haven't manually updated and don't have initial status
+      if (!hasUpdatedRef.current && !initialDbStatus && data !== undefined) {
+        if (data?.status) {
+          setLocalStatus(data.status as "pending" | "rejected" | "delivered");
+        } else {
+          setLocalStatus("pending");
+        }
+      }
+    }, [data, initialDbStatus]);
+    
+    // Sync local state with initialStatus prop if it changes (but only if we haven't manually updated)
+    React.useEffect(() => {
+      if (!hasUpdatedRef.current && initialDbStatus && localStatus !== initialDbStatus) {
+        setLocalStatus(initialDbStatus);
+      }
+    }, [initialDbStatus, localStatus]);
+    
+    const current = localStatus ?? initialDbStatus ?? (data?.status ?? "pending") as "pending" | "rejected" | "delivered";
+    
+    const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const next = e.target.value as "pending" | "rejected" | "delivered";
+      
+      // Don't update if same status
+      if (next === current) return;
+      
+      // Optimistic update
+      const previousStatus = localStatus ?? (data?.status as "pending" | "rejected" | "delivered" ?? "pending");
+      setLocalStatus(next);
+      setIsUpdating(true);
+      setError(null);
+      hasUpdatedRef.current = true; // Mark that we've manually updated
+      
+      try {
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: next }),
+        });
+        
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.error || `Failed (${res.status})`);
+        }
+        
+        // Update local cache with the new status immediately
+        queryClient.setQueryData(cardStatusKey(sapId), (old: CardData | null) => {
+          if (!old) {
+            // If no old data, create a minimal card data object
+            return {
+              cardid: 0,
+              alumniid: 0,
+              cnicno: null,
+              cardaddress: null,
+              status: next,
+              cardpicture: null,
+              card_image: null,
+              createdat: null,
+            };
+          }
+          return { ...old, status: next };
+        });
+        
+        // Keep local state as the new status (don't let refetch override it)
+        setLocalStatus(next);
+        
+        // Invalidate applicants list to update counts, but debounce to prevent rapid refetches
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["alumni", "card", "applicants"], exact: false });
+        }, 500);
+        
+      } catch (err) {
+        // Revert on error
+        setLocalStatus(previousStatus);
+        hasUpdatedRef.current = false; // Reset flag on error
+        const errorMsg = err instanceof Error ? err.message : "Failed to update status";
+        setError(errorMsg);
+        console.error("[StatusSelect] Update error:", err);
+      } finally {
+        setIsUpdating(false);
+      }
+    };
+    
+    // Map status to display label
+    const statusLabel = current === "delivered" ? "Active" : current === "rejected" ? "On Hold" : "Pending";
+    
+    if (readOnly) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">{statusLabel}</span>
+        </div>
+      );
+    }
+    
     return (
       <div className="flex items-center gap-2">
         <select
           aria-label="Card status"
-          className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[12px] text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+          className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[12px] text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
           value={current}
-          disabled={isLoading || isFetching || isPending}
-          onChange={async (e) => {
-            const next = e.target.value as "pending" | "rejected" | "delivered";
-            try {
-              await mutateAsync(next);
-            } catch {}
-          }}
+          disabled={isLoading || isUpdating || readOnly}
+          onChange={handleStatusChange}
         >
-          <option value="pending">pending</option>
-          <option value="rejected">rejected</option>
-          <option value="delivered">delivered</option>
+          <option value="pending">Pending</option>
+          <option value="rejected">On Hold</option>
+          <option value="delivered">Active</option>
         </select>
-        {(isLoading || isFetching || isPending) && <span className="text-[11px] text-gray-500">Updating...</span>}
-        {error && <span className="text-[11px] text-red-600">Error</span>}
+        {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
+        {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
       </div>
     );
   };
 
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
-    const { data: session } = useSession();
-    const { data: cardData } = useCardStatus(sapId);
     const queryClient = useQueryClient();
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [deleteError, setDeleteError] = React.useState<string | null>(null);
     
-    const cardStatus = (cardData?.status ?? "pending") as "pending" | "rejected" | "delivered";
-    const isDelivered = cardStatus === "delivered";
+    // Try to get status from cache first, then from item status, fallback to pending
+    const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
+    const itemStatus = alumItem.status ? String(alumItem.status).toLowerCase().trim() : null;
+    // Map UI status (active/onhold/pending) back to DB status (delivered/rejected/pending) for comparison
+    let dbStatusFromItem: "pending" | "rejected" | "delivered" | null = null;
+    if (itemStatus === "active") {
+      dbStatusFromItem = "delivered";
+    } else if (itemStatus === "onhold") {
+      dbStatusFromItem = "rejected";
+    } else if (itemStatus === "pending") {
+      dbStatusFromItem = "pending";
+    }
+    const cardStatus = (cachedCardData?.status ?? dbStatusFromItem ?? "pending") as "pending" | "rejected" | "delivered";
+    const isDelivered = cardStatus === "delivered"; // Keep internal check as "delivered" for logic
     const isAdmin = canModify(session?.user);
 
     const handleDelete = async () => {
@@ -599,19 +742,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return (
       <>
         <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
-              onRowAction?.(alumItem, "view");
-            }}
-            className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50"
-            aria-label="View"
-            title="View"
-          >
-            <EyeIcon className="h-5 w-5" />
-          </button>
           {isDelivered && (
             <PrintCardButton sapId={sapId} studentName={studentName} />
           )}
@@ -722,8 +852,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="rejected">Rejected</option>
-            <option value="delivered">Delivered</option>
+            <option value="rejected">On Hold</option>
+            <option value="delivered">Active</option>
           </select>
           <button
             type="button"
@@ -770,13 +900,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             <Table className="min-w-full">
               <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm whitespace-nowrap">
                 <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">{null}</TableCell>
                   <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("name")} aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Name</TableCell>
                   <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("id")} aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>SAP ID</TableCell>
                   <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Mobile No</TableCell>
                   <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Active Email</TableCell>
                   <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
                   <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Card Status</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</TableCell>
+                  <TableCell isHeader className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
@@ -784,6 +915,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 {effectiveLoading && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
+                      <TableCell className="px-6 py-5">
+                        <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                      </TableCell>
                       <TableCell className="px-6 py-5">
                         <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
@@ -802,7 +936,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       <TableCell className="px-6 py-5">
                         <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
                         <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                       </TableCell>
                     </TableRow>
@@ -811,7 +945,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={7}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={8}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -829,7 +963,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={7}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -845,37 +979,77 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   </TableRow>
                 )}
 
-                {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => (
-                  <TableRow
-                    key={`${alum.id}-${idx}`}
-                    className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
-                    onClick={() => setSelectedRowId(alum.id)}
-                    aria-selected={selectedRowId === alum.id}
-                  >
-                    <TableCell className="px-6 py-5 text-start">
-                      <div className="flex items-center gap-3">
-                        <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{toTitleCase(alum.name)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
-                      {formatSapId(alum.id)}
-                    </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                      <a 
-                        href={alum.email ? `mailto:${alum.email}` : "#"} 
-                        className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
+                {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => {
+                  const isAdmin = canModify(session?.user);
+                  return (
+                    <React.Fragment key={`${alum.id}-fragment-${idx}`}>
+                      <TableRow
+                        key={`${alum.id}-${idx}`}
+                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
+                        onClick={() => setSelectedRowId(alum.id)}
+                        aria-selected={selectedRowId === alum.id}
                       >
-                        {formatEmail(alum.email)}
-                      </a>
-                    </TableCell>
-                    <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
-                    <TableCell className="px-6 py-5 text-start"><StatusSelect sapId={alum.id} /></TableCell>
-                    <TableCell className="px-6 py-5 text-end">
-                      <RowActions sapId={alum.id} studentName={alum.name} alumItem={alum} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        <TableCell className="px-6 py-5 text-start">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedRowId(expandedRowId === alum.id ? null : alum.id);
+                            }}
+                            className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+                              expandedRowId === alum.id
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
+                            }`}
+                            aria-label={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
+                            title={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
+                          >
+                            <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === alum.id ? "rotate-45" : ""}`} />
+                          </button>
+                        </TableCell>
+                        <TableCell className="px-6 py-5 text-start">
+                          <div className="flex items-center gap-3">
+                            <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{toTitleCase(alum.name)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                          {formatSapId(alum.id)}
+                        </TableCell>
+                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
+                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                          <a 
+                            href={alum.email ? `mailto:${alum.email}` : "#"} 
+                            className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
+                          >
+                            {formatEmail(alum.email)}
+                          </a>
+                        </TableCell>
+                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
+                        <TableCell className="px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!isAdmin} /></TableCell>
+                        <TableCell className={`px-6 py-5 text-end sticky right-0 z-10 ${
+                          selectedRowId === alum.id 
+                            ? "bg-blue-50/80 dark:bg-blue-900/30" 
+                            : idx % 2 === 0 
+                              ? "bg-gray-50/30 dark:bg-gray-800/20" 
+                              : "bg-white dark:bg-gray-800/30"
+                        }`}>
+                          <RowActions sapId={alum.id} studentName={alum.name} alumItem={alum} />
+                        </TableCell>
+                      </TableRow>
+                      {expandedRowId === alum.id && (
+                        <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
+                          <TableCell colSpan={8} className="px-0 py-6">
+                            <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
+                              <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start">
+                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!isAdmin} />
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

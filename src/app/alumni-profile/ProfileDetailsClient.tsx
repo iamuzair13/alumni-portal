@@ -100,6 +100,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const faculty = String(fullDetails?.facultyname ?? data?.faculty ?? "").trim();
   const dept = String(fullDetails?.departmentname ?? data?.department ?? "").trim();
   const program = String(fullDetails?.degreetitle ?? data?.program ?? "").trim();
+  const passingYear = fullDetails?.yearofending ?? null;
   // Use contactno directly from fullDetails, or try to reconstruct from mapped data
   const contact = String(fullDetails?.contactno ?? (data?.phoneNumber ? `${data?.countryCode ?? ""} ${data?.phoneNumber}`.trim() : "") ?? data?.officialPhone ?? "").trim();
   // Get SAP ID and Registration Number from fullDetails
@@ -564,6 +565,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {faculty || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {dept || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {program || "N/A"}</div>
+              <div className="col-span-1"><span className="font-semibold">Passing Year:</span> <br/> {passingYear ? String(passingYear) : "N/A"}</div>
             </div>
             <div className="mt-3 sm:mt-4">
               <Link

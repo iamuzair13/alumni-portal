@@ -44,6 +44,7 @@ export type AlumniFullDetails = {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
+  organization_address: string | null;
   image1: string | null;
   image2: string | null;
   cv: string | null;
@@ -62,6 +63,15 @@ export type AlumniFullDetails = {
   alumnistatus: string | null;
   password: string | null;
   father_cnic: string | null;
+  // Higher Education fields
+  degree_title: string | null;
+  higher_education_institute_name: string | null;
+  higher_education_program: string | null;
+  higher_education_institute_country: string | null;
+  higher_education_institute_city: string | null;
+  is_scholarship: string | null;
+  higher_education_institute_email: string | null;
+  higher_education_intiture_number: string | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {

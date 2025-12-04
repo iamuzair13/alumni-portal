@@ -546,6 +546,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             <div className="col-span-1"><span className="font-semibold">Faculty:</span> <br/> {safeText(faculty) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(program) || "N/A"}</div>
+            <div className="col-span-1"><span className="font-semibold">Passing Year:</span> <br/> {fullDetails?.yearofending ? String(fullDetails.yearofending) : "N/A"}</div>
           </div>
           {sapId && (
             <div className="mt-3 sm:mt-4">

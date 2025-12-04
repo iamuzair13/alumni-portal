@@ -1,6 +1,5 @@
 "use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { cardApplicantsKey } from "@/app/queries/fetch-card-applicants";
 
 export type CardStatus = "pending" | "rejected" | "delivered";
 
@@ -31,11 +30,11 @@ export function useCardStatus(sapId: string | undefined) {
       const j = await res.json();
       return (j?.card ?? null) as CardData | null;
     },
-    staleTime: 2 * 60_000, // 2 minutes
+    staleTime: 5 * 60_000, // 5 minutes - reduce refetching
     gcTime: 10 * 60_000, // 10 minutes
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: false, // Don't refetch on reconnect
+    refetchOnMount: false, // Don't refetch on mount if data exists
   });
 }
 
@@ -56,7 +55,8 @@ export function useUpdateCardStatus(sapId: string | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: cardStatusKey(sapId), exact: true });
-      qc.invalidateQueries({ queryKey: cardApplicantsKey, exact: true });
+      // Invalidate all card applicant queries (all statuses)
+      qc.invalidateQueries({ queryKey: ["alumni", "card", "applicants"] });
     },
   });
 }

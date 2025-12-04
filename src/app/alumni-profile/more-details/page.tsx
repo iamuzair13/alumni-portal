@@ -49,6 +49,155 @@ function MoreDetailsContent() {
   const handleSaveAll = async () => {
     if (!sapId || Object.keys(pendingChanges).length === 0 || isSavingAll) return;
 
+    // Validate: Get current country, province, and city values (use pending changes if available, otherwise use data)
+    const countryChanged = pendingChanges.country !== undefined;
+    const newCountry = countryChanged ? pendingChanges.country : (data?.country ?? null);
+    const provinceValue = pendingChanges.province !== undefined ? pendingChanges.province : (data?.province ?? null);
+    const cityValue = pendingChanges.city !== undefined ? pendingChanges.city : (data?.city ?? null);
+    
+    // Validate: If country is "Pakistan", both province and city are required
+    if (newCountry && String(newCountry).trim() === "Pakistan") {
+      const missingFields: string[] = [];
+      
+      if (!provinceValue || String(provinceValue).trim() === "" || String(provinceValue).trim() === "Not applicable") {
+        missingFields.push("Province");
+      }
+      
+      if (!cityValue || String(cityValue).trim() === "") {
+        missingFields.push("City");
+      }
+      
+      if (missingFields.length > 0) {
+        const fieldsList = missingFields.join(" and ");
+        toast.error(
+          `When country is "Pakistan", ${fieldsList} ${missingFields.length > 1 ? 'are' : 'is'} required. Please fill in all required fields before saving.`,
+          {
+            duration: 5000,
+            style: {
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '12px',
+              borderRadius: '8px',
+              maxWidth: '500px',
+            },
+          }
+        );
+        return;
+      }
+    }
+    
+    // Validate: If country is changed to non-Pakistan, city must be provided
+    if (newCountry && newCountry !== "Pakistan") {
+      if (!cityValue || String(cityValue).trim() === "") {
+        toast.error("City is required when country is not Pakistan. Please enter a city.", {
+          duration: 4000,
+          style: {
+            background: '#fee2e2',
+            color: '#991b1b',
+            padding: '12px',
+            borderRadius: '8px',
+          },
+        });
+        return;
+      }
+    }
+
+    // Validate: If employment status is "Employed", all employment fields are required
+    const employmentStatusChanged = pendingChanges.employeed !== undefined;
+    const currentEmploymentStatus = employmentStatusChanged 
+      ? pendingChanges.employeed 
+      : (data?.employeed ?? null);
+    
+    // Get current values (use pending changes if available, otherwise use data)
+    const getValue = (key: string) => {
+      if (pendingChanges[key] !== undefined) return pendingChanges[key];
+      return (data as Record<string, unknown>)?.[key] ?? null;
+    };
+    
+    // Check if status is being changed to "Employed" or is already "Employed"
+    const isEmployed = String(currentEmploymentStatus || "").toLowerCase() === "employed";
+    const isPursuingHigherEd = String(currentEmploymentStatus || "").toLowerCase() === "pursuing higher education" || String(currentEmploymentStatus || "").toLowerCase() === "highered";
+    
+    if (isEmployed) {
+      const requiredFields = [
+        { key: "industry", label: "Industry" },
+        { key: "nameoforganization", label: "Company Name" },
+        { key: "designation", label: "Designation" },
+        { key: "totalyearsofexpereince", label: "Total Years of Experience" },
+        { key: "organization_address", label: "Company Address" },
+        { key: "officialnumber", label: "Company Official Phone Number" },
+        { key: "officialemail", label: "Company Official Email" },
+      ];
+
+      const missingFields: string[] = [];
+      
+      for (const field of requiredFields) {
+        const value = getValue(field.key);
+        if (!value || String(value).trim() === "") {
+          missingFields.push(field.label);
+        }
+      }
+
+      if (missingFields.length > 0) {
+        const fieldsList = missingFields.join(", ");
+        toast.error(
+          `When employment status is "Employed", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
+          {
+            duration: 6000,
+            style: {
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '12px',
+              borderRadius: '8px',
+              maxWidth: '500px',
+            },
+          }
+        );
+        return;
+      }
+    }
+
+    // Validate: If employment status is "Pursuing Higher Education", all higher education fields are required
+    if (isPursuingHigherEd) {
+      const requiredFields = [
+        { key: "degree_title", label: "Degree Title" },
+        { key: "higher_education_institute_name", label: "Institute Name" },
+        { key: "higher_education_program", label: "Program" },
+        { key: "higher_education_institute_country", label: "Country" },
+        { key: "higher_education_institute_city", label: "City" },
+        { key: "is_scholarship", label: "Scholarship" },
+        { key: "higher_education_institute_email", label: "Institute Official Email" },
+        { key: "higher_education_intiture_number", label: "Institute Official Phone Number" },
+      ];
+
+      const missingFields: string[] = [];
+      
+      for (const field of requiredFields) {
+        const value = getValue(field.key);
+        if (!value || String(value).trim() === "") {
+          missingFields.push(field.label);
+        }
+      }
+
+      if (missingFields.length > 0) {
+        const fieldsList = missingFields.join(", ");
+        toast.error(
+          `When employment status is "Pursuing Higher Education", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
+          {
+            duration: 6000,
+            style: {
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '12px',
+              borderRadius: '8px',
+              maxWidth: '500px',
+            },
+          }
+        );
+        return;
+      }
+    }
+
     const changesCount = Object.keys(pendingChanges).length;
     setIsSavingAll(true);
     try {
@@ -210,7 +359,7 @@ function MoreDetailsContent() {
         { label: "Registration Number", value: data.registrationno, key: "registrationno", editable: false },
         { label: "Gender", value: data.gender, key: "gender", editable: false },
         { label: "Father's Name", value: data.fathername, key: "fathername", editable: false },
-        { label: "Date of Birth", value: data.dateofbirth, key: "dateofbirth", editable: false },
+        { label: "Date of Birth", value: data.dateofbirth, key: "dateofbirth", editable: true, type: "date" as const },
         { label: "Marital Status", value: data.maritalstatus, key: "maritalstatus", editable: true, type: "select" as const, options: maritalStatusOptions },
         { label: "CNIC/Passport", value: data.cnicpassport, key: "cnicpassport", editable: false },
         { label: "Password", value: data.password, key: "password", editable: true, type: "password" as const },
@@ -222,16 +371,14 @@ function MoreDetailsContent() {
         { label: "Primary Contact", value: data.contactno, key: "contactno", editable: true, type: "tel" as const },
         { label: "Secondary Contact", value: data.contactno1, key: "contactno1", editable: true, type: "tel" as const },
         { label: "Personal Email", value: data.personalemail, key: "personalemail", editable: true, type: "email" as const },
-        { label: "University Email", value: data.universityemail, key: "universityemail", editable: true, type: "email" as const },
-        { label: "Official Email", value: data.officialemail, key: "officialemail", editable: true, type: "email" as const, isConditional: true, conditionalKey: "employeed", conditionalValue: "Employed" },
-        { label: "Official Number", value: data.officialnumber, key: "officialnumber", editable: true, type: "tel" as const, isConditional: true, conditionalKey: "employeed", conditionalValue: "Employed" },
+        { label: "Alumni Email", value: data.universityemail, key: "universityemail", editable: true, type: "email" as const },
       ],
     },
     {
-      title: "Address Information",
+      title: "Address Information (For Pakistan Only)",
       fields: [
         { label: "Country", value: data.country, key: "country", editable: true, isSpecial: true },
-        { label: "Province", value: data.province, key: "province", editable: true, isSpecial: true },
+        { label: "Province (for Pakistan only)", value: data.province, key: "province", editable: true, isSpecial: true },
         { label: "City", value: data.city, key: "city", editable: true, isSpecial: true },
         { label: "Address", value: data.address, key: "address", editable: true, type: "textarea" as const },
       ],
@@ -369,7 +516,7 @@ function MoreDetailsContent() {
                   {section.title}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {section.title === "Address Information" ? (
+                  {section.title === "Address Information (For Pakistan Only)" ? (
                     // Special rendering for Country/Province/City with dependencies
                     <>
                       <EditableCountryProvinceCity
@@ -398,11 +545,33 @@ function MoreDetailsContent() {
                         nameoforganizationValue={pendingChanges.nameoforganization !== undefined ? pendingChanges.nameoforganization : data.nameoforganization}
                         designationValue={pendingChanges.designation !== undefined ? pendingChanges.designation : data.designation}
                         totalyearsofexpereinceValue={pendingChanges.totalyearsofexpereince !== undefined ? pendingChanges.totalyearsofexpereince : data.totalyearsofexpereince}
+                        organizationAddressValue={pendingChanges.organization_address !== undefined ? pendingChanges.organization_address : data.organization_address}
+                        officialEmailValue={pendingChanges.officialemail !== undefined ? pendingChanges.officialemail : data.officialemail}
+                        officialNumberValue={pendingChanges.officialnumber !== undefined ? pendingChanges.officialnumber : data.officialnumber}
+                        degreeTitleValue={pendingChanges.degree_title !== undefined ? pendingChanges.degree_title : (data as Record<string, unknown>).degree_title ?? null}
+                        instituteNameValue={pendingChanges.higher_education_institute_name !== undefined ? pendingChanges.higher_education_institute_name : (data as Record<string, unknown>).higher_education_institute_name ?? null}
+                        programValue={pendingChanges.higher_education_program !== undefined ? pendingChanges.higher_education_program : (data as Record<string, unknown>).higher_education_program ?? null}
+                        instituteCountryValue={pendingChanges.higher_education_institute_country !== undefined ? pendingChanges.higher_education_institute_country : (data as Record<string, unknown>).higher_education_institute_country ?? null}
+                        instituteCityValue={pendingChanges.higher_education_institute_city !== undefined ? pendingChanges.higher_education_institute_city : (data as Record<string, unknown>).higher_education_institute_city ?? null}
+                        scholarshipValue={pendingChanges.is_scholarship !== undefined ? pendingChanges.is_scholarship : (data as Record<string, unknown>).is_scholarship ?? null}
+                        instituteOfficialEmailValue={pendingChanges.higher_education_institute_email !== undefined ? pendingChanges.higher_education_institute_email : (data as Record<string, unknown>).higher_education_institute_email ?? null}
+                        instituteOfficialNumberValue={pendingChanges.higher_education_intiture_number !== undefined ? pendingChanges.higher_education_intiture_number : (data as Record<string, unknown>).higher_education_intiture_number ?? null}
                         onEmployeedChange={handleFieldValueChange}
                         onIndustryChange={handleFieldValueChange}
                         onOrganizationChange={handleFieldValueChange}
                         onDesignationChange={handleFieldValueChange}
                         onExperienceChange={handleFieldValueChange}
+                        onOrganizationAddressChange={handleFieldValueChange}
+                        onOfficialEmailChange={handleFieldValueChange}
+                        onOfficialNumberChange={handleFieldValueChange}
+                        onDegreeTitleChange={handleFieldValueChange}
+                        onInstituteNameChange={handleFieldValueChange}
+                        onProgramChange={handleFieldValueChange}
+                        onInstituteCountryChange={handleFieldValueChange}
+                        onInstituteCityChange={handleFieldValueChange}
+                        onScholarshipChange={handleFieldValueChange}
+                        onInstituteOfficialEmailChange={handleFieldValueChange}
+                        onInstituteOfficialNumberChange={handleFieldValueChange}
                       />
                       {section.fields
                         .filter(f => {

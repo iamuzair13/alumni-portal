@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify } from "@/lib/alumniProfile";
+import { canModify, isViewerUser } from "@/lib/alumniProfile";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -58,6 +58,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
     const canAccess = canModify(session.user); // Checks for both admin and superadmin
+    const isViewer = isViewerUser(session.user); // Checks for viewer users
+    const canView = isOwner || canAccess || isViewer; // Allow owners, admins, and viewers
 
     // Debug logging
     console.log("[API] Full details auth check:", {
@@ -69,10 +71,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       isOwnerByEmail,
       isOwner,
       canAccess,
+      isViewer,
+      canView,
       userType: (session.user as { type?: string })?.type
     });
 
-    if (!isOwner && !canAccess) {
+    if (!canView) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -120,6 +124,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         totalyearsofexpereince: row.totalyearsofexpereince ?? null,
         officialemail: row.officialemail ?? null,
         officialnumber: row.officialnumber ?? null,
+        organization_address: row.organization_address ?? null,
         image1: row.image1 ?? null,
         image2: row.image2 ?? null,
         cv: row.cv ?? null,
@@ -139,6 +144,15 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         // SECURITY: Only return password for alumni (owners), not for admins
         password: (isAlumni && isOwner) ? (row.password ?? null) : null,
         father_cnic: row.father_cnic ?? null,
+        // Higher Education fields
+        degree_title: row.degree_title ?? null,
+        higher_education_institute_name: row.higher_education_institute_name ?? null,
+        higher_education_program: row.higher_education_program ?? null,
+        higher_education_institute_country: row.higher_education_institute_country ?? null,
+        higher_education_institute_city: row.higher_education_institute_city ?? null,
+        is_scholarship: row.is_scholarship ?? null,
+        higher_education_institute_email: row.higher_education_institute_email ?? null,
+        higher_education_intiture_number: row.higher_education_intiture_number ?? null,
       }
     }, { status: 200 });
   } catch (err) {

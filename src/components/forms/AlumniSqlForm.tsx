@@ -52,6 +52,7 @@ export type TblAlumniForm = {
   totalyearsofexpereince: string | null;
   officialemail: string | null;
   officialnumber: string | null;
+  organization_address: string | null;
   image1: string | null;
   cv: string | null;
   aboutme: string | null;
@@ -60,6 +61,8 @@ export type TblAlumniForm = {
   highereducationinstitute: string | null;
   highereducationprogram: string | null;
   scholarship: string | null;
+  higher_education_institute_email: string | null;
+  higher_education_intiture_number: string | null;
   lasttimelogin: string | null;
   logincount: number | null;
   verify: string | null;
@@ -76,6 +79,9 @@ export type TblAlumniForm = {
 
 const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
 const labelBase = "block text-sm text-neutral-800";
+
+// Constant list of Pakistan provinces for validation
+const PAKISTAN_PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad", "GB", "AJK"];
 
 // Pakistan cities organized by province
 const citiesByProvince: Record<string, string[]> = {
@@ -197,6 +203,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [provinceCustomInput, setProvinceCustomInput] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [homeCitySearch, setHomeCitySearch] = useState("");
@@ -345,7 +352,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         { value: "AJK", label: "Azad Kashmir" },
       ];
     } else if (selectedHomeCountry && selectedHomeCountry !== "" && selectedHomeCountry !== "Select") {
-      return [{ value: "Other", label: "Other" }];
+      return [{ value: "Not applicable", label: "Not applicable" }];
     }
     return [];
   }, [selectedHomeCountry]);
@@ -372,11 +379,22 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   // Reset home province and city when home country changes
   useEffect(() => {
     if (selectedHomeCountry && selectedHomeCountry !== "Pakistan") {
-      setValue("province", "");
-      setValue("homeCity", "");
+      // Force reset province when country changes to non-Pakistan
+      setValue("province", "", { shouldValidate: false });
+      setValue("homeCity", "", { shouldValidate: false });
       setHomeCitySearch("");
+      setProvinceCustomInput(false);
+    } else if (selectedHomeCountry === "Pakistan") {
+      // If switching back to Pakistan, also reset province if it's "Not applicable"
+      const currentProvince = watch("province");
+      if (currentProvince === "Not applicable" || (currentProvince && !homeProvinceOptions.find(opt => opt.value === currentProvince))) {
+        setValue("province", "", { shouldValidate: false });
+        setProvinceCustomInput(false);
+      }
+    } else {
+      setProvinceCustomInput(false);
     }
-  }, [selectedHomeCountry, setValue]);
+  }, [selectedHomeCountry, setValue, watch]);
   
   // Reset home city when province changes
   useEffect(() => {
@@ -909,6 +927,138 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     </option>
                   ))}
                 </select>
+              ) : selectedHomeCountry && selectedHomeCountry !== "" && selectedHomeCountry !== "Select" ? (
+                <>
+                  <Controller
+                    name="province"
+                    control={control}
+                    defaultValue=""
+                    rules={{ 
+                      validate: (value) => {
+                        // Province is required - must be either "Not applicable" or a custom value
+                        if (!value || String(value).trim() === "") {
+                          return "Please select 'Not applicable' or specify a province";
+                        }
+                        return true;
+                      },
+                      maxLength: 50
+                    }}
+                    render={({ field }) => {
+                      // Get current value from field
+                      const currentValue = String(field.value || "").trim();
+                      // Check if current value is a Pakistan province using the constant list
+                      const isPakistanProvince = currentValue && PAKISTAN_PROVINCES.includes(currentValue);
+                      
+                      // If country is not Pakistan but province is a Pakistan province, force reset
+                      if (selectedHomeCountry && selectedHomeCountry !== "Pakistan" && isPakistanProvince) {
+                        // Reset immediately if it's a Pakistan province
+                        if (field.value !== "" && field.value !== null) {
+                          field.onChange("");
+                          setProvinceCustomInput(false);
+                        }
+                        // Return early with empty state
+                        return (
+                          <>
+                            <select 
+                              className={inputBase} 
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value === "Not applicable") {
+                                  setProvinceCustomInput(false);
+                                  field.onChange("Not applicable");
+                                } else if (e.target.value === "Specify province") {
+                                  setProvinceCustomInput(true);
+                                  field.onChange("");
+                                } else {
+                                  setProvinceCustomInput(false);
+                                  field.onChange("");
+                                }
+                              }}
+                              key={`province-select-${selectedHomeCountry || "none"}`}
+                            > 
+                              <option value="">Select</option>
+                              <option value="Not applicable">Not applicable</option>
+                              <option value="Specify province">Specify province</option>
+                            </select>
+                            {provinceCustomInput && (
+                              <input 
+                                type="text" 
+                                className={`${inputBase} mt-2`}
+                                placeholder="Enter province/state"
+                                value=""
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  field.onChange(val);
+                                  if (val.trim() !== "") {
+                                    setProvinceCustomInput(true);
+                                  } else {
+                                    setProvinceCustomInput(false);
+                                  }
+                                }}
+                                maxLength={50}
+                              />
+                            )}
+                          </>
+                        );
+                      }
+                      
+                      // Normal flow for non-Pakistan countries
+                      const isNotApplicable = currentValue === "Not applicable";
+                      const hasCustomValue = currentValue && currentValue !== "Not applicable" && currentValue !== "" && !isPakistanProvince;
+                      
+                      // Sync provinceCustomInput state with field value
+                      if (hasCustomValue && !provinceCustomInput) {
+                        setProvinceCustomInput(true);
+                      } else if ((isNotApplicable || !currentValue || (isPakistanProvince && selectedHomeCountry !== "Pakistan")) && provinceCustomInput) {
+                        setProvinceCustomInput(false);
+                      }
+                      
+                      return (
+                        <>
+                          <select 
+                            className={inputBase} 
+                            value={isNotApplicable ? "Not applicable" : (hasCustomValue ? "" : "")}
+                            onChange={(e) => {
+                              if (e.target.value === "Not applicable") {
+                                setProvinceCustomInput(false);
+                                field.onChange("Not applicable");
+                              } else if (e.target.value === "Specify province") {
+                                setProvinceCustomInput(true);
+                                field.onChange("");
+                              } else {
+                                setProvinceCustomInput(false);
+                                field.onChange("");
+                              }
+                            }}
+                            key={`province-select-${selectedHomeCountry || "none"}`}
+                          > 
+                            <option value="">Select</option>
+                            <option value="Not applicable">Not applicable</option>
+                            <option value="Specify province">Specify province</option>
+                          </select>
+                          {(provinceCustomInput || hasCustomValue) && (
+                            <input 
+                              type="text" 
+                              className={`${inputBase} mt-2`}
+                              placeholder="Enter province/state"
+                              value={hasCustomValue ? String(field.value || "") : ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val);
+                                if (val.trim() !== "") {
+                                  setProvinceCustomInput(true);
+                                } else {
+                                  setProvinceCustomInput(false);
+                                }
+                              }}
+                              maxLength={50}
+                            />
+                          )}
+                        </>
+                      );
+                    }}
+                  />
+                </>
               ) : (
                 <input 
                   type="text" 
@@ -919,6 +1069,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               )}
               {errors.province && selectedHomeCountry === "Pakistan" && (
                 <p className="mt-1 text-xs text-red-600">Province is required</p>
+              )}
+              {errors.province && selectedHomeCountry !== "Pakistan" && provinceCustomInput && (
+                <p className="mt-1 text-xs text-red-600">{errors.province.message || "Province is required"}</p>
               )}
             </div>
             <div className="relative">
@@ -1289,14 +1442,34 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
                 {/* Official Email */}
                 <div>
-                  <label className={labelBase}>Official Email (optional)</label>
-                  <input type="email" className={inputBase} {...register("officialemail", { maxLength: 100 })} />
+                  <label className={labelBase}>Company Official Email *</label>
+                  <input type="email" className={inputBase} {...register("officialemail", { required: true, maxLength: 100 })} />
+                  {errors.officialemail && (
+                    <p className="mt-1 text-xs text-red-600">Company Official Email is required</p>
+                  )}
                 </div>
 
                 {/* Official Phone */}
                 <div>
-                  <label className={labelBase}>Official Phone # (optional)</label>
-                  <input type="text" className={inputBase} {...register("officialnumber", { maxLength: 50 })} />
+                  <label className={labelBase}>Company Official Phone Number *</label>
+                  <input type="text" className={inputBase} {...register("officialnumber", { required: true, maxLength: 50 })} />
+                  {errors.officialnumber && (
+                    <p className="mt-1 text-xs text-red-600">Company Official Phone Number is required</p>
+                  )}
+                </div>
+
+                {/* Company Address */}
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <label className={labelBase}>Company Address *</label>
+                  <textarea 
+                    className={inputBase} 
+                    rows={3}
+                    placeholder="Enter company address"
+                    {...register("organization_address", { required: true, maxLength: 500 })} 
+                  />
+                  {errors.organization_address && (
+                    <p className="mt-1 text-xs text-red-600">Company Address is required</p>
+                  )}
                 </div>
 
                 {/* Work City/Country */}
@@ -1435,13 +1608,32 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </div>
 
                 <div>
-                  <label className={labelBase}>Scholarship</label>
-                  <select className={inputBase} {...register("scholarship")}>
+                  <label className={labelBase}>Scholarship *</label>
+                  <select className={inputBase} {...register("scholarship", { required: true })}>
                     <option value="">Select</option>
                     <option value="full funded scholarship">Full Funded Scholarship</option>
                     <option value="half funded scholarship">Half Funded Scholarship</option>
                     <option value="self paid">Self Paid</option>
                   </select>
+                  {errors.scholarship && (
+                    <p className="mt-1 text-xs text-red-600">Scholarship is required</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelBase}>Institute Official Email *</label>
+                  <input type="email" className={inputBase} {...register("higher_education_institute_email", { required: true, maxLength: 200 })} />
+                  {errors.higher_education_institute_email && (
+                    <p className="mt-1 text-xs text-red-600">Institute Official Email is required</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelBase}>Institute Official Phone Number *</label>
+                  <input type="text" className={inputBase} {...register("higher_education_intiture_number", { required: true, maxLength: 50 })} />
+                  {errors.higher_education_intiture_number && (
+                    <p className="mt-1 text-xs text-red-600">Institute Official Phone Number is required</p>
+                  )}
                 </div>
               </>
             )}
