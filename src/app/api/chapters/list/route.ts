@@ -28,10 +28,12 @@ export async function GET() {
       description: r.description ? String(r.description) : null,
     }));
     
-    // Log for debugging
+    // Log for debugging - show all chapters
     const nationalCount = chapters.filter(ch => ch.type === "national").length;
     const internationalCount = chapters.filter(ch => ch.type === "international").length;
     console.log(`[API] Chapters list: ${chapters.length} total (${nationalCount} national, ${internationalCount} international)`);
+    console.log(`[API] National chapters:`, chapters.filter(ch => ch.type === "national").map(ch => ch.name));
+    console.log(`[API] International chapters:`, chapters.filter(ch => ch.type === "international").map(ch => ch.name));
     
     return NextResponse.json({ chapters }, { status: 200 });
   } catch (err) {

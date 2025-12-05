@@ -3,9 +3,42 @@
 import React, { useState, useEffect } from "react";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import { useForm } from "react-hook-form";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { PencilIcon } from "@/icons";
+import { useSession } from "next-auth/react";
+import { PencilIcon, TrashBinIcon } from "@/icons";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+import { canModify } from "@/lib/alumniProfile";
+
+type Chapter = {
+  id: number;
+  name: string;
+  type: "national" | "international";
+};
+
+type Association = {
+  id: number;
+  title: string;
+};
+
+async function getChaptersList(): Promise<Chapter[]> {
+  const res = await fetch("/api/chapters/list", { headers: { "accept": "application/json" } });
+  if (!res.ok) {
+    throw new Error("Failed to fetch chapters list");
+  }
+  const data = (await res.json()) as { chapters: Chapter[] };
+  return data.chapters ?? [];
+}
+
+async function getAssociationsList(): Promise<Association[]> {
+  const res = await fetch("/api/associations/list", { headers: { "accept": "application/json" } });
+  if (!res.ok) {
+    throw new Error("Failed to fetch associations list");
+  }
+  const data = (await res.json()) as { associations: Association[] };
+  return data.associations ?? [];
+}
 
 type AlumniExpandableDetailsProps = {
   sapId: string;
@@ -70,6 +103,12 @@ type AlumniFullData = {
   alumnistatus: string | null;
   password: string | null;
   father_cnic: string | null;
+  chapter: string | null;
+  chapter1_id: number | null;
+  chapter2_id: number | null;
+  chapter3_id: number | null;
+  association: string | null;
+  association_id: number | null;
 };
 
 // Helper to format field value
@@ -154,8 +193,26 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const { data, isLoading, error, refetch } = useAlumniFullDetails(currentSapId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { register, handleSubmit, reset } = useForm<AlumniFullData>();
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const deleteModal = useModal();
+
+  // Fetch chapters and associations for dropdowns
+  const { data: chaptersList = [] } = useQuery<Chapter[]>({
+    queryKey: ["chapters-list"],
+    queryFn: getChaptersList,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: associationsList = [] } = useQuery<Association[]>({
+    queryKey: ["associations-list"],
+    queryFn: getAssociationsList,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     if (data) {
@@ -222,12 +279,22 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           work_country: formData.work_country,
           majorsubject: formData.majorsubject,
           aboutme: formData.aboutme,
+          association_id: formData.association_id && String(formData.association_id) !== "" ? Number(formData.association_id) : null,
+          chapter1_id: formData.chapter1_id && String(formData.chapter1_id) !== "" ? Number(formData.chapter1_id) : null,
+          chapter2_id: formData.chapter2_id && String(formData.chapter2_id) !== "" ? Number(formData.chapter2_id) : null,
+          chapter3_id: formData.chapter3_id && String(formData.chapter3_id) !== "" ? Number(formData.chapter3_id) : null,
           facebook: formData.facebook,
           instagram: formData.instagram,
           youtube: formData.youtube,
           linkedin: formData.linkedin,
           datasource: formData.datasource,
           alumnistatus: formData.alumnistatus,
+          verify: formData.verify,
+          lasttimelogin: formData.lasttimelogin,
+          logincount: formData.logincount,
+          createddatetime: formData.createddatetime,
+          academicsession: formData.academicsession,
+          father_cnic: formData.father_cnic,
         }),
       });
 
@@ -263,6 +330,52 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       toast.error(errorMessage);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!currentSapId || !data) return;
+    
+    // Validate sapid before proceeding
+    if (!currentSapId || currentSapId === "null" || currentSapId === "undefined" || currentSapId.trim() === "") {
+      toast.error("Invalid SAP ID. Cannot delete alumni without a valid SAP ID.");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(currentSapId)}`, { 
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to delete: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to delete: ${res.status}`);
+      }
+      
+      toast.success("Alumni deleted successfully.");
+      
+      // Invalidate all alumni-related queries to ensure fresh data
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["alumni"] }),
+        queryClient.invalidateQueries({ queryKey: ["alumnilist"] }),
+        queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }),
+        queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false })
+      ]);
+      
+      // Close the details panel and modal
+      deleteModal.closeModal();
+      onClose();
+      
+      // Optionally navigate away or refresh the page
+      // router.refresh();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to delete alumni.");
+      console.error("[AlumniExpandableDetails] Delete error:", msg, e);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -349,8 +462,8 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
           </div>
-          <CompactField label="Contact No" value={data.contactno} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno" />
-          <CompactField label="Contact No 1" value={data.contactno1} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno1" />
+          <CompactField label="Primary Contact" value={data.contactno} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno" />
+          <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno1" />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isEditing} readOnly={readOnly} register={register} name="personalemail" type="email" />
           <CompactField label="Alumni Email" value={data.universityemail} isEditing={isEditing} readOnly={readOnly} register={register} name="universityemail" type="email" />
           <CompactField label="Official Email" value={data.officialemail} isEditing={isEditing} readOnly={readOnly} register={register} name="officialemail" type="email" />
@@ -392,6 +505,80 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Work City" value={data.work_city} isEditing={isEditing} readOnly={readOnly} register={register} name="work_city" />
           <CompactField label="Work Country" value={data.work_country} isEditing={isEditing} readOnly={readOnly} register={register} name="work_country" />
 
+          {/* Chapter and Association Information */}
+          <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Chapter & Association</h4>
+          </div>
+          {!isEditing ? (
+            <>
+              <CompactField label="Chapter" value={data.chapter} isEditing={false} />
+              <CompactField label="Association" value={data.association} isEditing={false} />
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Chapter 1:</label>
+                <select
+                  {...register("chapter1_id")}
+                  disabled={readOnly}
+                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">None</option>
+                  {chaptersList.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      {chapter.name} ({chapter.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Chapter 2:</label>
+                <select
+                  {...register("chapter2_id")}
+                  disabled={readOnly}
+                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">None</option>
+                  {chaptersList.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      {chapter.name} ({chapter.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Chapter 3:</label>
+                <select
+                  {...register("chapter3_id")}
+                  disabled={readOnly}
+                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">None</option>
+                  {chaptersList.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      {chapter.name} ({chapter.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Association:</label>
+                <select
+                  {...register("association_id")}
+                  disabled={readOnly}
+                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">None</option>
+                  {associationsList.map((association) => (
+                    <option key={association.id} value={association.id}>
+                      {association.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           {/* Additional Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
@@ -411,12 +598,18 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">System</h4>
           </div>
-          <CompactField label="Verification Status" value={data.verify || "Not Set"} isEditing={false} />
-          <CompactField label="Last Login" value={data.lasttimelogin || "Never"} isEditing={false} />
-          <CompactField label="Login Count" value={data.logincount || 0} isEditing={false} />
-          <CompactField label="Data Source" value={data.datasource} isEditing={isEditing} readOnly={readOnly} register={register} name="datasource" />
+          <CompactField label="Verification Status" value={data.verify || "Not Set"} isEditing={isEditing} readOnly={readOnly} register={register} name="verify" type="select" options={[
+            { value: "", label: "Select" },
+            { value: "true", label: "Verified" },
+            { value: "false", label: "Unverified" },
+            { value: "pending", label: "Pending" }
+          ]} />
+          <CompactField label="Last Login" value={data.lasttimelogin || "Never"} isEditing={isEditing} readOnly={readOnly} register={register} name="lasttimelogin" />
+          <CompactField label="Login Count" value={data.logincount || 0} isEditing={isEditing} readOnly={readOnly} register={register} name="logincount" type="number" />
           <CompactField label="Alumni Status" value={data.alumnistatus} isEditing={isEditing} readOnly={readOnly} register={register} name="alumnistatus" />
-          <CompactField label="Created Date" value={data.createddatetime} isEditing={false} />
+          <CompactField label="Created Date" value={data.createddatetime} isEditing={isEditing} readOnly={readOnly} register={register} name="createddatetime" />
+          <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />
+          <CompactField label="Data Source" value={data.datasource} isEditing={isEditing} readOnly={readOnly} register={register} name="datasource" />
         </div>
 
         {isEditing && !readOnly && (
@@ -451,7 +644,88 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             </button>
           </div>
         )}
+
+        {/* Delete Button - Only show for admins and when not editing */}
+        {!isEditing && !readOnly && canModify(session?.user) && (
+          <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-red-200 dark:border-red-800">
+            <button
+              type="button"
+              onClick={() => deleteModal.openModal()}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 dark:bg-rose-500 dark:hover:bg-rose-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <TrashBinIcon className="w-3 h-3" />
+              Delete Alumni
+            </button>
+          </div>
+        )}
       </form>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && data && (
+        <Modal
+          isOpen={deleteModal.isOpen}
+          onClose={() => {
+            if (!isDeleting) {
+              deleteModal.closeModal();
+            }
+          }}
+          className="max-w-lg mx-auto"
+          showCloseButton={true}
+        >
+          <div className="p-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-rose-100 dark:bg-rose-900/30">
+                <TrashBinIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                  Confirm Deletion
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Are you sure you want to delete <strong className="font-semibold text-gray-900 dark:text-gray-100">{data.alumniname || currentSapId}</strong>? This will permanently remove their record from the system.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!isDeleting) {
+                    deleteModal.closeModal();
+                  }
+                }}
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                {isDeleting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting...
+                  </span>
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

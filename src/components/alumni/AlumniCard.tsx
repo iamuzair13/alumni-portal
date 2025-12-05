@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon } from "@/icons";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 
 
-export type CardStatus = "active" | "pending" | "onhold" | "all";
+export type CardStatus = "active" | "inprocess" | "onhold" | "received" | "all";
 
 export type AlumniCardItem = {
   id: string;
@@ -51,7 +51,7 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-emerald-600",
     pillBg: "bg-emerald-100",
   },
-  pending: {
+  inprocess: {
     color: "text-amber-700",
     bgColor: "bg-amber-50",
     ringColor: "ring-amber-200",
@@ -65,13 +65,21 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-rose-600",
     pillBg: "bg-rose-100",
   },
+  received: {
+    color: "text-indigo-700",
+    bgColor: "bg-indigo-50",
+    ringColor: "ring-indigo-200",
+    iconColor: "text-indigo-600",
+    pillBg: "bg-indigo-100",
+  },
 };
 
 const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   all: GroupIcon,
   active: BoltIcon,
-  pending: TimeIcon,
+  inprocess: TimeIcon,
   onhold: LockIcon,
+  received: CheckCircleIcon,
 };
 
 export type AlumniCardProps = {
@@ -190,7 +198,13 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
                       <p className="text-sm text-neutral-500 truncate">{alum.email ?? "-"}</p>
                     </div>
                   </div>
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${theme.pillBg} ${theme.color}`}>{alum.status}</span>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${theme.pillBg} ${theme.color}`}>
+                    {alum.status === "active" ? "Active" : 
+                     alum.status === "inprocess" ? "In-Process" : 
+                     alum.status === "onhold" ? "On Hold" : 
+                     alum.status === "received" ? "Received" : 
+                     alum.status}
+                  </span>
                 </div>
 
                 <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -322,14 +336,19 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     if (applicants && applicants.length) {
       return applicants.map((r) => {
         // Map database status to UI status
-        let uiStatus: CardStatus = "pending";
+        let uiStatus: CardStatus = "inprocess";
         const dbStatus = r.status ? String(r.status).trim().toLowerCase() : "pending";
         if (dbStatus === "delivered") {
           uiStatus = "active";
         } else if (dbStatus === "rejected") {
           uiStatus = "onhold";
+        } else if (dbStatus === "received") {
+          uiStatus = "received";
         } else if (dbStatus === "pending") {
-          uiStatus = "pending";
+          uiStatus = "inprocess";
+        } else {
+          // Default to inprocess for any other status
+          uiStatus = "inprocess";
         }
         
         return {
@@ -364,7 +383,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         // Handle null, undefined, empty string, or actual status value
         let itemStatus: string;
         if (!i.status || String(i.status).trim() === "") {
-          itemStatus = "pending";
+          itemStatus = "inprocess";
         } else {
           itemStatus = String(i.status).trim().toLowerCase();
         }
@@ -456,6 +475,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return v.includes("@") ? v : "-";
   }
 
+  // Export to Excel function - comprehensive export with ALL fields
   const handleExportToExcel = React.useCallback(async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -463,79 +483,155 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       // Dynamically import xlsx to avoid server-side bundling issues
       const XLSX = await import("xlsx");
       
-      // Fetch all applicants from API
-      const res = await fetch("/api/alumni-cards/applicants", { headers: { "accept": "application/json" } });
-      if (!res.ok) throw new Error("Failed to fetch data");
-      const data = (await res.json()) as { items: Array<{ sapid: string; alumniname: string; email: string | null; degreetitle: string | null; facultyname: string | null; departmentname: string | null; yearofending: number | null; status: string; createdat: string | Date | null }> };
-      const allItems = data.items ?? [];
-
-      // Filter by status if needed (based on current view)
-      // Note: The status filter would need to be passed as a prop or determined from the current view
-      // For now, we'll export all items and let the user filter in Excel if needed
-      
-      // Filter by status - strict matching
-      let itemsToExport = allItems;
-      if (statusFilter !== "all") {
-        const filterStatus = statusFilter.toLowerCase().trim();
-        itemsToExport = allItems.filter((item) => {
-          const itemStatus = item.status ? String(item.status).trim().toLowerCase() : "pending";
-          return itemStatus === filterStatus;
-        });
-      }
-      
-      // Apply search filter if any
+      // Fetch comprehensive data from export endpoint
+      const url = new URL("/api/alumni-cards/export", typeof window !== "undefined" ? window.location.origin : "");
       if (debouncedQuery) {
-        itemsToExport = itemsToExport.filter((item) => {
-          const q = debouncedQuery.toLowerCase();
-          return (
-            item.sapid?.toLowerCase().includes(q) ||
-            item.alumniname?.toLowerCase().includes(q) ||
-            item.email?.toLowerCase().includes(q) ||
-            item.degreetitle?.toLowerCase().includes(q) ||
-            item.facultyname?.toLowerCase().includes(q) ||
-            item.departmentname?.toLowerCase().includes(q)
-          );
-        });
+        url.searchParams.set("search", debouncedQuery);
       }
+      if (statusFilter && statusFilter !== "all") {
+        url.searchParams.set("status", statusFilter);
+      }
+      
+      const res = await fetch(url.toString(), {
+        headers: { "accept": "application/json" }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch export data: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      const allItems = data.items || [];
 
-      // Map to Excel format
-      const excelData = itemsToExport.map((item) => ({
+      // Helper function to format chapter names
+      const formatChapters = (item: Record<string, unknown>) => {
+        const chapters: string[] = [];
+        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+        if (chapter1) chapters.push(chapter1);
+        if (chapter2) chapters.push(chapter2);
+        if (chapter3) chapters.push(chapter3);
+        return chapters.filter(c => c).join(", ") || "";
+      };
+
+      // Map ALL fields to Excel format
+      const excelData = allItems.map((item: Record<string, unknown>) => ({
+        // Card Information
+        "Card ID": item.id || "",
+        "Card Status": item.status || "",
+        "Card Created At": item.createdat || "",
+        
+        // Basic Information
+        "Alumni ID": item.alumniid || "",
         "SAP ID": item.sapid || "",
+        "Registration No": item.registrationno || "",
+        "Alumni Email": item.alumniemail || "",
         "Full Name": item.alumniname || "",
-        "Email": item.email || "",
-        "Faculty": item.facultyname || "",
-        "Department": item.departmentname || "",
-        "Program": item.degreetitle || "",
+        "Gender": item.gender || "",
+        "Father Name": item.fathername || "",
+        "Father CNIC": item.father_cnic || "",
+        "Date of Birth": item.dateofbirth || "",
+        "Marital Status": item.maritalstatus || "",
+        "CNIC/Passport": item.cnicpassport || "",
+        
+        // Contact Information
+        "Contact No": item.contactno || "",
+        "Contact No 1": item.contactno1 || "",
+        "Contact No 1 Show": item.contactno1show || "",
+        "Personal Email": item.personalemail || "",
+        "Personal Email Show": item.personalemailshow || "",
+        "University Email": item.universityemail || "",
+        "Official Email": item.officialemail || "",
+        "Official Number": item.officialnumber || "",
+        "Address": item.address || "",
+        "Country": item.country || "",
+        "Province": item.province || "",
+        "City": item.city || "",
+        
+        // Academic Information
+        "Academic Session": item.academicsession || "",
+        "Degree Title": item.degreetitle || "",
+        "CGPA": item.cgpa || "",
+        "Year of Starting": item.yearofstarting || "",
         "Year of Ending": item.yearofending || "",
-        "Status": item.status || "",
-        "Created At": item.createdat ? (typeof item.createdat === "string" ? item.createdat : new Date(item.createdat).toISOString().split("T")[0]) : "",
+        "Faculty": item.facultyname || "",
+        "Campus": item.campusname || "",
+        "Department": item.departmentname || "",
+        "Major Subject": item.majorsubject || "",
+        
+        // Professional Information
+        "Industry": item.industry || "",
+        "Employment Status": item.employeed || "",
+        "Organization": item.nameoforganization || "",
+        "Designation": item.designation || "",
+        "Total Years of Experience": item.totalyearsofexpereince || "",
+        "Work City": item.work_city || "",
+        "Work Country": item.work_country || "",
+        "Organization Address": item.organization_address || "",
+        "Supervisor Designation": item.supervisordesignation || "",
+        "Supervisor Number": item.supervisornumber || "",
+        
+        // Chapters
+        "Chapter 1 ID": item.chapter1_id || "",
+        "Chapter 1": item.chapter1_national || item.chapter1_international || "",
+        "Chapter 2 ID": item.chapter2_id || "",
+        "Chapter 2": item.chapter2_national || item.chapter2_international || "",
+        "Chapter 3 ID": item.chapter3_id || "",
+        "Chapter 3": item.chapter3_national || item.chapter3_international || "",
+        "All Chapters": formatChapters(item),
+        "Chapter Remarks": item.chapter_remarks || "",
+        
+        // Association
+        "Association ID": item.association_id_value || "",
+        "Association Title": item.association_title || "",
+        "Association Description": item.association_description || "",
+        "Association Dean": item.association_dean || "",
+        "Association Phone": item.association_phone || "",
+        "Association Email": item.association_email || "",
+        "Association Address": item.association_address || "",
+        
+        // Additional Information
+        "About Me": item.aboutme || "",
+        "Image 1": item.image1 || "",
+        "Image 2": item.image2 || "",
+        "CV": item.cv || "",
+        
+        // Social Links
+        "Facebook": item.facebook || "",
+        "Instagram": item.instagram || "",
+        "YouTube": item.youtube || "",
+        "LinkedIn": item.linkedin || "",
+        
+        // System Information
+        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : item.verify === "pending" || item.verify === null || item.verify === "" ? "Under Approval" : item.verify || "",
+        "Last Login": item.lasttimelogin || "",
+        "Login Count": item.logincount || 0,
+        "Email Send Count": item.emailsendcount || 0,
+        "Email Send Status": item.emailsendstatus || "",
+        "Data Source": item.datasource || "",
+        "Alumni Status": item.alumnistatus || "",
+        "Created Date Time": item.createddatetime || "",
       }));
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(excelData);
 
-      // Set column widths
-      ws["!cols"] = [
-        { wch: 12 }, // SAP ID
-        { wch: 25 }, // Full Name
-        { wch: 30 }, // Email
-        { wch: 25 }, // Faculty
-        { wch: 25 }, // Department
-        { wch: 30 }, // Program
-        { wch: 15 }, // Year of Ending
-        { wch: 15 }, // Status
-        { wch: 20 }, // Created At
-      ];
+      // Set column widths for all columns (auto-width for comprehensive export)
+      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
+      ws["!cols"] = colWidths;
 
+      // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, "Alumni Cards");
 
-      // Generate filename with status
+      // Generate filename with current date and filters
       const dateStr = new Date().toISOString().split("T")[0];
+      const statusStr = statusFilter && statusFilter !== "all" ? `_${statusFilter}` : "";
       const searchStr = debouncedQuery ? `_search` : "";
-      const statusStr = statusFilter !== "all" ? `_${statusFilter}` : "";
       const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}.xlsx`;
 
+      // Write and download
       XLSX.writeFile(wb, filename);
       setIsExporting(false);
     } catch (error) {
@@ -546,16 +642,19 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   }, [isExporting, debouncedQuery, statusFilter]);
 
   const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
+    const { data: session } = useSession();
     const queryClient = useQueryClient();
-    const [localStatus, setLocalStatus] = React.useState<"pending" | "rejected" | "delivered" | null>(null);
+    const [localStatus, setLocalStatus] = React.useState<"pending" | "rejected" | "delivered" | "received" | null>(null);
     const [isUpdating, setIsUpdating] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const hasUpdatedRef = React.useRef(false);
+    const isAdmin = canModify(session?.user);
     
     // Map UI status (from items list) to DB status
-    const getDbStatusFromUI = (uiStatus?: CardStatus): "pending" | "rejected" | "delivered" => {
+    const getDbStatusFromUI = (uiStatus?: CardStatus): "pending" | "rejected" | "delivered" | "received" => {
       if (uiStatus === "active") return "delivered";
       if (uiStatus === "onhold") return "rejected";
+      if (uiStatus === "received") return "received";
       return "pending";
     };
     
@@ -575,7 +674,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       // Only initialize from API if we haven't manually updated and don't have initial status
       if (!hasUpdatedRef.current && !initialDbStatus && data !== undefined) {
         if (data?.status) {
-          setLocalStatus(data.status as "pending" | "rejected" | "delivered");
+          setLocalStatus(data.status as "pending" | "rejected" | "delivered" | "received");
         } else {
           setLocalStatus("pending");
         }
@@ -589,16 +688,16 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     }, [initialDbStatus, localStatus]);
     
-    const current = localStatus ?? initialDbStatus ?? (data?.status ?? "pending") as "pending" | "rejected" | "delivered";
+    const current = localStatus ?? initialDbStatus ?? (data?.status ?? "pending") as "pending" | "rejected" | "delivered" | "received";
     
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = e.target.value as "pending" | "rejected" | "delivered";
+      const next = e.target.value as "pending" | "rejected" | "delivered" | "received";
       
       // Don't update if same status
       if (next === current) return;
       
       // Optimistic update
-      const previousStatus = localStatus ?? (data?.status as "pending" | "rejected" | "delivered" ?? "pending");
+      const previousStatus = localStatus ?? (data?.status as "pending" | "rejected" | "delivered" | "received" ?? "pending");
       setLocalStatus(next);
       setIsUpdating(true);
       setError(null);
@@ -655,7 +754,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     };
     
     // Map status to display label
-    const statusLabel = current === "delivered" ? "Active" : current === "rejected" ? "On Hold" : "Pending";
+    const statusLabel = current === "delivered" ? "Active" : current === "rejected" ? "On Hold" : current === "received" ? "Received" : "In-Process";
     
     if (readOnly) {
       return (
@@ -674,9 +773,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           disabled={isLoading || isUpdating || readOnly}
           onChange={handleStatusChange}
         >
-          <option value="pending">Pending</option>
+          <option value="pending">In-Process</option>
           <option value="rejected">On Hold</option>
           <option value="delivered">Active</option>
+          {isAdmin && <option value="received">Received</option>}
         </select>
         {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
         {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
@@ -693,16 +793,18 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     // Try to get status from cache first, then from item status, fallback to pending
     const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
     const itemStatus = alumItem.status ? String(alumItem.status).toLowerCase().trim() : null;
-    // Map UI status (active/onhold/pending) back to DB status (delivered/rejected/pending) for comparison
-    let dbStatusFromItem: "pending" | "rejected" | "delivered" | null = null;
+    // Map UI status (active/onhold/inprocess/received) back to DB status (delivered/rejected/pending/received) for comparison
+    let dbStatusFromItem: "pending" | "rejected" | "delivered" | "received" | null = null;
     if (itemStatus === "active") {
       dbStatusFromItem = "delivered";
     } else if (itemStatus === "onhold") {
       dbStatusFromItem = "rejected";
-    } else if (itemStatus === "pending") {
+    } else if (itemStatus === "inprocess") {
       dbStatusFromItem = "pending";
+    } else if (itemStatus === "received") {
+      dbStatusFromItem = "received";
     }
-    const cardStatus = (cachedCardData?.status ?? dbStatusFromItem ?? "pending") as "pending" | "rejected" | "delivered";
+    const cardStatus = (cachedCardData?.status ?? dbStatusFromItem ?? "pending") as "pending" | "rejected" | "delivered" | "received";
     const isDelivered = cardStatus === "delivered"; // Keep internal check as "delivered" for logic
     const isAdmin = canModify(session?.user);
 
@@ -853,9 +955,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             aria-label="Filter by status"
           >
             <option value="all">All Status</option>
-            <option value="pending">Pending</option>
+            <option value="pending">In-Process</option>
             <option value="rejected">On Hold</option>
             <option value="delivered">Active</option>
+            {canModify(session?.user) && <option value="received">Received</option>}
           </select>
           <button
             type="button"

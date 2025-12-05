@@ -1427,24 +1427,347 @@
       "faculty": "Faculty of Medicine & Dentistry",
       "departments": [
         {
-          "department": "Institute of Molecular Biology & Biotechnology",
+          "department": "University College of Medicine and Dentistry",
           "programs": [
             {
-              "program": "Master of Philosophy in Physiology",
+              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
+              "count": 1
+            },
+            {
+              "program": "Bachelor of Dental Surgery (BDS)",
+              "count": 1
+            },
+            {
+              "program": "MPhil Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "MPhil Microbiology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Physiology",
+              "count": 1
+            },
+            {
+              "program": "Master of Public Health (MPH)",
+              "count": 1
+            },
+            {
+              "program": "Master of Dental Surgery (MDS)",
+              "count": 1
+            },
+            {
+              "program": "Master of Science in Medical Education (MME)",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Microbiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Physiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Public Health",
+              "count": 1
+            },
+            {
+              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
+              "count": 1
+            },
+            {
+              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
               "count": 1
             }
           ]
         },
         {
-          "department": "University College of Medicine",
+          "department": "Institute of Postgraduate Medical Sciences",
           "programs": [
             {
-              "program": "Bachelor of Medicine and Bachelor of Surgery",
-              "count": 7
+              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
+              "count": 1
             },
             {
-              "program": "Master of Science in Medical Education",
-              "count": 21
+              "program": "Bachelor of Dental Surgery (BDS)",
+              "count": 1
+            },
+            {
+              "program": "MPhil Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "MPhil Microbiology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Physiology",
+              "count": 1
+            },
+            {
+              "program": "Master of Public Health (MPH)",
+              "count": 1
+            },
+            {
+              "program": "Master of Dental Surgery (MDS)",
+              "count": 1
+            },
+            {
+              "program": "Master of Science in Medical Education (MME)",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Microbiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Physiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Public Health",
+              "count": 1
+            },
+            {
+              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
+              "count": 1
+            },
+            {
+              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "department": "University Institute of Health Professions Education and Research",
+          "programs": [
+            {
+              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
+              "count": 1
+            },
+            {
+              "program": "Bachelor of Dental Surgery (BDS)",
+              "count": 1
+            },
+            {
+              "program": "MPhil Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "MPhil Microbiology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Physiology",
+              "count": 1
+            },
+            {
+              "program": "Master of Public Health (MPH)",
+              "count": 1
+            },
+            {
+              "program": "Master of Dental Surgery (MDS)",
+              "count": 1
+            },
+            {
+              "program": "Master of Science in Medical Education (MME)",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Microbiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Physiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Public Health",
+              "count": 1
+            },
+            {
+              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
+              "count": 1
+            },
+            {
+              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "department": "Dental Paramedical School",
+          "programs": [
+            {
+              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
+              "count": 1
+            },
+            {
+              "program": "Bachelor of Dental Surgery (BDS)",
+              "count": 1
+            },
+            {
+              "program": "MPhil Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "MPhil Microbiology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Physiology",
+              "count": 1
+            },
+            {
+              "program": "Master of Public Health (MPH)",
+              "count": 1
+            },
+            {
+              "program": "Master of Dental Surgery (MDS)",
+              "count": 1
+            },
+            {
+              "program": "Master of Science in Medical Education (MME)",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Microbiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Physiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Public Health",
+              "count": 1
+            },
+            {
+              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
+              "count": 1
+            },
+            {
+              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "department": "Centre for Health Professionals Development & Lifelong Learning",
+          "programs": [
+            {
+              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
+              "count": 1
+            },
+            {
+              "program": "Bachelor of Dental Surgery (BDS)",
+              "count": 1
+            },
+            {
+              "program": "MPhil Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "MPhil Microbiology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "MPhil Physiology",
+              "count": 1
+            },
+            {
+              "program": "Master of Public Health (MPH)",
+              "count": 1
+            },
+            {
+              "program": "Master of Dental Surgery (MDS)",
+              "count": 1
+            },
+            {
+              "program": "Master of Science in Medical Education (MME)",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Biochemistry",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Microbiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Pharmacology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Physiology",
+              "count": 1
+            },
+            {
+              "program": "Doctor of Philosophy in Public Health",
+              "count": 1
+            },
+            {
+              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
+              "count": 1
+            },
+            {
+              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
+              "count": 1
             }
           ]
         }

@@ -30,15 +30,7 @@ CREATE TABLE public.alumni_scholarships (
   CONSTRAINT alumni_scholarships_pkey PRIMARY KEY (id),
   CONSTRAINT alumni_scholarships_id_fkey FOREIGN KEY (id) REFERENCES public.tbl_alumni(alumniid)
 );
-CREATE TABLE public.alumnichapterslocation (
-  chapterid integer NOT NULL DEFAULT nextval('alumnichapterslocation_chapterid_seq'::regclass),
-  categoryname character varying,
-  chaptercode character varying,
-  chaptertitle character varying,
-  chapterlocation character varying NOT NULL,
-  chapterwhatsapp character varying,
-  CONSTRAINT alumnichapterslocation_pkey PRIMARY KEY (chapterid)
-);
+
 CREATE TABLE public.chapter_leadership (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),

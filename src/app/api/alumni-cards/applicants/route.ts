@@ -20,10 +20,12 @@ export async function GET(request: Request) {
       if (status === "active") {
         statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'delivered'`;
       } else if (status === "pending") {
-        // Include anything that's NOT 'delivered' or 'rejected' (NULL, empty string, 'pending', or any other value)
-        statusCondition = sql` AND NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected'))`;
+        // Include anything that's NOT 'delivered', 'rejected', or 'received' (NULL, empty string, 'pending', or any other value)
+        statusCondition = sql` AND NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected', 'received'))`;
       } else if (status === "onhold") {
         statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'rejected'`;
+      } else if (status === "received") {
+        statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'received'`;
       }
     }
     
@@ -49,13 +51,14 @@ export async function GET(request: Request) {
     
     // Fetch counts for all statuses
     // Handle null status values, empty strings, and case-insensitive matching
-    // Anything that's NOT 'delivered' or 'rejected' should be treated as "pending" (default status)
-    // This ensures: all_count = active_count + pending_count + onhold_count
+    // Anything that's NOT 'delivered', 'rejected', or 'received' should be treated as "pending" (default status)
+    // This ensures: all_count = active_count + pending_count + onhold_count + received_count
     const counts = await sql/* sql */`
       SELECT 
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) = 'delivered') as active_count,
-        COUNT(*) FILTER (WHERE NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected'))) as pending_count,
+        COUNT(*) FILTER (WHERE NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected', 'received'))) as pending_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) = 'rejected') as onhold_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) = 'received') as received_count,
         COUNT(*) as all_count
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
@@ -66,6 +69,7 @@ export async function GET(request: Request) {
       active_count: bigint | number;
       pending_count: bigint | number;
       onhold_count: bigint | number;
+      received_count: bigint | number;
       all_count: bigint | number;
     } | undefined;
     
@@ -74,6 +78,7 @@ export async function GET(request: Request) {
     const activeCount = countRow?.active_count ? Number(countRow.active_count) : 0;
     const pendingCount = countRow?.pending_count ? Number(countRow.pending_count) : 0;
     const onholdCount = countRow?.onhold_count ? Number(countRow.onhold_count) : 0;
+    const receivedCount = countRow?.received_count ? Number(countRow.received_count) : 0;
     
     return NextResponse.json({ 
       items: rows,
@@ -82,6 +87,7 @@ export async function GET(request: Request) {
         active: activeCount,
         pending: pendingCount,
         onhold: onholdCount,
+        received: receivedCount,
       }
     }, { status: 200 });
   } catch (err) {

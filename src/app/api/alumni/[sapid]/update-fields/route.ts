@@ -225,6 +225,19 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const isScholarshipVal = "is_scholarship" in body ? cleanValue("is_scholarship", body.is_scholarship) : undefined;
     const higherEducationInstituteEmailVal = "higher_education_institute_email" in body ? cleanValue("higher_education_institute_email", body.higher_education_institute_email) : undefined;
     const higherEducationIntitureNumberVal = "higher_education_intiture_number" in body ? cleanValue("higher_education_intiture_number", body.higher_education_intiture_number) : undefined;
+    // Association field
+    const associationIdVal = "association_id" in body ? (body.association_id !== null && body.association_id !== undefined && body.association_id !== "" ? Number(body.association_id) : null) : undefined;
+    // System fields
+    const verifyVal = "verify" in body ? cleanValue("verify", body.verify) : undefined;
+    const lasttimeloginVal = "lasttimelogin" in body ? cleanValue("lasttimelogin", body.lasttimelogin) : undefined;
+    const logincountVal = "logincount" in body ? (body.logincount !== null && body.logincount !== undefined && body.logincount !== "" ? Number(body.logincount) : null) : undefined;
+    const createddatetimeVal = "createddatetime" in body ? cleanValue("createddatetime", body.createddatetime) : undefined;
+    const academicsessionVal = "academicsession" in body ? cleanValue("academicsession", body.academicsession) : undefined;
+    const fatherCnicVal = "father_cnic" in body ? cleanValue("father_cnic", body.father_cnic) : undefined;
+    // Chapter fields
+    const chapter1IdVal = "chapter1_id" in body ? (body.chapter1_id !== null && body.chapter1_id !== undefined && body.chapter1_id !== "" ? Number(body.chapter1_id) : null) : undefined;
+    const chapter2IdVal = "chapter2_id" in body ? (body.chapter2_id !== null && body.chapter2_id !== undefined && body.chapter2_id !== "" ? Number(body.chapter2_id) : null) : undefined;
+    const chapter3IdVal = "chapter3_id" in body ? (body.chapter3_id !== null && body.chapter3_id !== undefined && body.chapter3_id !== "" ? Number(body.chapter3_id) : null) : undefined;
     
     // Handle password separately - store as plain text
     let passwordVal: string | undefined = undefined;
@@ -312,6 +325,16 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       is_scholarship: isScholarshipVal,
       higher_education_institute_email: higherEducationInstituteEmailVal,
       higher_education_intiture_number: higherEducationIntitureNumberVal,
+      association_id: associationIdVal,
+      verify: verifyVal,
+      lasttimelogin: lasttimeloginVal,
+      logincount: logincountVal,
+      createddatetime: createddatetimeVal,
+      academicsession: academicsessionVal,
+      father_cnic: fatherCnicVal,
+      chapter1_id: chapter1IdVal,
+      chapter2_id: chapter2IdVal,
+      chapter3_id: chapter3IdVal,
     };
     
     const fieldsToUpdate = Object.entries(updateFields).filter(([, val]) => val !== undefined);
@@ -485,6 +508,62 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       }
       if (higherEducationIntitureNumberVal !== undefined) {
         await tx`UPDATE public.tbl_alumni SET higher_education_intiture_number = ${higherEducationIntitureNumberVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (associationIdVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET association_id = ${associationIdVal as number | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (verifyVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET verify = ${verifyVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (lasttimeloginVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET lasttimelogin = ${lasttimeloginVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (logincountVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET logincount = ${logincountVal as number | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (createddatetimeVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET createddatetime = ${createddatetimeVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (academicsessionVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET academicsession = ${academicsessionVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      if (fatherCnicVal !== undefined) {
+        await tx`UPDATE public.tbl_alumni SET father_cnic = ${fatherCnicVal as string | null} WHERE alumniid = ${alumniId}`;
+      }
+      // Update chapters in alumni_chapter table
+      if (chapter1IdVal !== undefined || chapter2IdVal !== undefined || chapter3IdVal !== undefined) {
+        // Check if alumni_chapter record exists
+        const existingChapter = await tx`
+          SELECT id FROM public.alumni_chapter WHERE id = ${alumniId} LIMIT 1
+        `;
+        
+        if (existingChapter[0]) {
+          // Update existing record - get current values first
+          const currentChapter = await tx`
+            SELECT chapter1, chapter2, chapter3 FROM public.alumni_chapter WHERE id = ${alumniId} LIMIT 1
+          `;
+          const current = currentChapter[0] as { chapter1: number | null; chapter2: number | null; chapter3: number | null } | undefined;
+          
+          const finalChapter1 = chapter1IdVal !== undefined ? chapter1IdVal : (current?.chapter1 ?? null);
+          const finalChapter2 = chapter2IdVal !== undefined ? chapter2IdVal : (current?.chapter2 ?? null);
+          const finalChapter3 = chapter3IdVal !== undefined ? chapter3IdVal : (current?.chapter3 ?? null);
+          
+          await tx`
+            UPDATE public.alumni_chapter 
+            SET chapter1 = ${finalChapter1}, chapter2 = ${finalChapter2}, chapter3 = ${finalChapter3}
+            WHERE id = ${alumniId}
+          `;
+        } else {
+          // Create new record
+          const finalChapter1 = chapter1IdVal !== undefined ? chapter1IdVal : null;
+          const finalChapter2 = chapter2IdVal !== undefined ? chapter2IdVal : null;
+          const finalChapter3 = chapter3IdVal !== undefined ? chapter3IdVal : null;
+          
+          await tx`
+            INSERT INTO public.alumni_chapter (id, chapter1, chapter2, chapter3)
+            VALUES (${alumniId}, ${finalChapter1}, ${finalChapter2}, ${finalChapter3})
+          `;
+        }
       }
       if (passwordVal !== undefined) {
         console.log("[API] Updating password in database (first 20 chars):", passwordVal.substring(0, 20));

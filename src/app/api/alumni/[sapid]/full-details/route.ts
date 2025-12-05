@@ -84,6 +84,52 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     const userType = (session.user as { type?: string })?.type;
     const isAlumni = userType?.toLowerCase().trim() === "alumni";
     
+    // Fetch chapter data
+    const alumniId = Number(row.alumniid);
+    const chapterRows = await sql/* sql */`
+      SELECT 
+        ac.chapter1,
+        ac.chapter2,
+        ac.chapter3,
+        COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
+        COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
+        COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
+      FROM public.alumni_chapter ac
+      LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
+      LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
+      LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
+      WHERE ac.id = ${alumniId}
+      LIMIT 1
+    `;
+    
+    // Build chapters array from chapter names and get chapter IDs
+    const chapters: string[] = [];
+    let chapter1Id: number | null = null;
+    let chapter2Id: number | null = null;
+    let chapter3Id: number | null = null;
+    if (chapterRows[0]) {
+      const chapterData = chapterRows[0] as Record<string, unknown>;
+      if (chapterData.chapter1_name) chapters.push(String(chapterData.chapter1_name));
+      if (chapterData.chapter2_name) chapters.push(String(chapterData.chapter2_name));
+      if (chapterData.chapter3_name) chapters.push(String(chapterData.chapter3_name));
+      chapter1Id = chapterData.chapter1 ? Number(chapterData.chapter1) : null;
+      chapter2Id = chapterData.chapter2 ? Number(chapterData.chapter2) : null;
+      chapter3Id = chapterData.chapter3 ? Number(chapterData.chapter3) : null;
+    }
+    const chapterDisplay = chapters.length > 0 ? chapters.join(", ") : null;
+    
+    // Fetch association data
+    const associationId = row.association_id ? Number(row.association_id) : null;
+    let associationTitle: string | null = null;
+    if (associationId) {
+      const associationRows = await sql/* sql */`
+        SELECT title FROM public.tbl_associations WHERE id = ${associationId} LIMIT 1
+      `;
+      if (associationRows[0]) {
+        associationTitle = String(associationRows[0].title ?? null);
+      }
+    }
+    
     // Return all fields from tbl_alumni
     // SECURITY: Only return password for alumni (owners), not for admins
     return NextResponse.json({ 
@@ -155,6 +201,13 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         is_scholarship: row.is_scholarship ?? null,
         higher_education_institute_email: row.higher_education_institute_email ?? null,
         higher_education_intiture_number: row.higher_education_intiture_number ?? null,
+        // Chapter and Association fields
+        chapter: chapterDisplay,
+        chapter1_id: chapter1Id,
+        chapter2_id: chapter2Id,
+        chapter3_id: chapter3Id,
+        association: associationTitle,
+        association_id: associationId,
       }
     }, { status: 200 });
   } catch (err) {

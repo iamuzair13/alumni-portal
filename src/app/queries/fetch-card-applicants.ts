@@ -14,7 +14,7 @@ export type CardApplicant = {
   createdat: string | null;
 };
 
-export type CardStatusFilter = "all" | "active" | "pending" | "onhold";
+export type CardStatusFilter = "all" | "active" | "pending" | "onhold" | "received";
 
 export type CardApplicantsResponse = {
   items: CardApplicant[];
@@ -23,6 +23,7 @@ export type CardApplicantsResponse = {
     active: number;
     pending: number;
     onhold: number;
+    received: number;
   };
 };
 
@@ -44,7 +45,7 @@ export function useCardApplicants(status: CardStatusFilter = "all", options?: { 
       const j = await res.json();
       return {
         items: (j?.items ?? []) as CardApplicant[],
-        counts: j?.counts ?? { all: 0, active: 0, pending: 0, onhold: 0 },
+        counts: j?.counts ?? { all: 0, active: 0, pending: 0, onhold: 0, received: 0 },
       } as CardApplicantsResponse;
     },
     enabled: options?.enabled !== false,
@@ -67,7 +68,7 @@ export function useCardCounts() {
         throw new Error(j?.error || `Failed (${res.status})`);
       }
       const j = await res.json();
-      return j?.counts ?? { all: 0, active: 0, pending: 0, onhold: 0 };
+      return j?.counts ?? { all: 0, active: 0, pending: 0, onhold: 0, received: 0 };
     },
     staleTime: 0, // Always fetch fresh data
     gcTime: 10 * 60_000, // 10 minutes
@@ -79,7 +80,7 @@ export function useCardCounts() {
 
 export function useUpdateApplicantStatus() {
   const qc = useQueryClient();
-  return useMutation<unknown, Error, { sapId: string; status: "pending" | "rejected" | "delivered" }, { prev?: CardApplicant[] }>({
+  return useMutation<unknown, Error, { sapId: string; status: "pending" | "rejected" | "delivered" | "received" }, { prev?: CardApplicant[] }>({
     mutationFn: async ({ sapId, status }) => {
       const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, {
         method: "PATCH",
@@ -97,7 +98,7 @@ export function useUpdateApplicantStatus() {
       await qc.cancelQueries({ queryKey: ["alumni", "card", "applicants"] });
       
       // Update all status-specific queries
-      const statuses: CardStatusFilter[] = ["all", "active", "pending", "onhold"];
+      const statuses: CardStatusFilter[] = ["all", "active", "pending", "onhold", "received"];
       const prevData: Record<string, CardApplicantsResponse | undefined> = {};
       
       for (const s of statuses) {
@@ -122,7 +123,7 @@ export function useUpdateApplicantStatus() {
       // Restore previous data on error
       if (ctx?.prev) {
         const key = cardApplicantsKey("all");
-        qc.setQueryData(key, { items: ctx.prev, counts: { all: ctx.prev.length, active: 0, pending: 0, onhold: 0 } });
+        qc.setQueryData(key, { items: ctx.prev, counts: { all: ctx.prev.length, active: 0, pending: 0, onhold: 0, received: 0 } });
       }
     },
     onSettled: () => {

@@ -12,7 +12,7 @@ import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
-import { useAlumniListPaginated, getAlumniCounts, getAlumniList, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
+import { useAlumniListPaginated, getAlumniCounts, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import * as XLSX from "xlsx";
@@ -92,6 +92,11 @@ export const AlumniTabs: React.FC = () => {
   const router = useRouter();
   const [selected, setSelected] = useState<TabKey>("total");
   const { data: session } = useSession();
+  
+  // Refs for scroll synchronization
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const topScrollbarRef = React.useRef<HTMLDivElement>(null);
+  const isScrollingRef = React.useRef(false);
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -154,11 +159,11 @@ export const AlumniTabs: React.FC = () => {
     return undefined; // No filter for "total"
   }, [selected, additionalFilter]);
 
-  // Reset page to 1 when tab changes or filter changes
+  // Reset page to 1 when tab changes or filter changes (but not when statusFilter recalculates with same value)
   useEffect(() => {
     console.log("[AlumniTabs] Tab changed to:", selected, "Additional filter:", additionalFilter, "Status filter:", statusFilter);
     setCurrentPage(1);
-  }, [selected, additionalFilter, statusFilter]);
+  }, [selected, additionalFilter]); // Removed statusFilter since it's derived from selected and additionalFilter
 
   // React Query: fetch paginated list for table display with status filter
   const {
@@ -320,35 +325,17 @@ export const AlumniTabs: React.FC = () => {
     };
   }, [countsData, totalRecords]);
 
-  // Filter by tab only (search is now handled server-side)
+  // Filter by tab only (search and status filtering are now handled server-side)
+  // No client-side filtering needed - server already returns the correct filtered and paginated data
   const filteredItems = useMemo(() => {
-    // Since search is handled server-side, we only filter by tab status
-    const base = items;
-    
-    // If additional filter is set, items are already filtered server-side
-    if (additionalFilter === "unverified" || additionalFilter === "inactive") {
-      return base;
+    // Since all filtering (search, status, active) is handled server-side,
+    // we just return the items as-is from the server
+    // The only exception is the "category" tab which has no data yet
+    if (selected === "category") {
+      return [];
     }
-    
-    switch (selected) {
-      case "verified":
-      case "underApproval":
-        // These are now filtered server-side, so return all items (they're already filtered)
-        return base;
-      case "active":
-        // Active: users who have logged in at least once
-        return base.filter((i) => {
-          const hasLoggedIn = (i.lastLoginTime && i.lastLoginTime.trim() !== "") || (i.loginCount && i.loginCount > 0);
-          return hasLoggedIn;
-        });
-      case "category":
-        // Category tab - for now return empty array (data will be added later)
-        return [];
-      case "total":
-      default:
-        return base;
-    }
-  }, [items, selected, additionalFilter]);
+    return items;
+  }, [items, selected]);
 
   // Pagination derived values - use server-side pagination
   const total = totalRecords; // Use total from server
@@ -357,12 +344,80 @@ export const AlumniTabs: React.FC = () => {
   // No need to slice - server already returns the correct page
   const pageItems = useMemo(() => filteredItems, [filteredItems]);
 
+  // Reset page only when filters/tabs change, not when page changes
   useEffect(() => { 
-    if (currentPage > totalPages && totalPages > 0) {
+    // Only reset if current page is invalid after filter/tab change
+    if (totalPages > 0 && currentPage > totalPages) {
       setCurrentPage(1);
     }
     setSelectedRowId(null); 
-  }, [selected, pageSize, debouncedQuery, totalPages, currentPage]);
+  }, [selected, pageSize, debouncedQuery, totalPages]);
+  
+  // Separate effect to clear selected row when page changes (but don't reset page)
+  useEffect(() => {
+    setSelectedRowId(null);
+  }, [currentPage]);
+
+  // Sync scroll between top scrollbar and table container
+  useEffect(() => {
+    const tableContainer = tableContainerRef.current;
+    const topScrollbar = topScrollbarRef.current;
+    
+    if (!tableContainer || !topScrollbar) return;
+
+    // Sync scrollbar width with table content
+    const syncScrollbarWidth = () => {
+      const tableContent = tableContainer.querySelector('.table-content-wrapper') as HTMLElement;
+      if (tableContent) {
+        const scrollbarContent = topScrollbar.querySelector('.table-scrollbar-content') as HTMLElement;
+        if (scrollbarContent) {
+          scrollbarContent.style.minWidth = `${tableContent.scrollWidth}px`;
+        }
+      }
+    };
+
+    const handleTableScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        topScrollbar.scrollLeft = tableContainer.scrollLeft;
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 10);
+      }
+    };
+
+    const handleTopScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        tableContainer.scrollLeft = topScrollbar.scrollLeft;
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 10);
+      }
+    };
+
+    // Initial sync
+    syncScrollbarWidth();
+
+    // Watch for content changes
+    const resizeObserver = new ResizeObserver(() => {
+      syncScrollbarWidth();
+    });
+
+    const tableContent = tableContainer.querySelector('.table-content-wrapper');
+    if (tableContent) {
+      resizeObserver.observe(tableContent);
+    }
+
+    tableContainer.addEventListener('scroll', handleTableScroll);
+    topScrollbar.addEventListener('scroll', handleTopScroll);
+
+    return () => {
+      resizeObserver.disconnect();
+      tableContainer.removeEventListener('scroll', handleTableScroll);
+      topScrollbar.removeEventListener('scroll', handleTopScroll);
+    };
+  }, [pageItems, isLoading]);
 
   // Action hooks and handlers must live inside the component body
   const queryClient = useQueryClient();
@@ -370,118 +425,177 @@ export const AlumniTabs: React.FC = () => {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Export to Excel function
+  // Export to Excel function - comprehensive export with ALL fields
   const handleExportToExcel = useCallback(async () => {
     try {
       setIsExporting(true);
       
-      // First, get the total count to know how many pages we need
-      const firstPage = await getAlumniList(
-        undefined,
-        debouncedQuery || undefined,
-        1,
-        500, // Max limit per API call
-        statusFilter
-      );
-      
-      const totalRecords = firstPage.total;
-      const limit = 500; // Max per page
-      const totalPages = Math.ceil(totalRecords / limit);
-      
-      // Fetch all pages
-      const allItems: AlumniListItem[] = [...firstPage.items];
-      
-      // Fetch remaining pages if there are more
-      if (totalPages > 1) {
-        const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
-        const pagePromises = remainingPages.map((page) =>
-          getAlumniList(
-            undefined,
-            debouncedQuery || undefined,
-            page,
-            limit,
-            statusFilter
-          )
-        );
-        
-        const remainingData = await Promise.all(pagePromises);
-        remainingData.forEach((data) => {
-          allItems.push(...data.items);
-        });
+      // Fetch comprehensive data from export endpoint
+      const url = new URL("/api/alumni/export", typeof window !== "undefined" ? window.location.origin : "");
+      if (debouncedQuery) {
+        url.searchParams.set("search", debouncedQuery);
       }
-
-      // Apply client-side filtering for "active" tab and additional filters
-      let itemsToExport = allItems;
-      if (additionalFilter === "unverified") {
-        itemsToExport = allItems.filter((i) => {
-          return i.verify === "false" || (i.verify && String(i.verify).toLowerCase() === "false");
-        });
-      } else if (additionalFilter === "inactive") {
-        itemsToExport = allItems.filter((i) => {
-          const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
-          return !hasLoggedIn;
-        });
-      } else if (selected === "active") {
-        itemsToExport = allItems.filter((i) => {
-          const hasLoggedIn = (i.lasttimelogin && i.lasttimelogin.trim() !== "") || (i.logincount && i.logincount > 0);
-          return hasLoggedIn;
-        });
-      } else if (selected === "category") {
-        // Category tab - no data yet
-        itemsToExport = [];
+      if (statusFilter) {
+        url.searchParams.set("status", statusFilter);
       }
+      
+      const res = await fetch(url.toString(), {
+        headers: { "accept": "application/json" }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch export data: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      const allItems = data.items || [];
 
-      // Map the data to Excel format
-      const excelData = itemsToExport.map((item: AlumniListItem) => ({
+      // Helper function to format chapter names
+      const formatChapters = (item: Record<string, unknown>) => {
+        const chapters: string[] = [];
+        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+        if (chapter1) chapters.push(chapter1);
+        if (chapter2) chapters.push(chapter2);
+        if (chapter3) chapters.push(chapter3);
+        return chapters.filter(c => c).join(", ") || "";
+      };
+
+      // Map ALL fields to Excel format
+      const excelData = allItems.map((item: Record<string, unknown>) => ({
+        // Basic Information
+        "Alumni ID": item.alumniid || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
+        "Alumni Email": item.alumniemail || "",
         "Full Name": item.alumniname || "",
-        "Email (Personal)": item.personalemail || "",
-        "Email (Official)": item.officialemail || "",
+        "Gender": item.gender || "",
+        "Father Name": item.fathername || "",
+        "Father CNIC": item.father_cnic || "",
+        "Date of Birth": item.dateofbirth || "",
+        "Marital Status": item.maritalstatus || "",
+        "CNIC/Passport": item.cnicpassport || "",
+        
+        // Contact Information
         "Contact No": item.contactno || "",
-        "Faculty": item.facultyname || "",
-        "Department": item.departmentname || "",
-        "Campus": item.campusname || "",
-        "Degree Title": item.degreetitle || "",
-        "Year of Ending": item.yearofending || "",
+        "Contact No 1": item.contactno1 || "",
+        "Contact No 1 Show": item.contactno1show || "",
+        "Personal Email": item.personalemail || "",
+        "Personal Email Show": item.personalemailshow || "",
+        "University Email": item.universityemail || "",
+        "Official Email": item.officialemail || "",
+        "Official Number": item.officialnumber || "",
+        "Address": item.address || "",
         "Country": item.country || "",
+        "Province": item.province || "",
         "City": item.city || "",
+        
+        // Academic Information
+        "Academic Session": item.academicsession || "",
+        "Degree Title": item.degreetitle || "",
+        "CGPA": item.cgpa || "",
+        "Year of Starting": item.yearofstarting || "",
+        "Year of Ending": item.yearofending || "",
+        "Faculty": item.facultyname || "",
+        "Campus": item.campusname || "",
+        "Department": item.departmentname || "",
+        "Major Subject": item.majorsubject || "",
+        
+        // Professional Information
+        "Industry": item.industry || "",
         "Employment Status": item.employeed || "",
         "Organization": item.nameoforganization || "",
         "Designation": item.designation || "",
-        "Official Number": item.officialnumber || "",
+        "Total Years of Experience": item.totalyearsofexpereince || "",
+        "Work City": item.work_city || "",
+        "Work Country": item.work_country || "",
+        "Organization Address": item.organization_address || "",
+        "Supervisor Designation": item.supervisordesignation || "",
+        "Supervisor Number": item.supervisornumber || "",
+        
+        // Higher Education
+        "Higher Education Institute Name": item.higher_education_institute_name || "",
+        "Higher Education Degree Title": item.degree_title || "",
+        "Is Scholarship": item.is_scholarship || "",
+        "Higher Education Program": item.higher_education_program || "",
+        "Higher Education Institute Number": item.higher_education_intiture_number || "",
+        "Higher Education Institute Email": item.higher_education_institute_email || "",
+        "Higher Education Institute Country": item.higher_education_institute_country || "",
+        "Higher Education Institute Province": item.higher_education_institute_province || "",
+        "Higher Education Institute City": item.higher_education_institute_city || "",
+        
+        // Chapters
+        "Chapter 1 ID": item.chapter1_id || "",
+        "Chapter 1": item.chapter1_national || item.chapter1_international || "",
+        "Chapter 2 ID": item.chapter2_id || "",
+        "Chapter 2": item.chapter2_national || item.chapter2_international || "",
+        "Chapter 3 ID": item.chapter3_id || "",
+        "Chapter 3": item.chapter3_national || item.chapter3_international || "",
+        "All Chapters": formatChapters(item),
+        "Chapter Remarks": item.chapter_remarks || "",
+        
+        // Association
+        "Association ID": item.association_id_value || "",
+        "Association Title": item.association_title || "",
+        "Association Description": item.association_description || "",
+        "Association Dean": item.association_dean || "",
+        "Association Phone": item.association_phone || "",
+        "Association Email": item.association_email || "",
+        "Association Address": item.association_address || "",
+        
+        // Chapter Leadership
+        "Chapter Leadership ID": item.chapter_leadership_id || "",
+        "Chapter Leadership Post": item.chapter_leadership_post || "",
+        "Chapter Leadership Status": item.chapter_leadership_status || "",
+        "Chapter Leadership Rejection Reason": item.chapter_leadership_rejection_reason || "",
+        "Chapter Leadership Created At": item.chapter_leadership_created_at || "",
+        "Chapter Leadership Updated At": item.chapter_leadership_updated_at || "",
+        
+        // Memberships
+        "Gym Membership Month": item.gym_membership_month || "",
+        "Swimming Pool Membership Month": item.swimmingpool_membership_month || "",
+        "Membership Created At": item.membership_created_at || "",
+        
+        // Scholarships
+        "Scholarship Kinship First Name": item.kinship_firstname || "",
+        "Scholarship Kinship Last Name": item.kinship_lastname || "",
+        "Scholarship Kinship CNIC": item.kinship_cnic || "",
+        "Scholarship Apply For": item.apply_for || "",
+        "Scholarship Degree Title": item.scholarship_degree_title || "",
+        "Scholarship Created At": item.scholarship_created_at || "",
+        
+        // Additional Information
+        "About Me": item.aboutme || "",
+        "About": item.about || "",
+        "Image 1": item.image1 || "",
+        "Image 2": item.image2 || "",
+        "CV": item.cv || "",
+        
+        // Social Links
+        "Facebook": item.facebook || "",
+        "Instagram": item.instagram || "",
+        "YouTube": item.youtube || "",
+        "LinkedIn": item.linkedin || "",
+        
+        // System Information
         "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : item.verify === "pending" || item.verify === null || item.verify === "" ? "Under Approval" : item.verify || "",
         "Last Login": item.lasttimelogin || "",
         "Login Count": item.logincount || 0,
+        "Email Send Count": item.emailsendcount || 0,
+        "Email Send Status": item.emailsendstatus || "",
+        "Data Source": item.datasource || "",
+        "Alumni Status": item.alumnistatus || "",
+        "Created Date Time": item.createddatetime || "",
+        "Today Date": item.todaydate || "",
       }));
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(excelData);
 
-      // Set column widths
-      const colWidths = [
-        { wch: 12 }, // SAP ID
-        { wch: 15 }, // Registration No
-        { wch: 25 }, // Full Name
-        { wch: 30 }, // Email (Personal)
-        { wch: 30 }, // Email (Official)
-        { wch: 15 }, // Contact No
-        { wch: 25 }, // Faculty
-        { wch: 25 }, // Department
-        { wch: 20 }, // Campus
-        { wch: 25 }, // Degree Title
-        { wch: 12 }, // Year of Ending
-        { wch: 20 }, // Country
-        { wch: 20 }, // City
-        { wch: 18 }, // Employment Status
-        { wch: 30 }, // Organization
-        { wch: 25 }, // Designation
-        { wch: 15 }, // Official Number
-        { wch: 18 }, // Verification Status
-        { wch: 20 }, // Last Login
-        { wch: 12 }, // Login Count
-      ];
+      // Set column widths for all columns (auto-width for comprehensive export)
+      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
       ws["!cols"] = colWidths;
 
       // Add worksheet to workbook
@@ -649,11 +763,11 @@ export const AlumniTabs: React.FC = () => {
     }
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
-  // Open confirmation modal for delete
-  const handleDeleteClick = useCallback((sapid: string, name: string) => {
-    setPendingAction({ type: "delete", sapid, name });
-    confirmModal.openModal();
-  }, [confirmModal]);
+  // Open confirmation modal for delete (kept for potential future use)
+  // const handleDeleteClick = useCallback((sapid: string, name: string) => {
+  //   setPendingAction({ type: "delete", sapid, name });
+  //   confirmModal.openModal();
+  // }, [confirmModal]);
 
   // Execute delete after confirmation
   const handleDelete = useCallback(async (sapid: string) => {
@@ -938,8 +1052,27 @@ export const AlumniTabs: React.FC = () => {
         {/* Table Section */}
         <div className="px-3 sm:px-1 pb-8">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-            <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto relative">
-              <div className="min-w-[800px]">
+            {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
+            <div 
+              ref={topScrollbarRef}
+              className="top-horizontal-scrollbar w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+              style={{
+                height: '24px',
+                scrollbarWidth: 'auto' as const,
+                scrollbarColor: '#3b82f6 #e5e7eb',
+              }}
+            >
+              <div className="table-scrollbar-content h-full" style={{ minWidth: '800px' }}></div>
+            </div>
+            <div 
+              ref={tableContainerRef}
+              className="max-w-full overflow-x-hidden custom-scrollbar max-h-[750px] overflow-y-auto relative"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
+              <div className="table-content-wrapper" style={{ minWidth: '800px' }}>
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
@@ -1233,23 +1366,20 @@ export const AlumniTabs: React.FC = () => {
                               if (selected === "total") {
                                 // Total tab: show all relevant actions
                                 if (alum.verifyStatus === "verified") {
-                                  // Verified: can unverify, delete
+                                  // Verified: can unverify
                                   actions = [
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
-                                  // Unverified: can verify, delete
+                                  // Unverified: can verify
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 } else {
-                                  // Under approval (first-time registration): can verify, unverify, delete
+                                  // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 }
                               } else {
@@ -1257,19 +1387,16 @@ export const AlumniTabs: React.FC = () => {
                                 if (alum.verifyStatus === "verified") {
                                   actions = [
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 } else {
-                                  // Under approval (first-time registration): can verify, unverify, delete
+                                  // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
-                                    { label: "Delete", icon: TrashBinIcon, onClick: () => handleDeleteClick(alum.id, alum.name), hover: "hover:text-rose-600" },
                                   ];
                                 }
                               }
@@ -1358,9 +1485,12 @@ export const AlumniTabs: React.FC = () => {
                 const newPage = Math.max(1, Math.min(totalPages, p));
                 setCurrentPage(newPage);
                 // Scroll to top of table when page changes
-                const tableContainer = document.querySelector('.custom-scrollbar');
-                if (tableContainer) {
-                  tableContainer.scrollTop = 0;
+                if (tableContainerRef.current) {
+                  tableContainerRef.current.scrollTop = 0;
+                }
+                // Also reset horizontal scroll
+                if (topScrollbarRef.current) {
+                  topScrollbarRef.current.scrollLeft = 0;
                 }
               }} 
             />
@@ -1471,6 +1601,35 @@ export const AlumniTabs: React.FC = () => {
           </div>
         </Modal>
       )}
+      <style jsx global>{`
+        .top-horizontal-scrollbar::-webkit-scrollbar {
+          height: 24px !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-track {
+          background: #e5e7eb !important;
+          border-radius: 0 !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb {
+          background: #3b82f6 !important;
+          border-radius: 12px !important;
+          border: 3px solid #e5e7eb !important;
+          min-width: 50px !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #2563eb !important;
+          border-color: #d1d5db !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb:active {
+          background: #1d4ed8 !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .custom-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}</style>
     </ComponentCard>
   );
 };

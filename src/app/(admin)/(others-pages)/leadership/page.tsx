@@ -129,39 +129,6 @@ async function updateSetting(formType: "chapter_leadership" | "association_leade
   return res.json();
 }
 
-function exportToCSV(data: Array<Record<string, unknown>>, filename: string) {
-  if (data.length === 0) {
-    toast.error("No data to export");
-    return;
-  }
-
-  const headers = Object.keys(data[0]);
-  const csvRows = [
-    headers.join(","),
-    ...data.map(row =>
-      headers.map(header => {
-        const value = row[header];
-        if (value === null || value === undefined) return "";
-        const stringValue = String(value);
-        if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      }).join(",")
-    ),
-  ];
-
-  const csvContent = csvRows.join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
 
 export default function LeadershipPage() {
   const { data: session } = useSession();
@@ -346,39 +313,168 @@ export default function LeadershipPage() {
     }
   };
 
-  const handleExport = () => {
-    let dataToExport: Array<Record<string, unknown>> = [];
-    let filename = "";
+  // Export to Excel function - comprehensive export with ALL fields
+  const handleExport = async () => {
+    try {
+      // Dynamically import xlsx to avoid server-side bundling issues
+      const XLSX = await import("xlsx");
+      
+      // Determine export type
+      let exportType = "all";
+      let status = "all";
+      let filename = "leadership_export";
+      
+      if (selectedTab === "chapterMembers") {
+        exportType = "chapter";
+        status = "approved";
+        filename = "chapter_leadership_members_export";
+      } else if (selectedTab === "associationMembers") {
+        exportType = "association";
+        status = "approved";
+        filename = "association_leadership_members_export";
+      } else if (selectedTab === "applications") {
+        exportType = "all";
+        status = "pending";
+        filename = "leadership_applications_export";
+      }
 
-    if (selectedTab === "chapterMembers" || selectedTab === "associationMembers") {
-      dataToExport = (membersData || []).map(m => ({
-        "SAP ID": m.sapId,
-        "Name": m.name,
-        "Email": m.email,
-        "Faculty": m.faculty || "",
-        "Department": m.department || "",
-        "Program": m.program || "",
-        "Position": m.position,
-        "Chapters": m.chapters?.join("; ") || "",
-        "Created At": new Date(m.createdAt).toLocaleDateString(),
-      }));
-      filename = `${selectedTab === "chapterMembers" ? "chapter" : "association"}_leadership_members_${new Date().toISOString().split("T")[0]}.csv`;
-    } else if (selectedTab === "applications") {
-      dataToExport = (applicationsData || []).map(a => ({
-        "SAP ID": a.sapId,
-        "Name": a.name,
-        "Email": a.email,
-        "Faculty": a.faculty || "",
-        "Department": a.department || "",
-        "Program": a.program || "",
-        "Type": a.type === "chapter" ? "Chapter Leadership" : "Association Leadership",
-        "Position": a.position,
-        "Applied At": new Date(a.createdAt).toLocaleDateString(),
-      }));
-      filename = `leadership_applications_${new Date().toISOString().split("T")[0]}.csv`;
+      // Fetch comprehensive data from export endpoint
+      const url = new URL("/api/leadership/export", typeof window !== "undefined" ? window.location.origin : "");
+      url.searchParams.set("type", exportType);
+      url.searchParams.set("status", status);
+      
+      const res = await fetch(url.toString(), {
+        headers: { "accept": "application/json" }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch export data: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      const allItems = data.items || [];
+
+      // Helper function to format chapter names
+      const formatChapters = (item: Record<string, unknown>) => {
+        const chapters: string[] = [];
+        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+        if (chapter1) chapters.push(chapter1);
+        if (chapter2) chapters.push(chapter2);
+        if (chapter3) chapters.push(chapter3);
+        return chapters.filter(c => c).join(", ") || "";
+      };
+
+      // Map ALL fields to Excel format
+      const excelData = allItems.map((item: Record<string, unknown>) => {
+        const baseFields = {
+          // Leadership Information
+          "Leadership Type": item.leadership_type || "",
+          "Leadership ID": item.id || "",
+          "Leadership Status": item.status || "",
+          "Leadership Rejection Reason": item.rejection_reason || "",
+          "Leadership Created At": item.created_at || item.createddatetime || "",
+          "Leadership Updated At": item.updated_at || "",
+          
+          // Position/Role
+          "Position": item.post || item.q3 || "",
+          
+          // Basic Information
+          "Alumni ID": item.alumniid || "",
+          "SAP ID": item.sapid || "",
+          "Registration No": item.registrationno || "",
+          "Alumni Email": item.alumniemail || "",
+          "Full Name": item.alumniname || "",
+          "Gender": item.gender || "",
+          "Father Name": item.fathername || "",
+          "Father CNIC": item.father_cnic || "",
+          "Date of Birth": item.dateofbirth || "",
+          "Marital Status": item.maritalstatus || "",
+          "CNIC/Passport": item.cnicpassport || "",
+          
+          // Contact Information
+          "Contact No": item.contactno || "",
+          "Contact No 1": item.contactno1 || "",
+          "Contact No 1 Show": item.contactno1show || "",
+          "Personal Email": item.personalemail || "",
+          "Personal Email Show": item.personalemailshow || "",
+          "University Email": item.universityemail || "",
+          "Official Email": item.officialemail || "",
+          "Official Number": item.officialnumber || "",
+          "Address": item.address || "",
+          "Country": item.country || "",
+          "Province": item.province || "",
+          "City": item.city || "",
+          
+          // Academic Information
+          "Academic Session": item.academicsession || "",
+          "Degree Title": item.degreetitle || "",
+          "CGPA": item.cgpa || "",
+          "Year of Starting": item.yearofstarting || "",
+          "Year of Ending": item.yearofending || "",
+          "Faculty": item.facultyname || "",
+          "Campus": item.campusname || "",
+          "Department": item.departmentname || "",
+          "Major Subject": item.majorsubject || "",
+          
+          // Professional Information
+          "Industry": item.industry || "",
+          "Employment Status": item.employeed || "",
+          "Organization": item.nameoforganization || "",
+          "Designation": item.designation || "",
+          "Total Years of Experience": item.totalyearsofexpereince || "",
+          "Work City": item.work_city || "",
+          "Work Country": item.work_country || "",
+          "Organization Address": item.organization_address || "",
+          "Supervisor Designation": item.supervisordesignation || "",
+          "Supervisor Number": item.supervisornumber || "",
+          
+          // Chapters
+          "Chapter 1 ID": item.chapter1_id || "",
+          "Chapter 1": item.chapter1_national || item.chapter1_international || "",
+          "Chapter 2 ID": item.chapter2_id || "",
+          "Chapter 2": item.chapter2_national || item.chapter2_international || "",
+          "Chapter 3 ID": item.chapter3_id || "",
+          "Chapter 3": item.chapter3_national || item.chapter3_international || "",
+          "All Chapters": formatChapters(item),
+          "Chapter Remarks": item.chapter_remarks || "",
+          
+          // Association
+          "Association ID": item.association_id_value || "",
+          "Association Title": item.association_title || "",
+          "Association Description": item.association_description || "",
+          "Association Dean": item.association_dean || "",
+          "Association Phone": item.association_phone || "",
+          "Association Email": item.association_email || "",
+          "Association Address": item.association_address || "",
+        };
+
+        return baseFields;
+      });
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths for all columns (auto-width for comprehensive export)
+      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
+      ws["!cols"] = colWidths;
+
+      // Add worksheet to workbook
+      const sheetName = selectedTab === "chapterMembers" ? "Chapter Leadership" : selectedTab === "associationMembers" ? "Association Leadership" : "Applications";
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+      // Generate filename with current date
+      const dateStr = new Date().toISOString().split("T")[0];
+      const finalFilename = `${filename}_${dateStr}.xlsx`;
+
+      // Write and download
+      XLSX.writeFile(wb, finalFilename);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export data. Please try again.");
     }
-
-    exportToCSV(dataToExport, filename);
   };
 
   const filteredMembers = useMemo(() => {
@@ -615,10 +711,10 @@ export default function LeadershipPage() {
                 type="button"
                 onClick={handleExport}
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-green-600 text-white text-xs sm:text-sm font-semibold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
-                aria-label="Export to CSV"
+                aria-label="Export to Excel"
               >
                 <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Export CSV</span>
+                <span className="hidden sm:inline">Export Excel</span>
                 <span className="sm:hidden">Export</span>
               </button>
             </div>

@@ -212,6 +212,7 @@ export const AlumniParticipation: React.FC = () => {
   const end = start + pageSize;
   const pageItems = sortedParticipants.slice(start, end);
 
+  // Export to Excel function - comprehensive export with ALL fields
   const handleExportToExcel = useCallback(async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -219,47 +220,139 @@ export const AlumniParticipation: React.FC = () => {
       // Dynamically import xlsx to avoid server-side bundling issues
       const XLSX = await import("xlsx");
       
-      let itemsToExport: TableItem[] = [];
-      let filename = "";
-
+      // Determine export type
+      let exportType = "all";
+      let filename = "alumni_participation_export";
       if (selected === "alumniAssociation") {
-        // Export association data
-        itemsToExport = ASSOCIATIONS;
+        exportType = "association";
         filename = "alumni_association_export";
       } else if (selected === "talkMentorship") {
-        // Export talks/mentorship data
-        itemsToExport = PARTICIPANTS.filter((p) => p.level.includes("talkMentorship"));
+        exportType = "talks";
         filename = "alumni_talks_export";
       } else {
-        // Export chapters data (from participation)
-        itemsToExport = PARTICIPANTS.filter((p) => p.level.includes("alumniChapters"));
+        exportType = "talks"; // For chapters participation, we still export talks data
         filename = "alumni_chapters_participation_export";
       }
 
-      // Map to Excel format based on selected tab
-      const excelData = itemsToExport.map((item) => {
-        if (selected === "alumniAssociation") {
+      // Fetch comprehensive data from export endpoint
+      const url = new URL("/api/alumni/participation/export", typeof window !== "undefined" ? window.location.origin : "");
+      url.searchParams.set("type", exportType);
+      
+      const res = await fetch(url.toString(), {
+        headers: { "accept": "application/json" }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch export data: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      const allItems = data.items || [];
+
+      // Helper function to format chapter names
+      const formatChapters = (item: Record<string, unknown>) => {
+        const chapters: string[] = [];
+        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+        if (chapter1) chapters.push(chapter1);
+        if (chapter2) chapters.push(chapter2);
+        if (chapter3) chapters.push(chapter3);
+        return chapters.filter(c => c).join(", ") || "";
+      };
+
+      // Map ALL fields to Excel format
+      const excelData = allItems.map((item: Record<string, unknown>) => {
+        const baseFields = {
+          // Basic Information
+          "Alumni ID": item.alumniid || "",
+          "SAP ID": item.sapid || "",
+          "Registration No": item.registrationno || "",
+          "Alumni Email": item.alumniemail || "",
+          "Full Name": item.alumniname || "",
+          "Gender": item.gender || "",
+          "Father Name": item.fathername || "",
+          "Father CNIC": item.father_cnic || "",
+          "Date of Birth": item.dateofbirth || "",
+          "Marital Status": item.maritalstatus || "",
+          "CNIC/Passport": item.cnicpassport || "",
+          
+          // Contact Information
+          "Contact No": item.contactno || "",
+          "Contact No 1": item.contactno1 || "",
+          "Contact No 1 Show": item.contactno1show || "",
+          "Personal Email": item.personalemail || "",
+          "Personal Email Show": item.personalemailshow || "",
+          "University Email": item.universityemail || "",
+          "Official Email": item.officialemail || "",
+          "Official Number": item.officialnumber || "",
+          "Address": item.address || "",
+          "Country": item.country || "",
+          "Province": item.province || "",
+          "City": item.city || "",
+          
+          // Academic Information
+          "Academic Session": item.academicsession || "",
+          "Degree Title": item.degreetitle || "",
+          "CGPA": item.cgpa || "",
+          "Year of Starting": item.yearofstarting || "",
+          "Year of Ending": item.yearofending || "",
+          "Faculty": item.facultyname || "",
+          "Campus": item.campusname || "",
+          "Department": item.departmentname || "",
+          "Major Subject": item.majorsubject || "",
+          
+          // Professional Information
+          "Industry": item.industry || "",
+          "Employment Status": item.employeed || "",
+          "Organization": item.nameoforganization || "",
+          "Designation": item.designation || "",
+          "Total Years of Experience": item.totalyearsofexpereince || "",
+          "Work City": item.work_city || "",
+          "Work Country": item.work_country || "",
+          "Organization Address": item.organization_address || "",
+          "Supervisor Designation": item.supervisordesignation || "",
+          "Supervisor Number": item.supervisornumber || "",
+          
+          // Chapters
+          "Chapter 1 ID": item.chapter1_id || "",
+          "Chapter 1": item.chapter1_national || item.chapter1_international || "",
+          "Chapter 2 ID": item.chapter2_id || "",
+          "Chapter 2": item.chapter2_national || item.chapter2_international || "",
+          "Chapter 3 ID": item.chapter3_id || "",
+          "Chapter 3": item.chapter3_national || item.chapter3_international || "",
+          "All Chapters": formatChapters(item),
+          "Chapter Remarks": item.chapter_remarks || "",
+          
+          // Association
+          "Association ID": item.association_id_value || "",
+          "Association Title": item.association_title || "",
+          "Association Description": item.association_description || "",
+          "Association Dean": item.association_dean || "",
+          "Association Phone": item.association_phone || "",
+          "Association Email": item.association_email || "",
+          "Association Address": item.association_address || "",
+        };
+
+        if (exportType === "association") {
+          // Association-specific fields
           return {
-            "SAP ID": item.id || "",
-            "Full Name": item.name || "",
-            "Email": item.email || "",
-            "Faculty": item.faculty || "",
-            "Department": item.department || "",
-            "Program": item.program || "",
-            "Role": item.role || "",
+            ...baseFields,
+            "Association Role": item.q3 || "",
+            "Association Status": item.status || "",
+            "Association Created At": item.createddatetime || "",
+            "Association Updated At": item.updated_at || "",
+            "Association Rejection Reason": item.rejection_reason || "",
           };
         } else {
+          // Talks/Mentorship-specific fields
           return {
-            "SAP ID": item.id || "",
-            "Full Name": item.name || "",
-            "Email": item.email || "",
-            "Faculty": item.faculty || "",
-            "Department": item.department || "",
-            "Program": item.program || "",
-            "Topics": item.topics?.join(", ") || "",
-            "Areas": item.areas?.join(", ") || "",
+            ...baseFields,
+            "Topic": item.topic || "",
             "Day": item.day || "",
-            "Time": item.time || "",
+            "Timings": item.timings || "",
+            "Activity": item.activity || "",
+            "Talks Created At": item.created_at || "",
           };
         }
       });
@@ -268,38 +361,19 @@ export const AlumniParticipation: React.FC = () => {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(excelData);
 
-      // Set column widths
-      if (selected === "alumniAssociation") {
-        ws["!cols"] = [
-          { wch: 12 }, // SAP ID
-          { wch: 25 }, // Full Name
-          { wch: 30 }, // Email
-          { wch: 25 }, // Faculty
-          { wch: 25 }, // Department
-          { wch: 30 }, // Program
-          { wch: 20 }, // Role
-        ];
-      } else {
-        ws["!cols"] = [
-          { wch: 12 }, // SAP ID
-          { wch: 25 }, // Full Name
-          { wch: 30 }, // Email
-          { wch: 25 }, // Faculty
-          { wch: 25 }, // Department
-          { wch: 30 }, // Program
-          { wch: 40 }, // Topics
-          { wch: 30 }, // Areas
-          { wch: 15 }, // Day
-          { wch: 15 }, // Time
-        ];
-      }
+      // Set column widths for all columns (auto-width for comprehensive export)
+      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
+      ws["!cols"] = colWidths;
 
-      XLSX.utils.book_append_sheet(wb, ws, selected === "alumniAssociation" ? "Association" : selected === "talkMentorship" ? "Talks" : "Chapters");
+      // Add worksheet to workbook
+      const sheetName = selected === "alumniAssociation" ? "Association" : selected === "talkMentorship" ? "Talks" : "Chapters";
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-      // Generate filename
+      // Generate filename with current date
       const dateStr = new Date().toISOString().split("T")[0];
       const finalFilename = `${filename}_${dateStr}.xlsx`;
 
+      // Write and download
       XLSX.writeFile(wb, finalFilename);
       setIsExporting(false);
     } catch (error) {
@@ -307,7 +381,7 @@ export const AlumniParticipation: React.FC = () => {
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }
-  }, [isExporting, selected, ASSOCIATIONS, PARTICIPANTS]);
+  }, [isExporting, selected]);
 
   return (
     <ComponentCard className="">

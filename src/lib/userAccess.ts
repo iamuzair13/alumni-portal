@@ -5,6 +5,7 @@ import {
   findMatchingPrograms, 
   buildProgramMatchPattern
 } from "./programMatching";
+import { getFaculties } from "@/data/programs-departments";
 
 export type UserAccessAssignment = {
   faculty_name: string | null;
@@ -50,9 +51,7 @@ export async function buildAccessFilterSQL(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _tableAlias: string = ""
 ): Promise<{ sql: ReturnType<typeof sql> | null; hasFilter: boolean }> {
-  // Super admin, admin, and viewer have full access - no filtering
-  // Admin and viewer can see all data regardless of missing faculties/departments/programs
-  // Only restrictions: Admin cannot create/modify access users or see passwords of other users
+  // Super admin always has full access - no filtering
   if (isSuperAdminUser(session?.user)) {
     return { sql: null, hasFilter: false };
   }
@@ -60,16 +59,21 @@ export async function buildAccessFilterSQL(
   // Import isAdminUser and isViewerUser to check user type
   const { isAdminUser, isViewerUser } = await import("./alumniProfile");
   
-  // Admin and viewer have the same data access as superadmin (no filtering)
-  if (isAdminUser(session?.user) || isViewerUser(session?.user)) {
-    console.log("[buildAccessFilterSQL] Admin/Viewer user - granting full data access (no filtering)");
-    return { sql: null, hasFilter: false };
-  }
-
+  // For admin/viewer, check their access assignments
+  // If all faculties are selected → full access (like superadmin, except user management)
+  // If specific assignments → apply filtering based on assignments
+  const isAdminOrViewer = isAdminUser(session?.user) || isViewerUser(session?.user);
+  
   // Get user ID
   const userId = getUserIdFromSession(session);
   if (!userId) {
     // If no user ID, return condition that always fails (no access)
+    return { sql: sql`1 = 0`, hasFilter: true };
+  }
+  
+  // For non-admin/viewer users (shouldn't happen, but handle gracefully)
+  if (!isAdminOrViewer) {
+    console.log("[buildAccessFilterSQL] ⚠️ User is not admin/viewer/superadmin - blocking access");
     return { sql: sql`1 = 0`, hasFilter: true };
   }
 
@@ -93,6 +97,48 @@ export async function buildAccessFilterSQL(
     console.log("[buildAccessFilterSQL] ⚠️ No assignments found - blocking access (returning 1=0)");
     console.log("[buildAccessFilterSQL] ============================================");
     return { sql: sql`1 = 0`, hasFilter: true };
+  }
+
+  // Check if ALL faculties are selected (faculty-level assignments only, no departments/programs)
+  // This means the user has full access like superadmin (except user management)
+  // Only check if there are NO department/program level assignments (meaning "All Faculties" was selected)
+  const hasDepartmentOrProgramAssignments = assignments.some(
+    a => a.department_name || a.program_name
+  );
+  
+  if (!hasDepartmentOrProgramAssignments) {
+    // Only faculty-level assignments exist - check if all faculties are assigned
+    const facultyOnlyAssignments = assignments.filter(
+      a => a.faculty_name && !a.department_name && !a.program_name
+    );
+    
+    if (facultyOnlyAssignments.length > 0) {
+      // Get all faculties in the system
+      const allSystemFaculties = getFaculties();
+      const assignedFaculties = facultyOnlyAssignments.map(a => a.faculty_name!).filter(Boolean);
+      
+      // Normalize for comparison (case-insensitive, trimmed)
+      const normalize = (arr: string[]) => arr.map(f => f.toLowerCase().trim()).sort();
+      const normalizedSystemFaculties = normalize(allSystemFaculties);
+      const normalizedAssignedFaculties = normalize(assignedFaculties);
+      
+      // Check if all faculties are assigned (count matches and all faculties are present)
+      const hasAllFaculties = 
+        normalizedAssignedFaculties.length === normalizedSystemFaculties.length &&
+        normalizedSystemFaculties.every(f => normalizedAssignedFaculties.includes(f));
+      
+      if (hasAllFaculties) {
+        // All faculties are selected → full access (like superadmin, except user management)
+        console.log("[buildAccessFilterSQL] ✅ All faculties selected - granting full data access (no filtering)");
+        console.log("[buildAccessFilterSQL] System faculties:", allSystemFaculties.length);
+        console.log("[buildAccessFilterSQL] Assigned faculties:", assignedFaculties.length);
+        console.log("[buildAccessFilterSQL] ============================================");
+        return { sql: null, hasFilter: false };
+      }
+    }
+  } else {
+    // Department or program level assignments exist - apply specific filtering
+    console.log("[buildAccessFilterSQL] 📋 Specific faculty/department/program assignments found - applying filtering");
   }
 
   // Build filter conditions

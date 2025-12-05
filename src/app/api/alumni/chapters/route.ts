@@ -4,13 +4,122 @@ import { auth } from "@/lib/auth";
 import { sendChaptersApplicationEmail } from "@/lib/email";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    const { searchParams } = new URL(request.url);
+    
+    // Get filter parameters
+    const nationalChapter = searchParams.get("nationalChapter");
+    const internationalChapter = searchParams.get("internationalChapter");
+    const faculty = searchParams.get("faculty");
+    const department = searchParams.get("department");
+    const verified = searchParams.get("verified");
+    const membershipFilter = searchParams.get("membershipFilter") || "members"; // "all", "members", "non-members"
+    
+    // Debug logging
+    console.log("[API] Alumni Chapters Filters:", {
+      nationalChapter: nationalChapter || "none",
+      internationalChapter: internationalChapter || "none",
+      faculty: faculty || "none",
+      department: department || "none",
+      verified: verified || "none",
+      membershipFilter,
+    });
     
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
+    // Build chapter filter conditions
+    // First, get chapter IDs from chapter names if provided
+    let nationalChapterId: number | null = null;
+    let internationalChapterId: number | null = null;
+    
+    if (nationalChapter && nationalChapter.trim()) {
+      const chapterRows = await sql/* sql */`
+        SELECT id FROM public.tblchapters 
+        WHERE LOWER(TRIM(COALESCE(national_chapter, ''))) = LOWER(${nationalChapter.trim()})
+        AND is_active = true
+        LIMIT 1
+      `;
+      if (chapterRows[0]) {
+        nationalChapterId = Number((chapterRows[0] as { id: number }).id);
+      }
+    }
+    
+    if (internationalChapter && internationalChapter.trim()) {
+      const chapterRows = await sql/* sql */`
+        SELECT id FROM public.tblchapters 
+        WHERE LOWER(TRIM(COALESCE(international_chapter, ''))) = LOWER(${internationalChapter.trim()})
+        AND is_active = true
+        LIMIT 1
+      `;
+      if (chapterRows[0]) {
+        internationalChapterId = Number((chapterRows[0] as { id: number }).id);
+      }
+    }
+    
+    let chapterFilterCondition = sql``;
+    if (nationalChapterId !== null && internationalChapterId !== null) {
+      // If both are selected, use OR (alumni with either chapter)
+      chapterFilterCondition = sql` AND (
+        (ac."chapter1" = ${nationalChapterId} OR ac."chapter2" = ${nationalChapterId} OR ac."chapter3" = ${nationalChapterId})
+        OR
+        (ac."chapter1" = ${internationalChapterId} OR ac."chapter2" = ${internationalChapterId} OR ac."chapter3" = ${internationalChapterId})
+      )`;
+    } else if (nationalChapterId !== null) {
+      chapterFilterCondition = sql` AND (ac."chapter1" = ${nationalChapterId} OR ac."chapter2" = ${nationalChapterId} OR ac."chapter3" = ${nationalChapterId})`;
+    } else if (internationalChapterId !== null) {
+      chapterFilterCondition = sql` AND (ac."chapter1" = ${internationalChapterId} OR ac."chapter2" = ${internationalChapterId} OR ac."chapter3" = ${internationalChapterId})`;
+    }
+    
+    console.log("[API] Chapter filter IDs:", {
+      nationalChapterId,
+      internationalChapterId,
+      hasNationalFilter: nationalChapterId !== null,
+      hasInternationalFilter: internationalChapterId !== null,
+    });
+    
+    // Build faculty filter condition (case-insensitive with trim)
+    let facultyFilterCondition = sql``;
+    if (faculty && faculty.trim()) {
+      const facultyValue = faculty.trim();
+      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(${facultyValue})`;
+    }
+    
+    // Build department filter condition (case-insensitive with trim)
+    let departmentFilterCondition = sql``;
+    if (department && department.trim()) {
+      const departmentValue = department.trim();
+      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(${departmentValue})`;
+    }
+    
+    // Build verified filter condition
+    let verifiedFilterCondition = sql``;
+    if (verified === "true") {
+      verifiedFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.verify, ''))) = 'true'`;
+    }
+    
+    // Build membership filter condition
+    const membershipJoinType: "JOIN" | "LEFT JOIN" = membershipFilter === "members" ? "JOIN" : "LEFT JOIN";
+    let membershipWhereCondition = sql``;
+    
+    if (membershipFilter === "non-members") {
+      // For non-members: must not have any chapter assigned
+      membershipWhereCondition = sql` AND (ac.id IS NULL OR (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL))`;
+    } else if (membershipFilter === "members") {
+      // For members: must have at least one chapter
+      membershipWhereCondition = sql` AND ac.id IS NOT NULL AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)`;
+    }
+    // For "all": no additional condition needed, just use LEFT JOIN
+    
+    // Build the query based on membership filter
+    const baseQuery = membershipJoinType === "JOIN"
+      ? sql`FROM public.tbl_alumni a
+      JOIN public.alumni_chapter ac ON ac.id = a.alumniid`
+      : sql`FROM public.tbl_alumni a
+      LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid`;
     
     const rows = await sql/* sql */`
       SELECT 
@@ -27,17 +136,32 @@ export async function GET() {
         ac."chapter1",
         ac."chapter2",
         ac."chapter3",
+        c1.national_chapter as chapter1_national,
+        c1.international_chapter as chapter1_international,
+        c2.national_chapter as chapter2_national,
+        c2.international_chapter as chapter2_international,
+        c3.national_chapter as chapter3_national,
+        c3.international_chapter as chapter3_international,
         COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
         COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
         COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
-      FROM public.tbl_alumni a
-      JOIN public.alumni_chapter ac ON ac.id = a.alumniid
+      ${baseQuery}
       LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
       LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
       LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
       WHERE 1=1
         ${accessFilterCondition}
+        ${chapterFilterCondition}
+        ${facultyFilterCondition}
+        ${departmentFilterCondition}
+        ${verifiedFilterCondition}
+        ${membershipWhereCondition}
       ORDER BY a.alumniid DESC`;
+    
+    console.log("[API] Alumni Chapters Query Result:", {
+      rowCount: rows.length,
+      sampleFaculties: rows.slice(0, 5).map((r: Record<string, unknown>) => r.facultyname),
+    });
     
     const items = rows.map((r: Record<string, unknown>) => {
       const chapters: string[] = [];

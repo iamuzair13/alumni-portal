@@ -74,6 +74,13 @@ export type AlumniFullDetails = {
   is_scholarship: string | null;
   higher_education_institute_email: string | null;
   higher_education_intiture_number: string | null;
+  // Chapter and Association fields
+  chapter: string | null;
+  chapter1_id: number | null;
+  chapter2_id: number | null;
+  chapter3_id: number | null;
+  association: string | null;
+  association_id: number | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {

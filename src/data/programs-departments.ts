@@ -75,7 +75,15 @@ export function getDepartmentsByFaculty(facultyName: string): string[] {
   );
   if (!faculty) return [];
   
-  return faculty.departments.map((d) => d.department).sort();
+  // Map all departments and deduplicate (in case of duplicates in JSON)
+  const departmentsSet = new Set<string>();
+  faculty.departments.forEach((d) => {
+    if (d.department && d.department.trim()) {
+      departmentsSet.add(d.department.trim());
+    }
+  });
+  
+  return Array.from(departmentsSet).sort();
 }
 
 export function getProgramsByFacultyAndDepartment(

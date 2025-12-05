@@ -4,13 +4,60 @@ import { auth } from "@/lib/auth";
 import { sendAssociationApplicationEmail } from "@/lib/email";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    const { searchParams } = new URL(request.url);
+    
+    // Get filter parameters
+    const faculty = searchParams.get("faculty");
+    const department = searchParams.get("department");
+    const membershipFilter = searchParams.get("membershipFilter") || "members"; // "all", "members", "non-members"
+    
+    // Debug logging
+    console.log("[API] Alumni Association Filters:", {
+      faculty: faculty || "none",
+      department: department || "none",
+      membershipFilter,
+    });
     
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
+    // Build faculty filter condition (case-insensitive with trim)
+    let facultyFilterCondition = sql``;
+    if (faculty && faculty.trim()) {
+      const facultyValue = faculty.trim();
+      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(${facultyValue})`;
+    }
+    
+    // Build department filter condition (case-insensitive with trim)
+    let departmentFilterCondition = sql``;
+    if (department && department.trim()) {
+      const departmentValue = department.trim();
+      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(${departmentValue})`;
+    }
+    
+    // Build membership filter condition
+    const membershipJoinType: "JOIN" | "LEFT JOIN" = membershipFilter === "members" ? "JOIN" : "LEFT JOIN";
+    let membershipWhereCondition = sql``;
+    
+    if (membershipFilter === "non-members") {
+      // For non-members: must not have any association
+      membershipWhereCondition = sql` AND a.association_id IS NULL`;
+    } else if (membershipFilter === "members") {
+      // For members: must have at least one association
+      membershipWhereCondition = sql` AND a.association_id IS NOT NULL`;
+    }
+    // For "all": no additional condition needed, just use LEFT JOIN
+    
+    // Build the query based on membership filter
+    const baseQuery = membershipJoinType === "JOIN"
+      ? sql`FROM public.tbl_alumni a
+      JOIN public.tbl_associations assoc ON assoc.id = a.association_id`
+      : sql`FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id`;
     
     const rows = await sql/* sql */`
       SELECT 
@@ -24,13 +71,21 @@ export async function GET() {
         a.officialemail,
         a.universityemail,
         a.registrationno,
-        ass.q3 as role,
-        ass.createddatetime
-      FROM public.tbl_alumni a
-      JOIN public.tblalumniassociation ass ON ass.id = a.association_job
-      WHERE a.association_job IS NOT NULL
+        a.association_id,
+        assoc.title as association_title,
+        assoc.description as association_description,
+        assoc.dean as association_dean,
+        assoc.phone as association_phone,
+        assoc.email as association_email,
+        assoc.address as association_address,
+        assoc.created_at as association_created_at
+      ${baseQuery}
+      WHERE 1=1
         ${accessFilterCondition}
-      ORDER BY ass.createddatetime DESC NULLS LAST, a.alumniid DESC`;
+        ${facultyFilterCondition}
+        ${departmentFilterCondition}
+        ${membershipWhereCondition}
+      ORDER BY a.alumniid DESC`;
     
     const items = rows.map((r: Record<string, unknown>) => ({
       sapid: String(r.sapid ?? ""),
@@ -40,8 +95,9 @@ export async function GET() {
       faculty: r.facultyname ? String(r.facultyname) : null,
       program: r.degreetitle ? String(r.degreetitle) : null,
       email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null),
-      role: r.role ? String(r.role) : null,
-      createdAt: r.createddatetime,
+      associationTitle: r.association_title ? String(r.association_title) : null,
+      associationId: r.association_id ? Number(r.association_id) : null,
+      createdAt: r.association_created_at || null,
     }));
     
     return NextResponse.json({ items }, { status: 200 });

@@ -5,15 +5,17 @@ import { LockIcon, EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon, BoltIcon
 import { AlumniDataTable } from "./AlumniCard";
 import { useCardApplicants, type CardStatusFilter, type CardApplicant } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
+import { useSession } from "next-auth/react";
+import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 
 /**
  * AlumniCards
- * Responsive card-based listing for alumni cards, organized by status (all, active, pending, onhold).
+ * Responsive card-based listing for alumni cards, organized by status (all, active, inprocess, onhold, received).
  * Uses TanStack Query for data fetching with real-time counters.
  */
 
-type CardStatus = "active" | "pending" | "onhold" | "all";
+type CardStatus = "active" | "inprocess" | "onhold" | "received" | "all";
 
 type AlumniCardItem = {
   id: string;
@@ -43,12 +45,13 @@ type AlumniCardsProps = {
 
 // Map database status to UI status
 function mapDbStatusToUI(dbStatus: string | null): CardStatus {
-  if (!dbStatus) return "pending";
+  if (!dbStatus) return "inprocess";
   const lower = dbStatus.toLowerCase().trim();
   if (lower === "delivered") return "active";
-  if (lower === "pending") return "pending";
+  if (lower === "pending") return "inprocess";
   if (lower === "rejected") return "onhold";
-  return "pending";
+  if (lower === "received") return "received";
+  return "inprocess";
 }
 
 // Convert CardApplicant to AlumniCardItem
@@ -75,7 +78,7 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
         { key: "delete", label: "Delete", icon: TrashBinIcon, hoverClass: "hover:text-rose-600" },
         { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
       ];
-    case "pending":
+    case "inprocess":
       return [
         { key: "verify", label: "Verify", icon: CheckLineIcon, hoverClass: "hover:text-emerald-600" },
         { key: "decline", label: "Decline", icon: CloseLineIcon, hoverClass: "hover:text-rose-600" },
@@ -84,6 +87,10 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
     case "onhold":
       return [
         { key: "delete", label: "Delete", icon: TrashBinIcon, hoverClass: "hover:text-rose-600" },
+        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
+      ];
+    case "received":
+      return [
         { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
       ];
     case "all":
@@ -95,11 +102,14 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
 const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?: string }> }[] = [
   { key: "all", label: "All", icon: GroupIcon },
   { key: "active", label: "Active", icon: BoltIcon },
-  { key: "pending", label: "Pending", icon: TimeIcon },
+  { key: "inprocess", label: "In-Process", icon: TimeIcon },
   { key: "onhold", label: "Onhold", icon: LockIcon },
+  { key: "received", label: "Received", icon: CheckLineIcon },
 ];
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
+  const { data: session } = useSession();
+  const isAdmin = canModify(session?.user);
   const [selectedStatus, setSelectedStatus] = useState<CardStatusFilter>(initialStatus as CardStatusFilter);
   
   // Fetch cards for selected status - this also returns counts
@@ -107,6 +117,11 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   
   // Fetch counts separately to ensure we always have them (even when switching tabs)
   const { data: countsData, isLoading: countsLoading } = useCardApplicants("all");
+  
+  // Filter tabs based on admin status - "received" is only for admins
+  const visibleTabs = useMemo(() => {
+    return STATUS_TABS.filter(tab => tab.key !== "received" || isAdmin);
+  }, [isAdmin]);
   
   // Use counts from the "all" query, fallback to data counts if available, or default to 0
   const counts = useMemo(() => {
@@ -120,7 +135,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (countsFromData) {
       return countsFromData;
     }
-    return { all: 0, active: 0, pending: 0, onhold: 0 };
+    return { all: 0, active: 0, pending: 0, onhold: 0, received: 0 };
   }, [countsData, data]);
   
   // Debug: Log counts to console (remove in production if needed)
@@ -166,11 +181,11 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       }
 
       // Handle status updates
-      let newDbStatus: "pending" | "rejected" | "delivered" | null = null;
+      let newDbStatus: "pending" | "rejected" | "delivered" | "received" | null = null;
       
-      if (key === "verify" && alumni.status === "pending") {
+      if (key === "verify" && alumni.status === "inprocess") {
         newDbStatus = "delivered";
-      } else if (key === "decline" && alumni.status === "pending") {
+      } else if (key === "decline" && alumni.status === "inprocess") {
         newDbStatus = "rejected";
       } else if (key === "suspend" && alumni.status === "active") {
         newDbStatus = "rejected";
@@ -198,7 +213,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         {/* Tabs with Counters */}
         <div className="px-6 pt-6">
           <div className="flex flex-wrap gap-3 lg:gap-4" role="tablist" aria-label="Card status tabs">
-            {STATUS_TABS.map((tab) => {
+            {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               // Get count based on tab key
               let count = 0;
@@ -206,10 +221,12 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 count = counts.all;
               } else if (tab.key === "active") {
                 count = counts.active;
-              } else if (tab.key === "pending") {
+              } else if (tab.key === "inprocess") {
                 count = counts.pending;
               } else if (tab.key === "onhold") {
                 count = counts.onhold;
+              } else if (tab.key === "received") {
+                count = counts.received || 0;
               }
               const isSelected = selectedStatus === tab.key;
               

@@ -83,7 +83,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     const body = await req.json().catch(() => ({}));
     const newStatus = String(body?.status || "");
-    if (!newStatus || !["pending", "rejected", "delivered"].includes(newStatus)) {
+    if (!newStatus || !["pending", "rejected", "delivered", "received"].includes(newStatus)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     
