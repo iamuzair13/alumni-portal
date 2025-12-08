@@ -919,7 +919,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.personalemail && <p className="mt-1 text-xs text-red-600">Valid email is required</p>}
             </div>
             <div className="lg:col-span-3">
-              <label className={labelBase}>Address</label>
+              <label className={labelBase}>Home Address</label>
               <textarea rows={1} className={inputBase} {...register("address", { maxLength: 250 })} />
             </div>
             <div>
