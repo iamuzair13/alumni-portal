@@ -84,7 +84,6 @@ const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
 const labelBase = "block text-sm text-neutral-800";
 
 // Constant list of Pakistan provinces for validation
-const PAKISTAN_PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad", "GB", "AJK"];
 
 // Pakistan cities organized by province (sorted alphabetically)
 const citiesByProvinceRaw: Record<string, string[]> = {
@@ -248,7 +247,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [provinceCustomInput, setProvinceCustomInput] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [homeCitySearch, setHomeCitySearch] = useState("");
@@ -466,7 +464,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       setValue("province", "", { shouldValidate: false });
       setValue("homeCity", "", { shouldValidate: false });
       setHomeCitySearch("");
-      setProvinceCustomInput(false);
       isTypingCityRef.current = false;
       lastSetCityValueRef.current = null;
     } else if (selectedHomeCountry === "Pakistan") {
@@ -474,10 +471,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       const currentProvince = watch("province");
       if (currentProvince === "Not applicable" || (currentProvince && !homeProvinceOptions.find(opt => opt.value === currentProvince))) {
         setValue("province", "", { shouldValidate: false });
-        setProvinceCustomInput(false);
       }
-    } else {
-      setProvinceCustomInput(false);
     }
   }, [selectedHomeCountry, setValue, watch, homeProvinceOptions]);
   
