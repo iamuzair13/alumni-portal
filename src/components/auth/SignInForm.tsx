@@ -12,7 +12,7 @@ import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 type FormErrors = { identifier?: string; password?: string };
 
 export default function SignInForm() {
-  const { status, data: session } = useSession();
+  const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [identifier, setIdentifier] = useState<string>("");
@@ -106,9 +106,9 @@ export default function SignInForm() {
             const isViewer = normalizedType === "viewer" || normalizedType === "user";
             const isAlumni = normalizedType === "alumni";
             
-            // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard (/)
+            // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard
             if (isAdmin || isSuperAdmin || isViewer) {
-              router.replace("/");
+              router.replace("/dashboard");
               return;
             } else if (isAlumni) {
               router.replace("/alumni-profile");
@@ -126,7 +126,7 @@ export default function SignInForm() {
           const normalizedType = String(userType).toLowerCase().trim();
           const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
           if (isStaff) {
-            router.replace("/");
+            router.replace("/dashboard");
             return;
           }
         }
@@ -167,17 +167,8 @@ export default function SignInForm() {
     }
   };
 
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      const t = String(((session.user ?? {}) as { type?: string }).type || "").toLowerCase().trim();
-      // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard
-      if (t === "admin" || t === "superadmin" || t === "viewer" || t === "user") {
-        router.replace("/");
-      } else if (t === "alumni") {
-        router.replace("/alumni-profile");
-      }
-    }
-  }, [status, session, router]);
+  // Removed automatic redirect on authentication to prevent redirect loops
+  // Redirects are now handled in the handleCredentials function after successful login
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-6 sm:py-8">

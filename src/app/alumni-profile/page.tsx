@@ -470,7 +470,7 @@ let cardImageFile: string | null = null;
                         To view an alumni profile, please select a profile from the alumni list or use the URL with a SAP ID parameter.
                       </p>
                       <Link
-                        href="/"
+                        href="/dashboard"
                         className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Go to Alumni List

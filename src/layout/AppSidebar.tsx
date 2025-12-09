@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboards", 
-    path: "/",
+    path: "/dashboard",
   },
  
   {
@@ -294,7 +294,7 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link href="/">
+        <Link href="/dashboard">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <Image

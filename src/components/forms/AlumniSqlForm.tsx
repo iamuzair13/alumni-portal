@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
   getDepartmentsByFaculty,
-  getProgramsByFacultyAndDepartment,
   getFaculties,
 } from "@/data/programs-departments";
 
@@ -51,6 +50,7 @@ export type TblAlumniForm = {
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
+  startOfCareer: string | null; // Date format for start of career
   officialemail: string | null;
   officialnumber: string | null;
   organization_address: string | null;
@@ -82,6 +82,206 @@ export type TblAlumniForm = {
 
 const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
 const labelBase = "block text-sm text-neutral-800";
+
+// List of all countries
+const allCountries = [
+  "Afghanistan",
+  "Albania",
+  "Algeria",
+  "Andorra",
+  "Angola",
+  "Antigua and Barbuda",
+  "Argentina",
+  "Armenia",
+  "Australia",
+  "Austria",
+  "Azerbaijan",
+  "Bahamas",
+  "Bahrain",
+  "Bangladesh",
+  "Barbados",
+  "Belarus",
+  "Belgium",
+  "Belize",
+  "Benin",
+  "Bhutan",
+  "Bolivia",
+  "Bosnia and Herzegovina",
+  "Botswana",
+  "Brazil",
+  "Brunei",
+  "Bulgaria",
+  "Burkina Faso",
+  "Burundi",
+  "Côte d'Ivoire",
+  "Cabo Verde",
+  "Cambodia",
+  "Cameroon",
+  "Canada",
+  "Central African Republic",
+  "Chad",
+  "Chile",
+  "China",
+  "Colombia",
+  "Comoros",
+  "Congo (Congo-Brazzaville)",
+  "Costa Rica",
+  "Croatia",
+  "Cuba",
+  "Cyprus",
+  "Czechia (Czech Republic)",
+  "Democratic Republic of the Congo",
+  "Denmark",
+  "Djibouti",
+  "Dominica",
+  "Dominican Republic",
+  "Ecuador",
+  "Egypt",
+  "El Salvador",
+  "Equatorial Guinea",
+  "Eritrea",
+  "Estonia",
+  "Eswatini (fmr. Swaziland)",
+  "Ethiopia",
+  "Fiji",
+  "Finland",
+  "France",
+  "Gabon",
+  "Gambia",
+  "Georgia",
+  "Germany",
+  "Ghana",
+  "Greece",
+  "Grenada",
+  "Guatemala",
+  "Guinea",
+  "Guinea-Bissau",
+  "Guyana",
+  "Haiti",
+  "Holy See",
+  "Honduras",
+  "Hungary",
+  "Iceland",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Iraq",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Jamaica",
+  "Japan",
+  "Jordan",
+  "Kazakhstan",
+  "Kenya",
+  "Kiribati",
+  "Kuwait",
+  "Kyrgyzstan",
+  "Laos",
+  "Latvia",
+  "Lebanon",
+  "Lesotho",
+  "Liberia",
+  "Libya",
+  "Liechtenstein",
+  "Lithuania",
+  "Luxembourg",
+  "Madagascar",
+  "Malawi",
+  "Malaysia",
+  "Maldives",
+  "Mali",
+  "Malta",
+  "Marshall Islands",
+  "Mauritania",
+  "Mauritius",
+  "Mexico",
+  "Micronesia",
+  "Moldova",
+  "Monaco",
+  "Mongolia",
+  "Montenegro",
+  "Morocco",
+  "Mozambique",
+  "Myanmar (formerly Burma)",
+  "Namibia",
+  "Nauru",
+  "Nepal",
+  "Netherlands",
+  "New Zealand",
+  "Nicaragua",
+  "Niger",
+  "Nigeria",
+  "North Korea",
+  "North Macedonia",
+  "Norway",
+  "Oman",
+  "Pakistan",
+  "Palau",
+  "Palestine State",
+  "Panama",
+  "Papua New Guinea",
+  "Paraguay",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Qatar",
+  "Romania",
+  "Russia",
+  "Rwanda",
+  "Saint Kitts and Nevis",
+  "Saint Lucia",
+  "Saint Vincent and the Grenadines",
+  "Samoa",
+  "San Marino",
+  "Sao Tome and Principe",
+  "Saudi Arabia",
+  "Senegal",
+  "Serbia",
+  "Seychelles",
+  "Sierra Leone",
+  "Singapore",
+  "Slovakia",
+  "Slovenia",
+  "Solomon Islands",
+  "Somalia",
+  "South Africa",
+  "South Korea",
+  "South Sudan",
+  "Spain",
+  "Sri Lanka",
+  "Sudan",
+  "Suriname",
+  "Sweden",
+  "Switzerland",
+  "Syria",
+  "Tajikistan",
+  "Tanzania",
+  "Thailand",
+  "Timor-Leste",
+  "Togo",
+  "Tonga",
+  "Trinidad and Tobago",
+  "Tunisia",
+  "Turkey",
+  "Turkmenistan",
+  "Tuvalu",
+  "Uganda",
+  "Ukraine",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+  "Uruguay",
+  "Uzbekistan",
+  "Vanuatu",
+  "Venezuela",
+  "Vietnam",
+  "Yemen",
+  "Zambia",
+  "Zimbabwe",
+  "Other"
+];
 
 // Constant list of Pakistan provinces for validation
 
@@ -220,6 +420,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       nameoforganization: null,
       designation: null,
       totalyearsofexpereince: null,
+      startOfCareer: null,
       officialemail: null,
       officialnumber: null,
       image1: null,
@@ -253,7 +454,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false);
   const isTypingCityRef = useRef(false);
   const lastSetCityValueRef = useRef<string | null>(null);
-  const [sectorOtherSelected, setSectorOtherSelected] = useState(false);
+  const [facultyOtherSelected, setFacultyOtherSelected] = useState(false);
+  const [departmentOtherSelected, setDepartmentOtherSelected] = useState(false);
   const [userAccess, setUserAccess] = useState<{
     isSuperAdmin: boolean;
     faculties: string[];
@@ -358,29 +560,29 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     );
   }, [selectedFaculty, userAccess]);
 
-  // Filter programs based on user access, selected faculty and department
-  const programOptions = useMemo(() => {
-    if (!selectedFaculty || !selectedDepartment || selectedDepartment === "other") {
-      return [];
-    }
-    const allPrograms = getProgramsByFacultyAndDepartment(selectedFaculty, selectedDepartment);
-    if (!userAccess || userAccess.isSuperAdmin) {
-      return allPrograms;
-    }
-    if (userAccess.programs.length === 0) {
-      // If no program-level access, check if we have department-level access
-      if (userAccess.departments.some(d => 
-        d.toLowerCase().trim() === selectedDepartment.toLowerCase().trim()
-      )) {
-        return allPrograms; // Show all programs in the department
-      }
-      return [];
-    }
-    // Filter programs that are in the selected department AND in user's access
-    return allPrograms.filter(p => 
-      userAccess.programs.some(ap => ap.toLowerCase().trim() === p.toLowerCase().trim())
-    );
-  }, [selectedFaculty, selectedDepartment, userAccess]);
+  // // Filter programs based on user access, selected faculty and department
+  // const programOptions = useMemo(() => {
+  //   if (!selectedFaculty || !selectedDepartment || selectedDepartment === "other") {
+  //     return [];
+  //   }
+  //   const allPrograms = getProgramsByFacultyAndDepartment(selectedFaculty, selectedDepartment);
+  //   if (!userAccess || userAccess.isSuperAdmin) {
+  //     return allPrograms;
+  //   }
+  //   if (userAccess.programs.length === 0) {
+  //     // If no program-level access, check if we have department-level access
+  //     if (userAccess.departments.some(d => 
+  //       d.toLowerCase().trim() === selectedDepartment.toLowerCase().trim()
+  //     )) {
+  //       return allPrograms; // Show all programs in the department
+  //     }
+  //     return [];
+  //   }
+  //   // Filter programs that are in the selected department AND in user's access
+  //   return allPrograms.filter(p => 
+  //     userAccess.programs.some(ap => ap.toLowerCase().trim() === p.toLowerCase().trim())
+  //   );
+  // }, [selectedFaculty, selectedDepartment, userAccess]);
   
   // Get cities for selected province (for home city)
   const homeProvinceCities = useMemo(() => {
@@ -435,19 +637,26 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   useEffect(() => {
     setValue("departmentname", "");
     setValue("degreetitle", "");
+    setDepartmentOtherSelected(false);
+    // Only set facultyOtherSelected if faculty is explicitly "other", otherwise reset it
+    if (selectedFaculty === "other") {
+      setFacultyOtherSelected(true);
+    } else if (selectedFaculty && selectedFaculty !== "") {
+      setFacultyOtherSelected(false);
+    }
   }, [selectedFaculty, setValue]);
 
   // Reset program when department changes
   useEffect(() => {
     setValue("degreetitle", "");
+    // Only set departmentOtherSelected if department is explicitly "other", otherwise reset it
+    if (selectedDepartment === "other") {
+      setDepartmentOtherSelected(true);
+    } else if (selectedDepartment && selectedDepartment !== "") {
+      setDepartmentOtherSelected(false);
+    }
   }, [selectedDepartment, setValue]);
   
-  // Reset sector "Other" state when employment status changes
-  useEffect(() => {
-    if ((employeedVal || "").toLowerCase() !== "employed") {
-      setSectorOtherSelected(false);
-    }
-  }, [employeedVal]);
 
   // Sync country to homeCountry for form submission
   useEffect(() => {
@@ -517,6 +726,24 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+  // Helper function to strip non-numeric characters from phone numbers
+  const sanitizePhoneNumber = (value: string): string => {
+    return value.replace(/\D/g, '');
+  };
+
+  // Helper function to generate year options for dropdowns
+  const generateYearOptions = (startYear: number, endYear: number) => {
+    const years = [];
+    for (let year = endYear; year >= startYear; year--) {
+      years.push(year);
+    }
+    return years;
+  };
+
+  const currentYear = new Date().getFullYear();
+  const admissionYearOptions = generateYearOptions(1998, currentYear);
+  const passingYearOptions = generateYearOptions(2000, currentYear);
+
   async function validateAll() {
     clearErrors();
     
@@ -562,12 +789,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     // Only validate work fields if employed or self-employed
     if ((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") {
-      workFieldsToValidate.push("industry", "nameoforganization", "designation", "totalyearsofexpereince", "workCity", "workCountry");
+      workFieldsToValidate.push("industry", "startOfCareer", "nameoforganization", "designation", "officialemail", "officialnumber", "organization_address", "workCity", "workCountry");
     }
     
     // Validate higher education fields if pursuing higher education
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      workFieldsToValidate.push("highereducationdegreetitle", "highereducationinstitute", "highereducationprogram", "workCity", "workCountry");
+      workFieldsToValidate.push("highereducationinstitute", "highereducationprogram", "scholarship", "workCity", "workCountry", "higher_education_institute_email");
     }
     
     // Validate unemployed reason if unemployed
@@ -578,13 +805,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     const workOk = await trigger(workFieldsToValidate);
     if (!workOk) return false;
     
-    // Conditional: when employed or self-employed, industry/org/designation/experience required
+    // Conditional: when employed or self-employed, validate required fields
     if ((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") {
       const fields: Array<keyof TblAlumniForm> = [
         "industry",
+        "startOfCareer",
         "nameoforganization",
         "designation",
-        "totalyearsofexpereince",
+        "officialemail",
+        "officialnumber",
+        "organization_address",
+        "workCity",
+        "workCountry",
       ];
       for (const f of fields) {
         const val = watch(f);
@@ -598,11 +830,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     // Conditional: when pursuing higher education, validate required fields
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
       const fields: Array<keyof TblAlumniForm> = [
-        "highereducationdegreetitle",
         "highereducationinstitute",
         "highereducationprogram",
+        "scholarship",
         "workCity",
         "workCountry",
+        "higher_education_institute_email",
       ];
       for (const f of fields) {
         const val = watch(f);
@@ -981,18 +1214,71 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             <div>
               <label className={labelBase}>Mobile No.*</label>
-              <input type="tel" className={inputBase} placeholder="Enter mobile number"  {...register("contactno", { required: true, maxLength: 50 })} />
+              <Controller
+                name="contactno"
+                control={control}
+                rules={{ required: true, maxLength: 50 }}
+                render={({ field }) => {
+                  const { value, onChange, onBlur, name, ref } = field;
+                  return (
+                    <input
+                      type="tel"
+                      className={inputBase}
+                      placeholder="Enter mobile number"
+                      name={name}
+                      ref={ref}
+                      onBlur={onBlur}
+                      value={value ?? ""}
+                      onChange={(e) => {
+                        const sanitized = sanitizePhoneNumber(e.target.value);
+                        onChange(sanitized);
+                      }}
+                    />
+                  );
+                }}
+              />
               {errors.contactno && <p className="mt-1 text-xs text-red-600">Mobile number is required</p>}
             </div>
             <div>
               <label className={labelBase}>Secondary Contact No.</label>
-              <input type="tel" className={inputBase} placeholder="Enter secondary contact number"  {...register("contactno1", { maxLength: 50 })} />
+              <Controller
+                name="contactno1"
+                control={control}
+                rules={{ maxLength: 50 }}
+                render={({ field }) => {
+                  const { value, onChange, onBlur, name, ref } = field;
+                  return (
+                    <input
+                      type="tel"
+                      className={inputBase}
+                      placeholder="Enter secondary contact number"
+                      name={name}
+                      ref={ref}
+                      onBlur={onBlur}
+                      value={value ?? ""}
+                      onChange={(e) => {
+                        const sanitized = sanitizePhoneNumber(e.target.value);
+                        onChange(sanitized);
+                      }}
+                    />
+                  );
+                }}
+              />
               {errors.contactno1 && <p className="mt-1 text-xs text-red-600">Secondary contact number is not valid</p>}
             </div>
             <div>
               <label className={labelBase}>Personal Email *</label>
               <input type="email" className={inputBase} placeholder="eg. example@gmail.com" {...register("personalemail", { required: true, maxLength: 100 })} />
               {errors.personalemail && <p className="mt-1 text-xs text-red-600">Valid email is required</p>}
+            </div>
+            <div>
+              <label className={labelBase}>Marital Status</label>
+              <select className={inputBase} {...register("maritalstatus")}>
+                <option value="">Select</option>
+                <option value="Married">Married</option>
+                <option value="Widowed">Unmarried</option>
+              </select>
+              {errors.maritalstatus && <p className="mt-1 text-xs text-red-600">Marital status is required</p>}
             </div>
             <div className="lg:col-span-3">
               <label className={labelBase}>Home Address</label>
@@ -1392,24 +1678,33 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {/* Section 2: Academic Information */}
       <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Academic Information</h2>
-          <p className="mt-1 text-xs text-neutral-600">All fields are required.</p>
+          <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className={labelBase}>Campus *</label>
               <select className={inputBase} {...register("campusname", { required: true })}>
                 <option value="">Select</option>
-                <option value="lahore">Lahore Campus</option>
-                <option value="islamabad">Islamabad Campus</option>
-                <option value="sargodha">Sargodha Campus</option>
-                <option value="gujrat">Gujrat Campus</option>
+                <option value="Lahore">Lahore</option>
+                <option value="Sargodha">Sargodha</option>
+                <option value="Islamabad">Islamabad</option>
+                <option value="Pakpattan">Pakpattan</option>
               </select>
               {errors.campusname && <p className="mt-1 text-xs text-red-600">Campus is required</p>}
             </div>
             <div>
               <label className={labelBase}>Faculty *</label>
+              {!facultyOtherSelected ? (
               <select 
                 className={inputBase} 
-                {...register("facultyname", { required: true })}
+                  {...register("facultyname", { 
+                    required: true,
+                    onChange: (e) => {
+                      if (e.target.value === "other") {
+                        setFacultyOtherSelected(true);
+                        setValue("facultyname", "");
+                      }
+                    }
+                  })}
                 disabled={loadingAccess || (userAccess ? (!userAccess.isSuperAdmin && availableFaculties.length === 0) : false)}
               >
                 <option value="">
@@ -1421,15 +1716,49 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {availableFaculties.map((faculty) => (
                   <option key={faculty} value={faculty}>{faculty}</option>
                 ))}
-                {userAccess?.isSuperAdmin && <option value="other">Other</option>}
+                  <option value="other">Other</option>
               </select>
-              {errors.facultyname && <p className="mt-1 text-xs text-red-600">Faculty is required</p>}
+              ) : (
+                <>
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    {...register("facultyname", { 
+                      required: "Please specify your faculty",
+                      maxLength: 200 
+                    })} 
+                    placeholder="Enter faculty name"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFacultyOtherSelected(false);
+                      setValue("facultyname", "");
+                    }}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    ← Back to faculty list
+                  </button>
+                </>
+              )}
+              {errors.facultyname && (
+                <p className="mt-1 text-xs text-red-600">{errors.facultyname.message || "Faculty is required"}</p>
+              )}
             </div>
             <div>
               <label className={labelBase}>Department *</label>
+              {!departmentOtherSelected ? (
               <select 
                 className={inputBase} 
-                {...register("departmentname", { required: true })}
+                  {...register("departmentname", { 
+                    required: true,
+                    onChange: (e) => {
+                      if (e.target.value === "other") {
+                        setDepartmentOtherSelected(true);
+                        setValue("departmentname", "");
+                      }
+                    }
+                  })}
                 disabled={loadingAccess || !selectedFaculty || (userAccess ? (!userAccess.isSuperAdmin && deptOptions.length === 0) : false)}
               >
                 <option value="">
@@ -1439,52 +1768,101 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                      ? "No access to any department in this faculty" 
                      : "Select"}
                 </option>
-                {userAccess?.isSuperAdmin && <option value="other">Other</option>}
                 {deptOptions.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
+                  <option value="other">Other</option>
               </select>
-              {errors.departmentname && <p className="mt-1 text-xs text-red-600">Department is required</p>}
+              ) : (
+                <>
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    {...register("departmentname", { 
+                      required: "Please specify your department",
+                      maxLength: 200 
+                    })} 
+                    placeholder="Enter department name"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDepartmentOtherSelected(false);
+                      setValue("departmentname", "");
+                    }}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    ← Back to department list
+                  </button>
+                </>
+              )}
+              {errors.departmentname && (
+                <p className="mt-1 text-xs text-red-600">{errors.departmentname.message || "Department is required"}</p>
+              )}
             </div>
             <div>
               <label className={labelBase}>Program *</label>
-              <select 
+              <input 
+                type="text" 
                 className={inputBase} 
-                {...register("degreetitle", { required: true })}
-                disabled={loadingAccess || !selectedFaculty || !selectedDepartment || selectedDepartment === "other" || programOptions.length === 0 || (userAccess ? (!userAccess.isSuperAdmin && programOptions.length === 0) : false)}
-              >
-                <option value="">
-                  {loadingAccess ? "Loading..." :
-                   !selectedFaculty ? "Select Faculty first" : 
-                   !selectedDepartment ? "Select Department first" : 
-                   selectedDepartment === "other" ? "Other Department Selected" :
-                   userAccess && !userAccess.isSuperAdmin && programOptions.length === 0 
-                     ? "No access to any program in this department" 
-                     : programOptions.length === 0 ? "No Programs Available" 
-                     : "Select Program"}
-                </option>
-                {programOptions.map((program) => (
-                  <option key={program} value={program}>{program}</option>
-                ))}
-              </select>
+                placeholder="Enter program name"
+                {...register("degreetitle", { required: true, maxLength: 200 })} 
+              />
               {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
             </div>
+            <div>
+              <label className={labelBase}>Admission Year *</label>
+              <select className={inputBase} {...register("yearofstarting", { required: true, valueAsNumber: true })}>
+                <option value="">Select</option>
+                {admissionYearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              {errors.yearofstarting && <p className="mt-1 text-xs text-red-600">Admission year is required</p>}
+            </div>
              <div>
-              <label className={labelBase}>Year of Admission *</label>
-              <input type="number" className={inputBase} placeholder="e.g. 2025" {...register("yearofstarting", { required: true, valueAsNumber: true })} />
-              {errors.yearofstarting && <p className="mt-1 text-xs text-red-600">Year is required</p>}
+              <label className={labelBase}>Passing Out Year *</label>
+              <select className={inputBase} {...register("yearofending", { required: true, valueAsNumber: true })}>
+                <option value="">Select</option>
+                {passingYearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              {errors.yearofending && <p className="mt-1 text-xs text-red-600">Passing out year is required</p>}
             </div>
             <div>
-              <label className={labelBase}>Year of Passing Out *</label>
-              <input type="number" className={inputBase} placeholder="e.g. 2025" {...register("yearofending", { required: true, valueAsNumber: true })} />
-              {errors.yearofending && <p className="mt-1 text-xs text-red-600">Year is required</p>}
+              <label className={labelBase}>CGPA (Optional)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                max="4"
+                className={inputBase} 
+                placeholder="e.g. 3.50"
+                {...register("cgpa", { 
+                  valueAsNumber: true,
+                  min: { value: 0, message: "CGPA must be 0 or greater" },
+                  max: { value: 4, message: "CGPA must be 4 or less" }
+                })} 
+              />
+              {errors.cgpa && <p className="mt-1 text-xs text-red-600">{errors.cgpa.message}</p>}
+            </div>
+            <div>
+              <label className={labelBase}>Major Subject (Optional)</label>
+              <input 
+                type="text" 
+                className={inputBase} 
+                placeholder="Enter major subject"
+                {...register("majorsubject", { maxLength: 200 })} 
+              />
+              {errors.majorsubject && <p className="mt-1 text-xs text-red-600">{errors.majorsubject.message}</p>}
             </div>
           </div>
         </section>
 
       {/* Section 3: Work Status */}
       <section className="mb-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Work Status</h2>
+          <h2 className="text-lg font-semibold text-neutral-800">Occupation Details</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="mt-2 flex flex-wrap gap-6">
@@ -1509,20 +1887,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Sector = industry */}
                 <div>
                   <label className={labelBase}>Sector *</label>
-                  {!sectorOtherSelected ? (
-                    <select 
+                  <input
+                    type="text"
                       className={inputBase} 
+                    list="sector-options"
+                    placeholder="Select from list or type your sector"
                       {...register("industry", { 
-                        required: true,
-                        onChange: (e) => {
-                          if (e.target.value === "Other (please specify)") {
-                            setSectorOtherSelected(true);
-                            setValue("industry", "");
-                          }
-                        }
-                      })}
-                    >
-                      <option value="">Select Sector</option>
+                      required: "Sector is required",
+                      maxLength: 100 
+                    })}
+                  />
+                  <datalist id="sector-options">
+                    <option value="NA">NA</option>
                       <option value="IT & Software Development">IT & Software Development</option>
                       <option value="Engineering & Manufacturing">Engineering & Manufacturing</option>
                       <option value="Finance & Banking">Finance & Banking</option>
@@ -1537,40 +1913,31 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       <option value="NGO & Social Services">NGO & Social Services</option>
                       <option value="Government Sector">Government Sector</option>
                       <option value="Construction & Real Estate">Construction & Real Estate</option>
-                      <option value="Other (please specify)">Other (please specify)</option>
-                    </select>
-                  ) : (
-                    <>
-                      <input 
-                        type="text" 
-                        className={inputBase} 
-                        {...register("industry", { 
-                          required: "Please specify your sector",
-                          maxLength: 100 
-                        })} 
-                        placeholder="Enter your sector"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSectorOtherSelected(false);
-                          setValue("industry", "");
-                        }}
-                        className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
-                      >
-                        ← Back to sector list
-                      </button>
-                    </>
-                  )}
+                  </datalist>
                   {errors.industry && (
                     <p className="mt-1 text-xs text-red-600">{errors.industry.message || "Sector is required"}</p>
                   )}
                 </div>
 
-                {/* Name of Organization / Business Name */}
+                {/* Start of Career */}
+                <div>
+                  <label className={labelBase}>Start of Career *</label>
+                      <input 
+                    type="date" 
+                        className={inputBase} 
+                    min="1900-01-01"
+                    max={new Date().toISOString().split('T')[0]}
+                    {...register("startOfCareer", { required: true })} 
+                  />
+                  {errors.startOfCareer && (
+                    <p className="mt-1 text-xs text-red-600">Start of career date is required</p>
+                  )}
+                </div>
+
+                {/* Current Organization / Business Name */}
                 <div>
                   <label className={labelBase}>
-                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Name *" : "Name of Organization *"}
+                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Name *" : "Current Organization *"}
                   </label>
                   <input 
                     type="text" 
@@ -1580,30 +1947,21 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   {errors.nameoforganization && (
                     <p className="mt-1 text-xs text-red-600">
-                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business name is required" : "Organization is required"}
+                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business name is required" : "Current organization is required"}
                     </p>
                   )}
                 </div>
 
-                {/* Designation */}
+                {/* Current Designation */}
                 <div>
-                  <label className={labelBase}>Designation *</label>
-                  <input type="text" className={inputBase} {...register("designation", { required: true, maxLength: 100 })} />
+                  <label className={labelBase}>Current Designation *</label>
+                  <input type="text" className={inputBase} placeholder="Enter your designation" {...register("designation", { required: true, maxLength: 100 })} />
                   {errors.designation && (
-                    <p className="mt-1 text-xs text-red-600">Designation is required</p>
+                    <p className="mt-1 text-xs text-red-600">Current designation is required</p>
                   )}
                 </div>
 
-                {/* Total Experience */}
-                <div>
-                  <label className={labelBase}>Total Experience  *</label>
-                  <input type="text" className={inputBase} placeholder="e.g. 3" {...register("totalyearsofexpereince", { required: true, maxLength: 10 })} />
-                  {errors.totalyearsofexpereince && (
-                    <p className="mt-1 text-xs text-red-600">Experience is required</p>
-                  )}
-                </div>
-
-                {/* Official Email */}
+                {/* Work Email */}
                 <div>
                   <label className={labelBase}>
                     {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Email *" : "Work Email *"}
@@ -1612,19 +1970,26 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     type="email" 
                     className={inputBase} 
                     placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business email" : "Enter work email"}
-                    {...register("officialemail", { required: true, maxLength: 100 })} 
+                    {...register("officialemail", { 
+                      required: true, 
+                      maxLength: 100,
+                      pattern: {
+                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                        message: "Please enter a valid email address (must contain @)"
+                      }
+                    })} 
                   />
                   {errors.officialemail && (
                     <p className="mt-1 text-xs text-red-600">
-                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business email is required" : "Work email is required"}
+                      {errors.officialemail.message || ((employeedVal || "").toLowerCase() === "self-employed" ? "Business email is required" : "Work email is required")}
                     </p>
                   )}
                 </div>
 
-                {/* Official Phone */}
+                {/* Work Phone */}
                 <div>
                   <label className={labelBase}>
-                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Phone Number *" : "Work Phone Number *"}
+                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Phone *" : "Work Phone *"}
                   </label>
                   <input 
                     type="text" 
@@ -1634,12 +1999,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   {errors.officialnumber && (
                     <p className="mt-1 text-xs text-red-600">
-                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business phone number is required" : "Work phone number is required"}
+                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business phone is required" : "Work phone is required"}
                     </p>
                   )}
                 </div>
 
-                {/* Company Address */}
+                {/* Work Address */}
                 <div className="sm:col-span-2 lg:col-span-3">
                   <label className={labelBase}>
                     {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Address *" : "Work Address *"}
@@ -1656,50 +2021,42 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     </p>
                   )}
                 </div>
-                {/* Work City/Country */}
+                {/* Work City */}
                 <div>
-                  <label className={labelBase}>Work City *</label>
+                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed" ? "Business City *" : "Work City *"}</label>
                   <input 
                     type="text" 
                     className={inputBase} 
-                    placeholder="Enter work city name"
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business city" : "Enter work city name"}
                     {...register("workCity", { 
-                      required: "Work city is required", 
-                      maxLength: 50 
+                      required: true
                     })} 
                   />
                   {errors.workCity && (
-                    <p className="mt-1 text-xs text-red-600">{errors.workCity.message || "Work city is required"}</p>
+                    <p className="mt-1 text-xs text-red-600">{(employeedVal || "").toLowerCase() === "self-employed" ? "Business city is required" : "Work city is required"}</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">Work location city (independent from home city).</p>
                 </div>
+                {/* Work Country */}
                 <div>
-                  <label className={labelBase}>Work Country *</label>
-                  <Controller
-                    name="workCountry"
-                    control={control}
-                    rules={{ required: "Work country is required" }}
-                    render={({ field }) => (
-                      <select 
+                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed" ? "Business Country *" : "Work Country *"}</label>
+                  <input
+                    type="text"
                         className={inputBase} 
-                        {...field}
-                        value={field.value || ""}
-                      >
-                    <option value="">Select</option>
-                    <option value="Pakistan">Pakistan</option>
-                    <option value="United Arab Emirates">United Arab Emirates</option>
-                    <option value="Saudi Arabia">Saudi Arabia</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Other">Other</option>
-                  </select>
-                    )}
+                    list="work-country-options"
+                    placeholder="Select from list or type your country"
+                    {...register("workCountry", { 
+                      required: "Work country is required",
+                      maxLength: 100 
+                    })}
                   />
+                  <datalist id="work-country-options">
+                    {allCountries.map((country) => (
+                      <option key={country} value={country} />
+                    ))}
+                  </datalist>
                   {errors.workCountry && (
-                    <p className="mt-1 text-xs text-red-600">Work country is required</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.workCountry.message || "Work country is required"}</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">Work location country (independent from home country).</p>
                 </div>
               </>
             )}
@@ -1708,48 +2065,50 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             {(employeedVal || "").toLowerCase() === "pursuing higher education" && (
               <>
                 <div>
-                  <label className={labelBase}>Degree Title *</label>
-                  <input type="text" className={inputBase} placeholder="e.g. Masters in Civil Engineering" {...register("highereducationdegreetitle", { required: true, maxLength: 200 })} />
-                  {errors.highereducationdegreetitle && (
-                    <p className="mt-1 text-xs text-red-600">Degree title is required</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className={labelBase}>Institute Name *</label>
+                  <label className={labelBase}>Institution Name *</label>
                   <input type="text" className={inputBase} placeholder="e.g. University Name" {...register("highereducationinstitute", { required: true, maxLength: 200 })} />
                   {errors.highereducationinstitute && (
-                    <p className="mt-1 text-xs text-red-600">Institute name is required</p>
+                    <p className="mt-1 text-xs text-red-600">Institution name is required</p>
                   )}
                 </div>
 
                 <div>
-                  <label className={labelBase}>Program *</label>
+                  <label className={labelBase}>Program Enrolled *</label>
                   <input
                     type="text"
                     className={inputBase}
                     placeholder="e.g. MS (Master of Science), PhD (Doctor of Philosophy), MBA, LLM, etc"
-                    {...register("highereducationprogram", { required: "Program is required", maxLength: 100 })}
+                    {...register("highereducationprogram", { required: "Program enrolled is required", maxLength: 100 })}
                   />
                   {errors.highereducationprogram && (
-                    <p className="mt-1 text-xs text-red-600">{errors.highereducationprogram.message || "Program is required"}</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.highereducationprogram.message || "Program enrolled is required"}</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">
-                    Write the program name (for example: MS, MPhil, PhD, MBA, LLM, etc).
-                  </p>
                 </div>
 
                 <div>
-                  <label className={labelBase}>City *</label>
+                  <label className={labelBase}>Funding Source *</label>
+                  <select className={inputBase} {...register("scholarship", { required: true })}>
+                    <option value="">Select</option>
+                    <option value="Full Scholarship">Full Scholarship</option>
+                    <option value="Partial Scholarship">Partial Scholarship</option>
+                    <option value="Self Paid">Self Paid</option>
+                  </select>
+                  {errors.scholarship && (
+                    <p className="mt-1 text-xs text-red-600">Funding source is required</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelBase}>Institution City *</label>
                   <input 
                     type="text" 
                     className={inputBase} 
                     {...register("workCity", { 
-                      required: "City is required", 
+                      required: "Institution city is required", 
                       maxLength: 50,
                       validate: (value) => {
                         if (!value || String(value).trim() === "") {
-                          return "City is required";
+                          return "Institution city is required";
                         }
                         return true;
                       }
@@ -1757,62 +2116,51 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     placeholder="e.g. Lahore"
                   />
                   {errors.workCity && (
-                    <p className="mt-1 text-xs text-red-600">{errors.workCity.message || "City is required"}</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.workCity.message || "Institution city is required"}</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">City where you are pursuing higher education.</p>
                 </div>
 
                 <div>
-                  <label className={labelBase}>Country *</label>
-                  <Controller
-                    name="workCountry"
-                    control={control}
-                    rules={{ required: "Country is required" }}
-                    render={({ field }) => (
-                      <select 
+                  <label className={labelBase}>Institution Country *</label>
+                  <input
+                    type="text"
                         className={inputBase} 
-                        {...field}
-                        value={field.value || ""}
-                      >
-                    <option value="">Select</option>
-                    <option value="Pakistan">Pakistan</option>
-                    <option value="United Arab Emirates">United Arab Emirates</option>
-                    <option value="Saudi Arabia">Saudi Arabia</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Germany">Germany</option>
-                    <option value="Malaysia">Malaysia</option>
-                    <option value="Turkey">Turkey</option>
-                    <option value="Other">Other</option>
-                  </select>
-                    )}
+                    list="institution-country-options"
+                    placeholder="Select from list or type your country"
+                    {...register("workCountry", { 
+                      required: "Institution country is required",
+                      maxLength: 100 
+                    })}
                   />
+                  <datalist id="institution-country-options">
+                    {allCountries.map((country) => (
+                      <option key={country} value={country} />
+                    ))}
+                  </datalist>
                   {errors.workCountry && (
-                    <p className="mt-1 text-xs text-red-600">Country is required</p>
-                  )}
-                  <p className="mt-1 text-xs text-neutral-600">Country where you are pursuing higher education.</p>
-                </div>
-
-                <div>
-                  <label className={labelBase}>Scholarship *</label>
-                  <select className={inputBase} {...register("scholarship", { required: true })}>
-                    <option value="">Select</option>
-                    <option value="full funded scholarship">Full Funded Scholarship</option>
-                    <option value="partially funded scholarship">Partially Funded Scholarship</option>
-                    <option value="self paid">Self Paid</option>
-                  </select>
-                  {errors.scholarship && (
-                    <p className="mt-1 text-xs text-red-600">Scholarship is required</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.workCountry.message || "Institution country is required"}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className={labelBase}>Institute Student Email *</label>
-                  <input type="email" className={inputBase} {...register("higher_education_institute_email", { required: true, maxLength: 200 })} />
+                  <label className={labelBase}>Student Email *</label>
+                  <input 
+                    type="email" 
+                    className={inputBase} 
+                    placeholder="Enter student email"
+                    {...register("higher_education_institute_email", { 
+                      required: true, 
+                      maxLength: 200,
+                      pattern: {
+                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                        message: "Please enter a valid email address (must contain @)"
+                      }
+                    })} 
+                  />
                   {errors.higher_education_institute_email && (
-                    <p className="mt-1 text-xs text-red-600">Institute Student Email is required</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.higher_education_institute_email.message || "Student email is required"}
+                    </p>
                   )}
                 </div>
               </>
@@ -1836,9 +2184,61 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </div>
             )}
           </div>
+          <div className="sm:col-span-2 lg:col-span-3 mt-4">
+            <label className={labelBase}>About Me (Optional)</label>
+            <textarea className={inputBase} {...register("aboutme")} />
+          </div>
         </section>
 
-      {/* Section 4: Alumni Chapters */}
+      {/* Section 4: Social Links */}
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold text-neutral-800">Social Links(Optional)</h2>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className={labelBase}>Facebook</label>
+            <input
+              type="url"
+              className={inputBase}
+              placeholder="https://facebook.com/yourprofile"
+              {...register("facebook", { maxLength: 200 })}
+            />
+            {errors.facebook && <p className="mt-1 text-xs text-red-600">{errors.facebook.message}</p>}
+          </div>
+          <div>
+            <label className={labelBase}>Instagram</label>
+            <input
+              type="url"
+              className={inputBase}
+              placeholder="https://instagram.com/yourprofile"
+              {...register("instagram", { maxLength: 200 })}
+            />
+            {errors.instagram && <p className="mt-1 text-xs text-red-600">{errors.instagram.message}</p>}
+          </div>
+          <div>
+            <label className={labelBase}>YouTube</label>
+            <input
+              type="url"
+              className={inputBase}
+              placeholder="https://youtube.com/@yourchannel"
+              {...register("youtube", { maxLength: 200 })}
+            />
+            {errors.youtube && <p className="mt-1 text-xs text-red-600">{errors.youtube.message}</p>}
+          </div>
+          <div>
+            <label className={labelBase}>LinkedIn</label>
+            <input
+              type="url"
+              className={inputBase}
+              placeholder="https://linkedin.com/in/yourprofile"
+              {...register("linkedin", { maxLength: 200 })}
+            />
+            {errors.linkedin && <p className="mt-1 text-xs text-red-600">{errors.linkedin.message}</p>}
+          </div>
+        </div>
+      </section>
+
+      {/* Section 5: Alumni Chapters */}
+      {!excludeAdminStep && (
       <section className="mb-6">
         <h2 className="text-lg font-semibold text-neutral-800">Alumni Chapters</h2>
         <p className="mt-1 text-xs text-neutral-600">Select up to 3 chapters to join (optional).</p>
@@ -1949,8 +2349,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           )}
         </div>
       </section>
+      )}
 
-      {/* Section 5: Admin Section */}
+      {/* Section 6: Admin Section */}
       {!excludeAdminStep && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
