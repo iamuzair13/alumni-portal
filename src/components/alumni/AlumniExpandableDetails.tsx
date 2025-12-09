@@ -190,7 +190,7 @@ const CompactField: React.FC<{
 
 export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = ({ sapId, onClose, readOnly = false }) => {
   const [currentSapId, setCurrentSapId] = useState(sapId);
-  const { data, isLoading, error, refetch } = useAlumniFullDetails(currentSapId);
+  const { data, isLoading, error} = useAlumniFullDetails(currentSapId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -306,21 +306,19 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       const responseData = await res.json();
       const updatedSapId = responseData?.updated?.sapid;
       
-      // Invalidate all alumni-related queries to ensure fresh data (including the list and counts)
-      await queryClient.invalidateQueries({ queryKey: ["alumni"] });
-      await queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
-      await queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Force immediate refetch
-      await queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
+      // Invalidate queries (non-blocking) - React Query will refetch when components need the data
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist"] });
       
       // If SAP ID was changed, update our current identifier
       if (updatedSapId && updatedSapId !== currentSapId) {
-        // Update to new SAP ID - this will trigger a new query automatically via useAlumniFullDetails
         setCurrentSapId(updatedSapId);
-        // Wait for React Query to refetch with the new identifier
-        await queryClient.refetchQueries({ queryKey: ["alumni", "full-details", updatedSapId] });
+        // Invalidate the specific query - will refetch automatically when component needs it
+        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", updatedSapId] });
       } else {
-        // Just refetch with current identifier
-        await refetch();
+        // Invalidate current query - will refetch automatically when component needs it
+        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });
       }
 
       toast.success("Alumni data updated successfully");
@@ -449,7 +447,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Date of Birth" value={data.dateofbirth} isEditing={isEditing} readOnly={readOnly} register={register} name="dateofbirth" />
           <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isEditing} readOnly={readOnly} register={register} name="cnicpassport" />
           <CompactField label="Father Name" value={data.fathername} isEditing={isEditing} readOnly={readOnly} register={register} name="fathername" />
-          <CompactField label="Father CNIC" value={data.father_cnic} isEditing={isEditing} readOnly={readOnly} register={register} name="father_cnic" />
           <CompactField label="Marital Status" value={data.maritalstatus} isEditing={isEditing} readOnly={readOnly} register={register} name="maritalstatus" type="select" options={[
             { value: "", label: "Select" },
             { value: "Single", label: "Single" },
@@ -466,8 +463,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno1" />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isEditing} readOnly={readOnly} register={register} name="personalemail" type="email" />
           <CompactField label="Alumni Email" value={data.universityemail} isEditing={isEditing} readOnly={readOnly} register={register} name="universityemail" type="email" />
-          <CompactField label="Official Email" value={data.officialemail} isEditing={isEditing} readOnly={readOnly} register={register} name="officialemail" type="email" />
-          <CompactField label="Official Number" value={data.officialnumber} isEditing={isEditing} readOnly={readOnly} register={register} name="officialnumber" />
+         
           <CompactField label="Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
           <CompactField label="Country" value={data.country} isEditing={isEditing} readOnly={readOnly} register={register} name="country" />
           <CompactField label="Province" value={data.province} isEditing={isEditing} readOnly={readOnly} register={register} name="province" />
@@ -491,7 +487,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Professional</h4>
           </div>
-          <CompactField label="Employment Status" value={data.employeed} isEditing={isEditing} readOnly={readOnly} register={register} name="employeed" type="select" options={[
+          <CompactField label="Occupation Status" value={data.employeed} isEditing={isEditing} readOnly={readOnly} register={register} name="employeed" type="select" options={[
             { value: "", label: "Select" },
             { value: "Employed", label: "Employed" },
             { value: "Unemployed", label: "Unemployed" },
@@ -500,8 +496,10 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           ]} />
           <CompactField label="Organization" value={data.nameoforganization} isEditing={isEditing} readOnly={readOnly} register={register} name="nameoforganization" />
           <CompactField label="Designation" value={data.designation} isEditing={isEditing} readOnly={readOnly} register={register} name="designation" />
-          <CompactField label="Industry" value={data.industry} isEditing={isEditing} readOnly={readOnly} register={register} name="industry" />
+          <CompactField label="Sector" value={data.industry} isEditing={isEditing} readOnly={readOnly} register={register} name="industry" />
           <CompactField label="Experience (Years)" value={data.totalyearsofexpereince} isEditing={isEditing} readOnly={readOnly} register={register} name="totalyearsofexpereince" />
+          <CompactField label="Work Email" value={data.officialemail} isEditing={isEditing} readOnly={readOnly} register={register} name="officialemail" type="email" />
+          <CompactField label="Work Phone Number" value={data.officialnumber} isEditing={isEditing} readOnly={readOnly} register={register} name="officialnumber" />
           <CompactField label="Work City" value={data.work_city} isEditing={isEditing} readOnly={readOnly} register={register} name="work_city" />
           <CompactField label="Work Country" value={data.work_country} isEditing={isEditing} readOnly={readOnly} register={register} name="work_country" />
 

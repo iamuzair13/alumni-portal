@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -47,6 +47,7 @@ export type TblAlumniForm = {
   majorsubject: string | null;
   industry: string | null;
   employeed: string | null;
+  reason_of_unemployment: string | null;
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
@@ -85,44 +86,101 @@ const labelBase = "block text-sm text-neutral-800";
 const PAKISTAN_PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad", "GB", "AJK"];
 
 // Pakistan cities organized by province
-const citiesByProvince: Record<string, string[]> = {
+const citiesByProvinceRaw: Record<string, string[]> = {
   "Punjab": [
     "Lahore", "Rawalpindi", "Faisalabad", "Multan", "Sialkot", "Gujranwala", "Bahawalpur", "Sargodha",
     "Sheikhupura", "Jhang", "Rahim Yar Khan", "Gujrat", "Kasur", "Chiniot", "Hafizabad", "Mianwali",
     "Chakwal", "Attock", "Vehari", "Kamoke", "Burewala", "Sahiwal", "Okara", "Dera Ghazi Khan",
     "Gojra", "Chishtian", "Khanewal", "Jhelum", "Muzaffargarh", "Narowal", "Pakpattan", "Toba Tek Singh",
-    "Jaranwala", "Chishtian", "Hasilpur", "Ahmadpur East", "Kot Addu", "Wazirabad", "Daska", "Mandi Bahauddin"
+    "Jaranwala", "Hasilpur", "Ahmadpur East", "Kot Addu", "Wazirabad", "Daska", "Mandi Bahauddin",
+    "Muridke", "Mian Channun", "Bhakkar", "Khushab", "Jauharabad", "Layyah", "Dipalpur", "Shakargarh",
+    "Sadiqabad", "Kot Radha Kishan", "Hujra Shah Muqeem", "Kabirwala", "Mananwala", "Renala Khurd",
+    "Pattoki", "Kot Momin", "Haroonabad", "Kahror Pakka", "Nankana Sahib", "Pasrur", "Gujar Khan",
+    "Kot Abdul Malik", "Hassan Abdal", "Kamalia", "Uch Sharif", "Lodhran", "Malisi", "Dunyapur",
+    "Shahkot", "Mamu Kanjan", "Chunian", "Kot Adu", "Pindi Bhattian", "Fateh Jang", "Sarai Alamgir",
+    "Basirpur", "Hafizabad", "Chak Jhumra", "Narowal", "Kundian", "Ahmadpur Sial", "Jalalpur Jattan",
+    "Dina", "Sohawa", "Mandi Bahauddin", "Kotli Loharan", "Dera Ghazi Khan", "Rajanpur", "Layyah",
+    "Muzaffargarh", "Kot Addu", "Taunsa", "Dera Ghazi Khan", "Rajanpur", "Jampur", "Fazilpur",
+    "Kot Mithan", "Rojhan", "Dera Ghazi Khan", "Rajanpur", "Jampur", "Fazilpur", "Kot Mithan", "Rojhan"
   ],
   "Sindh": [
     "Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Kotri", "Khanpur", "Jacobabad",
     "Shikarpur", "Mirpur Khas", "Tando Allahyar", "Dadu", "Badin", "Thatta", "Khairpur", "Sanghar",
-    "Umerkot", "Ghotki", "Naushahro Feroze", "Tando Muhammad Khan", "Matiari", "Tando Allahyar", "Jamshoro"
+    "Umerkot", "Ghotki", "Naushahro Feroze", "Tando Muhammad Khan", "Matiari", "Jamshoro",
+    "Sehwan", "Hala", "Nawabshah", "Moro", "Kandhkot", "Kashmore", "Ghotki", "Daharki",
+    "Mehrabpur", "Rohri", "Khairpur Nathan Shah", "Khipro", "Sanghar", "Umerkot", "Mithi",
+    "Diplo", "Islamkot", "Nagarparkar", "Chachro", "Vik", "Kunri", "Samaro", "Umerkot",
+    "Kot Ghulam Muhammad", "Kunri", "Samaro", "Umerkot", "Kot Ghulam Muhammad", "Digri",
+    "Hala", "Matiari", "Hala", "Matiari", "Tando Adam", "Shahdadpur", "Sanghar", "Khipro",
+    "Nawabshah", "Sakrand", "Qazi Ahmad", "Bhiria", "Kandiaro", "Morro", "Kandiaro", "Morro"
   ],
   "KPK": [
     "Peshawar", "Mardan", "Mingora", "Kohat", "Nowshera", "Abbottabad", "Mansehra", "Battagram",
     "Haripur", "Dera Ismail Khan", "Bannu", "Swabi", "Charsadda", "Pabbi", "Barikot", "Daggar",
-    "Timergara", "Batkhela", "Tank", "Lakki Marwat", "Kulachi", "Tangi", "Takht-i-Bahi", "Mardan",
-    "Charsadda", "Nowshera", "Swabi", "Mingora", "Barikot", "Daggar", "Timergara", "Batkhela"
+    "Timergara", "Batkhela", "Tank", "Lakki Marwat", "Kulachi", "Tangi", "Takht-i-Bahi",
+    "Chitral", "Dir", "Buner", "Shangla", "Swat", "Malakand", "Lower Dir", "Upper Dir",
+    "Bajaur", "Mohmand", "Khyber", "Orakzai", "Kurram", "North Waziristan", "South Waziristan",
+    "Hangu", "Karak", "Bannu", "Lakki Marwat", "Tank", "Dera Ismail Khan", "Kulachi",
+    "Paharpur", "Paroa", "Kulachi", "Paharpur", "Paroa", "Gomal", "Jandola", "Makeen",
+    "Razmak", "Wana", "Sararogha", "Ladha", "Sarwakai", "Tiarza", "Spinkai Raghzai", "Kaniguram",
+    "Shakai", "Tank", "Jandola", "Gomal", "Makeen", "Razmak", "Wana", "Sararogha"
   ],
   "Balochistan": [
     "Quetta", "Turbat", "Gwadar", "Zhob", "Chaman", "Sibi", "Khuzdar", "Kalat", "Mastung",
-    "Loralai", "Dera Murad Jamali", "Hub", "Usta Muhammad", "Surab", "Nushki", "Panjgur"
+    "Loralai", "Dera Murad Jamali", "Hub", "Usta Muhammad", "Surab", "Nushki", "Panjgur",
+    "Turbat", "Gwadar", "Pasni", "Ormara", "Jiwani", "Turbat", "Gwadar", "Pasni", "Ormara",
+    "Jiwani", "Turbat", "Gwadar", "Pasni", "Ormara", "Jiwani", "Kharan", "Washuk", "Awaran",
+    "Lasbela", "Hub", "Uthal", "Bela", "Winder", "Uthal", "Bela", "Winder", "Khuzdar",
+    "Kalat", "Mastung", "Surab", "Nushki", "Chagai", "Dalbandin", "Taftan", "Nok Kundi",
+    "Chagai", "Dalbandin", "Taftan", "Nok Kundi", "Zhob", "Qila Saifullah", "Musakhel",
+    "Barkhan", "Loralai", "Duki", "Musakhel", "Barkhan", "Loralai", "Duki", "Kohlu",
+    "Dera Bugti", "Sibi", "Ziarat", "Harnai", "Sibi", "Ziarat", "Harnai", "Nasirabad",
+    "Jaffarabad", "Dera Murad Jamali", "Usta Muhammad", "Jhal Magsi", "Kachhi", "Bolan",
+    "Jhal Magsi", "Kachhi", "Bolan", "Killa Abdullah", "Chaman", "Gulistan", "Qilla Abdullah",
+    "Chaman", "Gulistan", "Pishin", "Killa Saifullah", "Sherani", "Zhob", "Qila Saifullah"
   ],
   "Islamabad": [
     "Islamabad"
   ],
   "GB": [
-    "Gilgit", "Skardu", "Hunza", "Chitral", "Ghizer", "Diamer", "Astore", "Ghanche"
+    "Gilgit", "Skardu", "Hunza", "Chitral", "Ghizer", "Diamer", "Astore", "Ghanche",
+    "Nagar", "Shigar", "Kharmang", "Gultari", "Roundu", "Darel", "Tangir", "Darel",
+    "Tangir", "Diamer", "Astore", "Ghanche", "Kharmang", "Shigar", "Nagar", "Hunza",
+    "Gojal", "Ishkoman", "Yasin", "Punial", "Ishkoman", "Yasin", "Punial", "Ghizer"
   ],
   "AJK": [
     "Muzaffarabad", "Mirpur", "Kotli", "Bhimber", "Rawalakot", "Bagh", "Hattian Bala", "Neelum",
-    "Sudhnuti", "Poonch", "Haveli"
+    "Sudhnuti", "Poonch", "Haveli", "Bhimber", "Samahni", "Barnala", "Chakswari", "Dadyal",
+    "Mirpur", "Kotli", "Sehnsa", "Nakyal", "Kotli", "Sehnsa", "Nakyal", "Bhimber",
+    "Samahni", "Barnala", "Chakswari", "Dadyal", "Muzaffarabad", "Hattian Bala", "Neelum",
+    "Athmuqam", "Sharda", "Kel", "Neelum", "Athmuqam", "Sharda", "Kel", "Rawalakot",
+    "Bagh", "Haveli", "Forward Kahuta", "Haveli", "Forward Kahuta", "Poonch", "Sudhnuti",
+    "Mendhar", "Poonch", "Mendhar", "Sudhnuti"
   ]
 };
 
-// Get all cities for a specific province
+// Cache for deduplicated cities
+const citiesCache: Record<string, string[]> = {};
+
+// Get all cities for a specific province (with deduplication)
 const getCitiesByProvince = (province: string): string[] => {
-  return citiesByProvince[province] || [];
+  if (citiesCache[province]) {
+    return citiesCache[province];
+  }
+  
+  const cities = citiesByProvinceRaw[province] || [];
+  const seen = new Set<string>();
+  const deduplicated = cities.filter(city => {
+    const normalized = city.trim().toLowerCase();
+    if (seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
+  
+  citiesCache[province] = deduplicated;
+  return deduplicated;
 };
 
 export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: { excludeAdminStep?: boolean; onSuccess?: () => void }) {
@@ -176,6 +234,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       majorsubject: null,
       industry: null,
       employeed: "Unemployed",
+      reason_of_unemployment: null,
       nameoforganization: null,
       designation: null,
       totalyearsofexpereince: null,
@@ -210,6 +269,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [homeCitySearch, setHomeCitySearch] = useState("");
   const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false);
+  const isTypingCityRef = useRef(false);
+  const lastSetCityValueRef = useRef<string | null>(null);
   const [sectorOtherSelected, setSectorOtherSelected] = useState(false);
   const [userAccess, setUserAccess] = useState<{
     isSuperAdmin: boolean;
@@ -414,6 +475,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       setValue("homeCity", "", { shouldValidate: false });
       setHomeCitySearch("");
       setProvinceCustomInput(false);
+      isTypingCityRef.current = false;
+      lastSetCityValueRef.current = null;
     } else if (selectedHomeCountry === "Pakistan") {
       // If switching back to Pakistan, also reset province if it's "Not applicable"
       const currentProvince = watch("province");
@@ -435,28 +498,35 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       if (currentCity && !validCities.includes(currentCity)) {
         setValue("homeCity", "");
         setHomeCitySearch("");
+        isTypingCityRef.current = false;
+        lastSetCityValueRef.current = null;
       }
     } else if (selectedHomeCountry === "Pakistan" && !selectedHomeProvince) {
       // Clear city if province is cleared
       setValue("homeCity", "");
       setHomeCitySearch("");
+      isTypingCityRef.current = false;
+      lastSetCityValueRef.current = null;
     }
   }, [selectedHomeProvince, selectedHomeCountry, selectedHomeCity, setValue]);
   
-  // Initialize homeCitySearch from form value when homeCity changes (but not during active typing)
+  // Initialize homeCitySearch from form value ONLY on mount or when province changes
+  // Never sync during typing to prevent input reset
   useEffect(() => {
-    if (selectedHomeCountry === "Pakistan" && selectedHomeCity) {
+    if (selectedHomeCountry === "Pakistan" && selectedHomeProvince && selectedHomeCity && !isTypingCityRef.current) {
       const cityStr = String(selectedHomeCity).trim();
-      // Only sync if homeCitySearch is empty or if the selectedHomeCity doesn't match current homeCitySearch
-      // This prevents overwriting user input while typing
-      if (homeCitySearch === "" || homeCitySearch !== cityStr) {
+      // Only sync if search is empty (initial load) or if it's completely different (province change)
+      if (homeCitySearch === "" || (homeCitySearch !== cityStr && lastSetCityValueRef.current !== cityStr)) {
         setHomeCitySearch(cityStr);
+        lastSetCityValueRef.current = cityStr;
       }
-    } else if (!selectedHomeCity) {
+    } else if (!selectedHomeCity && !isTypingCityRef.current && homeCitySearch !== "") {
+      // Clear search only if not typing and form value is cleared
       setHomeCitySearch("");
+      lastSetCityValueRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedHomeCity, selectedHomeCountry]);
+  }, [selectedHomeProvince]); // Only depend on province, NOT on homeCity to avoid interference
 
 
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -496,6 +566,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       "facultyname",
       "departmentname",
       "degreetitle",
+      "yearofstarting",
       "yearofending",
     ]);
     if (!academicOk) return false;
@@ -503,8 +574,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     // Validate Work Status section
     const workFieldsToValidate: Array<keyof TblAlumniForm> = ["employeed"];
     
-    // Only validate work fields if employed
-    if ((employeedVal || "").toLowerCase() === "employed") {
+    // Only validate work fields if employed or self-employed
+    if ((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") {
       workFieldsToValidate.push("industry", "nameoforganization", "designation", "totalyearsofexpereince", "workCity", "workCountry");
     }
     
@@ -513,11 +584,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       workFieldsToValidate.push("highereducationdegreetitle", "highereducationinstitute", "highereducationprogram", "workCity", "workCountry");
     }
     
+    // Validate unemployed reason if unemployed
+    if ((employeedVal || "").toLowerCase() === "unemployed") {
+      workFieldsToValidate.push("reason_of_unemployment");
+    }
+    
     const workOk = await trigger(workFieldsToValidate);
     if (!workOk) return false;
     
-    // Conditional: when employed, industry/org/designation/experience required
-    if ((employeedVal || "").toLowerCase() === "employed") {
+    // Conditional: when employed or self-employed, industry/org/designation/experience required
+    if ((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") {
       const fields: Array<keyof TblAlumniForm> = [
         "industry",
         "nameoforganization",
@@ -548,6 +624,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           setError(f, { type: "required", message: "Required" });
           return false;
         }
+      }
+    }
+    
+    // Conditional: when unemployed, validate reason of unemployment
+    if ((employeedVal || "").toLowerCase() === "unemployed") {
+      const reason = watch("reason_of_unemployment");
+      if (!reason || String(reason).trim() === "") {
+        setError("reason_of_unemployment", { type: "required", message: "Please select a reason for unemployment" });
+        return false;
       }
     }
 
@@ -914,6 +999,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.contactno && <p className="mt-1 text-xs text-red-600">Mobile number is required</p>}
             </div>
             <div>
+              <label className={labelBase}>Secondary Contact No.</label>
+              <input type="tel" className={inputBase} placeholder="Enter secondary contact number"  {...register("contactno1", { maxLength: 50 })} />
+              {errors.contactno1 && <p className="mt-1 text-xs text-red-600">Secondary contact number is not valid</p>}
+            </div>
+            <div>
               <label className={labelBase}>Personal Email *</label>
               <input type="email" className={inputBase} placeholder="eg. example@gmail.com" {...register("personalemail", { required: true, maxLength: 100 })} />
               {errors.personalemail && <p className="mt-1 text-xs text-red-600">Valid email is required</p>}
@@ -935,20 +1025,215 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     value={field.value || ""}
                   >
                     <option value="">Select</option>
-                    <option value="Pakistan">Pakistan</option>
-                    <option value="United Arab Emirates">United Arab Emirates</option>
-                    <option value="Saudi Arabia">Saudi Arabia</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Other">Other</option>
+                    {[
+                      "Afghanistan",
+                      "Albania",
+                      "Algeria",
+                      "Andorra",
+                      "Angola",
+                      "Antigua and Barbuda",
+                      "Argentina",
+                      "Armenia",
+                      "Australia",
+                      "Austria",
+                      "Azerbaijan",
+                      "Bahamas",
+                      "Bahrain",
+                      "Bangladesh",
+                      "Barbados",
+                      "Belarus",
+                      "Belgium",
+                      "Belize",
+                      "Benin",
+                      "Bhutan",
+                      "Bolivia",
+                      "Bosnia and Herzegovina",
+                      "Botswana",
+                      "Brazil",
+                      "Brunei",
+                      "Bulgaria",
+                      "Burkina Faso",
+                      "Burundi",
+                      "Côte d'Ivoire",
+                      "Cabo Verde",
+                      "Cambodia",
+                      "Cameroon",
+                      "Canada",
+                      "Central African Republic",
+                      "Chad",
+                      "Chile",
+                      "China",
+                      "Colombia",
+                      "Comoros",
+                      "Congo (Congo-Brazzaville)",
+                      "Costa Rica",
+                      "Croatia",
+                      "Cuba",
+                      "Cyprus",
+                      "Czechia (Czech Republic)",
+                      "Democratic Republic of the Congo",
+                      "Denmark",
+                      "Djibouti",
+                      "Dominica",
+                      "Dominican Republic",
+                      "Ecuador",
+                      "Egypt",
+                      "El Salvador",
+                      "Equatorial Guinea",
+                      "Eritrea",
+                      "Estonia",
+                      "Eswatini (fmr. " + "Swaziland)",
+                      "Ethiopia",
+                      "Fiji",
+                      "Finland",
+                      "France",
+                      "Gabon",
+                      "Gambia",
+                      "Georgia",
+                      "Germany",
+                      "Ghana",
+                      "Greece",
+                      "Grenada",
+                      "Guatemala",
+                      "Guinea",
+                      "Guinea-Bissau",
+                      "Guyana",
+                      "Haiti",
+                      "Holy See",
+                      "Honduras",
+                      "Hungary",
+                      "Iceland",
+                      "India",
+                      "Indonesia",
+                      "Iran",
+                      "Iraq",
+                      "Ireland",
+                      "Israel",
+                      "Italy",
+                      "Jamaica",
+                      "Japan",
+                      "Jordan",
+                      "Kazakhstan",
+                      "Kenya",
+                      "Kiribati",
+                      "Kuwait",
+                      "Kyrgyzstan",
+                      "Laos",
+                      "Latvia",
+                      "Lebanon",
+                      "Lesotho",
+                      "Liberia",
+                      "Libya",
+                      "Liechtenstein",
+                      "Lithuania",
+                      "Luxembourg",
+                      "Madagascar",
+                      "Malawi",
+                      "Malaysia",
+                      "Maldives",
+                      "Mali",
+                      "Malta",
+                      "Marshall Islands",
+                      "Mauritania",
+                      "Mauritius",
+                      "Mexico",
+                      "Micronesia",
+                      "Moldova",
+                      "Monaco",
+                      "Mongolia",
+                      "Montenegro",
+                      "Morocco",
+                      "Mozambique",
+                      "Myanmar (formerly Burma)",
+                      "Namibia",
+                      "Nauru",
+                      "Nepal",
+                      "Netherlands",
+                      "New Zealand",
+                      "Nicaragua",
+                      "Niger",
+                      "Nigeria",
+                      "North Korea",
+                      "North Macedonia",
+                      "Norway",
+                      "Oman",
+                      "Pakistan",
+                      "Palau",
+                      "Palestine State",
+                      "Panama",
+                      "Papua New Guinea",
+                      "Paraguay",
+                      "Peru",
+                      "Philippines",
+                      "Poland",
+                      "Portugal",
+                      "Qatar",
+                      "Romania",
+                      "Russia",
+                      "Rwanda",
+                      "Saint Kitts and Nevis",
+                      "Saint Lucia",
+                      "Saint Vincent and the Grenadines",
+                      "Samoa",
+                      "San Marino",
+                      "Sao Tome and Principe",
+                      "Saudi Arabia",
+                      "Senegal",
+                      "Serbia",
+                      "Seychelles",
+                      "Sierra Leone",
+                      "Singapore",
+                      "Slovakia",
+                      "Slovenia",
+                      "Solomon Islands",
+                      "Somalia",
+                      "South Africa",
+                      "South Korea",
+                      "South Sudan",
+                      "Spain",
+                      "Sri Lanka",
+                      "Sudan",
+                      "Suriname",
+                      "Sweden",
+                      "Switzerland",
+                      "Syria",
+                      "Tajikistan",
+                      "Tanzania",
+                      "Thailand",
+                      "Timor-Leste",
+                      "Togo",
+                      "Tonga",
+                      "Trinidad and Tobago",
+                      "Tunisia",
+                      "Turkey",
+                      "Turkmenistan",
+                      "Tuvalu",
+                      "Uganda",
+                      "Ukraine",
+                      "United Arab Emirates",
+                      "United Kingdom",
+                      "United States",
+                      "Uruguay",
+                      "Uzbekistan",
+                      "Vanuatu",
+                      "Venezuela",
+                      "Vietnam",
+                      "Yemen",
+                      "Zambia",
+                      "Zimbabwe",
+                      "Other"
+                    ].map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
                   </select>
                 )}
               />
               {errors.country && <p className="mt-1 text-xs text-red-600">Country is required</p>}
             </div>
             <div>
-              <label className={labelBase}>Province {selectedHomeCountry === "Pakistan" ? "*" : ""}</label>
+              <label className={labelBase}> Home Province {selectedHomeCountry === "Pakistan" ? "*" : ""}</label>
               {selectedHomeCountry === "Pakistan" ? (
                 <select 
                   className={inputBase} 
@@ -1140,38 +1425,25 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           <input 
                             type="text" 
                             className={inputBase} 
-                            value={homeCitySearch}
+                            value={homeCitySearch || ""}
                             onChange={(e) => {
-                              const value = e.target.value;
-                              setHomeCitySearch(value);
+                              const newValue = e.target.value;
+                              // CRITICAL: Update search state immediately and prevent any interference
+                              isTypingCityRef.current = true;
+                              setHomeCitySearch(newValue);
                               setShowHomeCityDropdown(true);
                               
-                              // Always update form value immediately to ensure validation works
-                              // This fixes the issue where validation runs before blur
-                              const trimmedValue = value.trim();
-                              
-                              // Check if the typed value exactly matches a city (case-insensitive)
+                              // Only update form value if exact match, otherwise wait for blur
+                              const trimmedValue = newValue.trim();
                               const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedValue.toLowerCase());
+                              
                               if (matchingCity) {
-                                // Update form value with exact match
+                                lastSetCityValueRef.current = matchingCity;
                                 field.onChange(matchingCity);
                                 setHomeCitySearch(matchingCity);
                                 setShowHomeCityDropdown(false);
-                                // Trigger validation to clear any error messages
-                                setTimeout(() => {
-                                  trigger("homeCity");
-                                }, 0);
-                              } else if (trimmedValue === "") {
-                                // Clear form value if input is empty
-                                field.onChange("");
-                              } else {
-                                // Update form value with typed value immediately
-                                // This ensures validation sees the value even if it doesn't match exactly
-                                field.onChange(trimmedValue);
-                                // Trigger validation to update error state
-                                setTimeout(() => {
-                                  trigger("homeCity");
-                                }, 0);
+                                isTypingCityRef.current = false;
+                                setTimeout(() => trigger("homeCity"), 0);
                               }
                             }}
                             onFocus={() => {
@@ -1187,12 +1459,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                               }
                               // Delay to allow dropdown click
                               setTimeout(() => {
+                                isTypingCityRef.current = false;
                                 setShowHomeCityDropdown(false);
                                 const trimmedSearch = homeCitySearch.trim();
                                 
                                 // If the typed value matches a city in the list, use it
                                 const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
                                 if (matchingCity) {
+                                  lastSetCityValueRef.current = matchingCity;
                                   field.onChange(matchingCity);
                                   setHomeCitySearch(matchingCity);
                                   // Trigger validation to clear any error messages
@@ -1200,7 +1474,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                     trigger("homeCity");
                                   }, 0);
                                 } else if (trimmedSearch === "") {
+                                  lastSetCityValueRef.current = "";
                                   field.onChange("");
+                                  setHomeCitySearch("");
                                 } else {
                                   // If typed value doesn't match exactly, accept it as-is (user might be typing a valid city not in list)
                                   // But first check if it's close to any city
@@ -1210,6 +1486,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                   );
                                   if (closeMatch && trimmedSearch.length >= 3) {
                                     // Auto-complete if close match found
+                                    lastSetCityValueRef.current = closeMatch;
                                     field.onChange(closeMatch);
                                     setHomeCitySearch(closeMatch);
                                     // Trigger validation to clear any error messages
@@ -1218,7 +1495,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                     }, 0);
                                   } else {
                                     // Accept the typed value as-is (already set in onChange, but ensure it's set)
+                                    lastSetCityValueRef.current = trimmedSearch;
                                     field.onChange(trimmedSearch);
+                                    setHomeCitySearch(trimmedSearch);
                                     // Trigger validation to update error state
                                     setTimeout(() => {
                                       trigger("homeCity");
@@ -1239,6 +1518,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                   className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                                   onMouseDown={(e) => {
                                     e.preventDefault(); // Prevent input blur
+                                    isTypingCityRef.current = false;
+                                    lastSetCityValueRef.current = city;
                                     setHomeCitySearch(city);
                                     field.onChange(city);
                                     setShowHomeCityDropdown(false);
@@ -1356,6 +1637,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </select>
               {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
             </div>
+             <div>
+              <label className={labelBase}>Year of Starting *</label>
+              <input type="number" className={inputBase} placeholder="e.g. 2025" {...register("yearofstarting", { required: true, valueAsNumber: true })} />
+              {errors.yearofstarting && <p className="mt-1 text-xs text-red-600">Year is required</p>}
+            </div>
             <div>
               <label className={labelBase}>Year of Passing Out *</label>
               <input type="number" className={inputBase} placeholder="e.g. 2025" {...register("yearofending", { required: true, valueAsNumber: true })} />
@@ -1369,10 +1655,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           <h2 className="text-lg font-semibold text-neutral-800">Work Status</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
-              <label className={labelBase}>Current Status</label>
               <div className="mt-2 flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Employed" {...register("employeed")} /> Employed
+                  <input type="radio" value="Employed" {...register("employeed")} /> Employed/Business
+                </label>
+                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                  <input type="radio" value="Self-employed" {...register("employeed")} /> Self-employed
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
                   <input type="radio" value="Pursuing Higher Education" {...register("employeed")} /> Pursuing Higher Education
@@ -1384,7 +1672,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
 
             {/* Employed Fields */}
-            {(employeedVal || "").toLowerCase() === "employed" && (
+            {((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") && (
               <>
                 {/* Sector = industry */}
                 <div>
@@ -1445,15 +1733,23 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   {errors.industry && (
                     <p className="mt-1 text-xs text-red-600">{errors.industry.message || "Sector is required"}</p>
                   )}
-                  <p className="mt-1 text-xs text-neutral-600">Maps to `industry` per schema.</p>
                 </div>
 
-                {/* Name of Organization */}
+                {/* Name of Organization / Business Name */}
                 <div>
-                  <label className={labelBase}>Name of Organization *</label>
-                  <input type="text" className={inputBase} {...register("nameoforganization", { required: true, maxLength: 100 })} />
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Name *" : "Name of Organization *"}
+                  </label>
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business name" : "Enter organization name"}
+                    {...register("nameoforganization", { required: true, maxLength: 100 })} 
+                  />
                   {errors.nameoforganization && (
-                    <p className="mt-1 text-xs text-red-600">Organization is required</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business name is required" : "Organization is required"}
+                    </p>
                   )}
                 </div>
 
@@ -1468,7 +1764,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
                 {/* Total Experience */}
                 <div>
-                  <label className={labelBase}>Total Experience *</label>
+                  <label className={labelBase}>Total Experience  *</label>
                   <input type="text" className={inputBase} placeholder="e.g. 3" {...register("totalyearsofexpereince", { required: true, maxLength: 10 })} />
                   {errors.totalyearsofexpereince && (
                     <p className="mt-1 text-xs text-red-600">Experience is required</p>
@@ -1477,33 +1773,55 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
                 {/* Official Email */}
                 <div>
-                  <label className={labelBase}>Company Official Email *</label>
-                  <input type="email" className={inputBase} {...register("officialemail", { required: true, maxLength: 100 })} />
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Email *" : "Work Email *"}
+                  </label>
+                  <input 
+                    type="email" 
+                    className={inputBase} 
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business email" : "Enter work email"}
+                    {...register("officialemail", { required: true, maxLength: 100 })} 
+                  />
                   {errors.officialemail && (
-                    <p className="mt-1 text-xs text-red-600">Company Official Email is required</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business email is required" : "Work email is required"}
+                    </p>
                   )}
                 </div>
 
                 {/* Official Phone */}
                 <div>
-                  <label className={labelBase}>Company Official Phone Number *</label>
-                  <input type="text" className={inputBase} {...register("officialnumber", { required: true, maxLength: 50 })} />
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Phone Number *" : "Work Phone Number *"}
+                  </label>
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business phone" : "Enter work phone"}
+                    {...register("officialnumber", { required: true, maxLength: 50 })} 
+                  />
                   {errors.officialnumber && (
-                    <p className="mt-1 text-xs text-red-600">Company Official Phone Number is required</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business phone number is required" : "Work phone number is required"}
+                    </p>
                   )}
                 </div>
 
                 {/* Company Address */}
                 <div className="sm:col-span-2 lg:col-span-3">
-                  <label className={labelBase}>Company Address *</label>
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Address *" : "Work Address *"}
+                  </label>
                   <textarea 
                     className={inputBase} 
                     rows={3}
-                    placeholder="Enter company address"
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business address" : "Enter work address"}
                     {...register("organization_address", { required: true, maxLength: 500 })} 
                   />
                   {errors.organization_address && (
-                    <p className="mt-1 text-xs text-red-600">Company Address is required</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business address is required" : "Work address is required"}
+                    </p>
                   )}
                 </div>
 
@@ -1576,14 +1894,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
                 <div>
                   <label className={labelBase}>Program *</label>
-                  <select className={inputBase} {...register("highereducationprogram", { required: true })}>
-                    <option value="">Select</option>
-                    <option value="MS">MS (Master of Science)</option>
-                    <option value="PhD">PhD (Doctor of Philosophy)</option>
-                  </select>
+                  <input
+                    type="text"
+                    className={inputBase}
+                    placeholder="e.g. MS (Master of Science), PhD (Doctor of Philosophy), MBA, LLM, etc"
+                    {...register("highereducationprogram", { required: "Program is required", maxLength: 100 })}
+                  />
                   {errors.highereducationprogram && (
-                    <p className="mt-1 text-xs text-red-600">Program is required</p>
+                    <p className="mt-1 text-xs text-red-600">{errors.highereducationprogram.message || "Program is required"}</p>
                   )}
+                  <p className="mt-1 text-xs text-neutral-600">
+                    Write the program name (for example: MS, MPhil, PhD, MBA, LLM, etc).
+                  </p>
                 </div>
 
                 <div>
@@ -1647,7 +1969,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <select className={inputBase} {...register("scholarship", { required: true })}>
                     <option value="">Select</option>
                     <option value="full funded scholarship">Full Funded Scholarship</option>
-                    <option value="half funded scholarship">Half Funded Scholarship</option>
+                    <option value="partially funded scholarship">Partially Funded Scholarship</option>
                     <option value="self paid">Self Paid</option>
                   </select>
                   {errors.scholarship && (
@@ -1656,21 +1978,31 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </div>
 
                 <div>
-                  <label className={labelBase}>Institute Official Email *</label>
+                  <label className={labelBase}>Institute Student Email *</label>
                   <input type="email" className={inputBase} {...register("higher_education_institute_email", { required: true, maxLength: 200 })} />
                   {errors.higher_education_institute_email && (
-                    <p className="mt-1 text-xs text-red-600">Institute Official Email is required</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className={labelBase}>Institute Official Phone Number *</label>
-                  <input type="text" className={inputBase} {...register("higher_education_intiture_number", { required: true, maxLength: 50 })} />
-                  {errors.higher_education_intiture_number && (
-                    <p className="mt-1 text-xs text-red-600">Institute Official Phone Number is required</p>
+                    <p className="mt-1 text-xs text-red-600">Institute Student Email is required</p>
                   )}
                 </div>
               </>
+            )}
+
+            {/* Unemployed Fields */}
+            {(employeedVal || "").toLowerCase() === "unemployed" && (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className={labelBase}>Reason of Unemployment *</label>
+                <select 
+                  className={inputBase} 
+                  {...register("reason_of_unemployment", { required: "Please select a reason" })}
+                >
+                  <option value="">Select reason</option>
+                  <option value="By Choice">By Choice</option>
+                  <option value="Searching for Job">Searching for Job</option>
+                </select>
+                {errors.reason_of_unemployment && (
+                  <p className="mt-1 text-xs text-red-600">{errors.reason_of_unemployment.message || "Reason is required"}</p>
+                )}
+              </div>
             )}
           </div>
         </section>

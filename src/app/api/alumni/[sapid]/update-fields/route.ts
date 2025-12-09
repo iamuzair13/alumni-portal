@@ -350,186 +350,99 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       }, { status: 200 });
     }
 
-    // Build the UPDATE query by executing individual updates in a transaction
-    // This is safer and more reliable than building a dynamic query
+    // Build a single optimized UPDATE query instead of multiple individual updates
     // Use alumniid (primary key) for WHERE clause to ensure we update the correct record
     const result = await sql.begin(async (tx) => {
-      // Execute individual UPDATE statements for each field
-      // Use alumniid for WHERE clause to handle cases where sapid or registrationno might be changed
-      if (sapidVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET sapid = ${sapidVal as string | null} WHERE alumniid = ${alumniId}`;
+      // Collect all fields that need to be updated
+      const updates: Array<[string, unknown]> = [];
+      
+      // Helper to add field to update list
+      const addUpdate = (fieldName: string, value: unknown) => {
+        if (value !== undefined) {
+          updates.push([fieldName, value]);
+        }
+      };
+      
+      // Add all fields that need updating
+      addUpdate("sapid", sapidVal);
+      addUpdate("registrationno", registrationnoVal);
+      addUpdate("alumniname", alumninameVal);
+      addUpdate("gender", genderVal);
+      addUpdate("fathername", fathernameVal);
+      addUpdate("dateofbirth", dateofbirthVal);
+      addUpdate("cnicpassport", cnicpassportVal);
+      addUpdate("maritalstatus", maritalstatusVal);
+      addUpdate("contactno", contactnoVal);
+      addUpdate("contactno1", contactno1Val);
+      addUpdate("contactno1show", contactno1showVal);
+      addUpdate("personalemail", personalemailVal);
+      addUpdate("personalemailshow", personalemailshowVal);
+      addUpdate("universityemail", universityemailVal);
+      addUpdate("officialemail", officialemailVal);
+      addUpdate("officialnumber", officialnumberVal);
+      addUpdate("work_city", workCityVal);
+      addUpdate("work_country", workCountryVal);
+      addUpdate("organization_address", organizationAddressVal);
+      addUpdate("country", countryVal);
+      addUpdate("province", provinceVal);
+      addUpdate("city", cityVal);
+      addUpdate("address", addressVal);
+      addUpdate("cgpa", cgpaVal);
+      addUpdate("employeed", employeedVal);
+      addUpdate("industry", industryVal);
+      addUpdate("nameoforganization", nameoforganizationVal);
+      addUpdate("designation", designationVal);
+      addUpdate("totalyearsofexpereince", totalyearsofexpereinceVal);
+      addUpdate("majorsubject", majorsubjectVal);
+      addUpdate("aboutme", aboutmeVal);
+      addUpdate("yearofstarting", yearofstartingVal);
+      addUpdate("yearofending", yearofendingVal);
+      addUpdate("facultyname", facultynameVal);
+      addUpdate("departmentname", departmentnameVal);
+      addUpdate("degreetitle", degreetitleVal);
+      addUpdate("campusname", campusnameVal);
+      addUpdate("datasource", datasourceVal);
+      addUpdate("alumnistatus", alumnistatusVal);
+      addUpdate("facebook", facebookVal);
+      addUpdate("instagram", instagramVal);
+      addUpdate("youtube", youtubeVal);
+      addUpdate("linkedin", linkedinVal);
+      addUpdate("degree_title", degreeTitleVal);
+      addUpdate("higher_education_institute_name", higherEducationInstituteNameVal);
+      addUpdate("higher_education_program", higherEducationProgramVal);
+      addUpdate("higher_education_institute_country", higherEducationInstituteCountryVal);
+      addUpdate("higher_education_institute_city", higherEducationInstituteCityVal);
+      addUpdate("is_scholarship", isScholarshipVal);
+      addUpdate("higher_education_institute_email", higherEducationInstituteEmailVal);
+      addUpdate("higher_education_intiture_number", higherEducationIntitureNumberVal);
+      addUpdate("association_id", associationIdVal);
+      addUpdate("verify", verifyVal);
+      addUpdate("lasttimelogin", lasttimeloginVal);
+      addUpdate("logincount", logincountVal);
+      addUpdate("createddatetime", createddatetimeVal);
+      addUpdate("academicsession", academicsessionVal);
+      addUpdate("father_cnic", fatherCnicVal);
+      
+      // Execute single UPDATE query if there are fields to update
+      if (updates.length > 0) {
+        // Build SET clause with parameterized values
+        const setClause = updates.map(([field], idx) => `${field} = $${idx + 1}`).join(", ");
+        const values = updates.map(([, val]) => val) as (string | number | boolean | null)[];
+        
+        // Execute single UPDATE query using tx.unsafe for dynamic queries
+        const updateQuery = `UPDATE public.tbl_alumni SET ${setClause} WHERE alumniid = $${updates.length + 1} RETURNING alumniid, sapid, registrationno`;
+        await tx.unsafe(updateQuery, [...values, alumniId] as (string | number | boolean | null)[]);
       }
-      if (registrationnoVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET registrationno = ${registrationnoVal as string | null} WHERE alumniid = ${alumniId}`;
+      
+      // Handle password update separately (if needed) - keep separate for security/logging
+      if (passwordVal !== undefined) {
+        console.log("[API] Updating password in database (first 20 chars):", passwordVal.substring(0, 20));
+        await tx`UPDATE public.tbl_alumni SET password = ${passwordVal as string} WHERE alumniid = ${alumniId}`;
+        // Verify the update
+        const verify = await tx`SELECT password FROM public.tbl_alumni WHERE alumniid = ${alumniId} LIMIT 1`;
+        console.log("[API] Password after update (first 20 chars):", verify[0]?.password ? String(verify[0].password).substring(0, 20) : "NULL");
       }
-      if (alumninameVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET alumniname = ${alumninameVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (genderVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET gender = ${genderVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (fathernameVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET fathername = ${fathernameVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (dateofbirthVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET dateofbirth = ${dateofbirthVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (cnicpassportVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET cnicpassport = ${cnicpassportVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (maritalstatusVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET maritalstatus = ${maritalstatusVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (contactnoVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET contactno = ${contactnoVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (contactno1Val !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET contactno1 = ${contactno1Val as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (contactno1showVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET contactno1show = ${contactno1showVal as boolean | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (personalemailVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET personalemail = ${personalemailVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (personalemailshowVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET personalemailshow = ${personalemailshowVal as boolean | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (universityemailVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET universityemail = ${universityemailVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (officialemailVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET officialemail = ${officialemailVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (officialnumberVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET officialnumber = ${officialnumberVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (workCityVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET work_city = ${workCityVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (workCountryVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET work_country = ${workCountryVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (organizationAddressVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET organization_address = ${organizationAddressVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (countryVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET country = ${countryVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (provinceVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET province = ${provinceVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (cityVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET city = ${cityVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (addressVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET address = ${addressVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (cgpaVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET cgpa = ${cgpaVal as number | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (employeedVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET employeed = ${employeedVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (industryVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET industry = ${industryVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (nameoforganizationVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET nameoforganization = ${nameoforganizationVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (designationVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET designation = ${designationVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (totalyearsofexpereinceVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET totalyearsofexpereince = ${totalyearsofexpereinceVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (majorsubjectVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET majorsubject = ${majorsubjectVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (aboutmeVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET aboutme = ${aboutmeVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (yearofstartingVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET yearofstarting = ${yearofstartingVal as number | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (yearofendingVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET yearofending = ${yearofendingVal as number | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (facultynameVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET facultyname = ${facultynameVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (departmentnameVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET departmentname = ${departmentnameVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (degreetitleVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET degreetitle = ${degreetitleVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (campusnameVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET campusname = ${campusnameVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (datasourceVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET datasource = ${datasourceVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (alumnistatusVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET alumnistatus = ${alumnistatusVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (facebookVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET facebook = ${facebookVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (instagramVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET instagram = ${instagramVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (youtubeVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET youtube = ${youtubeVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (linkedinVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET linkedin = ${linkedinVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (degreeTitleVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET degree_title = ${degreeTitleVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (higherEducationInstituteNameVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET higher_education_institute_name = ${higherEducationInstituteNameVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (higherEducationProgramVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET higher_education_program = ${higherEducationProgramVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (higherEducationInstituteCountryVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET higher_education_institute_country = ${higherEducationInstituteCountryVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (higherEducationInstituteCityVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET higher_education_institute_city = ${higherEducationInstituteCityVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (isScholarshipVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET is_scholarship = ${isScholarshipVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (higherEducationInstituteEmailVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET higher_education_institute_email = ${higherEducationInstituteEmailVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (higherEducationIntitureNumberVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET higher_education_intiture_number = ${higherEducationIntitureNumberVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (associationIdVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET association_id = ${associationIdVal as number | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (verifyVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET verify = ${verifyVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (lasttimeloginVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET lasttimelogin = ${lasttimeloginVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (logincountVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET logincount = ${logincountVal as number | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (createddatetimeVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET createddatetime = ${createddatetimeVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (academicsessionVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET academicsession = ${academicsessionVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
-      if (fatherCnicVal !== undefined) {
-        await tx`UPDATE public.tbl_alumni SET father_cnic = ${fatherCnicVal as string | null} WHERE alumniid = ${alumniId}`;
-      }
+      
       // Update chapters in alumni_chapter table
       if (chapter1IdVal !== undefined || chapter2IdVal !== undefined || chapter3IdVal !== undefined) {
         // Check if alumni_chapter record exists
@@ -564,13 +477,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
             VALUES (${alumniId}, ${finalChapter1}, ${finalChapter2}, ${finalChapter3})
           `;
         }
-      }
-      if (passwordVal !== undefined) {
-        console.log("[API] Updating password in database (first 20 chars):", passwordVal.substring(0, 20));
-        await tx`UPDATE public.tbl_alumni SET password = ${passwordVal as string} WHERE alumniid = ${alumniId}`;
-        // Verify the update
-        const verify = await tx`SELECT password FROM public.tbl_alumni WHERE alumniid = ${alumniId} LIMIT 1`;
-        console.log("[API] Password after update (first 20 chars):", verify[0]?.password ? String(verify[0].password).substring(0, 20) : "NULL");
       }
       
       // Return the updated record using alumniid (primary key)
