@@ -76,6 +76,7 @@ export type TblAlumniForm = {
   linkedin: string | null;
   datasource: string | null;
   alumnistatus: string | null;
+  category: string | null;
   chapters: number[] | null; // Array of selected chapter IDs (up to 3)
 };
 
@@ -85,84 +86,63 @@ const labelBase = "block text-sm text-neutral-800";
 // Constant list of Pakistan provinces for validation
 const PAKISTAN_PROVINCES = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad", "GB", "AJK"];
 
-// Pakistan cities organized by province
+// Pakistan cities organized by province (sorted alphabetically)
 const citiesByProvinceRaw: Record<string, string[]> = {
   "Punjab": [
-    "Lahore", "Rawalpindi", "Faisalabad", "Multan", "Sialkot", "Gujranwala", "Bahawalpur", "Sargodha",
-    "Sheikhupura", "Jhang", "Rahim Yar Khan", "Gujrat", "Kasur", "Chiniot", "Hafizabad", "Mianwali",
-    "Chakwal", "Attock", "Vehari", "Kamoke", "Burewala", "Sahiwal", "Okara", "Dera Ghazi Khan",
-    "Gojra", "Chishtian", "Khanewal", "Jhelum", "Muzaffargarh", "Narowal", "Pakpattan", "Toba Tek Singh",
-    "Jaranwala", "Hasilpur", "Ahmadpur East", "Kot Addu", "Wazirabad", "Daska", "Mandi Bahauddin",
-    "Muridke", "Mian Channun", "Bhakkar", "Khushab", "Jauharabad", "Layyah", "Dipalpur", "Shakargarh",
-    "Sadiqabad", "Kot Radha Kishan", "Hujra Shah Muqeem", "Kabirwala", "Mananwala", "Renala Khurd",
-    "Pattoki", "Kot Momin", "Haroonabad", "Kahror Pakka", "Nankana Sahib", "Pasrur", "Gujar Khan",
-    "Kot Abdul Malik", "Hassan Abdal", "Kamalia", "Uch Sharif", "Lodhran", "Malisi", "Dunyapur",
-    "Shahkot", "Mamu Kanjan", "Chunian", "Kot Adu", "Pindi Bhattian", "Fateh Jang", "Sarai Alamgir",
-    "Basirpur", "Hafizabad", "Chak Jhumra", "Narowal", "Kundian", "Ahmadpur Sial", "Jalalpur Jattan",
-    "Dina", "Sohawa", "Mandi Bahauddin", "Kotli Loharan", "Dera Ghazi Khan", "Rajanpur", "Layyah",
-    "Muzaffargarh", "Kot Addu", "Taunsa", "Dera Ghazi Khan", "Rajanpur", "Jampur", "Fazilpur",
-    "Kot Mithan", "Rojhan", "Dera Ghazi Khan", "Rajanpur", "Jampur", "Fazilpur", "Kot Mithan", "Rojhan"
+    "Ahmadpur East", "Ahmadpur Sial", "Arifwala", "Attock", "Bahawalnagar", "Bahawalpur", "Bhakkar",
+    "Burewala", "Chak Jhumra", "Chakwal", "Chiniot", "Chishtian", "Chunian", "Daska", "Dera Ghazi Khan",
+    "Dina", "Dipalpur", "Dunyapur", "Faisalabad", "Fateh Jang", "Gojra", "Gujar Khan", "Gujranwala",
+    "Gujrat", "Hafizabad", "Haroonabad", "Hassan Abdal", "Hasilpur", "Hujra Shah Muqeem", "Jalalpur Jattan",
+    "Jampur", "Jaranwala", "Jauharabad", "Jhang", "Jhelum", "Kabirwala", "Kahror Pakka", "Kamalia",
+    "Kamoke", "Kasur", "Khanewal", "Khushab", "Kot Abdul Malik", "Kot Addu", "Kot Mithan", "Kot Momin",
+    "Kot Radha Kishan", "Kotli Loharan", "Kundian", "Lahore", "Layyah", "Lodhran", "Malisi", "Mamu Kanjan",
+    "Mandi Bahauddin", "Mananwala", "Mian Channun", "Mianwali", "Multan", "Muridke", "Muzaffargarh",
+    "Nankana Sahib", "Narowal", "Okara", "Pakpattan", "Pasrur", "Pattoki", "Pindi Bhattian", "Rahim Yar Khan",
+    "Rajanpur", "Renala Khurd", "Sadiqabad", "Sahiwal", "Sargodha", "Sarai Alamgir", "Shakargarh", "Shahkot",
+    "Sheikhupura", "Sialkot", "Sohawa", "Toba Tek Singh", "Taunsa", "Uch Sharif", "Vehari", "Wazirabad"
   ],
   "Sindh": [
-    "Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Kotri", "Khanpur", "Jacobabad",
-    "Shikarpur", "Mirpur Khas", "Tando Allahyar", "Dadu", "Badin", "Thatta", "Khairpur", "Sanghar",
-    "Umerkot", "Ghotki", "Naushahro Feroze", "Tando Muhammad Khan", "Matiari", "Jamshoro",
-    "Sehwan", "Hala", "Nawabshah", "Moro", "Kandhkot", "Kashmore", "Ghotki", "Daharki",
-    "Mehrabpur", "Rohri", "Khairpur Nathan Shah", "Khipro", "Sanghar", "Umerkot", "Mithi",
-    "Diplo", "Islamkot", "Nagarparkar", "Chachro", "Vik", "Kunri", "Samaro", "Umerkot",
-    "Kot Ghulam Muhammad", "Kunri", "Samaro", "Umerkot", "Kot Ghulam Muhammad", "Digri",
-    "Hala", "Matiari", "Hala", "Matiari", "Tando Adam", "Shahdadpur", "Sanghar", "Khipro",
-    "Nawabshah", "Sakrand", "Qazi Ahmad", "Bhiria", "Kandiaro", "Morro", "Kandiaro", "Morro"
+    "Badin", "Bhiria", "Chachro", "Dadu", "Daharki", "Digri", "Ghotki", "Hala", "Hyderabad", "Islamkot",
+    "Jacobabad", "Jamshoro", "Kandhkot", "Kandiaro", "Karachi", "Kashmore", "Khairpur", "Khairpur Nathan Shah",
+    "Khipro", "Kot Ghulam Muhammad", "Kotri", "Kunri", "Larkana", "Matiari", "Mehrabpur", "Mirpur Khas",
+    "Mithi", "Moro", "Nagarparkar", "Naushahro Feroze", "Nawabshah", "Qazi Ahmad", "Rohri", "Sakrand",
+    "Samaro", "Sanghar", "Sehwan", "Shahdadpur", "Shikarpur", "Sukkur", "Tando Adam", "Tando Allahyar",
+    "Tando Muhammad Khan", "Thatta", "Umerkot", "Vik"
   ],
   "KPK": [
-    "Peshawar", "Mardan", "Mingora", "Kohat", "Nowshera", "Abbottabad", "Mansehra", "Battagram",
-    "Haripur", "Dera Ismail Khan", "Bannu", "Swabi", "Charsadda", "Pabbi", "Barikot", "Daggar",
-    "Timergara", "Batkhela", "Tank", "Lakki Marwat", "Kulachi", "Tangi", "Takht-i-Bahi",
-    "Chitral", "Dir", "Buner", "Shangla", "Swat", "Malakand", "Lower Dir", "Upper Dir",
-    "Bajaur", "Mohmand", "Khyber", "Orakzai", "Kurram", "North Waziristan", "South Waziristan",
-    "Hangu", "Karak", "Bannu", "Lakki Marwat", "Tank", "Dera Ismail Khan", "Kulachi",
-    "Paharpur", "Paroa", "Kulachi", "Paharpur", "Paroa", "Gomal", "Jandola", "Makeen",
-    "Razmak", "Wana", "Sararogha", "Ladha", "Sarwakai", "Tiarza", "Spinkai Raghzai", "Kaniguram",
-    "Shakai", "Tank", "Jandola", "Gomal", "Makeen", "Razmak", "Wana", "Sararogha"
+    "Abbottabad", "Bajaur", "Bannu", "Barikot", "Battagram", "Batkhela", "Buner", "Charsadda", "Chitral",
+    "Daggar", "Dera Ismail Khan", "Dir", "Gomal", "Hangu", "Haripur", "Jandola", "Kaniguram", "Karak",
+    "Khyber", "Kohat", "Kulachi", "Lakki Marwat", "Lower Dir", "Malakand", "Mardan", "Mansehra", "Makeen",
+    "Mohmand", "Mingora", "North Waziristan", "Nowshera", "Orakzai", "Pabbi", "Paharpur", "Paroa", "Peshawar",
+    "Razmak", "Sararogha", "Sarwakai", "Shakai", "Shangla", "South Waziristan", "Spinkai Raghzai", "Swabi",
+    "Swat", "Takht-i-Bahi", "Tangi", "Tank", "Timergara", "Tiarza", "Upper Dir", "Wana"
   ],
   "Balochistan": [
-    "Quetta", "Turbat", "Gwadar", "Zhob", "Chaman", "Sibi", "Khuzdar", "Kalat", "Mastung",
-    "Loralai", "Dera Murad Jamali", "Hub", "Usta Muhammad", "Surab", "Nushki", "Panjgur",
-    "Turbat", "Gwadar", "Pasni", "Ormara", "Jiwani", "Turbat", "Gwadar", "Pasni", "Ormara",
-    "Jiwani", "Turbat", "Gwadar", "Pasni", "Ormara", "Jiwani", "Kharan", "Washuk", "Awaran",
-    "Lasbela", "Hub", "Uthal", "Bela", "Winder", "Uthal", "Bela", "Winder", "Khuzdar",
-    "Kalat", "Mastung", "Surab", "Nushki", "Chagai", "Dalbandin", "Taftan", "Nok Kundi",
-    "Chagai", "Dalbandin", "Taftan", "Nok Kundi", "Zhob", "Qila Saifullah", "Musakhel",
-    "Barkhan", "Loralai", "Duki", "Musakhel", "Barkhan", "Loralai", "Duki", "Kohlu",
-    "Dera Bugti", "Sibi", "Ziarat", "Harnai", "Sibi", "Ziarat", "Harnai", "Nasirabad",
-    "Jaffarabad", "Dera Murad Jamali", "Usta Muhammad", "Jhal Magsi", "Kachhi", "Bolan",
-    "Jhal Magsi", "Kachhi", "Bolan", "Killa Abdullah", "Chaman", "Gulistan", "Qilla Abdullah",
-    "Chaman", "Gulistan", "Pishin", "Killa Saifullah", "Sherani", "Zhob", "Qila Saifullah"
+    "Awaran", "Bela", "Barkhan", "Chagai", "Chaman", "Dalbandin", "Dera Bugti", "Dera Murad Jamali",
+    "Duki", "Ghizer", "Gulistan", "Gwadar", "Harnai", "Hub", "Jaffarabad", "Jhal Magsi", "Jiwani",
+    "Kachhi", "Kalat", "Kharan", "Khuzdar", "Killa Abdullah", "Killa Saifullah", "Kohlu", "Lasbela",
+    "Loralai", "Mastung", "Musakhel", "Nasirabad", "Nok Kundi", "Nushki", "Ormara", "Panjgur", "Pasni",
+    "Pishin", "Qila Saifullah", "Quetta", "Sherani", "Sibi", "Surab", "Taftan", "Turbat", "Usta Muhammad",
+    "Uthal", "Washuk", "Winder", "Ziarat", "Zhob"
   ],
   "Islamabad": [
     "Islamabad"
   ],
   "GB": [
-    "Gilgit", "Skardu", "Hunza", "Chitral", "Ghizer", "Diamer", "Astore", "Ghanche",
-    "Nagar", "Shigar", "Kharmang", "Gultari", "Roundu", "Darel", "Tangir", "Darel",
-    "Tangir", "Diamer", "Astore", "Ghanche", "Kharmang", "Shigar", "Nagar", "Hunza",
-    "Gojal", "Ishkoman", "Yasin", "Punial", "Ishkoman", "Yasin", "Punial", "Ghizer"
+    "Astore", "Chitral", "Darel", "Diamer", "Ghanche", "Ghizer", "Gilgit", "Gultari", "Gojal", "Hunza",
+    "Ishkoman", "Kharmang", "Nagar", "Punial", "Roundu", "Shigar", "Skardu", "Tangir", "Yasin"
   ],
   "AJK": [
-    "Muzaffarabad", "Mirpur", "Kotli", "Bhimber", "Rawalakot", "Bagh", "Hattian Bala", "Neelum",
-    "Sudhnuti", "Poonch", "Haveli", "Bhimber", "Samahni", "Barnala", "Chakswari", "Dadyal",
-    "Mirpur", "Kotli", "Sehnsa", "Nakyal", "Kotli", "Sehnsa", "Nakyal", "Bhimber",
-    "Samahni", "Barnala", "Chakswari", "Dadyal", "Muzaffarabad", "Hattian Bala", "Neelum",
-    "Athmuqam", "Sharda", "Kel", "Neelum", "Athmuqam", "Sharda", "Kel", "Rawalakot",
-    "Bagh", "Haveli", "Forward Kahuta", "Haveli", "Forward Kahuta", "Poonch", "Sudhnuti",
-    "Mendhar", "Poonch", "Mendhar", "Sudhnuti"
+    "Athmuqam", "Bagh", "Barnala", "Bhimber", "Chakswari", "Dadyal", "Forward Kahuta", "Hattian Bala",
+    "Haveli", "Kel", "Kotli", "Mendhar", "Mirpur", "Muzaffarabad", "Nakyal", "Neelum", "Poonch",
+    "Rawalakot", "Samahni", "Sehnsa", "Sharda", "Sudhnuti"
   ]
 };
 
 // Cache for deduplicated cities
 const citiesCache: Record<string, string[]> = {};
 
-// Get all cities for a specific province (with deduplication)
+// Get all cities for a specific province (with deduplication and alphabetical sorting)
 const getCitiesByProvince = (province: string): string[] => {
   if (citiesCache[province]) {
     return citiesCache[province];
@@ -179,8 +159,11 @@ const getCitiesByProvince = (province: string): string[] => {
     return true;
   });
   
-  citiesCache[province] = deduplicated;
-  return deduplicated;
+  // Sort cities alphabetically
+  const sorted = deduplicated.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+  
+  citiesCache[province] = sorted;
+  return sorted;
 };
 
 export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: { excludeAdminStep?: boolean; onSuccess?: () => void }) {
@@ -255,6 +238,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       linkedin: null,
       datasource: null,
       alumnistatus: null,
+      category: null,
       highereducationdegreetitle: null,
       highereducationinstitute: null,
       highereducationprogram: null,
@@ -337,7 +321,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const employeedVal = (watch("employeed") || "Unemployed") as string;
   const selectedFaculty = watch("facultyname") || "";
   const selectedDepartment = watch("departmentname") || "";
-  const selectedHomeCountry = watch("homeCountry") || "";
+  const selectedHomeCountry = watch("country") || "";
   const selectedHomeProvince = watch("province") || "";
   const selectedHomeCity = watch("homeCity") || "";
   
@@ -467,6 +451,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
   }, [employeedVal]);
 
+  // Sync country to homeCountry for form submission
+  useEffect(() => {
+    const currentCountry = watch("country");
+    if (currentCountry) {
+      setValue("homeCountry", currentCountry, { shouldValidate: false });
+    }
+  }, [selectedHomeCountry, setValue, watch]);
+
   // Reset home province and city when home country changes
   useEffect(() => {
     if (selectedHomeCountry && selectedHomeCountry !== "Pakistan") {
@@ -487,7 +479,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     } else {
       setProvinceCustomInput(false);
     }
-  }, [selectedHomeCountry, setValue, watch]);
+  }, [selectedHomeCountry, setValue, watch, homeProvinceOptions]);
   
   // Reset home city when province changes
   useEffect(() => {
@@ -1232,12 +1224,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               />
               {errors.country && <p className="mt-1 text-xs text-red-600">Country is required</p>}
             </div>
-            <div>
-              <label className={labelBase}> Home Province {selectedHomeCountry === "Pakistan" ? "*" : ""}</label>
-              {selectedHomeCountry === "Pakistan" ? (
+            {selectedHomeCountry === "Pakistan" && (
+              <div>
+                <label className={labelBase}> Home Province *</label>
                 <select 
                   className={inputBase} 
-                  {...register("province", { required: selectedHomeCountry === "Pakistan" })}
+                  {...register("province", { required: true })}
                   key={`province-${selectedHomeCountry || "none"}`}
                 > 
                   <option value="">Select</option>
@@ -1247,153 +1239,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     </option>
                   ))}
                 </select>
-              ) : selectedHomeCountry && selectedHomeCountry !== "" && selectedHomeCountry !== "Select" ? (
-                <>
-                  <Controller
-                    name="province"
-                    control={control}
-                    defaultValue=""
-                    rules={{ 
-                      validate: (value) => {
-                        // Province is required - must be either "Not applicable" or a custom value
-                        if (!value || String(value).trim() === "") {
-                          return "Please select 'Not applicable' or specify a province";
-                        }
-                        return true;
-                      },
-                      maxLength: 50
-                    }}
-                    render={({ field }) => {
-                      // Get current value from field
-                      const currentValue = String(field.value || "").trim();
-                      // Check if current value is a Pakistan province using the constant list
-                      const isPakistanProvince = currentValue && PAKISTAN_PROVINCES.includes(currentValue);
-                      
-                      // If country is not Pakistan but province is a Pakistan province, force reset
-                      if (selectedHomeCountry && selectedHomeCountry !== "Pakistan" && isPakistanProvince) {
-                        // Reset immediately if it's a Pakistan province
-                        if (field.value !== "" && field.value !== null) {
-                          field.onChange("");
-                          setProvinceCustomInput(false);
-                        }
-                        // Return early with empty state
-                        return (
-                          <>
-                            <select 
-                              className={inputBase} 
-                              value=""
-                              onChange={(e) => {
-                                if (e.target.value === "Not applicable") {
-                                  setProvinceCustomInput(false);
-                                  field.onChange("Not applicable");
-                                } else if (e.target.value === "Specify province") {
-                                  setProvinceCustomInput(true);
-                                  field.onChange("");
-                                } else {
-                                  setProvinceCustomInput(false);
-                                  field.onChange("");
-                                }
-                              }}
-                              key={`province-select-${selectedHomeCountry || "none"}`}
-                            > 
-                              <option value="">Select</option>
-                              <option value="Not applicable">Not applicable</option>
-                              <option value="Specify province">Specify province</option>
-                            </select>
-                            {provinceCustomInput && (
-                              <input 
-                                type="text" 
-                                className={`${inputBase} mt-2`}
-                                placeholder="Enter province/state"
-                                value=""
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  field.onChange(val);
-                                  if (val.trim() !== "") {
-                                    setProvinceCustomInput(true);
-                                  } else {
-                                    setProvinceCustomInput(false);
-                                  }
-                                }}
-                                maxLength={50}
-                              />
-                            )}
-                          </>
-                        );
-                      }
-                      
-                      // Normal flow for non-Pakistan countries
-                      const isNotApplicable = currentValue === "Not applicable";
-                      const hasCustomValue = currentValue && currentValue !== "Not applicable" && currentValue !== "" && !isPakistanProvince;
-                      
-                      // Sync provinceCustomInput state with field value
-                      if (hasCustomValue && !provinceCustomInput) {
-                        setProvinceCustomInput(true);
-                      } else if ((isNotApplicable || !currentValue || (isPakistanProvince && selectedHomeCountry !== "Pakistan")) && provinceCustomInput) {
-                        setProvinceCustomInput(false);
-                      }
-                      
-                      return (
-                        <>
-                          <select 
-                            className={inputBase} 
-                            value={isNotApplicable ? "Not applicable" : (hasCustomValue ? "" : "")}
-                            onChange={(e) => {
-                              if (e.target.value === "Not applicable") {
-                                setProvinceCustomInput(false);
-                                field.onChange("Not applicable");
-                              } else if (e.target.value === "Specify province") {
-                                setProvinceCustomInput(true);
-                                field.onChange("");
-                              } else {
-                                setProvinceCustomInput(false);
-                                field.onChange("");
-                              }
-                            }}
-                            key={`province-select-${selectedHomeCountry || "none"}`}
-                          > 
-                            <option value="">Select</option>
-                            <option value="Not applicable">Not applicable</option>
-                            <option value="Specify province">Specify province</option>
-                          </select>
-                          {(provinceCustomInput || hasCustomValue) && (
-                            <input 
-                              type="text" 
-                              className={`${inputBase} mt-2`}
-                              placeholder="Enter province/state"
-                              value={hasCustomValue ? String(field.value || "") : ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                field.onChange(val);
-                                if (val.trim() !== "") {
-                                  setProvinceCustomInput(true);
-                                } else {
-                                  setProvinceCustomInput(false);
-                                }
-                              }}
-                              maxLength={50}
-                            />
-                          )}
-                        </>
-                      );
-                    }}
-                  />
-                </>
-              ) : (
-                <input 
-                  type="text" 
-                  className={inputBase} 
-                  placeholder="Enter province/state"
-                  {...register("province", { maxLength: 50 })} 
-                />
-              )}
-              {errors.province && selectedHomeCountry === "Pakistan" && (
-                <p className="mt-1 text-xs text-red-600">Province is required</p>
-              )}
-              {errors.province && selectedHomeCountry !== "Pakistan" && provinceCustomInput && (
-                <p className="mt-1 text-xs text-red-600">{errors.province.message || "Province is required"}</p>
-              )}
-            </div>
+                {errors.province && (
+                  <p className="mt-1 text-xs text-red-600">Province is required</p>
+                )}
+              </div>
+            )}
             <div className="relative">
               <label className={labelBase}>Home City *</label>
               {selectedHomeCountry === "Pakistan" ? (
@@ -1428,19 +1278,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                             value={homeCitySearch || ""}
                             onChange={(e) => {
                               const newValue = e.target.value;
-                              // CRITICAL: Update search state immediately and prevent any interference
                               isTypingCityRef.current = true;
                               setHomeCitySearch(newValue);
                               setShowHomeCityDropdown(true);
                               
-                              // Only update form value if exact match, otherwise wait for blur
+                              // Always update form value immediately to allow free text entry
+                              field.onChange(newValue);
+                              lastSetCityValueRef.current = newValue;
+                              
+                              // If exact match found, close dropdown
                               const trimmedValue = newValue.trim();
                               const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedValue.toLowerCase());
-                              
                               if (matchingCity) {
-                                lastSetCityValueRef.current = matchingCity;
-                                field.onChange(matchingCity);
-                                setHomeCitySearch(matchingCity);
                                 setShowHomeCityDropdown(false);
                                 isTypingCityRef.current = false;
                                 setTimeout(() => trigger("homeCity"), 0);
@@ -1463,52 +1312,41 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                                 setShowHomeCityDropdown(false);
                                 const trimmedSearch = homeCitySearch.trim();
                                 
-                                // If the typed value matches a city in the list, use it
-                                const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
-                                if (matchingCity) {
-                                  lastSetCityValueRef.current = matchingCity;
-                                  field.onChange(matchingCity);
-                                  setHomeCitySearch(matchingCity);
-                                  // Trigger validation to clear any error messages
-                                  setTimeout(() => {
-                                    trigger("homeCity");
-                                  }, 0);
-                                } else if (trimmedSearch === "") {
+                                // If empty, clear the field
+                                if (trimmedSearch === "") {
                                   lastSetCityValueRef.current = "";
                                   field.onChange("");
                                   setHomeCitySearch("");
                                 } else {
-                                  // If typed value doesn't match exactly, accept it as-is (user might be typing a valid city not in list)
-                                  // But first check if it's close to any city
-                                  const closeMatch = homeProvinceCities.find(c => 
-                                    c.toLowerCase().startsWith(trimmedSearch.toLowerCase()) ||
-                                    trimmedSearch.toLowerCase().startsWith(c.toLowerCase())
-                                  );
-                                  if (closeMatch && trimmedSearch.length >= 3) {
-                                    // Auto-complete if close match found
-                                    lastSetCityValueRef.current = closeMatch;
-                                    field.onChange(closeMatch);
-                                    setHomeCitySearch(closeMatch);
-                                    // Trigger validation to clear any error messages
-                                    setTimeout(() => {
-                                      trigger("homeCity");
-                                    }, 0);
+                                  // Accept whatever was typed (could be from list or custom)
+                                  // Normalize: if exact match exists, use the normalized version from list
+                                  const exactMatch = homeProvinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
+                                  if (exactMatch) {
+                                    lastSetCityValueRef.current = exactMatch;
+                                    field.onChange(exactMatch);
+                                    setHomeCitySearch(exactMatch);
                                   } else {
-                                    // Accept the typed value as-is (already set in onChange, but ensure it's set)
+                                    // Accept custom typed value as-is
                                     lastSetCityValueRef.current = trimmedSearch;
                                     field.onChange(trimmedSearch);
                                     setHomeCitySearch(trimmedSearch);
-                                    // Trigger validation to update error state
-                                    setTimeout(() => {
-                                      trigger("homeCity");
-                                    }, 0);
                                   }
+                                  // Trigger validation
+                                  setTimeout(() => {
+                                    trigger("homeCity");
+                                  }, 0);
                                 }
                               }, 200);
                             }}
-                            placeholder={`Type to search cities in ${selectedHomeProvince}...`}
+                            placeholder={`Select from list or type custom city name...`}
                             disabled={!selectedHomeProvince}
+                            list="home-city-datalist"
                           />
+                          <datalist id="home-city-datalist">
+                            {homeProvinceCities.map((city) => (
+                              <option key={city} value={city} />
+                            ))}
+                          </datalist>
                           {showHomeCityDropdown && selectedHomeProvince && filteredHomeCities.length > 0 && (
                             <div className="home-city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                               {filteredHomeCities.map((city) => (
@@ -1536,7 +1374,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           )}
                           {showHomeCityDropdown && selectedHomeProvince && filteredHomeCities.length === 0 && homeCitySearch.trim() && (
                             <div className="home-city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-sm text-gray-500">
-                              No cities found matching &quot;{homeCitySearch}&quot;
+                              No cities found matching &quot;{homeCitySearch}&quot;. You can use your typed city name.
                             </div>
                           )}
                         </>
@@ -1638,7 +1476,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
             </div>
              <div>
-              <label className={labelBase}>Year of Starting *</label>
+              <label className={labelBase}>Year of Admission *</label>
               <input type="number" className={inputBase} placeholder="e.g. 2025" {...register("yearofstarting", { required: true, valueAsNumber: true })} />
               {errors.yearofstarting && <p className="mt-1 text-xs text-red-600">Year is required</p>}
             </div>
@@ -1824,7 +1662,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     </p>
                   )}
                 </div>
-
                 {/* Work City/Country */}
                 <div>
                   <label className={labelBase}>Work City *</label>
@@ -2139,12 +1976,25 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               <p className="ml-2 text-xs text-neutral-600">Stored as a string flag on server (Yes/No).</p>
             </div>
             <div>
-              <label className={labelBase}>Alumni Category</label>
+              <label className={labelBase}>Alumni Status</label>
               <select className={inputBase} {...register("alumnistatus")}> 
                 <option value="">Select</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="Blocked">Blocked</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelBase}>Alumni Category</label>
+              <select className={inputBase} {...register("category")}> 
+                <option value="">Select</option>
+                <option value="A+">A+</option>
+                <option value="A">A</option>
+                <option value="B+">B+</option>
+                <option value="B">B</option>
+                <option value="C+">C+</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
               </select>
             </div>
           </div>
