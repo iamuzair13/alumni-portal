@@ -6,6 +6,7 @@ import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
 import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departments";
+import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import * as XLSX from "xlsx";
 
 type MembershipFilter = "all" | "members" | "non-members";
@@ -125,6 +126,8 @@ export const AlumniAssociationTab: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // Filter states - arrays for multi-select
   const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
@@ -283,27 +286,90 @@ export const AlumniAssociationTab: React.FC = () => {
   const total = paginatedData?.total ?? 0;
   const totalPages = paginatedData?.totalPages ?? 1;
 
-  // Client-side search filtering (server already handles pagination)
+  // Handle sorting
+  const handleSort = useCallback((field: string) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new field with ascending direction
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }, [sortField, sortDirection]);
+
+  // Client-side search filtering and sorting (server already handles pagination)
   const filteredItems = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
-    if (!q) return items;
-    return items.filter((item) =>
-      item.sapid?.toLowerCase().includes(q) ||
-      item.registrationNo?.toLowerCase().includes(q) ||
-      item.name?.toLowerCase().includes(q) ||
-      item.email?.toLowerCase().includes(q) ||
-      item.department?.toLowerCase().includes(q) ||
-      item.faculty?.toLowerCase().includes(q) ||
-      item.associationTitle?.toLowerCase().includes(q)
-    );
-  }, [items, debouncedQuery]);
+    let filtered = items;
+    
+    // Apply search filter
+    if (q) {
+      filtered = items.filter((item) =>
+        item.sapid?.toLowerCase().includes(q) ||
+        item.registrationNo?.toLowerCase().includes(q) ||
+        item.name?.toLowerCase().includes(q) ||
+        item.email?.toLowerCase().includes(q) ||
+        item.department?.toLowerCase().includes(q) ||
+        item.faculty?.toLowerCase().includes(q) ||
+        item.associationTitle?.toLowerCase().includes(q)
+      );
+    }
+    
+    // Apply sorting
+    if (sortField) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: string = "";
+        let bValue: string = "";
+        
+        switch (sortField) {
+          case "sapId":
+            aValue = (a.sapid || a.registrationNo || "").trim().toLowerCase();
+            bValue = (b.sapid || b.registrationNo || "").trim().toLowerCase();
+            break;
+          case "name":
+            aValue = (a.name || "").trim().toLowerCase();
+            bValue = (b.name || "").trim().toLowerCase();
+            break;
+          case "email":
+            aValue = (a.email || "").trim().toLowerCase();
+            bValue = (b.email || "").trim().toLowerCase();
+            break;
+          case "faculty":
+            aValue = (a.faculty || "").trim().toLowerCase();
+            bValue = (b.faculty || "").trim().toLowerCase();
+            break;
+          case "department":
+            aValue = (a.department || "").trim().toLowerCase();
+            bValue = (b.department || "").trim().toLowerCase();
+            break;
+          case "association":
+            aValue = (a.associationTitle || "").trim().toLowerCase();
+            bValue = (b.associationTitle || "").trim().toLowerCase();
+            break;
+          default:
+            return 0;
+        }
+        
+        // Use localeCompare for reliable string comparison
+        const comparison = aValue.localeCompare(bValue, undefined, { 
+          numeric: true, 
+          sensitivity: 'base' 
+        });
+        
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+    }
+    
+    return filtered;
+  }, [items, debouncedQuery, sortField, sortDirection]);
 
   // Use server-side pagination, but apply client-side search
   const pageItems = filteredItems;
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, pageSize, selectedFaculties, selectedDepartments, selectedAssociations, membershipFilter]);
+  }, [debouncedQuery, pageSize, selectedFaculties, selectedDepartments, selectedAssociations, membershipFilter, sortField, sortDirection]);
 
   const handleExportToExcel = useCallback(async () => {
     if (isExporting) return;
@@ -729,12 +795,78 @@ export const AlumniAssociationTab: React.FC = () => {
           <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
               <TableRow>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">SAP ID</TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Full Name</TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Email</TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Faculty</TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Department</TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Association</TableCell>
+                <TableCell 
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => handleSort("sapId")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>SAP ID / Registration No</span>
+                    <div className="flex flex-col">
+                      <ArrowUpIcon className={`w-3 h-3 ${sortField === "sapId" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "sapId" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell 
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => handleSort("name")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Full Name</span>
+                    <div className="flex flex-col">
+                      <ArrowUpIcon className={`w-3 h-3 ${sortField === "name" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "name" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell 
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => handleSort("email")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Email</span>
+                    <div className="flex flex-col">
+                      <ArrowUpIcon className={`w-3 h-3 ${sortField === "email" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "email" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell 
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => handleSort("faculty")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Faculty</span>
+                    <div className="flex flex-col">
+                      <ArrowUpIcon className={`w-3 h-3 ${sortField === "faculty" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "faculty" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell 
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => handleSort("department")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Department</span>
+                    <div className="flex flex-col">
+                      <ArrowUpIcon className={`w-3 h-3 ${sortField === "department" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "department" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell 
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => handleSort("association")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Association</span>
+                    <div className="flex flex-col">
+                      <ArrowUpIcon className={`w-3 h-3 ${sortField === "association" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "association" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                    </div>
+                  </div>
+                </TableCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -766,7 +898,12 @@ export const AlumniAssociationTab: React.FC = () => {
               )}
               {!isLoading && !isError && pageItems.map((item, idx) => (
                 <TableRow key={`${item.sapid}-${idx}`} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50">
-                  <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">{item.sapid}</TableCell>
+                  <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
+                    {item.sapid || item.registrationNo || "-"}
+                    {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
+                      <span className="text-gray-500"> / {item.registrationNo}</span>
+                    )}
+                  </TableCell>
                   <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">{item.name}</TableCell>
                   <TableCell className="px-6 py-4 text-sm">
                     <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline">
