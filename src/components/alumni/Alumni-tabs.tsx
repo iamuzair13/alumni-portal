@@ -16,6 +16,20 @@ import { useAlumniListPaginated, getAlumniCounts, type AlumniListItem, type Alum
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import * as XLSX from "xlsx";
+import programsData from "../../../mock-programs.json";
+
+type ProgramData = {
+  faculties: Array<{
+    faculty: string;
+    departments: Array<{
+      department: string;
+      programs: Array<{
+        program: string;
+        count: number;
+      }>;
+    }>;
+  }>;
+};
 
 type TabKey =
   | "total"
@@ -97,6 +111,12 @@ export const AlumniTabs: React.FC = () => {
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
   const topScrollbarRef = React.useRef<HTMLDivElement>(null);
   const isScrollingRef = React.useRef(false);
+  
+  // Refs for filter dropdowns (click outside to close)
+  const facultyFilterRef = React.useRef<HTMLDivElement>(null);
+  const departmentFilterRef = React.useRef<HTMLDivElement>(null);
+  const programFilterRef = React.useRef<HTMLDivElement>(null);
+  const statusFilterRef = React.useRef<HTMLDivElement>(null);
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -129,8 +149,68 @@ export const AlumniTabs: React.FC = () => {
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const [additionalFilter, setAdditionalFilter] = useState<"unverified" | "inactive" | "">("");
+  const [additionalFilter, setAdditionalFilter] = useState<string[]>([]); // Array of selected statuses
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  
+  // Filter state for faculty, department, and program (cascading) - arrays for multi-select
+  const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+  
+  // State for expanded filter sections
+  const [expandedFilters, setExpandedFilters] = useState<{
+    faculty: boolean;
+    department: boolean;
+    program: boolean;
+    status: boolean;
+  }>({
+    faculty: false,
+    department: false,
+    program: false,
+    status: false,
+  });
+  
+  // Process programs data from mock-programs.json
+  const programsDataTyped = programsData as ProgramData;
+  const faculties = useMemo(() => programsDataTyped.faculties || [], []);
+  
+  // Get departments for selected faculties (union of all departments from selected faculties)
+  const availableDepartments = useMemo(() => {
+    if (selectedFaculties.length === 0) return [];
+    const departmentMap = new Map<string, ProgramData['faculties'][0]['departments'][0]>();
+    
+    selectedFaculties.forEach((facultyName) => {
+      const faculty = faculties.find((f: ProgramData['faculties'][0]) => f.faculty === facultyName);
+      faculty?.departments.forEach((dept: ProgramData['faculties'][0]['departments'][0]) => {
+        if (!departmentMap.has(dept.department)) {
+          departmentMap.set(dept.department, dept);
+        }
+      });
+    });
+    
+    return Array.from(departmentMap.values());
+  }, [selectedFaculties, faculties]);
+  
+  // Get programs for selected departments (union of all programs from selected departments)
+  const availablePrograms = useMemo(() => {
+    if (selectedDepartments.length === 0) return [];
+    const programMap = new Map<string, ProgramData['faculties'][0]['departments'][0]['programs'][0]>();
+    
+    selectedFaculties.forEach((facultyName) => {
+      const faculty = faculties.find((f: ProgramData['faculties'][0]) => f.faculty === facultyName);
+      faculty?.departments.forEach((dept: ProgramData['faculties'][0]['departments'][0]) => {
+        if (selectedDepartments.includes(dept.department)) {
+          dept.programs.forEach((prog: ProgramData['faculties'][0]['departments'][0]['programs'][0]) => {
+            if (!programMap.has(prog.program)) {
+              programMap.set(prog.program, prog);
+            }
+          });
+        }
+      });
+    });
+    
+    return Array.from(programMap.values());
+  }, [selectedDepartments, selectedFaculties, faculties]);
   
   // Confirmation modal state
   const confirmModal = useModal();
@@ -148,16 +228,131 @@ export const AlumniTabs: React.FC = () => {
   // Determine status filter based on selected tab
   const statusFilter = useMemo(() => {
     // If additional filter is set, use it (takes precedence)
-    if (additionalFilter === "unverified") return "unverified";
-    if (additionalFilter === "inactive") return "inactive";
+    if (additionalFilter.length > 0) return additionalFilter;
     
     // Otherwise use tab-based filter
-    if (selected === "verified") return "verified";
-    if (selected === "underApproval") return "underApproval";
-    if (selected === "active") return "active";
-    if (selected === "category") return "category";
+    if (selected === "verified") return ["verified"];
+    if (selected === "underApproval") return ["underApproval"];
+    if (selected === "active") return ["active"];
+    if (selected === "category") return ["category"];
     return undefined; // No filter for "total"
   }, [selected, additionalFilter]);
+  
+  // Reset dependent filters when parent changes
+  useEffect(() => {
+    if (selectedFaculties.length === 0) {
+      setSelectedDepartments([]);
+      setSelectedPrograms([]);
+    } else {
+      // Remove departments that are no longer available
+      const availableDeptNames = availableDepartments.map(d => d.department);
+      setSelectedDepartments(prev => prev.filter(dept => availableDeptNames.includes(dept)));
+    }
+  }, [selectedFaculties, availableDepartments]);
+  
+  useEffect(() => {
+    if (selectedDepartments.length === 0) {
+      setSelectedPrograms([]);
+    } else {
+      // Remove programs that are no longer available
+      const availableProgNames = availablePrograms.map(p => p.program);
+      setSelectedPrograms(prev => prev.filter(prog => availableProgNames.includes(prog)));
+    }
+  }, [selectedDepartments, availablePrograms]);
+  
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter]);
+  
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (facultyFilterRef.current && !facultyFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, faculty: false }));
+      }
+      if (departmentFilterRef.current && !departmentFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, department: false }));
+      }
+      if (programFilterRef.current && !programFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, program: false }));
+      }
+      if (statusFilterRef.current && !statusFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, status: false }));
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // Handlers for checkbox toggles
+  const handleFacultyToggle = (facultyName: string) => {
+    setSelectedFaculties(prev => 
+      prev.includes(facultyName) 
+        ? prev.filter(f => f !== facultyName)
+        : [...prev, facultyName]
+    );
+  };
+  
+  const handleFacultySelectAll = () => {
+    if (selectedFaculties.length === faculties.length) {
+      setSelectedFaculties([]);
+    } else {
+      setSelectedFaculties(faculties.map(f => f.faculty));
+    }
+  };
+  
+  const handleDepartmentToggle = (deptName: string) => {
+    setSelectedDepartments(prev => 
+      prev.includes(deptName) 
+        ? prev.filter(d => d !== deptName)
+        : [...prev, deptName]
+    );
+  };
+  
+  const handleDepartmentSelectAll = () => {
+    if (selectedDepartments.length === availableDepartments.length) {
+      setSelectedDepartments([]);
+    } else {
+      setSelectedDepartments(availableDepartments.map(d => d.department));
+    }
+  };
+  
+  const handleProgramToggle = (progName: string) => {
+    setSelectedPrograms(prev => 
+      prev.includes(progName) 
+        ? prev.filter(p => p !== progName)
+        : [...prev, progName]
+    );
+  };
+  
+  const handleProgramSelectAll = () => {
+    if (selectedPrograms.length === availablePrograms.length) {
+      setSelectedPrograms([]);
+    } else {
+      setSelectedPrograms(availablePrograms.map(p => p.program));
+    }
+  };
+  
+  const handleStatusToggle = (status: string) => {
+    setAdditionalFilter(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+  
+  const handleStatusSelectAll = () => {
+    const allStatuses = ["verified", "unverified", "underApproval", "active", "inactive"];
+    if (additionalFilter.length === allStatuses.length) {
+      setAdditionalFilter([]);
+    } else {
+      setAdditionalFilter(allStatuses);
+    }
+  };
 
   // Reset page to 1 when tab changes or filter changes (but not when statusFilter recalculates with same value)
   useEffect(() => {
@@ -165,7 +360,7 @@ export const AlumniTabs: React.FC = () => {
     setCurrentPage(1);
   }, [selected, additionalFilter]); // Removed statusFilter since it's derived from selected and additionalFilter
 
-  // React Query: fetch paginated list for table display with status filter
+  // React Query: fetch paginated list for table display with status filter and filters
   const {
     data: paginatedData,
     isLoading,
@@ -173,7 +368,15 @@ export const AlumniTabs: React.FC = () => {
     isError,
     error,
     refetch,
-  } = useAlumniListPaginated(debouncedQuery || undefined, currentPage, pageSize, statusFilter);
+  } = useAlumniListPaginated(
+    debouncedQuery || undefined, 
+    currentPage, 
+    pageSize, 
+    statusFilter,
+    selectedFaculties.length > 0 ? selectedFaculties : undefined,
+    selectedDepartments.length > 0 ? selectedDepartments : undefined,
+    selectedPrograms.length > 0 ? selectedPrograms : undefined
+  );
   
   // Debug logging - commented out to fix build issue
   // useEffect(() => {
@@ -195,8 +398,20 @@ export const AlumniTabs: React.FC = () => {
     data: countsData,
     isLoading: isLoadingCounts,
   } = useQuery<AlumniCounts, Error>({
-    queryKey: ["alumnilist-counts", debouncedQuery],
-    queryFn: ({ signal }) => getAlumniCounts(signal, debouncedQuery || undefined),
+    queryKey: [
+      "alumnilist-counts", 
+      debouncedQuery, 
+      selectedFaculties, 
+      selectedDepartments, 
+      selectedPrograms
+    ],
+    queryFn: ({ signal }) => getAlumniCounts(
+      signal, 
+      debouncedQuery || undefined,
+      selectedFaculties.length > 0 ? selectedFaculties : undefined,
+      selectedDepartments.length > 0 ? selectedDepartments : undefined,
+      selectedPrograms.length > 0 ? selectedPrograms : undefined
+    ),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
     refetchOnWindowFocus: true, // Refetch when window gains focus
@@ -436,7 +651,26 @@ export const AlumniTabs: React.FC = () => {
         url.searchParams.set("search", debouncedQuery);
       }
       if (statusFilter) {
-        url.searchParams.set("status", statusFilter);
+        if (Array.isArray(statusFilter)) {
+          statusFilter.forEach(s => url.searchParams.append("status", s));
+        } else {
+          url.searchParams.set("status", statusFilter);
+        }
+      }
+      if (selectedFaculties.length > 0) {
+        selectedFaculties.forEach(faculty => {
+          url.searchParams.append("faculty", faculty);
+        });
+      }
+      if (selectedDepartments.length > 0) {
+        selectedDepartments.forEach(dept => {
+          url.searchParams.append("department", dept);
+        });
+      }
+      if (selectedPrograms.length > 0) {
+        selectedPrograms.forEach(prog => {
+          url.searchParams.append("program", prog);
+        });
       }
       
       const res = await fetch(url.toString(), {
@@ -616,7 +850,7 @@ export const AlumniTabs: React.FC = () => {
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }
-  }, [debouncedQuery, statusFilter, selected, additionalFilter]);
+  }, [debouncedQuery, statusFilter, selectedFaculties, selectedDepartments, selectedPrograms, selected, additionalFilter]);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const startMut = useCallback((id: string) => {
@@ -920,7 +1154,7 @@ export const AlumniTabs: React.FC = () => {
                   console.log("[AlumniTabs] Tab clicked:", tab.key);
                   setSelected(tab.key);
                     // Clear additional filter when switching tabs
-                    setAdditionalFilter("");
+                    setAdditionalFilter([]);
                   }
                 }}
                 role="tab"
@@ -965,13 +1199,13 @@ export const AlumniTabs: React.FC = () => {
 
         {/* Search and Filters Section */}
         <div className="px-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
-            <div className="flex-1 w-full sm:max-w-lg">
+          <div className="flex flex-col gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+            {/* Search Row */}
+            <div className="flex-1 w-full">
               <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
                 Search Alumni
               </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              <div className="relative">
                 <svg 
                   className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
                   fill="none" 
@@ -985,34 +1219,335 @@ export const AlumniTabs: React.FC = () => {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
+                  placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
                 />
+              </div>
+            </div>
+            
+            {/* Filters Row - Checkbox-based multi-select with dropdown styling */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+              {/* Faculty Filter */}
+              <div className="flex-1 sm:min-w-[180px]">
+                <label htmlFor="faculty-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                  Faculty
+                </label>
+                <div className="relative" ref={facultyFilterRef}>
+                  <button
+                    type="button"
+                    id="faculty-filter"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, faculty: !prev.faculty }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                  >
+                    <span>
+                      {selectedFaculties.length === 0 
+                        ? "All Faculties" 
+                        : selectedFaculties.length === faculties.length
+                        ? "All Faculties"
+                        : `${selectedFaculties.length} Selected`}
+                    </span>
+                    <svg 
+                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.faculty ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedFilters.faculty && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      <div className="p-2">
+                        <label
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFacultySelectAll();
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedFaculties.length === faculties.length}
+                            onChange={handleFacultySelectAll}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Faculties</span>
+                        </label>
+                        <div className="max-h-48 overflow-y-auto">
+                          {faculties.map((faculty: ProgramData['faculties'][0]) => {
+                            const isChecked = selectedFaculties.includes(faculty.faculty);
+                            return (
+                              <label
+                                key={faculty.faculty}
+                                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleFacultyToggle(faculty.faculty)}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.faculty}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="relative">
-                  <label htmlFor="alumni-filter" className="sr-only">Filter</label>
-                  <select
-                    id="alumni-filter"
-                    value={additionalFilter}
-                    onChange={(e) => setAdditionalFilter(e.target.value as "unverified" | "inactive" | "")}
-                    className="h-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer min-w-[140px]"
+              </div>
+              
+              {/* Department Filter */}
+              <div className="flex-1 sm:min-w-[180px]">
+                <label htmlFor="department-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                  Department
+                </label>
+                <div className="relative" ref={departmentFilterRef}>
+                  <button
+                    type="button"
+                    id="department-filter"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))}
+                    disabled={selectedFaculties.length === 0}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All Status</option>
-                    <option value="unverified">Unverified</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                  <svg 
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 pointer-events-none" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+                    <span>
+                      {selectedDepartments.length === 0 
+                        ? "All Departments" 
+                        : selectedDepartments.length === availableDepartments.length
+                        ? "All Departments"
+                        : `${selectedDepartments.length} Selected`}
+                    </span>
+                    <svg 
+                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.department ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedFilters.department && selectedFaculties.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      <div className="p-2">
+                        {availableDepartments.length === 0 ? (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select faculties first</p>
+                        ) : (
+                          <>
+                            <label
+                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDepartmentSelectAll();
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedDepartments.length === availableDepartments.length}
+                                onChange={handleDepartmentSelectAll}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
+                            </label>
+                            <div className="max-h-48 overflow-y-auto">
+                              {availableDepartments.map((dept: ProgramData['faculties'][0]['departments'][0]) => {
+                                const isChecked = selectedDepartments.includes(dept.department);
+                                return (
+                                  <label
+                                    key={dept.department}
+                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => handleDepartmentToggle(dept.department)}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{dept.department}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Program Filter */}
+              <div className="flex-1 sm:min-w-[180px]">
+                <label htmlFor="program-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                  Program
+                </label>
+                <div className="relative" ref={programFilterRef}>
+                  <button
+                    type="button"
+                    id="program-filter"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, program: !prev.program }))}
+                    disabled={selectedDepartments.length === 0}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                    <span>
+                      {selectedPrograms.length === 0 
+                        ? "All Programs" 
+                        : selectedPrograms.length === availablePrograms.length
+                        ? "All Programs"
+                        : `${selectedPrograms.length} Selected`}
+                    </span>
+                    <svg 
+                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.program ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedFilters.program && selectedDepartments.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      <div className="p-2">
+                        {availablePrograms.length === 0 ? (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select departments first</p>
+                        ) : (
+                          <>
+                            <label
+                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleProgramSelectAll();
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedPrograms.length === availablePrograms.length}
+                                onChange={handleProgramSelectAll}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Programs</span>
+                            </label>
+                            <div className="max-h-48 overflow-y-auto">
+                              {availablePrograms.map((prog: ProgramData['faculties'][0]['departments'][0]['programs'][0]) => {
+                                const isChecked = selectedPrograms.includes(prog.program);
+                                return (
+                                  <label
+                                    key={prog.program}
+                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => handleProgramToggle(prog.program)}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{prog.program}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Status Filter */}
+              <div className="flex-1 sm:min-w-[160px]">
+                <label htmlFor="status-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                  Status
+                </label>
+                <div className="relative" ref={statusFilterRef}>
+                  <button
+                    type="button"
+                    id="status-filter"
+                    onClick={() => setExpandedFilters(prev => ({ ...prev, status: !prev.status }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+                  >
+                    <span>
+                      {additionalFilter.length === 0 
+                        ? `All Status (${counts.total.toLocaleString()})` 
+                        : additionalFilter.length === 5
+                        ? `All Status (${counts.total.toLocaleString()})`
+                        : `${additionalFilter.length} Selected`}
+                    </span>
+                    <svg 
+                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.status ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedFilters.status && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      <div className="p-2">
+                        <label
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusSelectAll();
+                          }}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={additionalFilter.length === 5}
+                              onChange={handleStatusSelectAll}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Status</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {counts.total.toLocaleString()}
+                          </span>
+                        </label>
+                        <div className="max-h-48 overflow-y-auto">
+                          {[
+                            { value: "verified", label: "Verified", count: counts.verified },
+                            { value: "unverified", label: "Unverified", count: counts.unverified },
+                            { value: "underApproval", label: "Under Approval", count: counts.underApproval },
+                            { value: "active", label: "Active", count: counts.active },
+                            { value: "inactive", label: "Inactive", count: counts.inactive },
+                          ].map((status) => {
+                            const isChecked = additionalFilter.includes(status.value);
+                            return (
+                              <label
+                                key={status.value}
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleStatusToggle(status.value)}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{status.label}</span>
+                                </div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {status.count.toLocaleString()}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            
+            {/* Actions Row */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
               {/* Export Button */}
               <button
                 type="button"

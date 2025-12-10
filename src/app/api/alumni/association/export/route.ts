@@ -18,26 +18,68 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const faculty = searchParams.get("faculty") || "";
-    const department = searchParams.get("department") || "";
+    const facultiesParam = searchParams.get("faculties");
+    const departmentsParam = searchParams.get("departments");
+    const associationsParam = searchParams.get("associations");
     const membershipFilter = searchParams.get("membershipFilter") || "members";
+    
+    const selectedFaculties = facultiesParam ? facultiesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedDepartments = departmentsParam ? departmentsParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedAssociations = associationsParam ? associationsParam.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => !isNaN(n)) : [];
 
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
+    // Helper function to combine OR conditions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql``;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
 
-    // Build faculty filter condition
+    // Build faculty filter condition (case-insensitive with trim) - handle multiple
     let facultyFilterCondition = sql``;
-    if (faculty && faculty.trim()) {
-      const facultyValue = faculty.trim();
-      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(${facultyValue})`;
+    if (selectedFaculties.length > 0) {
+      const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      if (facultyConditions.length === 1) {
+        facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
+      } else if (facultyConditions.length > 1) {
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilterCondition = sql` AND (${combinedCondition})`;
+      }
     }
     
-    // Build department filter condition
+    // Build department filter condition (case-insensitive with trim) - handle multiple
     let departmentFilterCondition = sql``;
-    if (department && department.trim()) {
-      const departmentValue = department.trim();
-      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(${departmentValue})`;
+    if (selectedDepartments.length > 0) {
+      const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      if (departmentConditions.length === 1) {
+        departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
+      } else if (departmentConditions.length > 1) {
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilterCondition = sql` AND (${combinedCondition})`;
+      }
+    }
+    
+    // Build association filter condition - handle multiple
+    let associationFilterCondition = sql``;
+    if (selectedAssociations.length > 0) {
+      // Build OR conditions for multiple associations
+      const associationConditions = selectedAssociations.map(id => sql`a.association_id = ${id}`);
+      if (associationConditions.length === 1) {
+        associationFilterCondition = sql` AND ${associationConditions[0]}`;
+      } else if (associationConditions.length > 1) {
+        const combinedCondition = combineOrConditions(associationConditions);
+        associationFilterCondition = sql` AND (${combinedCondition})`;
+      }
     }
     
     // Build membership filter condition
@@ -78,6 +120,7 @@ export async function GET(req: NextRequest) {
         ${accessFilterCondition}
         ${facultyFilterCondition}
         ${departmentFilterCondition}
+        ${associationFilterCondition}
         ${membershipWhereCondition}
       ORDER BY a.alumniid DESC
     `;

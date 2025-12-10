@@ -38,14 +38,42 @@ export async function getAlumniList(
   search?: string,
   page: number = 1,
   limit: number = 100,
-  status?: string // Filter by verify status: "verified", "unverified", "underApproval"
+  status?: string | string[], // Filter by verify status: "verified", "unverified", "underApproval" or array
+  faculty?: string | string[], // Filter by faculty or array
+  department?: string | string[], // Filter by department or array
+  program?: string | string[] // Filter by program or array
 ): Promise<AlumniListResponse> {
   const url = new URL("/api/alumni", typeof window !== "undefined" ? window.location.origin : "");
   if (search) {
     url.searchParams.set("search", search);
   }
   if (status) {
-    url.searchParams.set("status", status);
+    if (Array.isArray(status)) {
+      status.forEach(s => url.searchParams.append("status", s));
+    } else {
+      url.searchParams.set("status", status);
+    }
+  }
+  if (faculty) {
+    if (Array.isArray(faculty)) {
+      faculty.forEach(f => url.searchParams.append("faculty", f));
+    } else {
+      url.searchParams.set("faculty", faculty);
+    }
+  }
+  if (department) {
+    if (Array.isArray(department)) {
+      department.forEach(d => url.searchParams.append("department", d));
+    } else {
+      url.searchParams.set("department", department);
+    }
+  }
+  if (program) {
+    if (Array.isArray(program)) {
+      program.forEach(p => url.searchParams.append("program", p));
+    } else {
+      url.searchParams.set("program", program);
+    }
   }
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
@@ -59,12 +87,20 @@ export async function getAlumniList(
   return data;
 }
 
-export function useAlumniListPaginated(search?: string, page: number = 1, pageSize: number = 100, status?: string) {
+export function useAlumniListPaginated(
+  search?: string, 
+  page: number = 1, 
+  pageSize: number = 100, 
+  status?: string | string[],
+  faculty?: string | string[],
+  department?: string | string[],
+  program?: string | string[]
+) {
   return useQuery<AlumniListResponse, Error>({
-    queryKey: ["alumnilist", search, page, pageSize, status],
+    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program],
     queryFn: ({ signal }) => {
-      console.log("[useAlumniListPaginated] Fetching with status:", status);
-      return getAlumniList(signal, search, page, pageSize, status);
+      console.log("[useAlumniListPaginated] Fetching with filters:", { status, faculty, department, program });
+      return getAlumniList(signal, search, page, pageSize, status, faculty, department, program);
     },
     staleTime: 0, // Always consider data stale - refetch on mount/tab change
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
@@ -89,10 +125,37 @@ export type AlumniCounts = {
   };
 };
 
-export async function getAlumniCounts(signal?: AbortSignal, search?: string): Promise<AlumniCounts> {
+export async function getAlumniCounts(
+  signal?: AbortSignal, 
+  search?: string,
+  faculty?: string | string[],
+  department?: string | string[],
+  program?: string | string[]
+): Promise<AlumniCounts> {
   const url = new URL("/api/alumni/counts", typeof window !== "undefined" ? window.location.origin : "");
   if (search) {
     url.searchParams.set("search", search);
+  }
+  if (faculty) {
+    if (Array.isArray(faculty)) {
+      faculty.forEach(f => url.searchParams.append("faculty", f));
+    } else {
+      url.searchParams.set("faculty", faculty);
+    }
+  }
+  if (department) {
+    if (Array.isArray(department)) {
+      department.forEach(d => url.searchParams.append("department", d));
+    } else {
+      url.searchParams.set("department", department);
+    }
+  }
+  if (program) {
+    if (Array.isArray(program)) {
+      program.forEach(p => url.searchParams.append("program", p));
+    } else {
+      url.searchParams.set("program", program);
+    }
   }
   
   const res = await fetch(url.toString(), { signal, headers: { "accept": "application/json" } });

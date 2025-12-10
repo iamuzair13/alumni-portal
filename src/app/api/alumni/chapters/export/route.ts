@@ -19,12 +19,17 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const nationalChapter = searchParams.get("nationalChapter") || "";
-    const internationalChapter = searchParams.get("internationalChapter") || "";
-    const faculty = searchParams.get("faculty") || "";
-    const department = searchParams.get("department") || "";
+    const nationalChaptersParam = searchParams.get("nationalChapters");
+    const internationalChaptersParam = searchParams.get("internationalChapters");
+    const facultiesParam = searchParams.get("faculties");
+    const departmentsParam = searchParams.get("departments");
     const verified = searchParams.get("verified");
     const membershipFilter = searchParams.get("membershipFilter") || "members";
+    
+    const selectedNationalChapters = nationalChaptersParam ? nationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedInternationalChapters = internationalChaptersParam ? internationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedFaculties = facultiesParam ? facultiesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedDepartments = departmentsParam ? departmentsParam.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     // Build access filter
     const accessFilter = await buildAccessFilterSQL(session, "");
@@ -49,26 +54,85 @@ export async function GET(req: Request) {
       )`;
     }
 
-    // Build chapter filter conditions
+    // Build chapter filter conditions - get chapter IDs first
+    const nationalChapterIds: number[] = [];
+    const internationalChapterIds: number[] = [];
+    
+    if (selectedNationalChapters.length > 0) {
+      for (const chapterName of selectedNationalChapters) {
+        const chapterRows = await sql/* sql */`
+          SELECT id FROM public.tblchapters 
+          WHERE LOWER(TRIM(COALESCE(national_chapter, ''))) = LOWER(${chapterName})
+          AND is_active = true
+          LIMIT 1
+        `;
+        if (chapterRows[0]) {
+          nationalChapterIds.push(Number((chapterRows[0] as { id: number }).id));
+        }
+      }
+    }
+    
+    if (selectedInternationalChapters.length > 0) {
+      for (const chapterName of selectedInternationalChapters) {
+        const chapterRows = await sql/* sql */`
+          SELECT id FROM public.tblchapters 
+          WHERE LOWER(TRIM(COALESCE(international_chapter, ''))) = LOWER(${chapterName})
+          AND is_active = true
+          LIMIT 1
+        `;
+        if (chapterRows[0]) {
+          internationalChapterIds.push(Number((chapterRows[0] as { id: number }).id));
+        }
+      }
+    }
+    
     let chapterFilterCondition = sql``;
-    if (nationalChapter) {
-      chapterFilterCondition = sql` AND (c1.national_chapter = ${nationalChapter} OR c2.national_chapter = ${nationalChapter} OR c3.national_chapter = ${nationalChapter})`;
-    }
-    if (internationalChapter) {
-      const intlFilter = sql` AND (c1.international_chapter = ${internationalChapter} OR c2.international_chapter = ${internationalChapter} OR c3.international_chapter = ${internationalChapter})`;
-      chapterFilterCondition = nationalChapter ? sql`${chapterFilterCondition} ${intlFilter}` : intlFilter;
+    const allChapterIds = [...nationalChapterIds, ...internationalChapterIds];
+    if (allChapterIds.length > 0) {
+      // Use ANY operator for array matching
+      chapterFilterCondition = sql` AND (
+        ac."chapter1" = ANY(${allChapterIds})
+        OR ac."chapter2" = ANY(${allChapterIds})
+        OR ac."chapter3" = ANY(${allChapterIds})
+      )`;
     }
     
-    // Build faculty filter condition
+    // Helper function to combine OR conditions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql``;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
+    
+    // Build faculty filter condition (case-insensitive with trim) - handle multiple
     let facultyFilterCondition = sql``;
-    if (faculty) {
-      facultyFilterCondition = sql` AND a.facultyname = ${faculty}`;
+    if (selectedFaculties.length > 0) {
+      const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      if (facultyConditions.length === 1) {
+        facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
+      } else if (facultyConditions.length > 1) {
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilterCondition = sql` AND (${combinedCondition})`;
+      }
     }
     
-    // Build department filter condition
+    // Build department filter condition (case-insensitive with trim) - handle multiple
     let departmentFilterCondition = sql``;
-    if (department) {
-      departmentFilterCondition = sql` AND a.departmentname = ${department}`;
+    if (selectedDepartments.length > 0) {
+      const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      if (departmentConditions.length === 1) {
+        departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
+      } else if (departmentConditions.length > 1) {
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilterCondition = sql` AND (${combinedCondition})`;
+      }
     }
     
     // Build verified filter condition

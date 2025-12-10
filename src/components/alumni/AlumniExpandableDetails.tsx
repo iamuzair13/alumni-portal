@@ -174,12 +174,22 @@ const CompactField: React.FC<{
     );
   }
 
+  // Add validation attributes for CGPA field
+  const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {};
+  if (name === "cgpa") {
+    inputProps.pattern = "[0-4](\\.\\d{1,2})?";
+    inputProps.maxLength = 4;
+    inputProps.placeholder = "0.0 - 4.0";
+    inputProps.title = "CGPA must be between 0.0 and 4.0 (e.g., 3.2, 2.9, 4.0)";
+  }
+  
   return (
     <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</label>
       <input
         type={type}
         {...(register && name ? register(name) : {})}
+        {...inputProps}
         disabled={readOnly}
         readOnly={readOnly}
         className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
@@ -479,7 +489,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Campus" value={data.campusname} isEditing={isEditing} readOnly={readOnly} register={register} name="campusname" />
           <CompactField label="Year of Starting" value={data.yearofstarting} isEditing={isEditing} readOnly={readOnly} register={register} name="yearofstarting" type="number" />
           <CompactField label="Year of Ending" value={data.yearofending} isEditing={isEditing} readOnly={readOnly} register={register} name="yearofending" type="number" />
-          <CompactField label="CGPA" value={data.cgpa} isEditing={isEditing} readOnly={readOnly} register={register} name="cgpa" type="number" />
+          <CompactField label="CGPA" value={data.cgpa} isEditing={isEditing} readOnly={readOnly} register={register} name="cgpa" type="text" />
           <CompactField label="Major Subject" value={data.majorsubject} isEditing={isEditing} readOnly={readOnly} register={register} name="majorsubject" />
           <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />
 

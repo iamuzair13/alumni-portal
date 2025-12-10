@@ -52,7 +52,15 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500); // Max 500 per page for performance
     const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || ""; // Filter by verify status: "verified", "unverified", "underApproval"
+    // Get all values for multi-select filters
+    const statusParams = searchParams.getAll("status");
+    const facultyParams = searchParams.getAll("faculty");
+    const departmentParams = searchParams.getAll("department");
+    const programParams = searchParams.getAll("program");
+    const status = statusParams.length > 0 ? statusParams : (searchParams.get("status") || "");
+    const faculty = facultyParams.length > 0 ? facultyParams : (searchParams.get("faculty") || "");
+    const department = departmentParams.length > 0 ? departmentParams : (searchParams.get("department") || "");
+    const program = programParams.length > 0 ? programParams : (searchParams.get("program") || "");
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
     
@@ -74,6 +82,58 @@ export async function GET(req: Request) {
     // Wrap the entire OR chain in parentheses since AND has higher precedence than OR
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
+    // Helper function to combine SQL conditions with OR
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql``;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
+    
+    // Build filters for faculty, department, and program (handle arrays)
+    let facultyFilter = sql``;
+    if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
+      if (Array.isArray(faculty) && faculty.length > 0) {
+        // Build OR conditions for multiple faculties
+        const facultyConditions = faculty.map(f => sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`);
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(faculty) && faculty) {
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+      }
+      console.log("[API] Filtering for faculty:", faculty);
+    }
+    
+    let departmentFilter = sql``;
+    if (department && (Array.isArray(department) ? department.length > 0 : department)) {
+      if (Array.isArray(department) && department.length > 0) {
+        // Build OR conditions for multiple departments
+        const departmentConditions = department.map(d => sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`);
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(department) && department) {
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+      }
+      console.log("[API] Filtering for department:", department);
+    }
+    
+    let programFilter = sql``;
+    if (program && (Array.isArray(program) ? program.length > 0 : program)) {
+      if (Array.isArray(program) && program.length > 0) {
+        // Build OR conditions for multiple programs
+        const programConditions = program.map(p => sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`);
+        const combinedCondition = combineOrConditions(programConditions);
+        programFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(program) && program) {
+        programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+      }
+      console.log("[API] Filtering for program:", program);
+    }
+    
     // If only counts are needed, return early with just counts
     if (getCountsOnly) {
       const searchTermForCount = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
@@ -82,6 +142,9 @@ export async function GET(req: Request) {
             SELECT COUNT(*) as total
             FROM public.tbl_alumni
             WHERE sapid IS NOT NULL AND sapid != ''
+              ${facultyFilter}
+              ${departmentFilter}
+              ${programFilter}
               ${accessFilterCondition}
               AND (
                 LOWER(sapid) LIKE ${searchTermForCount}
@@ -97,6 +160,9 @@ export async function GET(req: Request) {
             SELECT COUNT(*) as total
             FROM public.tbl_alumni
             WHERE sapid IS NOT NULL AND sapid != ''
+              ${facultyFilter}
+              ${departmentFilter}
+              ${programFilter}
               ${accessFilterCondition}`;
       
       const countResult = await countQuery;
@@ -111,41 +177,68 @@ export async function GET(req: Request) {
       }, { status: 200 });
     }
 
-    // Build WHERE clause for verify status filtering
+    // Build WHERE clause for verify status filtering (handle arrays)
     // Verify field is now VARCHAR(10) - handle as string only
     let verifyFilter = sql``;
-    if (status === "verified") {
-      verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
-      console.log("[API] Filtering for verified alumni");
-    } else if (status === "unverified") {
-      verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
-      console.log("[API] Filtering for unverified alumni");
-    } else if (status === "underApproval") {
-      // Under Approval: verify = 'pending' (new registrations awaiting admin approval)
-      // For under approval, show all records with verify = 'pending' (even if sapid/registrationno is null)
-      verifyFilter = sql`AND verify = 'pending'`;
-      console.log("[API] Filtering for under approval alumni (verify = 'pending', including null sapid/registrationno)");
-    } else if (status === "active") {
-      // Active: has logged in (has lasttimelogin OR logincount > 0)
-      verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
-      console.log("[API] Filtering for active alumni (has logged in)");
-    } else if (status === "inactive") {
-      // Inactive: never logged in (no lasttimelogin AND logincount is 0 or null)
-      verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
-      console.log("[API] Filtering for inactive alumni (never logged in)");
-    } else if (status === "category") {
-      // Category tab - for now return empty (data will be added later)
-      verifyFilter = sql`AND 1 = 0`; // Return no results for now
-      console.log("[API] Category tab - no data available yet");
+    if (status && (Array.isArray(status) ? status.length > 0 : status)) {
+      if (Array.isArray(status) && status.length > 0) {
+        // Build OR conditions for multiple statuses
+        const statusConditions: ReturnType<typeof sql>[] = [];
+        
+        status.forEach(s => {
+          if (s === "verified") {
+            statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'true'`);
+          } else if (s === "unverified") {
+            statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'false'`);
+          } else if (s === "underApproval") {
+            statusConditions.push(sql`verify = 'pending'`);
+          } else if (s === "active") {
+            statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
+          } else if (s === "inactive") {
+            statusConditions.push(sql`((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`);
+          } else if (s === "category") {
+            statusConditions.push(sql`1 = 0`); // Return no results for category
+          }
+        });
+        
+        if (statusConditions.length > 0) {
+          const combinedCondition = combineOrConditions(statusConditions);
+          verifyFilter = sql`AND (${combinedCondition})`;
+        }
+        console.log("[API] Filtering for multiple statuses:", status);
+      } else if (!Array.isArray(status)) {
+        // Single status filter (backward compatibility)
+        if (status === "verified") {
+          verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
+          console.log("[API] Filtering for verified alumni");
+        } else if (status === "unverified") {
+          verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
+          console.log("[API] Filtering for unverified alumni");
+        } else if (status === "underApproval") {
+          verifyFilter = sql`AND verify = 'pending'`;
+          console.log("[API] Filtering for under approval alumni (verify = 'pending', including null sapid/registrationno)");
+        } else if (status === "active") {
+          verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
+          console.log("[API] Filtering for active alumni (has logged in)");
+        } else if (status === "inactive") {
+          verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
+          console.log("[API] Filtering for inactive alumni (never logged in)");
+        } else if (status === "category") {
+          verifyFilter = sql`AND 1 = 0`;
+          console.log("[API] Category tab - no data available yet");
+        }
+      }
     } else {
-      // For "total" and other tabs, include records with either sapid OR registrationno
       console.log("[API] No status filter applied, status:", status);
     }
-
+    
     // Build query with optional search and status filter
     let query;
     // Base WHERE clause: require either sapid OR registrationno (except for underApproval which we handle separately)
-    const baseWhere = status === "underApproval" 
+    const hasUnderApproval = Array.isArray(status) 
+      ? status.includes("underApproval")
+      : status === "underApproval";
+    const baseWhere = hasUnderApproval
       ? sql`1=1` 
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
     
@@ -177,6 +270,9 @@ export async function GET(req: Request) {
         FROM public.tbl_alumni
         WHERE ${baseWhere}
           ${verifyFilter}
+          ${facultyFilter}
+          ${departmentFilter}
+          ${programFilter}
           ${accessFilterCondition}
           AND (
             LOWER(sapid) LIKE ${searchTerm}
@@ -217,6 +313,9 @@ export async function GET(req: Request) {
       FROM public.tbl_alumni
       WHERE ${baseWhere}
         ${verifyFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
         ${accessFilterCondition}
         ORDER BY alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;

@@ -2,9 +2,9 @@ import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
 import generateEasyPassword from "@/lib/passwordUtils";
 import { auth } from "@/lib/auth";
-import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { isSuperAdminUser, isAdminUser, canModify } from "@/lib/alumniProfile";
 import { getUserAccessAssignments, getUserIdFromSession } from "@/lib/userAccess";
-import { validateProgramAssignment, getFacultyByDepartment } from "@/data/programs-departments";
+import { getFacultyByDepartment } from "@/data/programs-departments";
 
 type TblAlumniBody = {
   alumniemail: string | null;
@@ -87,95 +87,146 @@ export async function POST(req: Request) {
     const isAlumni = userType === "alumni";
     
     // Validate user has access to the selected faculty/department/program
-    // Only apply this check if user is logged in as admin/viewer (not for public registration)
+    // Only apply this check if user is logged in as admin (not for public registration)
     // Skip this check for:
     // - Alumni users (they can register themselves)
-    // - Super admins (they have full access)
+    // - Super admins (they have full access to all faculties/departments/programs)
     // - Unauthenticated users (public registration allowed)
     // NOTE: This check is skipped for public registration (no session) and alumni self-registration
+    // Admins can add alumni but only within their assigned access (faculty/department/program)
+    const isAdmin = session?.user ? isAdminUser(session.user) : false;
+    const isSuperAdmin = session?.user ? isSuperAdminUser(session.user) : false;
+    const canAddAlumni = session?.user ? canModify(session.user) : false; // Admins and superadmins can add
+    
     console.log("[API] Access assignment check:", {
       hasSession: !!session,
       isAlumni,
-      isSuperAdmin: session?.user ? isSuperAdminUser(session.user) : false,
+      isAdmin,
+      isSuperAdmin,
+      canAddAlumni,
       hasFacultyDeptProgram: !!(body.facultyname && body.departmentname && body.degreetitle),
-      willCheckAccess: !!(body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && !isSuperAdminUser(session.user))
+      willCheckAccess: !!(body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin)
     });
     
-    if (body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && !isSuperAdminUser(session.user)) {
+    // Check access assignments for admins (superadmins have full access, so skip check)
+    if (body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin) {
       const faculty = String(body.facultyname).trim();
       const department = String(body.departmentname).trim();
       const program = String(body.degreetitle).trim();
       
-      console.log("[API] Checking access assignment for:", { faculty, department, program });
+      console.log("[API] Checking access assignment for admin:", { faculty, department, program });
       
-      // Super admins can add to any faculty/department/program
-      if (!isSuperAdminUser(session.user)) {
-        const userId = getUserIdFromSession(session);
-        if (userId) {
-          const assignments = await getUserAccessAssignments(userId);
-          
-          if (assignments.length === 0) {
-            return NextResponse.json({ 
-              error: "You do not have permission to add alumni. Please contact an administrator." 
-            }, { status: 403 });
-          }
-          
-          // Check if user has access to this specific combination
-          let hasAccess = false;
-          
-          // Check program-level access
-          const programAccess = assignments.find(a => 
-            a.program_name && 
-            a.program_name.toLowerCase().trim() === program.toLowerCase().trim() &&
-            (!a.department_name || a.department_name.toLowerCase().trim() === department.toLowerCase().trim()) &&
+      // Admins can only add alumni within their assigned access
+      // Super admins can add to any faculty/department/program (they skip this check)
+      const userId = getUserIdFromSession(session);
+      if (userId) {
+        const assignments = await getUserAccessAssignments(userId);
+        
+        console.log("[API] Admin access assignments:", JSON.stringify(assignments, null, 2));
+        console.log("[API] Trying to add alumni to:", { faculty, department, program });
+        
+        if (assignments.length === 0) {
+          console.log("[API] No access assignments found for admin");
+          return NextResponse.json({ 
+            error: "You do not have permission to add alumni. Please contact an administrator." 
+          }, { status: 403 });
+        }
+        
+        // Check if user has access to this specific combination
+        let hasAccess = false;
+        
+        // Check program-level access
+        const programAccess = assignments.find(a => 
+          a.program_name && 
+          a.program_name.toLowerCase().trim() === program.toLowerCase().trim() &&
+          (!a.department_name || a.department_name.toLowerCase().trim() === department.toLowerCase().trim()) &&
+          (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
+        );
+        
+        console.log("[API] Program-level access check:", {
+          found: !!programAccess,
+          programAccess: programAccess ? {
+            program: programAccess.program_name,
+            department: programAccess.department_name,
+            faculty: programAccess.faculty_name
+          } : null
+        });
+        
+        if (programAccess) {
+          hasAccess = true;
+          console.log("[API] ✅ Access granted via program-level assignment");
+        } else {
+          // Check department-level access
+          const deptAccess = assignments.find(a => 
+            a.department_name && 
+            !a.program_name &&
+            a.department_name.toLowerCase().trim() === department.toLowerCase().trim() &&
             (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
           );
           
-          if (programAccess) {
+          console.log("[API] Department-level access check:", {
+            found: !!deptAccess,
+            deptAccess: deptAccess ? {
+              department: deptAccess.department_name,
+              faculty: deptAccess.faculty_name
+            } : null
+          });
+          
+          if (deptAccess) {
+            // Department-level access: admin can add any program within this department
+            // No need to validate program - if they have department access, they can add any program
             hasAccess = true;
+            console.log("[API] ✅ Access granted via department-level assignment");
           } else {
-            // Check department-level access
-            const deptAccess = assignments.find(a => 
-              a.department_name && 
+            // Check faculty-level access
+            const facultyAccess = assignments.find(a => 
+              a.faculty_name && 
+              !a.department_name && 
               !a.program_name &&
-              a.department_name.toLowerCase().trim() === department.toLowerCase().trim() &&
-              (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
+              a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim()
             );
             
-            if (deptAccess) {
-              // Verify the program actually belongs to this department
-              if (validateProgramAssignment(faculty, department, program)) {
-                hasAccess = true;
-              }
-            } else {
-              // Check faculty-level access
-              const facultyAccess = assignments.find(a => 
-                a.faculty_name && 
-                !a.department_name && 
-                !a.program_name &&
-                a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim()
-              );
+            console.log("[API] Faculty-level access check:", {
+              found: !!facultyAccess,
+              facultyAccess: facultyAccess ? {
+                faculty: facultyAccess.faculty_name
+              } : null
+            });
+            
+            if (facultyAccess) {
+              // Faculty-level access: verify the department belongs to this faculty
+              // No need to validate program - if they have faculty access, they can add any program
+              const deptFaculty = getFacultyByDepartment(department);
+              console.log("[API] Department faculty check:", {
+                department,
+                expectedFaculty: faculty,
+                actualFaculty: deptFaculty
+              });
               
-              if (facultyAccess) {
-                // Verify the department and program belong to this faculty
-                const deptFaculty = getFacultyByDepartment(department);
-                if (deptFaculty && deptFaculty.toLowerCase().trim() === faculty.toLowerCase().trim()) {
-                  if (validateProgramAssignment(faculty, department, program)) {
-                    hasAccess = true;
-                  }
-                }
+              if (deptFaculty && deptFaculty.toLowerCase().trim() === faculty.toLowerCase().trim()) {
+                hasAccess = true;
+                console.log("[API] ✅ Access granted via faculty-level assignment");
+              } else {
+                console.log("[API] ❌ Department does not belong to faculty:", { department, expectedFaculty: faculty, actualFaculty: deptFaculty });
               }
             }
           }
-          
-          if (!hasAccess) {
-            return NextResponse.json({ 
-              error: `You do not have permission to add alumni to ${faculty} > ${department} > ${program}. Please select a faculty, department, and program you have access to.` 
-            }, { status: 403 });
-          }
         }
-        // If no userId but user is logged in (shouldn't happen for admin/viewer), allow registration
-        // This handles edge cases gracefully
+        
+        if (!hasAccess) {
+          console.log("[API] ❌ Access denied. Admin assignments:", JSON.stringify(assignments, null, 2));
+          console.log("[API] ❌ Requested combination:", { faculty, department, program });
+          return NextResponse.json({ 
+            error: `You do not have permission to add alumni to ${faculty} > ${department} > ${program}. Please select a faculty, department, and program you have access to.` 
+          }, { status: 403 });
+        }
+        
+        console.log("[API] ✅ Access granted - admin has permission to add alumni to:", { faculty, department, program });
+      } else {
+        // If no userId but user is logged in as admin (shouldn't happen), deny access
+        return NextResponse.json({ 
+          error: "You do not have permission to add alumni. Please contact an administrator." 
+        }, { status: 403 });
       }
     }
     
@@ -917,7 +968,7 @@ export async function POST(req: Request) {
       return NextResponse.json(response, { status: 200 });
     } else {
       response.message = "Alumni registered successfully. Status set to 'Under Approval'.";
-    return NextResponse.json(response, { status: 201 });
+      return NextResponse.json(response, { status: 201 });
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

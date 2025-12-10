@@ -8,6 +8,13 @@ export async function GET(req: Request) {
     const session = await auth();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    // Get all values for multi-select filters
+    const facultyParams = searchParams.getAll("faculty");
+    const departmentParams = searchParams.getAll("department");
+    const programParams = searchParams.getAll("program");
+    const faculty = facultyParams.length > 0 ? facultyParams : (searchParams.get("faculty") || "");
+    const department = departmentParams.length > 0 ? departmentParams : (searchParams.get("department") || "");
+    const program = programParams.length > 0 ? programParams : (searchParams.get("program") || "");
     const searchTerm = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
 
     // Build access filter for admin/viewer users
@@ -22,6 +29,55 @@ export async function GET(req: Request) {
     // Build access filter condition for WHERE clause
     // Wrap the entire OR chain in parentheses since AND has higher precedence than OR
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    
+    // Helper function to combine SQL conditions with OR
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql``;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
+    
+    // Build filters for faculty, department, and program (handle arrays)
+    let facultyFilter = sql``;
+    if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
+      if (Array.isArray(faculty) && faculty.length > 0) {
+        const facultyConditions = faculty.map(f => sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`);
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(faculty) && faculty) {
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+      }
+      console.log("[alumni/counts] Filtering for faculty:", faculty);
+    }
+    
+    let departmentFilter = sql``;
+    if (department && (Array.isArray(department) ? department.length > 0 : department)) {
+      if (Array.isArray(department) && department.length > 0) {
+        const departmentConditions = department.map(d => sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`);
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(department) && department) {
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+      }
+      console.log("[alumni/counts] Filtering for department:", department);
+    }
+    
+    let programFilter = sql``;
+    if (program && (Array.isArray(program) ? program.length > 0 : program)) {
+      if (Array.isArray(program) && program.length > 0) {
+        const programConditions = program.map(p => sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`);
+        const combinedCondition = combineOrConditions(programConditions);
+        programFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(program) && program) {
+        programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+      }
+      console.log("[alumni/counts] Filtering for program:", program);
+    }
 
     // Verify field is now VARCHAR(10) - handle as string only
     let result;
@@ -59,6 +115,9 @@ export async function GET(req: Request) {
           END) as inactive
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+          ${facultyFilter}
+          ${departmentFilter}
+          ${programFilter}
           ${accessFilterCondition}
           AND (
             LOWER(sapid) LIKE ${searchTerm}
@@ -104,6 +163,9 @@ export async function GET(req: Request) {
           END) as inactive
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '' OR verify = 'pending')
+          ${facultyFilter}
+          ${departmentFilter}
+          ${programFilter}
           ${accessFilterCondition}
       `);
     }

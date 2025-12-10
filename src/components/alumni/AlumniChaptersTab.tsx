@@ -27,26 +27,26 @@ type Chapter = {
 type MembershipFilter = "all" | "members" | "non-members";
 
 async function getAlumniChapters(
-  nationalChapter?: string,
-  internationalChapter?: string,
-  faculty?: string,
-  department?: string,
+  nationalChapters?: string[],
+  internationalChapters?: string[],
+  faculties?: string[],
+  departments?: string[],
   verified?: boolean,
   membershipFilter?: MembershipFilter
 ): Promise<ChapterItem[]> {
   const url = new URL("/api/alumni/chapters", typeof window !== "undefined" ? window.location.origin : "");
-  // Only add parameters if they have actual values (not empty strings)
-  if (nationalChapter && nationalChapter.trim()) {
-    url.searchParams.set("nationalChapter", nationalChapter.trim());
+  // Only add parameters if they have actual values (not empty arrays)
+  if (nationalChapters && nationalChapters.length > 0) {
+    url.searchParams.set("nationalChapters", nationalChapters.join(","));
   }
-  if (internationalChapter && internationalChapter.trim()) {
-    url.searchParams.set("internationalChapter", internationalChapter.trim());
+  if (internationalChapters && internationalChapters.length > 0) {
+    url.searchParams.set("internationalChapters", internationalChapters.join(","));
   }
-  if (faculty && faculty.trim()) {
-    url.searchParams.set("faculty", faculty.trim());
+  if (faculties && faculties.length > 0) {
+    url.searchParams.set("faculties", faculties.join(","));
   }
-  if (department && department.trim()) {
-    url.searchParams.set("department", department.trim());
+  if (departments && departments.length > 0) {
+    url.searchParams.set("departments", departments.join(","));
   }
   if (verified !== undefined) {
     url.searchParams.set("verified", verified ? "true" : "false");
@@ -56,10 +56,10 @@ async function getAlumniChapters(
   }
   
   console.log("[AlumniChaptersTab] Fetching with filters:", {
-    nationalChapter: nationalChapter || "none",
-    internationalChapter: internationalChapter || "none",
-    faculty: faculty || "none",
-    department: department || "none",
+    nationalChapters: nationalChapters && nationalChapters.length > 0 ? nationalChapters : "none",
+    internationalChapters: internationalChapters && internationalChapters.length > 0 ? internationalChapters : "none",
+    faculties: faculties && faculties.length > 0 ? faculties : "none",
+    departments: departments && departments.length > 0 ? departments : "none",
     verified: verified !== undefined ? (verified ? "true" : "false") : "none",
     membershipFilter: membershipFilter || "none",
     url: url.toString(),
@@ -67,7 +67,10 @@ async function getAlumniChapters(
   
   const res = await fetch(url.toString(), { headers: { "accept": "application/json" } });
   if (!res.ok) {
-    throw new Error("Failed to fetch alumni chapters");
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = (errorData as { error?: string })?.error || `Failed to fetch alumni chapters (${res.status})`;
+    console.error("[AlumniChaptersTab] API Error:", errorMessage, errorData);
+    throw new Error(errorMessage);
   }
   const data = (await res.json()) as { items: ChapterItem[] };
   console.log("[AlumniChaptersTab] Received items:", data.items?.length || 0);
@@ -89,13 +92,32 @@ export const AlumniChaptersTab: React.FC = () => {
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   
-  // Filter states
-  const [selectedNationalChapter, setSelectedNationalChapter] = useState<string>("");
-  const [selectedInternationalChapter, setSelectedInternationalChapter] = useState<string>("");
-  const [selectedFaculty, setSelectedFaculty] = useState<string>("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  // Filter states - arrays for multi-select
+  const [selectedNationalChapters, setSelectedNationalChapters] = useState<string[]>([]);
+  const [selectedInternationalChapters, setSelectedInternationalChapters] = useState<string[]>([]);
+  const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(undefined);
   const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("members");
+  
+  // State for expanded filter sections
+  const [expandedFilters, setExpandedFilters] = useState<{
+    nationalChapter: boolean;
+    internationalChapter: boolean;
+    faculty: boolean;
+    department: boolean;
+  }>({
+    nationalChapter: false,
+    internationalChapter: false,
+    faculty: false,
+    department: false,
+  });
+  
+  // Refs for filter dropdowns (click outside to close)
+  const nationalChapterFilterRef = React.useRef<HTMLDivElement>(null);
+  const internationalChapterFilterRef = React.useRef<HTMLDivElement>(null);
+  const facultyFilterRef = React.useRef<HTMLDivElement>(null);
+  const departmentFilterRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -126,31 +148,131 @@ export const AlumniChaptersTab: React.FC = () => {
   // Get faculties and departments
   const faculties = useMemo(() => getFaculties(), []);
   const availableDepartments = useMemo(() => {
-    if (!selectedFaculty) return [];
-    return getDepartmentsByFaculty(selectedFaculty);
-  }, [selectedFaculty]);
+    if (selectedFaculties.length === 0) return [];
+    // Get all departments from selected faculties
+    const deptSet = new Set<string>();
+    selectedFaculties.forEach(faculty => {
+      const depts = getDepartmentsByFaculty(faculty);
+      depts.forEach(dept => deptSet.add(dept));
+    });
+    return Array.from(deptSet).sort();
+  }, [selectedFaculties]);
 
-  // Reset department when faculty changes
+  // Reset departments when faculties change
   useEffect(() => {
-    setSelectedDepartment("");
-  }, [selectedFaculty]);
+    if (selectedFaculties.length === 0) {
+      setSelectedDepartments([]);
+    } else {
+      // Remove departments that are no longer available
+      const availableDeptNames = availableDepartments;
+      setSelectedDepartments(prev => prev.filter(dept => availableDeptNames.includes(dept)));
+    }
+  }, [selectedFaculties, availableDepartments]);
+  
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (nationalChapterFilterRef.current && !nationalChapterFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, nationalChapter: false }));
+      }
+      if (internationalChapterFilterRef.current && !internationalChapterFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, internationalChapter: false }));
+      }
+      if (facultyFilterRef.current && !facultyFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, faculty: false }));
+      }
+      if (departmentFilterRef.current && !departmentFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, department: false }));
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // Handlers for checkbox toggles
+  const handleNationalChapterToggle = (chapterName: string) => {
+    setSelectedNationalChapters(prev => 
+      prev.includes(chapterName) 
+        ? prev.filter(ch => ch !== chapterName)
+        : [...prev, chapterName]
+    );
+  };
+  
+  const handleNationalChapterSelectAll = () => {
+    if (selectedNationalChapters.length === nationalChapters.length) {
+      setSelectedNationalChapters([]);
+    } else {
+      setSelectedNationalChapters(nationalChapters.map(ch => ch.name));
+    }
+  };
+  
+  const handleInternationalChapterToggle = (chapterName: string) => {
+    setSelectedInternationalChapters(prev => 
+      prev.includes(chapterName) 
+        ? prev.filter(ch => ch !== chapterName)
+        : [...prev, chapterName]
+    );
+  };
+  
+  const handleInternationalChapterSelectAll = () => {
+    if (selectedInternationalChapters.length === internationalChapters.length) {
+      setSelectedInternationalChapters([]);
+    } else {
+      setSelectedInternationalChapters(internationalChapters.map(ch => ch.name));
+    }
+  };
+  
+  const handleFacultyToggle = (facultyName: string) => {
+    setSelectedFaculties(prev => 
+      prev.includes(facultyName) 
+        ? prev.filter(f => f !== facultyName)
+        : [...prev, facultyName]
+    );
+  };
+  
+  const handleFacultySelectAll = () => {
+    if (selectedFaculties.length === faculties.length) {
+      setSelectedFaculties([]);
+    } else {
+      setSelectedFaculties(faculties);
+    }
+  };
+  
+  const handleDepartmentToggle = (deptName: string) => {
+    setSelectedDepartments(prev => 
+      prev.includes(deptName) 
+        ? prev.filter(d => d !== deptName)
+        : [...prev, deptName]
+    );
+  };
+  
+  const handleDepartmentSelectAll = () => {
+    if (selectedDepartments.length === availableDepartments.length) {
+      setSelectedDepartments([]);
+    } else {
+      setSelectedDepartments(availableDepartments);
+    }
+  };
 
   // Fetch alumni chapters with filters
   const { data: items = [], isLoading, isError, error } = useQuery<ChapterItem[], Error>({
     queryKey: [
       "alumni-chapters",
-      selectedNationalChapter,
-      selectedInternationalChapter,
-      selectedFaculty,
-      selectedDepartment,
+      selectedNationalChapters,
+      selectedInternationalChapters,
+      selectedFaculties,
+      selectedDepartments,
       verifiedFilter,
       membershipFilter,
     ],
     queryFn: () => getAlumniChapters(
-      selectedNationalChapter && selectedNationalChapter.trim() ? selectedNationalChapter.trim() : undefined,
-      selectedInternationalChapter && selectedInternationalChapter.trim() ? selectedInternationalChapter.trim() : undefined,
-      selectedFaculty && selectedFaculty.trim() ? selectedFaculty.trim() : undefined,
-      selectedDepartment && selectedDepartment.trim() ? selectedDepartment.trim() : undefined,
+      selectedNationalChapters.length > 0 ? selectedNationalChapters : undefined,
+      selectedInternationalChapters.length > 0 ? selectedInternationalChapters : undefined,
+      selectedFaculties.length > 0 ? selectedFaculties : undefined,
+      selectedDepartments.length > 0 ? selectedDepartments : undefined,
       verifiedFilter,
       membershipFilter
     ),
@@ -181,7 +303,7 @@ export const AlumniChaptersTab: React.FC = () => {
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, pageSize, selectedNationalChapter, selectedInternationalChapter, selectedFaculty, selectedDepartment, verifiedFilter, membershipFilter]);
+  }, [debouncedQuery, pageSize, selectedNationalChapters, selectedInternationalChapters, selectedFaculties, selectedDepartments, verifiedFilter, membershipFilter]);
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -198,17 +320,17 @@ export const AlumniChaptersTab: React.FC = () => {
       if (debouncedQuery) {
         url.searchParams.set("search", debouncedQuery);
       }
-      if (selectedNationalChapter) {
-        url.searchParams.set("nationalChapter", selectedNationalChapter);
+      if (selectedNationalChapters.length > 0) {
+        url.searchParams.set("nationalChapters", selectedNationalChapters.join(","));
       }
-      if (selectedInternationalChapter) {
-        url.searchParams.set("internationalChapter", selectedInternationalChapter);
+      if (selectedInternationalChapters.length > 0) {
+        url.searchParams.set("internationalChapters", selectedInternationalChapters.join(","));
       }
-      if (selectedFaculty) {
-        url.searchParams.set("faculty", selectedFaculty);
+      if (selectedFaculties.length > 0) {
+        url.searchParams.set("faculties", selectedFaculties.join(","));
       }
-      if (selectedDepartment) {
-        url.searchParams.set("department", selectedDepartment);
+      if (selectedDepartments.length > 0) {
+        url.searchParams.set("departments", selectedDepartments.join(","));
       }
       if (verifiedFilter !== undefined) {
         url.searchParams.set("verified", verifiedFilter ? "true" : "false");
@@ -358,7 +480,7 @@ export const AlumniChaptersTab: React.FC = () => {
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }
-  }, [isExporting, debouncedQuery, selectedNationalChapter, selectedInternationalChapter, selectedFaculty, selectedDepartment, verifiedFilter, membershipFilter]);
+  }, [isExporting, debouncedQuery, selectedNationalChapters, selectedInternationalChapters, selectedFaculties, selectedDepartments, verifiedFilter, membershipFilter]);
 
   return (
     <div className="space-y-4">
@@ -452,102 +574,314 @@ export const AlumniChaptersTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Dropdowns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      {/* Filter Dropdowns - Checkbox-based multi-select */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end p-4 bg-gray-50 rounded-lg border border-gray-200">
         {/* National Chapter Filter */}
-        <div>
-          <label htmlFor="national-chapter-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="flex-1 sm:min-w-[200px]">
+          <label htmlFor="national-chapter-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
             National Chapter
           </label>
-          <select
-            id="national-chapter-filter"
-            value={selectedNationalChapter}
-            onChange={(e) => setSelectedNationalChapter(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All National Chapters</option>
-            {nationalChapters.map((chapter) => (
-              <option key={chapter.id} value={chapter.name}>
-                {chapter.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={nationalChapterFilterRef}>
+            <button
+              type="button"
+              id="national-chapter-filter"
+              onClick={() => setExpandedFilters(prev => ({ ...prev, nationalChapter: !prev.nationalChapter }))}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+            >
+              <span>
+                {selectedNationalChapters.length === 0 
+                  ? "All National Chapters" 
+                  : selectedNationalChapters.length === nationalChapters.length
+                  ? "All National Chapters"
+                  : `${selectedNationalChapters.length} Selected`}
+              </span>
+              <svg 
+                className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.nationalChapter ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {expandedFilters.nationalChapter && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <label
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNationalChapterSelectAll();
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedNationalChapters.length === nationalChapters.length}
+                      onChange={handleNationalChapterSelectAll}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                    />
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All National Chapters</span>
+                  </label>
+                  <div className="max-h-48 overflow-y-auto">
+                    {nationalChapters.map((chapter) => {
+                      const isChecked = selectedNationalChapters.includes(chapter.name);
+                      return (
+                        <label
+                          key={chapter.id}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleNationalChapterToggle(chapter.name)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* International Chapter Filter */}
-        <div>
-          <label htmlFor="international-chapter-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="flex-1 sm:min-w-[200px]">
+          <label htmlFor="international-chapter-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
             International Chapter
           </label>
-          <select
-            id="international-chapter-filter"
-            value={selectedInternationalChapter}
-            onChange={(e) => setSelectedInternationalChapter(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All International Chapters ({internationalChapters.length})</option>
-            {internationalChapters.map((chapter) => (
-              <option key={chapter.id} value={chapter.name}>
-                {chapter.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={internationalChapterFilterRef}>
+            <button
+              type="button"
+              id="international-chapter-filter"
+              onClick={() => setExpandedFilters(prev => ({ ...prev, internationalChapter: !prev.internationalChapter }))}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+            >
+              <span>
+                {selectedInternationalChapters.length === 0 
+                  ? "All International Chapters" 
+                  : selectedInternationalChapters.length === internationalChapters.length
+                  ? "All International Chapters"
+                  : `${selectedInternationalChapters.length} Selected`}
+              </span>
+              <svg 
+                className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.internationalChapter ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {expandedFilters.internationalChapter && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <label
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInternationalChapterSelectAll();
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedInternationalChapters.length === internationalChapters.length}
+                      onChange={handleInternationalChapterSelectAll}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                    />
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All International Chapters</span>
+                  </label>
+                  <div className="max-h-48 overflow-y-auto">
+                    {internationalChapters.map((chapter) => {
+                      const isChecked = selectedInternationalChapters.includes(chapter.name);
+                      return (
+                        <label
+                          key={chapter.id}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleInternationalChapterToggle(chapter.name)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Faculty Filter */}
-        <div>
-          <label htmlFor="faculty-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="flex-1 sm:min-w-[180px]">
+          <label htmlFor="faculty-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
             Faculty
           </label>
-          <select
-            id="faculty-filter"
-            value={selectedFaculty}
-            onChange={(e) => setSelectedFaculty(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All Faculties ({faculties.length})</option>
-            {faculties.map((faculty) => (
-              <option key={faculty} value={faculty}>
-                {faculty}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={facultyFilterRef}>
+            <button
+              type="button"
+              id="faculty-filter"
+              onClick={() => setExpandedFilters(prev => ({ ...prev, faculty: !prev.faculty }))}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
+            >
+              <span>
+                {selectedFaculties.length === 0 
+                  ? "All Faculties" 
+                  : selectedFaculties.length === faculties.length
+                  ? "All Faculties"
+                  : `${selectedFaculties.length} Selected`}
+              </span>
+              <svg 
+                className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.faculty ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {expandedFilters.faculty && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <label
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFacultySelectAll();
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedFaculties.length === faculties.length}
+                      onChange={handleFacultySelectAll}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                    />
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Faculties</span>
+                  </label>
+                  <div className="max-h-48 overflow-y-auto">
+                    {faculties.map((faculty) => {
+                      const isChecked = selectedFaculties.includes(faculty);
+                      return (
+                        <label
+                          key={faculty}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleFacultyToggle(faculty)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{faculty}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Department Filter */}
-        <div>
-          <label htmlFor="department-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="flex-1 sm:min-w-[180px]">
+          <label htmlFor="department-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
             Department
           </label>
-          <select
-            id="department-filter"
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            disabled={!selectedFaculty}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            <option value="">
-              {selectedFaculty ? `All Departments (${availableDepartments.length})` : "Select Faculty First"}
-            </option>
-            {availableDepartments.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={departmentFilterRef}>
+            <button
+              type="button"
+              id="department-filter"
+              onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))}
+              disabled={selectedFaculties.length === 0}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>
+                {selectedDepartments.length === 0 
+                  ? selectedFaculties.length === 0 ? "Select Faculty First" : "All Departments"
+                  : selectedDepartments.length === availableDepartments.length
+                  ? "All Departments"
+                  : `${selectedDepartments.length} Selected`}
+              </span>
+              <svg 
+                className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.department ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {expandedFilters.department && selectedFaculties.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  {availableDepartments.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select faculties first</p>
+                  ) : (
+                    <>
+                      <label
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDepartmentSelectAll();
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDepartments.length === availableDepartments.length}
+                          onChange={handleDepartmentSelectAll}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                        />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
+                      </label>
+                      <div className="max-h-48 overflow-y-auto">
+                        {availableDepartments.map((dept) => {
+                          const isChecked = selectedDepartments.includes(dept);
+                          return (
+                            <label
+                              key={dept}
+                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleDepartmentToggle(dept)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{dept}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Clear Filters Button */}
-      {(selectedNationalChapter || selectedInternationalChapter || selectedFaculty || selectedDepartment || verifiedFilter !== undefined) && (
+      {(selectedNationalChapters.length > 0 || selectedInternationalChapters.length > 0 || selectedFaculties.length > 0 || selectedDepartments.length > 0 || verifiedFilter !== undefined) && (
         <div className="flex justify-end">
           <button
             type="button"
             onClick={() => {
-              setSelectedNationalChapter("");
-              setSelectedInternationalChapter("");
-              setSelectedFaculty("");
-              setSelectedDepartment("");
+              setSelectedNationalChapters([]);
+              setSelectedInternationalChapters([]);
+              setSelectedFaculties([]);
+              setSelectedDepartments([]);
               setVerifiedFilter(undefined);
             }}
             className="text-sm text-blue-600 hover:text-blue-800 underline"
