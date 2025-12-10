@@ -9,8 +9,10 @@ import {
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
-  DocsIcon,
-  PlugInIcon,
+  PageIcon,
+  UserCircleIcon,
+  BoxCubeIcon,
+  BoltIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -28,7 +30,7 @@ const navItems: NavItem[] = [
   },
  
   {
-    icon: <DocsIcon />,
+    icon: <PageIcon />,
     name: "Stories Management", //add dropdown with add and view
     path: "/alumni-stories",
   },
@@ -38,12 +40,17 @@ const navItems: NavItem[] = [
     path: "/events",
   },
   {
-    icon: <DocsIcon />,
+    icon: <UserCircleIcon />,
     name: "Leadership", 
     path: "/leadership",
   },
   {
-    icon: <PlugInIcon />,
+    icon: <BoxCubeIcon />,
+    name: "Organization", //add dropdown with users and locations
+    path : "/organization",	
+  },
+  {
+    icon: <BoltIcon />,
     name: "Setup", //add dropdown with users and locations
     path : "/setup",	
   },

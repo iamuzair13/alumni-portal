@@ -108,10 +108,13 @@ export default function SignInForm() {
             
             // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard
             if (isAdmin || isSuperAdmin || isViewer) {
+              // Keep loading state active during redirect
               router.replace("/dashboard");
+              // Don't set isVerifying to false - let it stay until page navigates
               return;
             } else if (isAlumni) {
               router.replace("/alumni-profile");
+              // Don't set isVerifying to false - let it stay until page navigates
               return;
             }
           }
@@ -127,15 +130,18 @@ export default function SignInForm() {
           const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
           if (isStaff) {
             router.replace("/dashboard");
+            // Don't set isVerifying to false - let it stay until page navigates
             return;
           }
         }
         // Default to alumni profile for alumni users
         router.replace("/alumni-profile");
+        // Don't set isVerifying to false - let it stay until page navigates
       };
       
       try {
         await checkSession();
+        // Keep isVerifying true during redirect - it will be cleared when component unmounts
       } catch (ve) {
         const msg = ve instanceof Error ? ve.message : String(ve);
         setVerificationError(msg || "Failed to verify session");
@@ -147,7 +153,7 @@ export default function SignInForm() {
             const normalizedType = String(userType).toLowerCase().trim();
             const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
             if (isStaff) {
-              router.replace("/");
+              router.replace("/dashboard");
             } else {
               router.replace("/alumni-profile");
             }
@@ -157,7 +163,7 @@ export default function SignInForm() {
         } catch {
           router.replace("/alumni-profile"); // Default redirect on error
         }
-      } finally {
+        // Only set to false on error, not on successful redirect
         setIsVerifying(false);
       }
     } catch {
@@ -170,9 +176,30 @@ export default function SignInForm() {
   // Removed automatic redirect on authentication to prevent redirect loops
   // Redirects are now handled in the handleCredentials function after successful login
 
+  const isProcessing = isLoading || isVerifying;
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-6 sm:py-8">
-      <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-12">
+    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-6 sm:py-8 relative">
+      {/* Full-page loading overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-gray-900">
+                {isLoading ? "Signing in..." : "Verifying session..."}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                {isLoading ? "Please wait while we verify your credentials" : "Redirecting you to your dashboard"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className={`w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-12 ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}>
         {/* Left Side - University Info */}
         <div className="flex-1 flex flex-col items-center lg:items-start justify-start text-center lg:text-left">
           <div className="mb-6 flex justify-center lg:justify-start">

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
-import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon } from "@/icons";
+import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -139,6 +139,8 @@ export const AlumniTabs: React.FC = () => {
     employmentStatus?: "Employed" | "Unemployed" | null;
     lastLoginTime?: string | null;
     loginCount?: number | null;
+    sapId?: string; // Raw SAP ID for sorting
+    rawName?: string; // Raw name for sorting
   };
 
   // filtering is handled in the server-like fetcher; remove unused memo
@@ -156,6 +158,10 @@ export const AlumniTabs: React.FC = () => {
   const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // State for expanded filter sections
   const [expandedFilters, setExpandedFilters] = useState<{
@@ -507,7 +513,10 @@ export const AlumniTabs: React.FC = () => {
         employmentStatus,
         lastLoginTime: r.lasttimelogin ?? null,
         loginCount: r.logincount ?? null,
-      };
+        // Store raw values for sorting
+        sapId: r.sapid?.trim() || "",
+        rawName: r.alumniname || "",
+      } as AlumniItem & { sapId: string; rawName: string };
     }
     
     // Trim array to actual size
@@ -540,8 +549,21 @@ export const AlumniTabs: React.FC = () => {
     };
   }, [countsData, totalRecords]);
 
+  // Handle sorting
+  const handleSort = useCallback((field: string) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new field with ascending direction
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }, [sortField, sortDirection]);
+
   // Filter by tab only (search and status filtering are now handled server-side)
   // No client-side filtering needed - server already returns the correct filtered and paginated data
+  // Apply sorting to items
   const filteredItems = useMemo(() => {
     // Since all filtering (search, status, active) is handled server-side,
     // we just return the items as-is from the server
@@ -549,8 +571,80 @@ export const AlumniTabs: React.FC = () => {
     if (selected === "category") {
       return [];
     }
-    return items;
-  }, [items, selected]);
+    
+    // Apply sorting if a sort field is selected
+    if (!sortField) {
+      return items;
+    }
+    
+    const sorted = [...items].sort((a, b) => {
+      let aValue: string | number | null | undefined = "";
+      let bValue: string | number | null | undefined = "";
+      
+      switch (sortField) {
+        case "name":
+          // Use rawName if available, otherwise use name
+          aValue = (a.rawName || a.name || "").trim().toLowerCase();
+          bValue = (b.rawName || b.name || "").trim().toLowerCase();
+          break;
+        case "sapId":
+          // Sort by SAP ID first, then registration number, then ID
+          const aSapId = (a.sapId || "").trim().toLowerCase();
+          const bSapId = (b.sapId || "").trim().toLowerCase();
+          const aRegNo = (a.registrationNo || "").trim().toLowerCase();
+          const bRegNo = (b.registrationNo || "").trim().toLowerCase();
+          // Compare SAP ID first, if equal compare registration number
+          if (aSapId && bSapId) {
+            aValue = aSapId;
+            bValue = bSapId;
+          } else if (aSapId) {
+            aValue = aSapId;
+            bValue = bRegNo || aSapId; // Prefer SAP ID
+          } else if (bSapId) {
+            aValue = aRegNo || bSapId;
+            bValue = bSapId;
+          } else {
+            // Both don't have SAP ID, compare by registration number or ID
+            aValue = (aRegNo || a.id || "").trim().toLowerCase();
+            bValue = (bRegNo || b.id || "").trim().toLowerCase();
+          }
+          break;
+        case "email":
+          aValue = (a.email || "").trim().toLowerCase();
+          bValue = (b.email || "").trim().toLowerCase();
+          break;
+        case "faculty":
+          aValue = (a.faculty || "").trim().toLowerCase();
+          bValue = (b.faculty || "").trim().toLowerCase();
+          break;
+        case "department":
+          aValue = (a.department || "").trim().toLowerCase();
+          bValue = (b.department || "").trim().toLowerCase();
+          break;
+        case "program":
+          aValue = (a.program || "").trim().toLowerCase();
+          bValue = (b.program || "").trim().toLowerCase();
+          break;
+        case "status":
+          aValue = (a.verifyStatus || "").toLowerCase();
+          bValue = (b.verifyStatus || "").toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+      
+      // Ensure values are strings for comparison
+      const aStr = String(aValue || "");
+      const bStr = String(bValue || "");
+      
+      // Compare values
+      if (aStr < bStr) return sortDirection === "asc" ? -1 : 1;
+      if (aStr > bStr) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    
+    return sorted;
+  }, [items, selected, sortField, sortDirection]);
 
   // Pagination derived values - use server-side pagination
   const total = totalRecords; // Use total from server
@@ -1611,26 +1705,89 @@ export const AlumniTabs: React.FC = () => {
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
-                      Full Name
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("name")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Full Name</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "name" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "name" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
-                      SAP ID / Registration
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("sapId")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>SAP ID / Registration</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "sapId" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "sapId" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell">
-                      Email
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("email")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Email</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "email" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "email" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
-                      Faculty
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("faculty")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Faculty</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "faculty" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "faculty" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell">
-                      Department
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("department")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Department</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "department" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "department" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell">
-                      Program
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("program")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Program</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "program" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "program" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">
-                      Status
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("status")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Status</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "status" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "status" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
                       Actions
