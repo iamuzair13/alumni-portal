@@ -584,7 +584,7 @@ export const AlumniChaptersTab: React.FC = () => {
           <div className="relative" ref={nationalChapterFilterRef}>
             <button
               type="button"
-              id="national-chapter-filter"
+            id="national-chapter-filter"
               onClick={() => setExpandedFilters(prev => ({ ...prev, nationalChapter: !prev.nationalChapter }))}
               className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
             >
@@ -656,7 +656,7 @@ export const AlumniChaptersTab: React.FC = () => {
           <div className="relative" ref={internationalChapterFilterRef}>
             <button
               type="button"
-              id="international-chapter-filter"
+            id="international-chapter-filter"
               onClick={() => setExpandedFilters(prev => ({ ...prev, internationalChapter: !prev.internationalChapter }))}
               className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
             >
@@ -728,7 +728,7 @@ export const AlumniChaptersTab: React.FC = () => {
           <div className="relative" ref={facultyFilterRef}>
             <button
               type="button"
-              id="faculty-filter"
+            id="faculty-filter"
               onClick={() => setExpandedFilters(prev => ({ ...prev, faculty: !prev.faculty }))}
               className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
             >
@@ -800,7 +800,7 @@ export const AlumniChaptersTab: React.FC = () => {
           <div className="relative" ref={departmentFilterRef}>
             <button
               type="button"
-              id="department-filter"
+            id="department-filter"
               onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))}
               disabled={selectedFaculties.length === 0}
               className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"

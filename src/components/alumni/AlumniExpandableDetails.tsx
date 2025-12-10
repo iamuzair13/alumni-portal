@@ -174,6 +174,28 @@ const CompactField: React.FC<{
     );
   }
 
+  // Handle password field separately
+  if (type === "password") {
+    // For password fields, show placeholder text when not editing, or allow editing
+    const displayValue = !effectiveIsEditing ? (value ? "••••••••" : "Not Set") : "";
+    return (
+      <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</label>
+        {effectiveIsEditing ? (
+          <input
+            type="password"
+            {...(register && name ? register(name) : {})}
+            placeholder="Enter new password (leave blank to keep current)"
+            disabled={readOnly}
+            className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+          />
+        ) : (
+          <span className="text-xs text-gray-900 dark:text-gray-100 flex-1 break-words">{displayValue}</span>
+        )}
+      </div>
+    );
+  }
+
   // Add validation attributes for CGPA field
   const inputProps: React.InputHTMLAttributes<HTMLInputElement> = {};
   if (name === "cgpa") {
@@ -267,6 +289,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           personalemail: formData.personalemail,
           personalemailshow: formData.personalemailshow,
           universityemail: formData.universityemail,
+          password: formData.password,
           officialemail: formData.officialemail,
           officialnumber: formData.officialnumber,
           address: formData.address,
@@ -473,6 +496,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno1" />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isEditing} readOnly={readOnly} register={register} name="personalemail" type="email" />
           <CompactField label="Alumni Email" value={data.universityemail} isEditing={isEditing} readOnly={readOnly} register={register} name="universityemail" type="email" />
+          <CompactField label="Password" value={data.password || ""} isEditing={isEditing} readOnly={readOnly} register={register} name="password" type="password" />
          
           <CompactField label="Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
           <CompactField label="Country" value={data.country} isEditing={isEditing} readOnly={readOnly} register={register} name="country" />

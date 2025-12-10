@@ -654,7 +654,7 @@ export const AlumniTabs: React.FC = () => {
         if (Array.isArray(statusFilter)) {
           statusFilter.forEach(s => url.searchParams.append("status", s));
         } else {
-          url.searchParams.set("status", statusFilter);
+        url.searchParams.set("status", statusFilter);
         }
       }
       if (selectedFaculties.length > 0) {
@@ -1219,10 +1219,10 @@ export const AlumniTabs: React.FC = () => {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
+                    placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
                 />
-              </div>
+                </div>
             </div>
             
             {/* Filters Row - Checkbox-based multi-select with dropdown styling */}
@@ -1248,12 +1248,12 @@ export const AlumniTabs: React.FC = () => {
                     </span>
                     <svg 
                       className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.faculty ? 'rotate-180' : ''}`}
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                   </button>
                   {expandedFilters.faculty && (
                     <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
@@ -1292,9 +1292,9 @@ export const AlumniTabs: React.FC = () => {
                               </label>
                             );
                           })}
-                        </div>
-                      </div>
-                    </div>
+                </div>
+              </div>
+            </div>
                   )}
                 </div>
               </div>

@@ -189,8 +189,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        // SECURITY: Only return password for alumni (owners), not for admins
-        password: (isAlumni && isOwner) ? (row.password ?? null) : null,
+        // SECURITY: Return password for alumni (owners) and admins who can modify
+        password: (isAlumni && isOwner) || canAccess ? (row.password ?? null) : null,
         father_cnic: row.father_cnic ?? null,
         // Higher Education fields
         degree_title: row.degree_title ?? null,
