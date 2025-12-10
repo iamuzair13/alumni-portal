@@ -574,7 +574,7 @@ export const AlumniTabs: React.FC = () => {
     
     // Apply sorting if a sort field is selected
     if (!sortField) {
-      return items;
+    return items;
     }
     
     const sorted = [...items].sort((a, b) => {

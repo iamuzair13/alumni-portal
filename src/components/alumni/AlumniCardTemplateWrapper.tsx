@@ -34,6 +34,15 @@ export default function AlumniCardTemplateWrapper({
           <AlumniCardPDFExport 
             cardRef={cardRef} 
             studentName={studentName}
+            cardData={{
+              studentName,
+              department,
+              faculty,
+              alumniId,
+              validity,
+              photoUrl,
+              cardImage,
+            }}
           />
         </div>
       )}
