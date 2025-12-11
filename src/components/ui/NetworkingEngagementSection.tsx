@@ -88,12 +88,12 @@ export default function NetworkingEngagementSection({
                 ) : card.status === "applied" ? (
                   <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-amber-50 text-amber-700 px-2.5 py-1 border border-amber-200">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                    <span className="text-xs">Mentorship Status: Applied</span>
+                    <span className="text-xs">Status: Applied</span>
                   </div>
                 ) : card.status === "conducted" ? (
                   <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 border border-emerald-200">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
-                    <span className="text-xs">Mentorship Status: Conducted</span>
+                    <span className="text-xs">Status: Conducted</span>
                   </div>
                 ) : null}
               </>

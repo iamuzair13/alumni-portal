@@ -36,14 +36,20 @@ type TabKey =
   | "verified"
   | "underApproval"
   | "active"
-  | "category";
+  | "aPlus"
+  | "a"
+  | "b"
+  | "c";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "total", label: "Total" },
   { key: "verified", label: "Verified" },
   { key: "underApproval", label: "Under Approval" },
   { key: "active", label: "Active" },
-  { key: "category", label: "Category" },
+  { key: "aPlus", label: "A+ Category" },
+  { key: "a", label: "A Category" },
+  { key: "b", label: "B Category" },
+  { key: "c", label: "C Category" },
 ];
 
 // Counts are computed dynamically from fetched data
@@ -91,13 +97,37 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-indigo-700 dark:text-indigo-200",
     labelText: "text-indigo-600 dark:text-indigo-300",
   },
-  category: {
+  aPlus: {
     selectedContainer:
       "border-purple-500 bg-purple-50 dark:border-purple-500 dark:bg-purple-900/20",
     hoverBorder: "hover:border-purple-400",
     iconBg: "bg-purple-100 dark:bg-purple-800",
     iconColor: "text-purple-700 dark:text-purple-200",
     labelText: "text-purple-600 dark:text-purple-300",
+  },
+  a: {
+    selectedContainer:
+      "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
+    hoverBorder: "hover:border-blue-400",
+    iconBg: "bg-blue-100 dark:bg-blue-800",
+    iconColor: "text-blue-700 dark:text-blue-200",
+    labelText: "text-blue-600 dark:text-blue-300",
+  },
+  b: {
+    selectedContainer:
+      "border-green-500 bg-green-50 dark:border-green-500 dark:bg-green-900/20",
+    hoverBorder: "hover:border-green-400",
+    iconBg: "bg-green-100 dark:bg-green-800",
+    iconColor: "text-green-700 dark:text-green-200",
+    labelText: "text-green-600 dark:text-green-300",
+  },
+  c: {
+    selectedContainer:
+      "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
+    hoverBorder: "hover:border-amber-400",
+    iconBg: "bg-amber-100 dark:bg-amber-800",
+    iconColor: "text-amber-700 dark:text-amber-200",
+    labelText: "text-amber-600 dark:text-amber-300",
   },
 };
 
@@ -117,6 +147,13 @@ export const AlumniTabs: React.FC = () => {
   const departmentFilterRef = React.useRef<HTMLDivElement>(null);
   const programFilterRef = React.useRef<HTMLDivElement>(null);
   const statusFilterRef = React.useRef<HTMLDivElement>(null);
+  const homeCountryFilterRef = React.useRef<HTMLDivElement>(null);
+  const provinceFilterRef = React.useRef<HTMLDivElement>(null);
+  const homeCityFilterRef = React.useRef<HTMLDivElement>(null);
+  const campusFilterRef = React.useRef<HTMLDivElement>(null);
+  const admissionYearFilterRef = React.useRef<HTMLDivElement>(null);
+  const passingYearFilterRef = React.useRef<HTMLDivElement>(null);
+  const workCountryFilterRef = React.useRef<HTMLDivElement>(null);
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -159,6 +196,26 @@ export const AlumniTabs: React.FC = () => {
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   
+  // Additional master filter states
+  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+  const [selectedMaritalStatuses, setSelectedMaritalStatuses] = useState<string[]>([]);
+  const [selectedHomeCountries, setSelectedHomeCountries] = useState<string[]>([]);
+  const [selectedHomeCities, setSelectedHomeCities] = useState<string[]>([]);
+  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([]);
+  const [selectedCampuses, setSelectedCampuses] = useState<string[]>([]);
+  const [selectedAdmissionYears, setSelectedAdmissionYears] = useState<string[]>([]);
+  const [selectedPassingYears, setSelectedPassingYears] = useState<string[]>([]);
+  const [selectedOccupationStatuses, setSelectedOccupationStatuses] = useState<string[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [selectedWorkCities, setSelectedWorkCities] = useState<string[]>([]);
+  const [selectedWorkCountries, setSelectedWorkCountries] = useState<string[]>([]);
+  const [selectedInstitutionNames, setSelectedInstitutionNames] = useState<string[]>([]);
+  const [selectedProgramsEnrolled, setSelectedProgramsEnrolled] = useState<string[]>([]);
+  const [selectedFundingSources, setSelectedFundingSources] = useState<string[]>([]);
+  const [selectedInstitutionCountries, setSelectedInstitutionCountries] = useState<string[]>([]);
+  const [selectedInstitutionCities, setSelectedInstitutionCities] = useState<string[]>([]);
+  const [selectedMrNos, setSelectedMrNos] = useState<string[]>([]);
+  
   // Sorting state
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -169,12 +226,149 @@ export const AlumniTabs: React.FC = () => {
     department: boolean;
     program: boolean;
     status: boolean;
+    masterFilters: boolean;
+    homeCountry: boolean;
+    province: boolean;
+    homeCity: boolean;
+    campus: boolean;
+    admissionYear: boolean;
+    passingYear: boolean;
+    workCountry: boolean;
   }>({
     faculty: false,
     department: false,
     program: false,
     status: false,
+    masterFilters: false,
+    homeCountry: false,
+    province: false,
+    homeCity: false,
+    campus: false,
+    admissionYear: false,
+    passingYear: false,
+    workCountry: false,
   });
+  
+  // Countries list (from registration form)
+  const allCountries = [
+    "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",
+    "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
+    "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria",
+    "Burkina Faso", "Burundi", "Côte d'Ivoire", "Cabo Verde", "Cambodia", "Cameroon", "Canada",
+    "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)",
+    "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia (Czech Republic)", "Democratic Republic of the Congo",
+    "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador",
+    "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini (fmr. Swaziland)", "Ethiopia", "Fiji", "Finland",
+    "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea",
+    "Guinea-Bissau", "Guyana", "Haiti", "Holy See", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
+    "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
+    "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein",
+    "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
+    "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
+    "Montenegro", "Morocco", "Mozambique", "Myanmar (formerly Burma)", "Namibia", "Nauru", "Nepal",
+    "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia",
+    "Norway", "Oman", "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay",
+    "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda",
+    "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
+    "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore",
+    "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan",
+    "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania",
+    "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan",
+    "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
+    "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Other"
+  ];
+  
+  // Pakistan provinces
+  const pakistanProvinces = [
+    { value: "Punjab", label: "Punjab" },
+    { value: "Sindh", label: "Sindh" },
+    { value: "KPK", label: "KPK" },
+    { value: "Balochistan", label: "Balochistan" },
+    { value: "Islamabad", label: "Islamabad Capital Territory" },
+    { value: "GB", label: "Gilgit-Baltistan" },
+    { value: "AJK", label: "Azad Kashmir" },
+  ];
+  
+  // Campus options
+  const campusOptions: string[] = [
+    "Lahore Campus",
+    "Sargodha Campus",
+    "Islamabad Campus",
+    "Pakpattan Campus",
+  ];
+  
+  // Admission years (1998 to 2025)
+  const admissionYears: string[] = Array.from({ length: 2025 - 1998 + 1 }, (_, i) => String(1998 + i));
+  
+  // Passing years (2000 to 2025)
+  const passingYears: string[] = Array.from({ length: 2025 - 2000 + 1 }, (_, i) => String(2000 + i));
+  
+  // Pakistan cities by province
+  const citiesByProvince: Record<string, string[]> = {
+    "Punjab": [
+      "Ahmadpur East", "Ahmadpur Sial", "Arifwala", "Attock", "Bahawalnagar", "Bahawalpur", "Bhakkar",
+      "Burewala", "Chak Jhumra", "Chakwal", "Chiniot", "Chishtian", "Chunian", "Daska", "Dera Ghazi Khan",
+      "Dina", "Dipalpur", "Dunyapur", "Faisalabad", "Fateh Jang", "Gojra", "Gujar Khan", "Gujranwala",
+      "Gujrat", "Hafizabad", "Haroonabad", "Hassan Abdal", "Hasilpur", "Hujra Shah Muqeem", "Jalalpur Jattan",
+      "Jampur", "Jaranwala", "Jauharabad", "Jhang", "Jhelum", "Kabirwala", "Kahror Pakka", "Kamalia",
+      "Kamoke", "Kasur", "Khanewal", "Khushab", "Kot Abdul Malik", "Kot Addu", "Kot Mithan", "Kot Momin",
+      "Kot Radha Kishan", "Kotli Loharan", "Kundian", "Lahore", "Layyah", "Lodhran", "Malisi", "Mamu Kanjan",
+      "Mandi Bahauddin", "Mananwala", "Mian Channun", "Mianwali", "Multan", "Muridke", "Muzaffargarh",
+      "Nankana Sahib", "Narowal", "Okara", "Pakpattan", "Pasrur", "Pattoki", "Pindi Bhattian", "Rahim Yar Khan",
+      "Rajanpur", "Renala Khurd", "Sadiqabad", "Sahiwal", "Sargodha", "Sarai Alamgir", "Shakargarh", "Shahkot",
+      "Sheikhupura", "Sialkot", "Sohawa", "Toba Tek Singh", "Taunsa", "Uch Sharif", "Vehari", "Wazirabad"
+    ],
+    "Sindh": [
+      "Badin", "Bhiria", "Chachro", "Dadu", "Daharki", "Digri", "Ghotki", "Hala", "Hyderabad", "Islamkot",
+      "Jacobabad", "Jamshoro", "Kandhkot", "Kandiaro", "Karachi", "Kashmore", "Khairpur", "Khairpur Nathan Shah",
+      "Khipro", "Kot Ghulam Muhammad", "Kotri", "Kunri", "Larkana", "Matiari", "Mehrabpur", "Mirpur Khas",
+      "Mithi", "Moro", "Nagarparkar", "Naushahro Feroze", "Nawabshah", "Qazi Ahmad", "Rohri", "Sakrand",
+      "Samaro", "Sanghar", "Sehwan", "Shahdadpur", "Shikarpur", "Sukkur", "Tando Adam", "Tando Allahyar",
+      "Tando Muhammad Khan", "Thatta", "Umerkot", "Vik"
+    ],
+    "KPK": [
+      "Abbottabad", "Bajaur", "Bannu", "Barikot", "Battagram", "Batkhela", "Buner", "Charsadda", "Chitral",
+      "Daggar", "Dera Ismail Khan", "Dir", "Gomal", "Hangu", "Haripur", "Jandola", "Kaniguram", "Karak",
+      "Khyber", "Kohat", "Kulachi", "Lakki Marwat", "Lower Dir", "Malakand", "Mardan", "Mansehra", "Makeen",
+      "Mohmand", "Mingora", "North Waziristan", "Nowshera", "Orakzai", "Pabbi", "Paharpur", "Paroa", "Peshawar",
+      "Razmak", "Sararogha", "Sarwakai", "Shakai", "Shangla", "South Waziristan", "Spinkai Raghzai", "Swabi",
+      "Swat", "Takht-i-Bahi", "Tangi", "Tank", "Timergara", "Tiarza", "Upper Dir", "Wana"
+    ],
+    "Balochistan": [
+      "Awaran", "Bela", "Barkhan", "Chagai", "Chaman", "Dalbandin", "Dera Bugti", "Dera Murad Jamali",
+      "Duki", "Ghizer", "Gulistan", "Gwadar", "Harnai", "Hub", "Jaffarabad", "Jhal Magsi", "Jiwani",
+      "Kachhi", "Kalat", "Kharan", "Khuzdar", "Killa Abdullah", "Killa Saifullah", "Kohlu", "Lasbela",
+      "Loralai", "Mastung", "Musakhel", "Nasirabad", "Nok Kundi", "Nushki", "Ormara", "Panjgur", "Pasni",
+      "Pishin", "Qila Saifullah", "Quetta", "Sherani", "Sibi", "Surab", "Taftan", "Turbat", "Usta Muhammad",
+      "Uthal", "Washuk", "Winder", "Ziarat", "Zhob"
+    ],
+    "Islamabad": ["Islamabad"],
+    "GB": [
+      "Astore", "Chitral", "Darel", "Diamer", "Ghanche", "Ghizer", "Gilgit", "Gultari", "Gojal", "Hunza",
+      "Ishkoman", "Kharmang", "Nagar", "Punial", "Roundu", "Shigar", "Skardu", "Tangir", "Yasin"
+    ],
+    "AJK": [
+      "Athmuqam", "Bagh", "Barnala", "Bhimber", "Chakswari", "Dadyal", "Forward Kahuta", "Hattian Bala",
+      "Haveli", "Kel", "Kotli", "Mendhar", "Mirpur", "Muzaffarabad", "Nakyal", "Neelum", "Poonch",
+      "Rawalakot", "Samahni", "Sehnsa", "Sharda", "Sudhnuti"
+    ]
+  };
+  
+  // Get cities for selected provinces
+  const availableCities = useMemo(() => {
+    if (selectedProvinces.length === 0) return [];
+    const citySet = new Set<string>();
+    selectedProvinces.forEach(province => {
+      const cities = citiesByProvince[province] || [];
+      cities.forEach(city => citySet.add(city));
+    });
+    return Array.from(citySet).sort((a, b) => a.localeCompare(b));
+  }, [selectedProvinces]);
+  
+  // Check if Pakistan is selected in home countries
+  const hasPakistanSelected = useMemo(() => {
+    return selectedHomeCountries.includes("Pakistan");
+  }, [selectedHomeCountries]);
   
   // Process programs data from mock-programs.json
   const programsDataTyped = programsData as ProgramData;
@@ -240,7 +434,10 @@ export const AlumniTabs: React.FC = () => {
     if (selected === "verified") return ["verified"];
     if (selected === "underApproval") return ["underApproval"];
     if (selected === "active") return ["active"];
-    if (selected === "category") return ["category"];
+    if (selected === "aPlus") return ["category:aPlus"];
+    if (selected === "a") return ["category:a"];
+    if (selected === "b") return ["category:b"];
+    if (selected === "c") return ["category:c"];
     return undefined; // No filter for "total"
   }, [selected, additionalFilter]);
   
@@ -266,6 +463,23 @@ export const AlumniTabs: React.FC = () => {
     }
   }, [selectedDepartments, availablePrograms]);
   
+  // Reset province and city when home country changes (if Pakistan is removed)
+  useEffect(() => {
+    if (!hasPakistanSelected && selectedProvinces.length > 0) {
+      setSelectedProvinces([]);
+    }
+  }, [hasPakistanSelected, selectedProvinces]);
+  
+  useEffect(() => {
+    if (selectedProvinces.length === 0) {
+      setSelectedHomeCities([]);
+    } else {
+      // Remove cities that are no longer available
+      const availableCityNames = availableCities;
+      setSelectedHomeCities(prev => prev.filter(city => availableCityNames.includes(city)));
+    }
+  }, [selectedProvinces, availableCities]);
+  
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -285,6 +499,27 @@ export const AlumniTabs: React.FC = () => {
       }
       if (statusFilterRef.current && !statusFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, status: false }));
+      }
+      if (homeCountryFilterRef.current && !homeCountryFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, homeCountry: false }));
+      }
+      if (provinceFilterRef.current && !provinceFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, province: false }));
+      }
+      if (homeCityFilterRef.current && !homeCityFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, homeCity: false }));
+      }
+      if (campusFilterRef.current && !campusFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, campus: false }));
+      }
+      if (admissionYearFilterRef.current && !admissionYearFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, admissionYear: false }));
+      }
+      if (passingYearFilterRef.current && !passingYearFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, passingYear: false }));
+      }
+      if (workCountryFilterRef.current && !workCountryFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, workCountry: false }));
       }
     };
     
@@ -342,6 +577,63 @@ export const AlumniTabs: React.FC = () => {
       setSelectedPrograms(availablePrograms.map(p => p.program));
     }
   };
+
+  // Clear all filters
+  const handleClearFilters = useCallback(() => {
+    setQuery("");
+    setSelectedFaculties([]);
+    setSelectedDepartments([]);
+    setSelectedPrograms([]);
+    setAdditionalFilter([]);
+    setSelectedGenders([]);
+    setSelectedMaritalStatuses([]);
+    setSelectedHomeCountries([]);
+    setSelectedHomeCities([]);
+    setSelectedProvinces([]);
+    setSelectedCampuses([]);
+    setSelectedAdmissionYears([]);
+    setSelectedPassingYears([]);
+    setSelectedOccupationStatuses([]);
+    setSelectedSectors([]);
+    setSelectedWorkCities([]);
+    setSelectedWorkCountries([]);
+    setSelectedInstitutionNames([]);
+    setSelectedProgramsEnrolled([]);
+    setSelectedFundingSources([]);
+    setSelectedInstitutionCountries([]);
+    setSelectedInstitutionCities([]);
+    setSelectedMrNos([]);
+    setCurrentPage(1);
+  }, []);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      query.trim() !== "" ||
+      selectedFaculties.length > 0 ||
+      selectedDepartments.length > 0 ||
+      selectedPrograms.length > 0 ||
+      additionalFilter.length > 0 ||
+      selectedGenders.length > 0 ||
+      selectedMaritalStatuses.length > 0 ||
+      selectedHomeCountries.length > 0 ||
+      selectedHomeCities.length > 0 ||
+      selectedProvinces.length > 0 ||
+      selectedCampuses.length > 0 ||
+      selectedAdmissionYears.length > 0 ||
+      selectedPassingYears.length > 0 ||
+      selectedOccupationStatuses.length > 0 ||
+      selectedSectors.length > 0 ||
+      selectedWorkCities.length > 0 ||
+      selectedWorkCountries.length > 0 ||
+      selectedInstitutionNames.length > 0 ||
+      selectedProgramsEnrolled.length > 0 ||
+      selectedFundingSources.length > 0 ||
+      selectedInstitutionCountries.length > 0 ||
+      selectedInstitutionCities.length > 0 ||
+      selectedMrNos.length > 0
+    );
+  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos]);
   
   const handleStatusToggle = (status: string) => {
     setAdditionalFilter(prev => 
@@ -357,6 +649,119 @@ export const AlumniTabs: React.FC = () => {
       setAdditionalFilter([]);
     } else {
       setAdditionalFilter(allStatuses);
+    }
+  };
+  
+  // Handlers for home country, province, and city filters
+  const handleHomeCountryToggle = (country: string) => {
+    setSelectedHomeCountries(prev => 
+      prev.includes(country) 
+        ? prev.filter(c => c !== country)
+        : [...prev, country]
+    );
+  };
+  
+  const handleHomeCountrySelectAll = () => {
+    if (selectedHomeCountries.length === allCountries.length) {
+      setSelectedHomeCountries([]);
+    } else {
+      setSelectedHomeCountries([...allCountries]);
+    }
+  };
+  
+  const handleProvinceToggle = (province: string) => {
+    setSelectedProvinces(prev => 
+      prev.includes(province) 
+        ? prev.filter(p => p !== province)
+        : [...prev, province]
+    );
+  };
+  
+  const handleProvinceSelectAll = () => {
+    if (selectedProvinces.length === pakistanProvinces.length) {
+      setSelectedProvinces([]);
+    } else {
+      setSelectedProvinces(pakistanProvinces.map(p => p.value));
+    }
+  };
+  
+  const handleHomeCityToggle = (city: string) => {
+    setSelectedHomeCities(prev => 
+      prev.includes(city) 
+        ? prev.filter(c => c !== city)
+        : [...prev, city]
+    );
+  };
+  
+  const handleHomeCitySelectAll = () => {
+    if (selectedHomeCities.length === availableCities.length) {
+      setSelectedHomeCities([]);
+    } else {
+      setSelectedHomeCities([...availableCities]);
+    }
+  };
+  
+  const handleCampusToggle = (campus: string) => {
+    setSelectedCampuses(prev => 
+      prev.includes(campus) 
+        ? prev.filter(c => c !== campus)
+        : [...prev, campus]
+    );
+  };
+  
+  const handleCampusSelectAll = () => {
+    if (selectedCampuses.length === campusOptions.length) {
+      setSelectedCampuses([]);
+    } else {
+      setSelectedCampuses([...campusOptions]);
+    }
+  };
+  
+  const handleAdmissionYearToggle = (year: string) => {
+    setSelectedAdmissionYears(prev => 
+      prev.includes(year) 
+        ? prev.filter(y => y !== year)
+        : [...prev, year]
+    );
+  };
+  
+  const handleAdmissionYearSelectAll = () => {
+    if (selectedAdmissionYears.length === admissionYears.length) {
+      setSelectedAdmissionYears([]);
+    } else {
+      setSelectedAdmissionYears([...admissionYears]);
+    }
+  };
+  
+  const handlePassingYearToggle = (year: string) => {
+    setSelectedPassingYears(prev => 
+      prev.includes(year) 
+        ? prev.filter(y => y !== year)
+        : [...prev, year]
+    );
+  };
+  
+  const handlePassingYearSelectAll = () => {
+    if (selectedPassingYears.length === passingYears.length) {
+      setSelectedPassingYears([]);
+    } else {
+      setSelectedPassingYears([...passingYears]);
+    }
+  };
+  
+  const handleWorkCountryToggle = (country: string) => {
+    setSelectedWorkCountries(prev => 
+      prev.includes(country) 
+        ? prev.filter(c => c !== country)
+        : [...prev, country]
+    );
+  };
+  
+  const handleWorkCountrySelectAll = () => {
+    if (selectedWorkCountries.length === allCountries.length) {
+      setSelectedWorkCountries([]);
+    } else {
+      setSelectedWorkCountries([...allCountries]);
     }
   };
 
@@ -381,7 +786,25 @@ export const AlumniTabs: React.FC = () => {
     statusFilter,
     selectedFaculties.length > 0 ? selectedFaculties : undefined,
     selectedDepartments.length > 0 ? selectedDepartments : undefined,
-    selectedPrograms.length > 0 ? selectedPrograms : undefined
+    selectedPrograms.length > 0 ? selectedPrograms : undefined,
+    selectedGenders.length > 0 ? selectedGenders : undefined,
+    selectedMaritalStatuses.length > 0 ? selectedMaritalStatuses : undefined,
+    selectedHomeCountries.length > 0 ? selectedHomeCountries : undefined,
+    selectedHomeCities.length > 0 ? selectedHomeCities : undefined,
+    selectedProvinces.length > 0 ? selectedProvinces : undefined,
+    selectedCampuses.length > 0 ? selectedCampuses : undefined,
+    selectedAdmissionYears.length > 0 ? selectedAdmissionYears : undefined,
+    selectedPassingYears.length > 0 ? selectedPassingYears : undefined,
+    selectedOccupationStatuses.length > 0 ? selectedOccupationStatuses : undefined,
+    selectedSectors.length > 0 ? selectedSectors : undefined,
+    selectedWorkCities.length > 0 ? selectedWorkCities : undefined,
+    selectedWorkCountries.length > 0 ? selectedWorkCountries : undefined,
+    selectedInstitutionNames.length > 0 ? selectedInstitutionNames : undefined,
+    selectedProgramsEnrolled.length > 0 ? selectedProgramsEnrolled : undefined,
+    selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
+    selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
+    selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
+    selectedMrNos.length > 0 ? selectedMrNos : undefined
   );
   
   // Debug logging - commented out to fix build issue
@@ -409,14 +832,50 @@ export const AlumniTabs: React.FC = () => {
       debouncedQuery, 
       selectedFaculties, 
       selectedDepartments, 
-      selectedPrograms
+      selectedPrograms,
+      selectedGenders,
+      selectedMaritalStatuses,
+      selectedHomeCountries,
+      selectedHomeCities,
+      selectedProvinces,
+      selectedCampuses,
+      selectedAdmissionYears,
+      selectedPassingYears,
+      selectedOccupationStatuses,
+      selectedSectors,
+      selectedWorkCities,
+      selectedWorkCountries,
+      selectedInstitutionNames,
+      selectedProgramsEnrolled,
+      selectedFundingSources,
+      selectedInstitutionCountries,
+      selectedInstitutionCities,
+      selectedMrNos
     ],
     queryFn: ({ signal }) => getAlumniCounts(
       signal, 
       debouncedQuery || undefined,
       selectedFaculties.length > 0 ? selectedFaculties : undefined,
       selectedDepartments.length > 0 ? selectedDepartments : undefined,
-      selectedPrograms.length > 0 ? selectedPrograms : undefined
+      selectedPrograms.length > 0 ? selectedPrograms : undefined,
+      selectedGenders.length > 0 ? selectedGenders : undefined,
+      selectedMaritalStatuses.length > 0 ? selectedMaritalStatuses : undefined,
+      selectedHomeCountries.length > 0 ? selectedHomeCountries : undefined,
+      selectedHomeCities.length > 0 ? selectedHomeCities : undefined,
+      selectedProvinces.length > 0 ? selectedProvinces : undefined,
+      selectedCampuses.length > 0 ? selectedCampuses : undefined,
+      selectedAdmissionYears.length > 0 ? selectedAdmissionYears : undefined,
+      selectedPassingYears.length > 0 ? selectedPassingYears : undefined,
+      selectedOccupationStatuses.length > 0 ? selectedOccupationStatuses : undefined,
+      selectedSectors.length > 0 ? selectedSectors : undefined,
+      selectedWorkCities.length > 0 ? selectedWorkCities : undefined,
+      selectedWorkCountries.length > 0 ? selectedWorkCountries : undefined,
+      selectedInstitutionNames.length > 0 ? selectedInstitutionNames : undefined,
+      selectedProgramsEnrolled.length > 0 ? selectedProgramsEnrolled : undefined,
+      selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
+      selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
+      selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
+      selectedMrNos.length > 0 ? selectedMrNos : undefined
     ),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
@@ -565,12 +1024,8 @@ export const AlumniTabs: React.FC = () => {
   // No client-side filtering needed - server already returns the correct filtered and paginated data
   // Apply sorting to items
   const filteredItems = useMemo(() => {
-    // Since all filtering (search, status, active) is handled server-side,
+    // Since all filtering (search, status, active, category) is handled server-side,
     // we just return the items as-is from the server
-    // The only exception is the "category" tab which has no data yet
-    if (selected === "category") {
-      return [];
-    }
     
     // Apply sorting if a sort field is selected
     if (!sortField) {
@@ -1203,7 +1658,7 @@ export const AlumniTabs: React.FC = () => {
     <ComponentCard className="p-0">
       <div className="flex flex-col gap-8">
         {/* Stats Cards Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 pt-2">
+        <div className="flex flex-wrap gap-4 px-6 pt-2">
           {TABS.map((tab, idx) => {
             const statCount = (() => {
               switch (tab.key) {
@@ -1215,10 +1670,14 @@ export const AlumniTabs: React.FC = () => {
                   return counts.underApproval;
                 case "active":
                   return counts.active;
-                case "category":
-                  // For category tab, show total count of all categories
-                  const catCounts = counts.category || { aPlus: 0, a: 0, b: 0, c: 0 };
-                  return (catCounts.aPlus || 0) + (catCounts.a || 0) + (catCounts.b || 0) + (catCounts.c || 0);
+                case "aPlus":
+                  return counts.category?.aPlus || 0;
+                case "a":
+                  return counts.category?.a || 0;
+                case "b":
+                  return counts.category?.b || 0;
+                case "c":
+                  return counts.category?.c || 0;
                 default:
                   return 0;
               }
@@ -1226,8 +1685,7 @@ export const AlumniTabs: React.FC = () => {
             
             const isSelected = selected === tab.key;
             const statusStyles = STATUS_CLASS_MAP[tab.key];
-            const isCategoryTab = tab.key === "category";
-            const isDisabled = isCategoryTab;
+            const isDisabled = false; // All tabs are now functional
            
             return (
               <button
@@ -1235,7 +1693,7 @@ export const AlumniTabs: React.FC = () => {
                 type="button"
                 disabled={isDisabled}
                 className={`
-                  relative group rounded-2xl p-6 text-left transition-all duration-300 ease-out
+                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
                   ${isSelected 
                     ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
                     : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
@@ -1293,7 +1751,7 @@ export const AlumniTabs: React.FC = () => {
 
         {/* Search and Filters Section */}
         <div className="px-6">
-          <div className="flex flex-col gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+          <div className="flex flex-col  gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
             {/* Search Row */}
             <div className="flex-1 w-full">
               <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
@@ -1320,7 +1778,7 @@ export const AlumniTabs: React.FC = () => {
             </div>
             
             {/* Filters Row - Checkbox-based multi-select with dropdown styling */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+            <div className="flex flex-wrap gap-3 items-start sm:items-end">
               {/* Faculty Filter */}
               <div className="flex-1 sm:min-w-[180px]">
                 <label htmlFor="faculty-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
@@ -1552,7 +2010,7 @@ export const AlumniTabs: React.FC = () => {
               </div>
               
               {/* Status Filter */}
-              <div className="flex-1 sm:min-w-[160px]">
+              <div className="flex-1  sm:min-w-[160px]">
                 <label htmlFor="status-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                   Status
                 </label>
@@ -1638,10 +2096,780 @@ export const AlumniTabs: React.FC = () => {
                   )}
                 </div>
               </div>
+              
+              {/* Master Filters Section - Collapsible */}
+              <div className="w-full">
+                <button
+                  type="button"
+                  onClick={() => setExpandedFilters(prev => ({ ...prev, masterFilters: !prev.masterFilters }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 flex items-center justify-between"
+                >
+                  <span className="text-xs font-bold uppercase tracking-wider">Master Filters</span>
+                  <svg 
+                    className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.masterFilters ? 'rotate-180' : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {expandedFilters.masterFilters && (
+                  <div className="mt-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {/* Gender Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Gender
+                        </label>
+                        <select
+                          multiple
+                          value={selectedGenders}
+                          onChange={(e) => {
+                            const values = Array.from(e.target.selectedOptions, option => option.value);
+                            setSelectedGenders(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          size={3}
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                        </select>
+                        {selectedGenders.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedGenders.length} selected</p>
+                        )}
+                      </div>
+                      
+                      {/* Marital Status Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Marital Status
+                        </label>
+                        <select
+                          multiple
+                          value={selectedMaritalStatuses}
+                          onChange={(e) => {
+                            const values = Array.from(e.target.selectedOptions, option => option.value);
+                            setSelectedMaritalStatuses(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          size={3}
+                        >
+                          <option value="Unmarried">Unmarried</option>
+                          <option value="Married">Married</option>
+                        </select>
+                        {selectedMaritalStatuses.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedMaritalStatuses.length} selected</p>
+                        )}
+                      </div>
+                      
+                      {/* Home Country Filter */}
+                      <div className="relative" ref={homeCountryFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Home Country
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, homeCountry: !prev.homeCountry }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedHomeCountries.length === 0
+                              ? "Select countries..."
+                              : selectedHomeCountries.length === 1
+                              ? selectedHomeCountries[0]
+                              : `${selectedHomeCountries.length} countries selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.homeCountry ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.homeCountry && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleHomeCountrySelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedHomeCountries.length === allCountries.length}
+                                    onChange={handleHomeCountrySelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Countries</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {allCountries.map((country) => {
+                                  const isChecked = selectedHomeCountries.includes(country);
+                                  return (
+                                    <label
+                                      key={country}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handleHomeCountryToggle(country)}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedHomeCountries.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedHomeCountries.length} selected</p>
+                        )}
+                      </div>
+
+                      {/* Province Filter */}
+                      {hasPakistanSelected && (
+                        <div className="relative" ref={provinceFilterRef}>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                            Province (Pakistan)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedFilters(prev => ({ ...prev, province: !prev.province }))}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          >
+                            <span className="truncate">
+                              {selectedProvinces.length === 0
+                                ? "Select provinces..."
+                                : selectedProvinces.length === 1
+                                ? pakistanProvinces.find(p => p.value === selectedProvinces[0])?.label || selectedProvinces[0]
+                                : `${selectedProvinces.length} provinces selected`}
+                            </span>
+                            <svg
+                              className={`w-4 h-4 transition-transform ${expandedFilters.province ? "rotate-180" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {expandedFilters.province && (
+                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                              <div className="p-2">
+                                <label
+                                  className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleProvinceSelectAll();
+                                  }}
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedProvinces.length === pakistanProvinces.length}
+                                      onChange={handleProvinceSelectAll}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                    />
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Provinces</span>
+                                  </div>
+                                </label>
+                                <div className="max-h-48 overflow-y-auto">
+                                  {pakistanProvinces.map((province) => {
+                                    const isChecked = selectedProvinces.includes(province.value);
+                                    return (
+                                      <label
+                                        key={province.value}
+                                        className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => handleProvinceToggle(province.value)}
+                                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{province.label}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {selectedProvinces.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">{selectedProvinces.length} selected</p>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Home City Filter */}
+                      {selectedProvinces.length > 0 && (
+                        <div className="relative" ref={homeCityFilterRef}>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                            Home City
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedFilters(prev => ({ ...prev, homeCity: !prev.homeCity }))}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                          >
+                            <span className="truncate">
+                              {selectedHomeCities.length === 0
+                                ? "Select cities..."
+                                : selectedHomeCities.length === 1
+                                ? selectedHomeCities[0]
+                                : `${selectedHomeCities.length} cities selected`}
+                            </span>
+                            <svg
+                              className={`w-4 h-4 transition-transform ${expandedFilters.homeCity ? "rotate-180" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {expandedFilters.homeCity && (
+                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                              <div className="p-2">
+                                <label
+                                  className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleHomeCitySelectAll();
+                                  }}
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedHomeCities.length === availableCities.length && availableCities.length > 0}
+                                      onChange={handleHomeCitySelectAll}
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                    />
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Cities</span>
+                                  </div>
+                                </label>
+                                <div className="max-h-48 overflow-y-auto">
+                                  {availableCities.map((city) => {
+                                    const isChecked = selectedHomeCities.includes(city);
+                                    return (
+                                      <label
+                                        key={city}
+                                        className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => handleHomeCityToggle(city)}
+                                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{city}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {selectedHomeCities.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">{selectedHomeCities.length} selected</p>
+                          )}
+                        </div>
+                      )}
+                      
+                    
+                      
+                      {/* Campus Filter */}
+                      <div className="relative" ref={campusFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Campus
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, campus: !prev.campus }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedCampuses.length === 0
+                              ? "Select campuses..."
+                              : selectedCampuses.length === 1
+                              ? selectedCampuses[0]
+                              : `${selectedCampuses.length} campuses selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.campus ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.campus && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCampusSelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCampuses.length === campusOptions.length}
+                                    onChange={handleCampusSelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Campuses</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {campusOptions.map((campus) => {
+                                  const isChecked = selectedCampuses.includes(campus);
+                                  return (
+                                    <label
+                                      key={campus}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handleCampusToggle(campus)}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{campus}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedCampuses.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedCampuses.length} selected</p>
+                        )}
+                      </div>
+                      
+                      {/* Admission Year Filter */}
+                      <div className="relative" ref={admissionYearFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Admission Year
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, admissionYear: !prev.admissionYear }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedAdmissionYears.length === 0
+                              ? "Select years..."
+                              : selectedAdmissionYears.length === 1
+                              ? selectedAdmissionYears[0]
+                              : `${selectedAdmissionYears.length} years selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.admissionYear ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.admissionYear && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAdmissionYearSelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedAdmissionYears.length === admissionYears.length}
+                                    onChange={handleAdmissionYearSelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Years</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {admissionYears.map((year) => {
+                                  const isChecked = selectedAdmissionYears.includes(year);
+                                  return (
+                                    <label
+                                      key={year}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handleAdmissionYearToggle(year)}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{year}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedAdmissionYears.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedAdmissionYears.length} selected</p>
+                        )}
+                      </div>
+                      
+                      {/* Passing Year Filter */}
+                      <div className="relative" ref={passingYearFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Passing Year
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, passingYear: !prev.passingYear }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedPassingYears.length === 0
+                              ? "Select years..."
+                              : selectedPassingYears.length === 1
+                              ? selectedPassingYears[0]
+                              : `${selectedPassingYears.length} years selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.passingYear ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.passingYear && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePassingYearSelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPassingYears.length === passingYears.length}
+                                    onChange={handlePassingYearSelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Years</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {passingYears.map((year) => {
+                                  const isChecked = selectedPassingYears.includes(year);
+                                  return (
+                                    <label
+                                      key={year}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handlePassingYearToggle(year)}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{year}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedPassingYears.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedPassingYears.length} selected</p>
+                        )}
+                      </div>
+                      
+                      {/* Occupation Status Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Occupation Status
+                        </label>
+                        <select
+                          multiple
+                          value={selectedOccupationStatuses}
+                          onChange={(e) => {
+                            const values = Array.from(e.target.selectedOptions, option => option.value);
+                            setSelectedOccupationStatuses(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          size={2}
+                        >
+                          <option value="Employed">Employed</option>
+                          <option value="Unemployed">Unemployed</option>
+                        </select>
+                        {selectedOccupationStatuses.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedOccupationStatuses.length} selected</p>
+                        )}
+                      </div>
+                      
+                      {/* Sector Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Sector
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedSectors.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedSectors(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      
+                      
+                      {/* Work Country Filter */}
+                      <div className="relative" ref={workCountryFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Work Country
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, workCountry: !prev.workCountry }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedWorkCountries.length === 0
+                              ? "Select countries..."
+                              : selectedWorkCountries.length === 1
+                              ? selectedWorkCountries[0]
+                              : `${selectedWorkCountries.length} countries selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.workCountry ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.workCountry && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleWorkCountrySelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedWorkCountries.length === allCountries.length}
+                                    onChange={handleWorkCountrySelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Countries</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {allCountries.map((country) => {
+                                  const isChecked = selectedWorkCountries.includes(country);
+                                  return (
+                                    <label
+                                      key={country}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handleWorkCountryToggle(country)}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedWorkCountries.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedWorkCountries.length} selected</p>
+                        )}
+                      </div>
+
+                      {/* Work City Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Work City
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedWorkCities.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedWorkCities(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* Institution Name Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Institution Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedInstitutionNames.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedInstitutionNames(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* Program Enrolled Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Program Enrolled
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedProgramsEnrolled.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedProgramsEnrolled(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* Funding Source Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Funding Source
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedFundingSources.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedFundingSources(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* Institution Country Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Institution Country
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedInstitutionCountries.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedInstitutionCountries(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* Institution City Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Institution City
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type to filter..."
+                          value={selectedInstitutionCities.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedInstitutionCities(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      
+                      {/* MR No Filter */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Alumni MR No.
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Type registration numbers..."
+                          value={selectedMrNos.join(", ")}
+                          onChange={(e) => {
+                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                            setSelectedMrNos(values);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Actions Row */}
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
+              {/* Clear Filters Button */}
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                disabled={!hasActiveFilters}
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-600 text-white text-xs sm:text-sm font-semibold hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+                aria-label="Clear all filters"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="hidden sm:inline">Clear Filters</span>
+                <span className="sm:hidden">Clear</span>
+              </button>
               {/* Export Button */}
               <button
                 type="button"
@@ -1726,8 +2954,8 @@ export const AlumniTabs: React.FC = () => {
                         <div className="flex flex-col">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "sapId" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "sapId" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                          </div>
+                                </div>
                     </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1738,8 +2966,8 @@ export const AlumniTabs: React.FC = () => {
                         <div className="flex flex-col">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "email" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "email" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                              </div>
+                                </div>
                     </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1750,8 +2978,8 @@ export const AlumniTabs: React.FC = () => {
                         <div className="flex flex-col">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "faculty" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "faculty" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                              </div>
+                                </div>
                     </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1762,8 +2990,8 @@ export const AlumniTabs: React.FC = () => {
                         <div className="flex flex-col">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "department" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "department" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                              </div>
+                                </div>
                     </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1774,8 +3002,8 @@ export const AlumniTabs: React.FC = () => {
                         <div className="flex flex-col">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "program" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "program" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
+                              </div>
+                            </div>
                     </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1786,58 +3014,15 @@ export const AlumniTabs: React.FC = () => {
                         <div className="flex flex-col">
                           <ArrowUpIcon className={`w-3 h-3 ${sortField === "status" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "status" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-                  {selected === "category" && !isLoading && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="px-6 py-16 text-center">
-                        <div className="flex flex-col items-center justify-center space-y-6">
-                          <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <div className="text-center">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Category Tab</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Category data will be available soon.</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
-                              <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-200 dark:border-purple-700">
-                                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300 mb-1">
-                                  {counts.category?.aPlus || 0}
-                                </div>
-                                <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">A+</div>
-                              </div>
-                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700">
-                                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-1">
-                                  {counts.category?.a || 0}
-                                </div>
-                                <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">A</div>
-                              </div>
-                              <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700">
-                                <div className="text-2xl font-bold text-green-700 dark:text-green-300 mb-1">
-                                  {counts.category?.b || 0}
-                                </div>
-                                <div className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">B</div>
-                              </div>
-                              <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-xl p-4 border border-amber-200 dark:border-amber-700">
-                                <div className="text-2xl font-bold text-amber-700 dark:text-amber-300 mb-1">
-                                  {counts.category?.c || 0}
-                                </div>
-                                <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">C</div>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
+                      Actions
+                    </TableCell>
                     </TableRow>
-                  )}
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
                   {isLoading && (
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">

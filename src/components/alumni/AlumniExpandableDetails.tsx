@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
@@ -220,16 +220,119 @@ const CompactField: React.FC<{
   );
 };
 
+// Countries list
+const allCountries = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",
+  "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
+  "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria",
+  "Burkina Faso", "Burundi", "Côte d'Ivoire", "Cabo Verde", "Cambodia", "Cameroon", "Canada",
+  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)",
+  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia (Czech Republic)", "Democratic Republic of the Congo",
+  "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador",
+  "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini (fmr. Swaziland)", "Ethiopia", "Fiji", "Finland",
+  "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea",
+  "Guinea-Bissau", "Guyana", "Haiti", "Holy See", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
+  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
+  "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein",
+  "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
+  "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
+  "Montenegro", "Morocco", "Mozambique", "Myanmar (formerly Burma)", "Namibia", "Nauru", "Nepal",
+  "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia",
+  "Norway", "Oman", "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay",
+  "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda",
+  "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
+  "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore",
+  "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan",
+  "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania",
+  "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan",
+  "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
+  "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Other"
+];
+
+// Pakistan provinces
+const pakistanProvinces = [
+  { value: "Punjab", label: "Punjab" },
+  { value: "Sindh", label: "Sindh" },
+  { value: "KPK", label: "KPK" },
+  { value: "Balochistan", label: "Balochistan" },
+  { value: "Islamabad", label: "Islamabad Capital Territory" },
+  { value: "GB", label: "Gilgit-Baltistan" },
+  { value: "AJK", label: "Azad Kashmir" },
+];
+
+// Pakistan cities by province
+const citiesByProvince: Record<string, string[]> = {
+  "Punjab": [
+    "Ahmadpur East", "Ahmadpur Sial", "Arifwala", "Attock", "Bahawalnagar", "Bahawalpur", "Bhakkar",
+    "Burewala", "Chak Jhumra", "Chakwal", "Chiniot", "Chishtian", "Chunian", "Daska", "Dera Ghazi Khan",
+    "Dina", "Dipalpur", "Dunyapur", "Faisalabad", "Fateh Jang", "Gojra", "Gujar Khan", "Gujranwala",
+    "Gujrat", "Hafizabad", "Haroonabad", "Hassan Abdal", "Hasilpur", "Hujra Shah Muqeem", "Jalalpur Jattan",
+    "Jampur", "Jaranwala", "Jauharabad", "Jhang", "Jhelum", "Kabirwala", "Kahror Pakka", "Kamalia",
+    "Kamoke", "Kasur", "Khanewal", "Khushab", "Kot Abdul Malik", "Kot Addu", "Kot Mithan", "Kot Momin",
+    "Kot Radha Kishan", "Kotli Loharan", "Kundian", "Lahore", "Layyah", "Lodhran", "Malisi", "Mamu Kanjan",
+    "Mandi Bahauddin", "Mananwala", "Mian Channun", "Mianwali", "Multan", "Muridke", "Muzaffargarh",
+    "Nankana Sahib", "Narowal", "Okara", "Pakpattan", "Pasrur", "Pattoki", "Pindi Bhattian", "Rahim Yar Khan",
+    "Rajanpur", "Renala Khurd", "Sadiqabad", "Sahiwal", "Sargodha", "Sarai Alamgir", "Shakargarh", "Shahkot",
+    "Sheikhupura", "Sialkot", "Sohawa", "Toba Tek Singh", "Taunsa", "Uch Sharif", "Vehari", "Wazirabad"
+  ],
+  "Sindh": [
+    "Badin", "Bhiria", "Chachro", "Dadu", "Daharki", "Digri", "Ghotki", "Hala", "Hyderabad", "Islamkot",
+    "Jacobabad", "Jamshoro", "Kandhkot", "Kandiaro", "Karachi", "Kashmore", "Khairpur", "Khairpur Nathan Shah",
+    "Khipro", "Kot Ghulam Muhammad", "Kotri", "Kunri", "Larkana", "Matiari", "Mehrabpur", "Mirpur Khas",
+    "Mithi", "Moro", "Nagarparkar", "Naushahro Feroze", "Nawabshah", "Qazi Ahmad", "Rohri", "Sakrand",
+    "Samaro", "Sanghar", "Sehwan", "Shahdadpur", "Shikarpur", "Sukkur", "Tando Adam", "Tando Allahyar",
+    "Tando Muhammad Khan", "Thatta", "Umerkot", "Vik"
+  ],
+  "KPK": [
+    "Abbottabad", "Bajaur", "Bannu", "Barikot", "Battagram", "Batkhela", "Buner", "Charsadda", "Chitral",
+    "Daggar", "Dera Ismail Khan", "Dir", "Gomal", "Hangu", "Haripur", "Jandola", "Kaniguram", "Karak",
+    "Khyber", "Kohat", "Kulachi", "Lakki Marwat", "Lower Dir", "Malakand", "Mardan", "Mansehra", "Makeen",
+    "Mohmand", "Mingora", "North Waziristan", "Nowshera", "Orakzai", "Pabbi", "Paharpur", "Paroa", "Peshawar",
+    "Razmak", "Sararogha", "Sarwakai", "Shakai", "Shangla", "South Waziristan", "Spinkai Raghzai", "Swabi",
+    "Swat", "Takht-i-Bahi", "Tangi", "Tank", "Timergara", "Tiarza", "Upper Dir", "Wana"
+  ],
+  "Balochistan": [
+    "Awaran", "Bela", "Barkhan", "Chagai", "Chaman", "Dalbandin", "Dera Bugti", "Dera Murad Jamali",
+    "Duki", "Ghizer", "Gulistan", "Gwadar", "Harnai", "Hub", "Jaffarabad", "Jhal Magsi", "Jiwani",
+    "Kachhi", "Kalat", "Kharan", "Khuzdar", "Killa Abdullah", "Killa Saifullah", "Kohlu", "Lasbela",
+    "Loralai", "Mastung", "Musakhel", "Nasirabad", "Nok Kundi", "Nushki", "Ormara", "Panjgur", "Pasni",
+    "Pishin", "Qila Saifullah", "Quetta", "Sherani", "Sibi", "Surab", "Taftan", "Turbat", "Usta Muhammad",
+    "Uthal", "Washuk", "Winder", "Ziarat", "Zhob"
+  ],
+  "Islamabad": ["Islamabad"],
+  "GB": [
+    "Astore", "Chitral", "Darel", "Diamer", "Ghanche", "Ghizer", "Gilgit", "Gultari", "Gojal", "Hunza",
+    "Ishkoman", "Kharmang", "Nagar", "Punial", "Roundu", "Shigar", "Skardu", "Tangir", "Yasin"
+  ],
+  "AJK": [
+    "Athmuqam", "Bagh", "Barnala", "Bhimber", "Chakswari", "Dadyal", "Forward Kahuta", "Hattian Bala",
+    "Haveli", "Kel", "Kotli", "Mendhar", "Mirpur", "Muzaffarabad", "Nakyal", "Neelum", "Poonch",
+    "Rawalakot", "Samahni", "Sehnsa", "Sharda", "Sudhnuti"
+  ]
+};
+
+const getCitiesByProvince = (province: string): string[] => {
+  return citiesByProvince[province] || [];
+};
+
 export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = ({ sapId, onClose, readOnly = false }) => {
   const [currentSapId, setCurrentSapId] = useState(sapId);
   const { data, isLoading, error} = useAlumniFullDetails(currentSapId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { register, handleSubmit, reset } = useForm<AlumniFullData>();
+  const { register, handleSubmit, reset, watch, setValue, control } = useForm<AlumniFullData>();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const deleteModal = useModal();
+  
+  // Watch country and province for dependent fields
+  const selectedCountry = watch("country") || "";
+  const selectedProvince = watch("province") || "";
+  const [citySearch, setCitySearch] = useState("");
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch chapters and associations for dropdowns
   const { data: chaptersList = [] } = useQuery<Chapter[]>({
@@ -246,6 +349,69 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     refetchOnWindowFocus: false,
   });
 
+  // Province options based on selected country
+  const provinceOptions = useMemo(() => {
+    if (selectedCountry === "Pakistan") {
+      return pakistanProvinces;
+    }
+    return [];
+  }, [selectedCountry]);
+  
+  // Get cities for selected province
+  const provinceCities = useMemo(() => {
+    if (selectedCountry === "Pakistan" && selectedProvince) {
+      return getCitiesByProvince(selectedProvince);
+    }
+    return [];
+  }, [selectedCountry, selectedProvince]);
+  
+  // Filter cities based on search
+  const filteredCities = useMemo(() => {
+    if (selectedCountry === "Pakistan" && selectedProvince && provinceCities.length > 0) {
+      if (!citySearch.trim()) {
+        return provinceCities;
+      }
+      const searchLower = citySearch.toLowerCase();
+      return provinceCities.filter(city => 
+        city.toLowerCase().includes(searchLower)
+      );
+    }
+    return [];
+  }, [citySearch, selectedCountry, selectedProvince, provinceCities]);
+  
+  // Reset city when province changes
+  useEffect(() => {
+    if (selectedCountry === "Pakistan" && selectedProvince) {
+      const currentCity = watch("city") || "";
+      const validCities = getCitiesByProvince(selectedProvince);
+      if (currentCity && !validCities.includes(currentCity)) {
+        setValue("city", "");
+        setCitySearch("");
+      }
+    } else if (selectedCountry !== "Pakistan") {
+      setCitySearch("");
+    }
+  }, [selectedProvince, selectedCountry, watch, setValue]);
+  
+  // Close city dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        cityDropdownRef.current &&
+        cityInputRef.current &&
+        !cityDropdownRef.current.contains(event.target as Node) &&
+        !cityInputRef.current.contains(event.target as Node)
+      ) {
+        setShowCityDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     if (data) {
       // Convert AlumniFullDetails to AlumniFullData format (handle boolean to string conversion)
@@ -259,6 +425,10 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           : null,
       };
       reset(formData);
+      // Set initial city search value
+      if (data.city) {
+        setCitySearch(data.city);
+      }
       // Update currentSapId if the data has a different SAP ID (in case it was changed)
       if (data.sapid && data.sapid !== currentSapId) {
         setCurrentSapId(data.sapid);
@@ -499,9 +669,117 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Password" value={data.password || ""} isEditing={isEditing} readOnly={readOnly} register={register} name="password" type="password" />
          
           <CompactField label="Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
-          <CompactField label="Country" value={data.country} isEditing={isEditing} readOnly={readOnly} register={register} name="country" />
-          <CompactField label="Province" value={data.province} isEditing={isEditing} readOnly={readOnly} register={register} name="province" />
-          <CompactField label="City" value={data.city} isEditing={isEditing} readOnly={readOnly} register={register} name="city" />
+          
+          {/* Country Field */}
+          {!isEditing || readOnly ? (
+            <CompactField label="Country" value={data.country} isEditing={false} readOnly={readOnly} />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Home Country:</label>
+              <select
+                {...register("country")}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select</option>
+                {allCountries.map((country) => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Province Field - Only show for Pakistan */}
+          {selectedCountry === "Pakistan" && (
+            !isEditing || readOnly ? (
+              <CompactField label="Province" value={data.province} isEditing={false} readOnly={readOnly} />
+            ) : (
+              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">HomeProvince:</label>
+                <select
+                  {...register("province")}
+                  disabled={readOnly}
+                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">Select</option>
+                  {provinceOptions.map((province) => (
+                    <option key={province.value} value={province.value}>{province.label}</option>
+                  ))}
+                </select>
+              </div>
+            )
+          )}
+          
+          {/* City Field */}
+          {!isEditing || readOnly ? (
+            <CompactField label="City" value={data.city} isEditing={false} readOnly={readOnly} />
+          ) : selectedCountry === "Pakistan" ? (
+            <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0 pt-1">Home City:</label>
+              <div className="flex-1 relative">
+                {!selectedProvince ? (
+                  <div className="p-2 rounded border border-gray-300 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+                    Please select a province first
+                  </div>
+                ) : (
+                  <Controller
+                    name="city"
+                    control={control}
+                    render={({ field }) => (
+                      <>
+                        <input
+                          ref={(e) => {
+                            field.ref(e);
+                            cityInputRef.current = e;
+                          }}
+                          type="text"
+                          value={citySearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCitySearch(val);
+                            setShowCityDropdown(true);
+                            // If exact match found, set the value
+                            const exactMatch = provinceCities.find(c => c.toLowerCase() === val.toLowerCase());
+                            if (exactMatch) {
+                              field.onChange(exactMatch);
+                            } else {
+                              field.onChange(val);
+                            }
+                          }}
+                          onFocus={() => setShowCityDropdown(true)}
+                          placeholder="Type to search city..."
+                          disabled={readOnly}
+                          className={`w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                        />
+                        {showCityDropdown && filteredCities.length > 0 && (
+                          <div
+                            ref={cityDropdownRef}
+                            className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg max-h-48 overflow-y-auto"
+                          >
+                            {filteredCities.map((city) => (
+                              <div
+                                key={city}
+                                onClick={() => {
+                                  setCitySearch(city);
+                                  field.onChange(city);
+                                  setShowCityDropdown(false);
+                                }}
+                                className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer text-xs text-gray-700 dark:text-gray-300"
+                              >
+                                {city}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <CompactField label="City" value={data.city} isEditing={isEditing} readOnly={readOnly} register={register} name="city" />
+          )}
 
           {/* Academic Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
@@ -661,6 +939,12 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
                       : null,
                   };
                   reset(formData);
+                  // Reset city search
+                  if (data.city) {
+                    setCitySearch(data.city);
+                  } else {
+                    setCitySearch("");
+                  }
                 }
               }}
               className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded transition-colors"

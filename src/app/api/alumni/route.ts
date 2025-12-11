@@ -61,6 +61,47 @@ export async function GET(req: Request) {
     const faculty = facultyParams.length > 0 ? facultyParams : (searchParams.get("faculty") || "");
     const department = departmentParams.length > 0 ? departmentParams : (searchParams.get("department") || "");
     const program = programParams.length > 0 ? programParams : (searchParams.get("program") || "");
+    
+    // Additional master filters
+    const genderParams = searchParams.getAll("gender");
+    const maritalStatusParams = searchParams.getAll("maritalStatus");
+    const homeCountryParams = searchParams.getAll("homeCountry");
+    const homeCityParams = searchParams.getAll("homeCity");
+    const provinceParams = searchParams.getAll("province");
+    const campusParams = searchParams.getAll("campus");
+    const admissionYearParams = searchParams.getAll("admissionYear");
+    const passingYearParams = searchParams.getAll("passingYear");
+    const occupationStatusParams = searchParams.getAll("occupationStatus");
+    const sectorParams = searchParams.getAll("sector");
+    const workCityParams = searchParams.getAll("workCity");
+    const workCountryParams = searchParams.getAll("workCountry");
+    const institutionNameParams = searchParams.getAll("institutionName");
+    const programEnrolledParams = searchParams.getAll("programEnrolled");
+    const fundingSourceParams = searchParams.getAll("fundingSource");
+    const institutionCountryParams = searchParams.getAll("institutionCountry");
+    const institutionCityParams = searchParams.getAll("institutionCity");
+    const mrNoParams = searchParams.getAll("mrNo");
+    
+    // Convert to arrays (support multi-select)
+    const gender = genderParams.length > 0 ? genderParams : (searchParams.get("gender") || "");
+    const maritalStatus = maritalStatusParams.length > 0 ? maritalStatusParams : (searchParams.get("maritalStatus") || "");
+    const homeCountry = homeCountryParams.length > 0 ? homeCountryParams : (searchParams.get("homeCountry") || "");
+    const homeCity = homeCityParams.length > 0 ? homeCityParams : (searchParams.get("homeCity") || "");
+    const province = provinceParams.length > 0 ? provinceParams : (searchParams.get("province") || "");
+    const campus = campusParams.length > 0 ? campusParams : (searchParams.get("campus") || "");
+    const admissionYear = admissionYearParams.length > 0 ? admissionYearParams : (searchParams.get("admissionYear") || "");
+    const passingYear = passingYearParams.length > 0 ? passingYearParams : (searchParams.get("passingYear") || "");
+    const occupationStatus = occupationStatusParams.length > 0 ? occupationStatusParams : (searchParams.get("occupationStatus") || "");
+    const sector = sectorParams.length > 0 ? sectorParams : (searchParams.get("sector") || "");
+    const workCity = workCityParams.length > 0 ? workCityParams : (searchParams.get("workCity") || "");
+    const workCountry = workCountryParams.length > 0 ? workCountryParams : (searchParams.get("workCountry") || "");
+    const institutionName = institutionNameParams.length > 0 ? institutionNameParams : (searchParams.get("institutionName") || "");
+    const programEnrolled = programEnrolledParams.length > 0 ? programEnrolledParams : (searchParams.get("programEnrolled") || "");
+    const fundingSource = fundingSourceParams.length > 0 ? fundingSourceParams : (searchParams.get("fundingSource") || "");
+    const institutionCountry = institutionCountryParams.length > 0 ? institutionCountryParams : (searchParams.get("institutionCountry") || "");
+    const institutionCity = institutionCityParams.length > 0 ? institutionCityParams : (searchParams.get("institutionCity") || "");
+    const mrNo = mrNoParams.length > 0 ? mrNoParams : (searchParams.get("mrNo") || "");
+    
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
     
@@ -134,6 +175,266 @@ export async function GET(req: Request) {
       console.log("[API] Filtering for program:", program);
     }
     
+    // Build individual filters for each field (following existing pattern)
+    // Gender filter
+    let genderFilter = sql``;
+    if (gender && (Array.isArray(gender) ? gender.length > 0 : gender)) {
+      if (Array.isArray(gender) && gender.length > 0) {
+        const genderConditions = gender.map(g => sql`LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${g}))`);
+        const combinedCondition = combineOrConditions(genderConditions);
+        genderFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(gender) && gender) {
+        genderFilter = sql`AND LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${gender}))`;
+      }
+    }
+    
+    // Marital Status filter
+    // Note: Only "Married" is saved in maritalstatus field, all others (null, empty, etc.) are considered "Unmarried"
+    let maritalStatusFilter = sql``;
+    if (maritalStatus && (Array.isArray(maritalStatus) ? maritalStatus.length > 0 : maritalStatus)) {
+      if (Array.isArray(maritalStatus) && maritalStatus.length > 0) {
+        const conditions = maritalStatus.map(m => {
+          if (m.toLowerCase().trim() === "married") {
+            return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'married'`;
+          } else if (m.toLowerCase().trim() === "unmarried") {
+            // Unmarried: null, empty, or anything that's not "Married"
+            return sql`(maritalstatus IS NULL OR maritalstatus = '' OR LOWER(TRIM(COALESCE(maritalstatus, ''))) != 'married')`;
+          }
+          return sql`1=0`; // Invalid value, exclude
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        maritalStatusFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(maritalStatus) && maritalStatus) {
+        if (maritalStatus.toLowerCase().trim() === "married") {
+          maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'married'`;
+        } else if (maritalStatus.toLowerCase().trim() === "unmarried") {
+          // Unmarried: null, empty, or anything that's not "Married"
+          maritalStatusFilter = sql`AND (maritalstatus IS NULL OR maritalstatus = '' OR LOWER(TRIM(COALESCE(maritalstatus, ''))) != 'married')`;
+        }
+      }
+    }
+    
+    // Home Country filter
+    let homeCountryFilter = sql``;
+    if (homeCountry && (Array.isArray(homeCountry) ? homeCountry.length > 0 : homeCountry)) {
+      if (Array.isArray(homeCountry) && homeCountry.length > 0) {
+        const conditions = homeCountry.map(c => sql`LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${c}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        homeCountryFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(homeCountry) && homeCountry) {
+        homeCountryFilter = sql`AND LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${homeCountry}))`;
+      }
+    }
+    
+    // Home City filter
+    let homeCityFilter = sql``;
+    if (homeCity && (Array.isArray(homeCity) ? homeCity.length > 0 : homeCity)) {
+      if (Array.isArray(homeCity) && homeCity.length > 0) {
+        const conditions = homeCity.map(c => sql`LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${c}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        homeCityFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(homeCity) && homeCity) {
+        homeCityFilter = sql`AND LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${homeCity}))`;
+      }
+    }
+    
+    // Province filter
+    let provinceFilter = sql``;
+    if (province && (Array.isArray(province) ? province.length > 0 : province)) {
+      if (Array.isArray(province) && province.length > 0) {
+        const conditions = province.map(p => sql`LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${p}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        provinceFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(province) && province) {
+        provinceFilter = sql`AND LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${province}))`;
+      }
+    }
+    
+    // Campus filter
+    let campusFilter = sql``;
+    if (campus && (Array.isArray(campus) ? campus.length > 0 : campus)) {
+      if (Array.isArray(campus) && campus.length > 0) {
+        const conditions = campus.map(c => sql`LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${c}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        campusFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(campus) && campus) {
+        campusFilter = sql`AND LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${campus}))`;
+      }
+    }
+    
+    // Admission Year filter (integer)
+    let admissionYearFilter = sql``;
+    if (admissionYear && (Array.isArray(admissionYear) ? admissionYear.length > 0 : admissionYear)) {
+      if (Array.isArray(admissionYear) && admissionYear.length > 0) {
+        const conditions = admissionYear.map(y => {
+          const year = parseInt(y, 10);
+          if (isNaN(year)) return sql`1=0`;
+          return sql`yearofstarting = ${year}`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        admissionYearFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(admissionYear) && admissionYear) {
+        const year = parseInt(admissionYear, 10);
+        if (!isNaN(year)) {
+          admissionYearFilter = sql`AND yearofstarting = ${year}`;
+        }
+      }
+    }
+    
+    // Passing Year filter (integer)
+    let passingYearFilter = sql``;
+    if (passingYear && (Array.isArray(passingYear) ? passingYear.length > 0 : passingYear)) {
+      if (Array.isArray(passingYear) && passingYear.length > 0) {
+        const conditions = passingYear.map(y => {
+          const year = parseInt(y, 10);
+          if (isNaN(year)) return sql`1=0`;
+          return sql`yearofending = ${year}`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        passingYearFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(passingYear) && passingYear) {
+        const year = parseInt(passingYear, 10);
+        if (!isNaN(year)) {
+          passingYearFilter = sql`AND yearofending = ${year}`;
+        }
+      }
+    }
+    
+    // Occupation Status filter
+    // Logic: employeed = "YES" means Employed, NULL or not "YES" means Unemployed
+    let occupationStatusFilter = sql``;
+    if (occupationStatus && (Array.isArray(occupationStatus) ? occupationStatus.length > 0 : occupationStatus)) {
+      const statusArray = Array.isArray(occupationStatus) ? occupationStatus : [occupationStatus];
+      const conditions: ReturnType<typeof sql>[] = [];
+      
+      statusArray.forEach(status => {
+        if (status === "Employed") {
+          // Employed: employeed must be "YES" (case-insensitive)
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'yes'`);
+        } else if (status === "Unemployed") {
+          // Unemployed: employeed is NULL or not "YES"
+          conditions.push(sql`(employeed IS NULL OR LOWER(TRIM(COALESCE(employeed, ''))) != 'yes')`);
+        }
+      });
+      
+      if (conditions.length > 0) {
+        const combinedCondition = combineOrConditions(conditions);
+        occupationStatusFilter = sql`AND (${combinedCondition})`;
+      }
+    }
+    
+    // Sector filter (partial matching with LIKE for text input)
+    let sectorFilter = sql``;
+    if (sector && (Array.isArray(sector) ? sector.length > 0 : sector)) {
+      if (Array.isArray(sector) && sector.length > 0) {
+        const conditions = sector.map(s => {
+          const searchTerm = `%${s.trim().toLowerCase()}%`;
+          return sql`LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        sectorFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(sector) && sector) {
+        const searchTerm = `%${sector.trim().toLowerCase()}%`;
+        sectorFilter = sql`AND LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
+      }
+    }
+    
+    // Work City filter
+    let workCityFilter = sql``;
+    if (workCity && (Array.isArray(workCity) ? workCity.length > 0 : workCity)) {
+      if (Array.isArray(workCity) && workCity.length > 0) {
+        const conditions = workCity.map(w => sql`LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${w}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        workCityFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(workCity) && workCity) {
+        workCityFilter = sql`AND LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${workCity}))`;
+      }
+    }
+    
+    // Work Country filter
+    let workCountryFilter = sql``;
+    if (workCountry && (Array.isArray(workCountry) ? workCountry.length > 0 : workCountry)) {
+      if (Array.isArray(workCountry) && workCountry.length > 0) {
+        const conditions = workCountry.map(w => sql`LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${w}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        workCountryFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(workCountry) && workCountry) {
+        workCountryFilter = sql`AND LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${workCountry}))`;
+      }
+    }
+    
+    // Institution Name filter
+    let institutionNameFilter = sql``;
+    if (institutionName && (Array.isArray(institutionName) ? institutionName.length > 0 : institutionName)) {
+      if (Array.isArray(institutionName) && institutionName.length > 0) {
+        const conditions = institutionName.map(i => sql`LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${i}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        institutionNameFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(institutionName) && institutionName) {
+        institutionNameFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${institutionName}))`;
+      }
+    }
+    
+    // Program Enrolled filter
+    let programEnrolledFilter = sql``;
+    if (programEnrolled && (Array.isArray(programEnrolled) ? programEnrolled.length > 0 : programEnrolled)) {
+      if (Array.isArray(programEnrolled) && programEnrolled.length > 0) {
+        const conditions = programEnrolled.map(p => sql`LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${p}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        programEnrolledFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(programEnrolled) && programEnrolled) {
+        programEnrolledFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${programEnrolled}))`;
+      }
+    }
+    
+    // Funding Source filter
+    let fundingSourceFilter = sql``;
+    if (fundingSource && (Array.isArray(fundingSource) ? fundingSource.length > 0 : fundingSource)) {
+      if (Array.isArray(fundingSource) && fundingSource.length > 0) {
+        const conditions = fundingSource.map(f => sql`LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${f}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        fundingSourceFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(fundingSource) && fundingSource) {
+        fundingSourceFilter = sql`AND LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${fundingSource}))`;
+      }
+    }
+    
+    // Institution Country filter
+    let institutionCountryFilter = sql``;
+    if (institutionCountry && (Array.isArray(institutionCountry) ? institutionCountry.length > 0 : institutionCountry)) {
+      if (Array.isArray(institutionCountry) && institutionCountry.length > 0) {
+        const conditions = institutionCountry.map(i => sql`LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${i}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        institutionCountryFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(institutionCountry) && institutionCountry) {
+        institutionCountryFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${institutionCountry}))`;
+      }
+    }
+    
+    // Institution City filter
+    let institutionCityFilter = sql``;
+    if (institutionCity && (Array.isArray(institutionCity) ? institutionCity.length > 0 : institutionCity)) {
+      if (Array.isArray(institutionCity) && institutionCity.length > 0) {
+        const conditions = institutionCity.map(i => sql`LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${i}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        institutionCityFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(institutionCity) && institutionCity) {
+        institutionCityFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${institutionCity}))`;
+      }
+    }
+    
+    // MR No (Registration No) filter
+    let mrNoFilter = sql``;
+    if (mrNo && (Array.isArray(mrNo) ? mrNo.length > 0 : mrNo)) {
+      if (Array.isArray(mrNo) && mrNo.length > 0) {
+        const conditions = mrNo.map(m => sql`LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${m}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        mrNoFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(mrNo) && mrNo) {
+        mrNoFilter = sql`AND LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${mrNo}))`;
+      }
+    }
+    
     // If only counts are needed, return early with just counts
     if (getCountsOnly) {
       const searchTermForCount = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
@@ -145,6 +446,24 @@ export async function GET(req: Request) {
               ${facultyFilter}
               ${departmentFilter}
               ${programFilter}
+              ${genderFilter}
+              ${maritalStatusFilter}
+              ${homeCountryFilter}
+              ${homeCityFilter}
+              ${provinceFilter}
+              ${campusFilter}
+              ${admissionYearFilter}
+              ${passingYearFilter}
+              ${occupationStatusFilter}
+              ${sectorFilter}
+              ${workCityFilter}
+              ${workCountryFilter}
+              ${institutionNameFilter}
+              ${programEnrolledFilter}
+              ${fundingSourceFilter}
+              ${institutionCountryFilter}
+              ${institutionCityFilter}
+              ${mrNoFilter}
               ${accessFilterCondition}
               AND (
                 LOWER(sapid) LIKE ${searchTermForCount}
@@ -163,6 +482,24 @@ export async function GET(req: Request) {
               ${facultyFilter}
               ${departmentFilter}
               ${programFilter}
+              ${genderFilter}
+              ${maritalStatusFilter}
+              ${homeCountryFilter}
+              ${homeCityFilter}
+              ${provinceFilter}
+              ${campusFilter}
+              ${admissionYearFilter}
+              ${passingYearFilter}
+              ${occupationStatusFilter}
+              ${sectorFilter}
+              ${workCityFilter}
+              ${workCountryFilter}
+              ${institutionNameFilter}
+              ${programEnrolledFilter}
+              ${fundingSourceFilter}
+              ${institutionCountryFilter}
+              ${institutionCityFilter}
+              ${mrNoFilter}
               ${accessFilterCondition}`;
       
       const countResult = await countQuery;
@@ -196,8 +533,14 @@ export async function GET(req: Request) {
             statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
           } else if (s === "inactive") {
             statusConditions.push(sql`((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`);
-          } else if (s === "category") {
-            statusConditions.push(sql`1 = 0`); // Return no results for category
+          } else if (s === "category:aPlus") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`);
+          } else if (s === "category:a") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`);
+          } else if (s === "category:b") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`);
+          } else if (s === "category:c") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`);
           }
         });
         
@@ -223,9 +566,18 @@ export async function GET(req: Request) {
         } else if (status === "inactive") {
           verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
           console.log("[API] Filtering for inactive alumni (never logged in)");
-        } else if (status === "category") {
-          verifyFilter = sql`AND 1 = 0`;
-          console.log("[API] Category tab - no data available yet");
+        } else if (status === "category:aPlus") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`;
+          console.log("[API] Filtering for A+ category");
+        } else if (status === "category:a") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`;
+          console.log("[API] Filtering for A category");
+        } else if (status === "category:b") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`;
+          console.log("[API] Filtering for B category");
+        } else if (status === "category:c") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`;
+          console.log("[API] Filtering for C category");
         }
       }
     } else {
@@ -250,29 +602,60 @@ export async function GET(req: Request) {
           registrationno,
           sapid,
           alumniname,
+          gender,
+          maritalstatus,
           facultyname,
           campusname,
           departmentname,
           degreetitle,
+          yearofstarting,
           yearofending,
           country,
           city,
+          province,
           verify,
           employeed,
+          industry,
+          work_city,
+          work_country,
           nameoforganization,
           designation,
+          higher_education_institute_name,
+          higher_education_program,
+          is_scholarship,
+          higher_education_institute_country,
+          higher_education_institute_city,
           officialnumber,
           officialemail,
           personalemail,
           contactno,
           lasttimelogin,
-          logincount
+          logincount,
+          category
         FROM public.tbl_alumni
         WHERE ${baseWhere}
           ${verifyFilter}
           ${facultyFilter}
           ${departmentFilter}
           ${programFilter}
+          ${genderFilter}
+          ${maritalStatusFilter}
+          ${homeCountryFilter}
+          ${homeCityFilter}
+          ${provinceFilter}
+          ${campusFilter}
+          ${admissionYearFilter}
+          ${passingYearFilter}
+          ${occupationStatusFilter}
+          ${sectorFilter}
+          ${workCityFilter}
+          ${workCountryFilter}
+          ${institutionNameFilter}
+          ${programEnrolledFilter}
+          ${fundingSourceFilter}
+          ${institutionCountryFilter}
+          ${institutionCityFilter}
+          ${mrNoFilter}
           ${accessFilterCondition}
           AND (
             LOWER(sapid) LIKE ${searchTerm}
@@ -293,29 +676,60 @@ export async function GET(req: Request) {
         registrationno,
         sapid,
         alumniname,
+        gender,
+        maritalstatus,
         facultyname,
         campusname,
         departmentname,
         degreetitle,
+        yearofstarting,
         yearofending,
         country,
         city,
+        province,
         verify,
         employeed,
+        industry,
+        work_city,
+        work_country,
         nameoforganization,
         designation,
+        higher_education_institute_name,
+        higher_education_program,
+        is_scholarship,
+        higher_education_institute_country,
+        higher_education_institute_city,
         officialnumber,
         officialemail,
         personalemail,
         contactno,
         lasttimelogin,
-        logincount
+        logincount,
+        category
       FROM public.tbl_alumni
       WHERE ${baseWhere}
         ${verifyFilter}
         ${facultyFilter}
         ${departmentFilter}
         ${programFilter}
+        ${genderFilter}
+        ${maritalStatusFilter}
+        ${homeCountryFilter}
+        ${homeCityFilter}
+        ${provinceFilter}
+        ${campusFilter}
+        ${admissionYearFilter}
+        ${passingYearFilter}
+        ${occupationStatusFilter}
+        ${sectorFilter}
+        ${workCityFilter}
+        ${workCountryFilter}
+        ${institutionNameFilter}
+        ${programEnrolledFilter}
+        ${fundingSourceFilter}
+        ${institutionCountryFilter}
+        ${institutionCityFilter}
+        ${mrNoFilter}
         ${accessFilterCondition}
         ORDER BY alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;

@@ -11,6 +11,50 @@ import * as XLSX from "xlsx";
 
 type MembershipFilter = "all" | "members" | "non-members";
 
+// Tab configuration
+const MEMBERSHIP_TABS: { key: MembershipFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "members", label: "Members" },
+  { key: "non-members", label: "Non-Members" },
+];
+
+// Per-status color classes to visually distinguish each category
+const MEMBERSHIP_STATUS_CLASS_MAP: Record<
+  MembershipFilter,
+  {
+    selectedContainer: string;
+    hoverBorder: string;
+    iconBg: string;
+    iconColor: string;
+    labelText: string;
+  }
+> = {
+  all: {
+    selectedContainer:
+      "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
+    hoverBorder: "hover:border-blue-400",
+    iconBg: "bg-blue-100 dark:bg-blue-800",
+    iconColor: "text-blue-700 dark:text-blue-200",
+    labelText: "text-blue-600 dark:text-blue-300",
+  },
+  members: {
+    selectedContainer:
+      "border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20",
+    hoverBorder: "hover:border-emerald-400",
+    iconBg: "bg-emerald-100 dark:bg-emerald-800",
+    iconColor: "text-emerald-700 dark:text-emerald-200",
+    labelText: "text-emerald-600 dark:text-emerald-300",
+  },
+  "non-members": {
+    selectedContainer:
+      "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
+    hoverBorder: "hover:border-amber-400",
+    iconBg: "bg-amber-100 dark:bg-amber-800",
+    iconColor: "text-amber-700 dark:text-amber-200",
+    labelText: "text-amber-600 dark:text-amber-300",
+  },
+};
+
 type AssociationItem = {
   sapid: string;
   registrationNo: string | null;
@@ -43,6 +87,50 @@ async function getAssociationsList(): Promise<Association[]> {
   return data.associations ?? [];
 }
 
+async function getAlumniAssociationCounts(
+  faculties?: string[],
+  departments?: string[],
+  associations?: number[],
+  verified?: boolean
+): Promise<{
+  total: number;
+  all: number;
+  members: number;
+  nonMembers: number;
+  verified: number;
+  unverified: number;
+}> {
+  const url = new URL("/api/alumni/association/counts", typeof window !== "undefined" ? window.location.origin : "");
+  if (faculties && faculties.length > 0) {
+    url.searchParams.set("faculties", faculties.join(","));
+  }
+  if (departments && departments.length > 0) {
+    url.searchParams.set("departments", departments.join(","));
+  }
+  if (associations && associations.length > 0) {
+    url.searchParams.set("associations", associations.join(","));
+  }
+  if (verified !== undefined) {
+    url.searchParams.set("verified", verified ? "true" : "false");
+  }
+  
+  const res = await fetch(url.toString(), { headers: { "accept": "application/json" } });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = (errorData as { error?: string })?.error || `Failed to fetch counts (${res.status})`;
+    throw new Error(errorMessage);
+  }
+  const data = (await res.json()) as {
+    total: number;
+    all: number;
+    members: number;
+    nonMembers: number;
+    verified: number;
+    unverified: number;
+  };
+  return data;
+}
+
 type AlumniAssociationResponse = {
   items: AssociationItem[];
   total: number;
@@ -55,6 +143,7 @@ async function getAlumniAssociation(
   faculties?: string[],
   departments?: string[],
   associations?: number[],
+  verified?: boolean,
   membershipFilter?: MembershipFilter,
   page: number = 1,
   limit: number = 100
@@ -69,6 +158,9 @@ async function getAlumniAssociation(
   }
   if (associations && associations.length > 0) {
     url.searchParams.set("associations", associations.join(","));
+  }
+  if (verified !== undefined) {
+    url.searchParams.set("verified", verified ? "true" : "false");
   }
   if (membershipFilter) {
     url.searchParams.set("membershipFilter", membershipFilter);
@@ -134,6 +226,7 @@ export const AlumniAssociationTab: React.FC = () => {
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedAssociations, setSelectedAssociations] = useState<number[]>([]);
   const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("members");
+  const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(undefined);
   const [isExporting, setIsExporting] = useState(false);
   
   // State for expanded filter sections
@@ -264,6 +357,7 @@ export const AlumniAssociationTab: React.FC = () => {
       selectedFaculties,
       selectedDepartments,
       selectedAssociations,
+      verifiedFilter,
       membershipFilter,
       currentPage,
       pageSize,
@@ -272,6 +366,7 @@ export const AlumniAssociationTab: React.FC = () => {
       selectedFaculties.length > 0 ? selectedFaculties : undefined,
       selectedDepartments.length > 0 ? selectedDepartments : undefined,
       selectedAssociations.length > 0 ? selectedAssociations : undefined,
+      verifiedFilter,
       membershipFilter,
       currentPage,
       pageSize
@@ -281,6 +376,36 @@ export const AlumniAssociationTab: React.FC = () => {
     retry: 1, // Only retry once on failure
     retryDelay: 1000, // Wait 1 second before retry
   });
+
+  // Fetch counts
+  const { data: countsData, isLoading: isLoadingCounts } = useQuery({
+    queryKey: [
+      "alumni-association-counts",
+      selectedFaculties,
+      selectedDepartments,
+      selectedAssociations,
+      verifiedFilter,
+    ],
+    queryFn: () => getAlumniAssociationCounts(
+      selectedFaculties.length > 0 ? selectedFaculties : undefined,
+      selectedDepartments.length > 0 ? selectedDepartments : undefined,
+      selectedAssociations.length > 0 ? selectedAssociations : undefined,
+      verifiedFilter
+    ),
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const counts = useMemo(() => {
+    return countsData || {
+      total: 0,
+      all: 0,
+      members: 0,
+      nonMembers: 0,
+      verified: 0,
+      unverified: 0,
+    };
+  }, [countsData]);
   
   const items = paginatedData?.items ?? [];
   const total = paginatedData?.total ?? 0;
@@ -306,14 +431,14 @@ export const AlumniAssociationTab: React.FC = () => {
     // Apply search filter
     if (q) {
       filtered = items.filter((item) =>
-        item.sapid?.toLowerCase().includes(q) ||
-        item.registrationNo?.toLowerCase().includes(q) ||
-        item.name?.toLowerCase().includes(q) ||
-        item.email?.toLowerCase().includes(q) ||
-        item.department?.toLowerCase().includes(q) ||
-        item.faculty?.toLowerCase().includes(q) ||
-        item.associationTitle?.toLowerCase().includes(q)
-      );
+      item.sapid?.toLowerCase().includes(q) ||
+      item.registrationNo?.toLowerCase().includes(q) ||
+      item.name?.toLowerCase().includes(q) ||
+      item.email?.toLowerCase().includes(q) ||
+      item.department?.toLowerCase().includes(q) ||
+      item.faculty?.toLowerCase().includes(q) ||
+      item.associationTitle?.toLowerCase().includes(q)
+    );
     }
     
     // Apply sorting
@@ -369,7 +494,7 @@ export const AlumniAssociationTab: React.FC = () => {
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, pageSize, selectedFaculties, selectedDepartments, selectedAssociations, membershipFilter, sortField, sortDirection]);
+  }, [debouncedQuery, pageSize, selectedFaculties, selectedDepartments, selectedAssociations, verifiedFilter, membershipFilter, sortField, sortDirection]);
 
   const handleExportToExcel = useCallback(async () => {
     if (isExporting) return;
@@ -471,79 +596,142 @@ export const AlumniAssociationTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h3 className="text-lg font-semibold text-slate-900">Alumni Association</h3>
-          {/* Membership Tabs */}
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Alumni Association</h3>
           <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="association-search">Search:</label>
+            <input
+              id="association-search"
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, SAP ID, email, association..."
+              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-100"
+            />
             <button
               type="button"
-              onClick={() => setMembershipFilter("all")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                membershipFilter === "all"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              onClick={handleExportToExcel}
+              disabled={isExporting || isLoading}
+              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              All Alumni
-            </button>
-            <button
-              type="button"
-              onClick={() => setMembershipFilter("members")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                membershipFilter === "members"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Members
-            </button>
-            <button
-              type="button"
-              onClick={() => setMembershipFilter("non-members")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                membershipFilter === "non-members"
-                  ? "bg-amber-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Non-Members
+              {isExporting ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export Excel
+                </>
+              )}
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600" htmlFor="association-search">Search:</label>
-          <input
-            id="association-search"
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, SAP ID, email, association..."
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="button"
-            onClick={handleExportToExcel}
-            disabled={isExporting || isLoading}
-            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isExporting ? (
-              <>
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Exporting...
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export Excel
-              </>
+
+        {/* Stats Cards Section - Membership Tabs */}
+        <div className="flex flex-wrap gap-4 px-0 pt-2">
+          {MEMBERSHIP_TABS.map((tab, idx) => {
+            const statCount = (() => {
+              switch (tab.key) {
+                case "all":
+                  return counts.all;
+                case "members":
+                  return counts.members;
+                case "non-members":
+                  return counts.nonMembers;
+                default:
+                  return 0;
+              }
+            })();
+            
+            const isSelected = membershipFilter === tab.key;
+            const statusStyles = MEMBERSHIP_STATUS_CLASS_MAP[tab.key];
+           
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={`
+                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
+                  ${isSelected 
+                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
+                    : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
+                  }
+                  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
+                `}
+                onClick={() => {
+                  console.log("[AlumniAssociationTab] Tab clicked:", tab.key);
+                  setMembershipFilter(tab.key);
+                }}
+                role="tab"
+                aria-selected={isSelected}
+                aria-label={`${tab.label} (${statCount.toLocaleString()})`}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    const nextIdx = (idx + 1) % MEMBERSHIP_TABS.length;
+                    setMembershipFilter(MEMBERSHIP_TABS[nextIdx].key);
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    const prevIdx = (idx - 1 + MEMBERSHIP_TABS.length) % MEMBERSHIP_TABS.length;
+                    setMembershipFilter(MEMBERSHIP_TABS[prevIdx].key);
+                  } else if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setMembershipFilter(tab.key);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
+                    {tab.label}
+                  </h6>
+                  {isSelected && (
+                    <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
+                  )}
+                </div>
+                {isLoadingCounts && !countsData ? (
+                  <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
+                ) : (
+                  <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
+                    {statCount.toLocaleString()}
+                  </h3>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Verified Checkbox */}
+        <div className="flex items-center gap-3 px-0 py-2">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={verifiedFilter === true}
+              onChange={(e) => setVerifiedFilter(e.target.checked ? true : undefined)}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 border-2 border-gray-400 dark:border-gray-500 transition-all duration-200 cursor-pointer group-hover:border-blue-500 dark:group-hover:border-blue-400"
+            />
+            <span className={`text-base font-semibold transition-colors duration-200 ${
+              verifiedFilter === true 
+                ? "text-blue-700 dark:text-blue-300" 
+                : "text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100"
+            }`}>
+              Verified Only
+            </span>
+            {verifiedFilter === true && (
+              <span className="px-2 py-1 text-xs font-bold text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 rounded-md">
+                Active
+              </span>
             )}
-          </button>
+          </label>
         </div>
       </div>
 

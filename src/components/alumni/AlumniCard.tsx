@@ -289,7 +289,7 @@ import { useCardApplicants } from "@/app/queries/fetch-card-applicants";
 import PrintCardButton from "./PrintCardButton";
 
 type SortDirection = "asc" | "desc";
-type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id";
+type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id" | "faculty";
 
 export interface AlumniDataTableProps {
   items: AlumniListItem[];
@@ -425,8 +425,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             return (x.designation ?? "").toLowerCase();
           case "organization":
             return (x.organization ?? "").toLowerCase();
+          case "department":
+            return (x.department ?? "").toLowerCase();
+          case "faculty":
+            return (x.faculty ?? "").toLowerCase();
           case "contact":
             return `${x.email ?? ""} ${x.mobile ?? ""}`.toLowerCase();
+          case "id":
+            return String(x.id).toLowerCase();
           default:
             return x.name.toLowerCase();
         }
@@ -1003,17 +1009,17 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live="polite">
           <div className="min-w-full xl:min-w-full">
             <Table className="min-w-full">
-              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm whitespace-nowrap">
+              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                 <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">{null}</TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">{null}</TableCell>
                   <TableCell 
                     isHeader 
-                    className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
                     onClick={() => toggleSort("name")} 
                     aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
                   >
                     <div className="flex items-center gap-2">
-                      <span>Name</span>
+                      <span>Full Name</span>
                       <div className="flex flex-col">
                         <ArrowUpIcon className={`w-3 h-3 ${sortKey === "name" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                         <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "name" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
@@ -1022,23 +1028,49 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   </TableCell>
                   <TableCell 
                     isHeader 
-                    className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
                     onClick={() => toggleSort("id")} 
                     aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
                   >
                     <div className="flex items-center gap-2">
-                      <span>SAP ID</span>
+                      <span>SAP ID / Registration</span>
                       <div className="flex flex-col">
                         <ArrowUpIcon className={`w-3 h-3 ${sortKey === "id" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                         <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "id" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Mobile No</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Active Email</TableCell>
                   <TableCell 
                     isHeader 
-                    className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("contact")} 
+                    aria-sort={sortKey === "contact" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Email</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "contact" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "contact" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("faculty")} 
+                    aria-sort={sortKey === "faculty" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Faculty</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "faculty" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "faculty" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
                     onClick={() => toggleSort("department")} 
                     aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
                   >
@@ -1050,8 +1082,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Card Status</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("program")} 
+                    aria-sort={sortKey === "program" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Program</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "program" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "program" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Card Status</TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
@@ -1059,28 +1105,31 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 {effectiveLoading && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
-                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
                         <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
                         <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                       </TableCell>
-                      <TableCell className="px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                      <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
                         <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                       </TableCell>
                     </TableRow>
@@ -1089,7 +1138,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={8}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={9}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1107,7 +1156,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={9}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1151,16 +1200,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                             <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === alum.id ? "rotate-45" : ""}`} />
                           </button>
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-start">
+                        <TableCell className="px-3 sm:px-6 py-5 text-start">
                           <div className="flex items-center gap-3">
                             <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{toTitleCase(alum.name)}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
-                          {formatSapId(alum.id)}
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                          {alum.registrationno ? (
+                            <div>
+                              <div>{formatSapId(alum.id)}</div>
+                              <div className="text-xs text-gray-500">{alum.registrationno}</div>
+                            </div>
+                          ) : (
+                            formatSapId(alum.id)
+                          )}
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
                           <a 
                             href={alum.email ? `mailto:${alum.email}` : "#"} 
                             className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
@@ -1168,9 +1223,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                             {formatEmail(alum.email)}
                           </a>
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
-                        <TableCell className="px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!isAdmin} /></TableCell>
-                        <TableCell className={`px-6 py-5 text-end sticky right-0 z-10 ${
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!isAdmin} /></TableCell>
+                        <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
                           selectedRowId === alum.id 
                             ? "bg-blue-50/80 dark:bg-blue-900/30" 
                             : idx % 2 === 0 
@@ -1182,7 +1239,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </TableRow>
                       {expandedRowId === alum.id && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={8} className="px-0 py-6">
+                          <TableCell colSpan={9} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!isAdmin} />

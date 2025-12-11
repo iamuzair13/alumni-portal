@@ -456,6 +456,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const lastSetCityValueRef = useRef<string | null>(null);
   const [facultyOtherSelected, setFacultyOtherSelected] = useState(false);
   const [departmentOtherSelected, setDepartmentOtherSelected] = useState(false);
+  // Use refs to track if user is actively typing in "Other" inputs
+  const isTypingFacultyOther = useRef(false);
+  const isTypingDepartmentOther = useRef(false);
   const [userAccess, setUserAccess] = useState<{
     isSuperAdmin: boolean;
     faculties: string[];
@@ -635,27 +638,41 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   
   // Reset department and program when faculty changes
   useEffect(() => {
+    // Don't reset if user is currently typing in "Other" input
+    if (isTypingFacultyOther.current || (facultyOtherSelected && selectedFaculty && selectedFaculty !== "other")) {
+      // User is typing a custom faculty name, don't interfere
+      return;
+    }
+    
     setValue("departmentname", "");
     setValue("degreetitle", "");
     setDepartmentOtherSelected(false);
     // Only set facultyOtherSelected if faculty is explicitly "other", otherwise reset it
     if (selectedFaculty === "other") {
       setFacultyOtherSelected(true);
-    } else if (selectedFaculty && selectedFaculty !== "") {
+    } else if (selectedFaculty && selectedFaculty !== "" && availableFaculties.includes(selectedFaculty)) {
+      // Only reset if it's a valid faculty from the list
       setFacultyOtherSelected(false);
     }
-  }, [selectedFaculty, setValue]);
+  }, [selectedFaculty, setValue, facultyOtherSelected, availableFaculties]);
 
   // Reset program when department changes
   useEffect(() => {
+    // Don't reset if user is currently typing in "Other" input
+    if (isTypingDepartmentOther.current || (departmentOtherSelected && selectedDepartment && selectedDepartment !== "other")) {
+      // User is typing a custom department name, don't interfere
+      return;
+    }
+    
     setValue("degreetitle", "");
     // Only set departmentOtherSelected if department is explicitly "other", otherwise reset it
     if (selectedDepartment === "other") {
       setDepartmentOtherSelected(true);
-    } else if (selectedDepartment && selectedDepartment !== "") {
+    } else if (selectedDepartment && selectedDepartment !== "" && deptOptions.includes(selectedDepartment)) {
+      // Only reset if it's a valid department from the list
       setDepartmentOtherSelected(false);
     }
-  }, [selectedDepartment, setValue]);
+  }, [selectedDepartment, setValue, departmentOtherSelected, deptOptions]);
   
 
   // Sync country to homeCountry for form submission
@@ -1701,7 +1718,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     onChange: (e) => {
                       if (e.target.value === "other") {
                         setFacultyOtherSelected(true);
-                        setValue("facultyname", "");
+                        // Use setTimeout to avoid conflicts with register
+                        setTimeout(() => {
+                          setValue("facultyname", "", { shouldValidate: false, shouldDirty: false });
+                        }, 0);
                       }
                     }
                   })}
@@ -1720,14 +1740,32 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </select>
               ) : (
                 <>
-                  <input 
-                    type="text" 
-                    className={inputBase} 
-                    {...register("facultyname", { 
+                  <Controller
+                    name="facultyname"
+                    control={control}
+                    rules={{ 
                       required: "Please specify your faculty",
                       maxLength: 200 
-                    })} 
-                    placeholder="Enter faculty name"
+                    }}
+                    render={({ field }) => (
+                      <input 
+                        type="text" 
+                        className={inputBase} 
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          isTypingFacultyOther.current = true;
+                          field.onChange(e);
+                        }}
+                        onBlur={() => {
+                          isTypingFacultyOther.current = false;
+                          field.onBlur();
+                        }}
+                        name={field.name}
+                        ref={field.ref}
+                        placeholder="Enter faculty name"
+                        autoFocus
+                      />
+                    )}
                   />
                   <button
                     type="button"
@@ -1754,8 +1792,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     required: true,
                     onChange: (e) => {
                       if (e.target.value === "other") {
+                        isTypingDepartmentOther.current = true;
                         setDepartmentOtherSelected(true);
-                        setValue("departmentname", "");
+                        // Clear the value after a short delay to let the state update
+                        setTimeout(() => {
+                          setValue("departmentname", "", { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+                          // Reset the ref after clearing
+                          setTimeout(() => {
+                            isTypingDepartmentOther.current = false;
+                          }, 100);
+                        }, 50);
                       }
                     }
                   })}
@@ -1775,14 +1821,32 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </select>
               ) : (
                 <>
-                  <input 
-                    type="text" 
-                    className={inputBase} 
-                    {...register("departmentname", { 
+                  <Controller
+                    name="departmentname"
+                    control={control}
+                    rules={{ 
                       required: "Please specify your department",
                       maxLength: 200 
-                    })} 
-                    placeholder="Enter department name"
+                    }}
+                    render={({ field }) => (
+                      <input 
+                        type="text" 
+                        className={inputBase} 
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          isTypingDepartmentOther.current = true;
+                          field.onChange(e);
+                        }}
+                        onBlur={() => {
+                          isTypingDepartmentOther.current = false;
+                          field.onBlur();
+                        }}
+                        name={field.name}
+                        ref={field.ref}
+                        placeholder="Enter department name"
+                        autoFocus
+                      />
+                    )}
                   />
                   <button
                     type="button"

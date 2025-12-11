@@ -335,23 +335,23 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
                   const cardElement = document.getElementById('cardElement');
                   const canvas = await html2canvas(cardElement, {
                     scale: 3,
-                    backgroundColor: "#ffffff",
-                    logging: false,
-                    useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        useCORS: true,
                     allowTaint: true,
-                  });
-                  
-                  const imgData = canvas.toDataURL("image/png");
+      });
+
+      const imgData = canvas.toDataURL("image/png");
                   const { jsPDF } = window.jspdf;
-                  const pdf = new jsPDF({
-                    orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
-                    unit: "pt",
-                    format: [canvas.width, canvas.height],
-                  });
-                  
-                  pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      const pdf = new jsPDF({
+        orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
+        unit: "pt",
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
                   const filename = "${(exportData.studentName || "alumni-card").replace(/\s+/g, "-").toLowerCase()}-card.pdf";
-                  pdf.save(filename);
+      pdf.save(filename);
                   
                   btn.textContent = 'Download PDF';
                   alert('PDF generated successfully!');
@@ -369,7 +369,7 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
       `);
       
       printWindow.document.close();
-      
+
       toast.dismiss(loadingToast);
       toast.success("Export view opened in new tab!", {
         duration: 3000,

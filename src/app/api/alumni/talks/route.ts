@@ -17,6 +17,7 @@ export async function GET() {
       SELECT 
         a.alumniid,
         a.sapid,
+        a.registrationno,
         a.alumniname,
         a.departmentname,
         a.facultyname,
@@ -24,10 +25,27 @@ export async function GET() {
         a.personalemail,
         a.officialemail,
         a.universityemail,
+        t.alumnitalks,
+        t.mentorshipprogram,
         t.topic,
-        t.day,
-        t.timings,
-        t.activity
+        t.activity,
+        t.linkedin,
+        t.mode,
+        t.brief_outline,
+        t.date_1,
+        t.timings_1,
+        t.date_2,
+        t.timings_2,
+        t.date_3,
+        t.timings_3,
+        t.day_2,
+        t.day_3,
+        t.week_1,
+        t.week_2,
+        t.week_3,
+        t.month_1,
+        t.month_2,
+        t.month_3
       FROM public.tbl_alumni a
       JOIN public.tblalumnitalks t ON t.alumniid = a.alumniid
       WHERE 1=1
@@ -35,6 +53,7 @@ export async function GET() {
       ORDER BY t.alumniid DESC`;
     const typedRows = rows as unknown as {
       sapid: string;
+      registrationno: string | null;
       alumniname: string;
       departmentname: string | null;
       facultyname: string | null;
@@ -42,22 +61,61 @@ export async function GET() {
       personalemail: string | null;
       officialemail: string | null;
       universityemail: string | null;
+      alumnitalks: string | null;
+      mentorshipprogram: string | null;
       topic: string | null;
-      day: string;
-      timings: string;
       activity: string | null;
+      linkedin: string | null;
+      mode: string | null;
+      brief_outline: string | null;
+      date_1: string | null;
+      timings_1: string | null;
+      date_2: string | null;
+      timings_2: string | null;
+      date_3: string | null;
+      timings_3: string | null;
+      day_2: string | null;
+      day_3: string | null;
+      week_1: string | null;
+      week_2: string | null;
+      week_3: string | null;
+      month_1: string | null;
+      month_2: string | null;
+      month_3: string | null;
     }[];
     const items = typedRows.map((r) => ({
       sapid: r.sapid,
+      registrationNo: r.registrationno,
       name: r.alumniname,
       department: r.departmentname,
       faculty: r.facultyname,
       program: r.degreetitle || null,
       email: r.personalemail || r.officialemail || r.universityemail,
+      alumnitalks: r.alumnitalks,
+      mentorshipprogram: r.mentorshipprogram,
       topics: String(r.topic || "").split(/[,|]/).map((s) => s.trim()).filter(Boolean),
       areas: String(r.activity || "").split(/[,|]/).map((s) => s.trim()).filter(Boolean),
-      day: r.day,
-      time: r.timings,
+      linkedin: r.linkedin,
+      mode: r.mode,
+      briefOutline: r.brief_outline,
+      // Availability dates and timings
+      date1: r.date_1,
+      timings1: r.timings_1,
+      date2: r.date_2,
+      timings2: r.timings_2,
+      date3: r.date_3,
+      timings3: r.timings_3,
+      // Day variations
+      day2: r.day_2,
+      day3: r.day_3,
+      // Week variations
+      week1: r.week_1,
+      week2: r.week_2,
+      week3: r.week_3,
+      // Month variations
+      month1: r.month_1,
+      month2: r.month_2,
+      month3: r.month_3,
     }));
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {

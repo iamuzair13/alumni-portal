@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const facultiesParam = searchParams.get("faculties");
     const departmentsParam = searchParams.get("departments");
     const associationsParam = searchParams.get("associations");
+    const verified = searchParams.get("verified");
     const membershipFilter = searchParams.get("membershipFilter") || "members"; // "all", "members", "non-members"
     
     const selectedFaculties = facultiesParam ? facultiesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -93,6 +94,14 @@ export async function GET(request: NextRequest) {
       }
     }
     
+    // Build verified filter condition
+    let verifiedFilterCondition = sql``;
+    if (verified === "true") {
+      verifiedFilterCondition = sql` AND a.verify = 'true'`;
+    } else if (verified === "false") {
+      verifiedFilterCondition = sql` AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')`;
+    }
+    
     // Build membership filter condition
     const membershipJoinType: "JOIN" | "LEFT JOIN" = membershipFilter === "members" ? "JOIN" : "LEFT JOIN";
     let membershipWhereCondition = sql``;
@@ -134,6 +143,7 @@ export async function GET(request: NextRequest) {
           ${facultyFilterCondition}
           ${departmentFilterCondition}
           ${associationFilterCondition}
+          ${verifiedFilterCondition}
           ${membershipWhereCondition}
       `;
     } catch (countError) {
@@ -173,6 +183,7 @@ export async function GET(request: NextRequest) {
           ${facultyFilterCondition}
           ${departmentFilterCondition}
           ${associationFilterCondition}
+          ${verifiedFilterCondition}
           ${membershipWhereCondition}
         ORDER BY a.alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
