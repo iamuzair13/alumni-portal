@@ -8,7 +8,7 @@ type Props = {
   sapId: string;
   faculty: string;
   department: string;
-  initialStatus?: "pending" | "rejected" | "delivered" | null;
+  initialStatus?: "Pending" | "Process" | "Delivered" | null;
   isAdmin?: boolean;
 };
 
@@ -23,9 +23,10 @@ type CardRow = {
   createdat: string | null;
 };
 
-export function computeButtonMode(card: CardRow | null, initialStatus?: "pending" | "rejected" | "delivered" | null): "apply" | "view" {
-  const st = (initialStatus ?? card?.status ?? "").toLowerCase();
-  if (st === "rejected") return "apply";
+export function computeButtonMode(card: CardRow | null, initialStatus?: "Pending" | "Process" | "Delivered" | null): "apply" | "view" {
+  const st = (initialStatus ?? card?.status ?? "").trim();
+  // If status is "Pending", allow re-application
+  if (st === "Pending" || st === "") return "apply";
   if (card) return "view";
   return "apply";
 }
@@ -41,8 +42,10 @@ export default function AlumniCardAction({ alumniId, name, sapId, faculty, depar
 
   const mode = useMemo(() => computeButtonMode(card, initialStatus), [card, initialStatus]);
   const statusLabel = useMemo(() => {
-    const st = (initialStatus ?? card?.status ?? "").toLowerCase();
-    return st === "delivered" || st === "active" ? "card is active" : "Under Review";
+    const st = (initialStatus ?? card?.status ?? "").trim();
+    if (st === "Delivered") return "Card is Delivered";
+    if (st === "Process") return "Card is in Process";
+    return "Under Review";
   }, [card, initialStatus]);
 
   const fetchStatus = async () => {

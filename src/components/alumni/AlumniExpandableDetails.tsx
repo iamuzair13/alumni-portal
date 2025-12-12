@@ -85,6 +85,7 @@ type AlumniFullData = {
   officialnumber: string | null;
   work_city: string | null;
   work_country: string | null;
+  organization_address: string | null;
   image1: string | null;
   image2: string | null;
   cv: string | null;
@@ -103,6 +104,17 @@ type AlumniFullData = {
   alumnistatus: string | null;
   password: string | null;
   father_cnic: string | null;
+  category: string | null;
+  reason_of_unemployment: string | null;
+  // Higher Education fields
+  degree_title: string | null;
+  higher_education_institute_name: string | null;
+  higher_education_program: string | null;
+  higher_education_institute_country: string | null;
+  higher_education_institute_city: string | null;
+  is_scholarship: string | null;
+  higher_education_institute_email: string | null;
+  higher_education_intiture_number: string | null;
   chapter: string | null;
   chapter1_id: number | null;
   chapter2_id: number | null;
@@ -326,9 +338,10 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const { data: session } = useSession();
   const deleteModal = useModal();
   
-  // Watch country and province for dependent fields
+  // Watch country, province, and employeed for dependent fields
   const selectedCountry = watch("country") || "";
   const selectedProvince = watch("province") || "";
+  const selectedEmployeed = watch("employeed") || data?.employeed || "";
   const [citySearch, setCitySearch] = useState("");
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const cityInputRef = useRef<HTMLInputElement>(null);
@@ -480,8 +493,18 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           totalyearsofexpereince: formData.totalyearsofexpereince,
           work_city: formData.work_city,
           work_country: formData.work_country,
+          organization_address: formData.organization_address,
           majorsubject: formData.majorsubject,
           aboutme: formData.aboutme,
+          reason_of_unemployment: formData.reason_of_unemployment,
+          // Higher Education fields
+          higher_education_institute_name: formData.higher_education_institute_name,
+          higher_education_program: formData.higher_education_program,
+          is_scholarship: formData.is_scholarship,
+          higher_education_institute_country: formData.higher_education_institute_country,
+          higher_education_institute_city: formData.higher_education_institute_city,
+          higher_education_institute_email: formData.higher_education_institute_email,
+          higher_education_intiture_number: formData.higher_education_intiture_number,
           association_id: formData.association_id && String(formData.association_id) !== "" ? Number(formData.association_id) : null,
           chapter1_id: formData.chapter1_id && String(formData.chapter1_id) !== "" ? Number(formData.chapter1_id) : null,
           chapter2_id: formData.chapter2_id && String(formData.chapter2_id) !== "" ? Number(formData.chapter2_id) : null,
@@ -498,6 +521,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           createddatetime: formData.createddatetime,
           academicsession: formData.academicsession,
           father_cnic: formData.father_cnic,
+          category: formData.category,
         }),
       });
 
@@ -644,18 +668,15 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Gender" value={data.gender} isEditing={isEditing} readOnly={readOnly} register={register} name="gender" type="select" options={[
             { value: "", label: "Select" },
             { value: "Male", label: "Male" },
-            { value: "Female", label: "Female" },
-            { value: "Other", label: "Other" }
+            { value: "Female", label: "Female" }
           ]} />
           <CompactField label="Date of Birth" value={data.dateofbirth} isEditing={isEditing} readOnly={readOnly} register={register} name="dateofbirth" />
           <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isEditing} readOnly={readOnly} register={register} name="cnicpassport" />
           <CompactField label="Father Name" value={data.fathername} isEditing={isEditing} readOnly={readOnly} register={register} name="fathername" />
           <CompactField label="Marital Status" value={data.maritalstatus} isEditing={isEditing} readOnly={readOnly} register={register} name="maritalstatus" type="select" options={[
             { value: "", label: "Select" },
-            { value: "Single", label: "Single" },
             { value: "Married", label: "Married" },
-            { value: "Divorced", label: "Divorced" },
-            { value: "Widowed", label: "Widowed" }
+            { value: "Unmarried", label: "Unmarried" }
           ]} />
 
           {/* Contact Information */}
@@ -665,7 +686,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Primary Contact" value={data.contactno} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno" />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno1" />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isEditing} readOnly={readOnly} register={register} name="personalemail" type="email" />
-          <CompactField label="Alumni Email" value={data.universityemail} isEditing={isEditing} readOnly={readOnly} register={register} name="universityemail" type="email" />
+          <CompactField label="Student Email" value={data.universityemail} isEditing={false} readOnly={true} />
           <CompactField label="Password" value={data.password || ""} isEditing={isEditing} readOnly={readOnly} register={register} name="password" type="password" />
          
           <CompactField label="Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
@@ -778,7 +799,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
               </div>
             </div>
           ) : (
-            <CompactField label="City" value={data.city} isEditing={isEditing} readOnly={readOnly} register={register} name="city" />
+          <CompactField label="City" value={data.city} isEditing={isEditing} readOnly={readOnly} register={register} name="city" />
           )}
 
           {/* Academic Information */}
@@ -788,9 +809,49 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Faculty" value={data.facultyname} isEditing={isEditing} readOnly={readOnly} register={register} name="facultyname" />
           <CompactField label="Department" value={data.departmentname} isEditing={isEditing} readOnly={readOnly} register={register} name="departmentname" />
           <CompactField label="Program" value={data.degreetitle} isEditing={isEditing} readOnly={readOnly} register={register} name="degreetitle" />
-          <CompactField label="Campus" value={data.campusname} isEditing={isEditing} readOnly={readOnly} register={register} name="campusname" />
-          <CompactField label="Year of Starting" value={data.yearofstarting} isEditing={isEditing} readOnly={readOnly} register={register} name="yearofstarting" type="number" />
-          <CompactField label="Year of Ending" value={data.yearofending} isEditing={isEditing} readOnly={readOnly} register={register} name="yearofending" type="number" />
+          <CompactField label="Campus" value={data.campusname} isEditing={isEditing} readOnly={readOnly} register={register} name="campusname" type="select" options={[
+            { value: "", label: "Select" },
+            { value: "Lahore", label: "Lahore" },
+            { value: "Sargodha", label: "Sargodha" },
+            { value: "Islamabad", label: "Islamabad" },
+            { value: "Pakpattan", label: "Pakpattan" }
+          ]} />
+          {!isEditing || readOnly ? (
+            <CompactField label="Admission Year" value={data.yearofstarting} isEditing={false} readOnly={readOnly} />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Admission Year:</label>
+              <select
+                {...register("yearofstarting", { valueAsNumber: true })}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select</option>
+                {Array.from({ length: new Date().getFullYear() - 1997 }, (_, i) => {
+                  const year = 1998 + i;
+                  return <option key={year} value={year}>{year}</option>;
+                })}
+              </select>
+            </div>
+          )}
+          {!isEditing || readOnly ? (
+            <CompactField label="Passing Out Year" value={data.yearofending} isEditing={false} readOnly={readOnly} />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Passing Out Year:</label>
+              <select
+                {...register("yearofending", { valueAsNumber: true })}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select</option>
+                {Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => {
+                  const year = 2000 + i;
+                  return <option key={year} value={year}>{year}</option>;
+                })}
+              </select>
+            </div>
+          )}
           <CompactField label="CGPA" value={data.cgpa} isEditing={isEditing} readOnly={readOnly} register={register} name="cgpa" type="text" />
           <CompactField label="Major Subject" value={data.majorsubject} isEditing={isEditing} readOnly={readOnly} register={register} name="majorsubject" />
           <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />
@@ -802,18 +863,97 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Occupation Status" value={data.employeed} isEditing={isEditing} readOnly={readOnly} register={register} name="employeed" type="select" options={[
             { value: "", label: "Select" },
             { value: "Employed", label: "Employed" },
-            { value: "Unemployed", label: "Unemployed" },
             { value: "Self-Employed", label: "Self-Employed" },
-            { value: "Pursuing Higher Education", label: "Pursuing Higher Education" }
+            { value: "Unemployed (By Choice)", label: "Unemployed (By Choice)" },
+            { value: "Unemployed (Searching Job)", label: "Unemployed (Searching Job)" },
+            { value: "Pursuing Higher Studies", label: "Pursuing Higher Studies" }
           ]} />
           <CompactField label="Organization" value={data.nameoforganization} isEditing={isEditing} readOnly={readOnly} register={register} name="nameoforganization" />
           <CompactField label="Designation" value={data.designation} isEditing={isEditing} readOnly={readOnly} register={register} name="designation" />
-          <CompactField label="Sector" value={data.industry} isEditing={isEditing} readOnly={readOnly} register={register} name="industry" />
-          <CompactField label="Experience (Years)" value={data.totalyearsofexpereince} isEditing={isEditing} readOnly={readOnly} register={register} name="totalyearsofexpereince" />
-          <CompactField label="Work Email" value={data.officialemail} isEditing={isEditing} readOnly={readOnly} register={register} name="officialemail" type="email" />
-          <CompactField label="Work Phone Number" value={data.officialnumber} isEditing={isEditing} readOnly={readOnly} register={register} name="officialnumber" />
+          {!isEditing || readOnly ? (
+            <CompactField label="Sector" value={data.industry} isEditing={false} readOnly={readOnly} />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Sector:</label>
+              <input
+                type="text"
+                list="sector-options"
+                placeholder="Select from list or type your sector"
+                {...register("industry")}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              />
+              <datalist id="sector-options">
+                <option value="NA">NA</option>
+                <option value="IT & Software Development">IT & Software Development</option>
+                <option value="Engineering & Manufacturing">Engineering & Manufacturing</option>
+                <option value="Finance & Banking">Finance & Banking</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Education & Research">Education & Research</option>
+                <option value="Media & Communication">Media & Communication</option>
+                <option value="Retail & E-commerce">Retail & E-commerce</option>
+                <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
+                <option value="Textile & Fashion">Textile & Fashion</option>
+                <option value="Architecture & Planning">Architecture & Planning</option>
+                <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                <option value="NGO & Social Services">NGO & Social Services</option>
+                <option value="Government Sector">Government Sector</option>
+                <option value="Construction & Real Estate">Construction & Real Estate</option>
+              </datalist>
+            </div>
+          )}
+          {/* Note: Start of Career is not in the database schema, so we'll skip it for now */}
+          <CompactField label="Current Organization" value={data.nameoforganization} isEditing={isEditing} readOnly={readOnly} register={register} name="nameoforganization" />
+          <CompactField label="Current Designation" value={data.designation} isEditing={isEditing} readOnly={readOnly} register={register} name="designation" />
+          <CompactField label="Work Address" value={data.organization_address} isEditing={isEditing} readOnly={readOnly} register={register} name="organization_address" type="textarea" />
           <CompactField label="Work City" value={data.work_city} isEditing={isEditing} readOnly={readOnly} register={register} name="work_city" />
-          <CompactField label="Work Country" value={data.work_country} isEditing={isEditing} readOnly={readOnly} register={register} name="work_country" />
+          {!isEditing || readOnly ? (
+            <CompactField label="Work Country" value={data.work_country} isEditing={false} readOnly={readOnly} />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Work Country:</label>
+              <input
+                type="text"
+                list="work-country-options"
+                placeholder="Select from list or type country"
+                {...register("work_country")}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              />
+              <datalist id="work-country-options">
+                {allCountries.map((country) => (
+                  <option key={country} value={country} />
+                ))}
+              </datalist>
+            </div>
+          )}
+          <CompactField label="Work Phone" value={data.officialnumber} isEditing={isEditing} readOnly={readOnly} register={register} name="officialnumber" />
+          <CompactField label="Work Email" value={data.officialemail} isEditing={isEditing} readOnly={readOnly} register={register} name="officialemail" type="email" />
+          
+          {/* Reason of Unemployment - Show only for unemployed */}
+          {(selectedEmployeed === "Unemployed (By Choice)" || selectedEmployeed === "Unemployed (Searching Job)" || data?.employeed === "Unemployed (By Choice)" || data?.employeed === "Unemployed (Searching Job)") && (
+            <CompactField label="Reason of Unemployment" value={data.reason_of_unemployment} isEditing={isEditing} readOnly={readOnly} register={register} name="reason_of_unemployment" type="textarea" />
+          )}
+
+          {/* Higher Education Information - Show only for pursuing higher education */}
+          {(selectedEmployeed === "Pursuing Higher Studies" || data?.employeed === "Pursuing Higher Studies") && (
+            <>
+              <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+                <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Higher Education</h4>
+              </div>
+              <CompactField label="Institution Name" value={data.higher_education_institute_name} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_name" />
+              <CompactField label="Program Enrolled" value={data.higher_education_program} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_program" />
+              <CompactField label="Funding Source" value={data.is_scholarship} isEditing={isEditing} readOnly={readOnly} register={register} name="is_scholarship" type="select" options={[
+                { value: "", label: "Select" },
+                { value: "Full Scholarship", label: "Full Scholarship" },
+                { value: "Partial Scholarship", label: "Partial Scholarship" },
+                { value: "Self Paid", label: "Self Paid" }
+              ]} />
+              <CompactField label="Institution Country" value={data.higher_education_institute_country} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_country" />
+              <CompactField label="Institution City" value={data.higher_education_institute_city} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_city" />
+              <CompactField label="Student Email" value={data.higher_education_institute_email} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_email" type="email" />
+            </>
+          )}
 
           {/* Chapter and Association Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
@@ -910,13 +1050,25 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           </div>
           <CompactField label="Verification Status" value={data.verify || "Not Set"} isEditing={isEditing} readOnly={readOnly} register={register} name="verify" type="select" options={[
             { value: "", label: "Select" },
-            { value: "true", label: "Verified" },
-            { value: "false", label: "Unverified" },
-            { value: "pending", label: "Pending" }
+            { value: "Verified", label: "Verified" },
+            { value: "Unverified", label: "Unverified" },
+            { value: "On-Hold", label: "On-Hold" }
           ]} />
           <CompactField label="Last Login" value={data.lasttimelogin || "Never"} isEditing={isEditing} readOnly={readOnly} register={register} name="lasttimelogin" />
           <CompactField label="Login Count" value={data.logincount || 0} isEditing={isEditing} readOnly={readOnly} register={register} name="logincount" type="number" />
-          <CompactField label="Alumni Status" value={data.alumnistatus} isEditing={isEditing} readOnly={readOnly} register={register} name="alumnistatus" />
+          <CompactField label="Alumni Status" value={data.alumnistatus} isEditing={isEditing} readOnly={readOnly} register={register} name="alumnistatus" type="select" options={[
+            { value: "", label: "Select" },
+            { value: "Active", label: "Active" },
+            { value: "Inactive", label: "Inactive" }
+          ]} />
+          <CompactField label="Alumni Category" value={data.category} isEditing={isEditing} readOnly={readOnly} register={register} name="category" type="select" options={[
+            { value: "", label: "Select" },
+            { value: "A+", label: "A+" },
+            { value: "A", label: "A" },
+            { value: "B", label: "B" },
+            { value: "C", label: "C" },
+            { value: "D", label: "D" }
+          ]} />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isEditing} readOnly={readOnly} register={register} name="createddatetime" />
           <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />
           <CompactField label="Data Source" value={data.datasource} isEditing={isEditing} readOnly={readOnly} register={register} name="datasource" />

@@ -8,10 +8,11 @@ export type CardData = {
   alumniid: number;
   cnicno: string | null;
   cardaddress: string | null;
-  status: CardStatus | null;
+  status: string | null; // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
   cardpicture: string | null;
   card_image: string | null;
   createdat: string | null;
+  reason_onhold: string | null;
 };
 
 export const cardStatusKey = (sapId: string | undefined) => ["alumni", "card", sapId ?? ""];

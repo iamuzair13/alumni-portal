@@ -276,21 +276,21 @@ CREATE TABLE public.tblalumnitalks (
   CONSTRAINT tblalumnitalks_pkey PRIMARY KEY (alumniid),
   CONSTRAINT tblalumnitalks_alumniid_fkey FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid)
 );
-CREATE TABLE public.tblcard (
-  cardid integer NOT NULL DEFAULT nextval('tblcard_cardid_seq'::regclass),
-  alumniid integer NOT NULL,
-  cardpicture character varying,
-  cardaddress character varying,
-  cnicno character varying,
-  status character varying,
-  createdat timestamp without time zone,
-  card_image text,
-  printed boolean,
-  comment text,
-  validity_date date,
-  CONSTRAINT tblcard_pkey PRIMARY KEY (alumniid),
-  CONSTRAINT tblcard_alumniid_fkey FOREIGN KEY (alumniid) REFERENCES public.tbl_alumni(alumniid)
-);
+create table public.tblcard (
+  cardid serial not null,
+  alumniid integer not null,
+  cardpicture character varying(50) null,
+  cardaddress character varying(200) null,
+  cnicno character varying(50) null,
+  status character varying(50) null,
+  createdat timestamp without time zone null,
+  card_image text null,
+  printed boolean null,
+  reason_onhold text null,
+  validity_date date null,
+  constraint tblcard_pkey primary key (alumniid),
+  constraint tblcard_alumniid_fkey foreign KEY (alumniid) references tbl_alumni (alumniid) on delete CASCADE
+) TABLESPACE pg_default;
 CREATE TABLE public.tblchapters (
   id integer NOT NULL DEFAULT nextval('tblchapters_id_seq'::regclass),
   chapter_whatsapp text,

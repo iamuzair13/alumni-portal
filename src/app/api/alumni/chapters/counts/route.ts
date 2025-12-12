@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     const departmentsParam = searchParams.get("departments");
     const verified = searchParams.get("verified");
     const membershipFilter = searchParams.get("membershipFilter") || "members";
+    const chapterCountParam = searchParams.get("chapterCount");
+    const chapterCount = chapterCountParam ? Number(chapterCountParam) : undefined;
     
     const selectedNationalChapters = nationalChaptersParam ? nationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
     const selectedInternationalChapters = internationalChaptersParam ? internationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -101,6 +103,21 @@ export async function GET(request: NextRequest) {
       membershipWhereCondition = sql` AND ac.id IS NOT NULL AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)`;
     }
     
+    // Chapter count filter - filter by exact number of chapters
+    let chapterCountCondition = sql``;
+    if (chapterCount !== undefined && chapterCount > 0) {
+      // Count non-null chapters and match exactly
+      chapterCountCondition = sql` AND (
+        CASE 
+          WHEN ac."chapter1" IS NOT NULL THEN 1 ELSE 0 END +
+          CASE 
+          WHEN ac."chapter2" IS NOT NULL THEN 1 ELSE 0 END +
+          CASE 
+          WHEN ac."chapter3" IS NOT NULL THEN 1 ELSE 0 END
+        ) = ${chapterCount}
+      `;
+    }
+    
     // Base query structure
     const baseQuery = membershipJoinType === "JOIN"
       ? sql`FROM public.tbl_alumni a
@@ -118,6 +135,7 @@ export async function GET(request: NextRequest) {
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
+      ${chapterCountCondition}
     `;
     
     // Get all count (membershipFilter = "all", with verified filter)
@@ -131,6 +149,7 @@ export async function GET(request: NextRequest) {
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
+      ${chapterCountCondition}
     `;
     
     // Get members count (membershipFilter = "members", with verified filter)
@@ -145,6 +164,7 @@ export async function GET(request: NextRequest) {
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
       AND ac.id IS NOT NULL AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)
+      ${chapterCountCondition}
     `;
     
     // Get non-members count (membershipFilter = "non-members", with verified filter)
@@ -159,6 +179,7 @@ export async function GET(request: NextRequest) {
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
       AND (ac.id IS NULL OR (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL))
+      ${chapterCountCondition}
     `;
     
     // Get verified count (verified = true, with all other filters)
@@ -172,6 +193,7 @@ export async function GET(request: NextRequest) {
       ${departmentFilterCondition}
       ${membershipWhereCondition}
       AND a.verify = 'true'
+      ${chapterCountCondition}
     `;
     
     // Get unverified count (verified = false, with all other filters)
@@ -185,6 +207,7 @@ export async function GET(request: NextRequest) {
       ${departmentFilterCondition}
       ${membershipWhereCondition}
       AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')
+      ${chapterCountCondition}
     `;
     
     // Execute all queries in parallel

@@ -77,7 +77,8 @@ async function getAlumniChapters(
   faculties?: string[],
   departments?: string[],
   verified?: boolean,
-  membershipFilter?: MembershipFilter
+  membershipFilter?: MembershipFilter,
+  chapterCount?: number
 ): Promise<ChapterItem[]> {
   const url = new URL("/api/alumni/chapters", typeof window !== "undefined" ? window.location.origin : "");
   // Only add parameters if they have actual values (not empty arrays)
@@ -99,6 +100,9 @@ async function getAlumniChapters(
   if (membershipFilter) {
     url.searchParams.set("membershipFilter", membershipFilter);
   }
+  if (chapterCount !== undefined && chapterCount > 0) {
+    url.searchParams.set("chapterCount", String(chapterCount));
+  }
   
   console.log("[AlumniChaptersTab] Fetching with filters:", {
     nationalChapters: nationalChapters && nationalChapters.length > 0 ? nationalChapters : "none",
@@ -107,6 +111,7 @@ async function getAlumniChapters(
     departments: departments && departments.length > 0 ? departments : "none",
     verified: verified !== undefined ? (verified ? "true" : "false") : "none",
     membershipFilter: membershipFilter || "none",
+    chapterCount: chapterCount !== undefined ? chapterCount : "none",
     url: url.toString(),
   });
   
@@ -136,7 +141,8 @@ async function getAlumniChaptersCounts(
   internationalChapters?: string[],
   faculties?: string[],
   departments?: string[],
-  verified?: boolean
+  verified?: boolean,
+  chapterCount?: number
 ): Promise<{
   total: number;
   all: number;
@@ -160,6 +166,9 @@ async function getAlumniChaptersCounts(
   }
   if (verified !== undefined) {
     url.searchParams.set("verified", verified ? "true" : "false");
+  }
+  if (chapterCount !== undefined && chapterCount > 0) {
+    url.searchParams.set("chapterCount", String(chapterCount));
   }
   
   const res = await fetch(url.toString(), { headers: { "accept": "application/json" } });
@@ -194,6 +203,7 @@ export const AlumniChaptersTab: React.FC = () => {
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(undefined);
   const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("members");
+  const [chapterCountFilter, setChapterCountFilter] = useState<number | undefined>(undefined);
   
   // State for expanded filter sections
   const [expandedFilters, setExpandedFilters] = useState<{
@@ -362,6 +372,7 @@ export const AlumniChaptersTab: React.FC = () => {
       selectedDepartments,
       verifiedFilter,
       membershipFilter,
+      chapterCountFilter,
     ],
     queryFn: () => getAlumniChapters(
       selectedNationalChapters.length > 0 ? selectedNationalChapters : undefined,
@@ -369,7 +380,8 @@ export const AlumniChaptersTab: React.FC = () => {
       selectedFaculties.length > 0 ? selectedFaculties : undefined,
       selectedDepartments.length > 0 ? selectedDepartments : undefined,
       verifiedFilter,
-      membershipFilter
+      membershipFilter,
+      chapterCountFilter
     ),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -384,13 +396,15 @@ export const AlumniChaptersTab: React.FC = () => {
       selectedFaculties,
       selectedDepartments,
       verifiedFilter,
+      chapterCountFilter,
     ],
     queryFn: () => getAlumniChaptersCounts(
       selectedNationalChapters.length > 0 ? selectedNationalChapters : undefined,
       selectedInternationalChapters.length > 0 ? selectedInternationalChapters : undefined,
       selectedFaculties.length > 0 ? selectedFaculties : undefined,
       selectedDepartments.length > 0 ? selectedDepartments : undefined,
-      verifiedFilter
+      verifiedFilter,
+      chapterCountFilter
     ),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -527,6 +541,9 @@ export const AlumniChaptersTab: React.FC = () => {
       }
       if (membershipFilter) {
         url.searchParams.set("membershipFilter", membershipFilter);
+      }
+      if (chapterCountFilter !== undefined && chapterCountFilter > 0) {
+        url.searchParams.set("chapterCount", String(chapterCountFilter));
       }
       
       const res = await fetch(url.toString(), {
@@ -1031,6 +1048,8 @@ export const AlumniChaptersTab: React.FC = () => {
           </div>
         </div>
 
+        
+
         {/* Department Filter */}
         <div className="flex-1 sm:min-w-[180px]">
           <label htmlFor="department-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
@@ -1111,8 +1130,26 @@ export const AlumniChaptersTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Chapter Count Filter */}
+      <div className="flex-1 sm:min-w-[180px]">
+          <label htmlFor="chapter-count-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+            Chapter Count
+          </label>
+          <select
+            id="chapter-count-filter"
+            value={chapterCountFilter || ""}
+            onChange={(e) => setChapterCountFilter(e.target.value ? Number(e.target.value) : undefined)}
+            className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer"
+          >
+            <option value="">All Counts</option>
+            <option value="1">One Chapter</option>
+            <option value="2">Two Chapters</option>
+            <option value="3">Three Chapters</option>
+          </select>
+        </div>
+
       {/* Clear Filters Button */}
-      {(selectedNationalChapters.length > 0 || selectedInternationalChapters.length > 0 || selectedFaculties.length > 0 || selectedDepartments.length > 0 || verifiedFilter !== undefined) && (
+      {(selectedNationalChapters.length > 0 || selectedInternationalChapters.length > 0 || selectedFaculties.length > 0 || selectedDepartments.length > 0 || verifiedFilter !== undefined || chapterCountFilter !== undefined) && (
         <div className="flex justify-end">
           <button
             type="button"
@@ -1122,6 +1159,7 @@ export const AlumniChaptersTab: React.FC = () => {
               setSelectedFaculties([]);
               setSelectedDepartments([]);
               setVerifiedFilter(undefined);
+              setChapterCountFilter(undefined);
             }}
             className="text-sm text-blue-600 hover:text-blue-800 underline"
           >

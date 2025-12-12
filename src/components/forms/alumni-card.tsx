@@ -164,8 +164,8 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
 
   return (
     <>
-    <form className="max-w-4xl mx-auto mt-4 " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
-      <div className="grid sm:grid-cols-2 gap-6">
+    <form className="max-w-4xl mx-auto  " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
+      <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className={labelBase} htmlFor="name">Name</label>
           <div className="relative flex items-center">

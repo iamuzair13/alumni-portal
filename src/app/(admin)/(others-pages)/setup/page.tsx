@@ -16,6 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AdminUser } from "@/app/queries/fetch-users";
 import { useSession } from "next-auth/react";
 import { canModify, isAdminUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
+import OrganizationComponent from "@/components/setup/OrganizationComponent";
+import ChaptersComponent from "@/components/setup/ChaptersComponent";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -54,6 +56,8 @@ export default function SetupPage() {
 
   const TABS = [
     { key: "users", label: "Users" },
+    { key: "organizations", label: "Organizations" },
+    { key: "chapters", label: "Chapters" },
   ] as const;
 
   const [selected, setSelected] = useState<typeof TABS[number]["key"]>("users");
@@ -67,6 +71,10 @@ export default function SetupPage() {
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [removeUserId, setRemoveUserId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  // Get real-time users count for counter
+  const { data: realTimeUsers, isLoading: realTimeUsersLoading } = useUsersList();
+  const realTimeUsersCount = realTimeUsers?.length || 0;
 
   // hydrate from localStorage
   useEffect(() => {
@@ -110,6 +118,9 @@ export default function SetupPage() {
     list = list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
   }, [users, userSearch]);
+
+  // Calculate total users count after filteredUsers is defined
+  const totalUsersCount = filteredUsers.length + realTimeUsersCount;
 
   const formatDateTime = (iso: string) => {
     try {
@@ -328,7 +339,14 @@ export default function SetupPage() {
               }}
               aria-label={`Open ${tab.label} tab`}
             >
+              <span className="flex items-center gap-2">
               {tab.label}
+                {tab.key === "users" && (
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {usersLoading || realTimeUsersLoading ? "..." : totalUsersCount.toLocaleString()}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -341,6 +359,13 @@ export default function SetupPage() {
                 <Alert key={t.id} variant={t.type} title={t.type === "success" ? "Success" : "Error"} message={t.message} />
               ))}
             </div>
+
+            {/* Users Counter */}
+            <UsersCounter 
+              realTimeCount={realTimeUsersCount}
+              localStorageCount={filteredUsers.length}
+              isLoading={usersLoading || realTimeUsersLoading}
+            />
 
             {/* Admin Control Panel */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -498,6 +523,18 @@ export default function SetupPage() {
           </div>
         )}
 
+        {selected === "organizations" && (
+          <div className="mt-6">
+            <OrganizationComponent />
+          </div>
+        )}
+
+        {selected === "chapters" && (
+          <div className="mt-6">
+            <ChaptersComponent />
+          </div>
+        )}
+
         {/* Add/Edit User Form Component */}
         
         
@@ -518,6 +555,45 @@ export default function SetupPage() {
           .tab-item { flex-basis: 200px; }
         }
       `}</style>
+    </div>
+  );
+}
+
+function UsersCounter({ 
+  realTimeCount, 
+  localStorageCount, 
+  isLoading 
+}: { 
+  realTimeCount: number; 
+  localStorageCount: number; 
+  isLoading: boolean;
+}) {
+  const totalCount = realTimeCount + localStorageCount;
+
+  return (
+    <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</h3>
+          <p className="text-3xl font-bold text-blue-700 dark:text-blue-300 mt-1">
+            {isLoading ? "..." : totalCount.toLocaleString()}
+          </p>
+        </div>
+        <div className="flex gap-4 text-sm">
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400">Real-time</p>
+            <p className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+              {isLoading ? "..." : realTimeCount.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400">Local</p>
+            <p className="text-lg font-semibold text-indigo-700 dark:text-indigo-300">
+              {localStorageCount.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

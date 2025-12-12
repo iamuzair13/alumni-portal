@@ -322,3 +322,124 @@ export function useDeleteProgram() {
   });
 }
 
+// Chapter types and functions
+export type Chapter = {
+  id: number;
+  national_chapter: string | null;
+  international_chapter: string | null;
+  chapter_whatsapp: string | null;
+  chapter_image: string | null;
+  is_active: boolean | null;
+  description: string | null;
+};
+
+async function fetchChapters(): Promise<Chapter[]> {
+  const res = await fetch("/api/organization/chapters", {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || "Failed to fetch chapters");
+  }
+  const data = (await res.json()) as { success: boolean; chapters: Chapter[] };
+  return data.chapters ?? [];
+}
+
+async function createChapter(chapter: {
+  national_chapter?: string | null;
+  international_chapter?: string | null;
+  chapter_whatsapp?: string | null;
+  chapter_image?: string | null;
+  is_active?: boolean | null;
+  description?: string | null;
+}): Promise<Chapter> {
+  const res = await fetch("/api/organization/chapters", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(chapter),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to create chapter" }));
+    throw new Error(err.error || "Failed to create chapter");
+  }
+  const data = (await res.json()) as { success: boolean; chapter: Chapter };
+  return data.chapter;
+}
+
+async function updateChapter(id: number, chapter: {
+  national_chapter?: string | null;
+  international_chapter?: string | null;
+  chapter_whatsapp?: string | null;
+  chapter_image?: string | null;
+  is_active?: boolean | null;
+  description?: string | null;
+}): Promise<Chapter> {
+  const res = await fetch("/api/organization/chapters", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, ...chapter }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to update chapter" }));
+    throw new Error(err.error || "Failed to update chapter");
+  }
+  const data = (await res.json()) as { success: boolean; chapter: Chapter };
+  return data.chapter;
+}
+
+async function deleteChapter(id: number): Promise<void> {
+  const res = await fetch(`/api/organization/chapters?id=${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to delete chapter" }));
+    throw new Error(err.error || "Failed to delete chapter");
+  }
+}
+
+export const chapterKeys = {
+  all: ["chapters"] as const,
+  list: () => [...chapterKeys.all, "list"] as const,
+};
+
+export function useChapters() {
+  return useQuery<Chapter[], Error>({
+    queryKey: chapterKeys.list(),
+    queryFn: fetchChapters,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+}
+
+export function useCreateChapter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createChapter,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chapterKeys.list() });
+    },
+  });
+}
+
+export function useUpdateChapter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...chapter }: { id: number; national_chapter?: string | null; international_chapter?: string | null; chapter_whatsapp?: string | null; chapter_image?: string | null; is_active?: boolean | null; description?: string | null }) =>
+      updateChapter(id, chapter),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chapterKeys.list() });
+    },
+  });
+}
+
+export function useDeleteChapter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteChapter,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chapterKeys.list() });
+    },
+  });
+}
+

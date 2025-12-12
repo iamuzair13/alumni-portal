@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
@@ -38,7 +37,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "programs", label: "Programs" },
 ];
 
-export default function OrganizationPage() {
+export default function OrganizationComponent() {
   const { data: session } = useSession();
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const [selectedTab, setSelectedTab] = useState<TabKey>("faculties");
@@ -345,39 +344,89 @@ export default function OrganizationPage() {
 
   if (!isSuperAdmin) {
     return (
-      <ComponentCard title="Organization Management">
-        <div className="text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400">
-            You do not have permission to access this page.
-          </p>
-        </div>
-      </ComponentCard>
+      <div className="text-center py-12">
+        <p className="text-gray-600 dark:text-gray-400">
+          You do not have permission to access this section.
+        </p>
+      </div>
     );
   }
 
   return (
-    <ComponentCard title="Organization Management" className="">
+    <div className="">
+      {/* Counter Cards */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Faculties</p>
+              <p className="text-2xl font-bold text-purple-700 dark:text-purple-300 mt-1">
+                {facultiesLoading ? "..." : faculties.length.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Departments</p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
+                {departmentsLoading ? "..." : departments.length.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Programs</p>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-300 mt-1">
+                {programsLoading ? "..." : programs.length.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="flex gap-1" aria-label="Tabs">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => {
-                setSelectedTab(tab.key);
-                setSearchQuery("");
-                setSortField(null); // Reset sorting when switching tabs
-                setSortDirection("asc");
-              }}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                selectedTab === tab.key
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const count = tab.key === "faculties" 
+              ? faculties.length 
+              : tab.key === "departments" 
+              ? departments.length 
+              : programs.length;
+            const loading = tab.key === "faculties"
+              ? facultiesLoading
+              : tab.key === "departments"
+              ? departmentsLoading
+              : programsLoading;
+            
+            return (
+              <button
+                key={tab.key}
+                onClick={() => {
+                  setSelectedTab(tab.key);
+                  setSearchQuery("");
+                  setSortField(null); // Reset sorting when switching tabs
+                  setSortDirection("asc");
+                }}
+                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  selectedTab === tab.key
+                    ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  {tab.label}
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    {loading ? "..." : count.toLocaleString()}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </nav>
       </div>
 
@@ -496,7 +545,7 @@ export default function OrganizationPage() {
         updating={updateProgramMutation.isPending}
         deleting={deleteProgramMutation.isPending}
       />
-    </ComponentCard>
+    </div>
   );
 }
 

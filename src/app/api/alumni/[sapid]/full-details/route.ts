@@ -192,6 +192,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         // SECURITY: Return password for alumni (owners) and admins who can modify
         password: (isAlumni && isOwner) || canAccess ? (row.password ?? null) : null,
         father_cnic: row.father_cnic ?? null,
+        category: row.category ?? null,
+        reason_of_unemployment: row.reason_of_unemployment ?? null,
         // Higher Education fields
         degree_title: row.degree_title ?? null,
         higher_education_institute_name: row.higher_education_institute_name ?? null,

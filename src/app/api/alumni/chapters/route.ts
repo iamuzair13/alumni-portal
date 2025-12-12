@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     const departmentsParam = searchParams.get("departments");
     const verified = searchParams.get("verified");
     const membershipFilter = searchParams.get("membershipFilter") || "members"; // "all", "members", "non-members"
+    const chapterCountParam = searchParams.get("chapterCount"); // "1", "2", "3", etc.
+    const chapterCount = chapterCountParam ? Number(chapterCountParam) : undefined;
     
     const selectedNationalChapters = nationalChaptersParam ? nationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
     const selectedInternationalChapters = internationalChaptersParam ? internationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -163,6 +165,22 @@ export async function GET(request: NextRequest) {
     }
     // For "all": no additional condition needed, just use LEFT JOIN
     
+    // Chapter count filter - filter by exact number of chapters
+    let chapterCountCondition = sql``;
+    if (chapterCount !== undefined && chapterCount > 0) {
+      // Count non-null chapters and match exactly
+      // Using CASE to count non-null chapters
+      chapterCountCondition = sql` AND (
+        CASE 
+          WHEN ac."chapter1" IS NOT NULL THEN 1 ELSE 0 END +
+          CASE 
+          WHEN ac."chapter2" IS NOT NULL THEN 1 ELSE 0 END +
+          CASE 
+          WHEN ac."chapter3" IS NOT NULL THEN 1 ELSE 0 END
+        ) = ${chapterCount}
+      `;
+    }
+    
     // Build the query based on membership filter
     const baseQuery = membershipJoinType === "JOIN"
       ? sql`FROM public.tbl_alumni a
@@ -176,6 +194,7 @@ export async function GET(request: NextRequest) {
       hasDepartmentFilter: selectedDepartments.length > 0,
       hasVerifiedFilter: verified === "true",
       membershipFilter,
+      chapterCount: chapterCount !== undefined ? chapterCount : "none",
     });
     
     let rows;
@@ -215,6 +234,7 @@ export async function GET(request: NextRequest) {
           ${departmentFilterCondition}
           ${verifiedFilterCondition}
           ${membershipWhereCondition}
+          ${chapterCountCondition}
         ORDER BY a.alumniid DESC`;
     } catch (queryError) {
       console.error("[API] SQL Query Error:", queryError);

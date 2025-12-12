@@ -21,7 +21,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // Fetch card data
     const rows = await sql/* sql */`
-      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat,
+      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold,
              a.sapid, a.personalemail, a.officialemail, a.universityemail
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
@@ -57,7 +57,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         status: r.status,
         cardpicture: r.cardpicture,
         card_image: r.card_image,
-        createdat: r.createdat
+        createdat: r.createdat,
+        reason_onhold: r.reason_onhold
       }
     }, { status: 200 });
   } catch (err) {
@@ -83,8 +84,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     const body = await req.json().catch(() => ({}));
     const newStatus = String(body?.status || "");
-    if (!newStatus || !["pending", "rejected", "delivered", "received"].includes(newStatus)) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    const reasonOnhold = body?.reason_onhold ? String(body.reason_onhold).trim() : null;
+    
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+    if (!newStatus || !["Pending", "Process", "Active", "Delivered", "Onhold"].includes(newStatus)) {
+      return NextResponse.json({ error: "Invalid status. Must be one of: Pending, Process, Active, Delivered, Onhold" }, { status: 400 });
+    }
+    
+    // If status is "Onhold", reason_onhold is required
+    if (newStatus === "Onhold" && (!reasonOnhold || reasonOnhold.length === 0)) {
+      return NextResponse.json({ error: "Reason is required when status is set to Onhold" }, { status: 400 });
     }
     
     const normalizedSapid = String(sapid || "").trim();
@@ -113,10 +122,15 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     const currentStatus = currentCard[0].status;
     const cardData = currentCard[0];
     
-    // Update status only (validity_date is set when card is created, 3 years from application date)
+    // Update status and reason_onhold if provided
+    // If status is not "Onhold", clear reason_onhold
+    const updateFields = newStatus === "Onhold" 
+      ? sql`status = ${newStatus}, reason_onhold = ${reasonOnhold}`
+      : sql`status = ${newStatus}, reason_onhold = NULL`;
+    
     const rows = await sql/* sql */`
       UPDATE public.tblcard c
-      SET status = ${newStatus}
+      SET ${updateFields}
       FROM public.tbl_alumni a
       WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
       RETURNING c.cardid`;
@@ -133,17 +147,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       if (alumniEmail) {
         // Only send email if status actually changed
         if (currentStatus !== newStatus) {
-          if (newStatus === "rejected") {
-            // Send "on hold" email when status is rejected
+          if (newStatus === "Onhold") {
+            // Send "on hold" email when status becomes Onhold
             sendAlumniCardOnHoldEmail(alumniEmail, alumniName).catch((err) => {
               console.error("[API] Failed to send alumni card on hold email:", err);
             });
-          } else if (newStatus === "delivered") {
-            // Send "activated" email when status becomes delivered
+          } else if (newStatus === "Delivered") {
+            // Send "activated" email when status becomes Delivered
             sendAlumniCardActivatedEmail(alumniEmail, alumniName).catch((err) => {
               console.error("[API] Failed to send alumni card activated email:", err);
             });
           }
+          // Note: No email for "Process" or "Active" status changes, as they're internal admin actions
         }
       }
     } catch (emailError) {

@@ -11,7 +11,6 @@ import {
   HorizontaLDots,
   PageIcon,
   UserCircleIcon,
-  BoxCubeIcon,
   BoltIcon,
 } from "../icons/index";
 
@@ -43,11 +42,6 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Leadership", 
     path: "/leadership",
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "Organization", //add dropdown with users and locations
-    path : "/organization",	
   },
   {
     icon: <BoltIcon />,

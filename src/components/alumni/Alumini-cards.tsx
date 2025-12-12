@@ -1,12 +1,10 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { LockIcon, EyeIcon, TrashBinIcon, CheckLineIcon, CloseLineIcon, BoltIcon, TimeIcon, GroupIcon } from "@/icons";
+import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon } from "@/icons";
 import { AlumniDataTable } from "./AlumniCard";
 import { useCardApplicants, type CardStatusFilter, type CardApplicant } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
-import { useSession } from "next-auth/react";
-import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 
 /**
@@ -15,7 +13,7 @@ import toast from "react-hot-toast";
  * Uses TanStack Query for data fetching with real-time counters.
  */
 
-type CardStatus = "active" | "inprocess" | "onhold" | "received" | "all";
+type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "all";
 
 type AlumniCardItem = {
   id: string;
@@ -44,14 +42,15 @@ type AlumniCardsProps = {
 };
 
 // Map database status to UI status
+// Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
 function mapDbStatusToUI(dbStatus: string | null): CardStatus {
-  if (!dbStatus) return "inprocess";
-  const lower = dbStatus.toLowerCase().trim();
-  if (lower === "delivered") return "active";
-  if (lower === "pending") return "inprocess";
-  if (lower === "rejected") return "onhold";
-  if (lower === "received") return "received";
-  return "inprocess";
+  if (!dbStatus) return "pending";
+  const upper = dbStatus.trim().toUpperCase();
+  if (upper === "DELIVERED") return "delivered";
+  if (upper === "ACTIVE") return "active";
+  if (upper === "PROCESS") return "process";
+  if (upper === "ONHOLD") return "onhold";
+  return "pending"; // Default to pending for "Pending" or any other value
 }
 
 // Convert CardApplicant to AlumniCardItem
@@ -72,25 +71,17 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem {
 
 export function getActionsForStatus(status: CardStatus): ActionDef[] {
   switch (status) {
-    case "active":
+    case "delivered":
       return [
-        { key: "suspend", label: "Suspend", icon: LockIcon, hoverClass: "hover:text-amber-600" },
-        { key: "delete", label: "Delete", icon: TrashBinIcon, hoverClass: "hover:text-rose-600" },
         { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
       ];
-    case "inprocess":
+    case "process":
       return [
-        { key: "verify", label: "Verify", icon: CheckLineIcon, hoverClass: "hover:text-emerald-600" },
-        { key: "decline", label: "Decline", icon: CloseLineIcon, hoverClass: "hover:text-rose-600" },
         { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
       ];
-    case "onhold":
+    case "pending":
       return [
-        { key: "delete", label: "Delete", icon: TrashBinIcon, hoverClass: "hover:text-rose-600" },
-        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
-      ];
-    case "received":
-      return [
+        { key: "verify", label: "Move to Process", icon: CheckLineIcon, hoverClass: "hover:text-emerald-600" },
         { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
       ];
     case "all":
@@ -101,15 +92,14 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
 
 const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?: string }> }[] = [
   { key: "all", label: "All", icon: GroupIcon },
-  { key: "active", label: "Active", icon: BoltIcon },
-  { key: "inprocess", label: "In-Process", icon: TimeIcon },
-  { key: "onhold", label: "Onhold", icon: LockIcon },
-  { key: "received", label: "Received", icon: CheckLineIcon },
+  { key: "pending", label: "Pending", icon: TimeIcon },
+  { key: "process", label: "In-Process", icon: BoltIcon },
+  { key: "active", label: "Active", icon: CheckLineIcon },
+  { key: "delivered", label: "Delivered", icon: CheckLineIcon },
+  { key: "onhold", label: "On Hold", icon: LockIcon },
 ];
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
-  const { data: session } = useSession();
-  const isAdmin = canModify(session?.user);
   const [selectedStatus, setSelectedStatus] = useState<CardStatusFilter>(initialStatus as CardStatusFilter);
   
   // Fetch cards for selected status - this also returns counts
@@ -118,10 +108,10 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   // Fetch counts separately to ensure we always have them (even when switching tabs)
   const { data: countsData, isLoading: countsLoading } = useCardApplicants("all");
   
-  // Filter tabs based on admin status - "received" is only for admins
+  // All tabs are visible to all users
   const visibleTabs = useMemo(() => {
-    return STATUS_TABS.filter(tab => tab.key !== "received" || isAdmin);
-  }, [isAdmin]);
+    return STATUS_TABS;
+  }, []);
   
   // Use counts from the "all" query, fallback to data counts if available, or default to 0
   const counts = useMemo(() => {
@@ -135,7 +125,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (countsFromData) {
       return countsFromData;
     }
-    return { all: 0, active: 0, pending: 0, onhold: 0, received: 0 };
+    return { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0 };
   }, [countsData, data]);
   
   // Debug: Log counts to console (remove in production if needed)
@@ -159,7 +149,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       ...item,
       mobile: undefined,
       department: item.faculty,
-      verified: item.status === "active",
+      verified: item.status === "active" || item.status === "delivered",
       organization: undefined,
       designation: undefined,
       workCity: undefined,
@@ -181,14 +171,15 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       }
 
       // Handle status updates
-      let newDbStatus: "pending" | "rejected" | "delivered" | "received" | null = null;
+      // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+      let newDbStatus: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | null = null;
       
-      if (key === "verify" && alumni.status === "inprocess") {
-        newDbStatus = "delivered";
-      } else if (key === "decline" && alumni.status === "inprocess") {
-        newDbStatus = "rejected";
-      } else if (key === "suspend" && alumni.status === "active") {
-        newDbStatus = "rejected";
+      if (key === "verify" && alumni.status === "pending") {
+        newDbStatus = "Process";
+      } else if (key === "verify" && alumni.status === "process") {
+        newDbStatus = "Active";
+      } else if (key === "verify" && alumni.status === "active") {
+        newDbStatus = "Delivered";
       }
 
       if (newDbStatus) {
@@ -218,15 +209,17 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
               // Get count based on tab key
               let count = 0;
               if (tab.key === "all") {
-                count = counts.all;
+                count = counts.all || 0;
+              } else if (tab.key === "pending") {
+                count = counts.pending || 0;
+              } else if (tab.key === "process") {
+                count = counts.process || 0;
               } else if (tab.key === "active") {
-                count = counts.active;
-              } else if (tab.key === "inprocess") {
-                count = counts.pending;
+                count = counts.active || 0;
+              } else if (tab.key === "delivered") {
+                count = counts.delivered || 0;
               } else if (tab.key === "onhold") {
-                count = counts.onhold;
-              } else if (tab.key === "received") {
-                count = counts.received || 0;
+                count = counts.onhold || 0;
               }
               const isSelected = selectedStatus === tab.key;
               
