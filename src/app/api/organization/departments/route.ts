@@ -155,7 +155,12 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { id, department_name, faculty_id } = body;
 
-    if (!id || typeof id !== "number") {
+    // Handle id as number or string that can be converted to number
+    const departmentId = id !== null && id !== undefined 
+      ? (typeof id === "number" ? id : (typeof id === "string" && id.trim() !== "" ? Number(id) : null))
+      : null;
+
+    if (!departmentId || isNaN(departmentId)) {
       return NextResponse.json({ error: "Department ID is required" }, { status: 400 });
     }
 
@@ -163,13 +168,18 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Department name is required" }, { status: 400 });
     }
 
-    if (!faculty_id || typeof faculty_id !== "number") {
+    // Handle faculty_id as number or string that can be converted to number
+    const facultyIdNum = faculty_id !== null && faculty_id !== undefined 
+      ? (typeof faculty_id === "number" ? faculty_id : (typeof faculty_id === "string" && faculty_id.trim() !== "" ? Number(faculty_id) : null))
+      : null;
+
+    if (!facultyIdNum || isNaN(facultyIdNum)) {
       return NextResponse.json({ error: "Faculty ID is required" }, { status: 400 });
     }
 
     // Verify faculty exists
     const faculty = await sql/* sql */`
-      SELECT id FROM public.tbl_faculties WHERE id = ${faculty_id} LIMIT 1
+      SELECT id FROM public.tbl_faculties WHERE id = ${facultyIdNum} LIMIT 1
     `;
 
     if (!faculty || (Array.isArray(faculty) && faculty.length === 0)) {
@@ -180,8 +190,8 @@ export async function PUT(req: NextRequest) {
     const existing = await sql/* sql */`
       SELECT id FROM public.tbl_departments 
       WHERE LOWER(TRIM(department_name)) = LOWER(TRIM(${department_name.trim()}))
-        AND faculty_id = ${faculty_id}
-        AND id != ${id}
+        AND faculty_id = ${facultyIdNum}
+        AND id != ${departmentId}
       LIMIT 1
     `;
 
@@ -191,8 +201,8 @@ export async function PUT(req: NextRequest) {
 
     const result = await sql/* sql */`
       UPDATE public.tbl_departments
-      SET department_name = ${department_name.trim()}, faculty_id = ${faculty_id}
-      WHERE id = ${id}
+      SET department_name = ${department_name.trim()}, faculty_id = ${facultyIdNum}
+      WHERE id = ${departmentId}
       RETURNING id, department_name, faculty_id, created_at
     `;
 

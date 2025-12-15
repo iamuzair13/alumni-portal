@@ -101,7 +101,12 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { id, faculty_name } = body;
 
-    if (!id || typeof id !== "number") {
+    // Handle id as number or string that can be converted to number
+    const facultyId = id !== null && id !== undefined 
+      ? (typeof id === "number" ? id : (typeof id === "string" && id.trim() !== "" ? Number(id) : null))
+      : null;
+
+    if (!facultyId || isNaN(facultyId)) {
       return NextResponse.json({ error: "Faculty ID is required" }, { status: 400 });
     }
 
@@ -112,8 +117,8 @@ export async function PUT(req: NextRequest) {
     // Check if another faculty with the same name exists
     const existing = await sql/* sql */`
       SELECT id FROM public.tbl_faculties 
-      WHERE LOWER(TRIM(faculty_name)) = LOWER(TRIM(${faculty_name.trim()}))
-        AND id != ${id}
+      WHERE LOWER(TRIM(faculty_name)) = LOWER(TRIM(${faculty_name.trim()})) 
+        AND id != ${facultyId}
       LIMIT 1
     `;
 
@@ -124,7 +129,7 @@ export async function PUT(req: NextRequest) {
     const result = await sql/* sql */`
       UPDATE public.tbl_faculties
       SET faculty_name = ${faculty_name.trim()}
-      WHERE id = ${id}
+      WHERE id = ${facultyId}
       RETURNING id, faculty_name, created_at
     `;
 

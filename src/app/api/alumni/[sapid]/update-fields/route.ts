@@ -240,6 +240,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const chapter1IdVal = "chapter1_id" in body ? (body.chapter1_id !== null && body.chapter1_id !== undefined && body.chapter1_id !== "" ? Number(body.chapter1_id) : null) : undefined;
     const chapter2IdVal = "chapter2_id" in body ? (body.chapter2_id !== null && body.chapter2_id !== undefined && body.chapter2_id !== "" ? Number(body.chapter2_id) : null) : undefined;
     const chapter3IdVal = "chapter3_id" in body ? (body.chapter3_id !== null && body.chapter3_id !== undefined && body.chapter3_id !== "" ? Number(body.chapter3_id) : null) : undefined;
+    // New foreign key fields (faculty, department, program)
+    const facultyIdVal = "faculty" in body ? (body.faculty !== null && body.faculty !== undefined && body.faculty !== "" ? Number(body.faculty) : null) : undefined;
+    const departmentIdVal = "department" in body ? (body.department !== null && body.department !== undefined && body.department !== "" ? Number(body.department) : null) : undefined;
+    const programIdVal = "program" in body ? (body.program !== null && body.program !== undefined && body.program !== "" ? Number(body.program) : null) : undefined;
     
     // Handle password separately - store as plain text
     let passwordVal: string | undefined = undefined;
@@ -339,6 +343,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       chapter1_id: chapter1IdVal,
       chapter2_id: chapter2IdVal,
       chapter3_id: chapter3IdVal,
+      faculty: facultyIdVal,
+      department: departmentIdVal,
+      program: programIdVal,
     };
     
     const fieldsToUpdate = Object.entries(updateFields).filter(([, val]) => val !== undefined);
@@ -428,6 +435,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("father_cnic", fatherCnicVal);
       addUpdate("category", categoryVal);
       addUpdate("reason_of_unemployment", reasonOfUnemploymentVal);
+      addUpdate("faculty", facultyIdVal);
+      addUpdate("department", departmentIdVal);
+      addUpdate("program", programIdVal);
       
       // Execute single UPDATE query if there are fields to update
       if (updates.length > 0) {
