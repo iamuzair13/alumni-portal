@@ -188,14 +188,14 @@ const CompactField: React.FC<{
 
   // Handle password field separately
   if (type === "password") {
-    // For password fields, show placeholder text when not editing, or allow editing
-    const displayValue = !effectiveIsEditing ? (value ? "••••••••" : "Not Set") : "";
+    // For password fields, show actual value (visible)
+    const displayValue = formatValue(value);
     return (
       <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</label>
         {effectiveIsEditing ? (
           <input
-            type="password"
+            type="text"
             {...(register && name ? register(name) : {})}
             placeholder="Enter new password (leave blank to keep current)"
             disabled={readOnly}
@@ -471,7 +471,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           contactno1show: formData.contactno1show,
           personalemail: formData.personalemail,
           personalemailshow: formData.personalemailshow,
-          universityemail: formData.universityemail,
           password: formData.password,
           officialemail: formData.officialemail,
           officialnumber: formData.officialnumber,
@@ -503,7 +502,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           is_scholarship: formData.is_scholarship,
           higher_education_institute_country: formData.higher_education_institute_country,
           higher_education_institute_city: formData.higher_education_institute_city,
-          higher_education_institute_email: formData.higher_education_institute_email,
           higher_education_intiture_number: formData.higher_education_intiture_number,
           association_id: formData.association_id && String(formData.association_id) !== "" ? Number(formData.association_id) : null,
           chapter1_id: formData.chapter1_id && String(formData.chapter1_id) !== "" ? Number(formData.chapter1_id) : null,
@@ -686,7 +684,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Primary Contact" value={data.contactno} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno" />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isEditing} readOnly={readOnly} register={register} name="contactno1" />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isEditing} readOnly={readOnly} register={register} name="personalemail" type="email" />
-          <CompactField label="Student Email" value={data.universityemail} isEditing={false} readOnly={true} />
           <CompactField label="Password" value={data.password || ""} isEditing={isEditing} readOnly={readOnly} register={register} name="password" type="password" />
          
           <CompactField label="Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
@@ -951,7 +948,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
               ]} />
               <CompactField label="Institution Country" value={data.higher_education_institute_country} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_country" />
               <CompactField label="Institution City" value={data.higher_education_institute_city} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_city" />
-              <CompactField label="Student Email" value={data.higher_education_institute_email} isEditing={isEditing} readOnly={readOnly} register={register} name="higher_education_institute_email" type="email" />
             </>
           )}
 
@@ -1067,7 +1063,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "A", label: "A" },
             { value: "B", label: "B" },
             { value: "C", label: "C" },
-            { value: "D", label: "D" }
           ]} />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isEditing} readOnly={readOnly} register={register} name="createddatetime" />
           <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />

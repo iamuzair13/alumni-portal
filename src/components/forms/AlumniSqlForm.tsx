@@ -895,6 +895,20 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         payload.datasource = "Alumni";
       }
       
+      // Map employment status to database format
+      if (payload.employeed) {
+        const employeedValue = String(payload.employeed).trim();
+        if (employeedValue === "Self-employed") {
+          payload.employeed = "Self-Emplo";
+        } else if (employeedValue === "Pursuing Higher Education") {
+          payload.employeed = "HigherEd";
+        } else if (employeedValue === "Employed") {
+          payload.employeed = "Employed";
+        } else if (employeedValue === "Unemployed") {
+          payload.employeed = "Unemployed";
+        }
+      }
+      
       // Map work city/country to database city/country if provided, otherwise use home city/country
       // The database only has one city and country field, so we prioritize work location when provided
       if (payload.workCity && String(payload.workCity).trim() !== "") {

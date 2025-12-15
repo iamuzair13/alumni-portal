@@ -189,27 +189,31 @@ export async function GET(req: Request) {
     }
     
     // Marital Status filter
-    // Note: Only "Married" is saved in maritalstatus field, all others (null, empty, etc.) are considered "Unmarried"
+    // Map: NULL, Married, Un-Married
     let maritalStatusFilter = sql``;
     if (maritalStatus && (Array.isArray(maritalStatus) ? maritalStatus.length > 0 : maritalStatus)) {
       if (Array.isArray(maritalStatus) && maritalStatus.length > 0) {
         const conditions = maritalStatus.map(m => {
-          if (m.toLowerCase().trim() === "married") {
+          const normalized = m.trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`maritalstatus IS NULL`;
+          } else if (normalized.toLowerCase() === "married") {
             return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'married'`;
-          } else if (m.toLowerCase().trim() === "unmarried") {
-            // Unmarried: null, empty, or anything that's not "Married"
-            return sql`(maritalstatus IS NULL OR maritalstatus = '' OR LOWER(TRIM(COALESCE(maritalstatus, ''))) != 'married')`;
+          } else if (normalized.toLowerCase() === "un-married" || normalized.toLowerCase() === "unmarried") {
+            return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'un-married'`;
           }
           return sql`1=0`; // Invalid value, exclude
         });
         const combinedCondition = combineOrConditions(conditions);
         maritalStatusFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(maritalStatus) && maritalStatus) {
-        if (maritalStatus.toLowerCase().trim() === "married") {
+        const normalized = maritalStatus.trim();
+        if (normalized === "NULL" || normalized === "null") {
+          maritalStatusFilter = sql`AND maritalstatus IS NULL`;
+        } else if (normalized.toLowerCase() === "married") {
           maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'married'`;
-        } else if (maritalStatus.toLowerCase().trim() === "unmarried") {
-          // Unmarried: null, empty, or anything that's not "Married"
-          maritalStatusFilter = sql`AND (maritalstatus IS NULL OR maritalstatus = '' OR LOWER(TRIM(COALESCE(maritalstatus, ''))) != 'married')`;
+        } else if (normalized.toLowerCase() === "un-married" || normalized.toLowerCase() === "unmarried") {
+          maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'un-married'`;
         }
       }
     }
@@ -301,19 +305,24 @@ export async function GET(req: Request) {
     }
     
     // Occupation Status filter
-    // Logic: employeed = "YES" means Employed, NULL or not "YES" means Unemployed
+    // Map: Employed, Unemployed, HigherEd, Self-Emplo, NULL
     let occupationStatusFilter = sql``;
     if (occupationStatus && (Array.isArray(occupationStatus) ? occupationStatus.length > 0 : occupationStatus)) {
       const statusArray = Array.isArray(occupationStatus) ? occupationStatus : [occupationStatus];
       const conditions: ReturnType<typeof sql>[] = [];
       
       statusArray.forEach(status => {
-        if (status === "Employed") {
-          // Employed: employeed must be "YES" (case-insensitive)
-          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'yes'`);
-        } else if (status === "Unemployed") {
-          // Unemployed: employeed is NULL or not "YES"
-          conditions.push(sql`(employeed IS NULL OR LOWER(TRIM(COALESCE(employeed, ''))) != 'yes')`);
+        const normalized = status.trim();
+        if (normalized === "Employed") {
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'employed'`);
+        } else if (normalized === "Unemployed") {
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'unemployed'`);
+        } else if (normalized === "HigherEd") {
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'highered'`);
+        } else if (normalized === "Self-Emplo") {
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'self-emplo'`);
+        } else if (normalized === "NULL" || normalized === "null") {
+          conditions.push(sql`employeed IS NULL`);
         }
       });
       

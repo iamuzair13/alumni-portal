@@ -2156,8 +2156,9 @@ export const AlumniTabs: React.FC = () => {
                           className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           size={3}
                         >
-                          <option value="Unmarried">Unmarried</option>
+                          <option value="NULL">Others</option>
                           <option value="Married">Married</option>
+                          <option value="Un-Married">Un-Married</option>
                         </select>
                         {selectedMaritalStatuses.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedMaritalStatuses.length} selected</p>
@@ -2627,10 +2628,13 @@ export const AlumniTabs: React.FC = () => {
                             setSelectedOccupationStatuses(values);
                           }}
                           className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          size={2}
+                          size={5}
                         >
                           <option value="Employed">Employed</option>
                           <option value="Unemployed">Unemployed</option>
+                          <option value="HigherEd">Pursuing Higher Education</option>
+                          <option value="Self-Emplo">Self-Employed</option>
+                          <option value="NULL">Others</option>
                         </select>
                         {selectedOccupationStatuses.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedOccupationStatuses.length} selected</p>
