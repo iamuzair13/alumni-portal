@@ -1136,20 +1136,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     // Try to get status from cache first, then from item status, fallback to pending
     const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
-    const itemStatus = alumItem.status ? String(alumItem.status).toLowerCase().trim() : null;
-    // Map UI status (active/onhold/inprocess/received) back to DB status (delivered/rejected/pending/received) for comparison
-    let dbStatusFromItem: "pending" | "rejected" | "delivered" | "received" | null = null;
-    if (itemStatus === "active") {
-      dbStatusFromItem = "delivered";
-    } else if (itemStatus === "onhold") {
-      dbStatusFromItem = "rejected";
-    } else if (itemStatus === "inprocess") {
-      dbStatusFromItem = "pending";
-    } else if (itemStatus === "received") {
-      dbStatusFromItem = "received";
-    }
-    const cardStatus = (cachedCardData?.status ?? dbStatusFromItem ?? "pending") as "pending" | "rejected" | "delivered" | "received";
-    const isDelivered = cardStatus === "delivered"; // Keep internal check as "delivered" for logic
+    // Get actual database status string for checking Active/Delivered
+    const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
+    const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED";
     const isAdmin = canModify(session?.user);
 
     const handleDelete = async () => {
@@ -1190,7 +1179,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return (
       <>
         <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
-          {isDelivered && (
+          {canDownload && (
             <PrintCardButton sapId={sapId} studentName={studentName} />
           )}
           {isAdmin && (

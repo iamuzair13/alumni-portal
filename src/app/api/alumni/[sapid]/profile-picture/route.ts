@@ -23,25 +23,60 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       return NextResponse.json({ error: "No image file provided" }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." }, { status: 400 });
-    }
-
-    // Validate file size (max 5MB)
+    // Validate file size first (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       return NextResponse.json({ error: "File size exceeds 5MB limit" }, { status: 400 });
     }
 
+    // Get file extension
+    const fileName = file.name.toLowerCase();
+    const extension = fileName.split(".").pop() || "";
+    const allowedExtensions = ["jpg", "jpeg", "png", "gif", "webp"];
+    
+    // Validate by extension (more reliable on Plesk)
+    if (!extension || !allowedExtensions.includes(extension)) {
+      return NextResponse.json({ 
+        error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." 
+      }, { status: 400 });
+    }
+
+    // Validate MIME type (if available)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (file.type && !allowedTypes.includes(file.type)) {
+      return NextResponse.json({ 
+        error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." 
+      }, { status: 400 });
+    }
+
+    // Validate file content by checking magic bytes (file signature)
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Check file signature (first few bytes)
+    const isValidImage = 
+      // JPEG: FF D8 FF
+      (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) ||
+      // PNG: 89 50 4E 47
+      (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) ||
+      // GIF: 47 49 46 38 (GIF8)
+      (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) ||
+      // WebP: RIFF...WEBP (check for "RIFF" at start and "WEBP" at offset 8)
+      (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+       buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50);
+    
+    if (!isValidImage) {
+      return NextResponse.json({ 
+        error: "The requested resource isn't a valid image. Please upload a valid image file." 
+      }, { status: 400 });
+    }
+
     // Generate unique filename
     const timestamp = Date.now();
-    const extension = file.name.split(".").pop() || "jpg";
-    const filename = `${sapid}-${timestamp}.${extension}`;
+    const finalExtension = extension || "jpg";
+    const filename = `${sapid}-${timestamp}.${finalExtension}`;
     
     // Create uploads directory if it doesn't exist
-    // Images are stored in /public/images/
     const uploadsDir = join(process.cwd(), "public", "images");
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true });
@@ -49,8 +84,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     // Save file
     const filePath = join(uploadsDir, filename);
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
     // Check if image1 already has a value

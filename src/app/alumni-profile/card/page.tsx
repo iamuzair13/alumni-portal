@@ -13,7 +13,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { computeLoginBanner } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
@@ -197,9 +197,6 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
   const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
   const validity = validityYear ? `${validityYear}-12` : undefined;
 
-  // Check if user is admin or superadmin
-  const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
-
   return (
     <>
       <div className="bg-slate-100 overflow-x-hidden min-h-screen">
@@ -253,7 +250,7 @@ export default async function CardPage({ searchParams }: { searchParams: Promise
                 validity={validity}
                 photoUrl={profileImageFilename}
                 cardImage={cardTemplateImageFilename}
-                isAdmin={isAdmin}
+                cardStatus={cardStatus}
               />
             ) : (
               <AlumniCardForm
