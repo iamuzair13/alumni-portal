@@ -53,7 +53,10 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
         sessionStorage.clear();
         
         // Sign out and redirect
-        signOut({ callbackUrl: "/signin", redirect: true }).catch(() => {
+        signOut({ redirect: false }).then(() => {
+          // Use window.location for reliable redirect on Plesk server
+          window.location.href = "/signin";
+        }).catch(() => {
           // If signOut fails, force redirect
           window.location.href = "/signin";
         });

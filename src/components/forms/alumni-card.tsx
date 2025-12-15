@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +56,9 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fetchedName, setFetchedName] = useState(name);
+  const [fetchedFaculty, setFetchedFaculty] = useState(faculty);
+  const [fetchedDepartment, setFetchedDepartment] = useState(department);
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
     defaultValues: { confirmation: false, comment: "", addressPreference: "Collect", address: "" },
@@ -64,6 +67,62 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
 
   // Watch address preference to show/hide address field
   const addressPreference = watch("addressPreference");
+
+  // Auto-fetch alumni details when component mounts or sapId changes
+  useEffect(() => {
+    const fetchAlumniData = async () => {
+      if (!sapId || sapId.trim() === "") return;
+      
+      try {
+        const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          const alumni = data.item;
+          
+          if (alumni) {
+            // Update fetched values
+            if (alumni.alumniname) setFetchedName(alumni.alumniname);
+            if (alumni.facultyname) setFetchedFaculty(alumni.facultyname);
+            if (alumni.departmentname) setFetchedDepartment(alumni.departmentname);
+          }
+        }
+      } catch (error) {
+        console.error("[AlumniCardForm] Failed to fetch alumni data:", error);
+        // Don't show error to user, just use the props that were passed
+      }
+    };
+
+    fetchAlumniData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sapId]);
+
+  // Auto-populate address when preference changes to "Deliver"
+  useEffect(() => {
+    const fetchAndPopulateAddress = async () => {
+      if (addressPreference === "Deliver" && sapId && sapId.trim() !== "") {
+        const currentAddress = watch("address");
+        // Only auto-populate if address field is empty
+        if (!currentAddress || currentAddress.trim() === "") {
+          try {
+            const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
+            if (res.ok) {
+              const data = await res.json();
+              const alumni = data.item;
+              if (alumni?.address && alumni.address.trim()) {
+                setValue("address", alumni.address.trim());
+              }
+            }
+          } catch (error) {
+            // Silently fail, user can enter address manually
+            console.error("[AlumniCardForm] Failed to fetch address:", error);
+          }
+        }
+      }
+    };
+
+    fetchAndPopulateAddress();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addressPreference, sapId, setValue]);
 
   // Clear address when preference changes to "Collect"
   React.useEffect(() => {
@@ -169,19 +228,19 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         <div>
           <label className={labelBase} htmlFor="name">Name</label>
           <div className="relative flex items-center">
-            <input id="name" className={inputBase} value={name} readOnly aria-label="Name" />
+            <input id="name" className={inputBase} value={fetchedName || name} readOnly aria-label="Name" />
           </div>
         </div>
         <div>
           <label className={labelBase} htmlFor="faculty">Faculty</label>
           <div className="relative flex items-center">
-            <input id="faculty" className={inputBase} value={faculty} readOnly aria-label="Faculty" />
+            <input id="faculty" className={inputBase} value={fetchedFaculty || faculty} readOnly aria-label="Faculty" />
           </div>
         </div>
         <div>
           <label className={labelBase} htmlFor="department">Department</label>
           <div className="relative flex items-center">
-            <input id="department" className={inputBase} value={department} readOnly aria-label="Department" />
+            <input id="department" className={inputBase} value={fetchedDepartment || department} readOnly aria-label="Department" />
           </div>
         </div>
         <div>
