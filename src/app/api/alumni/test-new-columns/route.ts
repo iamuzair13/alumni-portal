@@ -26,29 +26,37 @@ export async function GET(req: Request) {
       ORDER BY record_count DESC, f.faculty_name
     `;
 
+    // Fetch all departments with record counts from tbl_alumni
+    // Start from tbl_departments to ensure all departments are shown, even with 0 records
     const departmentStats = await sql/* sql */`
       SELECT 
-        a.department::bigint as department_id,
+        d.id as department_id,
         d.department_name,
-        COUNT(*) as record_count
-      FROM public.tbl_alumni a
-      INNER JOIN public.tbl_departments d ON d.id::bigint = a.department::bigint
-      WHERE a.department IS NOT NULL
-        AND (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
-      GROUP BY a.department, d.department_name
+        COUNT(CASE 
+          WHEN a.department IS NOT NULL 
+            AND (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+          THEN 1 
+        END) as record_count
+      FROM public.tbl_departments d
+      LEFT JOIN public.tbl_alumni a ON a.department = d.id
+      GROUP BY d.id, d.department_name
       ORDER BY record_count DESC, d.department_name
     `;
 
+    // Fetch all programs with record counts from tbl_alumni
+    // Start from tbl_programs to ensure all programs are shown, even with 0 records
     const programStats = await sql/* sql */`
       SELECT 
-        a.program::bigint as program_id,
+        p.id as program_id,
         p.program_name,
-        COUNT(*) as record_count
-      FROM public.tbl_alumni a
-      INNER JOIN public.tbl_programs p ON p.id::bigint = a.program::bigint
-      WHERE a.program IS NOT NULL
-        AND (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
-      GROUP BY a.program, p.program_name
+        COUNT(CASE 
+          WHEN a.program IS NOT NULL 
+            AND (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+          THEN 1 
+        END) as record_count
+      FROM public.tbl_programs p
+      LEFT JOIN public.tbl_alumni a ON a.program = p.id
+      GROUP BY p.id, p.program_name
       ORDER BY record_count DESC, p.program_name
     `;
 
