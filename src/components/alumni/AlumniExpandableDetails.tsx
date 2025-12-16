@@ -682,7 +682,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Marital Status" value={data.maritalstatus} isEditing={isEditing} readOnly={readOnly} register={register} name="maritalstatus" type="select" options={[
             { value: "", label: "Select" },
             { value: "Married", label: "Married" },
-            { value: "Unmarried", label: "Unmarried" }
+            { value: "Un-Married", label: "Un-Married" }
           ]} />
 
           {/* Contact Information */}
