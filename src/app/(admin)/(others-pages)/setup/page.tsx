@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useUsersList } from "@/app/queries/fetch-users";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Modal } from "@/components/ui/modal";
@@ -47,8 +48,10 @@ const STORAGE_KEY_USERS = "setup_users_v1";
 type ToastItem = { id: string; type: "success" | "error"; message: string };
 
 
-export default function SetupPage() {
+function SetupPageContent() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const isAdmin = isAdminUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const hasModifyAccess = canModify(session?.user);
@@ -60,7 +63,23 @@ export default function SetupPage() {
     { key: "chapters", label: "Chapters" },
   ] as const;
 
-  const [selected, setSelected] = useState<typeof TABS[number]["key"]>("users");
+  // Get initial tab from URL search params, default to "users"
+  const tabFromUrl = searchParams.get("tab");
+  const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
+  const [selected, setSelected] = useState<typeof TABS[number]["key"]>(validTab);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: typeof TABS[number]["key"]) => {
+    setSelected(tab);
+    router.push(`/setup?tab=${tab}`, { scroll: false });
+  };
+
+  // Sync with URL on mount or when URL changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
+    setSelected(validTab);
+  }, [searchParams]);
 
   // Users management state
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -319,7 +338,7 @@ export default function SetupPage() {
                   ? "bg-white  text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                   : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
               }`}
-              onClick={() => setSelected(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
               role="tab"
               aria-selected={selected === tab.key}
               tabIndex={0}
@@ -327,14 +346,14 @@ export default function SetupPage() {
                 if (e.key === "ArrowRight") {
                   e.preventDefault();
                   const nextIdx = (idx + 1) % TABS.length;
-                  setSelected(TABS[nextIdx].key);
+                  handleTabChange(TABS[nextIdx].key);
                 } else if (e.key === "ArrowLeft") {
                   e.preventDefault();
                   const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                  setSelected(TABS[prevIdx].key);
+                  handleTabChange(TABS[prevIdx].key);
                 } else if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setSelected(tab.key);
+                  handleTabChange(tab.key);
                 }
               }}
               aria-label={`Open ${tab.label} tab`}
@@ -763,5 +782,20 @@ function RealTimeUsers() {
       </Modal>
       )}
     </div>
+  );
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupPageContent />
+    </Suspense>
   );
 }

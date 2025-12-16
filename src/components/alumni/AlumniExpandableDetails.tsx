@@ -535,6 +535,14 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
       queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["alumnilist"] });
+      // Invalidate marital statuses query when marital status is updated
+      queryClient.invalidateQueries({ queryKey: ["marital-statuses"] });
+      // Invalidate genders query when gender is updated
+      queryClient.invalidateQueries({ queryKey: ["genders"] });
+      // Invalidate campuses query when campus is updated
+      queryClient.invalidateQueries({ queryKey: ["campuses"] });
+      // Invalidate occupation statuses query when occupation status is updated
+      queryClient.invalidateQueries({ queryKey: ["occupation-statuses"] });
       
       // If SAP ID was changed, update our current identifier
       if (updatedSapId && updatedSapId !== currentSapId) {
@@ -686,11 +694,11 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isEditing} readOnly={readOnly} register={register} name="personalemail" type="email" />
           <CompactField label="Password" value={data.password || ""} isEditing={isEditing} readOnly={readOnly} register={register} name="password" type="password" />
          
-          <CompactField label="Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
+          <CompactField label="Home Address" value={data.address} isEditing={isEditing} readOnly={readOnly} register={register} name="address" type="textarea" />
           
           {/* Country Field */}
           {!isEditing || readOnly ? (
-            <CompactField label="Country" value={data.country} isEditing={false} readOnly={readOnly} />
+            <CompactField label="Home Country" value={data.country} isEditing={false} readOnly={readOnly} />
           ) : (
             <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Home Country:</label>
@@ -710,7 +718,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           {/* Province Field - Only show for Pakistan */}
           {selectedCountry === "Pakistan" && (
             !isEditing || readOnly ? (
-              <CompactField label="Province" value={data.province} isEditing={false} readOnly={readOnly} />
+              <CompactField label="Home Province (Pak only)" value={data.province} isEditing={false} readOnly={readOnly} />
             ) : (
               <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">HomeProvince:</label>
@@ -730,7 +738,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           
           {/* City Field */}
           {!isEditing || readOnly ? (
-            <CompactField label="City" value={data.city} isEditing={false} readOnly={readOnly} />
+            <CompactField label="Home City" value={data.city} isEditing={false} readOnly={readOnly} />
           ) : selectedCountry === "Pakistan" ? (
             <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0 pt-1">Home City:</label>
@@ -851,11 +859,10 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           )}
           <CompactField label="CGPA" value={data.cgpa} isEditing={isEditing} readOnly={readOnly} register={register} name="cgpa" type="text" />
           <CompactField label="Major Subject" value={data.majorsubject} isEditing={isEditing} readOnly={readOnly} register={register} name="majorsubject" />
-          <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />
 
           {/* Professional Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Professional</h4>
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Occupation</h4>
           </div>
           <CompactField label="Occupation Status" value={data.employeed} isEditing={isEditing} readOnly={readOnly} register={register} name="employeed" type="select" options={[
             { value: "", label: "Select" },
@@ -863,10 +870,10 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "Self-Employed", label: "Self-Employed" },
             { value: "Unemployed (By Choice)", label: "Unemployed (By Choice)" },
             { value: "Unemployed (Searching Job)", label: "Unemployed (Searching Job)" },
-            { value: "Pursuing Higher Studies", label: "Pursuing Higher Studies" }
+            { value: "Pursuing Higher Education", label: "Pursuing Higher Education" }
           ]} />
-          <CompactField label="Organization" value={data.nameoforganization} isEditing={isEditing} readOnly={readOnly} register={register} name="nameoforganization" />
-          <CompactField label="Designation" value={data.designation} isEditing={isEditing} readOnly={readOnly} register={register} name="designation" />
+          <CompactField label="Current Organization" value={data.nameoforganization} isEditing={isEditing} readOnly={readOnly} register={register} name="nameoforganization" />
+          <CompactField label="Current Designation" value={data.designation} isEditing={isEditing} readOnly={readOnly} register={register} name="designation" />
           {!isEditing || readOnly ? (
             <CompactField label="Sector" value={data.industry} isEditing={false} readOnly={readOnly} />
           ) : (
@@ -933,7 +940,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           )}
 
           {/* Higher Education Information - Show only for pursuing higher education */}
-          {(selectedEmployeed === "Pursuing Higher Studies" || data?.employeed === "Pursuing Higher Studies") && (
+          {(selectedEmployeed === "Pursuing Higher Education" || data?.employeed === "Pursuing Higher Education") && (
             <>
               <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
                 <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Higher Education</h4>
@@ -1065,8 +1072,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "C", label: "C" },
           ]} />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isEditing} readOnly={readOnly} register={register} name="createddatetime" />
-          <CompactField label="Academic Session" value={data.academicsession} isEditing={isEditing} readOnly={readOnly} register={register} name="academicsession" />
-          <CompactField label="Data Source" value={data.datasource} isEditing={isEditing} readOnly={readOnly} register={register} name="datasource" />
         </div>
 
         {isEditing && !readOnly && (

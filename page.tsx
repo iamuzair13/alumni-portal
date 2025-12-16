@@ -6,9 +6,8 @@ import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
 
-// Images from public folder - using /images/card/ as specified
-const frontTemplate = "/images/cards/alumni-card-front.jpg";
-const backTemplate = "/images/cards/alumni-card-back.jpg";
+import backTemplate from "./card-layout/alumni-card-back.jpg";
+import frontTemplate from "./card-layout/alumni-card-front.jpg";
 
 type FormState = {
   studentName: string;
@@ -19,6 +18,7 @@ type FormState = {
 };
 
 const ACCESS_PIN = "2374";
+
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -112,7 +112,7 @@ export default function Home() {
         width: 3.5,
         margin: 0,
       });
-    } catch {
+    } catch (error) {
       // jsbarcode throws for unsupported values; ignore and clear barcode
       barcodeRef.current.innerHTML = "";
     }
@@ -363,9 +363,8 @@ export default function Home() {
             className="flex w-full flex-col items-center gap-10 rounded-3xl bg-white/70 p-10 shadow-xl shadow-emerald-900/10"
           >
             <div className="relative aspect-7/4 w-full max-w-[550px] overflow-hidden rounded-3xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={frontTemplate}
+                src={frontTemplate.src as string}
                 alt="Alumni card front template"
                 width={550}
                 height={740}
@@ -396,7 +395,6 @@ export default function Home() {
 
               <div className="absolute right-[42px] top-[50px] flex h-[214px] w-[158px] items-center justify-center overflow-hidden ">
               
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photoPreview || ""}
                     alt={formData.studentName || "Student"}
@@ -409,9 +407,8 @@ export default function Home() {
             </div>
 
             <div className="relative aspect-7/4 w-full max-w-[520px] overflow-hidden rounded-3xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={backTemplate}
+                src={backTemplate.src}
                 alt="Alumni card back template"
                 width={520}
                 height={740}
@@ -419,7 +416,7 @@ export default function Home() {
               />
 
               <div
-                className="absolute -right-[120px] top-[119px] flex h-[60px] w-[550px] items-stretch bg-white"
+                className="absolute -right-[120px] top-[119px] flex h-[60px] w-[300px] items-stretch bg-white"
                 style={{
                   transform: "rotate(90deg)",
                   transformOrigin: "center",

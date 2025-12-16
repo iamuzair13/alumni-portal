@@ -30,43 +30,43 @@ export async function GET() {
     let rows;
     try {
       rows = await sql/* sql */`
-        SELECT 
-          a.alumniid,
-          a.sapid,
-          a.registrationno,
-          a.alumniname,
-          a.departmentname,
-          a.facultyname,
-          a.degreetitle,
-          a.personalemail,
-          a.officialemail,
-          a.universityemail,
-          t.alumnitalks,
-          t.mentorshipprogram,
-          t.topic,
-          t.activity,
-          t.linkedin,
-          t.mode,
-          t.brief_outline,
-          t.date_1,
-          t.timings_1,
-          t.date_2,
-          t.timings_2,
-          t.date_3,
-          t.timings_3,
-          t.day_2,
-          t.day_3,
-          t.week_1,
-          t.week_2,
-          t.week_3,
-          t.month_1,
-          t.month_2,
-          t.month_3
-        FROM public.tbl_alumni a
+      SELECT 
+        a.alumniid,
+        a.sapid,
+        a.registrationno,
+        a.alumniname,
+        a.departmentname,
+        a.facultyname,
+        a.degreetitle,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail,
+        t.alumnitalks,
+        t.mentorshipprogram,
+        t.topic,
+        t.activity,
+        t.linkedin,
+        t.mode,
+        t.brief_outline,
+        t.date_1,
+        t.timings_1,
+        t.date_2,
+        t.timings_2,
+        t.date_3,
+        t.timings_3,
+        t.day_2,
+        t.day_3,
+        t.week_1,
+        t.week_2,
+        t.week_3,
+        t.month_1,
+        t.month_2,
+        t.month_3
+      FROM public.tbl_alumni a
         INNER JOIN public.tblalumnitalks t ON t.alumniid = a.alumniid
         WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
-          ${accessFilterCondition}
-        ORDER BY t.alumniid DESC`;
+        ${accessFilterCondition}
+      ORDER BY t.alumniid DESC`;
     } catch (queryError) {
       console.error("[API] Error executing talks query:", queryError);
       return NextResponse.json({ 

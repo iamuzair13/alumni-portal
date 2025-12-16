@@ -13,6 +13,10 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
 import { useAlumniListPaginated, getAlumniCounts, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
+import { useMaritalStatuses } from "@/app/queries/fetch-marital-statuses";
+import { useGenders, type GenderOption } from "@/app/queries/fetch-genders";
+import { useCampuses, type CampusOption } from "@/app/queries/fetch-campuses";
+import { useOccupationStatuses, type OccupationStatusOption } from "@/app/queries/fetch-occupation-statuses";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import * as XLSX from "xlsx";
@@ -46,6 +50,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "verified", label: "Verified" },
   { key: "underApproval", label: "Under Approval" },
   { key: "active", label: "Active" },
+];
+
+const CATEGORY_TABS: { key: TabKey; label: string }[] = [
   { key: "aPlus", label: "A+ Category" },
   { key: "a", label: "A Category" },
   { key: "b", label: "B Category" },
@@ -137,6 +144,46 @@ export const AlumniTabs: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("total");
   const { data: session } = useSession();
   
+  // Fetch marital statuses from database
+  const { data: maritalStatusesData, isLoading: isLoadingMaritalStatuses, error: maritalStatusesError } = useMaritalStatuses();
+  
+  // Fetch genders from database
+  const { data: gendersData, isLoading: isLoadingGenders, error: gendersError } = useGenders();
+  
+  // Fetch campuses from database
+  const { data: campusesData, isLoading: isLoadingCampuses, error: campusesError } = useCampuses();
+  
+  // Fetch occupation statuses from database
+  const { data: occupationStatusesData, isLoading: isLoadingOccupationStatuses, error: occupationStatusesError } = useOccupationStatuses();
+  
+  // Debug logging
+  React.useEffect(() => {
+    if (maritalStatusesError) {
+      console.error("[AlumniTabs] Error fetching marital statuses:", maritalStatusesError);
+    }
+    if (maritalStatusesData) {
+      console.log("[AlumniTabs] Marital statuses data:", maritalStatusesData);
+    }
+    if (gendersError) {
+      console.error("[AlumniTabs] Error fetching genders:", gendersError);
+    }
+    if (gendersData) {
+      console.log("[AlumniTabs] Genders data:", gendersData);
+    }
+    if (campusesError) {
+      console.error("[AlumniTabs] Error fetching campuses:", campusesError);
+    }
+    if (campusesData) {
+      console.log("[AlumniTabs] Campuses data:", campusesData);
+    }
+    if (occupationStatusesError) {
+      console.error("[AlumniTabs] Error fetching occupation statuses:", occupationStatusesError);
+    }
+    if (occupationStatusesData) {
+      console.log("[AlumniTabs] Occupation statuses data:", occupationStatusesData);
+    }
+  }, [maritalStatusesData, maritalStatusesError, gendersData, gendersError, campusesData, campusesError, occupationStatusesData, occupationStatusesError]);
+  
   // Refs for scroll synchronization
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
   const topScrollbarRef = React.useRef<HTMLDivElement>(null);
@@ -154,6 +201,9 @@ export const AlumniTabs: React.FC = () => {
   const admissionYearFilterRef = React.useRef<HTMLDivElement>(null);
   const passingYearFilterRef = React.useRef<HTMLDivElement>(null);
   const workCountryFilterRef = React.useRef<HTMLDivElement>(null);
+  const genderFilterRef = React.useRef<HTMLDivElement>(null);
+  const maritalStatusFilterRef = React.useRef<HTMLDivElement>(null);
+  const occupationStatusFilterRef = React.useRef<HTMLDivElement>(null);
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -234,6 +284,9 @@ export const AlumniTabs: React.FC = () => {
     admissionYear: boolean;
     passingYear: boolean;
     workCountry: boolean;
+    gender: boolean;
+    maritalStatus: boolean;
+    occupationStatus: boolean;
   }>({
     faculty: false,
     department: false,
@@ -247,6 +300,9 @@ export const AlumniTabs: React.FC = () => {
     admissionYear: false,
     passingYear: false,
     workCountry: false,
+    gender: false,
+    maritalStatus: false,
+    occupationStatus: false,
   });
   
   // Countries list (from registration form)
@@ -289,13 +345,8 @@ export const AlumniTabs: React.FC = () => {
     { value: "AJK", label: "Azad Kashmir" },
   ];
   
-  // Campus options
-  const campusOptions: string[] = [
-    "Lahore Campus",
-    "Sargodha Campus",
-    "Islamabad Campus",
-    "Pakpattan Campus",
-  ];
+  // Campus options - now fetched dynamically from database
+  // Use campusesData if available, otherwise fallback to empty array
   
   // Admission years (1998 to 2025)
   const admissionYears: string[] = Array.from({ length: 2025 - 1998 + 1 }, (_, i) => String(1998 + i));
@@ -521,6 +572,15 @@ export const AlumniTabs: React.FC = () => {
       if (workCountryFilterRef.current && !workCountryFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, workCountry: false }));
       }
+      if (genderFilterRef.current && !genderFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, gender: false }));
+      }
+      if (maritalStatusFilterRef.current && !maritalStatusFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, maritalStatus: false }));
+      }
+      if (occupationStatusFilterRef.current && !occupationStatusFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, occupationStatus: false }));
+      }
     };
     
     document.addEventListener('mousedown', handleClickOutside);
@@ -710,10 +770,62 @@ export const AlumniTabs: React.FC = () => {
   };
   
   const handleCampusSelectAll = () => {
-    if (selectedCampuses.length === campusOptions.length) {
+    const allCampusValues = campusesData?.campuses ? campusesData.campuses.map(c => c.value) : [];
+    if (selectedCampuses.length === allCampusValues.length && allCampusValues.length > 0) {
       setSelectedCampuses([]);
     } else {
-      setSelectedCampuses([...campusOptions]);
+      setSelectedCampuses([...allCampusValues]);
+    }
+  };
+
+  // Gender filter handlers
+  const handleGenderToggle = (gender: string) => {
+    setSelectedGenders(prev => 
+      prev.includes(gender) 
+        ? prev.filter(g => g !== gender)
+        : [...prev, gender]
+    );
+  };
+  
+  const handleGenderSelectAll = () => {
+    if (gendersData?.genders && selectedGenders.length === gendersData.genders.length && gendersData.genders.length > 0) {
+      setSelectedGenders([]);
+    } else {
+      setSelectedGenders(gendersData?.genders?.map(g => g.value) || []);
+    }
+  };
+
+  // Marital Status filter handlers
+  const handleMaritalStatusToggle = (status: string) => {
+    setSelectedMaritalStatuses(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+  
+  const handleMaritalStatusSelectAll = () => {
+    if (maritalStatusesData?.maritalStatuses && selectedMaritalStatuses.length === maritalStatusesData.maritalStatuses.length && maritalStatusesData.maritalStatuses.length > 0) {
+      setSelectedMaritalStatuses([]);
+    } else {
+      setSelectedMaritalStatuses(maritalStatusesData?.maritalStatuses?.map(s => s.value) || []);
+    }
+  };
+
+  // Occupation Status filter handlers
+  const handleOccupationStatusToggle = (status: string) => {
+    setSelectedOccupationStatuses(prev => 
+      prev.includes(status) 
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+  };
+  
+  const handleOccupationStatusSelectAll = () => {
+    if (occupationStatusesData?.occupationStatuses && selectedOccupationStatuses.length === occupationStatusesData.occupationStatuses.length && occupationStatusesData.occupationStatuses.length > 0) {
+      setSelectedOccupationStatuses([]);
+    } else {
+      setSelectedOccupationStatuses(occupationStatusesData?.occupationStatuses?.map(s => s.value) || []);
     }
   };
   
@@ -1221,17 +1333,121 @@ export const AlumniTabs: React.FC = () => {
           url.searchParams.append("program", prog);
         });
       }
+      if (selectedGenders.length > 0) {
+        selectedGenders.forEach(gender => {
+          url.searchParams.append("gender", gender);
+        });
+      }
+      if (selectedMaritalStatuses.length > 0) {
+        selectedMaritalStatuses.forEach(status => {
+          url.searchParams.append("maritalStatus", status);
+        });
+      }
+      if (selectedHomeCountries.length > 0) {
+        selectedHomeCountries.forEach(country => {
+          url.searchParams.append("homeCountry", country);
+        });
+      }
+      if (selectedHomeCities.length > 0) {
+        selectedHomeCities.forEach(city => {
+          url.searchParams.append("homeCity", city);
+        });
+      }
+      if (selectedProvinces.length > 0) {
+        selectedProvinces.forEach(province => {
+          url.searchParams.append("province", province);
+        });
+      }
+      if (selectedCampuses.length > 0) {
+        selectedCampuses.forEach(campus => {
+          url.searchParams.append("campus", campus);
+        });
+      }
+      if (selectedAdmissionYears.length > 0) {
+        selectedAdmissionYears.forEach(year => {
+          url.searchParams.append("admissionYear", year);
+        });
+      }
+      if (selectedPassingYears.length > 0) {
+        selectedPassingYears.forEach(year => {
+          url.searchParams.append("passingYear", year);
+        });
+      }
+      if (selectedOccupationStatuses.length > 0) {
+        selectedOccupationStatuses.forEach(status => {
+          url.searchParams.append("occupationStatus", status);
+        });
+      }
+      if (selectedSectors.length > 0) {
+        selectedSectors.forEach(sector => {
+          url.searchParams.append("sector", sector);
+        });
+      }
+      if (selectedWorkCities.length > 0) {
+        selectedWorkCities.forEach(city => {
+          url.searchParams.append("workCity", city);
+        });
+      }
+      if (selectedWorkCountries.length > 0) {
+        selectedWorkCountries.forEach(country => {
+          url.searchParams.append("workCountry", country);
+        });
+      }
+      if (selectedInstitutionNames.length > 0) {
+        selectedInstitutionNames.forEach(name => {
+          url.searchParams.append("institutionName", name);
+        });
+      }
+      if (selectedProgramsEnrolled.length > 0) {
+        selectedProgramsEnrolled.forEach(program => {
+          url.searchParams.append("programEnrolled", program);
+        });
+      }
+      if (selectedFundingSources.length > 0) {
+        selectedFundingSources.forEach(source => {
+          url.searchParams.append("fundingSource", source);
+        });
+      }
+      if (selectedInstitutionCountries.length > 0) {
+        selectedInstitutionCountries.forEach(country => {
+          url.searchParams.append("institutionCountry", country);
+        });
+      }
+      if (selectedInstitutionCities.length > 0) {
+        selectedInstitutionCities.forEach(city => {
+          url.searchParams.append("institutionCity", city);
+        });
+      }
+      if (selectedMrNos.length > 0) {
+        selectedMrNos.forEach(mrNo => {
+          url.searchParams.append("mrNo", mrNo);
+        });
+      }
+      
+      // Add timeout and abort controller for large exports
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
       
       const res = await fetch(url.toString(), {
-        headers: { "accept": "application/json" }
+        headers: { "accept": "application/json" },
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (!res.ok) {
-        throw new Error(`Failed to fetch export data: ${res.status}`);
+        const errorText = await res.text();
+        throw new Error(`Failed to fetch export data: ${res.status} - ${errorText}`);
       }
       
       const data = await res.json();
       const allItems = data.items || [];
+      
+      if (!allItems || allItems.length === 0) {
+        alert("No data found to export with the applied filters.");
+        setIsExporting(false);
+        return;
+      }
 
       // Helper function to format chapter names
       const formatChapters = (item: Record<string, unknown>) => {
@@ -1397,9 +1613,19 @@ export const AlumniTabs: React.FC = () => {
     } catch (error) {
       console.error("Export error:", error);
       setIsExporting(false);
-      alert("Failed to export data. Please try again.");
+      
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = "Export request timed out. The dataset may be too large. Please try applying more filters to reduce the data size.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      alert(`Failed to export data: ${errorMessage}. Please try again or contact support if the issue persists.`);
     }
-  }, [debouncedQuery, statusFilter, selectedFaculties, selectedDepartments, selectedPrograms, selected, additionalFilter]);
+  }, [debouncedQuery, statusFilter, selectedFaculties, selectedDepartments, selectedPrograms, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos, additionalFilter]);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const startMut = useCallback((id: string) => {
@@ -1654,12 +1880,8 @@ export const AlumniTabs: React.FC = () => {
     router.push(`/alumni-profile?sapid=${encodeURIComponent(sapid)}`);
   }, [router]);
 
-  return (
-    <ComponentCard className="p-0">
-      <div className="flex flex-col gap-8">
-        {/* Stats Cards Section */}
-        <div className="flex flex-wrap gap-4 px-6 pt-2">
-          {TABS.map((tab, idx) => {
+  // Helper function to render a tab button
+  const renderTabButton = (tab: { key: TabKey; label: string }, idx: number, allTabs: { key: TabKey; label: string }[]) => {
             const statCount = (() => {
               switch (tab.key) {
                 case "total":
@@ -1717,12 +1939,12 @@ export const AlumniTabs: React.FC = () => {
                 onKeyDown={(e) => {
                   if (e.key === "ArrowRight") {
                     e.preventDefault();
-                    const nextIdx = (idx + 1) % TABS.length;
-                    setSelected(TABS[nextIdx].key);
+            const nextIdx = (idx + 1) % allTabs.length;
+            setSelected(allTabs[nextIdx].key);
                   } else if (e.key === "ArrowLeft") {
                     e.preventDefault();
-                    const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                    setSelected(TABS[prevIdx].key);
+            const prevIdx = (idx - 1 + allTabs.length) % allTabs.length;
+            setSelected(allTabs[prevIdx].key);
                   } else if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setSelected(tab.key);
@@ -1746,7 +1968,30 @@ export const AlumniTabs: React.FC = () => {
                 )}
               </button>
             );
-          })}
+  };
+
+  return (
+    <ComponentCard className="p-0">
+      <div className="flex flex-col gap-8">
+        {/* Stats Cards Section */}
+        <div className="px-6 pt-2">
+          {/* Regular Tabs */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
+          </div>
+          
+          {/* Category Tabs with Label */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
+              
+            
+              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {CATEGORY_TABS.map((tab, idx) => renderTabButton(tab, idx, CATEGORY_TABS))}
+            </div>
+          </div>
         </div>
 
         {/* Search and Filters Section */}
@@ -2119,47 +2364,184 @@ export const AlumniTabs: React.FC = () => {
                   <div className="mt-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {/* Gender Filter */}
-                      <div>
+                      <div className="relative" ref={genderFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Gender
                         </label>
-                        <select
-                          multiple
-                          value={selectedGenders}
-                          onChange={(e) => {
-                            const values = Array.from(e.target.selectedOptions, option => option.value);
-                            setSelectedGenders(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          size={3}
-                        >
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                        </select>
+                        {isLoadingGenders ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                            Loading...
+                          </div>
+                        ) : gendersError ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                            Error loading genders
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedFilters(prev => ({ ...prev, gender: !prev.gender }))}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                            >
+                              <span className="truncate">
+                                {selectedGenders.length === 0
+                                  ? "Select genders..."
+                                  : selectedGenders.length === 1
+                                  ? gendersData?.genders?.find(g => g.value === selectedGenders[0])?.label || selectedGenders[0]
+                                  : `${selectedGenders.length} genders selected`}
+                              </span>
+                              <svg
+                                className={`w-4 h-4 transition-transform ${expandedFilters.gender ? "rotate-180" : ""}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {expandedFilters.gender && (
+                              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                <div className="p-2">
+                                  <label
+                                    className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleGenderSelectAll();
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={gendersData?.genders && selectedGenders.length === gendersData.genders.length && gendersData.genders.length > 0}
+                                        onChange={handleGenderSelectAll}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Genders</span>
+                                    </div>
+                                  </label>
+                                  <div className="max-h-48 overflow-y-auto">
+                                    {gendersData?.genders && gendersData.genders.length > 0 ? (
+                                      gendersData.genders.map((gender: GenderOption) => {
+                                        const isChecked = selectedGenders.includes(gender.value);
+                                        return (
+                                          <label
+                                            key={gender.value}
+                                            className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => handleGenderToggle(gender.value)}
+                                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                              {gender.label} ({gender.count.toLocaleString()})
+                                            </span>
+                                          </label>
+                                        );
+                                      })
+                                    ) : (
+                                      <div className="p-2 text-sm text-gray-500">No genders available</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                         {selectedGenders.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedGenders.length} selected</p>
                         )}
                       </div>
                       
                       {/* Marital Status Filter */}
-                      <div>
+                      <div className="relative" ref={maritalStatusFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Marital Status
                         </label>
-                        <select
-                          multiple
-                          value={selectedMaritalStatuses}
-                          onChange={(e) => {
-                            const values = Array.from(e.target.selectedOptions, option => option.value);
-                            setSelectedMaritalStatuses(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          size={3}
-                        >
-                          <option value="NULL">Others</option>
-                          <option value="Married">Married</option>
-                          <option value="Un-Married">Un-Married</option>
-                        </select>
+                        {isLoadingMaritalStatuses ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                            Loading...
+                          </div>
+                        ) : maritalStatusesError ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                            Error loading marital statuses
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedFilters(prev => ({ ...prev, maritalStatus: !prev.maritalStatus }))}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                            >
+                              <span className="truncate">
+                                {selectedMaritalStatuses.length === 0
+                                  ? "Select marital statuses..."
+                                  : selectedMaritalStatuses.length === 1
+                                  ? maritalStatusesData?.maritalStatuses?.find(s => s.value === selectedMaritalStatuses[0])?.label || selectedMaritalStatuses[0]
+                                  : `${selectedMaritalStatuses.length} statuses selected`}
+                              </span>
+                              <svg
+                                className={`w-4 h-4 transition-transform ${expandedFilters.maritalStatus ? "rotate-180" : ""}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {expandedFilters.maritalStatus && (
+                              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                <div className="p-2">
+                                  <label
+                                    className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMaritalStatusSelectAll();
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={maritalStatusesData?.maritalStatuses && selectedMaritalStatuses.length === maritalStatusesData.maritalStatuses.length && maritalStatusesData.maritalStatuses.length > 0}
+                                        onChange={handleMaritalStatusSelectAll}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Statuses</span>
+                                    </div>
+                                  </label>
+                                  <div className="max-h-48 overflow-y-auto">
+                                    {maritalStatusesData?.maritalStatuses && maritalStatusesData.maritalStatuses.length > 0 ? (
+                                      maritalStatusesData.maritalStatuses.map((status) => {
+                                        const isChecked = selectedMaritalStatuses.includes(status.value);
+                                        return (
+                                          <label
+                                            key={status.value}
+                                            className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => handleMaritalStatusToggle(status.value)}
+                                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                              {status.label} ({status.count.toLocaleString()})
+                                            </span>
+                                          </label>
+                                        );
+                                      })
+                                    ) : (
+                                      <div className="p-2 text-sm text-gray-500">No marital statuses available</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                         {selectedMaritalStatuses.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedMaritalStatuses.length} selected</p>
                         )}
@@ -2432,7 +2814,7 @@ export const AlumniTabs: React.FC = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="checkbox"
-                                    checked={selectedCampuses.length === campusOptions.length}
+                                    checked={campusesData?.campuses && selectedCampuses.length === campusesData.campuses.length && campusesData.campuses.length > 0}
                                     onChange={handleCampusSelectAll}
                                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                   />
@@ -2440,24 +2822,34 @@ export const AlumniTabs: React.FC = () => {
                                 </div>
                               </label>
                               <div className="max-h-48 overflow-y-auto">
-                                {campusOptions.map((campus) => {
-                                  const isChecked = selectedCampuses.includes(campus);
+                                {isLoadingCampuses ? (
+                                  <div className="p-2 text-sm text-gray-500">Loading campuses...</div>
+                                ) : campusesError ? (
+                                  <div className="p-2 text-sm text-red-600 dark:text-red-400">Error loading campuses</div>
+                                ) : campusesData?.campuses && campusesData.campuses.length > 0 ? (
+                                  campusesData.campuses.map((campus: CampusOption) => {
+                                    const isChecked = selectedCampuses.includes(campus.value);
                                   return (
                                     <label
-                                      key={campus}
+                                        key={campus.value}
                                       className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        onChange={() => handleCampusToggle(campus)}
+                                          onChange={() => handleCampusToggle(campus.value)}
                                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{campus}</span>
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                          {campus.label} ({campus.count.toLocaleString()})
+                                        </span>
                                     </label>
                                   );
-                                })}
+                                  })
+                                ) : (
+                                  <div className="p-2 text-sm text-gray-500">No campuses available</div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -2616,26 +3008,92 @@ export const AlumniTabs: React.FC = () => {
                       </div>
                       
                       {/* Occupation Status Filter */}
-                      <div>
+                      <div className="relative" ref={occupationStatusFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Occupation Status
                         </label>
-                        <select
-                          multiple
-                          value={selectedOccupationStatuses}
-                          onChange={(e) => {
-                            const values = Array.from(e.target.selectedOptions, option => option.value);
-                            setSelectedOccupationStatuses(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          size={5}
-                        >
-                          <option value="Employed">Employed</option>
-                          <option value="Unemployed">Unemployed</option>
-                          <option value="HigherEd">Pursuing Higher Education</option>
-                          <option value="Self-Emplo">Self-Employed</option>
-                          <option value="NULL">Others</option>
-                        </select>
+                        {isLoadingOccupationStatuses ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                            Loading...
+                          </div>
+                        ) : occupationStatusesError ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                            Error loading occupation statuses
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedFilters(prev => ({ ...prev, occupationStatus: !prev.occupationStatus }))}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                            >
+                              <span className="truncate">
+                                {selectedOccupationStatuses.length === 0
+                                  ? "Select occupation statuses..."
+                                  : selectedOccupationStatuses.length === 1
+                                  ? occupationStatusesData?.occupationStatuses?.find(s => s.value === selectedOccupationStatuses[0])?.label || selectedOccupationStatuses[0]
+                                  : `${selectedOccupationStatuses.length} statuses selected`}
+                              </span>
+                              <svg
+                                className={`w-4 h-4 transition-transform ${expandedFilters.occupationStatus ? "rotate-180" : ""}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {expandedFilters.occupationStatus && (
+                              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                <div className="p-2">
+                                  <label
+                                    className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOccupationStatusSelectAll();
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={occupationStatusesData?.occupationStatuses && selectedOccupationStatuses.length === occupationStatusesData.occupationStatuses.length && occupationStatusesData.occupationStatuses.length > 0}
+                                        onChange={handleOccupationStatusSelectAll}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Statuses</span>
+                                    </div>
+                                  </label>
+                                  <div className="max-h-48 overflow-y-auto">
+                                    {occupationStatusesData?.occupationStatuses && occupationStatusesData.occupationStatuses.length > 0 ? (
+                                      occupationStatusesData.occupationStatuses.map((status: OccupationStatusOption) => {
+                                        const isChecked = selectedOccupationStatuses.includes(status.value);
+                                        return (
+                                          <label
+                                            key={status.value}
+                                            className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => handleOccupationStatusToggle(status.value)}
+                                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                              {status.label} ({status.count.toLocaleString()})
+                                            </span>
+                                          </label>
+                                        );
+                                      })
+                                    ) : (
+                                      <div className="p-2 text-sm text-gray-500">No occupation statuses available</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                         {selectedOccupationStatuses.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedOccupationStatuses.length} selected</p>
                         )}

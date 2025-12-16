@@ -124,40 +124,48 @@ export async function GET(req: Request) {
     let genderFilter = sql``;
     if (gender && (Array.isArray(gender) ? gender.length > 0 : gender)) {
       if (Array.isArray(gender) && gender.length > 0) {
-        const genderConditions = gender.map(g => sql`LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${g}))`);
+        const genderConditions = gender.map(g => {
+          const normalized = String(g).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(gender IS NULL OR TRIM(COALESCE(gender, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${g}))`;
+        });
         const combinedCondition = combineOrConditions(genderConditions);
         genderFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(gender) && gender) {
-        genderFilter = sql`AND LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${gender}))`;
+        const normalized = String(gender).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          genderFilter = sql`AND (gender IS NULL OR TRIM(COALESCE(gender, '')) = '')`;
+        } else {
+          genderFilter = sql`AND LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${gender}))`;
+        }
       }
     }
     
     // Marital Status filter
-    // Map: NULL, Married, Un-Married
+    // Handle any unique value from the database, including NULL
     let maritalStatusFilter = sql``;
     if (maritalStatus && (Array.isArray(maritalStatus) ? maritalStatus.length > 0 : maritalStatus)) {
       if (Array.isArray(maritalStatus) && maritalStatus.length > 0) {
         const conditions = maritalStatus.map(m => {
-          const normalized = m.trim();
+          const normalized = String(m).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
           if (normalized === "NULL" || normalized === "null") {
-            return sql`maritalstatus IS NULL`;
-          } else if (normalized.toLowerCase() === "married") {
-            return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'married'`;
-          } else if (normalized.toLowerCase() === "un-married" || normalized.toLowerCase() === "unmarried") {
-            return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'un-married'`;
+            return sql`(maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '')`;
           }
-          return sql`1=0`; // Invalid value, exclude
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = LOWER(TRIM(${m}))`;
         });
         const combinedCondition = combineOrConditions(conditions);
         maritalStatusFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(maritalStatus) && maritalStatus) {
-        const normalized = maritalStatus.trim();
+        const normalized = String(maritalStatus).trim();
         if (normalized === "NULL" || normalized === "null") {
-          maritalStatusFilter = sql`AND maritalstatus IS NULL`;
-        } else if (normalized.toLowerCase() === "married") {
-          maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'married'`;
-        } else if (normalized.toLowerCase() === "un-married" || normalized.toLowerCase() === "unmarried") {
-          maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = 'un-married'`;
+          maritalStatusFilter = sql`AND (maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '')`;
+        } else {
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = LOWER(TRIM(${maritalStatus}))`;
         }
       }
     }
@@ -199,14 +207,28 @@ export async function GET(req: Request) {
     }
     
     // Campus filter
+    // Handle any unique value from the database, including NULL
     let campusFilter = sql``;
     if (campus && (Array.isArray(campus) ? campus.length > 0 : campus)) {
       if (Array.isArray(campus) && campus.length > 0) {
-        const conditions = campus.map(c => sql`LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${c}))`);
+        const conditions = campus.map(c => {
+          const normalized = String(c).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(campusname IS NULL OR TRIM(COALESCE(campusname, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${c}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         campusFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(campus) && campus) {
-        campusFilter = sql`AND LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${campus}))`;
+        const normalized = String(campus).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          campusFilter = sql`AND (campusname IS NULL OR TRIM(COALESCE(campusname, '')) = '')`;
+        } else {
+          campusFilter = sql`AND LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${campus}))`;
+        }
       }
     }
     
@@ -249,24 +271,20 @@ export async function GET(req: Request) {
     }
     
     // Occupation Status filter
-    // Map: Employed, Unemployed, HigherEd, Self-Emplo, NULL
+    // Handle any unique value from the database, including NULL
     let occupationStatusFilter = sql``;
     if (occupationStatus && (Array.isArray(occupationStatus) ? occupationStatus.length > 0 : occupationStatus)) {
       const statusArray = Array.isArray(occupationStatus) ? occupationStatus : [occupationStatus];
       const conditions: ReturnType<typeof sql>[] = [];
       
       statusArray.forEach(status => {
-        const normalized = status.trim();
-        if (normalized === "Employed") {
-          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'employed'`);
-        } else if (normalized === "Unemployed") {
-          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'unemployed'`);
-        } else if (normalized === "HigherEd") {
-          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'highered'`);
-        } else if (normalized === "Self-Emplo") {
-          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = 'self-emplo'`);
-        } else if (normalized === "NULL" || normalized === "null") {
-          conditions.push(sql`employeed IS NULL`);
+        const normalized = String(status).trim();
+        // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+        if (normalized === "NULL" || normalized === "null") {
+          conditions.push(sql`(employeed IS NULL OR TRIM(COALESCE(employeed, '')) = '')`);
+        } else {
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = LOWER(TRIM(${status}))`);
         }
       });
       

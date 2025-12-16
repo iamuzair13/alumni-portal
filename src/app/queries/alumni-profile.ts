@@ -189,6 +189,11 @@ export function useUpdateAlumniFields(sapId: string | undefined) {
       qc.invalidateQueries({ queryKey: profileKey });
       // Also invalidate current user image query to update header
       qc.invalidateQueries({ queryKey: currentUserImageKey() });
+      // Invalidate filter queries when profile is updated
+      qc.invalidateQueries({ queryKey: ["marital-statuses"] });
+      qc.invalidateQueries({ queryKey: ["genders"] });
+      qc.invalidateQueries({ queryKey: ["campuses"] });
+      qc.invalidateQueries({ queryKey: ["occupation-statuses"] });
     },
   });
 }

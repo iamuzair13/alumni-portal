@@ -45,8 +45,12 @@ const navItems: NavItem[] = [
   },
   {
     icon: <BoltIcon />,
-    name: "Setup", //add dropdown with users and locations
-    path : "/setup",	
+    name: "Setup",
+    subItems: [
+      { name: "Users", path: "/setup?tab=users" },
+      { name: "Organizations", path: "/setup?tab=organizations" },
+      { name: "Chapters", path: "/setup?tab=chapters" },
+    ],
   },
 ];
 

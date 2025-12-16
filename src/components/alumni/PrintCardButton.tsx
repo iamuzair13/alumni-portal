@@ -9,9 +9,9 @@ type Props = {
 
 export default function PrintCardButton({ sapId }: Props) {
   const handlePrint = () => {
-    // Open card page in new window for printing/exporting
-    const url = `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}`;
-    const windowFeatures = "width=1200,height=800,scrollbars=yes,resizable=yes";
+    // Open card print page in new window for preview, download, and print
+    const url = `/alumni-profile/card-print?sapid=${encodeURIComponent(sapId)}`;
+    const windowFeatures = "width=1200,height=900,scrollbars=yes,resizable=yes";
     window.open(url, "_blank", windowFeatures);
   };
 

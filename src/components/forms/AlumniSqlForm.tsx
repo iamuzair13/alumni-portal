@@ -415,7 +415,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       departmentname: null,
       majorsubject: null,
       industry: null,
-      employeed: "Unemployed",
+      employeed: "Unemployed, searching for job",
       reason_of_unemployment: null,
       nameoforganization: null,
       designation: null,
@@ -450,10 +450,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [homeCitySearch, setHomeCitySearch] = useState("");
-  const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false);
-  const isTypingCityRef = useRef(false);
-  const lastSetCityValueRef = useRef<string | null>(null);
+  const homeCityInputRef = useRef<HTMLInputElement | null>(null);
+  const isTypingHomeCityRef = useRef(false);
   const [facultyOtherSelected, setFacultyOtherSelected] = useState(false);
   const [departmentOtherSelected, setDepartmentOtherSelected] = useState(false);
   // Use refs to track if user is actively typing in "Other" inputs
@@ -521,7 +519,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   }, [selectedChapters, setValue]);
 
   const personalEmailVal = watch("personalemail") || "";
-  const employeedVal = (watch("employeed") || "Unemployed") as string;
+  const employeedVal = (watch("employeed") || "Unemployed, searching for job") as string;
   const selectedFaculty = watch("facultyname") || "";
   const selectedDepartment = watch("departmentname") || "";
   const selectedHomeCountry = watch("country") || "";
@@ -594,27 +592,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
     return [];
   }, [selectedHomeCountry, selectedHomeProvince]);
-  
-  // Filter cities based on search input and selected province (for home city)
-  const filteredHomeCities = useMemo(() => {
-    // If no province selected, show no cities
-    if (selectedHomeCountry === "Pakistan" && !selectedHomeProvince) {
-      return [];
-    }
-    
-    // If province is selected, filter cities from that province
-    if (selectedHomeCountry === "Pakistan" && selectedHomeProvince && homeProvinceCities.length > 0) {
-      if (!homeCitySearch.trim()) {
-        return homeProvinceCities; // Show all cities if no search text
-      }
-      const searchLower = homeCitySearch.toLowerCase();
-      return homeProvinceCities.filter(city => 
-        city.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return [];
-  }, [homeCitySearch, selectedHomeCountry, selectedHomeProvince, homeProvinceCities]);
 
   
   // Province options based on selected home country
@@ -689,9 +666,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       // Force reset province when country changes to non-Pakistan
       setValue("province", "", { shouldValidate: false });
       setValue("homeCity", "", { shouldValidate: false });
-      setHomeCitySearch("");
-      isTypingCityRef.current = false;
-      lastSetCityValueRef.current = null;
     } else if (selectedHomeCountry === "Pakistan") {
       // If switching back to Pakistan, also reset province if it's "Not applicable"
       const currentProvince = watch("province");
@@ -701,44 +675,25 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
   }, [selectedHomeCountry, setValue, watch, homeProvinceOptions]);
   
-  // Reset home city when province changes
+  // Reset home city when province changes (only when not typing)
   useEffect(() => {
+    // Don't interfere if user is actively typing
+    if (isTypingHomeCityRef.current) {
+      return;
+    }
+    
     if (selectedHomeCountry === "Pakistan" && selectedHomeProvince) {
       // Only reset if current city is not in the new province's cities
       const currentCity = selectedHomeCity || "";
       const validCities = getCitiesByProvince(selectedHomeProvince);
       if (currentCity && !validCities.includes(currentCity)) {
         setValue("homeCity", "");
-        setHomeCitySearch("");
-        isTypingCityRef.current = false;
-        lastSetCityValueRef.current = null;
       }
     } else if (selectedHomeCountry === "Pakistan" && !selectedHomeProvince) {
       // Clear city if province is cleared
       setValue("homeCity", "");
-      setHomeCitySearch("");
-      isTypingCityRef.current = false;
-      lastSetCityValueRef.current = null;
     }
-  }, [selectedHomeProvince, selectedHomeCountry, selectedHomeCity, setValue]);
-  
-  // Initialize homeCitySearch from form value ONLY on mount or when province changes
-  // Never sync during typing to prevent input reset
-  useEffect(() => {
-    if (selectedHomeCountry === "Pakistan" && selectedHomeProvince && selectedHomeCity && !isTypingCityRef.current) {
-      const cityStr = String(selectedHomeCity).trim();
-      // Only sync if search is empty (initial load) or if it's completely different (province change)
-      if (homeCitySearch === "" || (homeCitySearch !== cityStr && lastSetCityValueRef.current !== cityStr)) {
-        setHomeCitySearch(cityStr);
-        lastSetCityValueRef.current = cityStr;
-      }
-    } else if (!selectedHomeCity && !isTypingCityRef.current && homeCitySearch !== "") {
-      // Clear search only if not typing and form value is cleared
-      setHomeCitySearch("");
-      lastSetCityValueRef.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedHomeProvince]); // Only depend on province, NOT on homeCity to avoid interference
+  }, [selectedHomeProvince, selectedHomeCountry, setValue]);
 
 
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -805,7 +760,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     const workFieldsToValidate: Array<keyof TblAlumniForm> = ["employeed"];
     
     // Only validate work fields if employed or self-employed
-    if ((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") {
+    if ((employeedVal || "").toLowerCase() === "employed/business" || (employeedVal || "").toLowerCase() === "self-employed") {
       workFieldsToValidate.push("industry", "startOfCareer", "nameoforganization", "designation", "officialemail", "officialnumber", "organization_address", "workCity", "workCountry");
     }
     
@@ -814,16 +769,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       workFieldsToValidate.push("highereducationinstitute", "highereducationprogram", "scholarship", "workCity", "workCountry", "higher_education_institute_email");
     }
     
-    // Validate unemployed reason if unemployed
-    if ((employeedVal || "").toLowerCase() === "unemployed") {
-      workFieldsToValidate.push("reason_of_unemployment");
-    }
+    // No validation needed for unemployed options as reason is in the radio button value
     
     const workOk = await trigger(workFieldsToValidate);
     if (!workOk) return false;
     
     // Conditional: when employed or self-employed, validate required fields
-    if ((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") {
+    if ((employeedVal || "").toLowerCase() === "employed/business" || (employeedVal || "").toLowerCase() === "self-employed") {
       const fields: Array<keyof TblAlumniForm> = [
         "industry",
         "startOfCareer",
@@ -863,14 +815,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       }
     }
     
-    // Conditional: when unemployed, validate reason of unemployment
-    if ((employeedVal || "").toLowerCase() === "unemployed") {
-      const reason = watch("reason_of_unemployment");
-      if (!reason || String(reason).trim() === "") {
-        setError("reason_of_unemployment", { type: "required", message: "Please select a reason for unemployment" });
-        return false;
-      }
-    }
+    // No validation needed for unemployed options as reason is in the radio button value
 
     // Validate Admin Section (if not excluded)
     if (!excludeAdminStep) {
@@ -898,14 +843,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       // Map employment status to database format
       if (payload.employeed) {
         const employeedValue = String(payload.employeed).trim();
-        if (employeedValue === "Self-employed") {
+        if (employeedValue === "Employed/Business") {
+          payload.employeed = "Employed";
+        } else if (employeedValue === "Self-employed") {
           payload.employeed = "Self-Emplo";
         } else if (employeedValue === "Pursuing Higher Education") {
-          payload.employeed = "HigherEd";
-        } else if (employeedValue === "Employed") {
-          payload.employeed = "Employed";
-        } else if (employeedValue === "Unemployed") {
-          payload.employeed = "Unemployed";
+          payload.employeed = "Pursuing Higher Education";
+        } else if (employeedValue === "Unemployed By choice") {
+          payload.employeed = "Unemployed By choice";
+        } else if (employeedValue === "Unemployed, searching for job") {
+          payload.employeed = "Unemployed, searching for job";
         }
       }
       
@@ -1244,7 +1191,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.cnicpassport && <p className="mt-1 text-xs text-red-600">CNIC/Passport is required</p>}
             </div>
             <div>
-              <label className={labelBase}>Mobile No.*</label>
+              <label className={labelBase}>Primary Contact No.*</label>
               <Controller
                 name="contactno"
                 control={control}
@@ -1307,7 +1254,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               <select className={inputBase} {...register("maritalstatus")}>
                 <option value="">Select</option>
                 <option value="Married">Married</option>
-                <option value="Widowed">Unmarried</option>
+                <option value="Un-Married">Un-Married</option>
               </select>
               {errors.maritalstatus && <p className="mt-1 text-xs text-red-600">Marital status is required</p>}
             </div>
@@ -1555,153 +1502,64 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 )}
               </div>
             )}
-            <div className="relative">
+            <div>
               <label className={labelBase}>Home City *</label>
-              {selectedHomeCountry === "Pakistan" ? (
+              {selectedHomeCountry === "Pakistan" && !selectedHomeProvince ? (
+                <div className="mt-1 p-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500">
+                  Please select a province first
+                </div>
+              ) : (
                 <>
-                  {!selectedHomeProvince ? (
-                    <div className="mt-1 p-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500">
-                      Please select a province first
-                    </div>
-                  ) : (
-                    <Controller
-                      name="homeCity"
-                      control={control}
-                      rules={{ 
-                        required: "City is required",
-                        maxLength: {
-                          value: 50,
-                          message: "City must be 50 characters or less"
-                        },
-                        validate: (value) => {
-                          const val = value ? String(value).trim() : "";
-                          if (val === "" || val.length === 0) {
-                            return "City is required";
-                          }
-                          return true;
-                        }
-                      }}
-                      render={({ field }) => (
-                        <>
-                          <input 
-                            type="text" 
-                            className={inputBase} 
-                            value={homeCitySearch || ""}
-                            onChange={(e) => {
-                              const newValue = e.target.value;
-                              isTypingCityRef.current = true;
-                              setHomeCitySearch(newValue);
-                              setShowHomeCityDropdown(true);
-                              
-                              // Always update form value immediately to allow free text entry
-                              field.onChange(newValue);
-                              lastSetCityValueRef.current = newValue;
-                              
-                              // If exact match found, close dropdown
-                              const trimmedValue = newValue.trim();
-                              const matchingCity = homeProvinceCities.find(c => c.toLowerCase() === trimmedValue.toLowerCase());
-                              if (matchingCity) {
-                                setShowHomeCityDropdown(false);
-                                isTypingCityRef.current = false;
-                                setTimeout(() => trigger("homeCity"), 0);
-                              }
-                            }}
-                            onFocus={() => {
-                              if (selectedHomeProvince) {
-                                setShowHomeCityDropdown(true);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              // Don't close if clicking inside dropdown
-                              const relatedTarget = e.relatedTarget as HTMLElement;
-                              if (relatedTarget && relatedTarget.closest('.home-city-dropdown')) {
-                                return;
-                              }
-                              // Delay to allow dropdown click
-                              setTimeout(() => {
-                                isTypingCityRef.current = false;
-                                setShowHomeCityDropdown(false);
-                                const trimmedSearch = homeCitySearch.trim();
-                                
-                                // If empty, clear the field
-                                if (trimmedSearch === "") {
-                                  lastSetCityValueRef.current = "";
-                                  field.onChange("");
-                                  setHomeCitySearch("");
-                                } else {
-                                  // Accept whatever was typed (could be from list or custom)
-                                  // Normalize: if exact match exists, use the normalized version from list
-                                  const exactMatch = homeProvinceCities.find(c => c.toLowerCase() === trimmedSearch.toLowerCase());
-                                  if (exactMatch) {
-                                    lastSetCityValueRef.current = exactMatch;
-                                    field.onChange(exactMatch);
-                                    setHomeCitySearch(exactMatch);
-                                  } else {
-                                    // Accept custom typed value as-is
-                                    lastSetCityValueRef.current = trimmedSearch;
-                                    field.onChange(trimmedSearch);
-                                    setHomeCitySearch(trimmedSearch);
-                                  }
-                                  // Trigger validation
-                                  setTimeout(() => {
-                                    trigger("homeCity");
-                                  }, 0);
-                                }
-                              }, 200);
-                            }}
-                            placeholder={`Select from list or type custom city name...`}
-                            disabled={!selectedHomeProvince}
-                            list="home-city-datalist"
-                          />
-                          <datalist id="home-city-datalist">
-                            {homeProvinceCities.map((city) => (
-                              <option key={city} value={city} />
-                            ))}
-                          </datalist>
-                          {showHomeCityDropdown && selectedHomeProvince && filteredHomeCities.length > 0 && (
-                            <div className="home-city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {filteredHomeCities.map((city) => (
-                                <button
-                                  key={city}
-                                  type="button"
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault(); // Prevent input blur
-                                    isTypingCityRef.current = false;
-                                    lastSetCityValueRef.current = city;
-                                    setHomeCitySearch(city);
-                                    field.onChange(city);
-                                    setShowHomeCityDropdown(false);
-                                    // Trigger validation to clear any error messages
-                                    setTimeout(() => {
-                                      trigger("homeCity");
-                                    }, 0);
-                                  }}
-                                >
-                                  {city}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {showHomeCityDropdown && selectedHomeProvince && filteredHomeCities.length === 0 && homeCitySearch.trim() && (
-                            <div className="home-city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-sm text-gray-500">
-                              No cities found matching &quot;{homeCitySearch}&quot;. You can use your typed city name.
-                            </div>
-                          )}
-                        </>
-                      )}
-                    />
+                  <Controller
+                    name="homeCity"
+                    control={control}
+                    rules={{
+                      required: "City is required",
+                      maxLength: {
+                        value: 50,
+                        message: "City must be 50 characters or less"
+                      }
+                    }}
+                    render={({ field }) => (
+                      <input
+                        type="text"
+                        className={inputBase}
+                        list={selectedHomeCountry === "Pakistan" && selectedHomeProvince ? "home-city-datalist" : undefined}
+                        placeholder={selectedHomeCountry === "Pakistan" ? "Select from list or type your city" : "Enter city name"}
+                        value={field.value || ""}
+                        name={field.name}
+                        ref={(e) => {
+                          field.ref(e);
+                          homeCityInputRef.current = e;
+                        }}
+                        onFocus={() => {
+                          isTypingHomeCityRef.current = true;
+                        }}
+                        onChange={(e) => {
+                          isTypingHomeCityRef.current = true;
+                          field.onChange(e);
+                        }}
+                        onBlur={() => {
+                          isTypingHomeCityRef.current = false;
+                          field.onBlur();
+                        }}
+                      />
+                    )}
+                  />
+                  {selectedHomeCountry === "Pakistan" && selectedHomeProvince && (
+                    <datalist id="home-city-datalist">
+                      {homeProvinceCities.map((city) => (
+                        <option key={city} value={city} />
+                      ))}
+                    </datalist>
                   )}
                 </>
-              ) : (
-                <input 
-                  type="text" 
-                  className={inputBase} 
-                  placeholder="Enter city name"
-                  {...register("homeCity", { required: true, maxLength: 50 })} 
-                />
               )}
-              {errors.homeCity && <p className="mt-1 text-xs text-red-600">City is required</p>}
+              {errors.homeCity && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.homeCity.message || "City is required"}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -1945,7 +1803,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="mt-2 flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Employed" {...register("employeed")} /> Employed/Business
+                  <input type="radio" value="Employed/Business" {...register("employeed")} /> Employed/Business
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
                   <input type="radio" value="Self-employed" {...register("employeed")} /> Self-employed
@@ -1954,13 +1812,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input type="radio" value="Pursuing Higher Education" {...register("employeed")} /> Pursuing Higher Education
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed" defaultChecked {...register("employeed")} /> Unemployed
+                  <input type="radio" value="Unemployed By choice" {...register("employeed")} /> Unemployed By choice
+                </label>
+                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                  <input type="radio" value="Unemployed, searching for job" defaultChecked {...register("employeed")} /> Unemployed, searching for job
                 </label>
               </div>
             </div>
 
             {/* Employed Fields */}
-            {((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "self-employed") && (
+            {((employeedVal || "").toLowerCase() === "employed/business" || (employeedVal || "").toLowerCase() === "self-employed") && (
               <>
                 {/* Sector = industry */}
                 <div>
@@ -2244,23 +2105,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </>
             )}
 
-            {/* Unemployed Fields */}
-            {(employeedVal || "").toLowerCase() === "unemployed" && (
-              <div className="sm:col-span-2 lg:col-span-3">
-                <label className={labelBase}>Reason of Unemployment *</label>
-                <select 
-                  className={inputBase} 
-                  {...register("reason_of_unemployment", { required: "Please select a reason" })}
-                >
-                  <option value="">Select reason</option>
-                  <option value="By Choice">By Choice</option>
-                  <option value="Searching for Job">Searching for Job</option>
-                </select>
-                {errors.reason_of_unemployment && (
-                  <p className="mt-1 text-xs text-red-600">{errors.reason_of_unemployment.message || "Reason is required"}</p>
-                )}
-              </div>
-            )}
+            {/* Unemployed Fields - No additional fields needed as reason is in the radio button value */}
           </div>
           <div className="sm:col-span-2 lg:col-span-3 mt-4">
             <label className={labelBase}>About Me (Optional)</label>
@@ -2463,11 +2308,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 <option value="">Select</option>
                 <option value="A+">A+</option>
                 <option value="A">A</option>
-                <option value="B+">B+</option>
                 <option value="B">B</option>
-                <option value="C+">C+</option>
                 <option value="C">C</option>
-                <option value="D">D</option>
+                
               </select>
             </div>
           </div>
