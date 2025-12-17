@@ -436,7 +436,7 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
                       type="checkbox"
                       className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-700"
                       checked={checked}
-                      disabled={disabled || mode === "faculty"}
+                      disabled={disabled}
                       onChange={() => toggleDepartment(d.department)}
                     />
                     <div className="min-w-0 flex-1">
@@ -480,7 +480,7 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
                       type="checkbox"
                       className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-700"
                       checked={checked}
-                      disabled={disabled || mode !== "program"}
+                      disabled={disabled}
                       onChange={() => toggleProgram(p.program)}
                     />
                     <div className="min-w-0 flex-1">
