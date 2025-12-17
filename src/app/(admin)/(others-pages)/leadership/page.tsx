@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { TrashBinIcon, CheckLineIcon, CloseLineIcon, DownloadIcon, PlusIcon } from "@/icons";
 import { canModify } from "@/lib/alumniProfile";
@@ -740,30 +741,28 @@ export default function LeadershipPage() {
         {/* Table Section - Matching Alumni Tabs styling */}
         <div className="px-3 sm:px-1 pb-8">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-            <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto relative">
-              <div className="min-w-[800px]">
-                {selectedTab === "applications" ? (
-                  <ApplicationsTable
-                    applications={filteredApplications}
-                    loading={applicationsLoading}
-                    isAdmin={isAdmin}
-                    onAction={handleAction}
-                    processingIds={processingIds}
-                  />
-                ) : (
-                  <MembersTable
-                    members={filteredMembers}
-                    loading={membersLoading}
-                    type={selectedTab === "chapterMembers" ? "chapter" : "association"}
-                    isAdmin={isAdmin}
-                    expandedMemberId={expandedMemberId}
-                    onExpand={setExpandedMemberId}
-                    onDelete={handleMemberDelete}
-                    processingIds={processingIds}
-                  />
-                )}
-              </div>
-            </div>
+            <SyncedTableScroll minWidth={800} maxHeight={750}>
+              {selectedTab === "applications" ? (
+                <ApplicationsTable
+                  applications={filteredApplications}
+                  loading={applicationsLoading}
+                  isAdmin={isAdmin}
+                  onAction={handleAction}
+                  processingIds={processingIds}
+                />
+              ) : (
+                <MembersTable
+                  members={filteredMembers}
+                  loading={membersLoading}
+                  type={selectedTab === "chapterMembers" ? "chapter" : "association"}
+                  isAdmin={isAdmin}
+                  expandedMemberId={expandedMemberId}
+                  onExpand={setExpandedMemberId}
+                  onDelete={handleMemberDelete}
+                  processingIds={processingIds}
+                />
+              )}
+            </SyncedTableScroll>
           </div>
         </div>
       </div>

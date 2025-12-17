@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { parseChapterCities, serializeChapterCities } from "@/lib/chapterCities";
 
 // GET - Fetch all chapters
 export async function GET() {
@@ -24,15 +25,21 @@ export async function GET() {
         chapter_whatsapp,
         chapter_image,
         is_active,
-        description
+        description,
+        cities
       FROM public.tblchapters
       ORDER BY 
         CASE WHEN national_chapter IS NOT NULL THEN national_chapter ELSE international_chapter END ASC
     `;
 
+    const mapped = (chapters as Array<Record<string, unknown>>).map((c) => ({
+      ...c,
+      cities: parseChapterCities(c.cities),
+    }));
+
     return NextResponse.json({ 
       success: true, 
-      chapters: chapters as unknown as Array<{ 
+      chapters: mapped as unknown as Array<{ 
         id: number; 
         national_chapter: string | null;
         international_chapter: string | null;
@@ -40,6 +47,7 @@ export async function GET() {
         chapter_image: string | null;
         is_active: boolean | null;
         description: string | null;
+        cities: string[];
       }>
     }, { status: 200 });
   } catch (error) {
@@ -69,7 +77,8 @@ export async function POST(req: NextRequest) {
       chapter_whatsapp, 
       chapter_image, 
       is_active, 
-      description 
+      description,
+      cities,
     } = body;
 
     // At least one of national_chapter or international_chapter must be provided
@@ -92,6 +101,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Chapter with this name already exists" }, { status: 409 });
     }
 
+    const citiesList = parseChapterCities(cities);
+    const citiesText = serializeChapterCities(citiesList);
+
     const result = await sql/* sql */`
       INSERT INTO public.tblchapters (
         national_chapter, 
@@ -99,7 +111,8 @@ export async function POST(req: NextRequest) {
         chapter_whatsapp, 
         chapter_image, 
         is_active, 
-        description
+        description,
+        cities
       )
       VALUES (
         ${national_chapter?.trim() || null}, 
@@ -107,12 +120,16 @@ export async function POST(req: NextRequest) {
         ${chapter_whatsapp?.trim() || null}, 
         ${chapter_image?.trim() || null}, 
         ${is_active !== undefined ? is_active : true}, 
-        ${description?.trim() || null}
+        ${description?.trim() || null},
+        ${citiesText}
       )
-      RETURNING id, national_chapter, international_chapter, chapter_whatsapp, chapter_image, is_active, description
+      RETURNING id, national_chapter, international_chapter, chapter_whatsapp, chapter_image, is_active, description, cities
     `;
 
-    const newChapter = Array.isArray(result) ? result[0] : result;
+    const newChapterRaw = Array.isArray(result) ? result[0] : result;
+    const newChapter = newChapterRaw
+      ? ({ ...newChapterRaw, cities: parseChapterCities((newChapterRaw as Record<string, unknown>).cities) } as Record<string, unknown>)
+      : newChapterRaw;
     return NextResponse.json({ 
       success: true, 
       chapter: newChapter as { 
@@ -123,6 +140,7 @@ export async function POST(req: NextRequest) {
         chapter_image: string | null;
         is_active: boolean | null;
         description: string | null;
+        cities: string[];
       }
     }, { status: 201 });
   } catch (error) {
@@ -153,7 +171,8 @@ export async function PUT(req: NextRequest) {
       chapter_whatsapp, 
       chapter_image, 
       is_active, 
-      description 
+      description,
+      cities,
     } = body;
 
     if (!id || typeof id !== "number") {
@@ -181,6 +200,9 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Another chapter with this name already exists" }, { status: 409 });
     }
 
+    const citiesList = parseChapterCities(cities);
+    const citiesText = serializeChapterCities(citiesList);
+
     const result = await sql/* sql */`
       UPDATE public.tblchapters
       SET 
@@ -189,12 +211,16 @@ export async function PUT(req: NextRequest) {
         chapter_whatsapp = ${chapter_whatsapp?.trim() || null},
         chapter_image = ${chapter_image?.trim() || null},
         is_active = ${is_active !== undefined ? is_active : true},
-        description = ${description?.trim() || null}
+        description = ${description?.trim() || null},
+        cities = ${citiesText}
       WHERE id = ${id}
-      RETURNING id, national_chapter, international_chapter, chapter_whatsapp, chapter_image, is_active, description
+      RETURNING id, national_chapter, international_chapter, chapter_whatsapp, chapter_image, is_active, description, cities
     `;
 
-    const updated = Array.isArray(result) ? result[0] : result;
+    const updatedRaw = Array.isArray(result) ? result[0] : result;
+    const updated = updatedRaw
+      ? ({ ...updatedRaw, cities: parseChapterCities((updatedRaw as Record<string, unknown>).cities) } as Record<string, unknown>)
+      : updatedRaw;
     if (!updated) {
       return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
     }
@@ -209,6 +235,7 @@ export async function PUT(req: NextRequest) {
         chapter_image: string | null;
         is_active: boolean | null;
         description: string | null;
+        cities: string[];
       }
     }, { status: 200 });
   } catch (error) {

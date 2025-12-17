@@ -7,6 +7,7 @@ import {
 } from "../ui/table";
 import Badge from "../ui/badge/Badge";
 import Image from "next/image";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 // Define the TypeScript interface for the table rows
 interface Product {
@@ -123,7 +124,7 @@ export default function RecentOrders() {
           </button>
         </div>
       </div>
-      <div className="max-w-full overflow-x-auto">
+      <SyncedTableScroll minWidth={900}>
         <Table>
           {/* Table Header */}
           <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
@@ -205,7 +206,7 @@ export default function RecentOrders() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </SyncedTableScroll>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import Link from "next/link";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,9 +107,8 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[750px] overflow-y-auto">
-        <div className="min-w-[900px]">
-          <Table className="min-w-full">
+      <SyncedTableScroll minWidth={900} maxHeight={750}>
+        <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
               <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
                 <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -257,8 +257,9 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+        </Table>
+      </SyncedTableScroll>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
               {(() => {
                 const start = (currentPage - 1) * pageSize + 1;
@@ -298,8 +299,6 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               />
             </div>
           </div>
-        </div>
-      </div>
     </div>
   );
 };

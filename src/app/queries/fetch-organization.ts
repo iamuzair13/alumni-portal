@@ -331,6 +331,7 @@ export type Chapter = {
   chapter_image: string | null;
   is_active: boolean | null;
   description: string | null;
+  cities?: string[]; // parsed cities list from tblchapters.cities
 };
 
 async function fetchChapters(): Promise<Chapter[]> {
@@ -352,6 +353,7 @@ async function createChapter(chapter: {
   chapter_image?: string | null;
   is_active?: boolean | null;
   description?: string | null;
+  cities?: string[] | string | null;
 }): Promise<Chapter> {
   const res = await fetch("/api/organization/chapters", {
     method: "POST",
@@ -373,6 +375,7 @@ async function updateChapter(id: number, chapter: {
   chapter_image?: string | null;
   is_active?: boolean | null;
   description?: string | null;
+  cities?: string[] | string | null;
 }): Promise<Chapter> {
   const res = await fetch("/api/organization/chapters", {
     method: "PUT",
@@ -425,7 +428,7 @@ export function useCreateChapter() {
 export function useUpdateChapter() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...chapter }: { id: number; national_chapter?: string | null; international_chapter?: string | null; chapter_whatsapp?: string | null; chapter_image?: string | null; is_active?: boolean | null; description?: string | null }) =>
+    mutationFn: ({ id, ...chapter }: { id: number; national_chapter?: string | null; international_chapter?: string | null; chapter_whatsapp?: string | null; chapter_image?: string | null; is_active?: boolean | null; description?: string | null; cities?: string[] | string | null }) =>
       updateChapter(id, chapter),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chapterKeys.list() });

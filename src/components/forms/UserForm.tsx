@@ -1,14 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import MultiSelect from "@/components/form/MultiSelect";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
-import { 
-  getFaculties, 
-  getDepartmentsByFaculty, 
-  getProgramsByFacultyAndDepartment
-} from "@/data/programs-departments";
+import AccessControlPicker, { type AccessAssignmentsValue } from "@/components/users/AccessControlPicker";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
@@ -72,27 +67,12 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Access control state
-  const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
-  const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
-  const [availablePrograms, setAvailablePrograms] = useState<string[]>([]);
-  const [loadingPrograms, setLoadingPrograms] = useState(false);
-  
-  // Special constants for "All" selections
-  const ALL_FACULTIES = "__ALL_FACULTIES__";
-  const ALL_DEPARTMENTS = "__ALL_DEPARTMENTS__";
-  const ALL_PROGRAMS = "__ALL_PROGRAMS__";
-  
-  // Track if "All" is selected for each dropdown
-  const [allFacultiesSelected, setAllFacultiesSelected] = useState(false);
-  const [allDepartmentsSelected, setAllDepartmentsSelected] = useState(false);
-  const [allProgramsSelected, setAllProgramsSelected] = useState(false);
-  
-  // Store loaded access assignments to restore after available lists are computed
-  const [loadedDepartments, setLoadedDepartments] = useState<string[]>([]);
-  const [loadedPrograms, setLoadedPrograms] = useState<string[]>([]);
+  // Access control state (DB-backed via organization APIs)
+  const [accessAssignmentsState, setAccessAssignmentsState] = useState<AccessAssignmentsValue>({
+    faculties: [],
+    departments: [],
+    programs: [],
+  });
 
   // Initialize CSRF token
   useEffect(() => {
@@ -130,25 +110,8 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
               accessAssignments: user.accessAssignments || { faculties: [], departments: [], programs: [] },
             });
             
-            // Set access assignments if available
-            if (user.accessAssignments) {
-              const { faculties, departments, programs } = user.accessAssignments;
-              if (faculties && faculties.length > 0) {
-                setSelectedFaculties(faculties);
-                // Check if all faculties are selected
-                const allFacs = getFaculties();
-                if (faculties.length === allFacs.length && allFacs.every(f => faculties.includes(f))) {
-                  setAllFacultiesSelected(true);
-                }
-              }
-              // Store departments and programs to restore after available lists are computed
-              if (departments && departments.length > 0) {
-                setLoadedDepartments(departments);
-              }
-              if (programs && programs.length > 0) {
-                setLoadedPrograms(programs);
-              }
-            }
+            const access = (user.accessAssignments ?? { faculties: [], departments: [], programs: [] }) as AccessAssignmentsValue;
+            setAccessAssignmentsState(access);
           }
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to load user data");
@@ -174,225 +137,12 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
       });
       
       if (initialData.accessAssignments) {
-        const { faculties, departments, programs } = initialData.accessAssignments;
-        if (faculties && faculties.length > 0) {
-          setSelectedFaculties(faculties);
-          const allFacs = getFaculties();
-          if (faculties.length === allFacs.length && allFacs.every(f => faculties.includes(f))) {
-            setAllFacultiesSelected(true);
-          }
-        }
-        if (departments && departments.length > 0) {
-          setSelectedDepartments(departments);
-        }
-        if (programs && programs.length > 0) {
-          setSelectedPrograms(programs);
-        }
+        const access = (initialData.accessAssignments ?? { faculties: [], departments: [], programs: [] }) as AccessAssignmentsValue;
+        setAccessAssignmentsState(access);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, isEditMode]);
-
-  // Handle "All Faculties" selection
-  const handleFacultiesChange = useCallback((selected: string[]) => {
-    // Remove "All" marker from selection
-    const filtered = selected.filter(f => f !== ALL_FACULTIES);
-    const allFacs = getFaculties();
-    
-    // Check if "All" was just selected
-    const hasAll = selected.includes(ALL_FACULTIES);
-    const wasAllSelected = allFacultiesSelected;
-    
-    if (hasAll && !wasAllSelected) {
-      // "All" was just selected - select all faculties
-      setSelectedFaculties(allFacs);
-      setAllFacultiesSelected(true);
-    } else if (!hasAll && filtered.length === allFacs.length && allFacs.every(f => filtered.includes(f))) {
-      // All faculties are manually selected - mark "All" as selected
-      setSelectedFaculties(allFacs);
-      setAllFacultiesSelected(true);
-    } else if (!hasAll) {
-      // Individual faculties selected - clear "All" flag
-      setSelectedFaculties(filtered);
-      setAllFacultiesSelected(false);
-    }
-  }, [allFacultiesSelected]);
-
-  // Update available departments when faculties change
-  useEffect(() => {
-    if (selectedFaculties.length === 0) {
-      setAvailableDepartments([]);
-      setSelectedDepartments([]);
-      setSelectedPrograms([]);
-      setAllDepartmentsSelected(false);
-      setAllProgramsSelected(false);
-      return;
-    }
-
-    const depts = new Set<string>();
-    selectedFaculties.forEach((faculty) => {
-      const deptsForFaculty = getDepartmentsByFaculty(faculty);
-      deptsForFaculty.forEach((dept) => depts.add(dept));
-    });
-
-    const deptsArray = Array.from(depts).sort();
-    setAvailableDepartments(deptsArray);
-    
-    // Restore loaded departments if in edit mode, otherwise filter
-    if (isEditMode && loadedDepartments.length > 0) {
-      const validDepts = loadedDepartments.filter(d => depts.has(d));
-      setSelectedDepartments(validDepts);
-      // Check if all departments should be marked as "All"
-      if (validDepts.length === deptsArray.length && deptsArray.length > 0 && deptsArray.every(d => validDepts.includes(d))) {
-        setAllDepartmentsSelected(true);
-      }
-      // Clear loaded departments after restoring
-      setLoadedDepartments([]);
-    } else {
-      setSelectedDepartments((prev) => prev.filter((dept) => depts.has(dept)));
-      
-      // If all departments were selected, maintain "All" selection
-      if (allDepartmentsSelected && deptsArray.length > 0) {
-        setSelectedDepartments(deptsArray);
-      }
-    }
-  }, [selectedFaculties, allDepartmentsSelected, isEditMode, loadedDepartments]);
-
-  // Handle "All Departments" selection
-  const handleDepartmentsChange = useCallback((selected: string[]) => {
-    // Remove "All" marker from selection
-    const filtered = selected.filter(d => d !== ALL_DEPARTMENTS);
-    const allDepts = availableDepartments.filter(d => d !== ALL_DEPARTMENTS);
-    
-    // Check if "All" was just selected
-    const hasAll = selected.includes(ALL_DEPARTMENTS);
-    const wasAllSelected = allDepartmentsSelected;
-    
-    if (hasAll && !wasAllSelected) {
-      // "All" was just selected - select all departments
-      setSelectedDepartments(allDepts);
-      setAllDepartmentsSelected(true);
-      // Automatically set programs to "All" when "All Departments" is selected
-      // (programs depend on departments, so all departments = all programs)
-      setAllProgramsSelected(true);
-    } else if (!hasAll && allDepts.length > 0 && filtered.length === allDepts.length && allDepts.every(d => filtered.includes(d))) {
-      // All departments are manually selected - mark "All" as selected
-      setSelectedDepartments(allDepts);
-      setAllDepartmentsSelected(true);
-      // Automatically set programs to "All" when all departments are selected
-      setAllProgramsSelected(true);
-    } else if (!hasAll) {
-      // Individual departments selected - clear "All" flag
-      setSelectedDepartments(filtered);
-      setAllDepartmentsSelected(false);
-      // Don't automatically change programs - user can select "All" or specific programs for these departments
-    }
-  }, [availableDepartments, allDepartmentsSelected]);
-
-  // Fetch programs when departments change
-  useEffect(() => {
-    if (selectedDepartments.length === 0) {
-      setAvailablePrograms([]);
-      setSelectedPrograms([]);
-      setAllProgramsSelected(false);
-      return;
-    }
-
-    // Get programs directly from data instead of API call
-    const getProgramsForDepartments = () => {
-      const programsSet = new Set<string>();
-
-      // Find which faculty each department belongs to and get its programs
-      for (const dept of selectedDepartments) {
-        for (const faculty of selectedFaculties) {
-          const programs = getProgramsByFacultyAndDepartment(faculty, dept);
-          programs.forEach(p => programsSet.add(p));
-        }
-      }
-
-      return Array.from(programsSet).sort();
-    };
-
-    const fetchPrograms = async () => {
-      setLoadingPrograms(true);
-      try {
-        const programsArray = getProgramsForDepartments();
-        setAvailablePrograms(programsArray);
-        
-        // Restore loaded programs if in edit mode, otherwise filter
-        // Use case-insensitive matching for better compatibility
-        if (isEditMode && loadedPrograms.length > 0) {
-          const programsSet = new Set(programsArray.map(p => p.toLowerCase().trim()));
-          const validProgs = loadedPrograms.filter(p => {
-            const normalized = p.toLowerCase().trim();
-            return Array.from(programsSet).some(prog => prog === normalized);
-          }).map(p => {
-            // Find the exact match from programsArray (preserve original casing)
-            const normalized = p.toLowerCase().trim();
-            return programsArray.find(prog => prog.toLowerCase().trim() === normalized) || p;
-          });
-          setSelectedPrograms(validProgs);
-          // Check if all programs should be marked as "All"
-          if (validProgs.length === programsArray.length && programsArray.length > 0 && programsArray.every(p => validProgs.includes(p))) {
-            setAllProgramsSelected(true);
-          }
-          // Clear loaded programs after restoring
-          setLoadedPrograms([]);
-        } else {
-          // Use case-insensitive matching
-          const programsSet = new Set(programsArray.map(p => p.toLowerCase().trim()));
-          setSelectedPrograms((prev) => prev.filter((prog) => {
-            const normalized = prog.toLowerCase().trim();
-            return Array.from(programsSet).some(p => p === normalized);
-          }).map(prog => {
-            // Find the exact match from programsArray (preserve original casing)
-            const normalized = prog.toLowerCase().trim();
-            return programsArray.find(p => p.toLowerCase().trim() === normalized) || prog;
-          }));
-          
-          // If all departments are selected, automatically set all programs
-          if (allDepartmentsSelected && programsArray.length > 0) {
-            setSelectedPrograms(programsArray);
-            setAllProgramsSelected(true);
-          } else if (allProgramsSelected && programsArray.length > 0) {
-            // If all programs were selected previously, maintain "All" selection
-            setSelectedPrograms(programsArray);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch programs:", err);
-      } finally {
-        setLoadingPrograms(false);
-      }
-    };
-
-    fetchPrograms();
-  }, [selectedDepartments, selectedFaculties, allProgramsSelected, allDepartmentsSelected, isEditMode, loadedPrograms]);
-
-  // Handle "All Programs" selection
-  const handleProgramsChange = useCallback((selected: string[]) => {
-    // Remove "All" marker from selection
-    const filtered = selected.filter(p => p !== ALL_PROGRAMS);
-    const allProgs = availablePrograms.filter(p => p !== ALL_PROGRAMS);
-    
-    // Check if "All" was just selected
-    const hasAll = selected.includes(ALL_PROGRAMS);
-    const wasAllSelected = allProgramsSelected;
-    
-    if (hasAll && !wasAllSelected) {
-      // "All" was just selected - select all programs
-      setSelectedPrograms(allProgs);
-      setAllProgramsSelected(true);
-    } else if (!hasAll && allProgs.length > 0 && filtered.length === allProgs.length && allProgs.every(p => filtered.includes(p))) {
-      // All programs are manually selected - mark "All" as selected
-      setSelectedPrograms(allProgs);
-      setAllProgramsSelected(true);
-    } else if (!hasAll) {
-      // Individual programs selected - clear "All" flag
-      setSelectedPrograms(filtered);
-      setAllProgramsSelected(false);
-    }
-  }, [availablePrograms, allProgramsSelected]);
 
   const emailValid = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()), [values.email]);
   const passwordValid = useMemo(() => values.password.length >= 8, [values.password]);
@@ -409,12 +159,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
       csrf: values.csrf,
       accessAssignments: { faculties: [], departments: [], programs: [] },
     });
-    setSelectedFaculties([]);
-    setSelectedDepartments([]);
-    setSelectedPrograms([]);
-    setAllFacultiesSelected(false);
-    setAllDepartmentsSelected(false);
-    setAllProgramsSelected(false);
+    setAccessAssignmentsState({ faculties: [], departments: [], programs: [] });
     setMessage(null);
     setError(null);
   }, [values.csrf]);
@@ -444,7 +189,9 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
     }
 
     const userType = values.type.toLowerCase();
-    if ((userType === "admin" || userType === "viewer") && selectedFaculties.length === 0 && !allFacultiesSelected) {
+    const needsAccessControl = userType === "admin" || userType === "viewer";
+
+    if (needsAccessControl && accessAssignmentsState.faculties.length === 0) {
       setError("Please select at least one Faculty for access control.");
       toast.error("Please select at least one Faculty for access control.");
       return;
@@ -458,73 +205,16 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
     try {
       setSubmitting(true);
 
-      // Build access assignments according to API logic:
-      // - Empty departments array = faculty-level access (all departments/programs in those faculties)
-      // - Empty programs array with departments = department-level access (all programs in those departments)
-      // - Both arrays with values = program-level access (specific programs)
-      const accessAssignments =
-        userType === "admin" || userType === "viewer"
-          ? (() => {
-              // Case 1: "All Faculties" selected → send empty departments/programs for faculty-level access (all departments/programs)
-              if (allFacultiesSelected) {
-                return {
-                  faculties: selectedFaculties,
-                  departments: [], // Empty = faculty-level access to ALL departments and programs
-                  programs: [],
-                };
-              }
-              
-              // Case 2: "All Departments" selected → send all departments with empty programs for department-level access
-              if (allDepartmentsSelected && selectedDepartments.length > 0) {
-                return {
-                  faculties: selectedFaculties,
-                  departments: selectedDepartments, // All departments from selected faculties
-                  programs: [], // Empty = department-level access to ALL programs in those departments
-                };
-              }
-              
-              // Case 3: "All Programs" selected → send departments with empty programs for department-level access (all programs)
-              if (allProgramsSelected && selectedDepartments.length > 0) {
-                return {
-                  faculties: selectedFaculties,
-                  departments: selectedDepartments, // All departments from selected faculties
-                  programs: [], // Empty = department-level access to ALL programs in those departments
-                };
-              }
-              
-              // Case 4: Specific selections (some faculties/departments/programs)
-              // When programs are selected, we need to ensure they're properly associated with their departments
-              // Filter programs to only include those that belong to selected departments
-              const validPrograms: string[] = [];
-              if (selectedPrograms.length > 0 && selectedDepartments.length > 0) {
-                for (const program of selectedPrograms) {
-                  // Check if this program belongs to any of the selected departments
-                  let programFound = false;
-                  for (const dept of selectedDepartments) {
-                    for (const faculty of selectedFaculties) {
-                      const deptPrograms = getProgramsByFacultyAndDepartment(faculty, dept);
-                      // Use case-insensitive matching
-                      const normalizedProgram = program.toLowerCase().trim();
-                      if (deptPrograms.some(p => p.toLowerCase().trim() === normalizedProgram)) {
-                        programFound = true;
-                        break;
-                      }
-                    }
-                    if (programFound) break;
-                  }
-                  if (programFound) {
-                    validPrograms.push(program);
-                  }
-                }
-              }
-              
-              return {
-                faculties: selectedFaculties,
-                departments: selectedDepartments.length > 0 ? selectedDepartments : [],
-                programs: validPrograms.length > 0 ? validPrograms : (selectedPrograms.length > 0 ? selectedPrograms : []),
-              };
-            })()
-          : undefined;
+      const accessAssignments = needsAccessControl
+        ? {
+            faculties: accessAssignmentsState.faculties,
+            departments: accessAssignmentsState.departments,
+            programs: accessAssignmentsState.programs,
+          }
+        : undefined;
+
+      const accessAssignmentsPayload: { faculties: string[]; departments: string[]; programs: string[] } | null | undefined =
+        needsAccessControl ? accessAssignments ?? { faculties: [], departments: [], programs: [] } : (userType === "superadmin" ? null : undefined);
 
       if (isEditMode && userId) {
         // Update existing user
@@ -535,7 +225,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
           department?: string | null;
           type: string;
           blocked: boolean;
-          accessAssignments?: { faculties: string[]; departments: string[]; programs: string[] };
+          accessAssignments?: { faculties: string[]; departments: string[]; programs: string[] } | null;
           password?: string;
         } = {
           email: values.email,
@@ -544,7 +234,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
           department: values.department || null,
           type: values.type,
           blocked: values.blocked || false,
-          accessAssignments,
+          accessAssignments: accessAssignmentsPayload,
         };
         
         // Only include password if it's provided
@@ -578,7 +268,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...values,
-            accessAssignments,
+            accessAssignments: accessAssignmentsPayload ?? undefined,
           }),
       });
 
@@ -788,102 +478,16 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                 </p>
               </div>
 
-              <div className="space-y-6">
-                {/* Faculty Selection */}
-                <div>
-                  <Label>
-                    Faculties <span className="text-red-500">*</span>
-                  </Label>
-                  <MultiSelect
-                    key={`faculties-${allFacultiesSelected ? 'all' : selectedFaculties.join(',')}`}
-                    label="Faculties"
-                    options={[
-                      { value: ALL_FACULTIES, text: "All Faculties", selected: allFacultiesSelected },
-                      ...getFaculties().map((f) => ({ value: f, text: f, selected: selectedFaculties.includes(f) })),
-                    ]}
-                    defaultSelected={allFacultiesSelected ? [ALL_FACULTIES, ...selectedFaculties] : selectedFaculties}
-                    onChange={(selected) => {
-                      handleFacultiesChange(selected);
-                    }}
-                    disabled={submitting}
-                  />
-                  <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                    Select &quot;All Faculties&quot; to grant access to all faculties, or select specific ones. This is required for Admin and Viewer roles.
+              <div className="space-y-4">
+                <AccessControlPicker
+                  value={accessAssignmentsState}
+                  onChange={setAccessAssignmentsState}
+                  disabled={submitting}
+                />
+                {accessAssignmentsState.faculties.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    ⚠️ At least one faculty must be selected
                   </p>
-                  {showAccessControl && selectedFaculties.length === 0 && !allFacultiesSelected && (
-                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                      ⚠️ At least one faculty must be selected
-                    </p>
-                  )}
-                </div>
-
-                {/* Department Selection */}
-                {(selectedFaculties.length > 0 || allFacultiesSelected) && (
-                  <div>
-                    <MultiSelect
-                      key={`departments-${allDepartmentsSelected ? 'all' : selectedDepartments.join(',')}`}
-                      label="Departments (Optional)"
-                      options={[
-                        { value: ALL_DEPARTMENTS, text: "All Departments", selected: allDepartmentsSelected },
-                        ...availableDepartments.map((d) => ({ value: d, text: d, selected: selectedDepartments.includes(d) })),
-                      ]}
-                      defaultSelected={allDepartmentsSelected ? [ALL_DEPARTMENTS, ...selectedDepartments] : selectedDepartments}
-                      onChange={(selected) => {
-                        handleDepartmentsChange(selected);
-                      }}
-                      disabled={submitting}
-                    />
-                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                      Select &quot;All Departments&quot; to grant access to all departments in selected faculties (programs will automatically be set to &quot;All&quot;), or select specific departments to customize access. If none selected, all departments will be accessible.
-                    </p>
-                  </div>
-                )}
-
-                {/* Program Selection */}
-                {selectedDepartments.length > 0 && (
-                  <div>
-                    {loadingPrograms ? (
-                      <div>
-                        <Label>Programs (Optional)</Label>
-                        <div className="mt-2 rounded-lg border border-gray-300 bg-white p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-                          <div className="inline-flex items-center gap-2">
-                            <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                            <span>Loading programs...</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {availablePrograms.length > 0 ? (
-                          <MultiSelect
-                            key={`programs-${allProgramsSelected ? 'all' : selectedPrograms.join(',')}`}
-                            label="Programs (Optional)"
-                            options={[
-                              { value: ALL_PROGRAMS, text: "All Programs", selected: allProgramsSelected },
-                              ...availablePrograms.map((p) => ({ value: p, text: p, selected: selectedPrograms.includes(p) })),
-                            ]}
-                            defaultSelected={allProgramsSelected ? [ALL_PROGRAMS, ...selectedPrograms] : selectedPrograms}
-                            onChange={(selected) => {
-                              handleProgramsChange(selected);
-                            }}
-                            disabled={submitting}
-                          />
-                        ) : (
-                          <div>
-                            <Label>Programs (Optional)</Label>
-                            <div className="mt-2 rounded-lg border border-gray-300 bg-white p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-                              No programs found for selected departments. Programs can be added later.
-                            </div>
-                          </div>
-                        )}
-                        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                          {allDepartmentsSelected 
-                            ? "Programs are automatically set to 'All' when 'All Departments' is selected. You can still select specific programs if needed."
-                            : "Select 'All Programs' to grant access to all programs in selected departments, or select specific ones. If none selected, all programs will be accessible."}
-                        </p>
-                      </>
-                    )}
-                  </div>
                 )}
               </div>
             </div>

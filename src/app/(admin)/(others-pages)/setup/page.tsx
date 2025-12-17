@@ -19,6 +19,7 @@ import { useSession } from "next-auth/react";
 import { canModify, isAdminUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
 import OrganizationComponent from "@/components/setup/OrganizationComponent";
 import ChaptersComponent from "@/components/setup/ChaptersComponent";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -303,7 +304,7 @@ function SetupPageContent() {
 
   return (
     <div className="">
-      <ComponentCard title="Setup" className="">
+      <ComponentCard title="Setup" className="overflow-x-hidden">
         {/* Role indicator */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -440,8 +441,9 @@ function SetupPageContent() {
 
             {/* Dashboard Access Management Table */}
             {!usersLoading && filteredUsers.length > 0 && (
-              <div className="mt-6 overflow-x-auto">
-                <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
+              <div className="mt-6">
+                <SyncedTableScroll minWidth={1100}>
+                  <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
                   <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
                     <tr className="border-b border-gray-200 dark:border-white/[0.06]">
                       <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
@@ -489,7 +491,8 @@ function SetupPageContent() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </SyncedTableScroll>
               </div>
             )}
 
@@ -669,7 +672,7 @@ function RealTimeUsers() {
 
   return (
     <div className="mt-6 overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
+      <SyncedTableScroll minWidth={1100} maxHeight={700}>
         <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
           <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
@@ -753,7 +756,7 @@ function RealTimeUsers() {
             ))}
           </tbody>
         </table>
-      </div>
+      </SyncedTableScroll>
       {/* Edit User Modal with UserForm */}
       {editUserId && canManage && (
         <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">

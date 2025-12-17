@@ -4,6 +4,297 @@ import { alumniRegistrationComprehensiveSchema } from "@/lib/alumniRegistration"
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { parseChapterCities } from "@/lib/chapterCities";
+
+async function autoAssignChapter1FromHomeLocation(args: {
+  alumniId: number;
+  homeCountry: string | null | undefined;
+  homeCity: string | null | undefined;
+}) {
+  const homeCountryRaw = args.homeCountry ? String(args.homeCountry).trim() : "";
+  const homeCityRaw = args.homeCity ? String(args.homeCity).trim() : "";
+  const isPakistan = homeCountryRaw.toLowerCase().trim() === "pakistan";
+  const lookupType = isPakistan ? "city" : "country";
+  const lookupValueRaw = isPakistan ? homeCityRaw : homeCountryRaw;
+
+  console.log("[AUTO-CHAPTER] start", {
+    alumniId: args.alumniId,
+    homeCountry: homeCountryRaw || null,
+    homeCity: homeCityRaw || null,
+    lookupType,
+    lookupValue: lookupValueRaw || null,
+  });
+
+  if (!lookupValueRaw) {
+    console.log("[AUTO-CHAPTER] skip", {
+      alumniId: args.alumniId,
+      reason: isPakistan ? "Pakistan selected but home city missing" : "Home country missing",
+    });
+    return;
+  }
+
+  try {
+    const chapters = await sql<
+      {
+        id: number;
+        national_chapter: string | null;
+        international_chapter: string | null;
+        cities: unknown;
+      }[]
+    >/* sql */`
+      SELECT id, national_chapter, international_chapter, cities
+      FROM public.tblchapters
+      WHERE is_active = true
+        AND cities IS NOT NULL
+    `;
+
+    const lookupLower = lookupValueRaw.toLowerCase().trim();
+    const matches = chapters
+      .map((ch) => {
+        const parsed = parseChapterCities(ch.cities);
+        const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+        return {
+          id: Number(ch.id),
+          name: String(ch.national_chapter || ch.international_chapter || ""),
+          type: ch.national_chapter ? "national" : "international",
+          has,
+        };
+      })
+      .filter((m) => m.has);
+
+    const preferredType = lookupType === "city" ? "national" : "international";
+    matches.sort((a, b) => {
+      const aPref = a.type === preferredType ? 0 : 1;
+      const bPref = b.type === preferredType ? 0 : 1;
+      if (aPref !== bPref) return aPref - bPref;
+      return a.id - b.id;
+    });
+
+    const chosen = matches[0];
+    console.log("[AUTO-CHAPTER] matched", {
+      alumniId: args.alumniId,
+      lookupType,
+      lookupValue: lookupValueRaw,
+      matchedCount: matches.length,
+      chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
+    });
+
+    if (!chosen) return;
+
+    const existing = await sql<{ id: number; chapter1: number | null }[]>/* sql */`
+      SELECT id, "chapter1"
+      FROM public.alumni_chapter
+      WHERE id = ${args.alumniId}
+      LIMIT 1
+    `;
+
+    const currentChapter1 = existing[0]?.chapter1 ?? null;
+    if (currentChapter1) {
+      console.log("[AUTO-CHAPTER] skip", {
+        alumniId: args.alumniId,
+        reason: "chapter1 already set",
+        currentChapter1,
+        attemptedChapter1: chosen.id,
+      });
+      return;
+    }
+
+    if (existing.length > 0) {
+      await sql/* sql */`
+        UPDATE public.alumni_chapter
+        SET "chapter1" = ${chosen.id}
+        WHERE id = ${args.alumniId}
+      `;
+      console.log("[AUTO-CHAPTER] update", { alumniId: args.alumniId, chapter1: chosen.id });
+    } else {
+      await sql/* sql */`
+        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+        VALUES (${args.alumniId}, ${chosen.id}, NULL, NULL)
+      `;
+      console.log("[AUTO-CHAPTER] insert", { alumniId: args.alumniId, chapter1: chosen.id });
+    }
+  } catch (err) {
+    console.error("[AUTO-CHAPTER] error", { alumniId: args.alumniId, err });
+  }
+}
+
+async function autoAssignChapter2FromWorkLocation(args: {
+  alumniId: number;
+  workCountry: string | null | undefined;
+  workCity: string | null | undefined;
+}) {
+  const workCountryRaw = args.workCountry ? String(args.workCountry).trim() : "";
+  const workCityRaw = args.workCity ? String(args.workCity).trim() : "";
+  const isPakistan = workCountryRaw.toLowerCase().trim() === "pakistan";
+  const lookupType = isPakistan ? "city" : "country";
+  const lookupValueRaw = isPakistan ? workCityRaw : workCountryRaw;
+
+  console.log("[AUTO-CHAPTER2] start", {
+    alumniId: args.alumniId,
+    workCountry: workCountryRaw || null,
+    workCity: workCityRaw || null,
+    lookupType,
+    lookupValue: lookupValueRaw || null,
+  });
+
+  if (!lookupValueRaw) {
+    console.log("[AUTO-CHAPTER2] skip", {
+      alumniId: args.alumniId,
+      reason: isPakistan ? "Pakistan selected but work city missing" : "Work country missing",
+    });
+    return;
+  }
+
+  try {
+    const chapters = await sql<
+      {
+        id: number;
+        national_chapter: string | null;
+        international_chapter: string | null;
+        cities: unknown;
+      }[]
+    >/* sql */`
+      SELECT id, national_chapter, international_chapter, cities
+      FROM public.tblchapters
+      WHERE is_active = true
+        AND cities IS NOT NULL
+    `;
+
+    const lookupLower = lookupValueRaw.toLowerCase().trim();
+    const matches = chapters
+      .map((ch) => {
+        const parsed = parseChapterCities(ch.cities);
+        const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+        return {
+          id: Number(ch.id),
+          name: String(ch.national_chapter || ch.international_chapter || ""),
+          type: ch.national_chapter ? "national" : "international",
+          has,
+        };
+      })
+      .filter((m) => m.has);
+
+    const preferredType = lookupType === "city" ? "national" : "international";
+    matches.sort((a, b) => {
+      const aPref = a.type === preferredType ? 0 : 1;
+      const bPref = b.type === preferredType ? 0 : 1;
+      if (aPref !== bPref) return aPref - bPref;
+      return a.id - b.id;
+    });
+
+    const chosen = matches[0];
+    console.log("[AUTO-CHAPTER2] matched", {
+      alumniId: args.alumniId,
+      lookupType,
+      lookupValue: lookupValueRaw,
+      matchedCount: matches.length,
+      chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
+    });
+
+    if (!chosen) return;
+
+    const existing = await sql<{ id: number; chapter2: number | null }[]>/* sql */`
+      SELECT id, "chapter2"
+      FROM public.alumni_chapter
+      WHERE id = ${args.alumniId}
+      LIMIT 1
+    `;
+
+    const currentChapter2 = existing[0]?.chapter2 ?? null;
+    if (currentChapter2) {
+      console.log("[AUTO-CHAPTER2] skip", {
+        alumniId: args.alumniId,
+        reason: "chapter2 already set",
+        currentChapter2,
+        attemptedChapter2: chosen.id,
+      });
+      return;
+    }
+
+    if (existing.length > 0) {
+      await sql/* sql */`
+        UPDATE public.alumni_chapter
+        SET "chapter2" = ${chosen.id}
+        WHERE id = ${args.alumniId}
+      `;
+      console.log("[AUTO-CHAPTER2] update", { alumniId: args.alumniId, chapter2: chosen.id });
+    } else {
+      await sql/* sql */`
+        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+        VALUES (${args.alumniId}, NULL, ${chosen.id}, NULL)
+      `;
+      console.log("[AUTO-CHAPTER2] insert", { alumniId: args.alumniId, chapter2: chosen.id });
+    }
+  } catch (err) {
+    console.error("[AUTO-CHAPTER2] error", { alumniId: args.alumniId, err });
+  }
+}
+
+async function autoAssignAssociationFromFaculty(args: { alumniId: number; facultyName: string | null | undefined }) {
+  const facultyName = args.facultyName ? String(args.facultyName).trim() : "";
+  if (!facultyName) {
+    console.log("[AUTO-ASSOCIATION] skip", { alumniId: args.alumniId, reason: "facultyName missing" });
+    return;
+  }
+
+  try {
+    const currentAssoc = await sql<{ association_id: number | null }[]>/* sql */`
+      SELECT association_id
+      FROM public.tbl_alumni
+      WHERE alumniid = ${args.alumniId}
+      LIMIT 1
+    `;
+    const existingAssociationId = currentAssoc[0]?.association_id ?? null;
+    console.log("[AUTO-ASSOCIATION] start", { alumniId: args.alumniId, facultyName, existingAssociationId });
+
+    if (existingAssociationId) {
+      console.log("[AUTO-ASSOCIATION] skip", {
+        alumniId: args.alumniId,
+        facultyName,
+        reason: "association_id already set",
+        existingAssociationId,
+      });
+      return;
+    }
+
+    const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
+      SELECT id, title
+      FROM public.tbl_associations
+      WHERE (
+        (title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+        OR (description IS NOT NULL AND LOWER(TRIM(description)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+        OR (dean IS NOT NULL AND LOWER(TRIM(dean)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+      )
+      ORDER BY
+        CASE
+          WHEN title IS NOT NULL AND LOWER(TRIM(title)) = LOWER(TRIM(${facultyName})) THEN 0
+          WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
+          WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
+          ELSE 3
+        END,
+        id ASC
+      LIMIT 1
+    `;
+    const chosen = assocRows[0];
+
+    console.log("[AUTO-ASSOCIATION] matched", {
+      alumniId: args.alumniId,
+      facultyName,
+      chosen: chosen ? { associationId: chosen.id, title: chosen.title } : null,
+    });
+
+    if (!chosen?.id) return;
+
+    await sql/* sql */`
+      UPDATE public.tbl_alumni
+      SET association_id = ${chosen.id}
+      WHERE alumniid = ${args.alumniId}
+    `;
+    console.log("[AUTO-ASSOCIATION] update", { alumniId: args.alumniId, associationId: chosen.id });
+  } catch (err) {
+    console.error("[AUTO-ASSOCIATION] error", { alumniId: args.alumniId, facultyName, err });
+  }
+}
 
 // Helper: map validated payload to DB columns
 function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>) {
@@ -36,6 +327,8 @@ function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>)
     totalyearsofexpereince: payload.totalExperienceYears ?? null,
     officialemail: payload.officialEmail ?? null,
     officialnumber: payload.officialPhone ?? null,
+    work_city: payload.workCity ?? null,
+    work_country: payload.workCountry ?? null,
     datasource: payload.source ?? null,
     verify: payload.verified === true ? "true" : payload.verified === false ? "false" : "pending", // 'pending' for new registrations
     alumnistatus: payload.category ?? null,
@@ -140,11 +433,22 @@ export async function GET(req: Request) {
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
         // Build OR conditions for multiple faculties
-        const facultyConditions = faculty.map(f => sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`);
+        const facultyConditions = faculty.map((f) => {
+          const normalized = String(f).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(facultyname IS NULL OR TRIM(COALESCE(facultyname, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`;
+        });
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(faculty) && faculty) {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        const normalized = String(faculty).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          facultyFilter = sql`AND (facultyname IS NULL OR TRIM(COALESCE(facultyname, '')) = '')`;
+        } else {
+          facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        }
       }
       console.log("[API] Filtering for faculty:", faculty);
     }
@@ -153,11 +457,22 @@ export async function GET(req: Request) {
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
         // Build OR conditions for multiple departments
-        const departmentConditions = department.map(d => sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`);
+        const departmentConditions = department.map((d) => {
+          const normalized = String(d).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(departmentname IS NULL OR TRIM(COALESCE(departmentname, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`;
+        });
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(department) && department) {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+        const normalized = String(department).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          departmentFilter = sql`AND (departmentname IS NULL OR TRIM(COALESCE(departmentname, '')) = '')`;
+        } else {
+          departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+        }
       }
       console.log("[API] Filtering for department:", department);
     }
@@ -166,11 +481,22 @@ export async function GET(req: Request) {
     if (program && (Array.isArray(program) ? program.length > 0 : program)) {
       if (Array.isArray(program) && program.length > 0) {
         // Build OR conditions for multiple programs
-        const programConditions = program.map(p => sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`);
+        const programConditions = program.map((p) => {
+          const normalized = String(p).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(degreetitle IS NULL OR TRIM(COALESCE(degreetitle, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`;
+        });
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
-        programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+        const normalized = String(program).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          programFilter = sql`AND (degreetitle IS NULL OR TRIM(COALESCE(degreetitle, '')) = '')`;
+        } else {
+          programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+        }
       }
       console.log("[API] Filtering for program:", program);
     }
@@ -1193,6 +1519,8 @@ export async function POST(req: Request) {
           province = ${d.province},
           city = ${d.city},
           country = ${d.country},
+          work_city = ${d.work_city},
+          work_country = ${d.work_country},
           campusname = ${d.campusname},
           facultyname = ${d.facultyname},
           departmentname = ${d.departmentname},
@@ -1219,6 +1547,25 @@ export async function POST(req: Request) {
         verify: updated.verify,
         previousVerify: existingRecord.verify
       });
+
+      // Auto-assign chapter1 based on home location (Pakistan=>city, otherwise=>country)
+      await autoAssignChapter1FromHomeLocation({
+        alumniId: Number(updated.alumniid),
+        homeCountry: d.country,
+        homeCity: d.city,
+      });
+
+      // Auto-assign chapter2 based on work location (Pakistan=>work city, otherwise=>work country)
+      await autoAssignChapter2FromWorkLocation({
+        alumniId: Number(updated.alumniid),
+        workCountry: d.work_country,
+        workCity: d.work_city,
+      });
+
+      await autoAssignAssociationFromFaculty({
+        alumniId: Number(updated.alumniid),
+        facultyName: d.facultyname,
+      });
       
       return NextResponse.json({ 
         ok: true, 
@@ -1238,18 +1585,40 @@ export async function POST(req: Request) {
       INSERT INTO public.tbl_alumni (
         registrationno, sapid, alumniname, gender, fathername, dateofbirth, maritalstatus,
         cnicpassport, contactno, personalemail, password, address, province, city, country,
+        work_city, work_country,
         campusname, facultyname, departmentname, degreetitle, yearofending, employeed, industry,
         nameoforganization, designation, totalyearsofexpereince, officialemail, officialnumber,
         datasource, verify, alumnistatus, todaydate
       ) VALUES (
         ${d.registrationno}, ${d.sapid}, ${d.alumniname}, ${d.gender}, ${d.fathername}, ${d.dateofbirth}, ${d.maritalstatus},
         ${d.cnicpassport}, ${d.contactno}, ${d.personalemail}, ${d.password}, ${d.address}, ${d.province}, ${d.city}, ${d.country},
+        ${d.work_city}, ${d.work_country},
         ${d.campusname}, ${d.facultyname}, ${d.departmentname}, ${d.degreetitle}, ${d.yearofending}, ${d.employeed}, ${d.industry},
         ${d.nameoforganization}, ${d.designation}, ${d.totalyearsofexpereince}, ${d.officialemail}, ${d.officialnumber},
         ${d.datasource}, ${d.verify}, ${d.alumnistatus}, ${d.todaydate}
       )
       RETURNING alumniid, registrationno, sapid, verify`;
     const created = rows[0];
+
+    // Auto-assign chapter1 based on home location (Pakistan=>city, otherwise=>country)
+    await autoAssignChapter1FromHomeLocation({
+      alumniId: Number((created as { alumniid: number }).alumniid),
+      homeCountry: d.country,
+      homeCity: d.city,
+    });
+
+    // Auto-assign chapter2 based on work location (Pakistan=>work city, otherwise=>work country)
+    await autoAssignChapter2FromWorkLocation({
+      alumniId: Number((created as { alumniid: number }).alumniid),
+      workCountry: d.work_country,
+      workCity: d.work_city,
+    });
+
+    await autoAssignAssociationFromFaculty({
+      alumniId: Number((created as { alumniid: number }).alumniid),
+      facultyName: d.facultyname,
+    });
+
     return NextResponse.json({ ok: true, created }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create alumni";

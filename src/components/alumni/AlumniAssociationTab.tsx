@@ -7,6 +7,7 @@ import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
 import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departments";
 import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import * as XLSX from "xlsx";
 
 type MembershipFilter = "all" | "members" | "non-members";
@@ -979,7 +980,7 @@ export const AlumniAssociationTab: React.FC = () => {
       )}
 
       <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
-        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+        <SyncedTableScroll minWidth={1000} maxHeight={700}>
           <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
               <TableRow>
@@ -1109,7 +1110,7 @@ export const AlumniAssociationTab: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </SyncedTableScroll>
         <div className="flex items-center justify-between p-4 border-t">
           <span className="text-sm text-gray-500">
             Showing {pageItems.length ? ((currentPage - 1) * pageSize) + 1 : 0}-{Math.min((currentPage - 1) * pageSize + pageItems.length, total)} of {total}

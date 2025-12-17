@@ -44,7 +44,7 @@ export default function NetworkingEngagementSection({
       status: mentorshipStatus,
     },
     {
-      title: "Alumni Chapters",
+      title: "Chapters Membership",
       decription: "Keep your UOL connection alive by joining national and international alumni chapters.",
       action: "View",
       href: sapId ? `/alumni-profile/my-chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/my-chapters`,

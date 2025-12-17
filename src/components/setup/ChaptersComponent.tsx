@@ -19,6 +19,8 @@ import { useSession } from "next-auth/react";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import Checkbox from "@/components/form/input/Checkbox";
 import Select from "@/components/form/Select";
+import { normalizeCities } from "@/lib/chapterCities";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 type ChapterTab = "national" | "international";
 
@@ -90,7 +92,8 @@ export default function ChaptersComponent() {
         const international = c.international_chapter?.toLowerCase() || "";
         const whatsapp = c.chapter_whatsapp?.toLowerCase() || "";
         const description = c.description?.toLowerCase() || "";
-        return national.includes(q) || international.includes(q) || whatsapp.includes(q) || description.includes(q);
+        const cities = (c.cities ?? []).join(" ").toLowerCase();
+        return national.includes(q) || international.includes(q) || whatsapp.includes(q) || description.includes(q) || cities.includes(q);
       });
     }
     
@@ -325,9 +328,24 @@ function ChaptersTable({
   sortDirection: "asc" | "desc";
   onSort: (field: string) => void;
 }) {
+  const formatImageSrc = (img: string | null | undefined): string | null => {
+    if (!img) return null;
+    const raw = String(img).trim();
+    if (!raw || raw.toLowerCase() === "null" || raw.toLowerCase() === "undefined") return null;
+    if (raw.startsWith("/") || raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    return `/images/${raw}`;
+  };
+
+  const formatDescription = (desc: string | null | undefined, max = 80) => {
+    const s = (desc ?? "").trim();
+    if (!s) return "-";
+    if (s.length <= max) return s;
+    return `${s.slice(0, max)}…`;
+  };
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
+      <SyncedTableScroll minWidth={900}>
         <Table className="min-w-full">
           <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50">
             <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
@@ -367,6 +385,15 @@ function ChaptersTable({
                   </div>
                 </div>
               </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Cities
+              </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Image
+              </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Description
+              </TableCell>
               <TableCell 
                 className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 onClick={() => onSort("active")}
@@ -401,13 +428,22 @@ function ChaptersTable({
                     <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
+                    <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
+                    <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
+                    <div className="h-5 w-56 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
                     <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                   </TableCell>
                 </TableRow>
               ))
             ) : chapters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No {selectedTab === "national" ? "national" : "international"} chapters found
                 </TableCell>
               </TableRow>
@@ -420,6 +456,45 @@ function ChaptersTable({
                   </TableCell>
                   <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
                     {chapter.chapter_whatsapp || "-"}
+                  </TableCell>
+                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                    {(() => {
+                      const cities = chapter.cities ?? [];
+                      if (!cities.length) return <span className="text-gray-400">-</span>;
+                      const shown = cities.slice(0, 3);
+                      return (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {shown.map((c) => (
+                            <span key={c} className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                              {c}
+                            </span>
+                          ))}
+                          {cities.length > shown.length && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">+{cities.length - shown.length}</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                    {(() => {
+                      const src = formatImageSrc(chapter.chapter_image);
+                      if (!src) return <span className="text-gray-400">-</span>;
+                      return (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={src}
+                          alt="Chapter"
+                          className="h-10 w-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                    <span title={chapter.description || ""}>{formatDescription(chapter.description)}</span>
                   </TableCell>
                   <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -455,7 +530,7 @@ function ChaptersTable({
             )}
           </TableBody>
         </Table>
-      </div>
+      </SyncedTableScroll>
     </div>
   );
 }
@@ -490,6 +565,7 @@ function ChapterModals({
     chapter_image?: string | null;
     is_active?: boolean | null;
     description?: string | null;
+    cities?: string[];
   }) => Promise<void>;
   onUpdate: (id: number, chapter: {
     national_chapter?: string | null;
@@ -498,6 +574,7 @@ function ChapterModals({
     chapter_image?: string | null;
     is_active?: boolean | null;
     description?: string | null;
+    cities?: string[];
   }) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   creating: boolean;
@@ -511,6 +588,8 @@ function ChapterModals({
   const [chapterImagePreview, setChapterImagePreview] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [description, setDescription] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
+  const [cityDraft, setCityDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -535,6 +614,8 @@ function ChapterModals({
       setChapterImagePreview(editingChapter.chapter_image ? `/images/${editingChapter.chapter_image}` : null);
       setIsActive(editingChapter.is_active !== null ? editingChapter.is_active : true);
       setDescription(editingChapter.description || "");
+      setCities(normalizeCities(editingChapter.cities ?? []));
+      setCityDraft("");
       setError(null);
     } else if (addOpen) {
       setChapterType("");
@@ -544,9 +625,18 @@ function ChapterModals({
       setChapterImagePreview(null);
       setIsActive(true);
       setDescription("");
+      setCities([]);
+      setCityDraft("");
       setError(null);
     }
   }, [editId, editingChapter, addOpen]);
+
+  const addCitiesFromDraft = () => {
+    const parts = cityDraft.split(/[,;\n\r]+/u).map((p) => p.trim()).filter(Boolean);
+    if (!parts.length) return;
+    setCities((prev) => normalizeCities([...prev, ...parts]));
+    setCityDraft("");
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -621,6 +711,7 @@ function ChapterModals({
         chapter_image: imageFilename,
         is_active: isActive,
         description: description.trim() || null,
+        cities: normalizeCities(cities),
       };
 
       if (editId) {
@@ -720,6 +811,55 @@ function ChapterModals({
             />
           </div>
           <div>
+            <Label>Cities</Label>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Input
+                  value={cityDraft}
+                  onChange={(e) => setCityDraft(e.target.value)}
+                  placeholder="Type a city and press Enter (or use commas)"
+                  disabled={creating}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCitiesFromDraft();
+                    }
+                  }}
+                />
+                <Button size="sm" variant="outline" onClick={addCitiesFromDraft} disabled={creating || !cityDraft.trim()}>
+                  Add
+                </Button>
+              </div>
+              {cities.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {cities.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCities((prev) => prev.filter((x) => x !== c))}
+                      className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                      aria-label={`Remove city ${c}`}
+                      title="Click to remove"
+                    >
+                      <span>{c}</span>
+                      <span className="text-gray-500 dark:text-gray-400">×</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCities([])}
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                These cities will be stored in `tblchapters.cities` for this chapter.
+              </p>
+            </div>
+          </div>
+          <div>
             <Checkbox
               checked={isActive}
               onChange={setIsActive}
@@ -816,6 +956,55 @@ function ChapterModals({
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
               rows={3}
             />
+          </div>
+          <div>
+            <Label>Cities</Label>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Input
+                  value={cityDraft}
+                  onChange={(e) => setCityDraft(e.target.value)}
+                  placeholder="Type a city and press Enter (or use commas)"
+                  disabled={updating}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCitiesFromDraft();
+                    }
+                  }}
+                />
+                <Button size="sm" variant="outline" onClick={addCitiesFromDraft} disabled={updating || !cityDraft.trim()}>
+                  Add
+                </Button>
+              </div>
+              {cities.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {cities.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCities((prev) => prev.filter((x) => x !== c))}
+                      className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                      aria-label={`Remove city ${c}`}
+                      title="Click to remove"
+                    >
+                      <span>{c}</span>
+                      <span className="text-gray-500 dark:text-gray-400">×</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCities([])}
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Add/remove cities for this chapter (stored in `tblchapters.cities`).
+              </p>
+            </div>
           </div>
           <div>
             <Checkbox

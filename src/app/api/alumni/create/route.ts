@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { isSuperAdminUser, isAdminUser, canModify } from "@/lib/alumniProfile";
 import { getUserAccessAssignments, getUserIdFromSession } from "@/lib/userAccess";
 import { getFacultyByDepartment } from "@/data/programs-departments";
+import { parseChapterCities } from "@/lib/chapterCities";
 
 type TblAlumniBody = {
   alumniemail: string | null;
@@ -883,111 +884,298 @@ export async function POST(req: Request) {
           }
         }
 
-        // Auto-assign chapter based on home city if no chapters were explicitly provided
-        const alumniCity = body.city ? String(body.city).trim() : null;
-        if (alumniCity && (!body.chapters || !Array.isArray(body.chapters) || body.chapters.length === 0)) {
-          try {
-            // Find chapters where the cities column contains the alumni's city
-            // The cities column might contain comma-separated values or other formats
-            // We check for exact match, comma-separated values, and partial matches
-            const normalizedCity = alumniCity.toLowerCase().trim();
-            const cityPattern1 = `%,${normalizedCity},%`;
-            const cityPattern2 = `${normalizedCity},%`;
-            const cityPattern3 = `%,${normalizedCity}`;
-            const cityPattern4 = `%${normalizedCity}%`;
-            
-            const cityBasedChapters = await sql<{ id: number }[]>/* sql */`
-              SELECT id 
-              FROM public.tblchapters 
-              WHERE is_active = true
-                AND cities IS NOT NULL
-                AND (
-                  LOWER(TRIM(cities)) = LOWER(TRIM(${alumniCity}))
-                  OR LOWER(cities) LIKE LOWER(${cityPattern1})
-                  OR LOWER(cities) LIKE LOWER(${cityPattern2})
-                  OR LOWER(cities) LIKE LOWER(${cityPattern3})
-                  OR LOWER(cities) LIKE LOWER(${cityPattern4})
-                )
-              LIMIT 1
-            `;
+        // Auto-assign chapter based on:
+        // - If home country is Pakistan => match home city against tblchapters.cities
+        // - If home country is NOT Pakistan => match home country against tblchapters.cities (international alumni)
+        // Only runs when no chapters are explicitly provided in the payload.
+        const hasExplicitChapters = !!(body.chapters && Array.isArray(body.chapters) && body.chapters.length > 0);
+        if (!hasExplicitChapters) {
+          const homeCountryRaw = body.country ? String(body.country).trim() : "";
+          const homeCityRaw = body.city ? String(body.city).trim() : "";
+          const countryLower = homeCountryRaw.toLowerCase().trim();
+          const isPakistan = countryLower === "pakistan";
+          const lookupValueRaw = isPakistan ? homeCityRaw : homeCountryRaw;
+          const lookupType = isPakistan ? "city" : "country";
 
-            if (cityBasedChapters.length > 0) {
-              const autoChapterId = cityBasedChapters[0].id;
-              
-              // Check if a record already exists for this alumni
-              const existingChapter = await sql<{ id: number }[]>/* sql */`
-                SELECT id FROM public.alumni_chapter 
-                WHERE id = ${id}
+          console.log("[AUTO-CHAPTER] start", {
+            alumniId: id,
+            homeCountry: homeCountryRaw || null,
+            homeCity: homeCityRaw || null,
+            lookupType,
+            lookupValue: lookupValueRaw || null,
+            hasExplicitChapters,
+          });
+
+          if (lookupValueRaw) {
+            try {
+              const chapters = await sql<
+                {
+                  id: number;
+                  national_chapter: string | null;
+                  international_chapter: string | null;
+                  cities: unknown;
+                }[]
+              >/* sql */`
+                SELECT id, national_chapter, international_chapter, cities
+                FROM public.tblchapters
+                WHERE is_active = true
+                  AND cities IS NOT NULL
               `;
 
-              if (existingChapter.length > 0) {
-                // Check current chapter assignments
-                const currentRecord = await sql<{ chapter1: number | null; chapter2: number | null; chapter3: number | null }[]>/* sql */`
-                  SELECT "chapter1", "chapter2", "chapter3" FROM public.alumni_chapter WHERE id = ${id}
+              const lookupLower = lookupValueRaw.toLowerCase().trim();
+
+              const matches = chapters
+                .map((ch) => {
+                  const parsed = parseChapterCities(ch.cities);
+                  const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+                  return {
+                    id: Number(ch.id),
+                    name: String(ch.national_chapter || ch.international_chapter || ""),
+                    type: ch.national_chapter ? "national" : "international",
+                    has,
+                  };
+                })
+                .filter((m) => m.has);
+
+              // Prefer national for Pakistan-city lookups, prefer international for country lookups
+              const preferredType = lookupType === "city" ? "national" : "international";
+              matches.sort((a, b) => {
+                const aPref = a.type === preferredType ? 0 : 1;
+                const bPref = b.type === preferredType ? 0 : 1;
+                if (aPref !== bPref) return aPref - bPref;
+                return a.id - b.id;
+              });
+
+              const chosen = matches[0];
+
+              console.log("[AUTO-CHAPTER] matched", {
+                alumniId: id,
+                lookupType,
+                lookupValue: lookupValueRaw,
+                matchedCount: matches.length,
+                chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
+              });
+
+              if (chosen) {
+                const existing = await sql<{ id: number; chapter1: number | null }[]>/* sql */`
+                  SELECT id, "chapter1"
+                  FROM public.alumni_chapter
+                  WHERE id = ${id}
+                  LIMIT 1
                 `;
-                
-                const current = currentRecord[0];
-                
-                // Only auto-assign if chapter1 is empty (no chapters were explicitly set)
-                if (!current?.chapter1) {
+
+                const currentChapter1 = existing[0]?.chapter1 ?? null;
+                if (currentChapter1) {
+                  console.log("[AUTO-CHAPTER] skip", {
+                    alumniId: id,
+                    reason: "chapter1 already set",
+                    currentChapter1,
+                    attemptedChapter1: chosen.id,
+                  });
+                } else if (existing.length > 0) {
                   await sql/* sql */`
-                    UPDATE public.alumni_chapter 
-                    SET "chapter1" = ${autoChapterId}
+                    UPDATE public.alumni_chapter
+                    SET "chapter1" = ${chosen.id}
                     WHERE id = ${id}
                   `;
-                  
-                  console.log("[API] Auto-assigned chapter based on city:", { 
-                    alumniId: id, 
-                    city: alumniCity,
-                    chapterId: autoChapterId
-                  });
+                  console.log("[AUTO-CHAPTER] update", { alumniId: id, chapter1: chosen.id });
+                } else {
+                  await sql/* sql */`
+                    INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+                    VALUES (${id}, ${chosen.id}, NULL, NULL)
+                  `;
+                  console.log("[AUTO-CHAPTER] insert", { alumniId: id, chapter1: chosen.id });
                 }
-              } else {
-                // Insert new record with auto-assigned chapter
-                await sql/* sql */`
-                  INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
-                  VALUES (${id}, ${autoChapterId}, NULL, NULL)
-                `;
-                
-                console.log("[API] Auto-assigned chapter based on city:", { 
-                  alumniId: id, 
-                  city: alumniCity,
-                  chapterId: autoChapterId
-                });
               }
+            } catch (err) {
+              console.error("[AUTO-CHAPTER] error", { alumniId: id, err });
             }
-          } catch (cityAssignmentError) {
-            // Don't fail the registration if city-based chapter assignment fails
-            console.error("[API] Error auto-assigning chapter based on city:", cityAssignmentError);
+          } else {
+            console.log("[AUTO-CHAPTER] skip", {
+              alumniId: id,
+              reason: isPakistan ? "Pakistan selected but home city missing" : "Home country missing",
+            });
           }
         }
 
-        // Find and assign association based on faculty
-        const facultyName = body.facultyname ? String(body.facultyname).trim() : null;
-        if (facultyName) {
-          // Try to find association by matching faculty name (case-insensitive)
-          // Associations might have faculty info in title, description, or dean field
-          const associationRows = await sql<{ id: number }[]>/* sql */`
-            SELECT id 
-            FROM public.tbl_associations 
-            WHERE LOWER(TRIM(title)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
-               OR LOWER(TRIM(description)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
-               OR LOWER(TRIM(dean)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
-            LIMIT 1
-          `;
-          
-          if (associationRows.length > 0) {
-            const associationId = associationRows[0].id;
-            await sql/* sql */`
-              UPDATE public.tbl_alumni 
-              SET association_id = ${associationId}
-              WHERE alumniid = ${id}
-            `;
-            console.log("[API] Automatically assigned association:", { 
-              alumniId: id, 
-              facultyName,
-              associationId 
+        // Auto-assign work-location chapter into chapter2:
+        // - If work country is Pakistan => match work city against tblchapters.cities
+        // - If work country is NOT Pakistan => match work country against tblchapters.cities
+        // Only runs when no chapters are explicitly provided in the payload.
+        if (!hasExplicitChapters) {
+          const employeedRaw = String(body.employeed ?? "").trim();
+          const isHigherEducation =
+            employeedRaw.toLowerCase().trim() === "pursuing higher education" ||
+            employeedRaw.toLowerCase().trim() === "highered";
+
+          // NOTE: In AlumniSqlForm, "Pursuing Higher Education" uses workCountry/workCity fields
+          // to capture institution country/city. So we intentionally read from workCountry/workCity here.
+          const workCountryRaw = String((body as { workCountry?: string | null }).workCountry ?? "").trim();
+          const workCityRaw = String((body as { workCity?: string | null }).workCity ?? "").trim();
+          const isWorkPakistan = workCountryRaw.toLowerCase().trim() === "pakistan";
+          const workLookupType = isWorkPakistan ? "city" : "country";
+          const workLookupValueRaw = isWorkPakistan ? workCityRaw : workCountryRaw;
+
+          console.log("[AUTO-CHAPTER2] start", {
+            alumniId: id,
+            context: isHigherEducation ? "higher_education" : "work",
+            workCountry: workCountryRaw || null,
+            workCity: workCityRaw || null,
+            lookupType: workLookupType,
+            lookupValue: workLookupValueRaw || null,
+            hasExplicitChapters,
+          });
+
+          if (workLookupValueRaw) {
+            try {
+              const chapters = await sql<
+                {
+                  id: number;
+                  national_chapter: string | null;
+                  international_chapter: string | null;
+                  cities: unknown;
+                }[]
+              >/* sql */`
+                SELECT id, national_chapter, international_chapter, cities
+                FROM public.tblchapters
+                WHERE is_active = true
+                  AND cities IS NOT NULL
+              `;
+
+              const lookupLower = workLookupValueRaw.toLowerCase().trim();
+              const matches = chapters
+                .map((ch) => {
+                  const parsed = parseChapterCities(ch.cities);
+                  const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+                  return {
+                    id: Number(ch.id),
+                    name: String(ch.national_chapter || ch.international_chapter || ""),
+                    type: ch.national_chapter ? "national" : "international",
+                    has,
+                  };
+                })
+                .filter((m) => m.has);
+
+              const preferredType = workLookupType === "city" ? "national" : "international";
+              matches.sort((a, b) => {
+                const aPref = a.type === preferredType ? 0 : 1;
+                const bPref = b.type === preferredType ? 0 : 1;
+                if (aPref !== bPref) return aPref - bPref;
+                return a.id - b.id;
+              });
+
+              const chosen = matches[0];
+              console.log("[AUTO-CHAPTER2] matched", {
+                alumniId: id,
+                lookupType: workLookupType,
+                lookupValue: workLookupValueRaw,
+                matchedCount: matches.length,
+                chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
+              });
+
+              if (chosen) {
+                const existing = await sql<{ id: number; chapter2: number | null }[]>/* sql */`
+                  SELECT id, "chapter2"
+                  FROM public.alumni_chapter
+                  WHERE id = ${id}
+                  LIMIT 1
+                `;
+
+                const currentChapter2 = existing[0]?.chapter2 ?? null;
+                if (currentChapter2) {
+                  console.log("[AUTO-CHAPTER2] skip", {
+                    alumniId: id,
+                    reason: "chapter2 already set",
+                    currentChapter2,
+                    attemptedChapter2: chosen.id,
+                  });
+                } else if (existing.length > 0) {
+                  await sql/* sql */`
+                    UPDATE public.alumni_chapter
+                    SET "chapter2" = ${chosen.id}
+                    WHERE id = ${id}
+                  `;
+                  console.log("[AUTO-CHAPTER2] update", { alumniId: id, chapter2: chosen.id });
+                } else {
+                  await sql/* sql */`
+                    INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+                    VALUES (${id}, NULL, ${chosen.id}, NULL)
+                  `;
+                  console.log("[AUTO-CHAPTER2] insert", { alumniId: id, chapter2: chosen.id });
+                }
+              }
+            } catch (err) {
+              console.error("[AUTO-CHAPTER2] error", { alumniId: id, err });
+            }
+          } else {
+            console.log("[AUTO-CHAPTER2] skip", {
+              alumniId: id,
+              reason: isWorkPakistan
+                ? (isHigherEducation ? "Pakistan selected but institution city missing" : "Pakistan selected but work city missing")
+                : (isHigherEducation ? "Institution country missing" : "Work country missing"),
             });
+          }
+        }
+
+        // Auto-assign association based on selected faculty (first registration / when association_id is empty)
+        const facultyName = body.facultyname ? String(body.facultyname).trim() : "";
+        if (facultyName) {
+          try {
+            const currentAssoc = await sql<{ association_id: number | null }[]>/* sql */`
+              SELECT association_id
+              FROM public.tbl_alumni
+              WHERE alumniid = ${id}
+              LIMIT 1
+            `;
+
+            const existingAssociationId = currentAssoc[0]?.association_id ?? null;
+            console.log("[AUTO-ASSOCIATION] start", { alumniId: id, facultyName, existingAssociationId });
+
+            if (existingAssociationId) {
+              console.log("[AUTO-ASSOCIATION] skip", {
+                alumniId: id,
+                facultyName,
+                reason: "association_id already set",
+                existingAssociationId,
+              });
+            } else {
+              const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
+                SELECT id, title
+                FROM public.tbl_associations
+                WHERE (
+                  (title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+                  OR (description IS NOT NULL AND LOWER(TRIM(description)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+                  OR (dean IS NOT NULL AND LOWER(TRIM(dean)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+                )
+                ORDER BY
+                  CASE
+                    WHEN title IS NOT NULL AND LOWER(TRIM(title)) = LOWER(TRIM(${facultyName})) THEN 0
+                    WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
+                    WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
+                    ELSE 3
+                  END,
+                  id ASC
+                LIMIT 1
+              `;
+
+              const chosen = assocRows[0];
+              console.log("[AUTO-ASSOCIATION] matched", {
+                alumniId: id,
+                facultyName,
+                chosen: chosen ? { associationId: chosen.id, title: chosen.title } : null,
+              });
+
+              if (chosen?.id) {
+                await sql/* sql */`
+                  UPDATE public.tbl_alumni
+                  SET association_id = ${chosen.id}
+                  WHERE alumniid = ${id}
+                `;
+                console.log("[AUTO-ASSOCIATION] update", { alumniId: id, associationId: chosen.id });
+              }
+            }
+          } catch (err) {
+            console.error("[AUTO-ASSOCIATION] error", { alumniId: id, facultyName, err });
           }
         }
       } catch (assignmentError) {

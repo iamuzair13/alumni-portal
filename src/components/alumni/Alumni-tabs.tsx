@@ -17,23 +17,13 @@ import { useMaritalStatuses } from "@/app/queries/fetch-marital-statuses";
 import { useGenders, type GenderOption } from "@/app/queries/fetch-genders";
 import { useCampuses, type CampusOption } from "@/app/queries/fetch-campuses";
 import { useOccupationStatuses, type OccupationStatusOption } from "@/app/queries/fetch-occupation-statuses";
+import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
+import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
+import { useAlumniPrograms } from "@/app/queries/fetch-alumni-programs";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import * as XLSX from "xlsx";
-import programsData from "../../../mock-programs.json";
-
-type ProgramData = {
-  faculties: Array<{
-    faculty: string;
-    departments: Array<{
-      department: string;
-      programs: Array<{
-        program: string;
-        count: number;
-      }>;
-    }>;
-  }>;
-};
+import type { AlumniFilterOption } from "@/app/queries/fetch-alumni-faculties";
 
 type TabKey =
   | "total"
@@ -422,48 +412,15 @@ export const AlumniTabs: React.FC = () => {
   const hasPakistanSelected = useMemo(() => {
     return selectedHomeCountries.includes("Pakistan");
   }, [selectedHomeCountries]);
-  
-  // Process programs data from mock-programs.json
-  const programsDataTyped = programsData as ProgramData;
-  const faculties = useMemo(() => programsDataTyped.faculties || [], []);
-  
-  // Get departments for selected faculties (union of all departments from selected faculties)
-  const availableDepartments = useMemo(() => {
-    if (selectedFaculties.length === 0) return [];
-    const departmentMap = new Map<string, ProgramData['faculties'][0]['departments'][0]>();
-    
-    selectedFaculties.forEach((facultyName) => {
-      const faculty = faculties.find((f: ProgramData['faculties'][0]) => f.faculty === facultyName);
-      faculty?.departments.forEach((dept: ProgramData['faculties'][0]['departments'][0]) => {
-        if (!departmentMap.has(dept.department)) {
-          departmentMap.set(dept.department, dept);
-        }
-      });
-    });
-    
-    return Array.from(departmentMap.values());
-  }, [selectedFaculties, faculties]);
-  
-  // Get programs for selected departments (union of all programs from selected departments)
-  const availablePrograms = useMemo(() => {
-    if (selectedDepartments.length === 0) return [];
-    const programMap = new Map<string, ProgramData['faculties'][0]['departments'][0]['programs'][0]>();
-    
-    selectedFaculties.forEach((facultyName) => {
-      const faculty = faculties.find((f: ProgramData['faculties'][0]) => f.faculty === facultyName);
-      faculty?.departments.forEach((dept: ProgramData['faculties'][0]['departments'][0]) => {
-        if (selectedDepartments.includes(dept.department)) {
-          dept.programs.forEach((prog: ProgramData['faculties'][0]['departments'][0]['programs'][0]) => {
-            if (!programMap.has(prog.program)) {
-              programMap.set(prog.program, prog);
-            }
-          });
-        }
-      });
-    });
-    
-    return Array.from(programMap.values());
-  }, [selectedDepartments, selectedFaculties, faculties]);
+
+  // Faculty / Department / Program options - fetched dynamically from database (tbl_alumni)
+  const { data: alumniFacultiesData } = useAlumniFaculties();
+  const { data: alumniDepartmentsData } = useAlumniDepartments();
+  const { data: alumniProgramsData } = useAlumniPrograms();
+
+  const facultyOptions: AlumniFilterOption[] = alumniFacultiesData?.faculties ?? [];
+  const departmentOptions: AlumniFilterOption[] = alumniDepartmentsData?.departments ?? [];
+  const programOptions: AlumniFilterOption[] = alumniProgramsData?.programs ?? [];
   
   // Confirmation modal state
   const confirmModal = useModal();
@@ -493,28 +450,6 @@ export const AlumniTabs: React.FC = () => {
     if (selected === "c") return ["category:c"];
     return undefined; // No filter for "total"
   }, [selected, additionalFilter]);
-  
-  // Reset dependent filters when parent changes
-  useEffect(() => {
-    if (selectedFaculties.length === 0) {
-      setSelectedDepartments([]);
-      setSelectedPrograms([]);
-    } else {
-      // Remove departments that are no longer available
-      const availableDeptNames = availableDepartments.map(d => d.department);
-      setSelectedDepartments(prev => prev.filter(dept => availableDeptNames.includes(dept)));
-    }
-  }, [selectedFaculties, availableDepartments]);
-  
-  useEffect(() => {
-    if (selectedDepartments.length === 0) {
-      setSelectedPrograms([]);
-    } else {
-      // Remove programs that are no longer available
-      const availableProgNames = availablePrograms.map(p => p.program);
-      setSelectedPrograms(prev => prev.filter(prog => availableProgNames.includes(prog)));
-    }
-  }, [selectedDepartments, availablePrograms]);
   
   // Reset province and city when home country changes (if Pakistan is removed)
   useEffect(() => {
@@ -592,51 +527,54 @@ export const AlumniTabs: React.FC = () => {
   }, []);
   
   // Handlers for checkbox toggles
-  const handleFacultyToggle = (facultyName: string) => {
+  const handleFacultyToggle = (facultyValue: string) => {
     setSelectedFaculties(prev => 
-      prev.includes(facultyName) 
-        ? prev.filter(f => f !== facultyName)
-        : [...prev, facultyName]
+      prev.includes(facultyValue) 
+        ? prev.filter(f => f !== facultyValue)
+        : [...prev, facultyValue]
     );
   };
   
   const handleFacultySelectAll = () => {
-    if (selectedFaculties.length === faculties.length) {
+    const allFacultyValues = facultyOptions.map(f => f.value);
+    if (allFacultyValues.length > 0 && selectedFaculties.length === allFacultyValues.length) {
       setSelectedFaculties([]);
     } else {
-      setSelectedFaculties(faculties.map(f => f.faculty));
+      setSelectedFaculties([...allFacultyValues]);
     }
   };
   
-  const handleDepartmentToggle = (deptName: string) => {
+  const handleDepartmentToggle = (deptValue: string) => {
     setSelectedDepartments(prev => 
-      prev.includes(deptName) 
-        ? prev.filter(d => d !== deptName)
-        : [...prev, deptName]
+      prev.includes(deptValue) 
+        ? prev.filter(d => d !== deptValue)
+        : [...prev, deptValue]
     );
   };
   
   const handleDepartmentSelectAll = () => {
-    if (selectedDepartments.length === availableDepartments.length) {
+    const allDepartmentValues = departmentOptions.map(d => d.value);
+    if (allDepartmentValues.length > 0 && selectedDepartments.length === allDepartmentValues.length) {
       setSelectedDepartments([]);
     } else {
-      setSelectedDepartments(availableDepartments.map(d => d.department));
+      setSelectedDepartments([...allDepartmentValues]);
     }
   };
   
-  const handleProgramToggle = (progName: string) => {
+  const handleProgramToggle = (progValue: string) => {
     setSelectedPrograms(prev => 
-      prev.includes(progName) 
-        ? prev.filter(p => p !== progName)
-        : [...prev, progName]
+      prev.includes(progValue) 
+        ? prev.filter(p => p !== progValue)
+        : [...prev, progValue]
     );
   };
   
   const handleProgramSelectAll = () => {
-    if (selectedPrograms.length === availablePrograms.length) {
+    const allProgramValues = programOptions.map(p => p.value);
+    if (allProgramValues.length > 0 && selectedPrograms.length === allProgramValues.length) {
       setSelectedPrograms([]);
     } else {
-      setSelectedPrograms(availablePrograms.map(p => p.program));
+      setSelectedPrograms([...allProgramValues]);
     }
   };
 
@@ -2058,11 +1996,12 @@ export const AlumniTabs: React.FC = () => {
                     className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
-                      {selectedFaculties.length === 0 
-                        ? "All Faculties" 
-                        : selectedFaculties.length === faculties.length
-                        ? "All Faculties"
-                        : `${selectedFaculties.length} Selected`}
+                      {(() => {
+                        const allValues = facultyOptions.map(f => f.value);
+                        const isAllSelected = allValues.length > 0 && selectedFaculties.length === allValues.length;
+                        if (selectedFaculties.length === 0 || isAllSelected) return "All Faculties";
+                        return `${selectedFaculties.length} Selected`;
+                      })()}
                     </span>
                     <svg 
                       className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.faculty ? 'rotate-180' : ''}`}
@@ -2085,31 +2024,39 @@ export const AlumniTabs: React.FC = () => {
                         >
                           <input
                             type="checkbox"
-                            checked={selectedFaculties.length === faculties.length}
+                            checked={(() => {
+                              const allValues = facultyOptions.map(f => f.value);
+                              return allValues.length > 0 && selectedFaculties.length === allValues.length;
+                            })()}
                             onChange={handleFacultySelectAll}
                             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                           />
                           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Faculties</span>
                         </label>
                         <div className="max-h-48 overflow-y-auto">
-                          {faculties.map((faculty: ProgramData['faculties'][0]) => {
-                            const isChecked = selectedFaculties.includes(faculty.faculty);
-                            return (
-                              <label
-                                key={faculty.faculty}
-                                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleFacultyToggle(faculty.faculty)}
-                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.faculty}</span>
-                              </label>
-                            );
-                          })}
+                          {facultyOptions.length === 0 ? (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 p-2">No faculties found.</p>
+                          ) : (
+                            facultyOptions.map((faculty) => {
+                              const isChecked = selectedFaculties.includes(faculty.value);
+                              return (
+                                <label
+                                  key={faculty.value}
+                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleFacultyToggle(faculty.value)}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.label}</span>
+                                  <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{faculty.count.toLocaleString()}</span>
+                                </label>
+                              );
+                            })
+                          )}
                 </div>
               </div>
             </div>
@@ -2127,15 +2074,15 @@ export const AlumniTabs: React.FC = () => {
                     type="button"
                     id="department-filter"
                     onClick={() => setExpandedFilters(prev => ({ ...prev, department: !prev.department }))}
-                    disabled={selectedFaculties.length === 0}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
-                      {selectedDepartments.length === 0 
-                        ? "All Departments" 
-                        : selectedDepartments.length === availableDepartments.length
-                        ? "All Departments"
-                        : `${selectedDepartments.length} Selected`}
+                      {(() => {
+                        const allValues = departmentOptions.map(d => d.value);
+                        const isAllSelected = allValues.length > 0 && selectedDepartments.length === allValues.length;
+                        if (selectedDepartments.length === 0 || isAllSelected) return "All Departments";
+                        return `${selectedDepartments.length} Selected`;
+                      })()}
                     </span>
                     <svg 
                       className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.department ? 'rotate-180' : ''}`}
@@ -2146,50 +2093,52 @@ export const AlumniTabs: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  {expandedFilters.department && selectedFaculties.length > 0 && (
+                  {expandedFilters.department && (
                     <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       <div className="p-2">
-                        {availableDepartments.length === 0 ? (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select faculties first</p>
-                        ) : (
-                          <>
-                            <label
-                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDepartmentSelectAll();
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedDepartments.length === availableDepartments.length}
-                                onChange={handleDepartmentSelectAll}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
-                            </label>
-                            <div className="max-h-48 overflow-y-auto">
-                              {availableDepartments.map((dept: ProgramData['faculties'][0]['departments'][0]) => {
-                                const isChecked = selectedDepartments.includes(dept.department);
-                                return (
-                                  <label
-                                    key={dept.department}
-                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => handleDepartmentToggle(dept.department)}
-                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                    />
-                                    <span className="text-sm text-gray-700 dark:text-gray-300">{dept.department}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
+                        <label
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDepartmentSelectAll();
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(() => {
+                              const allValues = departmentOptions.map(d => d.value);
+                              return allValues.length > 0 && selectedDepartments.length === allValues.length;
+                            })()}
+                            onChange={handleDepartmentSelectAll}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
+                        </label>
+                        <div className="max-h-48 overflow-y-auto">
+                          {departmentOptions.length === 0 ? (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 p-2">No departments found.</p>
+                          ) : (
+                            departmentOptions.map((dept) => {
+                              const isChecked = selectedDepartments.includes(dept.value);
+                              return (
+                                <label
+                                  key={dept.value}
+                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleDepartmentToggle(dept.value)}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{dept.label}</span>
+                                  <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{dept.count.toLocaleString()}</span>
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -2206,15 +2155,15 @@ export const AlumniTabs: React.FC = () => {
                     type="button"
                     id="program-filter"
                     onClick={() => setExpandedFilters(prev => ({ ...prev, program: !prev.program }))}
-                    disabled={selectedDepartments.length === 0}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200 appearance-none cursor-pointer text-left flex items-center justify-between"
                   >
                     <span>
-                      {selectedPrograms.length === 0 
-                        ? "All Programs" 
-                        : selectedPrograms.length === availablePrograms.length
-                        ? "All Programs"
-                        : `${selectedPrograms.length} Selected`}
+                      {(() => {
+                        const allValues = programOptions.map(p => p.value);
+                        const isAllSelected = allValues.length > 0 && selectedPrograms.length === allValues.length;
+                        if (selectedPrograms.length === 0 || isAllSelected) return "All Programs";
+                        return `${selectedPrograms.length} Selected`;
+                      })()}
                     </span>
                     <svg 
                       className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.program ? 'rotate-180' : ''}`}
@@ -2225,50 +2174,52 @@ export const AlumniTabs: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  {expandedFilters.program && selectedDepartments.length > 0 && (
+                  {expandedFilters.program && (
                     <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       <div className="p-2">
-                        {availablePrograms.length === 0 ? (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select departments first</p>
-                        ) : (
-                          <>
-                            <label
-                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleProgramSelectAll();
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedPrograms.length === availablePrograms.length}
-                                onChange={handleProgramSelectAll}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Programs</span>
-                            </label>
-                            <div className="max-h-48 overflow-y-auto">
-                              {availablePrograms.map((prog: ProgramData['faculties'][0]['departments'][0]['programs'][0]) => {
-                                const isChecked = selectedPrograms.includes(prog.program);
-                                return (
-                                  <label
-                                    key={prog.program}
-                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => handleProgramToggle(prog.program)}
-                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                    />
-                                    <span className="text-sm text-gray-700 dark:text-gray-300">{prog.program}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
+                        <label
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProgramSelectAll();
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(() => {
+                              const allValues = programOptions.map(p => p.value);
+                              return allValues.length > 0 && selectedPrograms.length === allValues.length;
+                            })()}
+                            onChange={handleProgramSelectAll}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
+                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Programs</span>
+                        </label>
+                        <div className="max-h-48 overflow-y-auto">
+                          {programOptions.length === 0 ? (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 p-2">No programs found.</p>
+                          ) : (
+                            programOptions.map((prog) => {
+                              const isChecked = selectedPrograms.includes(prog.value);
+                              return (
+                                <label
+                                  key={prog.value}
+                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleProgramToggle(prog.value)}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{prog.label}</span>
+                                  <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{prog.count.toLocaleString()}</span>
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

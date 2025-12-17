@@ -7,6 +7,7 @@ import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
 import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departments";
 import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 type ChapterItem = {
   sapid: string;
@@ -1169,7 +1170,7 @@ export const AlumniChaptersTab: React.FC = () => {
       )}
 
       <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
-        <div className="overflow-x-auto max-h-[700px] overflow-y-auto">
+        <SyncedTableScroll minWidth={1100} maxHeight={700}>
           <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
               <TableRow>
@@ -1303,7 +1304,7 @@ export const AlumniChaptersTab: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </SyncedTableScroll>
         <div className="flex items-center justify-between p-4 border-t">
           <span className="text-sm text-gray-500">
             Showing {pageItems.length ? start + 1 : 0}-{pageItems.length ? start + pageItems.length : 0} of {total}

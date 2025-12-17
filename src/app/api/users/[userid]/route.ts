@@ -3,7 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { getUserAccessAssignments } from "@/lib/userAccess";
-import { getDepartmentsByFaculty, getProgramsByFacultyAndDepartment } from "@/data/programs-departments";
+import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 
 type DbUser = {
   userid: number;
@@ -197,66 +197,21 @@ export async function PUT(req: Request) {
           programs: programs?.length || 0
         });
         
-        if (faculties && faculties.length > 0) {
-          // Helper: Find which faculty a department belongs to
-          const findFacultyForDepartment = (dept: string): string[] => {
-            const result: string[] = [];
-            for (const faculty of faculties) {
-              const depts = getDepartmentsByFaculty(faculty);
-              if (depts.includes(dept)) {
-                result.push(faculty);
-              }
-            }
-            return result;
-          };
-          
-          // If specific programs are selected, create program-level assignments
-          // Only create assignments for programs that actually belong to the selected departments
-          if (programs && programs.length > 0 && departments && departments.length > 0) {
-            for (const program of programs) {
-              for (const department of departments) {
-                const deptFaculties = findFacultyForDepartment(department);
-                for (const faculty of deptFaculties) {
-                  // Verify that the program actually belongs to this department before creating assignment
-                  // Use case-insensitive matching
-                  const validPrograms = getProgramsByFacultyAndDepartment(faculty, department);
-                  const normalizedProgram = program.toLowerCase().trim();
-                  const programMatches = validPrograms.some(
-                    (p) => p.toLowerCase().trim() === normalizedProgram
-                  );
-                  if (programMatches) {
-                    await sql/* sql */`
-                      INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
-                      VALUES (${id}, ${faculty}, ${department}, ${program})
-                      ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
-                    `;
-                  }
-                }
-              }
-            }
-          }
-          // If specific departments are selected (but no programs), create department-level assignments
-          else if (departments && departments.length > 0) {
-            for (const department of departments) {
-              const deptFaculties = findFacultyForDepartment(department);
-              for (const faculty of deptFaculties) {
-                await sql/* sql */`
-                  INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
-                  VALUES (${id}, ${faculty}, ${department}, NULL)
-                  ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
-                `;
-              }
-            }
-          }
-          // If only faculties are selected (no departments), create faculty-level assignments
-          else {
-            for (const faculty of faculties) {
-              await sql/* sql */`
-                INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
-                VALUES (${id}, ${faculty}, NULL, NULL)
-                ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
-              `;
-            }
+        const hasAnything =
+          (Array.isArray(faculties) && faculties.length > 0) ||
+          (Array.isArray(departments) && departments.length > 0) ||
+          (Array.isArray(programs) && programs.length > 0);
+
+        if (hasAnything) {
+          const rows = await buildAccessAssignmentRowsFromDb({ faculties, departments, programs });
+          console.log("[user update] DB-canonicalized assignment rows:", rows.length);
+
+          for (const r of rows) {
+            await sql/* sql */`
+              INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
+              VALUES (${id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
+              ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+            `;
           }
         } else {
           // If accessAssignments is an empty object or has no faculties, no new assignments are created

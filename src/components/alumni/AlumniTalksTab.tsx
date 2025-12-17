@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 type TalkItem = {
   sapid: string;
@@ -42,9 +43,23 @@ type TalkItem = {
 };
 
 async function getAlumniTalks(): Promise<TalkItem[]> {
-  const res = await fetch("/api/alumni/talks", { headers: { "accept": "application/json" } });
+  const res = await fetch("/api/alumni/talks", {
+    headers: { accept: "application/json" },
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!res.ok) {
-    throw new Error("Failed to fetch alumni talks");
+    let details = "";
+    try {
+      const data = (await res.json()) as { error?: string; message?: string; details?: string };
+      details = data?.message || data?.details || data?.error || "";
+    } catch {
+      try {
+        details = await res.text();
+      } catch {}
+    }
+    const msg = details ? `Failed to fetch alumni talks (${res.status}): ${details}` : `Failed to fetch alumni talks (${res.status})`;
+    throw new Error(msg);
   }
   const data = (await res.json()) as { items: TalkItem[] };
   return data.items ?? [];
@@ -110,7 +125,7 @@ export const AlumniTalksTab: React.FC = () => {
       </div>
 
       <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
-        <div className="max-h-[700px] overflow-y-auto">
+        <SyncedTableScroll minWidth={1100} maxHeight={700}>
           <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
               <TableRow>
@@ -354,7 +369,7 @@ export const AlumniTalksTab: React.FC = () => {
               })}
             </TableBody>
           </Table>
-        </div>
+        </SyncedTableScroll>
         <div className="flex items-center justify-between p-4 border-t">
           <span className="text-sm text-gray-500">
             Showing {pageItems.length ? start + 1 : 0}-{pageItems.length ? start + pageItems.length : 0} of {total}

@@ -7,7 +7,8 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import { Modal } from "@/components/ui/modal";
-import { PencilIcon, TrashBinIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from "@/icons";
+import { PencilIcon, TrashBinIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon, CloseIcon } from "@/icons";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import {
   useFaculties,
   useDepartments,
@@ -458,6 +459,7 @@ export default function OrganizationComponent() {
         <FacultiesTable
           faculties={filteredFaculties}
           departments={departments}
+          programs={programs}
           loading={facultiesLoading}
           onEdit={(id) => setEditFacultyId(id)}
           onDelete={(id) => setDeleteFacultyId(id)}
@@ -471,6 +473,7 @@ export default function OrganizationComponent() {
       {selectedTab === "departments" && (
         <DepartmentsTable
           departments={filteredDepartments}
+          programs={programs}
           loading={departmentsLoading}
           onEdit={(id) => setEditDepartmentId(id)}
           onDelete={(id) => setDeleteDepartmentId(id)}
@@ -554,6 +557,7 @@ export default function OrganizationComponent() {
 function FacultiesTable({
   faculties,
   departments,
+  programs,
   loading,
   onEdit,
   onDelete,
@@ -563,6 +567,7 @@ function FacultiesTable({
 }: {
   faculties: Faculty[];
   departments: Department[];
+  programs: Program[];
   loading: boolean;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
@@ -588,9 +593,22 @@ function FacultiesTable({
   const getDepartmentsForFaculty = (facultyId: number) => {
     return departments.filter((dept) => dept.faculty_id === facultyId);
   };
+
+  const getProgramsForDepartment = (departmentId: number) => {
+    const deptIdStr = String(departmentId);
+    return programs.filter((p) => p.department_id !== null && String(p.department_id) === deptIdStr);
+  };
+
+  const formatDate = (v: unknown) => {
+    if (!v) return "-";
+    const d = new Date(String(v));
+    if (Number.isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
+  };
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
+      <SyncedTableScroll minWidth={900}>
         <Table className="min-w-full">
           <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50">
             <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
@@ -618,6 +636,12 @@ function FacultiesTable({
                   </div>
                 </div>
               </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Created
+              </TableCell>
+              <TableCell className="px-6 py-4 text-center text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Departments
+              </TableCell>
               <TableCell className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </TableCell>
@@ -634,7 +658,10 @@ function FacultiesTable({
                     <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
-                    <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg mx-auto" />
+                    <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
+                    <div className="h-8 w-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg mx-auto" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
                     <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
@@ -643,7 +670,7 @@ function FacultiesTable({
               ))
             ) : faculties.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No faculties found
                 </TableCell>
               </TableRow>
@@ -660,25 +687,22 @@ function FacultiesTable({
                       <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300 font-medium">
                         {faculty.faculty_name}
                       </TableCell>
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                        {formatDate((faculty as unknown as { created_at?: unknown }).created_at)}
+                      </TableCell>
                       <TableCell className="px-6 py-5 text-center">
                         <button
                           type="button"
                           onClick={() => toggleExpand(faculty.id)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                           title={isExpanded ? "Collapse departments" : "Expand to see departments"}
+                          aria-label={isExpanded ? "Collapse departments" : "Expand departments"}
                         >
-                          {isExpanded ? (
-                            <>
-                              <ArrowUpIcon className="w-4 h-4" />
-                              <span>Hide ({departmentCount})</span>
-                            </>
-                          ) : (
-                            <>
-                              <ArrowDownIcon className="w-4 h-4" />
-                              <span>Show ({departmentCount})</span>
-                            </>
-                          )}
+                          {isExpanded ? <CloseIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
                         </button>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {departmentCount}
+                        </div>
                       </TableCell>
                       <TableCell className="px-6 py-5 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -703,7 +727,7 @@ function FacultiesTable({
                     </TableRow>
                     {isExpanded && (
                       <TableRow className="bg-gray-50 dark:bg-gray-900/30">
-                        <TableCell colSpan={4} className="px-6 py-4">
+                        <TableCell colSpan={5} className="px-6 py-4">
                           <div className="pl-8">
                             {departmentCount === 0 ? (
                               <p className="text-sm text-gray-500 dark:text-gray-400 italic">
@@ -720,10 +744,17 @@ function FacultiesTable({
                                       key={dept.id}
                                       className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
                                     >
-                                      <span className="font-medium">{dept.department_name}</span>
-                                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                        (ID: {dept.id})
-                                      </span>
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <div className="font-medium truncate">{dept.department_name}</div>
+                                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            ID: {dept.id} • Created: {formatDate((dept as unknown as { created_at?: unknown }).created_at)}
+                                          </div>
+                                        </div>
+                                        <div className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                                          Programs: {getProgramsForDepartment(dept.id).length}
+                                        </div>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -739,7 +770,7 @@ function FacultiesTable({
             )}
           </TableBody>
         </Table>
-      </div>
+      </SyncedTableScroll>
     </div>
   );
 }
@@ -747,6 +778,7 @@ function FacultiesTable({
 // Departments Table Component
 function DepartmentsTable({
   departments,
+  programs,
   loading,
   onEdit,
   onDelete,
@@ -755,6 +787,7 @@ function DepartmentsTable({
   onSort,
 }: {
   departments: Department[];
+  programs: Program[];
   loading: boolean;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
@@ -762,9 +795,32 @@ function DepartmentsTable({
   sortDirection: "asc" | "desc";
   onSort: (field: string) => void;
 }) {
+  const [expandedDepartments, setExpandedDepartments] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (departmentId: number) => {
+    setExpandedDepartments((prev) => {
+      const next = new Set(prev);
+      if (next.has(departmentId)) next.delete(departmentId);
+      else next.add(departmentId);
+      return next;
+    });
+  };
+
+  const getProgramsForDepartment = (departmentId: number) => {
+    const deptIdStr = String(departmentId);
+    return programs.filter((p) => p.department_id !== null && String(p.department_id) === deptIdStr);
+  };
+
+  const formatDate = (v: unknown) => {
+    if (!v) return "-";
+    const d = new Date(String(v));
+    if (Number.isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
+  };
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
+      <SyncedTableScroll minWidth={1000}>
         <Table className="min-w-full">
           <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50">
             <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
@@ -804,6 +860,12 @@ function DepartmentsTable({
                   </div>
                 </div>
               </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Created
+              </TableCell>
+              <TableCell className="px-6 py-4 text-center text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Programs
+              </TableCell>
               <TableCell className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </TableCell>
@@ -823,52 +885,113 @@ function DepartmentsTable({
                     <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
+                    <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
+                    <div className="h-8 w-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg mx-auto" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
                     <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                   </TableCell>
                 </TableRow>
               ))
             ) : departments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No departments found
                 </TableCell>
               </TableRow>
             ) : (
-              departments.map((dept) => (
-                <TableRow key={dept.id} className="bg-white dark:bg-gray-800/30 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">{dept.id}</TableCell>
-                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300 font-medium">
-                    {dept.department_name}
-                  </TableCell>
-                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
-                    {dept.faculty_name || "-"}
-                  </TableCell>
-                  <TableCell className="px-6 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        startIcon={<PencilIcon />}
-                        onClick={() => onEdit(dept.id)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        startIcon={<TrashBinIcon />}
-                        onClick={() => onDelete(dept.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              departments.map((dept) => {
+                const isExpanded = expandedDepartments.has(dept.id);
+                const deptPrograms = getProgramsForDepartment(dept.id);
+                return (
+                  <React.Fragment key={dept.id}>
+                    <TableRow className="bg-white dark:bg-gray-800/30 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">{dept.id}</TableCell>
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300 font-medium">
+                        {dept.department_name}
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                        {dept.faculty_name || "-"}
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                        {formatDate((dept as unknown as { created_at?: unknown }).created_at)}
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(dept.id)}
+                          className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          title={isExpanded ? "Collapse programs" : "Expand to see programs"}
+                          aria-label={isExpanded ? "Collapse programs" : "Expand programs"}
+                        >
+                          {isExpanded ? <CloseIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
+                        </button>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {deptPrograms.length}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            startIcon={<PencilIcon />}
+                            onClick={() => onEdit(dept.id)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            startIcon={<TrashBinIcon />}
+                            onClick={() => onDelete(dept.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow className="bg-gray-50 dark:bg-gray-900/30">
+                        <TableCell colSpan={6} className="px-6 py-4">
+                          <div className="pl-8">
+                            {deptPrograms.length === 0 ? (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                                No programs assigned to this department
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Programs ({deptPrograms.length}):
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {deptPrograms.map((p) => (
+                                    <div
+                                      key={p.id}
+                                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+                                    >
+                                      <div className="font-medium truncate">{p.program_name}</div>
+                                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        ID: {p.id} • Created: {formatDate((p as unknown as { created_at?: unknown }).created_at)}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>
-      </div>
+      </SyncedTableScroll>
     </div>
   );
 }
@@ -893,7 +1016,7 @@ function ProgramsTable({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-      <div className="max-w-full overflow-x-auto custom-scrollbar">
+      <SyncedTableScroll minWidth={1000}>
         <Table className="min-w-full">
           <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50">
             <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
@@ -1015,7 +1138,7 @@ function ProgramsTable({
             )}
           </TableBody>
         </Table>
-      </div>
+      </SyncedTableScroll>
     </div>
   );
 }

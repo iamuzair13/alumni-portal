@@ -1,2575 +1,521 @@
-{
-  "faculties": [
-    {
-      "faculty": "Faculty of Allied Health Sciences",
-      "departments": [
-        {
-          "department": "Department of Chemistry",
-          "programs": [
-            {
-              "program": "Master of Philosophy in Chemistry",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Education",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Education (with Educational Management)",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Medical Education",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Emerging Allied Health Technologies",
-          "programs": [
-            {
-              "program": "BS Biomedical Engineering Technology",
-              "count": 24
-            },
-            {
-              "program": "Medical Imaging Doctor",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Health Professional Technologies",
-          "programs": [
-            {
-              "program": "-",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Respiratory Therapy",
-              "count": 10
-            },
-            {
-              "program": "Bachelor of Science in Speech and Language Pathology",
-              "count": 3
-            },
-            {
-              "program": "Bachelor of Sciences in Respiratory Therapy",
-              "count": 1
-            },
-            {
-              "program": "Bachelors of Science in Operation Theater",
-              "count": 56
-            }
-          ]
-        },
-        {
-          "department": "Department of Optometry & Vision Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Vision Sciences",
-              "count": 125
-            },
-            {
-              "program": "Doctor of Optometry",
-              "count": 154
-            },
-            {
-              "program": "Post Professional Doctor of Optometry",
-              "count": 25
-            },
-            {
-              "program": "Transitional Doctor of Optometry",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Department of Rehabilitation Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Audiology",
-              "count": 21
-            },
-            {
-              "program": "Bachelor of Science in Occupational Therapy",
-              "count": 7
-            },
-            {
-              "program": "Bachelor of Science in Speech and Language Pathology",
-              "count": 32
-            },
-            {
-              "program": "Doctor of Physical Therapy (DPT)",
-              "count": 2
-            },
-            {
-              "program": "Master of Science in Speech Language Pathology / Hearing Sciences",
-              "count": 38
-            }
-          ]
-        },
-        {
-          "department": "Department of Sports Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Sports Sciences and Physical Education",
-              "count": 43
-            },
-            {
-              "program": "BS in Sports Sciences and Physical Education",
-              "count": 3
-            },
-            {
-              "program": "Doctor of Philosophy in Sports Science and Physical Education",
-              "count": 11
-            },
-            {
-              "program": "Master of Philosophy in Sports Sciences",
-              "count": 54
-            },
-            {
-              "program": "Master Of Philosophy in Sports Sciences",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Sports Sciences and Physical Education",
-              "count": 21
-            },
-            {
-              "program": "Master of Science in Sports Sciences and Physical Education",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Department of Sports Sciences and Physical Education",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Sports Sciences and Physical Education",
-              "count": 11
-            },
-            {
-              "program": "Master of Philosophy in Sports Sciences and Physical Education",
-              "count": 29
-            },
-            {
-              "program": "Master of Science in Sports and Physical Education",
-              "count": 4
-            }
-          ]
-        },
-        {
-          "department": "Institute of Molecular Biology & Biotechnology",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Bioinformatics",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Biotechnology",
-              "count": 2
-            },
-            {
-              "program": "Bachelor of Science in Molecular Biology & Biotechnology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Biotechnology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Microbiology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Physiology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Lahore Business School",
-          "programs": [
-            {
-              "program": "Bachelor of Business Administration (BBA 4 Years)",
-              "count": 3
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Behavioral Sciences",
-          "programs": [
-            {
-              "program": "MS Clinical Psychology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Nursing",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Nursing",
-              "count": 29
-            },
-            {
-              "program": "Bachelor of Science in Nursing (Hons)",
-              "count": 33
-            },
-            {
-              "program": "Bachelor of Science in Nursing (Post RN)",
-              "count": 110
-            },
-            {
-              "program": "Bachelor of Science Post RN Nursing Program",
-              "count": 63
-            },
-            {
-              "program": "Bachelor of Sciences in Nursing",
-              "count": 75
-            },
-            {
-              "program": "Master of Nursing",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Nursing",
-              "count": 42
-            },
-            {
-              "program": "Master of Science in Nursing (MSN)",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Radiology Research Section",
-          "programs": [
-            {
-              "program": "Diploma in Medical Radiology & Diagnostic",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Univeristy Institute of Public Health",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Public Health",
-              "count": 4
-            },
-            {
-              "program": "Master In Public Health",
-              "count": 2
-            },
-            {
-              "program": "Master of  Public Health",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy Public Health",
-              "count": 1
-            },
-            {
-              "program": "Master of Public Health",
-              "count": 15
-            },
-            {
-              "program": "Medical Imaging Doctor",
-              "count": 9
-            }
-          ]
-        },
-        {
-          "department": "University College of Medicine",
-          "programs": [
-            {
-              "program": "Bachelor of Medicine and Bachelor of Surgery",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Diet & Nutritional Sciences",
-          "programs": [
-            {
-              "program": "-",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Dietetics and Nutritional Sciences",
-              "count": 200
-            },
-            {
-              "program": "Bachelor of Science in Human Nutrition and Dietetics",
-              "count": 5
-            },
-            {
-              "program": "Doctor of Diet and Nutritional Sciences",
-              "count": 413
-            },
-            {
-              "program": "Doctor of Dietetics & Nutritional Sciences",
-              "count": 2
-            },
-            {
-              "program": "Doctor of Dietetics and Nutritional Sciences",
-              "count": 203
-            },
-            {
-              "program": "Doctor of Philosophy in Human Nutrition",
-              "count": 5
-            },
-            {
-              "program": "Master of Philosophy in Food Science and Technology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Human Nuitrition",
-              "count": 102
-            },
-            {
-              "program": "Master of Philosophy in Human Nuitrition and Dietetics",
-              "count": 10
-            },
-            {
-              "program": "Master of Philosophy in Human Nutrition and Dietetics",
-              "count": 9
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Food Science & Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Food Science and Technology",
-              "count": 7
-            },
-            {
-              "program": "Master of Philosophy in Food Science and Technology",
-              "count": 2
-            },
-            {
-              "program": "Master of Philosophy in Food Sciences and Technology",
-              "count": 39
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Medical Lab Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Medical Laboratory Sciences",
-              "count": 100
-            },
-            {
-              "program": "Bachelor of Medical Laboratory Sciences",
-              "count": 21
-            },
-            {
-              "program": "Doctor of Medical Laboratory Sciences",
-              "count": 330
-            },
-            {
-              "program": "Doctor of Philosophy in Virology and Mol",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Immunology and Molecular Pathology",
-              "count": 9
-            },
-            {
-              "program": "Master of Philosophy in Immunology and Molecular Pathology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Virology and Molecular Pathology",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Physical Therapy",
-          "programs": [
-            {
-              "program": "Doctor of Philosophy in Physical Therapy",
-              "count": 9
-            },
-            {
-              "program": "Doctor of Physical Therapy",
-              "count": 1130
-            },
-            {
-              "program": "Doctor of Physical Therapy (DPT)",
-              "count": 29
-            },
-            {
-              "program": "Master of Philosophy in Physical Therapy - (Biomechanics)",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Physical Therapy - Musculoskeletal",
-              "count": 21
-            },
-            {
-              "program": "Master of Philosophy in Physical Therapy (Musculoskeletal)",
-              "count": 4
-            },
-            {
-              "program": "Master of Science in Physical Therapy-Musculo Skeletal",
-              "count": 3
-            },
-            {
-              "program": "Master of Science in Physical Therapy(Paediatric Physical Therapy)",
-              "count": 1
-            },
-            {
-              "program": "MS Physical Therapy - Musculoskeletal",
-              "count": 3
-            },
-            {
-              "program": "MS Physical Therapy (Musculoskeletal)",
-              "count": 6
-            },
-            {
-              "program": "MS Physical Therapy (Neurology)",
-              "count": 5
-            },
-            {
-              "program": "MS. Physical Therapy (Musculoskeletal)",
-              "count": 54
-            },
-            {
-              "program": "MS. Physical Therapy (Neurology)",
-              "count": 66
-            },
-            {
-              "program": "Other",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Public Health",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Public Health",
-              "count": 6
-            },
-            {
-              "program": "Doctor of Philosophy in Public Health",
-              "count": 11
-            },
-            {
-              "program": "Master In Public Health",
-              "count": 2
-            },
-            {
-              "program": "Master of  Public Health",
-              "count": 35
-            },
-            {
-              "program": "Master of Philosophy in Public Health",
-              "count": 72
-            },
-            {
-              "program": "Master of Public Health",
-              "count": 18
-            },
-            {
-              "program": "Medical Imaging Doctor",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Radiological Sciences & Medical Imaging Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Medical Imaging Sciences",
-              "count": 182
-            },
-            {
-              "program": "Bachelor of Science in Medical Ultrasound Technology",
-              "count": 92
-            },
-            {
-              "program": "Diploma in Medical Radiology and Diagnostics",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Diagnostic UltraSound",
-              "count": 3
-            },
-            {
-              "program": "Doctor of Philosophy in Medical Ultrasound Technology",
-              "count": 2
-            },
-            {
-              "program": "Master of Philosophy in General Ultrasound",
-              "count": 3
-            },
-            {
-              "program": "Master of Philosophy in Medical Ultrasound Technology",
-              "count": 2
-            },
-            {
-              "program": "Master of Philosophy in Obstetrical & Gynecological Ultrasound",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Vascular Ultrasound",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Diagnostic Ultrasound",
-              "count": 75
-            },
-            {
-              "program": "Master of Science in Diagnostic Ultrasound (MS - Diagnostic Ultrasound)",
-              "count": 21
-            },
-            {
-              "program": "Master of Science in Medical Imaging Technology",
-              "count": 16
-            },
-            {
-              "program": "Master of Science in Medical Ultrasound Technology",
-              "count": 34
-            },
-            {
-              "program": "Medical Imaging Doctor",
-              "count": 534
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Arts & Architecture",
-      "departments": [
-        {
-          "department": "Department of Islamic Studies",
-          "programs": [
-            {
-              "program": "Master of Philosophy in Islamic Studies",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "School of Architecture",
-          "programs": [
-            {
-              "program": "Bachelor of Architecture",
-              "count": 100
-            }
-          ]
-        },
-        {
-          "department": "School of Creative Arts",
-          "programs": [
-            {
-              "program": "BA in Film and Television",
-              "count": 9
-            },
-            {
-              "program": "Bachelor of Arts (Hons) in Film and Television",
-              "count": 54
-            },
-            {
-              "program": "Bachelor of Science (Hons) in Media and Mass Communication",
-              "count": 40
-            },
-            {
-              "program": "Bachelor of Science in Media and Mass Communication",
-              "count": 58
-            },
-            {
-              "program": "BS in Media and Mass Communication",
-              "count": 5
-            },
-            {
-              "program": "Master in Mass Communication",
-              "count": 12
-            },
-            {
-              "program": "Master of Management in Textile and Fashion Designing",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Media and Mass Communication",
-              "count": 13
-            },
-            {
-              "program": "Master of Philosophy in Media and Mass Communication (Production Track)",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Media and Mass Communication (Professional",
-              "count": 1
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Engineering & Technology",
-      "departments": [
-        {
-          "department": "Center for Research in Molecular Medicine",
-          "programs": [
-            {
-              "program": "Master of Science in Civil Engineering",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Civil Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Civil Engineering",
-              "count": 926
-            },
-            {
-              "program": "Bachelor of Science in Civil Engineering",
-              "count": 5
-            },
-            {
-              "program": "Bachelor of Science in Civil Engineering Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Civil Technology",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Civil Engineering",
-              "count": 53
-            },
-            {
-              "program": "Master of Science in Civil Engineering",
-              "count": 11
-            }
-          ]
-        },
-        {
-          "department": "Department of Computer Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Computer Engineering",
-              "count": 118
-            },
-            {
-              "program": "Master of Science in Computer Engineering",
-              "count": 10
-            }
-          ]
-        },
-        {
-          "department": "Department of Electrical Engineering",
-          "programs": [
-            {
-              "program": "Bachelor  of Science in Electrical Engineering",
-              "count": 235
-            },
-            {
-              "program": "Bachelor of Dental Surgery",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Electrical Engineering",
-              "count": 682
-            },
-            {
-              "program": "Bachelor of Science in Electrical Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Electronics and Communication",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosphy in Electrical Engineering",
-              "count": 3
-            },
-            {
-              "program": "Master of Science in Electrical Engineering",
-              "count": 93
-            }
-          ]
-        },
-        {
-          "department": "Department of Electronics and Electrical Systems",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Communication and Information Technology",
-              "count": 4
-            },
-            {
-              "program": "Bachelor of Science in Electrical Engineering Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Electrical Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Electronics and Communication",
-              "count": 180
-            },
-            {
-              "program": "Bachelor of Science in Electronics and E",
-              "count": 47
-            },
-            {
-              "program": "Bachelor of Science in Electronics and Electrical Systems",
-              "count": 89
-            },
-            {
-              "program": "Bachelor of Science in Power and Energy Systems",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Electronics & Communication",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Electronics and Communication",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Electronics and Ele",
-              "count": 4
-            },
-            {
-              "program": "Master of Science in Electronics and Electrical Systems",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Department of Mechanical Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Mechanical Engineering",
-              "count": 519
-            },
-            {
-              "program": "Bachelor of Science in Mechanical Engineering",
-              "count": 95
-            },
-            {
-              "program": "Doctor of Philosophy in Mechanical Enginering",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Mechanical Engineering",
-              "count": 25
-            },
-            {
-              "program": "Master of Science in Mechanical Engineering",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Department of Software Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Information Engineering Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Software Engineering",
-              "count": 4
-            },
-            {
-              "program": "Master of Science in Software Engineering",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Civil Engineering",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Civil Engineering Technology",
-              "count": 60
-            },
-            {
-              "program": "Bachelor of Science in Civil Technology",
-              "count": 587
-            },
-            {
-              "program": "Bachelor of Science in Electrical Engineering Technology",
-              "count": 24
-            },
-            {
-              "program": "Bachelor of Science in Electrical Technology",
-              "count": 294
-            },
-            {
-              "program": "Bachelor of Science in Electronics Technology",
-              "count": 20
-            },
-            {
-              "program": "Bachelor of Science in Information Engineering Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Mechanical Engineering Technology",
-              "count": 6
-            },
-            {
-              "program": "Bachelor of Science in Mechanical Technology",
-              "count": 336
-            },
-            {
-              "program": "Bechelor of Science in Mechanical Engineering Technology",
-              "count": 33
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Information Technology",
-      "departments": [
-        {
-          "department": "Department of Computer Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Computer Science (Hons)",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Computer Engineering",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Software Engineering",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Computer Science and Information Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Computer Science (Hons)",
-              "count": 30
-            },
-            {
-              "program": "Bachelor of Science in Computer Science",
-              "count": 1527
-            },
-            {
-              "program": "Bachelor of Science in Information Engineering Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Software Engineer",
-              "count": 12
-            },
-            {
-              "program": "Bachelor of Science in Software Engineering",
-              "count": 5
-            },
-            {
-              "program": "Department of Computer Sciences & IT",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Computer Science",
-              "count": 2
-            },
-            {
-              "program": "M.S Information Technology (2 Years)",
-              "count": 2
-            },
-            {
-              "program": "Master in Computer Science",
-              "count": 91
-            },
-            {
-              "program": "Master of Science in Computer Engineering",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Computer Science",
-              "count": 190
-            },
-            {
-              "program": "Master of Science in Data Science",
-              "count": 4
-            },
-            {
-              "program": "Master of Science in Information Technology",
-              "count": 61
-            },
-            {
-              "program": "Master of Science in Software Engineering",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Electronics and Electrical Systems",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Electronics and Electrical Systems",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Department of Software Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Computer Engineering",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Information Engineering Technology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Software Engineer",
-              "count": 3
-            },
-            {
-              "program": "Bachelor of Science in Software Engineering",
-              "count": 555
-            },
-            {
-              "program": "Doctor of Philosophy in Software Engineering",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Software Engineering",
-              "count": 17
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Languages & Literature",
-      "departments": [
-        {
-          "department": "Department of English Language & Literature",
-          "programs": [
-            {
-              "program": "Bachelor of Science English Language and",
-              "count": 28
-            },
-            {
-              "program": "Bachelor of Science in English",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in English Language & Literature",
-              "count": 10
-            },
-            {
-              "program": "Bachelor of Science in English Language and Communication",
-              "count": 10
-            },
-            {
-              "program": "Bachelor of Science in English Language and Literature",
-              "count": 87
-            },
-            {
-              "program": "BS English Language & Literature",
-              "count": 3
-            },
-            {
-              "program": "Doctor of Philosophy in English",
-              "count": 2
-            },
-            {
-              "program": "Master of Arts in English Literature",
-              "count": 37
-            },
-            {
-              "program": "Master of Language in Applied Linguistics",
-              "count": 2
-            },
-            {
-              "program": "Master of Philosophy in Applied Linguistic",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Applied Linguistics",
-              "count": 86
-            },
-            {
-              "program": "Master of Philosophy in English Applied Linguistics",
-              "count": 74
-            },
-            {
-              "program": "Master of Philosophy in English Language",
-              "count": 5
-            },
-            {
-              "program": "Master of Philosophy in English Literature",
-              "count": 107
-            }
-          ]
-        },
-        {
-          "department": "Department of Language and Literature",
-          "programs": [
-            {
-              "program": "Bachelor of Science in English Language and Communication",
-              "count": 4
-            },
-            {
-              "program": "Master in English Language Teaching and Linguistics",
-              "count": 6
-            },
-            {
-              "program": "Master of Arts in English Language Literature",
-              "count": 7
-            },
-            {
-              "program": "Master of Arts in English Language Teaching & Linguistics",
-              "count": 2
-            },
-            {
-              "program": "Master of Arts in English Language Teaching and Linguistics",
-              "count": 48
-            },
-            {
-              "program": "Master of English Literature",
-              "count": 17
-            },
-            {
-              "program": "Master of Philosophy in English Applied Linguistics",
-              "count": 44
-            },
-            {
-              "program": "Master of Philosophy in English Literature",
-              "count": 19
-            },
-            {
-              "program": "Master of Philosophy in English Literature",
-              "count": 16
-            },
-            {
-              "program": "Master of Philosophy in Urdu",
-              "count": 33
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Law",
-      "departments": [
-        {
-          "department": "College of Law",
-          "programs": [
-            {
-              "program": "Bachelor of Arts in LLB (Hons)",
-              "count": 170
-            },
-            {
-              "program": "Bachelor of Laws",
-              "count": 5
-            },
-            {
-              "program": "BALLB (Hons)",
-              "count": 91
-            },
-            {
-              "program": "Master of Laws",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Postgraduate Institute of Law",
-          "programs": [
-            {
-              "program": "Master of Laws",
-              "count": 21
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Management Sciences",
-      "departments": [
-        {
-          "department": "College of Law",
-          "programs": [
-            {
-              "program": "BALLB (Hons)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Civil Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Civil Engineering",
-              "count": 5
-            }
-          ]
-        },
-        {
-          "department": "Department of Economics",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Economics",
-              "count": 36
-            },
-            {
-              "program": "Doctor of Philosophy in Economics",
-              "count": 7
-            },
-            {
-              "program": "Master of Philosophy in Applied Economics",
-              "count": 15
-            },
-            {
-              "program": "Master of Philosophy in Economics",
-              "count": 55
-            }
-          ]
-        },
-        {
-          "department": "Department of Electronics and Electrical Systems",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Electronics and Communication",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Mathematics and Statistics",
-          "programs": [
-            {
-              "program": "Master of Philosophy in Mathematics",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Pharmacy",
-          "programs": [
-            {
-              "program": "Doctor of Pharmacy",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Department of Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Electrical Technology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Institute of Molecular Biology & Biotechnology",
-          "programs": [
-            {
-              "program": "Master of Philosophy in Zoology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Lahore Business School",
-          "programs": [
-            {
-              "program": "Bachelor of Business Administration",
-              "count": 7
-            },
-            {
-              "program": "Bachelor of Business Administration (BBA 4 Years)",
-              "count": 12
-            },
-            {
-              "program": "Bachelor of Business Administration (Hon",
-              "count": 15
-            },
-            {
-              "program": "Bachelor of Business Administration (Hons)",
-              "count": 882
-            },
-            {
-              "program": "Bachelor of Business Administration (Hons)",
-              "count": 54
-            },
-            {
-              "program": "Bachelor of Business Studies",
-              "count": 5
-            },
-            {
-              "program": "Bachelor of Science in Accounting and Finance (Hons)",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Management",
-              "count": 22
-            },
-            {
-              "program": "Master in Project Management",
-              "count": 12
-            },
-            {
-              "program": "Master of Business Administration",
-              "count": 135
-            },
-            {
-              "program": "Master of Business Administration - 1.5",
-              "count": 52
-            },
-            {
-              "program": "Master of Business Administration - 1.5 Years",
-              "count": 151
-            },
-            {
-              "program": "Master of Business Administration - 1.5 Years",
-              "count": 9
-            },
-            {
-              "program": "Master of Business Administration - 1.5 Years - Project Management",
-              "count": 4
-            },
-            {
-              "program": "Master of Business Administration - 2 Years",
-              "count": 57
-            },
-            {
-              "program": "Master of Business Administration - 3.5 Years",
-              "count": 130
-            },
-            {
-              "program": "Master of Business Administration - 3.5 Years",
-              "count": 17
-            },
-            {
-              "program": "Master of Business Administration - Executive",
-              "count": 35
-            },
-            {
-              "program": "Master of Business Administration - Executive",
-              "count": 6
-            },
-            {
-              "program": "Master of Business Administration (MBA)",
-              "count": 8
-            },
-            {
-              "program": "Master of Business Administration Executive",
-              "count": 26
-            },
-            {
-              "program": "Master of Business Administration Executive",
-              "count": 7
-            },
-            {
-              "program": "Master of Philosophy in Management Sciences",
-              "count": 84
-            },
-            {
-              "program": "Master of Science in Engineering Management",
-              "count": 39
-            },
-            {
-              "program": "Master of Science in Project Management",
-              "count": 137
-            },
-            {
-              "program": "Master of Science in Supply Chain Management",
-              "count": 10
-            },
-            {
-              "program": "Masters of Science in Management Science",
-              "count": 2
-            },
-            {
-              "program": "MS Engineering Management",
-              "count": 5
-            },
-            {
-              "program": "MS in Management",
-              "count": 3
-            },
-            {
-              "program": "MS in Project Management",
-              "count": 3
-            },
-            {
-              "program": "MS Management",
-              "count": 3
-            },
-            {
-              "program": "MS Project Management",
-              "count": 21
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Aviation",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Aircraft Maintena",
-              "count": 39
-            },
-            {
-              "program": "Bachelor of Science in Aircraft Maintenance Technology",
-              "count": 14
-            },
-            {
-              "program": "Bachelor of Science in Aviation Management",
-              "count": 69
-            },
-            {
-              "program": "Bachelor of Science in Aviation Management (Hons)",
-              "count": 216
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Professional Studies",
-          "programs": [
-            {
-              "program": "Master in Project Management",
-              "count": 1
-            },
-            {
-              "program": "Masters of Education in Leadership and Management",
-              "count": 1
-            },
-            {
-              "program": "MS Engineering Management",
-              "count": 6
-            },
-            {
-              "program": "MS Project Management",
-              "count": 13
-            }
-          ]
-        },
-        {
-          "department": "School of Accountancy and Finance",
-          "programs": [
-            {
-              "program": "Bachelor of Commerce",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Commerce (Associate Degree) 2 Years",
-              "count": 66
-            },
-            {
-              "program": "Bachelor of Commerce (Hons)",
-              "count": 67
-            },
-            {
-              "program": "Bachelor of Commerce (Hons) 4 Year Program",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Accounting and Finance (Hons)",
-              "count": 76
-            },
-            {
-              "program": "Master of Commerce",
-              "count": 230
-            },
-            {
-              "program": "Master of Philosophy in Accounting and Finance",
-              "count": 32
-            },
-            {
-              "program": "Master of Science in Accounting and Finance",
-              "count": 186
-            },
-            {
-              "program": "Master of Science in Accounting and Finance - 1.5 Years",
-              "count": 6
-            },
-            {
-              "program": "Master of Science in Accounting and Finance - 3 Years",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Accounting and Finance - 3.5 Years",
-              "count": 2
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Medicine & Dentistry",
-      "departments": [
-        {
-          "department": "University College of Medicine and Dentistry",
-          "programs": [
-            {
-              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Dental Surgery (BDS)",
-              "count": 1
-            },
-            {
-              "program": "MPhil Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "MPhil Microbiology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Physiology",
-              "count": 1
-            },
-            {
-              "program": "Master of Public Health (MPH)",
-              "count": 1
-            },
-            {
-              "program": "Master of Dental Surgery (MDS)",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Medical Education (MME)",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Microbiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Physiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Public Health",
-              "count": 1
-            },
-            {
-              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
-              "count": 1
-            },
-            {
-              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Institute of Postgraduate Medical Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Dental Surgery (BDS)",
-              "count": 1
-            },
-            {
-              "program": "MPhil Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "MPhil Microbiology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Physiology",
-              "count": 1
-            },
-            {
-              "program": "Master of Public Health (MPH)",
-              "count": 1
-            },
-            {
-              "program": "Master of Dental Surgery (MDS)",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Medical Education (MME)",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Microbiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Physiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Public Health",
-              "count": 1
-            },
-            {
-              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
-              "count": 1
-            },
-            {
-              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "University Institute of Health Professions Education and Research",
-          "programs": [
-            {
-              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Dental Surgery (BDS)",
-              "count": 1
-            },
-            {
-              "program": "MPhil Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "MPhil Microbiology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Physiology",
-              "count": 1
-            },
-            {
-              "program": "Master of Public Health (MPH)",
-              "count": 1
-            },
-            {
-              "program": "Master of Dental Surgery (MDS)",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Medical Education (MME)",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Microbiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Physiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Public Health",
-              "count": 1
-            },
-            {
-              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
-              "count": 1
-            },
-            {
-              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Dental Paramedical School",
-          "programs": [
-            {
-              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Dental Surgery (BDS)",
-              "count": 1
-            },
-            {
-              "program": "MPhil Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "MPhil Microbiology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Physiology",
-              "count": 1
-            },
-            {
-              "program": "Master of Public Health (MPH)",
-              "count": 1
-            },
-            {
-              "program": "Master of Dental Surgery (MDS)",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Medical Education (MME)",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Microbiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Physiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Public Health",
-              "count": 1
-            },
-            {
-              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
-              "count": 1
-            },
-            {
-              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Centre for Health Professionals Development & Lifelong Learning",
-          "programs": [
-            {
-              "program": "Bachelor of Medicine & Bachelor of Surgery (MBBS)",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Dental Surgery (BDS)",
-              "count": 1
-            },
-            {
-              "program": "MPhil Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "MPhil Microbiology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "MPhil Physiology",
-              "count": 1
-            },
-            {
-              "program": "Master of Public Health (MPH)",
-              "count": 1
-            },
-            {
-              "program": "Master of Dental Surgery (MDS)",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Medical Education (MME)",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Biochemistry",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Microbiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmacology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Physiology",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Public Health",
-              "count": 1
-            },
-            {
-              "program": "FCPS/MCPS (CPSP approved Residency Programs)",
-              "count": 1
-            },
-            {
-              "program": "Fellowship In Oral & Maxillofacial Surgery & Orthodontics (FCPS)",
-              "count": 1
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Pharmacy",
-      "departments": [
-        {
-          "department": "Department of Pharmacy",
-          "programs": [
-            {
-              "program": "Bachelor of Pharmacy",
-              "count": 6
-            },
-            {
-              "program": "Doctor of Pharmacy",
-              "count": 1745
-            },
-            {
-              "program": "Doctor of Pharmacy (One year's Condensed Programme)",
-              "count": 13
-            },
-            {
-              "program": "Doctor of Pharmacy (Pharm. D)",
-              "count": 10
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmaceutical Chemistry",
-              "count": 3
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmaceutics",
-              "count": 6
-            },
-            {
-              "program": "Doctor of Philosophy in Pharmacology",
-              "count": 2
-            },
-            {
-              "program": "Doctor Of Philosphy In Pharmacology",
-              "count": 12
-            },
-            {
-              "program": "M. Phil Pharmacy Practice",
-              "count": 10
-            },
-            {
-              "program": "Master of Philosophy in Clinical Pharmacy",
-              "count": 2
-            },
-            {
-              "program": "Master of Philosophy in Pharmaceutical Chemistry",
-              "count": 36
-            },
-            {
-              "program": "Master of Philosophy in Pharmaceutical Technology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Pharmaceutics",
-              "count": 71
-            },
-            {
-              "program": "Master of Philosophy in Pharmacognosy",
-              "count": 28
-            },
-            {
-              "program": "Master of Philosophy in Pharmacology",
-              "count": 79
-            },
-            {
-              "program": "Master of Philosophy in Pharmacy Practice",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Institute of Molecular Biology & Biotechnology",
-          "programs": [
-            {
-              "program": "Master of Science in Biochemistry",
-              "count": 1
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Sciences",
-      "departments": [
-        {
-          "department": "Center for Research in Molecular Medicine",
-          "programs": [
-            {
-              "program": "Diploma in Medical Radiology (Diagnostic)",
-              "count": 29
-            },
-            {
-              "program": "Diploma in Medical Radiology & Diagnostic",
-              "count": 6
-            },
-            {
-              "program": "Master of Science in Diagnostic Ultrasound (MS - Diagnostic Ultrasound)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Chemistry",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Chemistry",
-              "count": 215
-            },
-            {
-              "program": "Bachelor of Science in Chemistry ( 4 Years)",
-              "count": 2
-            },
-            {
-              "program": "Doctor of Philosophy in Chemistry",
-              "count": 8
-            },
-            {
-              "program": "M.Sc Chemistry ( 2 Years )",
-              "count": 201
-            },
-            {
-              "program": "Master of Philosophy in Chemistry",
-              "count": 297
-            },
-            {
-              "program": "Master of Science in Chemistry",
-              "count": 156
-            }
-          ]
-        },
-        {
-          "department": "Department of Computer Science and Information Technology",
-          "programs": [
-            {
-              "program": "Bachelor of Computer Science (Hons)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Education",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Education (with Educational Management)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Environmental Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Science Environmental Sciences",
-              "count": 85
-            },
-            {
-              "program": "Bachelor of Science in Environmental Sciences",
-              "count": 8
-            },
-            {
-              "program": "Bachelor of Science in Environmental Sciences",
-              "count": 11
-            },
-            {
-              "program": "Doctor of Philosophy in Environmental Sciences",
-              "count": 3
-            },
-            {
-              "program": "Master of Philosophy in Environmental Sciences",
-              "count": 105
-            },
-            {
-              "program": "Master of Science in Chemistry",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Environmental Sciences",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Islamic Studies",
-          "programs": [
-            {
-              "program": "Bachelor of Islamic Studies",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Mathematics and Statistics",
-          "programs": [
-            {
-              "program": "Bachelor of Science (Hons) in Mathematics",
-              "count": 181
-            },
-            {
-              "program": "Bachelor of Science in Mathematics",
-              "count": 48
-            },
-            {
-              "program": "Doctor of Philosophy in Mathematics",
-              "count": 5
-            },
-            {
-              "program": "Doctor Of Philosphy In Mathematics",
-              "count": 27
-            },
-            {
-              "program": "Master of Philosophy in Mathematics",
-              "count": 332
-            },
-            {
-              "program": "Master of Philosophy in Statistics",
-              "count": 11
-            },
-            {
-              "program": "Master of Science in Mathematics",
-              "count": 28
-            }
-          ]
-        },
-        {
-          "department": "Department of Pharmacy",
-          "programs": [
-            {
-              "program": "Doctor of Pharmacy",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Physics",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Engineering Physics",
-              "count": 12
-            },
-            {
-              "program": "Bachelor of Science in Physics",
-              "count": 149
-            },
-            {
-              "program": "Doctor of Philosophy in Physics",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosphy in  Physics",
-              "count": 7
-            },
-            {
-              "program": "Master of Philosophy in Physics",
-              "count": 260
-            },
-            {
-              "program": "Master of Science in Physics",
-              "count": 241
-            },
-            {
-              "program": "MS Physics",
-              "count": 2
-            },
-            {
-              "program": "qui",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Software Engineering",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Software Engineering",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Zoology (SRG)",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Zoology",
-              "count": 3
-            },
-            {
-              "program": "Master of Science in Zoology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Institute of Molecular Biology & Biotechnology",
-          "programs": [
-            {
-              "program": "Bachelor of Science (Hons) in Biochemistry",
-              "count": 3
-            },
-            {
-              "program": "Bachelor of Science in Biochemistry",
-              "count": 23
-            },
-            {
-              "program": "Bachelor of Science in Biochemistry",
-              "count": 3
-            },
-            {
-              "program": "Bachelor of Science in Biochemistry (Hons)",
-              "count": 41
-            },
-            {
-              "program": "Bachelor of Science in Biochemistry & Biotechnology",
-              "count": 3
-            },
-            {
-              "program": "Bachelor of Science in Biochemistry and Biotechnology",
-              "count": 120
-            },
-            {
-              "program": "Bachelor of Science in Biotechnology",
-              "count": 302
-            },
-            {
-              "program": "Bachelor of Science in Botany",
-              "count": 2
-            },
-            {
-              "program": "Bachelor of Science in Industrial Biotechnology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Microbiology",
-              "count": 21
-            },
-            {
-              "program": "Bachelor of Science in Microbiology & Biotechnology",
-              "count": 7
-            },
-            {
-              "program": "Bachelor of Science in Microbiology and Biotechnology",
-              "count": 160
-            },
-            {
-              "program": "Bachelor of Science in Molecular Biology",
-              "count": 36
-            },
-            {
-              "program": "Bachelor of Science in Molecular Biology & Biotechnology",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Science in Molecular Biology and Biotechnology",
-              "count": 11
-            },
-            {
-              "program": "Bachelor of Science in Zoology",
-              "count": 38
-            },
-            {
-              "program": "Doctor of Philosophy in Biochemistry",
-              "count": 19
-            },
-            {
-              "program": "Doctor of Philosophy in Botany",
-              "count": 4
-            },
-            {
-              "program": "Doctor of Philosophy in Forensic Science",
-              "count": 1
-            },
-            {
-              "program": "Doctor of Philosophy in Microbiology",
-              "count": 2
-            },
-            {
-              "program": "Doctor of Philosophy in Molecular Biology",
-              "count": 3
-            },
-            {
-              "program": "Doctor of Philosophy in Physiology",
-              "count": 10
-            },
-            {
-              "program": "Doctor of Philosophy in Zoology",
-              "count": 4
-            },
-            {
-              "program": "Doctor of Philosophy Microbiology",
-              "count": 9
-            },
-            {
-              "program": "M.Phil in Zoology",
-              "count": 135
-            },
-            {
-              "program": "Master of Philosophy in Biochemistry",
-              "count": 144
-            },
-            {
-              "program": "Master of Philosophy in Bioinformatics",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Biotechnology",
-              "count": 48
-            },
-            {
-              "program": "Master of Philosophy in Botany",
-              "count": 87
-            },
-            {
-              "program": "Master of Philosophy in Botony",
-              "count": 3
-            },
-            {
-              "program": "Master of Philosophy in Forensic Science",
-              "count": 9
-            },
-            {
-              "program": "Master of Philosophy in Microbiology",
-              "count": 108
-            },
-            {
-              "program": "Master of Philosophy in Molecular Biology",
-              "count": 43
-            },
-            {
-              "program": "Master of Philosophy in Physiology",
-              "count": 62
-            },
-            {
-              "program": "Master of Philosophy in Zoology",
-              "count": 26
-            },
-            {
-              "program": "Master of Philosphy in Forensic Sciences",
-              "count": 40
-            },
-            {
-              "program": "Master of Science in Biochemistry",
-              "count": 46
-            },
-            {
-              "program": "Master of Science in Biochemistry and Biotechnology",
-              "count": 22
-            },
-            {
-              "program": "Master of Science in Biotechnology",
-              "count": 9
-            },
-            {
-              "program": "Master of Science in Botany",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Microbiology",
-              "count": 14
-            },
-            {
-              "program": "Master of Science in Microbiology and Biotechnology",
-              "count": 24
-            },
-            {
-              "program": "Master of Science in Molecular Biology",
-              "count": 18
-            },
-            {
-              "program": "Master of Science in Molecular Biology and Biotechnology",
-              "count": 22
-            },
-            {
-              "program": "Master of Science in Zoology",
-              "count": 3
-            },
-            {
-              "program": "MPhil Microbiology",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Lahore Business School",
-          "programs": [
-            {
-              "program": "Bachelor of Business Administration (BBA 4 Years)",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Professional Studies",
-          "programs": [
-            {
-              "program": "Master of Philosophy in Psychology",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Radiology Research Section",
-          "programs": [
-            {
-              "program": "Diploma in Medical Radiology & Diagnostic",
-              "count": 26
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "faculty": "Faculty of Social Sciences",
-      "departments": [
-        {
-          "department": "Center for Research in Molecular Medicine",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Biotechnology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Chemistry",
-          "programs": [
-            {
-              "program": "Master of Philosophy in Chemistry",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Department of Criminology",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Criminology and Criminal Justice",
-              "count": 4
-            }
-          ]
-        },
-        {
-          "department": "Department of Economics",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Economics",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Applied Economics",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Economics",
-              "count": 7
-            }
-          ]
-        },
-        {
-          "department": "Department of Education",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Education (with Educational Management)",
-              "count": 24
-            },
-            {
-              "program": "BS in Education (Educational Management)",
-              "count": 2
-            },
-            {
-              "program": "Doctor of Philosophy in Education",
-              "count": 34
-            },
-            {
-              "program": "Master of Philosophy in Education",
-              "count": 157
-            },
-            {
-              "program": "Master of Philosophy in Special Education",
-              "count": 4
-            },
-            {
-              "program": "Masters of Education in Leadership and Management",
-              "count": 1
-            },
-            {
-              "program": "PhD in Education",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Department of Islamic Studies",
-          "programs": [
-            {
-              "program": "BA Islamic Studies",
-              "count": 1
-            },
-            {
-              "program": "Bachelor of Islamic Studies",
-              "count": 5
-            },
-            {
-              "program": "Bachelor of Science in Islamic Studies",
-              "count": 3
-            },
-            {
-              "program": "Doctor of Philosophy in Islamic Studies",
-              "count": 34
-            },
-            {
-              "program": "Master of Philosophy in Islamic Studies",
-              "count": 205
-            }
-          ]
-        },
-        {
-          "department": "Department of Mathematics and Statistics",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Mathematics",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Mathematics",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Department of Physics",
-          "programs": [
-            {
-              "program": "Master of Science in Physics",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Institute of Molecular Biology & Biotechnology",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Zoology",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Behavioral Sciences",
-          "programs": [
-            {
-              "program": "Master of Science in Clinical Psychology",
-              "count": 2
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Behavioural Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Psychology",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Applied Psychology",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Clinical Psychology",
-              "count": 611
-            },
-            {
-              "program": "Master of Science in Psychology",
-              "count": 30
-            },
-            {
-              "program": "MS Clinical Psychology",
-              "count": 53
-            }
-          ]
-        },
-        {
-          "department": "Lahore School of Professional Studies",
-          "programs": [
-            {
-              "program": "Master of Science in Psychology",
-              "count": 2
-            },
-            {
-              "program": "MS Clinical Psychology",
-              "count": 1
-            },
-            {
-              "program": "MS Clinical Psychology",
-              "count": 8
-            },
-            {
-              "program": "MS in Clinical Psychology",
-              "count": 3
-            }
-          ]
-        },
-        {
-          "department": "School of Creative Arts",
-          "programs": [
-            {
-              "program": "BS in Media and Mass Communication",
-              "count": 1
-            },
-            {
-              "program": "Master in Mass Communication",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Media and Mass Communication",
-              "count": 1
-            },
-            {
-              "program": "Master of Science in Mass Communication",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "department": "School of Integrated Social Sciences",
-          "programs": [
-            {
-              "program": "Bachelor of Science in Social Sciences",
-              "count": 70
-            },
-            {
-              "program": "BS In Social Science (Politics and International Relations)",
-              "count": 10
-            },
-            {
-              "program": "Master of Philosophy in Intelligence and Security Studies",
-              "count": 1
-            },
-            {
-              "program": "Master of Philosophy in Political Science",
-              "count": 1
-            }
-          ]
-        }
-      ]
-    }
-  ],
-  "standalonePrograms": [
-    {
-      "program": "Bachelor of Business Administration",
-      "count": 1
-    },
-    {
-      "program": "Bachelor of Medical Laboratory Sciences",
-      "count": 1
-    },
-    {
-      "program": "Bachelor of Medicine and Bachelor of Surgery",
-      "count": 1
-    },
-    {
-      "program": "Bachelor of Science Environmental Sciences",
-      "count": 2
-    },
-    {
-      "program": "Bachelor of Science in Civil Engineering",
-      "count": 6
-    },
-    {
-      "program": "Bachelor of Science in Computer Engineering",
-      "count": 1
-    },
-    {
-      "program": "Bachelor of Science in Mechanical Engineering",
-      "count": 5
-    },
-    {
-      "program": "Doctor of Medical Laboratory Sciences",
-      "count": 1
-    },
-    {
-      "program": "Master of Business Administration",
-      "count": 1
-    },
-    {
-      "program": "Master of Philosophy in Environmental Sciences",
-      "count": 1
-    },
-    {
-      "program": "Other",
-      "count": 1
-    }
-  ],
-  "stats": {
-    "totalFaculties": 11,
-    "totalDepartments": 85,
-    "totalPrograms": 440,
-    "standaloneCount": 11
+[
+  {
+    "faculty": "Allied Health Sciences",
+    "departments": [
+      {
+        "department": "Department of Rehabilitation Sciences",
+        "programs": [
+          "BS Speech & Language Pathology",
+          "BS Rehabilitation Sciences",
+          "BS Occupational Therapy",
+          "BS Orthotics and Prosthetics",
+          "MS Speech Language Pathology and Hearing Sciences"
+        ]
+      },
+      {
+        "department": "Lahore School of Nursing",
+        "programs": [
+          "BS Nursing",
+          "BS Nursing (Post RN)",
+          "MS Nursing"
+        ]
+      },
+      {
+        "department": "University of Food Science & Technology",
+        "programs": [
+          "BS Food Safety & Quality Management",
+          "BS Dairy Technology BS",
+          "Mphil Food Science & Technology",
+          "PhD Food Science & Technology",
+          "BS Food Science & Technology",
+          "BS Meat Technology"
+        ]
+      },
+      {
+        "department": "University Institute of Diet & Nutritional Sciences",
+        "programs": [
+          "BS Human Nutrition & Dietetics",
+          "Mphil Human Nutrition & Dietetics",
+          "PhD Human Nutrition & Dietetics"
+        ]
+      },
+      {
+        "department": "Department of Audiology",
+        "programs": [
+          "BS Audiology"
+        ]
+      },
+      {
+        "department": "University Institute of Physical Therapy",
+        "programs": [
+          "Physical Therapy DPT",
+          "MS Physical Therapy (Cardiopulmonary, Geriatric, Musculoskeletal, Neurology, Pediatric, Women's Health, Sports)",
+          "MPhil Physical Therapy (Musculoskeletal)",
+          "PhD Physical Therapy"
+        ]
+      },
+      {
+        "department": "University Institute of Radiological Sciences & Medical Imaging Technology",
+        "programs": [
+          "BS Radiography and Imaging Technology",
+          "BS Medical Ultrasound Technology",
+          "MS Diagnostic Ultrasound",
+          "MS Medical Imaging Technology",
+          "PhD Diagnostic Ultrasound",
+          "PhD  Medical Imaging Technology"
+        ]
+      },
+      {
+        "department": "Department of Health & Professional Technologies",
+        "programs": [
+          "BS Operation Theatre Technology",
+          "BS Emergency & Intensive Care Technology",
+          "BS Anesthesia Technology",
+          "BS Surgical Technology",
+          "BS Respiratory Therapy"
+        ]
+      },
+      {
+        "department": "University Insitute of Medical Lab Technology",
+        "programs": [
+          "PhD Immunology & Molecular Pathology",
+          "PhD Virology  & Molecular Pathology",
+          "BS Medical Lab Technology",
+          "BS Blood Banking Technology",
+          "Mphil Virology & Molecular Pathology",
+          "Mphil Immunology & Molecular Pathology"
+        ]
+      },
+      {
+        "department": "Department Of Optometry & Visions Sciences",
+        "programs": [
+          "BS Vision Sciences"
+        ]
+      },
+      {
+        "department": "Emerging Allied Health Sciences",
+        "programs": [
+          "BS Dialysis Technology",
+          "BS Endoscopy Technology",
+          "BS Neurophysiology",
+          "BS Cardiovascular Technology",
+          "BS Cardiac Perfusion Technology",
+          "BS Dermatology Technology"
+        ]
+      },
+      {
+        "department": "Department Of Sports Sciences & Physical Education",
+        "programs": [
+          "PhD Sports Sciences & Physical Education",
+          "BS Sports Sciences & Physical Education",
+          "Mphil Sports Sciences & Physical Education"
+        ]
+      },
+      {
+        "department": "University Insitute of Public Health",
+        "programs": [
+          "BS Biostatistics",
+          "MPhil Public Health",
+          "PhD Public Health",
+          "PGD Maternal & Child Health",
+          "PGD Occupational Health & Safety",
+          "BS Public Health"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Engineering & Technology",
+    "departments": [
+      {
+        "department": "Department of Mechanical Engineering",
+        "programs": [
+          "Mechanical Engineering PhD",
+          "Mechanical Engineering MS",
+          "Mechanical Engineering BS",
+          "Intelligent Automotive Systems BS"
+        ]
+      },
+      {
+        "department": "Department of Computer Engineering",
+        "programs": [
+          "Computer Engineering BS",
+          "Computer Engineering MS"
+        ]
+      },
+      {
+        "department": "Department of Electrical Engineering",
+        "programs": [
+          "Electrical Engineering BS",
+          "Electrical Engineering MS",
+          "Electrical Engineering PhD"
+        ]
+      },
+      {
+        "department": "Department of Technology",
+        "programs": [
+          "Biomedical Engineering Technology ADP",
+          "Information Engineering Technology BS",
+          "Mechanical Engineering Technology BS",
+          "Construction Management BS",
+          "Engineering Technology in Artificial Intelligence BS",
+          "Engineering Technology in Information Security BS",
+          "Biomedical Engineering Technology BS",
+          "Mechanical Engineering Technology MS",
+          "Architectural Engineering Technology BS",
+          "Civil Engineering Technology BS"
+        ]
+      },
+      {
+        "department": "Department of Civil Engineering",
+        "programs": [
+          "Civil Engineering BS",
+          "Civil Engineering MS",
+          "Civil Engineering PhD"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Medicine & Dentistry (UCMD)",
+    "departments": [
+      {
+        "department": "College of Medicine, University College of Medicine & Dentistry",
+        "programs": [
+          "Bachelor of Medicine & Bachelor of Surgery MBBS",
+          "Biochemistry MPhil",
+          "Microbiology MPhil",
+          "Pharmacology MPhil",
+          "Physiology MPhil",
+          "Public Health MPhil",
+          "Bachelors Medical Education MS",
+          "Biochemistry PhD",
+          "Microbiology PhD",
+          "Physiology PhD"
+        ]
+      },
+      {
+        "department": "College of Dentistry, University College of Medicine & Dentistry",
+        "programs": [
+          "Bachelor of Dental Surgery BDS",
+          "Master of Dental Surgery MDS"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Information Technology",
+    "departments": [
+      {
+        "department": "Department of Intelligent Systems",
+        "programs": [
+          "Embedded Systems ADP",
+          "Embedded Systems BS",
+          "Robotics and Artificial Intelligence BS"
+        ]
+      },
+      {
+        "department": "Department of Software Engineering",
+        "programs": [
+          "Software Engineering BS",
+          "Artificial Intelligence BS",
+          "Software Engineering MS",
+          "Software Engineering PhD"
+        ]
+      },
+      {
+        "department": "Department of Computer Science & Information Technology",
+        "programs": [
+          "Computer Science BS",
+          "Data Science BS",
+          "Cyber Security BS",
+          "Computer Science MS",
+          "Data Science MS",
+          "Computer Science PhD"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Management Sciences",
+    "departments": [
+      {
+        "department": "Lahore School of Aviation",
+        "programs": [
+          "Aviation Management BS",
+          "Aircraft Maintenance Technology BS"
+        ]
+      },
+      {
+        "department": "School of Accountancy and Finance",
+        "programs": [
+          "Bachelor of Commerce (2 years) ADP",
+          "Bachelor of Commerce (4 years) B.COM",
+          "Accounting and Finance (4 years) BS",
+          "Accounting and Finance (2 years) BS",
+          "Accounting and Finance (2 years - ICAP /CAFQualified Students) BS",
+          "Islamic Banking & Finance BS",
+          "Taxation BS",
+          "Accounting & Finance MS (1.5/2 years)",
+          "Accounting & Finance MPhil"
+        ]
+      },
+      {
+        "department": "Lahore Business School",
+        "programs": [
+          "Business Administration (4yr) BBA",
+          "Business Administration (2yr) BBA",
+          "Human Resource Analytics BS",
+          "Business Analytics BS",
+          "Financial Technology BS",
+          "Digital Marketing BS",
+          "Supply Chain Analytics BS",
+          "Business Administration (2yrs) MBA",
+          "Business Administration Executive MBAE",
+          "Project Management MS",
+          "Supply Chain Management MS",
+          "Management Sciences MS",
+          "Strategic Human Resource Analytics MS",
+          "Management Sciences PhD"
+        ]
+      },
+      {
+        "department": "Department of Economics",
+        "programs": [
+          "Economics BS",
+          "Economics & Finance BS",
+          "Applied Economics MPhil",
+          "Economics PhD"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Sciences",
+    "departments": [
+      {
+        "department": "Department of Environmental Sciences",
+        "programs": [
+          "Environmental Sciences BS",
+          "Environmental Sciences MPhil",
+          "Environmental Sciences PhD"
+        ]
+      },
+      {
+        "department": "Department of Mathematics and Statistics",
+        "programs": [
+          "Mathematics BS",
+          "Computational Finance BS",
+          "Mathematics  & Data Science BS",
+          "Mathematics MPhil",
+          "Mathematics PhD"
+        ]
+      },
+      {
+        "department": "Department of Chemistry",
+        "programs": [
+          "Chemistry BS",
+          "Applied Chemistry BS",
+          "Chemistry MPhil",
+          "Chemistry PhD"
+        ]
+      },
+      {
+        "department": "Department of Physics",
+        "programs": [
+          "Physics BS",
+          "Medical Physics BS",
+          "Physics MPhil",
+          "Physics PhD"
+        ]
+      },
+      {
+        "department": "School of Pain and Regenerative Medicine",
+        "programs": [
+          "Regenerative Sciences BS"
+        ]
+      },
+      {
+        "department": "Institute of Molecular Biology and Biotechnology",
+        "programs": [
+          "Biotechnology MPhil",
+          "Biochemistry MPhil",
+          "Molecular Biology MPhil",
+          "Microbiology MPhil",
+          "Forensic Science MPhil",
+          "Physiology MPhil",
+          "Bioinformatics MS",
+          "Botany MPhil",
+          "Zoology MPhil",
+          "Biochemistry and Biotechnology BS",
+          "Bionanotechnology BS",
+          "Poultry Science BS",
+          "Biotechnology BS",
+          "Microbiology & Biotechnology BS",
+          "Molecular Biology & Biotechnology BS",
+          "Clinical Microbiology BS",
+          "Industrial Biotechnology BS",
+          "Forensic Sciences BS",
+          "Industrial Biochemistry BS",
+          "Clinical Biochemistry BS",
+          "Bioinformatics BS",
+          "Botany BS",
+          "Zoology BS",
+          "Stem Cell Science BS",
+          "Molecular Pathology & Cytogenetics BS",
+          "Biochemistry PhD",
+          "Microbiology PhD",
+          "Biotechnology PhD",
+          "Molecular Biology PhD",
+          "Forensic Science PhD",
+          "Physiology PhD",
+          "Botany PhD",
+          "Zoology PhD"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Social Sciences",
+    "departments": [
+      {
+        "department": "Department of Islamic Studies",
+        "programs": [
+          "Islamic Studies BS",
+          "Islamic Studies (Quranic Sciences) BS",
+          "Islamic Studies MPhil",
+          "Islamic Studies PhD"
+        ]
+      },
+      {
+        "department": "Department of Education",
+        "programs": [
+          "Education B.Ed",
+          "Special Education B.Ed",
+          "Education (1.5yrs) B.Ed",
+          "Education Mphil",
+          "Education PhD"
+        ]
+      },
+      {
+        "department": "Lahore School of Behavioural Sciences",
+        "programs": [
+          "Psychology BS",
+          "Clinical Psychology BS",
+          "Applied Psychology MPhil",
+          "Clinical Psychology MS",
+          "Psychology PhD"
+        ]
+      },
+      {
+        "department": "Department of Sociology",
+        "programs": [
+          "Sociology BS"
+        ]
+      },
+      {
+        "department": "School of Integrated Social Sciences",
+        "programs": [
+          "Social Sciences BS",
+          "Intelligence and Security Studies MPhil",
+          "Political Sciences MPhil",
+          "International Relations PhD"
+        ]
+      },
+      {
+        "department": "Department of Criminology",
+        "programs": [
+          "Criminology & Criminal Justice BS"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Arts & Architecture",
+    "departments": [
+      {
+        "department": "School of Fashion & Textiles",
+        "programs": [
+          "Fashion Design BS",
+          "Fashion and Styling BS"
+        ]
+      },
+      {
+        "department": "School of Architecture",
+        "programs": [
+          "Architecture B.Arch",
+          "Interior Design BS",
+          "Architecture M.Arch",
+          "Interior Design MS"
+        ]
+      },
+      {
+        "department": "School of Creative Arts",
+        "programs": [
+          "Visual Arts BFA",
+          "Animation & VFX BS",
+          "Visual Communication Design BS",
+          "Game Design BS",
+          "Film and Television BA",
+          "Media and Mass Communication  BS",
+          "Media and Mass Communication (Research Track) MPhil",
+          "Media and Mass Communication Studies PhD"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Languages & Literature",
+    "departments": [
+      {
+        "department": "Department of Urdu",
+        "programs": [
+          "Urdu  BS",
+          "Urdu MPhil"
+        ]
+      },
+      {
+        "department": "Department of English Language & Literature",
+        "programs": [
+          "English Language and Literature BS",
+          "English Literature MPhil",
+          "Applied Linguistics MPhil"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Pharmacy",
+    "departments": [
+      {
+        "department": "Department of Pharmacy",
+        "programs": [
+          "Doctor of Pharmacy D.Pharm",
+          "Pharmacology & Toxicology BS",
+          "Pharmaceutical Chemistry MPhil",
+          "Clinical Pharmacy MPhil",
+          "Pharmaceutics MPhil",
+          "Pharmacognosy MPhil",
+          "Pharmacology MPhil",
+          "Pharmacy Practice MPhil",
+          "Pharmaceutical Biotechnology MPhil",
+          "Pharmaceutical Technology MPhil",
+          "Pharmaceutical Chemistry PhD",
+          "Pharmaceutics PhD",
+          "Pharmacognosy PhD"
+        ]
+      }
+    ]
+  },
+  {
+    "faculty": "Faculty of Law",
+    "departments": [
+      {
+        "department": "M.A Raoof College of Law",
+        "programs": [
+          "LLB Hons. (5yrs) B.A LLB"
+        ]
+      }
+    ]
   }
-}
+]

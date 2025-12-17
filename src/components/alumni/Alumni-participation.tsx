@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/modal";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
@@ -472,8 +473,8 @@ export const AlumniParticipation: React.FC = () => {
           </button>
         </div>
         <div className="overflow-hidden rounded-2xl bg-white dark:bg-white/[0.03]">
-          <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live={loading ? "polite" : undefined}>
-            <div className="min-w-full xl:min-w-full">
+          <SyncedTableScroll minWidth={950} maxHeight={700} className="" >
+            <div aria-live={loading ? "polite" : undefined}>
               <Table className="min-w-full border border-gray-200 dark:border-gray-800">
                 <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
                   <TableRow className="border-b border-gray-200 dark:border-white/[0.06]">
@@ -632,7 +633,7 @@ export const AlumniParticipation: React.FC = () => {
               </TableBody>
             </Table>
             </div>
-          </div>
+          </SyncedTableScroll>
           <div className="flex items-center justify-between p-4">
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {(() => {

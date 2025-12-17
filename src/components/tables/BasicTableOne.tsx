@@ -9,6 +9,7 @@ import {
 
 import Badge from "../ui/badge/Badge";
 import Image from "next/image";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 interface Order {
   id: number;
@@ -114,9 +115,8 @@ const tableData: Order[] = [
 export default function BasicTableOne() {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto">
-        <div className="min-w-[1102px]">
-          <Table>
+      <SyncedTableScroll minWidth={1102}>
+        <Table>
             {/* Table Header */}
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
@@ -218,9 +218,8 @@ export default function BasicTableOne() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
-      </div>
+        </Table>
+      </SyncedTableScroll>
     </div>
   );
 }

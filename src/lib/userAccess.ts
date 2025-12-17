@@ -5,7 +5,7 @@ import {
   findMatchingPrograms, 
   buildProgramMatchPattern
 } from "./programMatching";
-import { getFaculties } from "@/data/programs-departments";
+import { getAllFacultyNamesCached } from "./orgAccessLookup";
 
 export type UserAccessAssignment = {
   faculty_name: string | null;
@@ -93,10 +93,11 @@ export async function buildAccessFilterSQL(
   
   // If no assignments, user has no access
   if (assignments.length === 0) {
-    // For admin/viewer without assignments, block access
-    console.log("[buildAccessFilterSQL] ⚠️ No assignments found - blocking access (returning 1=0)");
+    // Default behavior: if no assignments are configured for an admin/viewer,
+    // do NOT block the entire system. Treat as full access (read-only for viewer, enforced elsewhere).
+    console.log("[buildAccessFilterSQL] ℹ️ No assignments found - allowing full access (no filtering)");
     console.log("[buildAccessFilterSQL] ============================================");
-    return { sql: sql`1 = 0`, hasFilter: true };
+    return { sql: null, hasFilter: false };
   }
 
   // Check if ALL faculties are selected (faculty-level assignments only, no departments/programs)
@@ -114,7 +115,7 @@ export async function buildAccessFilterSQL(
     
     if (facultyOnlyAssignments.length > 0) {
       // Get all faculties in the system
-      const allSystemFaculties = getFaculties();
+      const allSystemFaculties = await getAllFacultyNamesCached();
       const assignedFaculties = facultyOnlyAssignments.map(a => a.faculty_name!).filter(Boolean);
       
       // Normalize for comparison (case-insensitive, trimmed)
