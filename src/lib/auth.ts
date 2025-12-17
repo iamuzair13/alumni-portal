@@ -21,6 +21,8 @@ interface UserWithDb extends User {
   dbUser?: DbUser;
   alumniDb?: {
     alumniid: number;
+    sapid?: string | null;
+    registrationno?: string | null;
     alumniname: string | null;
     departmentname: string | null;
     facultyname: string | null;
@@ -158,8 +160,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         const uw: UserWithDb = user as UserWithDb;
         const db = uw.dbUser;
+        const at: AugmentedToken = token as AugmentedToken;
+
+        // Clear fields that can persist across logins and cause identity mixups
+        at.userId = undefined;
+        at.department = null;
+        at.type = null;
+        at.blocked = null;
+        at.firstName = null;
+        at.lastName = null;
+        at.sapid = null;
+        at.registrationno = null;
+
         if (db) {
-          const at: AugmentedToken = token as AugmentedToken;
           at.userId = db.userid;
           at.department = db.department;
           // Normalize "user" type to "viewer" for consistency
@@ -170,6 +183,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           at.lastName = db.lastname;
           token.email = db.email || token.email;
           token.name = `${db.firstname ?? ""} ${db.lastname ?? ""}`.trim();
+          token.sub = `u:${String(db.userid)}`;
           try {
             console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
           } catch {}
@@ -192,25 +206,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             universityemail: string | null;
           } }).alumniDb;
           if (au) {
-            const at: AugmentedToken = token as AugmentedToken;
             at.userId = au.alumniid;
             at.department = au.departmentname ?? null;
             at.type = "alumni";
             at.blocked = String(au.alumnistatus || "").toLowerCase() === "blocked";
-            at.sapid = au.sapid ?? null; // Store SAP ID in token
-            at.registrationno = au.registrationno ?? null; // Store registration number in token
+            const topSapid = (user as unknown as { sapid?: string | null }).sapid ?? null;
+            const topRegNo = (user as unknown as { registrationno?: string | null }).registrationno ?? null;
+            at.sapid = au.sapid ?? topSapid ?? null; // Store SAP ID in token
+            at.registrationno = au.registrationno ?? topRegNo ?? null; // Store registration number in token
             const fullName = String(au.alumniname || "").trim();
             const [firstName, ...rest] = fullName.split(" ");
             at.firstName = firstName || null;
             at.lastName = rest.join(" ") || null;
-            token.email = (au.alumniemail || au.personalemail || au.officialemail || au.universityemail || token.email) || undefined;
+            // Always overwrite token.email for alumni sign-in to avoid inheriting a previous user's email
+            const alumniEmail =
+              au.alumniemail || au.personalemail || au.officialemail || au.universityemail || `alumni:${String(au.alumniid)}`;
+            token.email = alumniEmail || undefined;
             token.name = fullName || token.name;
+            token.sub = `a:${String(au.alumniid)}`;
+            try {
+              console.info(
+                `[auth] jwt set alumniId=${String(at.userId)} sapid=${String(at.sapid || "")} registrationno=${String(at.registrationno || "")} email=${String(
+                  token.email || ""
+                )}`
+              );
+            } catch {}
           } else {
             // Check if user has sapid or registrationno at top level (from credentials)
             const userSapid = (user as unknown as { sapid?: string | null }).sapid;
             const userRegistrationNo = (user as unknown as { registrationno?: string | null }).registrationno;
             if (userSapid || userRegistrationNo) {
-              const at: AugmentedToken = token as AugmentedToken;
+              at.type = "alumni";
               at.sapid = userSapid ?? null;
               at.registrationno = userRegistrationNo ?? null;
             }
@@ -277,89 +303,110 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
         }
       } else {
-        // Token refresh: fetch latest user data from database to ensure role changes are reflected
-        // This ensures that when a user's role is changed (e.g., admin to viewer), the session is updated
+        // Token refresh: keep the session in sync with DB changes.
+        // IMPORTANT: at.userId is used for BOTH staff.userid and alumni.alumniid, so we must branch by at.type to avoid identity mixups.
         const at: AugmentedToken = token as AugmentedToken;
-        if (at.userId && token.email) {
-          try {
-            const { sql } = await import("@/lib/dbconnect");
-            const rows = await sql/* sql */`
-              SELECT userid, email, firstname, lastname, department, type, blocked 
-              FROM public.tbl_users 
-              WHERE userid = ${at.userId} 
-              LIMIT 1
-            ` as DbUser[];
-            
-            const dbUser = rows[0];
-            if (dbUser) {
-              // Update token with latest database values
-              at.userId = dbUser.userid;
-              at.department = dbUser.department;
-              // Normalize "user" type to "viewer" for consistency
-              const userType = String(dbUser.type || "").toLowerCase().trim();
-              at.type = userType === "user" ? "viewer" : dbUser.type;
-              at.blocked = dbUser.blocked;
-              at.firstName = dbUser.firstname;
-              at.lastName = dbUser.lastname;
-              token.email = dbUser.email || token.email;
-              token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
-              
+        const tokenType = String(at.type || "").toLowerCase().trim();
+
+        try {
+          const { sql } = await import("@/lib/dbconnect");
+
+          if (tokenType === "alumni" || at.sapid || at.registrationno) {
+            // Alumni refresh: prefer alumniid, then sapid, then registrationno
+            const alumniById = at.userId
+              ? await sql/* sql */`
+                  SELECT alumniid, sapid, registrationno, alumniname, departmentname, alumnistatus, alumniemail, personalemail, officialemail, universityemail
+                  FROM public.tbl_alumni
+                  WHERE alumniid = ${at.userId}
+                  LIMIT 1
+                `
+              : [];
+            const alumniBySapid = !at.userId && at.sapid
+              ? await sql/* sql */`
+                  SELECT alumniid, sapid, registrationno, alumniname, departmentname, alumnistatus, alumniemail, personalemail, officialemail, universityemail
+                  FROM public.tbl_alumni
+                  WHERE sapid IS NOT NULL AND TRIM(sapid) = ${String(at.sapid).trim()}
+                  LIMIT 1
+                `
+              : [];
+            const alumniByReg = !at.userId && !at.sapid && at.registrationno
+              ? await sql/* sql */`
+                  SELECT alumniid, sapid, registrationno, alumniname, departmentname, alumnistatus, alumniemail, personalemail, officialemail, universityemail
+                  FROM public.tbl_alumni
+                  WHERE registrationno IS NOT NULL AND TRIM(registrationno) = ${String(at.registrationno).trim()}
+                  LIMIT 1
+                `
+              : [];
+
+            const alumni = (alumniById[0] || alumniBySapid[0] || alumniByReg[0]) as
+              | {
+                  alumniid: number;
+                  sapid: string | null;
+                  registrationno: string | null;
+                  alumniname: string | null;
+                  departmentname: string | null;
+                  alumnistatus: string | null;
+                  alumniemail: string | null;
+                  personalemail: string | null;
+                  officialemail: string | null;
+                  universityemail: string | null;
+                }
+              | undefined;
+
+            if (alumni) {
+              at.userId = alumni.alumniid;
+              at.department = alumni.departmentname ?? null;
+              at.type = "alumni";
+              at.blocked = String(alumni.alumnistatus || "").toLowerCase() === "blocked";
+              at.sapid = alumni.sapid ?? at.sapid ?? null;
+              at.registrationno = alumni.registrationno ?? at.registrationno ?? null;
+              const fullName = String(alumni.alumniname || "").trim();
+              const [firstName, ...rest] = fullName.split(" ");
+              at.firstName = firstName || null;
+              at.lastName = rest.join(" ") || null;
+              token.email =
+                (alumni.alumniemail || alumni.personalemail || alumni.officialemail || alumni.universityemail || `alumni:${String(alumni.alumniid)}`) ||
+                undefined;
+              token.name = fullName || token.name;
+              token.sub = `a:${String(alumni.alumniid)}`;
               try {
-                console.info(`[auth] jwt refreshed userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
+                console.info(`[auth] jwt refreshed alumniId=${String(at.userId)} sapid=${String(at.sapid || "")}`);
               } catch {}
-            } else {
-              // User not found in database - might be alumni, try that
-              const arows = await sql/* sql */`
-                SELECT alumniid, sapid, registrationno, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, alumniemail, personalemail, officialemail, universityemail 
-                FROM public.tbl_alumni 
-                WHERE alumniemail = ${String(token.email)} OR personalemail = ${String(token.email)} OR universityemail = ${String(token.email)} 
+            }
+          } else {
+            // Staff refresh
+            if (at.userId) {
+              const rows = await sql/* sql */`
+                SELECT userid, email, firstname, lastname, department, type, blocked
+                FROM public.tbl_users
+                WHERE userid = ${at.userId}
                 LIMIT 1
-              ` as Array<{
-                alumniid: number;
-                sapid: string | null;
-                registrationno: string | null;
-                alumniname: string | null;
-                departmentname: string | null;
-                facultyname: string | null;
-                degreetitle: string | null;
-                yearofending: number | null;
-                campusname: string | null;
-                alumnistatus: string | null;
-                verify: string | boolean | null;
-                alumniemail: string | null;
-                personalemail: string | null;
-                officialemail: string | null;
-                universityemail: string | null;
-              }>;
-              
-              const alumni = arows[0];
-              if (alumni) {
-                at.userId = alumni.alumniid;
-                at.department = alumni.departmentname ?? null;
-                at.type = "alumni";
-                at.blocked = String(alumni.alumnistatus || "").toLowerCase() === "blocked";
-                at.sapid = alumni.sapid ?? null;
-                at.registrationno = alumni.registrationno ?? null;
-                const fullName = String(alumni.alumniname || "").trim();
-                const [firstName, ...rest] = fullName.split(" ");
-                at.firstName = firstName || null;
-                at.lastName = rest.join(" ") || null;
-                token.email = (alumni.alumniemail || alumni.personalemail || alumni.officialemail || alumni.universityemail || token.email) || undefined;
-                token.name = fullName || token.name;
+              `;
+              const dbUser = rows[0] as DbUser | undefined;
+              if (dbUser) {
+                at.userId = dbUser.userid;
+                at.department = dbUser.department;
+                const userType = String(dbUser.type || "").toLowerCase().trim();
+                at.type = userType === "user" ? "viewer" : dbUser.type;
+                at.blocked = dbUser.blocked;
+                at.firstName = dbUser.firstname;
+                at.lastName = dbUser.lastname;
+                token.email = dbUser.email || token.email;
+                token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
+                token.sub = `u:${String(dbUser.userid)}`;
+                try {
+                  console.info(`[auth] jwt refreshed userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
+                } catch {}
               }
             }
-          } catch {
-            // If database fetch fails, keep existing token data
-            try {
-              console.warn(`[auth] jwt refresh failed for userId=${String(at.userId)}, keeping existing token data`);
-            } catch {}
-        }
-      } else {
-        try {
-          console.warn(`[auth] jwt without user, token email=${String(token.email)}`);
-        } catch {}
+          }
+        } catch {
+          try {
+            console.warn(`[auth] jwt refresh failed; keeping existing token data (type=${String((token as AugmentedToken).type || "")})`);
+          } catch {}
         }
       }
+
       return token;
     },
     async session({ session, token }) {

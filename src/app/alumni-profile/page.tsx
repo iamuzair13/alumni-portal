@@ -44,9 +44,13 @@ async function getProfile(searchParams: { sapid?: string }) {
   try {
     const session = await auth();
     const isAdmin = isAdminUser(session?.user);
+    const sessionAlumniId =
+      session?.user && (session.user as { userId?: number | null })?.userId
+        ? Number((session.user as { userId?: number | null }).userId)
+        : undefined;
     
-    if (sapid) {
-      // Admins can view any profile by SAP ID, regardless of verification status
+    if (sapid && isAdmin) {
+      // Admins can view any profile by SAP ID
       const rows = await sql/* sql */`
         SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
         FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
@@ -56,6 +60,14 @@ async function getProfile(searchParams: { sapid?: string }) {
     // If admin and no sapid provided, return undefined (admins need to specify sapid to view profiles)
     if (isAdmin) {
       return undefined;
+    }
+
+    // Alumni: always load by the authenticated alumniid (never trust ?sapid=)
+    if (sessionAlumniId) {
+      const rows = await sql/* sql */`
+        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
+        FROM public.tbl_alumni WHERE alumniid = ${sessionAlumniId} LIMIT 1`;
+      if (rows[0]) return rows[0] as Profile | undefined;
     }
     
     // First try to get SAP ID from session (if alumni logged in with SAP ID)
@@ -76,16 +88,8 @@ async function getProfile(searchParams: { sapid?: string }) {
         FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
-    
-    // Fallback to email lookup (backward compatibility) - only for alumni users
-    const email = session?.user?.email ? String(session.user.email) : undefined;
-    if (!email) return undefined;
-    const rows = await sql/* sql */`
-      SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-      FROM public.tbl_alumni 
-      WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
-    return rows[0] as Profile | undefined;
+
+    return undefined;
   } catch {
     return undefined;
   }
@@ -146,16 +150,37 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const contact = p?.contactno ?? "";
-  // Get SAP ID or registration number from session first, then from search params, then from email lookup
+  // Get SAP ID or registration number from session first, then (admin-only) from search params
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
-  const email = session?.user?.email ? String(session.user.email) : undefined;
+  const sessionAlumniId =
+    session?.user && (session.user as { userId?: number | null })?.userId
+      ? Number((session.user as { userId?: number | null }).userId)
+      : undefined;
+  const requestedSapid = isAdmin && sp?.sapid ? String(sp.sapid).trim() : undefined;
   
   let sapRows: Array<{ alumniid: number; sapid: string }> = [];
   let sapError: string | null = null;
   
-  // If we have SAP ID from session, use it directly
-  if (sessionSapid) {
+  // If admin requested a specific profile, use it
+  if (requestedSapid) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni 
+        WHERE sapid = ${requestedSapid} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load SAP ID (admin request)";
+    }
+  } else if (sessionAlumniId) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni
+        WHERE alumniid = ${sessionAlumniId} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load alumni record from session";
+    }
+  } else if (sessionSapid) {
+    // If we have SAP ID from session, use it directly
     try {
       sapRows = await sql/* sql */`
         SELECT alumniid, sapid FROM public.tbl_alumni 
@@ -172,23 +197,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     } catch (e) {
       sapError = e instanceof Error ? e.message : "Failed to load SAP ID from registration number";
     }
-  } else if (email) {
-    // Fallback to email lookup (backward compatibility)
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-        ORDER BY alumniid DESC LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
-    }
   }
   
   // Use SAP ID if available, otherwise use registration number as identifier
   // The API endpoints support both SAP ID and registration number
   const sapId = String(
     sapRows[0]?.sapid ?? 
-    sp?.sapid ?? 
     sessionSapid ?? 
     sessionRegNo ?? 
     ""

@@ -412,7 +412,7 @@ export const AlumniTabs: React.FC = () => {
   const hasPakistanSelected = useMemo(() => {
     return selectedHomeCountries.includes("Pakistan");
   }, [selectedHomeCountries]);
-
+  
   // Faculty / Department / Program options - fetched dynamically from database (tbl_alumni)
   const { data: alumniFacultiesData } = useAlumniFaculties();
   const { data: alumniDepartmentsData } = useAlumniDepartments();
@@ -2039,22 +2039,22 @@ export const AlumniTabs: React.FC = () => {
                           ) : (
                             facultyOptions.map((faculty) => {
                               const isChecked = selectedFaculties.includes(faculty.value);
-                              return (
-                                <label
+                            return (
+                              <label
                                   key={faculty.value}
-                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
+                                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
                                     onChange={() => handleFacultyToggle(faculty.value)}
-                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                  />
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                />
                                   <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.label}</span>
                                   <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{faculty.count.toLocaleString()}</span>
-                                </label>
-                              );
+                              </label>
+                            );
                             })
                           )}
                 </div>
@@ -2096,48 +2096,48 @@ export const AlumniTabs: React.FC = () => {
                   {expandedFilters.department && (
                     <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       <div className="p-2">
-                        <label
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDepartmentSelectAll();
-                          }}
-                        >
-                          <input
-                            type="checkbox"
+                            <label
+                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDepartmentSelectAll();
+                              }}
+                            >
+                              <input
+                                type="checkbox"
                             checked={(() => {
                               const allValues = departmentOptions.map(d => d.value);
                               return allValues.length > 0 && selectedDepartments.length === allValues.length;
                             })()}
-                            onChange={handleDepartmentSelectAll}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
-                        </label>
-                        <div className="max-h-48 overflow-y-auto">
+                                onChange={handleDepartmentSelectAll}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
+                            </label>
+                            <div className="max-h-48 overflow-y-auto">
                           {departmentOptions.length === 0 ? (
                             <p className="text-xs text-gray-500 dark:text-gray-400 p-2">No departments found.</p>
                           ) : (
                             departmentOptions.map((dept) => {
                               const isChecked = selectedDepartments.includes(dept.value);
-                              return (
-                                <label
+                                return (
+                                  <label
                                   key={dept.value}
-                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
+                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
                                     onChange={() => handleDepartmentToggle(dept.value)}
-                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                  />
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                    />
                                   <span className="text-sm text-gray-700 dark:text-gray-300">{dept.label}</span>
                                   <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{dept.count.toLocaleString()}</span>
-                                </label>
-                              );
+                                  </label>
+                                );
                             })
-                          )}
+                        )}
                         </div>
                       </div>
                     </div>
@@ -2177,48 +2177,48 @@ export const AlumniTabs: React.FC = () => {
                   {expandedFilters.program && (
                     <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       <div className="p-2">
-                        <label
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleProgramSelectAll();
-                          }}
-                        >
-                          <input
-                            type="checkbox"
+                            <label
+                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleProgramSelectAll();
+                              }}
+                            >
+                              <input
+                                type="checkbox"
                             checked={(() => {
                               const allValues = programOptions.map(p => p.value);
                               return allValues.length > 0 && selectedPrograms.length === allValues.length;
                             })()}
-                            onChange={handleProgramSelectAll}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Programs</span>
-                        </label>
-                        <div className="max-h-48 overflow-y-auto">
+                                onChange={handleProgramSelectAll}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Programs</span>
+                            </label>
+                            <div className="max-h-48 overflow-y-auto">
                           {programOptions.length === 0 ? (
                             <p className="text-xs text-gray-500 dark:text-gray-400 p-2">No programs found.</p>
                           ) : (
                             programOptions.map((prog) => {
                               const isChecked = selectedPrograms.includes(prog.value);
-                              return (
-                                <label
+                                return (
+                                  <label
                                   key={prog.value}
-                                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
+                                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
                                     onChange={() => handleProgramToggle(prog.value)}
-                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                  />
+                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                    />
                                   <span className="text-sm text-gray-700 dark:text-gray-300">{prog.label}</span>
                                   <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{prog.count.toLocaleString()}</span>
-                                </label>
-                              );
+                                  </label>
+                                );
                             })
-                          )}
+                        )}
                         </div>
                       </div>
                     </div>

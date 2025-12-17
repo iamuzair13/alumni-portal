@@ -297,12 +297,71 @@ export async function buildAccessFilterSQL(
         console.log("[buildAccessFilterSQL]     Top matches:", matchingPrograms.slice(0, 5).map(m => `"${m.program}" (${(m.similarity * 100).toFixed(0)}%)`));
       }
       
+      const facultyMatch =
+        normalizedFaculty
+          ? sql`(
+              (
+                facultyname IS NOT NULL
+                AND TRIM(COALESCE(facultyname, '')) != ''
+                AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${normalizedFaculty})
+              )
+              OR (
+                faculty IS NOT NULL
+                AND faculty IN (
+                  SELECT id
+                  FROM public.tbl_faculties
+                  WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
+                )
+              )
+            )`
+          : sql`1 = 1`;
+
+      const departmentMatch =
+        normalizedDept
+          ? sql`(
+              (
+                departmentname IS NOT NULL
+                AND TRIM(COALESCE(departmentname, '')) != ''
+                AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${normalizedDept})
+              )
+              OR (
+                department IS NOT NULL
+                AND department IN (
+                  SELECT id
+                  FROM public.tbl_departments
+                  WHERE LOWER(TRIM(COALESCE(department_name, ''))) = LOWER(${normalizedDept})
+                )
+              )
+            )`
+          : sql`1 = 1`;
+
+      const programNamesNormalized = programNamesToMatch.map((p) => p.toLowerCase().trim());
+      const programFkMatch =
+        programNamesNormalized.length > 0
+          ? sql`(
+              program IS NOT NULL
+              AND program IN (
+                SELECT id
+                FROM public.tbl_programs
+                WHERE LOWER(TRIM(COALESCE(program_name, ''))) = ANY(${programNamesNormalized})
+              )
+            )`
+          : sql`1 = 0`;
+
+      const programTextMatch = sql`(
+        degreetitle IS NOT NULL
+        AND TRIM(COALESCE(degreetitle, '')) != ''
+        AND ${finalProgramCondition}
+      )`;
+
+      const programMatch = sql`(${programTextMatch} OR ${programFkMatch})`;
+
       if (normalizedFaculty && normalizedDept) {
         // All three specified: faculty + department + program
         // Improved matching using program matching utility
         console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + department + program (improved matching)");
         conditionsArray.push(
-          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
+          sql`(${facultyMatch} AND ${departmentMatch} AND ${programMatch})`
         );
       } else if (normalizedFaculty) {
         // Faculty + program (no department)
@@ -310,7 +369,7 @@ export async function buildAccessFilterSQL(
         console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
         console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
         conditionsArray.push(
-          sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
+          sql`(${facultyMatch} AND ${programMatch})`
         );
       } else if (normalizedDept) {
         // Department + program (no faculty)
@@ -318,7 +377,7 @@ export async function buildAccessFilterSQL(
         console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
         console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
         conditionsArray.push(
-          sql`(departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}) AND degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
+          sql`(${departmentMatch} AND ${programMatch})`
         );
       } else {
         // Program only (no faculty or department)
@@ -326,7 +385,7 @@ export async function buildAccessFilterSQL(
         console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
         console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
         conditionsArray.push(
-          sql`(degreetitle IS NOT NULL AND TRIM(degreetitle) != '' AND ${finalProgramCondition})`
+          sql`(${programMatch})`
         );
       }
     }
@@ -353,8 +412,40 @@ export async function buildAccessFilterSQL(
             faculty: normalizedFaculty,
             department: normalizedDept
           });
+          const facultyMatch = sql`(
+            (
+              facultyname IS NOT NULL
+              AND TRIM(COALESCE(facultyname, '')) != ''
+              AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${normalizedFaculty})
+            )
+            OR (
+              faculty IS NOT NULL
+              AND faculty IN (
+                SELECT id
+                FROM public.tbl_faculties
+                WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
+              )
+            )
+          )`;
+
+          const departmentMatch = sql`(
+            (
+              departmentname IS NOT NULL
+              AND TRIM(COALESCE(departmentname, '')) != ''
+              AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(${normalizedDept})
+            )
+            OR (
+              department IS NOT NULL
+              AND department IN (
+                SELECT id
+                FROM public.tbl_departments
+                WHERE LOWER(TRIM(COALESCE(department_name, ''))) = LOWER(${normalizedDept})
+              )
+            )
+          )`;
+
           conditionsArray.push(
-            sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}) AND departmentname IS NOT NULL AND TRIM(departmentname) != '' AND LOWER(TRIM(departmentname)) = LOWER(${normalizedDept}))`
+            sql`(${facultyMatch} AND ${departmentMatch})`
           );
         }
       } else {
@@ -383,8 +474,22 @@ export async function buildAccessFilterSQL(
         // Normalize the faculty name for comparison (trim and lowercase)
         const normalizedFaculty = (faculty || "").trim();
         if (normalizedFaculty) {
-          // Wrap in parentheses to match other condition formats
-          conditionsArray.push(sql`(facultyname IS NOT NULL AND TRIM(facultyname) != '' AND LOWER(TRIM(facultyname)) = LOWER(${normalizedFaculty}))`);
+          const facultyMatch = sql`(
+            (
+              facultyname IS NOT NULL
+              AND TRIM(COALESCE(facultyname, '')) != ''
+              AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(${normalizedFaculty})
+            )
+            OR (
+              faculty IS NOT NULL
+              AND faculty IN (
+                SELECT id
+                FROM public.tbl_faculties
+                WHERE LOWER(TRIM(COALESCE(faculty_name, ''))) = LOWER(${normalizedFaculty})
+              )
+            )
+          )`;
+          conditionsArray.push(sql`(${facultyMatch})`);
         }
       }
     }

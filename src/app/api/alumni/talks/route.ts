@@ -37,18 +37,18 @@ export async function GET(req: Request) {
     try {
       // Use t.* to avoid runtime failures if optional columns (day/week/month) don't exist in a given DB.
       rows = await sql/* sql */`
-        SELECT
-          a.sapid,
-          a.registrationno,
-          a.alumniname,
-          a.departmentname,
-          a.facultyname,
-          a.degreetitle,
-          a.personalemail,
-          a.officialemail,
-          a.universityemail,
+      SELECT 
+        a.sapid,
+        a.registrationno,
+        a.alumniname,
+        a.departmentname,
+        a.facultyname,
+        a.degreetitle,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail,
           t.*
-        FROM public.tbl_alumni a
+      FROM public.tbl_alumni a
         INNER JOIN public.tblalumnitalks t ON t.alumniid = a.alumniid
         WHERE (
           (a.sapid IS NOT NULL AND a.sapid != '')

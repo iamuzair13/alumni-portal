@@ -447,7 +447,7 @@ export async function GET(req: Request) {
         if (normalized === "NULL" || normalized === "null") {
           facultyFilter = sql`AND (facultyname IS NULL OR TRIM(COALESCE(facultyname, '')) = '')`;
         } else {
-          facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
         }
       }
       console.log("[API] Filtering for faculty:", faculty);
@@ -471,7 +471,7 @@ export async function GET(req: Request) {
         if (normalized === "NULL" || normalized === "null") {
           departmentFilter = sql`AND (departmentname IS NULL OR TRIM(COALESCE(departmentname, '')) = '')`;
         } else {
-          departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
         }
       }
       console.log("[API] Filtering for department:", department);
@@ -495,7 +495,7 @@ export async function GET(req: Request) {
         if (normalized === "NULL" || normalized === "null") {
           programFilter = sql`AND (degreetitle IS NULL OR TRIM(COALESCE(degreetitle, '')) = '')`;
         } else {
-          programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+        programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
         }
       }
       console.log("[API] Filtering for program:", program);
