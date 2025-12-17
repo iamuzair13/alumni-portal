@@ -883,6 +883,85 @@ export async function POST(req: Request) {
           }
         }
 
+        // Auto-assign chapter based on home city if no chapters were explicitly provided
+        const alumniCity = body.city ? String(body.city).trim() : null;
+        if (alumniCity && (!body.chapters || !Array.isArray(body.chapters) || body.chapters.length === 0)) {
+          try {
+            // Find chapters where the cities column contains the alumni's city
+            // The cities column might contain comma-separated values or other formats
+            // We check for exact match, comma-separated values, and partial matches
+            const normalizedCity = alumniCity.toLowerCase().trim();
+            const cityPattern1 = `%,${normalizedCity},%`;
+            const cityPattern2 = `${normalizedCity},%`;
+            const cityPattern3 = `%,${normalizedCity}`;
+            const cityPattern4 = `%${normalizedCity}%`;
+            
+            const cityBasedChapters = await sql<{ id: number }[]>/* sql */`
+              SELECT id 
+              FROM public.tblchapters 
+              WHERE is_active = true
+                AND cities IS NOT NULL
+                AND (
+                  LOWER(TRIM(cities)) = LOWER(TRIM(${alumniCity}))
+                  OR LOWER(cities) LIKE LOWER(${cityPattern1})
+                  OR LOWER(cities) LIKE LOWER(${cityPattern2})
+                  OR LOWER(cities) LIKE LOWER(${cityPattern3})
+                  OR LOWER(cities) LIKE LOWER(${cityPattern4})
+                )
+              LIMIT 1
+            `;
+
+            if (cityBasedChapters.length > 0) {
+              const autoChapterId = cityBasedChapters[0].id;
+              
+              // Check if a record already exists for this alumni
+              const existingChapter = await sql<{ id: number }[]>/* sql */`
+                SELECT id FROM public.alumni_chapter 
+                WHERE id = ${id}
+              `;
+
+              if (existingChapter.length > 0) {
+                // Check current chapter assignments
+                const currentRecord = await sql<{ chapter1: number | null; chapter2: number | null; chapter3: number | null }[]>/* sql */`
+                  SELECT "chapter1", "chapter2", "chapter3" FROM public.alumni_chapter WHERE id = ${id}
+                `;
+                
+                const current = currentRecord[0];
+                
+                // Only auto-assign if chapter1 is empty (no chapters were explicitly set)
+                if (!current?.chapter1) {
+                  await sql/* sql */`
+                    UPDATE public.alumni_chapter 
+                    SET "chapter1" = ${autoChapterId}
+                    WHERE id = ${id}
+                  `;
+                  
+                  console.log("[API] Auto-assigned chapter based on city:", { 
+                    alumniId: id, 
+                    city: alumniCity,
+                    chapterId: autoChapterId
+                  });
+                }
+              } else {
+                // Insert new record with auto-assigned chapter
+                await sql/* sql */`
+                  INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+                  VALUES (${id}, ${autoChapterId}, NULL, NULL)
+                `;
+                
+                console.log("[API] Auto-assigned chapter based on city:", { 
+                  alumniId: id, 
+                  city: alumniCity,
+                  chapterId: autoChapterId
+                });
+              }
+            }
+          } catch (cityAssignmentError) {
+            // Don't fail the registration if city-based chapter assignment fails
+            console.error("[API] Error auto-assigning chapter based on city:", cityAssignmentError);
+          }
+        }
+
         // Find and assign association based on faculty
         const facultyName = body.facultyname ? String(body.facultyname).trim() : null;
         if (facultyName) {

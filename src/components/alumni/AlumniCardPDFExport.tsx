@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DownloadIcon } from "@/icons";
 import toast from "react-hot-toast";
+import { formatCardValidityMonthYear } from "@/lib/cardValidity";
 
 type Props = {
   cardRef: React.RefObject<HTMLDivElement | null>;
@@ -98,15 +99,7 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
 
       // Format validity date
       const formatValidity = (validity?: string) => {
-        if (!validity) return "MM/YYYY";
-        if (validity.includes("/")) {
-          return validity;
-        }
-        const date = new Date(`${validity}-01T00:00:00`);
-        if (Number.isNaN(date.getTime())) return validity;
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = date.getFullYear();
-        return `${month}/${year}`;
+        return formatCardValidityMonthYear(validity ?? null);
       };
 
       const formattedValidity = formatValidity(exportData.validity);

@@ -6,6 +6,7 @@ import { Roboto } from "next/font/google";
 import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
+import { computeValidityISOFromAppliedAt, formatCardValidityMonthYear } from "@/lib/cardValidity";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -23,7 +24,8 @@ type AlumniCardData = {
   alumniId: string;
   sapId?: string | null;
   registrationNo?: string | null;
-  validity?: string;
+  validity?: string | null;
+  appliedAt?: string | null;
   photoUrl?: string | null;
   cardImage?: string | null;
 };
@@ -73,12 +75,14 @@ function CardPrintPageContent() {
           // Card data is optional
         }
 
-        let cardImage = null;
-        let validity = null;
+        let cardImage: string | null = null;
+        let validity: string | null = null;
+        let appliedAt: string | null = null;
         if (cardRes?.ok) {
           const cardData = await cardRes.json();
           cardImage = cardData.card?.card_image || null;
-          validity = cardData.card?.validity_date || null;
+          appliedAt = cardData.card?.createdat || null;
+          validity = cardData.card?.validity_date || computeValidityISOFromAppliedAt(appliedAt) || null;
         }
 
         setCardData({
@@ -89,6 +93,7 @@ function CardPrintPageContent() {
           sapId: alumni.sapid || null,
           registrationNo: alumni.registrationno || null,
           validity: validity,
+          appliedAt: appliedAt,
           photoUrl: alumni.image1 || null,
           cardImage: cardImage,
         });
@@ -130,17 +135,7 @@ function CardPrintPageContent() {
     }
   }, [cardData]);
 
-  const formattedValidity = () => {
-    if (!cardData?.validity) return "MM/YYYY";
-    if (cardData.validity.includes("/")) {
-      return cardData.validity;
-    }
-    const date = new Date(`${cardData.validity}-01T00:00:00`);
-    if (Number.isNaN(date.getTime())) return cardData.validity;
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${month}/${year}`;
-  };
+  const formattedValidity = () => formatCardValidityMonthYear(cardData?.validity);
 
   const getPhotoUrl = () => {
     if (cardData?.cardImage) {

@@ -457,6 +457,7 @@ export default function OrganizationComponent() {
       {selectedTab === "faculties" && (
         <FacultiesTable
           faculties={filteredFaculties}
+          departments={departments}
           loading={facultiesLoading}
           onEdit={(id) => setEditFacultyId(id)}
           onDelete={(id) => setDeleteFacultyId(id)}
@@ -552,6 +553,7 @@ export default function OrganizationComponent() {
 // Faculties Table Component
 function FacultiesTable({
   faculties,
+  departments,
   loading,
   onEdit,
   onDelete,
@@ -560,6 +562,7 @@ function FacultiesTable({
   onSort,
 }: {
   faculties: Faculty[];
+  departments: Department[];
   loading: boolean;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
@@ -567,6 +570,24 @@ function FacultiesTable({
   sortDirection: "asc" | "desc";
   onSort: (field: string) => void;
 }) {
+  const [expandedFaculties, setExpandedFaculties] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (facultyId: number) => {
+    setExpandedFaculties((prev) => {
+      const next = new Set(prev);
+      if (next.has(facultyId)) {
+        next.delete(facultyId);
+      } else {
+        next.add(facultyId);
+      }
+      return next;
+    });
+  };
+
+  // Get departments for a specific faculty
+  const getDepartmentsForFaculty = (facultyId: number) => {
+    return departments.filter((dept) => dept.faculty_id === facultyId);
+  };
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
       <div className="max-w-full overflow-x-auto custom-scrollbar">
@@ -613,45 +634,108 @@ function FacultiesTable({
                     <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
+                    <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg mx-auto" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
                     <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                   </TableCell>
                 </TableRow>
               ))
             ) : faculties.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No faculties found
                 </TableCell>
               </TableRow>
             ) : (
-              faculties.map((faculty) => (
-                <TableRow key={faculty.id} className="bg-white dark:bg-gray-800/30 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">{faculty.id}</TableCell>
-                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300 font-medium">
-                    {faculty.faculty_name}
-                  </TableCell>
-                  <TableCell className="px-6 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        startIcon={<PencilIcon />}
-                        onClick={() => onEdit(faculty.id)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        startIcon={<TrashBinIcon />}
-                        onClick={() => onDelete(faculty.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              faculties.map((faculty) => {
+                const isExpanded = expandedFaculties.has(faculty.id);
+                const facultyDepartments = getDepartmentsForFaculty(faculty.id);
+                const departmentCount = facultyDepartments.length;
+
+                return (
+                  <React.Fragment key={faculty.id}>
+                    <TableRow className="bg-white dark:bg-gray-800/30 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">{faculty.id}</TableCell>
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300 font-medium">
+                        {faculty.faculty_name}
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(faculty.id)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          title={isExpanded ? "Collapse departments" : "Expand to see departments"}
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ArrowUpIcon className="w-4 h-4" />
+                              <span>Hide ({departmentCount})</span>
+                            </>
+                          ) : (
+                            <>
+                              <ArrowDownIcon className="w-4 h-4" />
+                              <span>Show ({departmentCount})</span>
+                            </>
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            startIcon={<PencilIcon />}
+                            onClick={() => onEdit(faculty.id)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            startIcon={<TrashBinIcon />}
+                            onClick={() => onDelete(faculty.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow className="bg-gray-50 dark:bg-gray-900/30">
+                        <TableCell colSpan={4} className="px-6 py-4">
+                          <div className="pl-8">
+                            {departmentCount === 0 ? (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                                No departments assigned to this faculty
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Departments ({departmentCount}):
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {facultyDepartments.map((dept) => (
+                                    <div
+                                      key={dept.id}
+                                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+                                    >
+                                      <span className="font-medium">{dept.department_name}</span>
+                                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                                        (ID: {dept.id})
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>

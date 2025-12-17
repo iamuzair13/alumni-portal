@@ -2,6 +2,7 @@
 
 import { Roboto } from "next/font/google";
 import { useState, useMemo, useEffect } from "react";
+import { formatCardValidityMonthYear } from "@/lib/cardValidity";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -123,26 +124,7 @@ export default function AlumniCardTemplate({
   };
   // Format validity date
   // validity can be in MM/YYYY format (from database validity_date) or YYYY-MM format (computed fallback)
-  const formattedValidity = (() => {
-    if (!validity) return "MM/YYYY";
-    
-    // If already in MM/YYYY format (from database), use it directly
-    if (validity.includes("/")) {
-      return validity;
-    }
-    
-    // Handle YYYY-MM format (computed fallback)
-    if (validity.includes("-")) {
-      const date = new Date(`${validity}-01T00:00:00`);
-    if (Number.isNaN(date.getTime())) return validity;
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${month}/${year}`;
-    }
-    
-    // Fallback: return as-is if format is unknown
-    return validity;
-  })();
+  const formattedValidity = formatCardValidityMonthYear(validity ?? null);
 
   return (
     <div className={`${roboto.className} w-full`}>

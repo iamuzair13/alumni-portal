@@ -208,6 +208,7 @@ export const AlumniTabs: React.FC = () => {
   // Unified item type mapped from server response
   type AlumniItem = {
     id: string; // sapId, registrationNo, or alumniid as fallback
+    alumniid?: number | null; // Alumni ID from database
     registrationNo?: string | null;
     name: string;
     email?: string | null;
@@ -235,6 +236,7 @@ export const AlumniTabs: React.FC = () => {
   // Query + UI state (UI state does not duplicate cache)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
+  const [showAll, setShowAll] = useState<boolean>(false);
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -894,7 +896,7 @@ export const AlumniTabs: React.FC = () => {
   } = useAlumniListPaginated(
     debouncedQuery || undefined, 
     currentPage, 
-    pageSize, 
+    showAll ? 500 : pageSize, // Use 500 (max allowed) when showAll is true
     statusFilter,
     selectedFaculties.length > 0 ? selectedFaculties : undefined,
     selectedDepartments.length > 0 ? selectedDepartments : undefined,
@@ -1066,6 +1068,7 @@ export const AlumniTabs: React.FC = () => {
       
       result[idx++] = {
         id: itemId,
+        alumniid: r.alumniid ?? null,
         registrationNo: r.registrationno ?? null,
         name: r.alumniname ?? "",
         email: r.personalemail ?? r.officialemail ?? null,
@@ -1132,6 +1135,12 @@ export const AlumniTabs: React.FC = () => {
     }
   }, [sortField, sortDirection]);
 
+  // Reset sorting
+  const handleResetSort = useCallback(() => {
+    setSortField(null);
+    setSortDirection("asc");
+  }, []);
+
   // Filter by tab only (search and status filtering are now handled server-side)
   // No client-side filtering needed - server already returns the correct filtered and paginated data
   // Apply sorting to items
@@ -1149,6 +1158,18 @@ export const AlumniTabs: React.FC = () => {
       let bValue: string | number | null | undefined = "";
       
       switch (sortField) {
+        case "alumniid":
+          // Sort numerically by alumniid
+          aValue = a.alumniid ?? null;
+          bValue = b.alumniid ?? null;
+          // Handle null values - put them at the end
+          if (aValue === null && bValue === null) return 0;
+          if (aValue === null) return 1;
+          if (bValue === null) return -1;
+          // Compare as numbers
+          return sortDirection === "asc" 
+            ? (aValue as number) - (bValue as number)
+            : (bValue as number) - (aValue as number);
         case "name":
           // Use rawName if available, otherwise use name
           aValue = (a.rawName || a.name || "").trim().toLowerCase();
@@ -1215,7 +1236,7 @@ export const AlumniTabs: React.FC = () => {
 
   // Pagination derived values - use server-side pagination
   const total = totalRecords; // Use total from server
-  const totalPages = paginatedData?.totalPages ?? Math.max(1, Math.ceil(total / pageSize));
+  const totalPages = showAll ? 1 : (paginatedData?.totalPages ?? Math.max(1, Math.ceil(total / pageSize)));
   
   // No need to slice - server already returns the correct page
   const pageItems = useMemo(() => filteredItems, [filteredItems]);
@@ -3318,6 +3339,17 @@ export const AlumniTabs: React.FC = () => {
             
             {/* Actions Row */}
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
+            {sortField && (
+              <button
+                type="button"
+                onClick={handleResetSort}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
+                title="Reset sorting"
+              >
+                <CloseLineIcon className="w-4 h-4" />
+                Reset Sort
+              </button>
+            )}
               {/* Clear Filters Button */}
               <button
                 type="button"
@@ -3395,6 +3427,18 @@ export const AlumniTabs: React.FC = () => {
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+                    <TableCell 
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("alumniid")}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>SR.No</span>
+                        <div className="flex flex-col">
+                          <ArrowUpIcon className={`w-3 h-3 ${sortField === "alumniid" && sortDirection === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                          <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "alumniid" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       onClick={() => handleSort("name")}
@@ -3489,6 +3533,9 @@ export const AlumniTabs: React.FC = () => {
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
                         <TableCell className="px-3 sm:px-6 py-5">
+                          <div className="h-5 w-16 sm:w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5">
                           <div className="h-5 w-32 sm:w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5">
@@ -3517,7 +3564,7 @@ export const AlumniTabs: React.FC = () => {
                   )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={8}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={9}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3554,7 +3601,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={9}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3593,6 +3640,9 @@ export const AlumniTabs: React.FC = () => {
                         onClick={() => setSelectedRowId(alum.id)}
                         aria-selected={selectedRowId === alum.id}
                       >
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                          <span className="truncate block max-w-[100px] sm:max-w-none">{alum.alumniid ?? "-"}</span>
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-start">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
@@ -3760,7 +3810,7 @@ export const AlumniTabs: React.FC = () => {
                       </TableRow>
                       {expandedRowId === alum.id && canModify(session?.user) && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={8} className="px-0 py-6">
+                          <TableCell colSpan={9} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-3 gap-1">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
@@ -3795,44 +3845,82 @@ export const AlumniTabs: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
           <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
             {(() => {
+              if (showAll) {
+                return `Showing all ${pageItems.length.toLocaleString()} of ${total.toLocaleString()} records${total > 500 ? " (max 500 per request)" : ""}`;
+              }
               const start = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
               const end = Math.min(start + pageItems.length - 1, total);
               return `Showing ${start.toLocaleString()}-${end.toLocaleString()} of ${total.toLocaleString()}`;
             })()}
           </span>
           <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
-            <select
-              id="page-size"
-              className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              value={pageSize}
-              onChange={(e) => {
-                const newPageSize = Number(e.target.value);
-                setPageSize(newPageSize);
-                setCurrentPage(1); // Reset to first page when changing page size
-              }}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages} 
-              onPageChange={(p) => {
-                const newPage = Math.max(1, Math.min(totalPages, p));
-                setCurrentPage(newPage);
-                // Scroll to top of table when page changes
-                if (tableContainerRef.current) {
-                  tableContainerRef.current.scrollTop = 0;
-                }
-                // Also reset horizontal scroll
-                if (topScrollbarRef.current) {
-                  topScrollbarRef.current.scrollLeft = 0;
-                }
-              }} 
-            />
+            
+            {!showAll && (
+              <>
+                <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size">Items per page:</label>
+                <select
+                  id="page-size"
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newPageSize = Number(e.target.value);
+                    setPageSize(newPageSize);
+                    setCurrentPage(1); // Reset to first page when changing page size
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </>
+            )}
+            {canModify(session?.user) && (
+              <>
+                {!showAll ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAll(true);
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-lg border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
+                  >
+                    Show All
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAll(false);
+                      setCurrentPage(1);
+                      setPageSize(10); // Reset to default page size
+                    }}
+                    className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors"
+                  >
+                    Show Paginated
+                  </button>
+                )}
+              </>
+            )}
+            {!showAll && (
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                onPageChange={(p) => {
+                  const newPage = Math.max(1, Math.min(totalPages, p));
+                  setCurrentPage(newPage);
+                  // Scroll to top of table when page changes
+                  if (tableContainerRef.current) {
+                    tableContainerRef.current.scrollTop = 0;
+                  }
+                  // Also reset horizontal scroll
+                  if (topScrollbarRef.current) {
+                    topScrollbarRef.current.scrollLeft = 0;
+                  }
+                }} 
+              />
+            )}
           </div>
         </div>
       </div>

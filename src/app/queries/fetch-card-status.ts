@@ -13,6 +13,7 @@ export type CardData = {
   card_image: string | null;
   createdat: string | null;
   reason_onhold: string | null;
+  validity_date?: string | null;
 };
 
 export const cardStatusKey = (sapId: string | undefined) => ["alumni", "card", sapId ?? ""];

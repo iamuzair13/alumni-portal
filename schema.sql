@@ -297,16 +297,17 @@ create table public.tblcard (
   constraint tblcard_pkey primary key (alumniid),
   constraint tblcard_alumniid_fkey foreign KEY (alumniid) references tbl_alumni (alumniid) on delete CASCADE
 ) TABLESPACE pg_default;
-CREATE TABLE public.tblchapters (
-  id integer NOT NULL DEFAULT nextval('tblchapters_id_seq'::regclass),
-  chapter_whatsapp text,
-  national_chapter text,
-  international_chapter text,
-  chapter_image text,
-  is_active boolean,
-  description text,
-  CONSTRAINT tblchapters_pkey PRIMARY KEY (id)
-);
+create table public.tblchapters (
+  id serial not null,
+  chapter_whatsapp text null,
+  national_chapter text null,
+  international_chapter text null,
+  chapter_image text null,
+  is_active boolean null,
+  description text null,
+  cities text null,
+  constraint tblchapters_pkey primary key (id)
+) TABLESPACE pg_default;
 CREATE TABLE public.tbljobs (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),

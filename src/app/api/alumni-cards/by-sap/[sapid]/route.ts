@@ -21,7 +21,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // Fetch card data
     const rows = await sql/* sql */`
-      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold,
+      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold, c.validity_date,
              a.sapid, a.personalemail, a.officialemail, a.universityemail
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
@@ -58,7 +58,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         cardpicture: r.cardpicture,
         card_image: r.card_image,
         createdat: r.createdat,
-        reason_onhold: r.reason_onhold
+        reason_onhold: r.reason_onhold,
+        validity_date: r.validity_date,
       }
     }, { status: 200 });
   } catch (err) {
