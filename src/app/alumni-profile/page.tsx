@@ -52,8 +52,26 @@ async function getProfile(searchParams: { sapid?: string }) {
     if (sapid && isAdmin) {
       // Admins can view any profile by SAP ID
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.sapid = ${sapid} 
+        LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
     
@@ -65,8 +83,26 @@ async function getProfile(searchParams: { sapid?: string }) {
     // Alumni: always load by the authenticated alumniid (never trust ?sapid=)
     if (sessionAlumniId) {
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE alumniid = ${sessionAlumniId} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.alumniid = ${sessionAlumniId} 
+        LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
@@ -77,15 +113,51 @@ async function getProfile(searchParams: { sapid?: string }) {
     
     if (sessionSapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.sapid = ${sessionSapid} 
+        LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
     if (sessionRegNo) {
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.registrationno = ${sessionRegNo} 
+        LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
 
