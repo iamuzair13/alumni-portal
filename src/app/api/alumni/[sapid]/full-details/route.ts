@@ -163,6 +163,10 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         campusname: row.campusname ?? null,
         departmentname: row.departmentname ?? null,
         majorsubject: row.majorsubject ?? null,
+        // ID-based fields for faculty, department, program
+        faculty: row.faculty ?? null,
+        department: row.department ?? null,
+        program: row.program ?? null,
         industry: row.industry ?? null,
         employeed: row.employeed ?? null,
         nameoforganization: row.nameoforganization ?? null,

@@ -47,9 +47,9 @@ export async function GET(req: Request) {
         OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
       )`;
     }
 
@@ -60,6 +60,10 @@ export async function GET(req: Request) {
         c.*,
         -- All alumni fields
         a.*,
+        -- ID-based faculty, department, program names
+        f.faculty_name,
+        d.department_name,
+        p.program_name,
         -- Chapter data
         ac.chapter1 as chapter1_id,
         ac.chapter2 as chapter2_id,
@@ -81,6 +85,9 @@ export async function GET(req: Request) {
         assoc.address as association_address
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
       LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
       LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2

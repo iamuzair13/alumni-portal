@@ -34,9 +34,12 @@ type TblAlumniBody = {
   cgpa: number | null;
   yearofstarting: number | null;
   yearofending: number | null;
+  faculty: number | null;
   facultyname: string | null;
   campusname: string | null;
+  department: number | null;
   departmentname: string | null;
+  program: number | null;
   majorsubject: string | null;
   industry: string | null;
   employeed: string | null;
@@ -105,14 +108,22 @@ export async function POST(req: Request) {
       isAdmin,
       isSuperAdmin,
       canAddAlumni,
-      hasFacultyDeptProgram: !!(body.facultyname && body.departmentname && body.degreetitle),
-      willCheckAccess: !!(body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin)
+      hasFacultyDeptProgram: !!(body.faculty && body.department && body.degreetitle),
+      willCheckAccess: !!(body.faculty && body.department && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin)
     });
     
     // Check access assignments for admins (superadmins have full access, so skip check)
-    if (body.facultyname && body.departmentname && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin) {
-      const faculty = String(body.facultyname).trim();
-      const department = String(body.departmentname).trim();
+    if (body.faculty && body.department && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin) {
+      // Fetch faculty, department, and program names from IDs for access check
+      const facultyRow = await sql/* sql */`
+        SELECT faculty_name FROM public.tbl_faculties WHERE id = ${body.faculty} LIMIT 1
+      `;
+      const departmentRow = await sql/* sql */`
+        SELECT department_name FROM public.tbl_departments WHERE id = ${body.department} LIMIT 1
+      `;
+      
+      const faculty = facultyRow.length > 0 ? String(facultyRow[0].faculty_name).trim() : "";
+      const department = departmentRow.length > 0 ? String(departmentRow[0].department_name).trim() : "";
       const program = String(body.degreetitle).trim();
       
       console.log("[API] Checking access assignment for admin:", { faculty, department, program });
@@ -265,8 +276,8 @@ export async function POST(req: Request) {
       ["city", "City"],
       ["country", "Country"],
       ["campusname", "Campus"],
-      ["facultyname", "Faculty"],
-      ["departmentname", "Department"],
+      ["faculty", "Faculty"],
+      ["department", "Department"],
       ["degreetitle", "Program"],
       ["yearofending", "Year of Passing"],
     ];
@@ -602,9 +613,10 @@ export async function POST(req: Request) {
             cgpa = ${body.cgpa ?? null},
             yearofstarting = ${body.yearofstarting ?? null},
             yearofending = ${body.yearofending ?? null},
-            facultyname = ${clean(body.facultyname)},
+            faculty = ${body.faculty ?? null},
             campusname = ${clean(body.campusname)},
-            departmentname = ${clean(body.departmentname)},
+            department = ${body.department ?? null},
+            program = ${body.program ?? null},
             majorsubject = ${clean(body.majorsubject)},
             industry = ${clean(body.industry)},
             employeed = ${mapEmployeed(body.employeed)},
@@ -694,9 +706,10 @@ export async function POST(req: Request) {
           cgpa,
           yearofstarting,
           yearofending,
-          facultyname,
+          faculty,
           campusname,
-          departmentname,
+          department,
+          program,
           majorsubject,
           industry,
           employeed,
@@ -758,9 +771,10 @@ export async function POST(req: Request) {
           ${body.cgpa ?? null},
           ${body.yearofstarting ?? null},
           ${body.yearofending ?? null},
-          ${clean(body.facultyname)},
+          ${body.faculty ?? null},
           ${clean(body.campusname)},
-          ${clean(body.departmentname)},
+          ${body.department ?? null},
+          ${body.program ?? null},
           ${clean(body.majorsubject)},
           ${clean(body.industry)},
           ${mapEmployeed(body.employeed)},
@@ -1118,7 +1132,14 @@ export async function POST(req: Request) {
         }
 
         // Auto-assign association based on selected faculty (first registration / when association_id is empty)
-        const facultyName = body.facultyname ? String(body.facultyname).trim() : "";
+        let facultyName = "";
+        if (body.faculty) {
+          // Fetch faculty name from database using the ID
+          const facultyRow = await sql/* sql */`
+            SELECT faculty_name FROM public.tbl_faculties WHERE id = ${body.faculty} LIMIT 1
+          `;
+          facultyName = facultyRow.length > 0 ? String(facultyRow[0].faculty_name).trim() : "";
+        }
         if (facultyName) {
           try {
             const currentAssoc = await sql<{ association_id: number | null }[]>/* sql */`

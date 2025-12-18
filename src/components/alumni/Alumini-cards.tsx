@@ -54,7 +54,7 @@ function mapDbStatusToUI(dbStatus: string | null): CardStatus {
 }
 
 // Convert CardApplicant to AlumniCardItem
-function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem {
+function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { department: string } {
   return {
     id: String(applicant.sapid),
     name: applicant.alumniname || "Unknown",
@@ -62,6 +62,7 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem {
     program: applicant.degreetitle || "N/A",
     campus: "N/A", // Not available in API response
     faculty: applicant.facultyname || "N/A",
+    department: applicant.departmentname || "N/A",
     passingYear: applicant.yearofending || 0,
     workCountry: "N/A", // Not available in API response
     status: mapDbStatusToUI(applicant.status),
@@ -148,7 +149,6 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     return data.items.map(convertToAlumniCardItem).map((item) => ({
       ...item,
       mobile: undefined,
-      department: item.faculty,
       verified: item.status === "active" || item.status === "delivered",
       organization: undefined,
       designation: undefined,

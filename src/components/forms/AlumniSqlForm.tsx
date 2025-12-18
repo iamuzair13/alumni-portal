@@ -40,9 +40,12 @@ export type TblAlumniForm = {
   cgpa: number | null;
   yearofstarting: number | null;
   yearofending: number | null;
-  facultyname: string | null;
+  faculty: number | null; // Faculty ID
+  facultyname: string | null; // Faculty name (for backward compatibility)
   campusname: string | null;
-  departmentname: string | null;
+  department: number | null; // Department ID
+  departmentname: string | null; // Department name (for backward compatibility)
+  program: number | null; // Program ID
   majorsubject: string | null;
   industry: string | null;
   employeed: string | null;
@@ -410,9 +413,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       cgpa: null,
       yearofstarting: null,
       yearofending: null,
+      faculty: null,
       facultyname: null,
       campusname: null,
+      department: null,
       departmentname: null,
+      program: null,
       majorsubject: null,
       industry: null,
       employeed: "Unemployed, searching for job",
@@ -463,10 +469,55 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     departments: string[];
     programs: string[];
   } | null>(null);
-  const [loadingAccess, setLoadingAccess] = useState(true);
   const [chapters, setChapters] = useState<Array<{ id: number; name: string; type: "national" | "international" }>>([]);
   const [isLoadingChapters, setIsLoadingChapters] = useState(true);
   const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
+
+  // Database-backed faculties, departments, and programs
+  const [dbFaculties, setDbFaculties] = useState<Array<{ id: number; name: string }>>([]);
+  const [dbDepartments, setDbDepartments] = useState<Array<{ id: number; name: string; facultyId: number }>>([]);
+  const [loadingDbData, setLoadingDbData] = useState(true);
+
+  // Fetch faculties from database
+  useEffect(() => {
+    const fetchFaculties = async () => {
+      try {
+        const res = await fetch("/api/organization/faculties");
+        if (res.ok) {
+          const data = await res.json();
+          setDbFaculties(data.faculties || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch faculties:", err);
+      } finally {
+        setLoadingDbData(false);
+      }
+    };
+    fetchFaculties();
+  }, []);
+
+  // Fetch departments when faculty changes
+  useEffect(() => {
+    const facultyId = watch("faculty");
+    if (!facultyId) {
+      setDbDepartments([]);
+      return;
+    }
+
+    const fetchDepartments = async () => {
+      try {
+        const res = await fetch(`/api/organization/departments?facultyId=${facultyId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDbDepartments(data.departments || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch departments:", err);
+      }
+    };
+    fetchDepartments();
+  }, [watch("faculty")]);
+
 
   // Fetch user access assignments
   useEffect(() => {
@@ -486,8 +537,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         console.error("Failed to fetch user access:", err);
         // On error, assume no restrictions
         setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
-      } finally {
-        setLoadingAccess(false);
       }
     };
     fetchAccess();
@@ -748,8 +797,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     // Validate Academic Information section
     const academicOk = await trigger([
       "campusname",
-      "facultyname",
-      "departmentname",
+      "faculty",
+      "department",
       "degreetitle",
       "yearofstarting",
       "yearofending",
@@ -1585,28 +1634,34 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {!facultyOtherSelected ? (
               <select 
                 className={inputBase} 
-                  {...register("facultyname", { 
+                  {...register("faculty", { 
                     required: true,
+                    valueAsNumber: true,
                     onChange: (e) => {
-                      if (e.target.value === "other") {
+                      const selectedId = e.target.value;
+                      if (selectedId === "other") {
                         setFacultyOtherSelected(true);
-                        // Use setTimeout to avoid conflicts with register
-                        setTimeout(() => {
-                          setValue("facultyname", "", { shouldValidate: false, shouldDirty: false });
-                        }, 0);
+                        setValue("faculty", null, { shouldValidate: false, shouldDirty: false });
+                        return;
                       }
+                      
+                      // Reset department and program when faculty changes
+                      setValue("department", null);
+                      setValue("program", null);
+                      setValue("degreetitle", "");
+                      setDepartmentOtherSelected(false);
                     }
                   })}
-                disabled={loadingAccess || (userAccess ? (!userAccess.isSuperAdmin && availableFaculties.length === 0) : false)}
+                disabled={loadingDbData || (userAccess ? (!userAccess.isSuperAdmin && dbFaculties.length === 0) : false)}
               >
                 <option value="">
-                  {loadingAccess ? "Loading..." : 
-                   userAccess && !userAccess.isSuperAdmin && availableFaculties.length === 0 
+                  {loadingDbData ? "Loading..." : 
+                   userAccess && !userAccess.isSuperAdmin && dbFaculties.length === 0 
                      ? "No access to any faculty" 
                      : "Select"}
                 </option>
-                {availableFaculties.map((faculty) => (
-                  <option key={faculty} value={faculty}>{faculty}</option>
+                {dbFaculties.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
                 ))}
                   <option value="other">Other</option>
               </select>
@@ -1651,8 +1706,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   </button>
                 </>
               )}
-              {errors.facultyname && (
-                <p className="mt-1 text-xs text-red-600">{errors.facultyname.message || "Faculty is required"}</p>
+              {errors.faculty && (
+                <p className="mt-1 text-xs text-red-600">{errors.faculty.message || "Faculty is required"}</p>
               )}
             </div>
             <div>
@@ -1660,34 +1715,37 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {!departmentOtherSelected ? (
               <select 
                 className={inputBase} 
-                  {...register("departmentname", { 
+                  {...register("department", { 
                     required: true,
+                    valueAsNumber: true,
                     onChange: (e) => {
-                      if (e.target.value === "other") {
+                      const selectedId = e.target.value;
+                      if (selectedId === "other") {
                         isTypingDepartmentOther.current = true;
                         setDepartmentOtherSelected(true);
-                        // Clear the value after a short delay to let the state update
+                        setValue("department", null, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
                         setTimeout(() => {
-                          setValue("departmentname", "", { shouldValidate: false, shouldDirty: false, shouldTouch: false });
-                          // Reset the ref after clearing
-                          setTimeout(() => {
-                            isTypingDepartmentOther.current = false;
-                          }, 100);
-                        }, 50);
+                          isTypingDepartmentOther.current = false;
+                        }, 100);
+                        return;
                       }
+                      
+                      // Reset program when department changes
+                      setValue("program", null);
+                      setValue("degreetitle", "");
                     }
                   })}
-                disabled={loadingAccess || !selectedFaculty || (userAccess ? (!userAccess.isSuperAdmin && deptOptions.length === 0) : false)}
+                disabled={loadingDbData || !watch("faculty") || (userAccess ? (!userAccess.isSuperAdmin && dbDepartments.length === 0) : false)}
               >
                 <option value="">
-                  {loadingAccess ? "Loading..." :
-                   !selectedFaculty ? "Select Faculty first" :
-                   userAccess && !userAccess.isSuperAdmin && deptOptions.length === 0 
+                  {loadingDbData ? "Loading..." :
+                   !watch("faculty") ? "Select Faculty first" :
+                   userAccess && !userAccess.isSuperAdmin && dbDepartments.length === 0 
                      ? "No access to any department in this faculty" 
                      : "Select"}
                 </option>
-                {deptOptions.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                {dbDepartments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
                   <option value="other">Other</option>
               </select>
@@ -1732,8 +1790,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   </button>
                 </>
               )}
-              {errors.departmentname && (
-                <p className="mt-1 text-xs text-red-600">{errors.departmentname.message || "Department is required"}</p>
+              {errors.department && (
+                <p className="mt-1 text-xs text-red-600">{errors.department.message || "Department is required"}</p>
               )}
             </div>
             <div>

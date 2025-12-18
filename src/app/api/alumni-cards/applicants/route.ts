@@ -44,13 +44,16 @@ export async function GET(request: Request) {
         a.alumniname,
         COALESCE(a.personalemail, a.officialemail, a.universityemail) AS email,
         a.yearofending,
-        a.facultyname,
-        a.departmentname,
-        a.degreetitle,
+        f.faculty_name as facultyname,
+        d.department_name as departmentname,
+        COALESCE(p.program_name, a.degreetitle) as degreetitle,
         c.status,
         c.createdat
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE 1=1
         ${accessFilterCondition}
         ${statusCondition}

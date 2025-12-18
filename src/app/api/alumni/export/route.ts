@@ -106,14 +106,14 @@ export async function GET(req: Request) {
     if (search && search.trim()) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
       searchCondition = sql`AND (
-        LOWER(sapid) LIKE ${searchTerm}
-        OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(alumniname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(personalemail, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTerm}
+        LOWER(a.sapid) LIKE ${searchTerm}
+        OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
       )`;
     }
     
@@ -121,33 +121,33 @@ export async function GET(req: Request) {
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        const facultyConditions = faculty.map(f => sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`);
+        const facultyConditions = faculty.map(fac => sql`LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(${fac}))`);
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(faculty) && faculty) {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(${faculty}))`;
       }
     }
     
     let departmentFilter = sql``;
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        const departmentConditions = department.map(d => sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`);
+        const departmentConditions = department.map(dept => sql`LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(${dept}))`);
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(department) && department) {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(${department}))`;
       }
     }
     
     let programFilter = sql``;
     if (program && (Array.isArray(program) ? program.length > 0 : program)) {
       if (Array.isArray(program) && program.length > 0) {
-        const programConditions = program.map(p => sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`);
+        const programConditions = program.map(prog => sql`LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${prog}))`);
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
-        programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+        programFilter = sql`AND LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${program}))`;
       }
     }
     
@@ -440,6 +440,10 @@ export async function GET(req: Request) {
     const query = sql/* sql */`
       SELECT 
         a.*,
+        -- ID-based faculty, department, program names
+        f.faculty_name,
+        d.department_name,
+        p.program_name,
         -- Chapter data
         ac.chapter1 as chapter1_id,
         ac.chapter2 as chapter2_id,
@@ -478,6 +482,9 @@ export async function GET(req: Request) {
         asch.degree_title as scholarship_degree_title,
         asch.created_at as scholarship_created_at
       FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
       LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
       LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2

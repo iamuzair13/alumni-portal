@@ -37,6 +37,10 @@ export type AlumniFullDetails = {
   campusname: string | null;
   departmentname: string | null;
   majorsubject: string | null;
+  // ID-based fields for faculty, department, program
+  faculty: number | null;
+  department: number | null;
+  program: number | null;
   industry: string | null;
   employeed: string | null;
   nameoforganization: string | null;

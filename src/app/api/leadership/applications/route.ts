@@ -64,8 +64,9 @@ export async function GET(req: NextRequest) {
           a.alumniid,
           a.sapid,
           a.alumniname,
-          a.departmentname,
-          a.facultyname,
+          d.department_name as departmentname,
+          f.faculty_name as facultyname,
+          p.program_name as program_name,
           a.degreetitle,
           a.personalemail,
           a.officialemail,
@@ -73,6 +74,9 @@ export async function GET(req: NextRequest) {
           a.registrationno
         FROM public.chapter_leadership cl
         LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE cl.status = 'pending'
           ${accessFilter.hasFilter && accessFilter.sql 
             ? sql` AND EXISTS (
@@ -95,7 +99,7 @@ export async function GET(req: NextRequest) {
           email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null) || "",
           faculty: r.facultyname ? String(r.facultyname) : null,
           department: r.departmentname ? String(r.departmentname) : null,
-          program: r.degreetitle ? String(r.degreetitle) : null,
+          program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
           type: "chapter",
           position: r.post ? String(r.post) : "",
           createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : new Date().toISOString(),
@@ -114,8 +118,9 @@ export async function GET(req: NextRequest) {
           a.alumniid,
           a.sapid,
           a.alumniname,
-          a.departmentname,
-          a.facultyname,
+          d.department_name as departmentname,
+          f.faculty_name as facultyname,
+          p.program_name as program_name,
           a.degreetitle,
           a.personalemail,
           a.officialemail,
@@ -123,6 +128,9 @@ export async function GET(req: NextRequest) {
           a.registrationno
         FROM public.tblalumniassociation ass
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ass.status = 'pending'
           ${accessFilter.hasFilter && accessFilter.sql 
             ? sql` AND EXISTS (
@@ -145,7 +153,7 @@ export async function GET(req: NextRequest) {
           email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null) || "",
           faculty: r.facultyname ? String(r.facultyname) : null,
           department: r.departmentname ? String(r.departmentname) : null,
-          program: r.degreetitle ? String(r.degreetitle) : null,
+          program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
           type: "association",
           position: r.role ? String(r.role) : "",
           createdAt: r.createddatetime ? new Date(r.createddatetime as string).toISOString() : new Date().toISOString(),

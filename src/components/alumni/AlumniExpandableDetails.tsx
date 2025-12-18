@@ -76,6 +76,9 @@ type AlumniFullData = {
   campusname: string | null;
   departmentname: string | null;
   majorsubject: string | null;
+  // New ID-based fields (program is still text-based)
+  faculty: number | null;
+  department: number | null;
   industry: string | null;
   employeed: string | null;
   nameoforganization: string | null;
@@ -347,6 +350,13 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const cityInputRef = useRef<HTMLInputElement>(null);
   const cityDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Faculty and Department state (Programs are text-based for now)
+  const [allFaculties, setAllFaculties] = useState<{ id: number; faculty_name: string }[]>([]);
+  const [allDepartments, setAllDepartments] = useState<{ id: number; department_name: string; faculty_id: number }[]>([]);
+  const [facultiesLoading, setFacultiesLoading] = useState(true);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
+  const selectedFacultyId = watch("faculty");
+
   // Fetch chapters and associations for dropdowns
   const { data: chaptersList = [] } = useQuery<Chapter[]>({
     queryKey: ["chapters-list"],
@@ -361,6 +371,134 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  // Fetch faculties on mount
+  useEffect(() => {
+    const fetchFaculties = async () => {
+      setFacultiesLoading(true);
+      try {
+        const res = await fetch("/api/organization/faculties");
+        if (res.ok) {
+          const data = await res.json();
+          setAllFaculties(data.faculties || []);
+        }
+      } catch (error) {
+        console.error("Error fetching faculties:", error);
+      } finally {
+        setFacultiesLoading(false);
+      }
+    };
+    fetchFaculties();
+  }, []);
+
+  // Fetch departments on mount if faculty ID exists (for display mode)
+  useEffect(() => {
+    const fetchInitialDepartments = async () => {
+      if (data?.faculty) {
+        setDepartmentsLoading(true);
+        try {
+          const res = await fetch(`/api/organization/departments?faculty_id=${data.faculty}`);
+          if (res.ok) {
+            const result = await res.json();
+            setAllDepartments(result.departments || []);
+          }
+        } catch (error) {
+          console.error("Error fetching initial departments:", error);
+        } finally {
+          setDepartmentsLoading(false);
+        }
+      } else {
+        setDepartmentsLoading(false);
+      }
+    };
+    fetchInitialDepartments();
+  }, [data?.faculty]);
+
+  // Fetch departments when faculty changes or on initial load
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!selectedFacultyId) {
+        setAllDepartments([]);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/organization/departments?faculty_id=${selectedFacultyId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllDepartments(data.departments || []);
+        }
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+      }
+    };
+    fetchDepartments();
+  }, [selectedFacultyId]);
+
+  // Reset department when faculty changes (only during editing)
+  useEffect(() => {
+    if (isEditing && selectedFacultyId !== undefined) {
+      const currentDept = watch("department");
+      if (currentDept && allDepartments.length > 0) {
+        const deptExists = allDepartments.some(d => d.id === Number(currentDept));
+        if (!deptExists) {
+          setValue("department", null);
+        }
+      }
+    }
+  }, [selectedFacultyId, allDepartments, isEditing, watch, setValue]);
+
+  // Computed faculty and department names from IDs
+  const displayFacultyName = useMemo(() => {
+    if (!data) return null;
+    
+    console.log('[AlumniExpandableDetails] Faculty lookup:', {
+      facultyId: data.faculty,
+      facultyIdType: typeof data.faculty,
+      allFacultiesCount: allFaculties.length,
+      facultyname: data.facultyname
+    });
+    
+    // If we have a faculty ID, try to look it up
+    if (data.faculty && allFaculties.length > 0) {
+      // Convert to number for comparison (API might return string)
+      const facultyIdNum = typeof data.faculty === 'string' ? parseInt(data.faculty, 10) : data.faculty;
+      const found = allFaculties.find(f => f.id === facultyIdNum);
+      console.log('[AlumniExpandableDetails] Faculty found:', found);
+      if (found) {
+        return found.faculty_name;
+      }
+    }
+    
+    // Fallback to text name
+    console.log('[AlumniExpandableDetails] Using fallback facultyname:', data.facultyname);
+    return data.facultyname;
+  }, [data, allFaculties]);
+
+  const displayDepartmentName = useMemo(() => {
+    if (!data) return null;
+    
+    console.log('[AlumniExpandableDetails] Department lookup:', {
+      departmentId: data.department,
+      departmentIdType: typeof data.department,
+      allDepartmentsCount: allDepartments.length,
+      departmentname: data.departmentname
+    });
+    
+    // If we have a department ID, try to look it up
+    if (data.department && allDepartments.length > 0) {
+      // Convert to number for comparison (API might return string)
+      const departmentIdNum = typeof data.department === 'string' ? parseInt(data.department, 10) : data.department;
+      const found = allDepartments.find(d => d.id === departmentIdNum);
+      console.log('[AlumniExpandableDetails] Department found:', found);
+      if (found) {
+        return found.department_name;
+      }
+    }
+    
+    // Fallback to text name
+    console.log('[AlumniExpandableDetails] Using fallback departmentname:', data.departmentname);
+    return data.departmentname;
+  }, [data, allDepartments]);
 
   // Province options based on selected country
   const provinceOptions = useMemo(() => {
@@ -436,6 +574,9 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         personalemailshow: data.personalemailshow !== null && data.personalemailshow !== undefined 
           ? String(data.personalemailshow) 
           : null,
+        // Ensure ID fields are properly set (faculty and department)
+        faculty: data.faculty || null,
+        department: data.department || null,
       };
       reset(formData);
       // Set initial city search value
@@ -482,6 +623,8 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           facultyname: formData.facultyname,
           departmentname: formData.departmentname,
           degreetitle: formData.degreetitle,
+          faculty: formData.faculty,
+          department: formData.department,
           yearofending: formData.yearofending,
           yearofstarting: formData.yearofstarting,
           cgpa: formData.cgpa,
@@ -811,8 +954,63 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
           </div>
-          <CompactField label="Faculty" value={data.facultyname} isEditing={isEditing} readOnly={readOnly} register={register} name="facultyname" />
-          <CompactField label="Department" value={data.departmentname} isEditing={isEditing} readOnly={readOnly} register={register} name="departmentname" />
+          
+          {/* Faculty Field */}
+          {!isEditing || readOnly ? (
+            <CompactField 
+              label="Faculty" 
+              value={facultiesLoading ? "Loading..." : displayFacultyName} 
+              isEditing={false} 
+              readOnly={readOnly} 
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
+              <select
+                {...register("faculty", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    setValue("faculty", value ? Number(value) : null);
+                    setValue("department", null);
+                  }
+                })}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select Faculty</option>
+                {allFaculties.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Department Field */}
+          {!isEditing || readOnly ? (
+            <CompactField 
+              label="Department" 
+              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
+              isEditing={false} 
+              readOnly={readOnly} 
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
+              <select
+                {...register("department", { valueAsNumber: true })}
+                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
+                {allDepartments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Program Field - Text-based (Programs setup is pending) */}
           <CompactField label="Program" value={data.degreetitle} isEditing={isEditing} readOnly={readOnly} register={register} name="degreetitle" />
           <CompactField label="Campus" value={data.campusname} isEditing={isEditing} readOnly={readOnly} register={register} name="campusname" type="select" options={[
             { value: "", label: "Select" },
