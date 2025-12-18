@@ -485,7 +485,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         const res = await fetch("/api/organization/faculties");
         if (res.ok) {
           const data = await res.json();
-          setDbFaculties(data.faculties || []);
+          // Map faculty_name to name for frontend compatibility
+          const mappedFaculties = (data.faculties || []).map((f: { id: number; faculty_name: string }) => ({
+            id: f.id,
+            name: f.faculty_name
+          }));
+          setDbFaculties(mappedFaculties);
         }
       } catch (err) {
         console.error("Failed to fetch faculties:", err);
@@ -506,10 +511,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
     const fetchDepartments = async () => {
       try {
-        const res = await fetch(`/api/organization/departments?facultyId=${facultyId}`);
+        const res = await fetch(`/api/organization/departments?faculty_id=${facultyId}`);
         if (res.ok) {
           const data = await res.json();
-          setDbDepartments(data.departments || []);
+          // Map department_name to name for frontend compatibility
+          const mappedDepartments = (data.departments || []).map((d: { id: number; department_name: string; faculty_id: number }) => ({
+            id: d.id,
+            name: d.department_name,
+            facultyId: d.faculty_id
+          }));
+          setDbDepartments(mappedDepartments);
         }
       } catch (err) {
         console.error("Failed to fetch departments:", err);
