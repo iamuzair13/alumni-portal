@@ -20,6 +20,17 @@ import { useOccupationStatuses, type OccupationStatusOption } from "@/app/querie
 import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
 import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
 import { useAlumniPrograms } from "@/app/queries/fetch-alumni-programs";
+import { useHomeCountries } from "@/app/queries/fetch-home-countries";
+import { useWorkCountries } from "@/app/queries/fetch-work-countries";
+import { useAdmissionYears } from "@/app/queries/fetch-admission-years";
+import { usePassingYears } from "@/app/queries/fetch-passing-years";
+import { useSectors } from "@/app/queries/fetch-sectors";
+import { useWorkCities } from "@/app/queries/fetch-work-cities";
+import { useInstitutionNames } from "@/app/queries/fetch-institution-names";
+import { useDegreeTitles } from "@/app/queries/fetch-degree-titles";
+import { useFundingSources } from "@/app/queries/fetch-funding-sources";
+import { useInstitutionCountries } from "@/app/queries/fetch-institution-countries";
+import { useInstitutionCities } from "@/app/queries/fetch-institution-cities";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import * as XLSX from "xlsx";
@@ -146,6 +157,39 @@ export const AlumniTabs: React.FC = () => {
   // Fetch occupation statuses from database
   const { data: occupationStatusesData, isLoading: isLoadingOccupationStatuses, error: occupationStatusesError } = useOccupationStatuses();
   
+  // Fetch home countries from database
+  const { data: homeCountriesData } = useHomeCountries();
+  
+  // Fetch work countries from database
+  const { data: workCountriesData } = useWorkCountries();
+  
+  // Fetch admission years from database
+  const { data: admissionYearsData } = useAdmissionYears();
+  
+  // Fetch passing years from database
+  const { data: passingYearsData } = usePassingYears();
+  
+  // Fetch sectors from database
+  const { data: sectorsData } = useSectors();
+  
+  // Fetch work cities from database
+  const { data: workCitiesData } = useWorkCities();
+  
+  // Fetch institution names from database
+  const { data: institutionNamesData } = useInstitutionNames();
+  
+  // Fetch degree titles (program enrolled) from database
+  const { data: degreeTitlesData } = useDegreeTitles();
+  
+  // Fetch funding sources from database
+  const { data: fundingSourcesData } = useFundingSources();
+  
+  // Fetch institution countries from database
+  const { data: institutionCountriesData } = useInstitutionCountries();
+  
+  // Fetch institution cities from database
+  const { data: institutionCitiesData } = useInstitutionCities();
+  
   // Debug logging
   React.useEffect(() => {
     if (maritalStatusesError) {
@@ -191,6 +235,13 @@ export const AlumniTabs: React.FC = () => {
   const admissionYearFilterRef = React.useRef<HTMLDivElement>(null);
   const passingYearFilterRef = React.useRef<HTMLDivElement>(null);
   const workCountryFilterRef = React.useRef<HTMLDivElement>(null);
+  const workCityFilterRef = React.useRef<HTMLDivElement>(null);
+  const sectorFilterRef = React.useRef<HTMLDivElement>(null);
+  const institutionNameFilterRef = React.useRef<HTMLDivElement>(null);
+  const programEnrolledFilterRef = React.useRef<HTMLDivElement>(null);
+  const fundingSourceFilterRef = React.useRef<HTMLDivElement>(null);
+  const institutionCountryFilterRef = React.useRef<HTMLDivElement>(null);
+  const institutionCityFilterRef = React.useRef<HTMLDivElement>(null);
   const genderFilterRef = React.useRef<HTMLDivElement>(null);
   const maritalStatusFilterRef = React.useRef<HTMLDivElement>(null);
   const occupationStatusFilterRef = React.useRef<HTMLDivElement>(null);
@@ -276,6 +327,13 @@ export const AlumniTabs: React.FC = () => {
     admissionYear: boolean;
     passingYear: boolean;
     workCountry: boolean;
+    workCity: boolean;
+    sector: boolean;
+    institutionName: boolean;
+    programEnrolled: boolean;
+    fundingSource: boolean;
+    institutionCountry: boolean;
+    institutionCity: boolean;
     gender: boolean;
     maritalStatus: boolean;
     occupationStatus: boolean;
@@ -292,39 +350,19 @@ export const AlumniTabs: React.FC = () => {
     admissionYear: false,
     passingYear: false,
     workCountry: false,
+    workCity: false,
+    sector: false,
+    institutionName: false,
+    programEnrolled: false,
+    fundingSource: false,
+    institutionCountry: false,
+    institutionCity: false,
     gender: false,
     maritalStatus: false,
     occupationStatus: false,
   });
   
-  // Countries list (from registration form)
-  const allCountries = [
-    "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",
-    "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
-    "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria",
-    "Burkina Faso", "Burundi", "Côte d'Ivoire", "Cabo Verde", "Cambodia", "Cameroon", "Canada",
-    "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)",
-    "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia (Czech Republic)", "Democratic Republic of the Congo",
-    "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador",
-    "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini (fmr. Swaziland)", "Ethiopia", "Fiji", "Finland",
-    "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea",
-    "Guinea-Bissau", "Guyana", "Haiti", "Holy See", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
-    "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
-    "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein",
-    "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
-    "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
-    "Montenegro", "Morocco", "Mozambique", "Myanmar (formerly Burma)", "Namibia", "Nauru", "Nepal",
-    "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia",
-    "Norway", "Oman", "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay",
-    "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda",
-    "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
-    "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore",
-    "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan",
-    "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania",
-    "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan",
-    "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-    "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Other"
-  ];
+  // Countries are now fetched from database via useHomeCountries() and useWorkCountries()
   
   // Pakistan provinces
   const pakistanProvinces = [
@@ -337,14 +375,7 @@ export const AlumniTabs: React.FC = () => {
     { value: "AJK", label: "Azad Kashmir" },
   ];
   
-  // Campus options - now fetched dynamically from database
-  // Use campusesData if available, otherwise fallback to empty array
-  
-  // Admission years (1998 to 2025)
-  const admissionYears: string[] = Array.from({ length: 2025 - 1998 + 1 }, (_, i) => String(1998 + i));
-  
-  // Passing years (2000 to 2025)
-  const passingYears: string[] = Array.from({ length: 2025 - 2000 + 1 }, (_, i) => String(2000 + i));
+  // Campus options, admission years, and passing years are now fetched dynamically from database
   
   // Pakistan cities by province
   const citiesByProvince: Record<string, string[]> = {
@@ -509,6 +540,27 @@ export const AlumniTabs: React.FC = () => {
       if (workCountryFilterRef.current && !workCountryFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, workCountry: false }));
       }
+      if (workCityFilterRef.current && !workCityFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, workCity: false }));
+      }
+      if (sectorFilterRef.current && !sectorFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, sector: false }));
+      }
+      if (institutionNameFilterRef.current && !institutionNameFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, institutionName: false }));
+      }
+      if (programEnrolledFilterRef.current && !programEnrolledFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, programEnrolled: false }));
+      }
+      if (fundingSourceFilterRef.current && !fundingSourceFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, fundingSource: false }));
+      }
+      if (institutionCountryFilterRef.current && !institutionCountryFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, institutionCountry: false }));
+      }
+      if (institutionCityFilterRef.current && !institutionCityFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, institutionCity: false }));
+      }
       if (genderFilterRef.current && !genderFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, gender: false }));
       }
@@ -662,10 +714,11 @@ export const AlumniTabs: React.FC = () => {
   };
   
   const handleHomeCountrySelectAll = () => {
-    if (selectedHomeCountries.length === allCountries.length) {
+    const allValues = homeCountriesData?.homeCountries?.map(c => c.value) || [];
+    if (selectedHomeCountries.length === allValues.length && allValues.length > 0) {
       setSelectedHomeCountries([]);
     } else {
-      setSelectedHomeCountries([...allCountries]);
+      setSelectedHomeCountries(allValues);
     }
   };
   
@@ -778,10 +831,11 @@ export const AlumniTabs: React.FC = () => {
   };
   
   const handleAdmissionYearSelectAll = () => {
-    if (selectedAdmissionYears.length === admissionYears.length) {
+    const allValues = admissionYearsData?.admissionYears?.map(y => y.value) || [];
+    if (selectedAdmissionYears.length === allValues.length && allValues.length > 0) {
       setSelectedAdmissionYears([]);
     } else {
-      setSelectedAdmissionYears([...admissionYears]);
+      setSelectedAdmissionYears(allValues);
     }
   };
   
@@ -794,10 +848,11 @@ export const AlumniTabs: React.FC = () => {
   };
   
   const handlePassingYearSelectAll = () => {
-    if (selectedPassingYears.length === passingYears.length) {
+    const allValues = passingYearsData?.passingYears?.map(y => y.value) || [];
+    if (selectedPassingYears.length === allValues.length && allValues.length > 0) {
       setSelectedPassingYears([]);
     } else {
-      setSelectedPassingYears([...passingYears]);
+      setSelectedPassingYears(allValues);
     }
   };
   
@@ -810,10 +865,11 @@ export const AlumniTabs: React.FC = () => {
   };
   
   const handleWorkCountrySelectAll = () => {
-    if (selectedWorkCountries.length === allCountries.length) {
+    const allValues = workCountriesData?.workCountries?.map(c => c.value) || [];
+    if (selectedWorkCountries.length === allValues.length && allValues.length > 0) {
       setSelectedWorkCountries([]);
     } else {
-      setSelectedWorkCountries([...allCountries]);
+      setSelectedWorkCountries(allValues);
     }
   };
 
@@ -2558,7 +2614,7 @@ export const AlumniTabs: React.FC = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="checkbox"
-                                    checked={selectedHomeCountries.length === allCountries.length}
+                                    checked={homeCountriesData?.homeCountries && selectedHomeCountries.length === homeCountriesData.homeCountries.length && homeCountriesData.homeCountries.length > 0}
                                     onChange={handleHomeCountrySelectAll}
                                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                   />
@@ -2566,21 +2622,21 @@ export const AlumniTabs: React.FC = () => {
                                 </div>
                               </label>
                               <div className="max-h-48 overflow-y-auto">
-                                {allCountries.map((country) => {
-                                  const isChecked = selectedHomeCountries.includes(country);
+                                {homeCountriesData?.homeCountries?.map((country) => {
+                                  const isChecked = selectedHomeCountries.includes(country.value);
                                   return (
                                     <label
-                                      key={country}
+                                      key={country.value}
                                       className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        onChange={() => handleHomeCountryToggle(country)}
+                                        onChange={() => handleHomeCountryToggle(country.value)}
                                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country.label} ({country.count})</span>
                                     </label>
                                   );
                                 })}
@@ -2870,7 +2926,7 @@ export const AlumniTabs: React.FC = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="checkbox"
-                                    checked={selectedAdmissionYears.length === admissionYears.length}
+                                    checked={admissionYearsData?.admissionYears && selectedAdmissionYears.length === admissionYearsData.admissionYears.length && admissionYearsData.admissionYears.length > 0}
                                     onChange={handleAdmissionYearSelectAll}
                                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                   />
@@ -2878,21 +2934,21 @@ export const AlumniTabs: React.FC = () => {
                                 </div>
                               </label>
                               <div className="max-h-48 overflow-y-auto">
-                                {admissionYears.map((year) => {
-                                  const isChecked = selectedAdmissionYears.includes(year);
+                                {admissionYearsData?.admissionYears?.map((year) => {
+                                  const isChecked = selectedAdmissionYears.includes(year.value);
                                   return (
                                     <label
-                                      key={year}
+                                      key={year.value}
                                       className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        onChange={() => handleAdmissionYearToggle(year)}
+                                        onChange={() => handleAdmissionYearToggle(year.value)}
                                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{year}</span>
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{year.label} ({year.count})</span>
                                     </label>
                                   );
                                 })}
@@ -2944,7 +3000,7 @@ export const AlumniTabs: React.FC = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="checkbox"
-                                    checked={selectedPassingYears.length === passingYears.length}
+                                    checked={passingYearsData?.passingYears && selectedPassingYears.length === passingYearsData.passingYears.length && passingYearsData.passingYears.length > 0}
                                     onChange={handlePassingYearSelectAll}
                                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                   />
@@ -2952,21 +3008,21 @@ export const AlumniTabs: React.FC = () => {
                                 </div>
                               </label>
                               <div className="max-h-48 overflow-y-auto">
-                                {passingYears.map((year) => {
-                                  const isChecked = selectedPassingYears.includes(year);
+                                {passingYearsData?.passingYears?.map((year) => {
+                                  const isChecked = selectedPassingYears.includes(year.value);
                                   return (
                                     <label
-                                      key={year}
+                                      key={year.value}
                                       className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        onChange={() => handlePassingYearToggle(year)}
+                                        onChange={() => handlePassingYearToggle(year.value)}
                                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{year}</span>
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{year.label} ({year.count})</span>
                                     </label>
                                   );
                                 })}
@@ -3072,20 +3128,88 @@ export const AlumniTabs: React.FC = () => {
                       </div>
                       
                       {/* Sector Filter */}
-                      <div>
+                      <div className="relative" ref={sectorFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Sector
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedSectors.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedSectors(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, sector: !prev.sector }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedSectors.length === 0
+                              ? "Select sectors..."
+                              : selectedSectors.length === 1
+                              ? selectedSectors[0]
+                              : `${selectedSectors.length} sectors selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.sector ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.sector && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = sectorsData?.sectors?.map(s => s.value) || [];
+                                  if (selectedSectors.length === allValues.length && allValues.length > 0) {
+                                    setSelectedSectors([]);
+                                  } else {
+                                    setSelectedSectors(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={sectorsData?.sectors && selectedSectors.length === sectorsData.sectors.length && sectorsData.sectors.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Sectors</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {sectorsData?.sectors?.map((sector) => {
+                                  const isChecked = selectedSectors.includes(sector.value);
+                                  return (
+                                    <label
+                                      key={sector.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedSectors(prev =>
+                                            prev.includes(sector.value)
+                                              ? prev.filter(s => s !== sector.value)
+                                              : [...prev, sector.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{sector.label} ({sector.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedSectors.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedSectors.length} selected</p>
+                        )}
                       </div>
                       
                       
@@ -3129,7 +3253,7 @@ export const AlumniTabs: React.FC = () => {
                                 <div className="flex items-center space-x-2">
                                   <input
                                     type="checkbox"
-                                    checked={selectedWorkCountries.length === allCountries.length}
+                                    checked={workCountriesData?.workCountries && selectedWorkCountries.length === workCountriesData.workCountries.length && workCountriesData.workCountries.length > 0}
                                     onChange={handleWorkCountrySelectAll}
                                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                   />
@@ -3137,21 +3261,21 @@ export const AlumniTabs: React.FC = () => {
                                 </div>
                               </label>
                               <div className="max-h-48 overflow-y-auto">
-                                {allCountries.map((country) => {
-                                  const isChecked = selectedWorkCountries.includes(country);
+                                {workCountriesData?.workCountries?.map((country) => {
+                                  const isChecked = selectedWorkCountries.includes(country.value);
                                   return (
                                     <label
-                                      key={country}
+                                      key={country.value}
                                       className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        onChange={() => handleWorkCountryToggle(country)}
+                                        onChange={() => handleWorkCountryToggle(country.value)}
                                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country}</span>
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country.label} ({country.count})</span>
                                     </label>
                                   );
                                 })}
@@ -3165,105 +3289,513 @@ export const AlumniTabs: React.FC = () => {
                       </div>
 
                       {/* Work City Filter */}
-                      <div>
+                      <div className="relative" ref={workCityFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Work City
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedWorkCities.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedWorkCities(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, workCity: !prev.workCity }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedWorkCities.length === 0
+                              ? "Select cities..."
+                              : selectedWorkCities.length === 1
+                              ? selectedWorkCities[0]
+                              : `${selectedWorkCities.length} cities selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.workCity ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.workCity && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = workCitiesData?.workCities?.map(c => c.value) || [];
+                                  if (selectedWorkCities.length === allValues.length && allValues.length > 0) {
+                                    setSelectedWorkCities([]);
+                                  } else {
+                                    setSelectedWorkCities(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={workCitiesData?.workCities && selectedWorkCities.length === workCitiesData.workCities.length && workCitiesData.workCities.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Cities</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {workCitiesData?.workCities?.map((city) => {
+                                  const isChecked = selectedWorkCities.includes(city.value);
+                                  return (
+                                    <label
+                                      key={city.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedWorkCities(prev =>
+                                            prev.includes(city.value)
+                                              ? prev.filter(c => c !== city.value)
+                                              : [...prev, city.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{city.label} ({city.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedWorkCities.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedWorkCities.length} selected</p>
+                        )}
                       </div>
                       
                       {/* Institution Name Filter */}
-                      <div>
+                      <div className="relative" ref={institutionNameFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Institution Name
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedInstitutionNames.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedInstitutionNames(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionName: !prev.institutionName }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedInstitutionNames.length === 0
+                              ? "Select institutions..."
+                              : selectedInstitutionNames.length === 1
+                              ? selectedInstitutionNames[0]
+                              : `${selectedInstitutionNames.length} institutions selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.institutionName ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.institutionName && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = institutionNamesData?.institutionNames?.map(i => i.value) || [];
+                                  if (selectedInstitutionNames.length === allValues.length && allValues.length > 0) {
+                                    setSelectedInstitutionNames([]);
+                                  } else {
+                                    setSelectedInstitutionNames(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={institutionNamesData?.institutionNames && selectedInstitutionNames.length === institutionNamesData.institutionNames.length && institutionNamesData.institutionNames.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Institutions</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {institutionNamesData?.institutionNames?.map((institution) => {
+                                  const isChecked = selectedInstitutionNames.includes(institution.value);
+                                  return (
+                                    <label
+                                      key={institution.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedInstitutionNames(prev =>
+                                            prev.includes(institution.value)
+                                              ? prev.filter(i => i !== institution.value)
+                                              : [...prev, institution.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{institution.label} ({institution.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedInstitutionNames.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedInstitutionNames.length} selected</p>
+                        )}
                       </div>
                       
                       {/* Program Enrolled Filter */}
-                      <div>
+                      <div className="relative" ref={programEnrolledFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Program Enrolled
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedProgramsEnrolled.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedProgramsEnrolled(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, programEnrolled: !prev.programEnrolled }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedProgramsEnrolled.length === 0
+                              ? "Select programs..."
+                              : selectedProgramsEnrolled.length === 1
+                              ? selectedProgramsEnrolled[0]
+                              : `${selectedProgramsEnrolled.length} programs selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.programEnrolled ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.programEnrolled && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = degreeTitlesData?.degreeTitles?.map(p => p.value) || [];
+                                  if (selectedProgramsEnrolled.length === allValues.length && allValues.length > 0) {
+                                    setSelectedProgramsEnrolled([]);
+                                  } else {
+                                    setSelectedProgramsEnrolled(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={degreeTitlesData?.degreeTitles && selectedProgramsEnrolled.length === degreeTitlesData.degreeTitles.length && degreeTitlesData.degreeTitles.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Programs</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {degreeTitlesData?.degreeTitles?.map((program) => {
+                                  const isChecked = selectedProgramsEnrolled.includes(program.value);
+                                  return (
+                                    <label
+                                      key={program.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedProgramsEnrolled(prev =>
+                                            prev.includes(program.value)
+                                              ? prev.filter(p => p !== program.value)
+                                              : [...prev, program.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{program.label} ({program.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedProgramsEnrolled.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedProgramsEnrolled.length} selected</p>
+                        )}
                       </div>
                       
                       {/* Funding Source Filter */}
-                      <div>
+                      <div className="relative" ref={fundingSourceFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Funding Source
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedFundingSources.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedFundingSources(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, fundingSource: !prev.fundingSource }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedFundingSources.length === 0
+                              ? "Select funding sources..."
+                              : selectedFundingSources.length === 1
+                              ? selectedFundingSources[0]
+                              : `${selectedFundingSources.length} sources selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.fundingSource ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.fundingSource && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = fundingSourcesData?.fundingSources?.map(f => f.value) || [];
+                                  if (selectedFundingSources.length === allValues.length && allValues.length > 0) {
+                                    setSelectedFundingSources([]);
+                                  } else {
+                                    setSelectedFundingSources(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={fundingSourcesData?.fundingSources && selectedFundingSources.length === fundingSourcesData.fundingSources.length && fundingSourcesData.fundingSources.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Sources</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {fundingSourcesData?.fundingSources?.map((source) => {
+                                  const isChecked = selectedFundingSources.includes(source.value);
+                                  return (
+                                    <label
+                                      key={source.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedFundingSources(prev =>
+                                            prev.includes(source.value)
+                                              ? prev.filter(f => f !== source.value)
+                                              : [...prev, source.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{source.label} ({source.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedFundingSources.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedFundingSources.length} selected</p>
+                        )}
                       </div>
                       
                       {/* Institution Country Filter */}
-                      <div>
+                      <div className="relative" ref={institutionCountryFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Institution Country
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedInstitutionCountries.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedInstitutionCountries(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCountry: !prev.institutionCountry }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedInstitutionCountries.length === 0
+                              ? "Select countries..."
+                              : selectedInstitutionCountries.length === 1
+                              ? selectedInstitutionCountries[0]
+                              : `${selectedInstitutionCountries.length} countries selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.institutionCountry ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.institutionCountry && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = institutionCountriesData?.institutionCountries?.map(c => c.value) || [];
+                                  if (selectedInstitutionCountries.length === allValues.length && allValues.length > 0) {
+                                    setSelectedInstitutionCountries([]);
+                                  } else {
+                                    setSelectedInstitutionCountries(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={institutionCountriesData?.institutionCountries && selectedInstitutionCountries.length === institutionCountriesData.institutionCountries.length && institutionCountriesData.institutionCountries.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Countries</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {institutionCountriesData?.institutionCountries?.map((country) => {
+                                  const isChecked = selectedInstitutionCountries.includes(country.value);
+                                  return (
+                                    <label
+                                      key={country.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedInstitutionCountries(prev =>
+                                            prev.includes(country.value)
+                                              ? prev.filter(c => c !== country.value)
+                                              : [...prev, country.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{country.label} ({country.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedInstitutionCountries.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedInstitutionCountries.length} selected</p>
+                        )}
                       </div>
                       
                       {/* Institution City Filter */}
-                      <div>
+                      <div className="relative" ref={institutionCityFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
                           Institution City
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Type to filter..."
-                          value={selectedInstitutionCities.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedInstitutionCities(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, institutionCity: !prev.institutionCity }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedInstitutionCities.length === 0
+                              ? "Select cities..."
+                              : selectedInstitutionCities.length === 1
+                              ? selectedInstitutionCities[0]
+                              : `${selectedInstitutionCities.length} cities selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.institutionCity ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.institutionCity && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allValues = institutionCitiesData?.institutionCities?.map(c => c.value) || [];
+                                  if (selectedInstitutionCities.length === allValues.length && allValues.length > 0) {
+                                    setSelectedInstitutionCities([]);
+                                  } else {
+                                    setSelectedInstitutionCities(allValues);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={institutionCitiesData?.institutionCities && selectedInstitutionCities.length === institutionCitiesData.institutionCities.length && institutionCitiesData.institutionCities.length > 0}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Cities</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {institutionCitiesData?.institutionCities?.map((city) => {
+                                  const isChecked = selectedInstitutionCities.includes(city.value);
+                                  return (
+                                    <label
+                                      key={city.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {
+                                          setSelectedInstitutionCities(prev =>
+                                            prev.includes(city.value)
+                                              ? prev.filter(c => c !== city.value)
+                                              : [...prev, city.value]
+                                          );
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{city.label} ({city.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedInstitutionCities.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedInstitutionCities.length} selected</p>
+                        )}
                       </div>
                       
                       {/* MR No Filter */}
