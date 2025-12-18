@@ -502,3 +502,40 @@ export async function sendAlumniCardActivatedEmail(
   return await sendEmail({ to: alumniEmail, subject, html });
 }
 
+export async function sendPasswordResetEmail(
+  alumniEmail: string,
+  alumniName: string,
+  newPassword: string
+): Promise<boolean> {
+  const subject = "Password Reset – UOL Alumni Portal";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
+      You have requested to reset your password for the UOL Alumni Portal.
+    </p>
+    <div style="margin: 20px 0; padding: 20px; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;">
+      <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px; font-weight: bold;">
+        Your New Password:
+      </p>
+      <p style="margin: 10px 0; color: #d63384; font-size: 20px; font-weight: bold; font-family: monospace; letter-spacing: 2px;">
+        ${newPassword}
+      </p>
+    </div>
+    <p style="margin: 15px 0 10px 0; color: #333333; font-size: 16px;">
+      <strong>Important Security Notice:</strong>
+    </p>
+    <ul style="margin: 10px 0; padding-left: 20px; color: #333333;">
+      <li style="margin: 5px 0;">Please log in immediately and change this password from your profile settings</li>
+      <li style="margin: 5px 0;">Never share your password with anyone</li>
+      <li style="margin: 5px 0;">If you did not request this password reset, please contact us immediately</li>
+    </ul>
+    <p style="margin: 15px 0; color: #333333; font-size: 16px;">
+      You can sign in at: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">Alumni Portal Sign In</a>
+    </p>
+  `;
+  const footer = "If you did not request a password reset, please contact us immediately at <a href=\"mailto:alumni@uol.edu.pk\" style=\"color: #007bff;\">alumni@uol.edu.pk</a>";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
