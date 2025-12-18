@@ -46,7 +46,7 @@ export default function NetworkingEngagementSection({
     {
       title: "Chapters Membership",
       decription: "Keep your UOL connection alive by joining national and international alumni chapters.",
-      action: "View",
+      action: "View Chapters",
       href: sapId ? `/alumni-profile/my-chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/my-chapters`,
       color: "text-green-700",
       bg: "bg-green-100",
@@ -57,15 +57,41 @@ export default function NetworkingEngagementSection({
       ),
     },
     {
-      title: "Alumni Association",
-      decription: "Join the UOL Alumni Association to connect, engage, and contribute. Apply today!",
+      title: "Chapter Leadership",
+      decription: "Apply for a leadership position to organize events, coordinate activities, and represent your chapter.",
       action: "Apply",
-      href: sapId ? `/alumni-profile/association?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/association`,
-      color: "text-gray-700",
-      bg: "bg-red-200",
+      href: sapId ? `/alumni-profile/chapter-leadership?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapter-leadership`,
+      color: "text-blue-600",
+      bg: "bg-blue-100",
+      icon: (
+        <svg role="img" aria-label="Leadership" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+          <path className="fill-current" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+      ),
+    },
+    {
+      title: "Association Membership",
+      decription: "Join a faculty or department association to connect with alumni from your academic background.",
+      action: "View",
+      href: sapId ? `/alumni-profile/my-associations?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/my-associations`,
+      color: "text-orange-600",
+      bg: "bg-orange-100",
       icon: (
         <svg role="img" aria-label="Building" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
           <path className="fill-current" d="M12 2L2 7v10h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2V7L12 2zm0 2.5l6 2.5v2h-2V9h-2v2h-2V9h-2v2h-2V9H8v2H6V9H4v-2l6-2.5zM4 11h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
+        </svg>
+      ),
+    },
+    {
+      title: "Association Leadership",
+      decription: "Apply for a leadership position in the UOL Alumni Association to lead and contribute.",
+      action: "Apply",
+      href: sapId ? `/alumni-profile/association-leadership?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/association-leadership`,
+      color: "text-red-600",
+      bg: "bg-red-100",
+      icon: (
+        <svg role="img" aria-label="Leadership Badge" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16">
+          <path className="fill-current" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
         </svg>
       ),
     },

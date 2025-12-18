@@ -488,12 +488,21 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                   onClick={(e) => {
                     if (s.href === "#") {
                       e.preventDefault();
+                      toast.error(`${s.label} link not available. No profile link has been added yet.`, {
+                        duration: 3000,
+                        style: {
+                          background: '#fef2f2',
+                          color: '#991b1b',
+                          padding: '12px',
+                          borderRadius: '8px',
+                        },
+                      });
                     }
                   }}
                   className={`w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full transition-colors ${
                     s.href !== "#" 
                       ? "bg-gray-100 hover:bg-gray-300 cursor-pointer" 
-                      : "bg-gray-50 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-50 text-gray-400 cursor-pointer hover:bg-gray-100"
                   }`}
                   aria-label={s.href !== "#" ? s.label : `${s.label} not provided`}
                   title={s.href !== "#" ? s.label : `${s.label} not provided`}
