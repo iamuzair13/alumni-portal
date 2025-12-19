@@ -32,8 +32,18 @@ export async function GET() {
       FROM public.tbl_alumni
       WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
         ${accessFilterCondition}
-      GROUP BY yearofstarting
-      ORDER BY yearofstarting DESC NULLS LAST
+      GROUP BY 
+        CASE 
+          WHEN yearofstarting IS NULL 
+          THEN 'Null'
+          ELSE yearofstarting::text
+        END
+      ORDER BY 
+        CASE 
+          WHEN yearofstarting IS NULL 
+          THEN 0
+          ELSE yearofstarting
+        END DESC
     `;
 
     const admissionYears = (rows as unknown as Array<{ year_value: string; count: number | string | bigint }>).map((row) => {

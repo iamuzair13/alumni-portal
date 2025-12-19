@@ -12,6 +12,8 @@ type EditableFieldProps = {
   options?: Array<{ value: string; label: string }>;
   disabled?: boolean;
   batchMode?: boolean;
+  datalistId?: string;
+  placeholder?: string;
 };
 
 export default function EditableField({
@@ -24,6 +26,8 @@ export default function EditableField({
   options,
   disabled = false,
   batchMode = false,
+  datalistId,
+  placeholder,
 }: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState<string>(() => {
@@ -198,10 +202,11 @@ export default function EditableField({
           <input
             type={type}
             value={editValue}
+            list={datalistId}
+            placeholder={placeholder || `Enter ${label.toLowerCase()}`}
             onChange={(e) => setEditValue(e.target.value)}
             className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isUpdating}
-            placeholder={`Enter ${label.toLowerCase()}`}
           />
         )}
         {!batchMode && (

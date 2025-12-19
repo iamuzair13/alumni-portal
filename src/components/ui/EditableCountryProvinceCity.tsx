@@ -1,225 +1,287 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import EditableField from "./EditableField";
 
-// Editable City Field Component for Pakistan (with autocomplete)
-type EditableCityFieldProps = {
-  label: string;
-  value: unknown;
-  fieldKey: string;
-  onValueChange: (key: string, value: unknown) => void;
-  selectedProvince: string;
-  citySearch: string;
-  setCitySearch: (value: string) => void;
-  showCityDropdown: boolean;
-  setShowCityDropdown: (value: boolean) => void;
-  filteredCities: string[];
-  provinceCities: string[];
-  selectedCity: string;
-};
-
-function EditableCityField({
-  label,
-  value,
-  fieldKey,
-  onValueChange,
-  selectedProvince,
-  citySearch,
-  setCitySearch,
-  showCityDropdown,
-  setShowCityDropdown,
-  filteredCities,
-  provinceCities,
-  selectedCity,
-}: EditableCityFieldProps) {
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Initialize citySearch when entering edit mode
-  useEffect(() => {
-    if (isEditing && citySearch === "") {
-      const val = value === null || value === undefined ? "" : String(value);
-      setCitySearch(val);
-    }
-  }, [isEditing, value, citySearch, setCitySearch]);
-
-  const displayValue = (val: unknown): string => {
-    if (val === null || val === undefined || val === "") return "Not provided";
-    return String(val);
-  };
-
-  if (!isEditing) {
-    return (
-      <div className="flex flex-col group">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium text-gray-500">{label}</span>
-          <button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200"
-            aria-label={`Edit ${label}`}
-            title={`Edit ${label}`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
-        </div>
-        <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col">
-      <span className="text-sm font-medium text-gray-500 mb-1">{label}</span>
-      {!selectedProvince ? (
-        <div className="mt-1 p-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500">
-          Please select a province first
-        </div>
-      ) : (
-        <div className="relative">
-          <input
-            type="text"
-            value={citySearch}
-            onChange={(e) => {
-              const val = e.target.value;
-              setCitySearch(val);
-              setShowCityDropdown(true);
-              // Don't update pending changes while typing - only when selecting from dropdown
-            }}
-            onFocus={() => {
-              if (selectedProvince) {
-                setShowCityDropdown(true);
-              }
-            }}
-            onBlur={(e) => {
-              const relatedTarget = e.relatedTarget as HTMLElement;
-              if (relatedTarget && relatedTarget.closest('.city-dropdown')) {
-                return;
-              }
-              setTimeout(() => {
-                setShowCityDropdown(false);
-                // If the typed value matches a city in the list, use it
-                const matchingCity = provinceCities.find(c => c.toLowerCase() === citySearch.toLowerCase().trim());
-                if (matchingCity) {
-                  onValueChange(fieldKey, matchingCity);
-                  setCitySearch(matchingCity);
-                } else if (citySearch.trim() === "") {
-                  onValueChange(fieldKey, null);
-                } else {
-                  // If typed value doesn't match, revert to current value
-                  const currentCity = selectedCity || "";
-                  setCitySearch(currentCity);
-                }
-              }, 200);
-            }}
-            placeholder={`Type to search cities in ${selectedProvince}...`}
-            disabled={!selectedProvince}
-            className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {showCityDropdown && selectedProvince && filteredCities.length > 0 && (
-            <div className="city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-              {filteredCities.map((city) => (
-                <button
-                  key={city}
-                  type="button"
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setCitySearch(city);
-                    onValueChange(fieldKey, city);
-                    setShowCityDropdown(false);
-                  }}
-                >
-                  {city}
-                </button>
-              ))}
-            </div>
-          )}
-          {showCityDropdown && selectedProvince && filteredCities.length === 0 && citySearch.trim() && (
-            <div className="city-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-sm text-gray-500">
-              No cities found matching &quot;{citySearch}&quot;
-            </div>
-          )}
-        </div>
-      )}
-      <div className="flex items-center gap-2 mt-2">
-        <button
-          type="button"
-          onClick={() => {
-            const finalValue = citySearch.trim() || null;
-            onValueChange(fieldKey, finalValue);
-            setIsEditing(false);
-          }}
-          className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-        >
-          Confirm
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setCitySearch(String(value || ""));
-            setIsEditing(false);
-            onValueChange(fieldKey, undefined);
-          }}
-          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-        >
-          Cancel
-        </button>
-        <span className="text-xs text-gray-500">Save all changes together</span>
-      </div>
-    </div>
-  );
-}
-
-const countryOptions = [
-  { value: "Pakistan", label: "Pakistan" },
-  { value: "United Arab Emirates", label: "United Arab Emirates" },
-  { value: "Saudi Arabia", label: "Saudi Arabia" },
-  { value: "United States", label: "United States" },
-  { value: "United Kingdom", label: "United Kingdom" },
-  { value: "Canada", label: "Canada" },
-  { value: "Other", label: "Other" },
+// Full list of all countries (matching AlumniSqlForm.tsx)
+const allCountries = [
+  "Afghanistan",
+  "Albania",
+  "Algeria",
+  "Andorra",
+  "Angola",
+  "Antigua and Barbuda",
+  "Argentina",
+  "Armenia",
+  "Australia",
+  "Austria",
+  "Azerbaijan",
+  "Bahamas",
+  "Bahrain",
+  "Bangladesh",
+  "Barbados",
+  "Belarus",
+  "Belgium",
+  "Belize",
+  "Benin",
+  "Bhutan",
+  "Bolivia",
+  "Bosnia and Herzegovina",
+  "Botswana",
+  "Brazil",
+  "Brunei",
+  "Bulgaria",
+  "Burkina Faso",
+  "Burundi",
+  "Côte d'Ivoire",
+  "Cabo Verde",
+  "Cambodia",
+  "Cameroon",
+  "Canada",
+  "Central African Republic",
+  "Chad",
+  "Chile",
+  "China",
+  "Colombia",
+  "Comoros",
+  "Congo (Congo-Brazzaville)",
+  "Costa Rica",
+  "Croatia",
+  "Cuba",
+  "Cyprus",
+  "Czechia (Czech Republic)",
+  "Democratic Republic of the Congo",
+  "Denmark",
+  "Djibouti",
+  "Dominica",
+  "Dominican Republic",
+  "Ecuador",
+  "Egypt",
+  "El Salvador",
+  "Equatorial Guinea",
+  "Eritrea",
+  "Estonia",
+  "Eswatini (fmr. Swaziland)",
+  "Ethiopia",
+  "Fiji",
+  "Finland",
+  "France",
+  "Gabon",
+  "Gambia",
+  "Georgia",
+  "Germany",
+  "Ghana",
+  "Greece",
+  "Grenada",
+  "Guatemala",
+  "Guinea",
+  "Guinea-Bissau",
+  "Guyana",
+  "Haiti",
+  "Holy See",
+  "Honduras",
+  "Hungary",
+  "Iceland",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Iraq",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Jamaica",
+  "Japan",
+  "Jordan",
+  "Kazakhstan",
+  "Kenya",
+  "Kiribati",
+  "Kuwait",
+  "Kyrgyzstan",
+  "Laos",
+  "Latvia",
+  "Lebanon",
+  "Lesotho",
+  "Liberia",
+  "Libya",
+  "Liechtenstein",
+  "Lithuania",
+  "Luxembourg",
+  "Madagascar",
+  "Malawi",
+  "Malaysia",
+  "Maldives",
+  "Mali",
+  "Malta",
+  "Marshall Islands",
+  "Mauritania",
+  "Mauritius",
+  "Mexico",
+  "Micronesia",
+  "Moldova",
+  "Monaco",
+  "Mongolia",
+  "Montenegro",
+  "Morocco",
+  "Mozambique",
+  "Myanmar (formerly Burma)",
+  "Namibia",
+  "Nauru",
+  "Nepal",
+  "Netherlands",
+  "New Zealand",
+  "Nicaragua",
+  "Niger",
+  "Nigeria",
+  "North Korea",
+  "North Macedonia",
+  "Norway",
+  "Oman",
+  "Pakistan",
+  "Palau",
+  "Palestine State",
+  "Panama",
+  "Papua New Guinea",
+  "Paraguay",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Qatar",
+  "Romania",
+  "Russia",
+  "Rwanda",
+  "Saint Kitts and Nevis",
+  "Saint Lucia",
+  "Saint Vincent and the Grenadines",
+  "Samoa",
+  "San Marino",
+  "Sao Tome and Principe",
+  "Saudi Arabia",
+  "Senegal",
+  "Serbia",
+  "Seychelles",
+  "Sierra Leone",
+  "Singapore",
+  "Slovakia",
+  "Slovenia",
+  "Solomon Islands",
+  "Somalia",
+  "South Africa",
+  "South Korea",
+  "South Sudan",
+  "Spain",
+  "Sri Lanka",
+  "Sudan",
+  "Suriname",
+  "Sweden",
+  "Switzerland",
+  "Syria",
+  "Tajikistan",
+  "Tanzania",
+  "Thailand",
+  "Timor-Leste",
+  "Togo",
+  "Tonga",
+  "Trinidad and Tobago",
+  "Tunisia",
+  "Turkey",
+  "Turkmenistan",
+  "Tuvalu",
+  "Uganda",
+  "Ukraine",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+  "Uruguay",
+  "Uzbekistan",
+  "Vanuatu",
+  "Venezuela",
+  "Vietnam",
+  "Yemen",
+  "Zambia",
+  "Zimbabwe",
+  "Other"
 ];
 
-// Pakistan cities organized by province (same as AlumniSqlForm)
-const citiesByProvince: Record<string, string[]> = {
+const countryOptions = allCountries.map(country => ({ value: country, label: country }));
+
+// Pakistan cities organized by province (matching AlumniSqlForm.tsx exactly)
+const citiesByProvinceRaw: Record<string, string[]> = {
   "Punjab": [
-    "Lahore", "Rawalpindi", "Faisalabad", "Multan", "Sialkot", "Gujranwala", "Bahawalpur", "Sargodha",
-    "Sheikhupura", "Jhang", "Rahim Yar Khan", "Gujrat", "Kasur", "Chiniot", "Hafizabad", "Mianwali",
-    "Chakwal", "Attock", "Vehari", "Kamoke", "Burewala", "Sahiwal", "Okara", "Dera Ghazi Khan",
-    "Gojra", "Chishtian", "Khanewal", "Jhelum", "Muzaffargarh", "Narowal", "Pakpattan", "Toba Tek Singh",
-    "Jaranwala", "Chishtian", "Hasilpur", "Ahmadpur East", "Kot Addu", "Wazirabad", "Daska", "Mandi Bahauddin"
+    "Ahmadpur East", "Ahmadpur Sial", "Arifwala", "Attock", "Bahawalnagar", "Bahawalpur", "Bhakkar",
+    "Burewala", "Chak Jhumra", "Chakwal", "Chiniot", "Chishtian", "Chunian", "Daska", "Dera Ghazi Khan",
+    "Dina", "Dipalpur", "Dunyapur", "Faisalabad", "Fateh Jang", "Gojra", "Gujar Khan", "Gujranwala",
+    "Gujrat", "Hafizabad", "Haroonabad", "Hassan Abdal", "Hasilpur", "Hujra Shah Muqeem", "Jalalpur Jattan",
+    "Jampur", "Jaranwala", "Jauharabad", "Jhang", "Jhelum", "Kabirwala", "Kahror Pakka", "Kamalia",
+    "Kamoke", "Kasur", "Khanewal", "Khushab", "Kot Abdul Malik", "Kot Addu", "Kot Mithan", "Kot Momin",
+    "Kot Radha Kishan", "Kotli Loharan", "Kundian", "Lahore", "Layyah", "Lodhran", "Malisi", "Mamu Kanjan",
+    "Mandi Bahauddin", "Mananwala", "Mian Channun", "Mianwali", "Multan", "Muridke", "Muzaffargarh",
+    "Nankana Sahib", "Narowal", "Okara", "Pakpattan", "Pasrur", "Pattoki", "Pindi Bhattian", "Rahim Yar Khan",
+    "Rajanpur", "Renala Khurd", "Sadiqabad", "Sahiwal", "Sargodha", "Sarai Alamgir", "Shakargarh", "Shahkot",
+    "Sheikhupura", "Sialkot", "Sohawa", "Toba Tek Singh", "Taunsa", "Uch Sharif", "Vehari", "Wazirabad"
   ],
   "Sindh": [
-    "Karachi", "Hyderabad", "Sukkur", "Larkana", "Nawabshah", "Kotri", "Khanpur", "Jacobabad",
-    "Shikarpur", "Mirpur Khas", "Tando Allahyar", "Dadu", "Badin", "Thatta", "Khairpur", "Sanghar",
-    "Umerkot", "Ghotki", "Naushahro Feroze", "Tando Muhammad Khan", "Matiari", "Tando Allahyar", "Jamshoro"
+    "Badin", "Bhiria", "Chachro", "Dadu", "Daharki", "Digri", "Ghotki", "Hala", "Hyderabad", "Islamkot",
+    "Jacobabad", "Jamshoro", "Kandhkot", "Kandiaro", "Karachi", "Kashmore", "Khairpur", "Khairpur Nathan Shah",
+    "Khipro", "Kot Ghulam Muhammad", "Kotri", "Kunri", "Larkana", "Matiari", "Mehrabpur", "Mirpur Khas",
+    "Mithi", "Moro", "Nagarparkar", "Naushahro Feroze", "Nawabshah", "Qazi Ahmad", "Rohri", "Sakrand",
+    "Samaro", "Sanghar", "Sehwan", "Shahdadpur", "Shikarpur", "Sukkur", "Tando Adam", "Tando Allahyar",
+    "Tando Muhammad Khan", "Thatta", "Umerkot", "Vik"
   ],
   "KPK": [
-    "Peshawar", "Mardan", "Mingora", "Kohat", "Nowshera", "Abbottabad", "Mansehra", "Battagram",
-    "Haripur", "Dera Ismail Khan", "Bannu", "Swabi", "Charsadda", "Pabbi", "Barikot", "Daggar",
-    "Timergara", "Batkhela", "Tank", "Lakki Marwat", "Kulachi", "Tangi", "Takht-i-Bahi", "Mardan",
-    "Charsadda", "Nowshera", "Swabi", "Mingora", "Barikot", "Daggar", "Timergara", "Batkhela"
+    "Abbottabad", "Bajaur", "Bannu", "Barikot", "Battagram", "Batkhela", "Buner", "Charsadda", "Chitral",
+    "Daggar", "Dera Ismail Khan", "Dir", "Gomal", "Hangu", "Haripur", "Jandola", "Kaniguram", "Karak",
+    "Khyber", "Kohat", "Kulachi", "Lakki Marwat", "Lower Dir", "Malakand", "Mardan", "Mansehra", "Makeen",
+    "Mohmand", "Mingora", "North Waziristan", "Nowshera", "Orakzai", "Pabbi", "Paharpur", "Paroa", "Peshawar",
+    "Razmak", "Sararogha", "Sarwakai", "Shakai", "Shangla", "South Waziristan", "Spinkai Raghzai", "Swabi",
+    "Swat", "Takht-i-Bahi", "Tangi", "Tank", "Timergara", "Tiarza", "Upper Dir", "Wana"
   ],
   "Balochistan": [
-    "Quetta", "Turbat", "Gwadar", "Zhob", "Chaman", "Sibi", "Khuzdar", "Kalat", "Mastung",
-    "Loralai", "Dera Murad Jamali", "Hub", "Usta Muhammad", "Surab", "Nushki", "Panjgur"
+    "Awaran", "Bela", "Barkhan", "Chagai", "Chaman", "Dalbandin", "Dera Bugti", "Dera Murad Jamali",
+    "Duki", "Ghizer", "Gulistan", "Gwadar", "Harnai", "Hub", "Jaffarabad", "Jhal Magsi", "Jiwani",
+    "Kachhi", "Kalat", "Kharan", "Khuzdar", "Killa Abdullah", "Killa Saifullah", "Kohlu", "Lasbela",
+    "Loralai", "Mastung", "Musakhel", "Nasirabad", "Nok Kundi", "Nushki", "Ormara", "Panjgur", "Pasni",
+    "Pishin", "Qila Saifullah", "Quetta", "Sherani", "Sibi", "Surab", "Taftan", "Turbat", "Usta Muhammad",
+    "Uthal", "Washuk", "Winder", "Ziarat", "Zhob"
   ],
   "Islamabad": [
     "Islamabad"
   ],
   "GB": [
-    "Gilgit", "Skardu", "Hunza", "Chitral", "Ghizer", "Diamer", "Astore", "Ghanche"
+    "Astore", "Chitral", "Darel", "Diamer", "Ghanche", "Ghizer", "Gilgit", "Gultari", "Gojal", "Hunza",
+    "Ishkoman", "Kharmang", "Nagar", "Punial", "Roundu", "Shigar", "Skardu", "Tangir", "Yasin"
   ],
   "AJK": [
-    "Muzaffarabad", "Mirpur", "Kotli", "Bhimber", "Rawalakot", "Bagh", "Hattian Bala", "Neelum",
-    "Sudhnuti", "Poonch", "Haveli"
+    "Athmuqam", "Bagh", "Barnala", "Bhimber", "Chakswari", "Dadyal", "Forward Kahuta", "Hattian Bala",
+    "Haveli", "Kel", "Kotli", "Mendhar", "Mirpur", "Muzaffarabad", "Nakyal", "Neelum", "Poonch",
+    "Rawalakot", "Samahni", "Sehnsa", "Sharda", "Sudhnuti"
   ]
 };
 
+// Cache for deduplicated cities
+const citiesCache: Record<string, string[]> = {};
+
+// Get all cities for a specific province (with deduplication and alphabetical sorting)
 const getCitiesByProvince = (province: string): string[] => {
-  return citiesByProvince[province] || [];
+  if (citiesCache[province]) {
+    return citiesCache[province];
+  }
+  
+  const cities = citiesByProvinceRaw[province] || [];
+  const seen = new Set<string>();
+  const deduplicated = cities.filter(city => {
+    const normalized = city.trim().toLowerCase();
+    if (seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
+  
+  // Sort cities alphabetically
+  const sorted = deduplicated.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+  
+  citiesCache[province] = sorted;
+  return sorted;
 };
 
 type EditableCountryProvinceCityProps = {
@@ -239,15 +301,10 @@ export default function EditableCountryProvinceCity({
   onProvinceChange,
   onCityChange,
 }: EditableCountryProvinceCityProps) {
-  const [citySearch, setCitySearch] = useState("");
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [provinceCustomInput, setProvinceCustomInput] = useState(false);
-
   const selectedCountry = String(countryValue || "");
   const selectedProvince = String(provinceValue || "");
-  const selectedCity = String(cityValue || "");
 
-  // Province options based on country
+  // Province options based on country (only for Pakistan)
   const provinceOptions = useMemo(() => {
     if (selectedCountry === "Pakistan") {
       return [
@@ -263,18 +320,6 @@ export default function EditableCountryProvinceCity({
     return [];
   }, [selectedCountry]);
 
-  // Province dropdown options for non-Pakistan countries
-  const nonPakistanProvinceOptions = useMemo(() => {
-    if (selectedCountry && selectedCountry !== "" && selectedCountry !== "Select" && selectedCountry !== "Pakistan") {
-      return [
-        { value: "", label: "Select" },
-        { value: "Not applicable", label: "Not applicable" },
-        { value: "Specify province", label: "Specify province" },
-      ];
-    }
-    return [];
-  }, [selectedCountry]);
-
   // Get cities for selected province
   const provinceCities = useMemo(() => {
     if (selectedCountry === "Pakistan" && selectedProvince) {
@@ -283,74 +328,20 @@ export default function EditableCountryProvinceCity({
     return [];
   }, [selectedCountry, selectedProvince]);
 
-  // Filter cities based on search
-  const filteredCities = useMemo(() => {
-    if (selectedCountry === "Pakistan" && !selectedProvince) {
-      return [];
-    }
-    if (selectedCountry === "Pakistan" && selectedProvince && provinceCities.length > 0) {
-      if (!citySearch.trim()) {
-        return provinceCities; // Show all cities if no search text
-      }
-      const searchLower = citySearch.toLowerCase();
-      return provinceCities.filter(city => 
-        city.toLowerCase().includes(searchLower)
-      );
-    }
-    return [];
-  }, [citySearch, selectedCountry, selectedProvince, provinceCities]);
-
-  // Initialize citySearch from value when component mounts or value changes (but not during active typing)
-  useEffect(() => {
-    if (selectedCountry === "Pakistan" && selectedCity) {
-      // Only sync if citySearch is empty or if the selectedCity doesn't match current citySearch
-      // This prevents overwriting user input while typing
-      if (citySearch === "" || citySearch !== selectedCity) {
-        setCitySearch(selectedCity);
-      }
-    } else if (!selectedCity) {
-      setCitySearch("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity, selectedCountry]);
-
-  // Reset province and city when country changes
-  useEffect(() => {
-    if (selectedCountry && selectedCountry !== "Pakistan") {
-      // Don't auto-set province - let user choose "Not applicable" or specify
-      onProvinceChange("province", "");
-      onCityChange("city", "");
-      setCitySearch("");
-      setProvinceCustomInput(false);
-    } else {
-      setProvinceCustomInput(false);
-    }
-  }, [selectedCountry, onProvinceChange, onCityChange]);
-
-  // Track if province has a custom value (not "Not applicable")
-  useEffect(() => {
-    if (selectedCountry && selectedCountry !== "Pakistan") {
-      const hasCustomValue = selectedProvince && selectedProvince !== "Not applicable" && selectedProvince.trim() !== "";
-      if (hasCustomValue) {
-        setProvinceCustomInput(true);
-      } else if (selectedProvince === "Not applicable") {
-        setProvinceCustomInput(false);
-      }
-    }
-  }, [selectedProvince, selectedCountry]);
-
+  // Reset city when province changes (for Pakistan)
   useEffect(() => {
     if (selectedCountry === "Pakistan" && selectedProvince) {
       const validCities = getCitiesByProvince(selectedProvince);
-      if (selectedCity && !validCities.includes(selectedCity)) {
+      const currentCity = String(cityValue || "");
+      // Only reset if current city is not in the valid cities list for the new province
+      if (currentCity && !validCities.includes(currentCity)) {
         onCityChange("city", "");
-        setCitySearch("");
       }
     } else if (selectedCountry === "Pakistan" && !selectedProvince) {
+      // Clear city if province is cleared
       onCityChange("city", "");
-      setCitySearch("");
     }
-  }, [selectedProvince, selectedCountry, selectedCity, onCityChange]);
+  }, [selectedProvince, selectedCountry, cityValue, onCityChange]);
 
   return (
     <>
@@ -363,7 +354,8 @@ export default function EditableCountryProvinceCity({
         options={countryOptions}
         batchMode={true}
       />
-      {selectedCountry === "Pakistan" ? (
+      {/* Province - only shown for Pakistan */}
+      {selectedCountry === "Pakistan" && (
         <EditableField
           label="Province"
           value={provinceValue}
@@ -373,85 +365,38 @@ export default function EditableCountryProvinceCity({
           options={provinceOptions}
           batchMode={true}
         />
-      ) : selectedCountry && selectedCountry !== "" && selectedCountry !== "Select" ? (
-        <div className="flex flex-col group">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-gray-500">Province</span>
-          </div>
-          <div className="flex flex-col gap-2">
-            <select
-              value={selectedProvince === "Not applicable" ? "Not applicable" : (provinceCustomInput || (selectedProvince && selectedProvince !== "Not applicable" && selectedProvince.trim() !== "") ? "" : "")}
-              onChange={(e) => {
-                if (e.target.value === "Not applicable") {
-                  setProvinceCustomInput(false);
-                  onProvinceChange("province", "Not applicable");
-                } else if (e.target.value === "Specify province") {
-                  setProvinceCustomInput(true);
-                  onProvinceChange("province", "");
-                } else {
-                  onProvinceChange("province", "");
-                }
-              }}
-              className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {nonPakistanProvinceOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {(provinceCustomInput || (selectedProvince && selectedProvince !== "Not applicable" && selectedProvince.trim() !== "")) && (
-              <input
-                type="text"
-                placeholder="Enter province/state"
-                value={selectedProvince && selectedProvince !== "Not applicable" ? String(selectedProvince) : ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  onProvinceChange("province", val);
-                  if (val.trim() !== "") {
-                    setProvinceCustomInput(true);
-                  }
-                }}
-                maxLength={50}
-                className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            )}
-          </div>
-        </div>
-      ) : (
+      )}
+      {/* City field - uses datalist for Pakistan, text input for others */}
+      {selectedCountry === "Pakistan" && !selectedProvince ? (
         <EditableField
-          label="Province"
-          value={provinceValue}
-          fieldKey="province"
-          onValueChange={onProvinceChange}
+          label="City"
+          value={cityValue}
+          fieldKey="city"
+          onValueChange={onCityChange}
           type="text"
           batchMode={true}
+          placeholder="Please select a province first"
+          disabled={true}
+        />
+      ) : (
+        <EditableField
+          label="City"
+          value={cityValue}
+          fieldKey="city"
+          onValueChange={onCityChange}
+          type="text"
+          batchMode={true}
+          datalistId={selectedCountry === "Pakistan" && selectedProvince ? "city-datalist" : undefined}
+          placeholder={selectedCountry === "Pakistan" ? "Select from list or type your city" : "Enter city name"}
         />
       )}
-      {selectedCountry === "Pakistan" ? (
-        <EditableCityField
-          provinceCities={provinceCities}
-          selectedCity={selectedCity}
-          label="City"
-          value={cityValue}
-          fieldKey="city"
-          onValueChange={onCityChange}
-          selectedProvince={selectedProvince}
-          citySearch={citySearch}
-          setCitySearch={setCitySearch}
-          showCityDropdown={showCityDropdown}
-          setShowCityDropdown={setShowCityDropdown}
-          filteredCities={filteredCities}
-        />
-      ) : (
-        <EditableField
-          label="City"
-          value={cityValue}
-          fieldKey="city"
-          onValueChange={onCityChange}
-          type="text"
-          batchMode={true}
-        />
+      {/* Datalist for Pakistan cities */}
+      {selectedCountry === "Pakistan" && selectedProvince && provinceCities.length > 0 && (
+        <datalist id="city-datalist">
+          {provinceCities.map((city) => (
+            <option key={city} value={city} />
+          ))}
+        </datalist>
       )}
     </>
   );

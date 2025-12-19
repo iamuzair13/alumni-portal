@@ -171,38 +171,80 @@ export async function GET(req: Request) {
     }
     
     // Home Country filter
+    // Handle any unique value from the database, including NULL
     let homeCountryFilter = sql``;
     if (homeCountry && (Array.isArray(homeCountry) ? homeCountry.length > 0 : homeCountry)) {
       if (Array.isArray(homeCountry) && homeCountry.length > 0) {
-        const conditions = homeCountry.map(c => sql`LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${c}))`);
+        const conditions = homeCountry.map(c => {
+          const normalized = String(c).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(country IS NULL OR TRIM(COALESCE(country, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${c}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         homeCountryFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(homeCountry) && homeCountry) {
-        homeCountryFilter = sql`AND LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${homeCountry}))`;
+        const normalized = String(homeCountry).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          homeCountryFilter = sql`AND (country IS NULL OR TRIM(COALESCE(country, '')) = '')`;
+        } else {
+          homeCountryFilter = sql`AND LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${homeCountry}))`;
+        }
       }
     }
     
     // Home City filter
+    // Handle any unique value from the database, including NULL
     let homeCityFilter = sql``;
     if (homeCity && (Array.isArray(homeCity) ? homeCity.length > 0 : homeCity)) {
       if (Array.isArray(homeCity) && homeCity.length > 0) {
-        const conditions = homeCity.map(c => sql`LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${c}))`);
+        const conditions = homeCity.map(c => {
+          const normalized = String(c).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(city IS NULL OR TRIM(COALESCE(city, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${c}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         homeCityFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(homeCity) && homeCity) {
-        homeCityFilter = sql`AND LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${homeCity}))`;
+        const normalized = String(homeCity).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          homeCityFilter = sql`AND (city IS NULL OR TRIM(COALESCE(city, '')) = '')`;
+        } else {
+          homeCityFilter = sql`AND LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${homeCity}))`;
+        }
       }
     }
     
     // Province filter
+    // Handle any unique value from the database, including NULL
     let provinceFilter = sql``;
     if (province && (Array.isArray(province) ? province.length > 0 : province)) {
       if (Array.isArray(province) && province.length > 0) {
-        const conditions = province.map(p => sql`LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${p}))`);
+        const conditions = province.map(p => {
+          const normalized = String(p).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(province IS NULL OR TRIM(COALESCE(province, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${p}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         provinceFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(province) && province) {
-        provinceFilter = sql`AND LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${province}))`;
+        const normalized = String(province).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          provinceFilter = sql`AND (province IS NULL OR TRIM(COALESCE(province, '')) = '')`;
+        } else {
+          provinceFilter = sql`AND LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${province}))`;
+        }
       }
     }
     
@@ -233,10 +275,16 @@ export async function GET(req: Request) {
     }
     
     // Admission Year filter (integer)
+    // Handle any unique value from the database, including NULL
     let admissionYearFilter = sql``;
     if (admissionYear && (Array.isArray(admissionYear) ? admissionYear.length > 0 : admissionYear)) {
       if (Array.isArray(admissionYear) && admissionYear.length > 0) {
         const conditions = admissionYear.map(y => {
+          const normalized = String(y).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(yearofstarting IS NULL)`;
+          }
           const year = parseInt(y, 10);
           if (isNaN(year)) return sql`1=0`;
           return sql`yearofstarting = ${year}`;
@@ -244,18 +292,29 @@ export async function GET(req: Request) {
         const combinedCondition = combineOrConditions(conditions);
         admissionYearFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(admissionYear) && admissionYear) {
-        const year = parseInt(admissionYear, 10);
-        if (!isNaN(year)) {
-          admissionYearFilter = sql`AND yearofstarting = ${year}`;
+        const normalized = String(admissionYear).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          admissionYearFilter = sql`AND (yearofstarting IS NULL)`;
+        } else {
+          const year = parseInt(admissionYear, 10);
+          if (!isNaN(year)) {
+            admissionYearFilter = sql`AND yearofstarting = ${year}`;
+          }
         }
       }
     }
     
     // Passing Year filter (integer)
+    // Handle any unique value from the database, including NULL
     let passingYearFilter = sql``;
     if (passingYear && (Array.isArray(passingYear) ? passingYear.length > 0 : passingYear)) {
       if (Array.isArray(passingYear) && passingYear.length > 0) {
         const conditions = passingYear.map(y => {
+          const normalized = String(y).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(yearofending IS NULL)`;
+          }
           const year = parseInt(y, 10);
           if (isNaN(year)) return sql`1=0`;
           return sql`yearofending = ${year}`;
@@ -263,9 +322,14 @@ export async function GET(req: Request) {
         const combinedCondition = combineOrConditions(conditions);
         passingYearFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(passingYear) && passingYear) {
-        const year = parseInt(passingYear, 10);
-        if (!isNaN(year)) {
-          passingYearFilter = sql`AND yearofending = ${year}`;
+        const normalized = String(passingYear).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          passingYearFilter = sql`AND (yearofending IS NULL)`;
+        } else {
+          const year = parseInt(passingYear, 10);
+          if (!isNaN(year)) {
+            passingYearFilter = sql`AND yearofending = ${year}`;
+          }
         }
       }
     }
@@ -295,102 +359,212 @@ export async function GET(req: Request) {
     }
     
     // Sector filter (partial matching with LIKE for text input)
+    // Handle any unique value from the database, including NULL
     let sectorFilter = sql``;
     if (sector && (Array.isArray(sector) ? sector.length > 0 : sector)) {
       if (Array.isArray(sector) && sector.length > 0) {
         const conditions = sector.map(s => {
-          const searchTerm = `%${s.trim().toLowerCase()}%`;
+          const normalized = String(s).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(industry IS NULL OR TRIM(COALESCE(industry, '')) = '')`;
+          }
+          // Handle any other value - partial match (case-insensitive)
+          const searchTerm = `%${normalized.toLowerCase()}%`;
           return sql`LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
         });
         const combinedCondition = combineOrConditions(conditions);
         sectorFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(sector) && sector) {
-        const searchTerm = `%${sector.trim().toLowerCase()}%`;
-        sectorFilter = sql`AND LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
+        const normalized = String(sector).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          sectorFilter = sql`AND (industry IS NULL OR TRIM(COALESCE(industry, '')) = '')`;
+        } else {
+          const searchTerm = `%${normalized.toLowerCase()}%`;
+          sectorFilter = sql`AND LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
+        }
       }
     }
     
     // Work City filter
+    // Handle any unique value from the database, including NULL
     let workCityFilter = sql``;
     if (workCity && (Array.isArray(workCity) ? workCity.length > 0 : workCity)) {
       if (Array.isArray(workCity) && workCity.length > 0) {
-        const conditions = workCity.map(w => sql`LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${w}))`);
+        const conditions = workCity.map(w => {
+          const normalized = String(w).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${w}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         workCityFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(workCity) && workCity) {
-        workCityFilter = sql`AND LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${workCity}))`;
+        const normalized = String(workCity).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          workCityFilter = sql`AND (work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '')`;
+        } else {
+          workCityFilter = sql`AND LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${workCity}))`;
+        }
       }
     }
     
     // Work Country filter
+    // Handle any unique value from the database, including NULL
     let workCountryFilter = sql``;
     if (workCountry && (Array.isArray(workCountry) ? workCountry.length > 0 : workCountry)) {
       if (Array.isArray(workCountry) && workCountry.length > 0) {
-        const conditions = workCountry.map(w => sql`LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${w}))`);
+        const conditions = workCountry.map(w => {
+          const normalized = String(w).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(work_country IS NULL OR TRIM(COALESCE(work_country, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${w}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         workCountryFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(workCountry) && workCountry) {
-        workCountryFilter = sql`AND LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${workCountry}))`;
+        const normalized = String(workCountry).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          workCountryFilter = sql`AND (work_country IS NULL OR TRIM(COALESCE(work_country, '')) = '')`;
+        } else {
+          workCountryFilter = sql`AND LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${workCountry}))`;
+        }
       }
     }
     
     // Institution Name filter
+    // Handle any unique value from the database, including NULL
     let institutionNameFilter = sql``;
     if (institutionName && (Array.isArray(institutionName) ? institutionName.length > 0 : institutionName)) {
       if (Array.isArray(institutionName) && institutionName.length > 0) {
-        const conditions = institutionName.map(i => sql`LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${i}))`);
+        const conditions = institutionName.map(i => {
+          const normalized = String(i).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_institute_name IS NULL OR TRIM(COALESCE(higher_education_institute_name, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${i}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         institutionNameFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(institutionName) && institutionName) {
-        institutionNameFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${institutionName}))`;
+        const normalized = String(institutionName).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          institutionNameFilter = sql`AND (higher_education_institute_name IS NULL OR TRIM(COALESCE(higher_education_institute_name, '')) = '')`;
+        } else {
+          institutionNameFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${institutionName}))`;
+        }
       }
     }
     
     // Program Enrolled filter
+    // Handle any unique value from the database, including NULL
     let programEnrolledFilter = sql``;
     if (programEnrolled && (Array.isArray(programEnrolled) ? programEnrolled.length > 0 : programEnrolled)) {
       if (Array.isArray(programEnrolled) && programEnrolled.length > 0) {
-        const conditions = programEnrolled.map(p => sql`LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${p}))`);
+        const conditions = programEnrolled.map(p => {
+          const normalized = String(p).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_program IS NULL OR TRIM(COALESCE(higher_education_program, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${p}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         programEnrolledFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(programEnrolled) && programEnrolled) {
-        programEnrolledFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${programEnrolled}))`;
+        const normalized = String(programEnrolled).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          programEnrolledFilter = sql`AND (higher_education_program IS NULL OR TRIM(COALESCE(higher_education_program, '')) = '')`;
+        } else {
+          programEnrolledFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${programEnrolled}))`;
+        }
       }
     }
     
     // Funding Source filter
+    // Handle any unique value from the database, including NULL
     let fundingSourceFilter = sql``;
     if (fundingSource && (Array.isArray(fundingSource) ? fundingSource.length > 0 : fundingSource)) {
       if (Array.isArray(fundingSource) && fundingSource.length > 0) {
-        const conditions = fundingSource.map(f => sql`LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${f}))`);
+        const conditions = fundingSource.map(f => {
+          const normalized = String(f).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${f}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         fundingSourceFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(fundingSource) && fundingSource) {
-        fundingSourceFilter = sql`AND LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${fundingSource}))`;
+        const normalized = String(fundingSource).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          fundingSourceFilter = sql`AND (is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '')`;
+        } else {
+          fundingSourceFilter = sql`AND LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${fundingSource}))`;
+        }
       }
     }
     
     // Institution Country filter
+    // Handle any unique value from the database, including NULL
     let institutionCountryFilter = sql``;
     if (institutionCountry && (Array.isArray(institutionCountry) ? institutionCountry.length > 0 : institutionCountry)) {
       if (Array.isArray(institutionCountry) && institutionCountry.length > 0) {
-        const conditions = institutionCountry.map(i => sql`LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${i}))`);
+        const conditions = institutionCountry.map(i => {
+          const normalized = String(i).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${i}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         institutionCountryFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(institutionCountry) && institutionCountry) {
-        institutionCountryFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${institutionCountry}))`;
+        const normalized = String(institutionCountry).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          institutionCountryFilter = sql`AND (higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '')`;
+        } else {
+          institutionCountryFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${institutionCountry}))`;
+        }
       }
     }
     
     // Institution City filter
+    // Handle any unique value from the database, including NULL
     let institutionCityFilter = sql``;
     if (institutionCity && (Array.isArray(institutionCity) ? institutionCity.length > 0 : institutionCity)) {
       if (Array.isArray(institutionCity) && institutionCity.length > 0) {
-        const conditions = institutionCity.map(i => sql`LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${i}))`);
+        const conditions = institutionCity.map(i => {
+          const normalized = String(i).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_institute_city IS NULL OR TRIM(COALESCE(higher_education_institute_city, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${i}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         institutionCityFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(institutionCity) && institutionCity) {
-        institutionCityFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${institutionCity}))`;
+        const normalized = String(institutionCity).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          institutionCityFilter = sql`AND (higher_education_institute_city IS NULL OR TRIM(COALESCE(higher_education_institute_city, '')) = '')`;
+        } else {
+          institutionCityFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${institutionCity}))`;
+        }
       }
     }
     

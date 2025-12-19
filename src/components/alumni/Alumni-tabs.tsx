@@ -4101,8 +4101,9 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.map((alum, idx) => {
                   // Format SapId/Registration No as --/1234 or 1234/-- (memoized)
+                  // Use sapId from the item (which is the actual SAP ID, not the fallback id)
                   const sapIdRegNo = (() => {
-                    const sapId = alum.id || "";
+                    const sapId = alum.sapId || ""; // Use the actual SAP ID field
                     const regNo = alum.registrationNo || "";
                     
                     if (sapId && regNo) {

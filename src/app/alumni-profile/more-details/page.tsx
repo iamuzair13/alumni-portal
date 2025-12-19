@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
@@ -28,8 +28,63 @@ function MoreDetailsContent() {
   const updateMutation = useUpdateAlumniFields(sapId || undefined);
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Mark as initialized once data is loaded (prevents false positives on initial render)
+  // Also clear any pending changes that might have been set during initialization
+  useEffect(() => {
+    if (data && !isLoading && !isInitialized) {
+      // Clear any pending changes that might have been incorrectly set during initialization
+      setPendingChanges({});
+      // Longer delay to ensure all components (including nested ones) have finished their initial render
+      // This prevents any onValueChange calls during initialization from being tracked
+      const timer = setTimeout(() => {
+        setIsInitialized(true);
+        // Final check: clear any pending changes that might have been set during the delay
+        setPendingChanges((prev) => {
+          // Only clear if there are changes (to avoid unnecessary state updates)
+          if (Object.keys(prev).length > 0) {
+            return {};
+          }
+          return prev;
+        });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [data, isLoading, isInitialized]);
+
+  // Helper function to normalize values for comparison (treat null, undefined, and empty string as equivalent)
+  const normalizeValue = (val: unknown): unknown => {
+    if (val === null || val === undefined || val === "") return null;
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      // Treat "Not provided", "N/A", "NA", etc. as equivalent to null/empty
+      if (trimmed === "" || trimmed.toLowerCase() === "not provided" || trimmed.toLowerCase() === "n/a" || trimmed.toLowerCase() === "na") {
+        return null;
+      }
+      return trimmed;
+    }
+    return val;
+  };
+
+  // Helper function to check if two values are effectively the same
+  const valuesAreEqual = (val1: unknown, val2: unknown): boolean => {
+    const normalized1 = normalizeValue(val1);
+    const normalized2 = normalizeValue(val2);
+    // Also handle number comparisons (e.g., "123" === 123)
+    if (typeof normalized1 === "string" && typeof normalized2 === "number") {
+      return normalized1 === String(normalized2);
+    }
+    if (typeof normalized1 === "number" && typeof normalized2 === "string") {
+      return String(normalized1) === normalized2;
+    }
+    return normalized1 === normalized2;
+  };
 
   const handleFieldValueChange = useCallback((key: string, value: unknown) => {
+    // Don't track changes until component is fully initialized
+    if (!data || !isInitialized) return;
+    
     if (value === undefined) {
       // Remove from pending changes
       setPendingChanges((prev) => {
@@ -38,13 +93,25 @@ function MoreDetailsContent() {
         return next;
       });
     } else {
-      // Add or update pending change
-      setPendingChanges((prev) => ({
-        ...prev,
-        [key]: value,
-      }));
+      // Get the original value from data
+      const originalValue = (data as Record<string, unknown>)?.[key];
+      
+      // Only add to pending changes if the value is actually different from the original
+      if (!valuesAreEqual(value, originalValue)) {
+        setPendingChanges((prev) => ({
+          ...prev,
+          [key]: value,
+        }));
+      } else {
+        // If the value matches the original, remove it from pending changes (in case it was there before)
+        setPendingChanges((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
     }
-  }, []);
+  }, [data, isInitialized]);
 
   const handleSaveAll = async () => {
     if (!sapId || Object.keys(pendingChanges).length === 0 || isSavingAll) return;
@@ -166,8 +233,6 @@ function MoreDetailsContent() {
         { key: "higher_education_institute_country", label: "Country" },
         { key: "higher_education_institute_city", label: "City" },
         { key: "is_scholarship", label: "Scholarship" },
-        { key: "higher_education_institute_email", label: "Institute Official Email" },
-        { key: "higher_education_intiture_number", label: "Institute Official Phone Number" },
       ];
 
       const missingFields: string[] = [];
@@ -375,12 +440,12 @@ function MoreDetailsContent() {
       ],
     },
     {
-      title: "Address Information (For Pakistan Only)",
+      title: "Address Information",
       fields: [
-        { label: "Country", value: data.country, key: "country", editable: true, isSpecial: true },
-        { label: "Province (for Pakistan only)", value: data.province, key: "province", editable: true, isSpecial: true },
-        { label: "City", value: data.city, key: "city", editable: true, isSpecial: true },
-        { label: "Address", value: data.address, key: "address", editable: true, type: "textarea" as const },
+        { label: "Home Country", value: data.country, key: "country", editable: true, isSpecial: true },
+        { label: "Home Province", value: data.province, key: "province", editable: true, isSpecial: true },
+        { label: "Home City", value: data.city, key: "city", editable: true, isSpecial: true },
+        { label: "Home Address", value: data.address, key: "address", editable: true, type: "textarea" as const },
       ],
     },
     {
@@ -513,7 +578,7 @@ function MoreDetailsContent() {
                   {section.title}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {section.title === "Address Information (For Pakistan Only)" ? (
+                  {section.title === "Address Information" ? (
                     // Special rendering for Country/Province/City with dependencies
                     <>
                       <EditableCountryProvinceCity

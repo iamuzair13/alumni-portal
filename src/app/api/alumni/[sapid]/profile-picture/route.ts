@@ -3,18 +3,115 @@ import { sql } from "@/lib/dbconnect";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { auth } from "@/lib/auth";
+import { canModify, isViewerUser } from "@/lib/alumniProfile";
 
 export async function POST(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
+    const session = await auth();
     
-    // Verify alumni exists
-    const alumniRows = await sql/* sql */`
-      SELECT alumniid FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+    // SECURITY: Require authentication
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // Normalize identifier (trim whitespace, handle encoding)
+    const normalizedIdentifier = String(sapid || "").trim();
+    
+    console.log("[API] Profile picture upload request for identifier:", normalizedIdentifier);
+    console.log("[API] Session user email:", session.user.email);
+    console.log("[API] Session user SAP ID:", (session.user as { sapid?: string | null })?.sapid);
+    
+    // Try to find alumni by SAP ID first, then by registration number (like other routes)
+    // Use TRIM() and case-insensitive comparison for better matching
+    let alumniRows = await sql/* sql */`
+      SELECT alumniid, sapid, registrationno FROM public.tbl_alumni 
+      WHERE TRIM(COALESCE(sapid, '')) = ${normalizedIdentifier} 
+      LIMIT 1`;
+    
+    // If not found by SAP ID, try registration number
+    if (!alumniRows[0]) {
+      alumniRows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno FROM public.tbl_alumni 
+        WHERE TRIM(COALESCE(registrationno, '')) = ${normalizedIdentifier} 
+        LIMIT 1`;
+    }
+    
+    // If still not found, try case-insensitive matching (for edge cases)
+    if (!alumniRows[0]) {
+      alumniRows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno FROM public.tbl_alumni 
+        WHERE LOWER(TRIM(COALESCE(sapid, ''))) = LOWER(${normalizedIdentifier})
+        LIMIT 1`;
+    }
     
     if (!alumniRows[0]) {
+      alumniRows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno FROM public.tbl_alumni 
+        WHERE LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(${normalizedIdentifier})
+        LIMIT 1`;
+    }
+    
+    if (!alumniRows[0]) {
+      console.log("[API] Alumni not found for identifier:", normalizedIdentifier);
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
     }
+    
+    const alumni = alumniRows[0] as { alumniid: number; sapid: string | null; registrationno: string | null };
+    
+    // SECURITY: Verify the user has permission to update this profile
+    // Get user identifiers from session
+    const userEmail = session.user.email ? String(session.user.email) : null;
+    const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : null;
+    const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : null;
+    
+    // Check if user is admin or can modify (superadmin)
+    const canAccess = canModify(session.user);
+    const isViewer = isViewerUser(session.user);
+    
+    // Check ownership by SAP ID
+    const dbSapid = String(alumni.sapid ?? "").trim();
+    const dbRegNo = String(alumni.registrationno ?? "").trim();
+    const isOwnerBySapid = userSapid && dbSapid && dbSapid.toLowerCase() === userSapid.toLowerCase();
+    const isOwnerByRegNo = userRegNo && dbRegNo && dbRegNo.toLowerCase() === userRegNo.toLowerCase();
+    
+    // Check ownership by identifier match (when user passes their own identifier)
+    const identifierMatchesRow = normalizedIdentifier && (
+      (dbSapid && dbSapid.toLowerCase() === normalizedIdentifier.toLowerCase()) ||
+      (dbRegNo && dbRegNo.toLowerCase() === normalizedIdentifier.toLowerCase())
+    );
+    
+    // For alumni users, also check by email if available (get email from database)
+    let isOwnerByEmail = false;
+    if (userEmail && !isOwnerBySapid && !isOwnerByRegNo) {
+      const emailRows = await sql/* sql */`
+        SELECT personalemail, universityemail, officialemail FROM public.tbl_alumni 
+        WHERE alumniid = ${alumni.alumniid} 
+        LIMIT 1` as Array<{ personalemail: string | null; universityemail: string | null; officialemail: string | null }>;
+      
+      if (emailRows[0]) {
+        const emails = [
+          emailRows[0].personalemail,
+          emailRows[0].universityemail,
+          emailRows[0].officialemail
+        ].filter(Boolean).map(e => String(e).toLowerCase().trim());
+        isOwnerByEmail = emails.includes(userEmail.toLowerCase().trim());
+      }
+    }
+    
+    const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail || identifierMatchesRow;
+    const canUpdate = isOwner || canAccess || isViewer;
+    
+    console.log("[API] Ownership check - isOwner:", isOwner, "canAccess:", canAccess, "isViewer:", isViewer, "canUpdate:", canUpdate);
+    
+    if (!canUpdate) {
+      console.log("[API] Access denied for identifier:", normalizedIdentifier);
+      return NextResponse.json({ error: "Forbidden: You don't have permission to update this profile" }, { status: 403 });
+    }
+    
+    // Use the actual SAP ID or registration number for the filename (prioritize SAP ID)
+    const identifierForFilename = (alumni.sapid && alumni.sapid.trim()) || (alumni.registrationno && alumni.registrationno.trim()) || normalizedIdentifier;
 
     const formData = await req.formData();
     const file = formData.get("image") as File | null;
@@ -71,27 +168,48 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       }, { status: 400 });
     }
 
-    // Generate unique filename
+    // Generate unique filename using the identifier (identifierForFilename is already defined above)
     const timestamp = Date.now();
     const finalExtension = extension || "jpg";
-    const filename = `${sapid}-${timestamp}.${finalExtension}`;
+    const filename = `${identifierForFilename}-${timestamp}.${finalExtension}`;
     
-    // Create uploads directory if it doesn't exist
+    // Create uploads directory if it doesn't exist (images directory in public folder)
     const uploadsDir = join(process.cwd(), "public", "images");
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
+    console.log("[API] Upload directory path:", uploadsDir);
+    
+    try {
+      if (!existsSync(uploadsDir)) {
+        console.log("[API] Creating upload directory:", uploadsDir);
+        await mkdir(uploadsDir, { recursive: true });
+      }
+    } catch (dirError) {
+      console.error("[API] Failed to create directory:", dirError);
+      return NextResponse.json({ 
+        error: "Failed to create upload directory. Please contact administrator." 
+      }, { status: 500 });
     }
 
     // Save file
     const filePath = join(uploadsDir, filename);
-    await writeFile(filePath, buffer);
+    console.log("[API] Saving file to:", filePath);
+    
+    try {
+      await writeFile(filePath, buffer);
+      console.log("[API] File saved successfully:", filename);
+    } catch (writeError) {
+      console.error("[API] Failed to write file:", writeError);
+      return NextResponse.json({ 
+        error: "Failed to save image file. Please try again." 
+      }, { status: 500 });
+    }
 
     // Check if image1 already has a value
     // If image1 is empty/null, save to image1; otherwise save to image2
     // image1 is used in AlumniCardTemplate, so we preserve it
     const currentData = await sql/* sql */`
       SELECT image1, image2 FROM public.tbl_alumni 
-      WHERE sapid = ${sapid} LIMIT 1` as Array<{ image1: string | null; image2: string | null }>;
+      WHERE alumniid = ${alumni.alumniid} 
+      LIMIT 1` as Array<{ image1: string | null; image2: string | null }>;
     
     const currentImage1 = currentData[0]?.image1;
     
@@ -100,13 +218,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       await sql/* sql */`
         UPDATE public.tbl_alumni 
         SET image1 = ${filename}
-        WHERE sapid = ${sapid}`;
+        WHERE alumniid = ${alumni.alumniid}`;
     } else {
       // image1 has value, save to image2
       await sql/* sql */`
         UPDATE public.tbl_alumni 
         SET image2 = ${filename}
-        WHERE sapid = ${sapid}`;
+        WHERE alumniid = ${alumni.alumniid}`;
     }
 
     // Return the full path for immediate display
