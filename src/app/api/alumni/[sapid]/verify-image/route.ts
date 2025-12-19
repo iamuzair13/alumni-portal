@@ -20,6 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { sapid } = await ctx.params;
     const { searchParams } = new URL(req.url);
     const filename = searchParams.get("filename");

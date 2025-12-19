@@ -1,11 +1,46 @@
 "use client";
 import EditableField from "./EditableField";
 
+// Employment status options matching AlumniSqlForm.tsx
 const employmentStatusOptions = [
-  { value: "Employed", label: "Employed" },
-  { value: "Unemployed", label: "Unemployed" },
-  { value: "HigherEd", label: "Pursuing Higher Education" },
+  { value: "Employed/Business", label: "Employed/Business" },
+  { value: "Self-employed", label: "Self-employed" },
+  { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
+  { value: "Unemployed By choice", label: "Unemployed By choice" },
+  { value: "Unemployed, searching for job", label: "Unemployed, searching for job" },
 ];
+
+// Helper function to map database values to display values
+export function mapDbValueToDisplay(dbValue: unknown): string {
+  if (!dbValue || typeof dbValue !== "string") return "";
+  const normalized = dbValue.trim();
+  
+  // Map database values to display values
+  if (normalized === "Employed") return "Employed/Business";
+  if (normalized === "Self-Emplo") return "Self-employed";
+  if (normalized === "Pursuing Higher Education" || normalized === "highered") return "Pursuing Higher Education";
+  if (normalized === "Unemployed By choice") return "Unemployed By choice";
+  if (normalized === "Unemployed, searching for job") return "Unemployed, searching for job";
+  
+  // If it doesn't match any known mapping, return as-is (for backward compatibility)
+  return normalized;
+}
+
+// Helper function to map display values to database values
+export function mapDisplayValueToDb(displayValue: unknown): string {
+  if (!displayValue || typeof displayValue !== "string") return "";
+  const normalized = displayValue.trim();
+  
+  // Map display values to database values (as per AlumniSqlForm.tsx onSubmit logic)
+  if (normalized === "Employed/Business") return "Employed";
+  if (normalized === "Self-employed") return "Self-Emplo";
+  if (normalized === "Pursuing Higher Education") return "Pursuing Higher Education";
+  if (normalized === "Unemployed By choice") return "Unemployed By choice";
+  if (normalized === "Unemployed, searching for job") return "Unemployed, searching for job";
+  
+  // Return as-is if no mapping needed
+  return normalized;
+}
 
 const scholarshipOptions = [
   { value: "full funded scholarship", label: "Full Funded Scholarship" },
@@ -20,8 +55,6 @@ type EditableEmploymentStatusProps = {
   designationValue: unknown;
   totalyearsofexpereinceValue: unknown;
   organizationAddressValue?: unknown;
-  officialEmailValue?: unknown;
-  officialNumberValue?: unknown;
   // Higher Education fields
   degreeTitleValue?: unknown;
   instituteNameValue?: unknown;
@@ -29,16 +62,12 @@ type EditableEmploymentStatusProps = {
   instituteCountryValue?: unknown;
   instituteCityValue?: unknown;
   scholarshipValue?: unknown;
-  instituteOfficialEmailValue?: unknown;
-  instituteOfficialNumberValue?: unknown;
   onEmployeedChange: (key: string, value: unknown) => void;
   onIndustryChange: (key: string, value: unknown) => void;
   onOrganizationChange: (key: string, value: unknown) => void;
   onDesignationChange: (key: string, value: unknown) => void;
   onExperienceChange: (key: string, value: unknown) => void;
   onOrganizationAddressChange?: (key: string, value: unknown) => void;
-  onOfficialEmailChange?: (key: string, value: unknown) => void;
-  onOfficialNumberChange?: (key: string, value: unknown) => void;
   // Higher Education handlers
   onDegreeTitleChange?: (key: string, value: unknown) => void;
   onInstituteNameChange?: (key: string, value: unknown) => void;
@@ -46,8 +75,6 @@ type EditableEmploymentStatusProps = {
   onInstituteCountryChange?: (key: string, value: unknown) => void;
   onInstituteCityChange?: (key: string, value: unknown) => void;
   onScholarshipChange?: (key: string, value: unknown) => void;
-  onInstituteOfficialEmailChange?: (key: string, value: unknown) => void;
-  onInstituteOfficialNumberChange?: (key: string, value: unknown) => void;
 };
 
 export default function EditableEmploymentStatus({
@@ -57,50 +84,56 @@ export default function EditableEmploymentStatus({
   designationValue,
   totalyearsofexpereinceValue,
   organizationAddressValue,
-  officialEmailValue,
-  officialNumberValue,
   degreeTitleValue,
   instituteNameValue,
   programValue,
   instituteCountryValue,
   instituteCityValue,
   scholarshipValue,
-  instituteOfficialEmailValue,
-  instituteOfficialNumberValue,
   onEmployeedChange,
   onIndustryChange,
   onOrganizationChange,
   onDesignationChange,
   onExperienceChange,
   onOrganizationAddressChange,
-  onOfficialEmailChange,
-  onOfficialNumberChange,
   onDegreeTitleChange,
   onInstituteNameChange,
   onProgramChange,
   onInstituteCountryChange,
   onInstituteCityChange,
   onScholarshipChange,
-  onInstituteOfficialEmailChange,
-  onInstituteOfficialNumberChange,
 }: EditableEmploymentStatusProps) {
+  // Map database value to display value for the select dropdown
+  const displayValue = mapDbValueToDisplay(employeedValue);
+  
+  // Handle value change: map display value back to database value before saving
+  const handleEmployeedChange = (key: string, value: unknown) => {
+    const dbValue = mapDisplayValueToDb(value);
+    onEmployeedChange(key, dbValue);
+  };
+  
   const employeedStatus = String(employeedValue || "").toLowerCase();
-  const isEmployed = employeedStatus === "employed";
+  // Check for both "Employed" (DB value) and "Employed/Business" (display value)
+  const isEmployed = employeedStatus === "employed" || employeedStatus === "employed/business";
+  // Check for "Self-Emplo" (DB value) and "Self-employed" (display value)
+  const isSelfEmployed = employeedStatus === "self-emplo" || employeedStatus === "self-employed";
+  // Check for both database and display values
   const isPursuingHigherEd = employeedStatus === "pursuing higher education" || employeedStatus === "highered";
-  const isUnemployed = employeedStatus === "unemployed" || (!isEmployed && !isPursuingHigherEd);
+  // Show employment fields for both "Employed" and "Self-employed"
+  const showEmploymentFields = isEmployed || isSelfEmployed;
 
   return (
     <>
       <EditableField
         label="Employment Status"
-        value={employeedValue}
+        value={displayValue}
         fieldKey="employeed"
-        onValueChange={onEmployeedChange}
+        onValueChange={handleEmployeedChange}
         type="select"
         options={employmentStatusOptions}
         batchMode={true}
       />
-      {isEmployed && (
+      {showEmploymentFields && (
         <>
           <EditableField
             label="Industry *"
@@ -141,26 +174,6 @@ export default function EditableEmploymentStatus({
               fieldKey="organization_address"
               onValueChange={onOrganizationAddressChange}
               type="textarea"
-              batchMode={true}
-            />
-          )}
-          {onOfficialEmailChange && (
-            <EditableField
-              label="Company Official Email *"
-              value={officialEmailValue}
-              fieldKey="officialemail"
-              onValueChange={onOfficialEmailChange}
-              type="email"
-              batchMode={true}
-            />
-          )}
-          {onOfficialNumberChange && (
-            <EditableField
-              label="Company Official Phone Number *"
-              value={officialNumberValue}
-              fieldKey="officialnumber"
-              onValueChange={onOfficialNumberChange}
-              type="tel"
               batchMode={true}
             />
           )}
@@ -233,31 +246,11 @@ export default function EditableEmploymentStatus({
               batchMode={true}
             />
           )}
-          {onInstituteOfficialEmailChange && (
-            <EditableField
-              label="Institute Official Email *"
-              value={instituteOfficialEmailValue}
-              fieldKey="higher_education_institute_email"
-              onValueChange={onInstituteOfficialEmailChange}
-              type="email"
-              batchMode={true}
-            />
-          )}
-          {onInstituteOfficialNumberChange && (
-            <EditableField
-              label="Institute Official Phone Number *"
-              value={instituteOfficialNumberValue}
-              fieldKey="higher_education_intiture_number"
-              onValueChange={onInstituteOfficialNumberChange}
-              type="tel"
-              batchMode={true}
-            />
-          )}
         </>
       )}
-      {isUnemployed && (
+      {!showEmploymentFields && !isPursuingHigherEd && (
         <div className="col-span-full text-sm text-gray-500 italic">
-          No employment fields to display when status is &quot;Unemployed&quot;
+          No employment fields to display for this status
         </div>
       )}
     </>
