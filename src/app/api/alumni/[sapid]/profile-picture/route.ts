@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
-import { writeFile, mkdir, unlink, stat } from "fs/promises";
+import { writeFile, mkdir, unlink, stat, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
@@ -194,8 +194,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
         : join(cwd, customUploadPath);
       console.log("[API] Using custom upload path from environment:", uploadsDir);
     } else {
-      // Standard Next.js path
+      // Standard Next.js path - ensure we're using the correct public directory
+      // Try to find the public directory relative to the project root
       uploadsDir = join(cwd, "public", "images");
+      
+      // Verify that public directory exists (Next.js requirement)
+      const publicDir = join(cwd, "public");
+      if (!existsSync(publicDir)) {
+        console.warn("[API] WARNING: public directory not found at:", publicDir);
+        console.warn("[API] Attempting to use cwd/public/images anyway:", uploadsDir);
+      } else {
+        console.log("[API] Public directory found at:", publicDir);
+      }
     }
     
     console.log("[API] ========== Path Information ==========");
@@ -203,6 +213,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     console.log("[API] NODE_ENV:", process.env.NODE_ENV);
     console.log("[API] Upload directory path:", uploadsDir);
     console.log("[API] Custom upload path env:", customUploadPath || "not set");
+    console.log("[API] Expected URL path: /images/" + filename);
     
     // Check if directory exists
     const dirExists = existsSync(uploadsDir);
@@ -269,6 +280,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       
       const stats = await stat(filePath);
       console.log("[API] File verification - Size:", stats.size, "bytes");
+      console.log("[API] File exists at:", filePath);
+      console.log("[API] File is readable:", stats.isFile());
+      console.log("[API] File permissions:", stats.mode.toString(8));
+      
+      // Verify the file is in the public directory structure
+      const relativePath = filePath.replace(cwd, "").replace(/\\/g, "/");
+      console.log("[API] File relative path from cwd:", relativePath);
+      
+      // Check if file is accessible (try to read first few bytes)
+      try {
+        const testRead = await readFile(filePath);
+        console.log("[API] File is readable - first 10 bytes:", Array.from(testRead.slice(0, 10)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' '));
+      } catch (readError) {
+        console.error("[API] ERROR: File cannot be read:", readError);
+      }
+      
+      if (!relativePath.includes("/public/images/") && !relativePath.includes("\\public\\images\\")) {
+        console.error("[API] WARNING: File is not in public/images directory structure!");
+        console.error("[API] Expected path pattern: .../public/images/filename");
+        console.error("[API] Actual relative path:", relativePath);
+        console.error("[API] This may cause Next.js to not serve the file correctly.");
+      } else {
+        console.log("[API] ✓ File is in correct public/images directory structure");
+      }
     } catch (writeError) {
       const error = writeError as NodeJS.ErrnoException;
       console.error("[API] Failed to write file:", writeError);
