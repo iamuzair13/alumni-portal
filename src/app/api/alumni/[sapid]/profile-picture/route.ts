@@ -7,12 +7,19 @@ import { auth } from "@/lib/auth";
 import { canModify, isViewerUser } from "@/lib/alumniProfile";
 
 export async function POST(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
+  const startTime = Date.now();
+  console.log("[API] ========== Profile Picture Upload Started ==========");
+  
   try {
     const { sapid } = await ctx.params;
+    console.log("[API] Received SAP ID from params:", sapid);
+    
     const session = await auth();
+    console.log("[API] Session check - user exists:", !!session?.user);
     
     // SECURITY: Require authentication
     if (!session?.user) {
+      console.error("[API] Unauthorized: No session user");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
@@ -182,7 +189,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     let uploadsDir: string;
     
     if (customUploadPath) {
-      // Use custom path from environment variable (absolute or relative)
       uploadsDir = customUploadPath.startsWith("/") 
         ? customUploadPath 
         : join(cwd, customUploadPath);
@@ -192,8 +198,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       uploadsDir = join(cwd, "public", "images");
     }
     
+    console.log("[API] ========== Path Information ==========");
     console.log("[API] Current working directory (cwd):", cwd);
+    console.log("[API] NODE_ENV:", process.env.NODE_ENV);
     console.log("[API] Upload directory path:", uploadsDir);
+    console.log("[API] Custom upload path env:", customUploadPath || "not set");
     
     // Check if directory exists
     const dirExists = existsSync(uploadsDir);
@@ -301,15 +310,42 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     // Return the full path for immediate display
     const imagePath = `/images/${filename}`;
+    const duration = Date.now() - startTime;
+    
+    console.log("[API] ========== Profile Picture Upload Success ==========");
+    console.log("[API] Upload completed in:", `${duration}ms`);
+    console.log("[API] Image path:", imagePath);
+    console.log("[API] Filename:", filename);
+    
     return NextResponse.json({ 
       ok: true, 
       imagePath,
       message: "Profile picture updated successfully" 
     }, { status: 200 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to update profile picture";
-    console.error("[API] Profile picture upload error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const duration = Date.now() - startTime;
+    const error = err instanceof Error ? err : new Error(String(err));
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      duration: `${duration}ms`
+    };
+    
+    console.error("[API] ========== Profile Picture Upload Error ==========");
+    console.error("[API] Error details:", JSON.stringify(errorDetails, null, 2));
+    console.error("[API] Full error object:", err);
+    
+    // Return detailed error in development, generic in production
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = isDevelopment 
+      ? `Failed to update profile picture: ${error.message}` 
+      : "Failed to update profile picture. Please contact administrator if this persists.";
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      ...(isDevelopment && { details: errorDetails })
+    }, { status: 500 });
   }
 }
 

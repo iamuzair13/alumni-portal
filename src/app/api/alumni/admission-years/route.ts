@@ -21,29 +21,37 @@ export async function GET() {
     }
 
     // Fetch unique admission year values with counts
+    // Use subquery to properly handle GROUP BY and ORDER BY
     const rows = await sql/* sql */`
-      SELECT 
-        CASE 
-          WHEN yearofstarting IS NULL 
-          THEN 'Null'
-          ELSE yearofstarting::text
-        END as year_value,
-        COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
-        ${accessFilterCondition}
-      GROUP BY 
-        CASE 
-          WHEN yearofstarting IS NULL 
-          THEN 'Null'
-          ELSE yearofstarting::text
-        END
+      WITH year_data AS (
+        SELECT 
+          CASE 
+            WHEN yearofstarting IS NULL 
+            THEN 'Null'
+            ELSE yearofstarting::text
+          END as year_value,
+          yearofstarting as year_raw,
+          COUNT(*) as count
+        FROM public.tbl_alumni
+        WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+          ${accessFilterCondition}
+        GROUP BY 
+          CASE 
+            WHEN yearofstarting IS NULL 
+            THEN 'Null'
+            ELSE yearofstarting::text
+          END,
+          yearofstarting
+      )
+      SELECT year_value, count
+      FROM year_data
       ORDER BY 
         CASE 
-          WHEN yearofstarting IS NULL 
-          THEN 0
-          ELSE yearofstarting
-        END DESC
+          WHEN year_value = 'Null' 
+          THEN 1
+          ELSE 0
+        END ASC,
+        year_raw DESC NULLS LAST
     `;
 
     const admissionYears = (rows as unknown as Array<{ year_value: string; count: number | string | bigint }>).map((row) => {
