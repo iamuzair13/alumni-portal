@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, unlink, stat } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
@@ -174,32 +174,104 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     const filename = `${identifierForFilename}-${timestamp}.${finalExtension}`;
     
     // Create uploads directory if it doesn't exist (images directory in public folder)
-    const uploadsDir = join(process.cwd(), "public", "images");
+    // Support environment variable for Plesk deployments where path might differ
+    const cwd = process.cwd();
+    
+    // Allow override via environment variable (useful for Plesk)
+    const customUploadPath = process.env.UPLOAD_DIR || process.env.IMAGES_UPLOAD_DIR;
+    let uploadsDir: string;
+    
+    if (customUploadPath) {
+      // Use custom path from environment variable (absolute or relative)
+      uploadsDir = customUploadPath.startsWith("/") 
+        ? customUploadPath 
+        : join(cwd, customUploadPath);
+      console.log("[API] Using custom upload path from environment:", uploadsDir);
+    } else {
+      // Standard Next.js path
+      uploadsDir = join(cwd, "public", "images");
+    }
+    
+    console.log("[API] Current working directory (cwd):", cwd);
     console.log("[API] Upload directory path:", uploadsDir);
+    
+    // Check if directory exists
+    const dirExists = existsSync(uploadsDir);
+    
+    if (!dirExists) {
+      console.log("[API] Upload directory not found, will attempt to create:", uploadsDir);
+    } else {
+      console.log("[API] Upload directory exists:", uploadsDir);
+    }
     
     try {
       if (!existsSync(uploadsDir)) {
         console.log("[API] Creating upload directory:", uploadsDir);
-        await mkdir(uploadsDir, { recursive: true });
+        await mkdir(uploadsDir, { recursive: true, mode: 0o755 });
+        console.log("[API] Directory created successfully");
+      } else {
+        console.log("[API] Upload directory exists:", uploadsDir);
+      }
+      
+      // Verify directory is writable
+      const testFile = join(uploadsDir, ".write-test");
+      try {
+        await writeFile(testFile, Buffer.from("test"));
+        await unlink(testFile);
+        console.log("[API] Directory is writable");
+      } catch (testError) {
+        console.error("[API] Directory is not writable:", testError);
+        return NextResponse.json({ 
+          error: "Upload directory is not writable. Please contact administrator." 
+        }, { status: 500 });
       }
     } catch (dirError) {
-      console.error("[API] Failed to create directory:", dirError);
+      const error = dirError as NodeJS.ErrnoException;
+      console.error("[API] Failed to create/access directory:", dirError);
+      console.error("[API] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        path: uploadsDir,
+        cwd: process.cwd(),
+        errno: error?.errno,
+        syscall: error?.syscall
+      });
       return NextResponse.json({ 
-        error: "Failed to create upload directory. Please contact administrator." 
+        error: `Failed to create upload directory: ${error?.message || 'Unknown error'}. Please contact administrator.` 
       }, { status: 500 });
     }
 
     // Save file
     const filePath = join(uploadsDir, filename);
     console.log("[API] Saving file to:", filePath);
+    console.log("[API] File size:", buffer.length, "bytes");
     
     try {
-      await writeFile(filePath, buffer);
+      await writeFile(filePath, buffer, { mode: 0o644 });
       console.log("[API] File saved successfully:", filename);
+      
+      // Verify file was written
+      if (!existsSync(filePath)) {
+        console.error("[API] File was not created after write operation");
+        return NextResponse.json({ 
+          error: "File was not saved. Please try again." 
+        }, { status: 500 });
+      }
+      
+      const stats = await stat(filePath);
+      console.log("[API] File verification - Size:", stats.size, "bytes");
     } catch (writeError) {
+      const error = writeError as NodeJS.ErrnoException;
       console.error("[API] Failed to write file:", writeError);
+      console.error("[API] Write error details:", {
+        message: error?.message,
+        code: error?.code,
+        path: filePath,
+        errno: error?.errno,
+        syscall: error?.syscall
+      });
       return NextResponse.json({ 
-        error: "Failed to save image file. Please try again." 
+        error: `Failed to save image file: ${error?.message || 'Unknown error'}. Please try again.` 
       }, { status: 500 });
     }
 
