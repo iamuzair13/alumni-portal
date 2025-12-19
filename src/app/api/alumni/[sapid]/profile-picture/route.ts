@@ -184,6 +184,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     // Support environment variable for Plesk deployments where path might differ
     const cwd = process.cwd();
     
+    // Try to find the actual project root by looking for package.json or next.config
+    // This is more reliable on Plesk where cwd might be different
+    let projectRoot = cwd;
+    let currentPath = cwd;
+    let foundProjectRoot = false;
+    
+    // Look for package.json or next.config.mjs to find project root
+    for (let i = 0; i < 5; i++) {
+      if (existsSync(join(currentPath, "package.json")) || existsSync(join(currentPath, "next.config.mjs"))) {
+        projectRoot = currentPath;
+        foundProjectRoot = true;
+        console.log("[API] Found project root at:", projectRoot);
+        break;
+      }
+      const parentPath = join(currentPath, "..");
+      if (parentPath === currentPath) break; // Reached filesystem root
+      currentPath = parentPath;
+    }
+    
+    if (!foundProjectRoot) {
+      console.warn("[API] Could not find project root, using cwd:", cwd);
+      projectRoot = cwd;
+    }
+    
     // Allow override via environment variable (useful for Plesk)
     const customUploadPath = process.env.UPLOAD_DIR || process.env.IMAGES_UPLOAD_DIR;
     let uploadsDir: string;
@@ -191,18 +215,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     if (customUploadPath) {
       uploadsDir = customUploadPath.startsWith("/") 
         ? customUploadPath 
-        : join(cwd, customUploadPath);
+        : join(projectRoot, customUploadPath);
       console.log("[API] Using custom upload path from environment:", uploadsDir);
     } else {
-      // Standard Next.js path - ensure we're using the correct public directory
-      // Try to find the public directory relative to the project root
-      uploadsDir = join(cwd, "public", "images");
+      // Standard Next.js path - use project root
+      uploadsDir = join(projectRoot, "public", "images");
       
       // Verify that public directory exists (Next.js requirement)
-      const publicDir = join(cwd, "public");
+      const publicDir = join(projectRoot, "public");
       if (!existsSync(publicDir)) {
         console.warn("[API] WARNING: public directory not found at:", publicDir);
-        console.warn("[API] Attempting to use cwd/public/images anyway:", uploadsDir);
+        console.warn("[API] Attempting to use projectRoot/public/images anyway:", uploadsDir);
       } else {
         console.log("[API] Public directory found at:", publicDir);
       }
@@ -210,6 +233,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     
     console.log("[API] ========== Path Information ==========");
     console.log("[API] Current working directory (cwd):", cwd);
+    console.log("[API] Project root:", projectRoot);
     console.log("[API] NODE_ENV:", process.env.NODE_ENV);
     console.log("[API] Upload directory path:", uploadsDir);
     console.log("[API] Custom upload path env:", customUploadPath || "not set");
@@ -285,8 +309,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       console.log("[API] File permissions:", stats.mode.toString(8));
       
       // Verify the file is in the public directory structure
-      const relativePath = filePath.replace(cwd, "").replace(/\\/g, "/");
-      console.log("[API] File relative path from cwd:", relativePath);
+      const relativePathFromCwd = filePath.replace(cwd, "").replace(/\\/g, "/");
+      const relativePathFromRoot = filePath.replace(projectRoot, "").replace(/\\/g, "/");
+      console.log("[API] File relative path from cwd:", relativePathFromCwd);
+      console.log("[API] File relative path from project root:", relativePathFromRoot);
       
       // Check if file is accessible (try to read first few bytes)
       try {
@@ -296,13 +322,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
         console.error("[API] ERROR: File cannot be read:", readError);
       }
       
-      if (!relativePath.includes("/public/images/") && !relativePath.includes("\\public\\images\\")) {
+      if (!relativePathFromRoot.includes("/public/images/") && !relativePathFromRoot.includes("\\public\\images\\")) {
         console.error("[API] WARNING: File is not in public/images directory structure!");
         console.error("[API] Expected path pattern: .../public/images/filename");
-        console.error("[API] Actual relative path:", relativePath);
+        console.error("[API] Actual relative path from project root:", relativePathFromRoot);
         console.error("[API] This may cause Next.js to not serve the file correctly.");
       } else {
         console.log("[API] ✓ File is in correct public/images directory structure");
+        console.log("[API] File should be accessible at: /images/" + filename);
       }
     } catch (writeError) {
       const error = writeError as NodeJS.ErrnoException;
