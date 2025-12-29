@@ -304,14 +304,14 @@ const AppSidebar: React.FC = () => {
             <>
               <Image
                 className="dark:hidden"
-                src="/images/logo/logo.png"
+                src="/images/logo/UOL-Rebrand-ID_Final-03.png"
                 alt="Logo"
                 width={150}
                 height={40}
               />
               <Image
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="/images/logo/UOL-Rebrand-ID_Final-03.svg"
                 alt="Logo"
                 width={150}
                 height={40}

@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type AlumniFilterOption = {
   value: string;
@@ -12,9 +14,14 @@ export type AlumniFacultiesResponse = {
   faculties: AlumniFilterOption[];
 };
 
-async function getAlumniFaculties(signal?: AbortSignal): Promise<AlumniFacultiesResponse> {
-  const url = "/api/alumni/faculties";
-  const res = await fetch(url, { signal, headers: { accept: "application/json" } });
+async function getAlumniFaculties(
+  signal?: AbortSignal,
+  filters?: MasterFilters
+): Promise<AlumniFacultiesResponse> {
+  const url = new URL("/api/alumni/faculties", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { signal, headers: { accept: "application/json" } });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || "Failed to fetch faculties");
@@ -22,10 +29,10 @@ async function getAlumniFaculties(signal?: AbortSignal): Promise<AlumniFaculties
   return (await res.json()) as AlumniFacultiesResponse;
 }
 
-export function useAlumniFaculties() {
+export function useAlumniFaculties(filters?: Parameters<typeof getAlumniFaculties>[1]) {
   return useQuery<AlumniFacultiesResponse, Error>({
-    queryKey: ["alumni", "faculties"],
-    queryFn: ({ signal }) => getAlumniFaculties(signal),
+    queryKey: ["alumni", "faculties", filters],
+    queryFn: ({ signal }) => getAlumniFaculties(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

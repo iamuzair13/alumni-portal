@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type MaritalStatusOption = {
   value: string;
@@ -12,9 +14,14 @@ export type MaritalStatusesResponse = {
   maritalStatuses: MaritalStatusOption[];
 };
 
-async function getMaritalStatuses(signal?: AbortSignal): Promise<MaritalStatusesResponse> {
-  const url = "/api/alumni/marital-statuses";
-  const res = await fetch(url, { 
+async function getMaritalStatuses(
+  signal?: AbortSignal,
+  filters?: MasterFilters
+): Promise<MaritalStatusesResponse> {
+  const url = new URL("/api/alumni/marital-statuses", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -30,10 +37,10 @@ async function getMaritalStatuses(signal?: AbortSignal): Promise<MaritalStatuses
   return data;
 }
 
-export function useMaritalStatuses() {
+export function useMaritalStatuses(filters?: MasterFilters) {
   return useQuery<MaritalStatusesResponse, Error>({
-    queryKey: ["marital-statuses"],
-    queryFn: ({ signal }) => getMaritalStatuses(signal),
+    queryKey: ["marital-statuses", filters],
+    queryFn: ({ signal }) => getMaritalStatuses(signal, filters),
     staleTime: 0, // Always consider data stale - refetch to get latest values
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
     refetchOnWindowFocus: true, // Refetch when window gains focus to get updated values

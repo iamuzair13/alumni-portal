@@ -20,6 +20,7 @@ import { useOccupationStatuses, type OccupationStatusOption } from "@/app/querie
 import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
 import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
 import { useAlumniPrograms } from "@/app/queries/fetch-alumni-programs";
+import type { MasterFilters } from "@/app/queries/master-filter-types";
 import { useHomeCountries } from "@/app/queries/fetch-home-countries";
 import { useWorkCountries } from "@/app/queries/fetch-work-countries";
 import { useAdmissionYears } from "@/app/queries/fetch-admission-years";
@@ -145,35 +146,6 @@ export const AlumniTabs: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("total");
   const { data: session } = useSession();
   
-  // Fetch marital statuses from database
-  const { data: maritalStatusesData, isLoading: isLoadingMaritalStatuses, error: maritalStatusesError } = useMaritalStatuses();
-  
-  // Fetch genders from database
-  const { data: gendersData, isLoading: isLoadingGenders, error: gendersError } = useGenders();
-  
-  // Fetch campuses from database
-  const { data: campusesData, isLoading: isLoadingCampuses, error: campusesError } = useCampuses();
-  
-  // Fetch occupation statuses from database
-  const { data: occupationStatusesData, isLoading: isLoadingOccupationStatuses, error: occupationStatusesError } = useOccupationStatuses();
-  
-  // Fetch home countries from database
-  const { data: homeCountriesData } = useHomeCountries();
-  
-  // Fetch work countries from database
-  const { data: workCountriesData } = useWorkCountries();
-  
-  // Fetch admission years from database
-  const { data: admissionYearsData } = useAdmissionYears();
-  
-  // Fetch passing years from database
-  const { data: passingYearsData } = usePassingYears();
-  
-  // Fetch sectors from database
-  const { data: sectorsData } = useSectors();
-  
-  // Fetch work cities from database
-  const { data: workCitiesData } = useWorkCities();
   
   // Fetch institution names from database
   const { data: institutionNamesData } = useInstitutionNames();
@@ -189,34 +161,6 @@ export const AlumniTabs: React.FC = () => {
   
   // Fetch institution cities from database
   const { data: institutionCitiesData } = useInstitutionCities();
-  
-  // Debug logging
-  React.useEffect(() => {
-    if (maritalStatusesError) {
-      console.error("[AlumniTabs] Error fetching marital statuses:", maritalStatusesError);
-    }
-    if (maritalStatusesData) {
-      console.log("[AlumniTabs] Marital statuses data:", maritalStatusesData);
-    }
-    if (gendersError) {
-      console.error("[AlumniTabs] Error fetching genders:", gendersError);
-    }
-    if (gendersData) {
-      console.log("[AlumniTabs] Genders data:", gendersData);
-    }
-    if (campusesError) {
-      console.error("[AlumniTabs] Error fetching campuses:", campusesError);
-    }
-    if (campusesData) {
-      console.log("[AlumniTabs] Campuses data:", campusesData);
-    }
-    if (occupationStatusesError) {
-      console.error("[AlumniTabs] Error fetching occupation statuses:", occupationStatusesError);
-    }
-    if (occupationStatusesData) {
-      console.log("[AlumniTabs] Occupation statuses data:", occupationStatusesData);
-    }
-  }, [maritalStatusesData, maritalStatusesError, gendersData, gendersError, campusesData, campusesError, occupationStatusesData, occupationStatusesError]);
   
   // Refs for scroll synchronization
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -444,10 +388,177 @@ export const AlumniTabs: React.FC = () => {
     return selectedHomeCountries.includes("Pakistan");
   }, [selectedHomeCountries]);
   
+  // Status filter: combine selected tab and additionalFilter
+  const statusFilter = useMemo(() => {
+    if (selected === "total") {
+      return additionalFilter.length > 0 ? additionalFilter : undefined;
+    }
+    // Map tab keys to API status values
+    const mapTabToStatus = (tab: TabKey): string => {
+      switch (tab) {
+        case "aPlus":
+          return "category:aPlus";
+        case "a":
+          return "category:a";
+        case "b":
+          return "category:b";
+        case "c":
+          return "category:c";
+        default:
+          return tab; // "verified", "underApproval", "active" map directly
+      }
+    };
+    
+    // For specific tabs, combine tab status with additionalFilter
+    const tabStatus = mapTabToStatus(selected);
+    if (additionalFilter.length > 0) {
+      return [tabStatus, ...additionalFilter];
+    }
+    return [tabStatus];
+  }, [selected, additionalFilter]);
+  
+  // Master filters: consolidate all selected filter states
+  const masterFilters = useMemo(() => {
+    const filters: MasterFilters = {};
+    if (statusFilter) {
+      filters.status = statusFilter;
+    }
+    if (selectedFaculties.length > 0) {
+      filters.faculty = selectedFaculties;
+    }
+    if (selectedDepartments.length > 0) {
+      filters.department = selectedDepartments;
+    }
+    if (selectedPrograms.length > 0) {
+      filters.program = selectedPrograms;
+    }
+    if (selectedGenders.length > 0) {
+      filters.gender = selectedGenders;
+    }
+    if (selectedMaritalStatuses.length > 0) {
+      filters.maritalStatus = selectedMaritalStatuses;
+    }
+    if (selectedHomeCountries.length > 0) {
+      filters.homeCountry = selectedHomeCountries;
+    }
+    if (selectedHomeCities.length > 0) {
+      filters.homeCity = selectedHomeCities;
+    }
+    if (selectedProvinces.length > 0) {
+      filters.province = selectedProvinces;
+    }
+    if (selectedCampuses.length > 0) {
+      filters.campus = selectedCampuses;
+    }
+    if (selectedAdmissionYears.length > 0) {
+      filters.admissionYear = selectedAdmissionYears;
+    }
+    if (selectedPassingYears.length > 0) {
+      filters.passingYear = selectedPassingYears;
+    }
+    if (selectedOccupationStatuses.length > 0) {
+      filters.occupationStatus = selectedOccupationStatuses;
+    }
+    if (selectedSectors.length > 0) {
+      filters.sector = selectedSectors;
+    }
+    if (selectedWorkCities.length > 0) {
+      filters.workCity = selectedWorkCities;
+    }
+    if (selectedWorkCountries.length > 0) {
+      filters.workCountry = selectedWorkCountries;
+    }
+    if (selectedInstitutionNames.length > 0) {
+      filters.institutionName = selectedInstitutionNames;
+    }
+    if (selectedProgramsEnrolled.length > 0) {
+      filters.programEnrolled = selectedProgramsEnrolled;
+    }
+    if (selectedFundingSources.length > 0) {
+      filters.fundingSource = selectedFundingSources;
+    }
+    if (selectedInstitutionCountries.length > 0) {
+      filters.institutionCountry = selectedInstitutionCountries;
+    }
+    if (selectedInstitutionCities.length > 0) {
+      filters.institutionCity = selectedInstitutionCities;
+    }
+    if (selectedMrNos.length > 0) {
+      filters.mrNo = selectedMrNos;
+    }
+    return Object.keys(filters).length > 0 ? filters : undefined;
+  }, [
+    statusFilter,
+    selectedFaculties,
+    selectedDepartments,
+    selectedPrograms,
+    selectedGenders,
+    selectedMaritalStatuses,
+    selectedHomeCountries,
+    selectedHomeCities,
+    selectedProvinces,
+    selectedCampuses,
+    selectedAdmissionYears,
+    selectedPassingYears,
+    selectedOccupationStatuses,
+    selectedSectors,
+    selectedWorkCities,
+    selectedWorkCountries,
+    selectedInstitutionNames,
+    selectedProgramsEnrolled,
+    selectedFundingSources,
+    selectedInstitutionCountries,
+    selectedInstitutionCities,
+    selectedMrNos,
+  ]);
+  
   // Faculty / Department / Program options - fetched dynamically from database (tbl_alumni)
-  const { data: alumniFacultiesData } = useAlumniFaculties();
-  const { data: alumniDepartmentsData } = useAlumniDepartments();
-  const { data: alumniProgramsData } = useAlumniPrograms();
+  // Pass current filter selections to get dynamic counts
+  const { data: alumniFacultiesData } = useAlumniFaculties(masterFilters);
+  const { data: alumniDepartmentsData } = useAlumniDepartments(masterFilters);
+  const { data: alumniProgramsData } = useAlumniPrograms(masterFilters);
+  
+  // Master filter hooks - pass masterFilters to get dynamic counts
+  const { data: maritalStatusesData, error: maritalStatusesError, isLoading: isLoadingMaritalStatuses } = useMaritalStatuses(masterFilters);
+  const { data: gendersData, error: gendersError, isLoading: isLoadingGenders } = useGenders(masterFilters);
+  const { data: campusesData, error: campusesError, isLoading: isLoadingCampuses } = useCampuses(masterFilters);
+  const { data: occupationStatusesData, error: occupationStatusesError, isLoading: isLoadingOccupationStatuses } = useOccupationStatuses(masterFilters);
+  
+  // Additional master filter hooks
+  const { data: homeCountriesData } = useHomeCountries();
+  const { data: workCountriesData } = useWorkCountries();
+  const { data: admissionYearsData } = useAdmissionYears();
+  const { data: passingYearsData } = usePassingYears();
+  const { data: sectorsData } = useSectors();
+  const { data: workCitiesData } = useWorkCities();
+
+  // Debug logging
+  React.useEffect(() => {
+    if (maritalStatusesError) {
+      console.error("[AlumniTabs] Error fetching marital statuses:", maritalStatusesError);
+    }
+    if (maritalStatusesData) {
+      console.log("[AlumniTabs] Marital statuses data:", maritalStatusesData);
+    }
+    if (gendersError) {
+      console.error("[AlumniTabs] Error fetching genders:", gendersError);
+    }
+    if (gendersData) {
+      console.log("[AlumniTabs] Genders data:", gendersData);
+    }
+    if (campusesError) {
+      console.error("[AlumniTabs] Error fetching campuses:", campusesError);
+    }
+    if (campusesData) {
+      console.log("[AlumniTabs] Campuses data:", campusesData);
+    }
+    if (occupationStatusesError) {
+      console.error("[AlumniTabs] Error fetching occupation statuses:", occupationStatusesError);
+    }
+    if (occupationStatusesData) {
+      console.log("[AlumniTabs] Occupation statuses data:", occupationStatusesData);
+    }
+  }, [maritalStatusesData, maritalStatusesError, gendersData, gendersError, campusesData, campusesError, occupationStatusesData, occupationStatusesError]);
 
   const facultyOptions: AlumniFilterOption[] = alumniFacultiesData?.faculties ?? [];
   const departmentOptions: AlumniFilterOption[] = alumniDepartmentsData?.departments ?? [];
@@ -465,22 +576,6 @@ export const AlumniTabs: React.FC = () => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
     return () => clearTimeout(t);
   }, [query]);
-
-  // Determine status filter based on selected tab
-  const statusFilter = useMemo(() => {
-    // If additional filter is set, use it (takes precedence)
-    if (additionalFilter.length > 0) return additionalFilter;
-    
-    // Otherwise use tab-based filter
-    if (selected === "verified") return ["verified"];
-    if (selected === "underApproval") return ["underApproval"];
-    if (selected === "active") return ["active"];
-    if (selected === "aPlus") return ["category:aPlus"];
-    if (selected === "a") return ["category:a"];
-    if (selected === "b") return ["category:b"];
-    if (selected === "c") return ["category:c"];
-    return undefined; // No filter for "total"
-  }, [selected, additionalFilter]);
   
   // Reset province and city when home country changes (if Pakistan is removed)
   useEffect(() => {

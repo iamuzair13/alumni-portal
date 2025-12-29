@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type GenderOption = {
   value: string;
@@ -12,9 +14,14 @@ export type GendersResponse = {
   genders: GenderOption[];
 };
 
-async function getGenders(signal?: AbortSignal): Promise<GendersResponse> {
-  const url = "/api/alumni/genders";
-  const res = await fetch(url, { 
+async function getGenders(
+  signal?: AbortSignal,
+  filters?: MasterFilters
+): Promise<GendersResponse> {
+  const url = new URL("/api/alumni/genders", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -30,10 +37,10 @@ async function getGenders(signal?: AbortSignal): Promise<GendersResponse> {
   return data;
 }
 
-export function useGenders() {
+export function useGenders(filters?: MasterFilters) {
   return useQuery<GendersResponse, Error>({
-    queryKey: ["genders"],
-    queryFn: ({ signal }) => getGenders(signal),
+    queryKey: ["genders", filters],
+    queryFn: ({ signal }) => getGenders(signal, filters),
     staleTime: 0, // Always consider data stale - refetch to get latest values
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
     refetchOnWindowFocus: true, // Refetch when window gains focus to get updated values

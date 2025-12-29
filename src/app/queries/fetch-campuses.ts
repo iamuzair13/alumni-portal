@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type CampusOption = {
   value: string;
@@ -12,9 +14,14 @@ export type CampusesResponse = {
   campuses: CampusOption[];
 };
 
-async function getCampuses(signal?: AbortSignal): Promise<CampusesResponse> {
-  const url = "/api/alumni/campuses";
-  const res = await fetch(url, { 
+async function getCampuses(
+  signal?: AbortSignal,
+  filters?: MasterFilters
+): Promise<CampusesResponse> {
+  const url = new URL("/api/alumni/campuses", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -30,10 +37,10 @@ async function getCampuses(signal?: AbortSignal): Promise<CampusesResponse> {
   return data;
 }
 
-export function useCampuses() {
+export function useCampuses(filters?: MasterFilters) {
   return useQuery<CampusesResponse, Error>({
-    queryKey: ["campuses"],
-    queryFn: ({ signal }) => getCampuses(signal),
+    queryKey: ["campuses", filters],
+    queryFn: ({ signal }) => getCampuses(signal, filters),
     staleTime: 0, // Always consider data stale - refetch to get latest values
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
     refetchOnWindowFocus: true, // Refetch when window gains focus to get updated values

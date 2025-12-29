@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { searchParams } = new URL(req.url);
+    const masterFilterConditions = buildMasterFilterConditions(searchParams, "department");
 
     let accessFilterCondition = sql``;
     try {
@@ -30,6 +34,7 @@ export async function GET() {
       FROM public.tbl_alumni
       WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
         ${accessFilterCondition}
+        ${masterFilterConditions}
       GROUP BY 
         CASE 
           WHEN departmentname IS NULL OR TRIM(COALESCE(departmentname, '')) = '' 
