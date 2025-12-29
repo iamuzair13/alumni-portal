@@ -78,8 +78,6 @@ export type AlumniFullDetails = {
   higher_education_institute_country: string | null;
   higher_education_institute_city: string | null;
   is_scholarship: string | null;
-  higher_education_institute_email: string | null;
-  higher_education_intiture_number: string | null;
   // Chapter and Association fields
   chapter: string | null;
   chapter1_id: number | null;

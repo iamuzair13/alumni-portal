@@ -65,8 +65,6 @@ export type TblAlumniForm = {
   highereducationinstitute: string | null;
   highereducationprogram: string | null;
   scholarship: string | null;
-  higher_education_institute_email: string | null;
-  higher_education_intiture_number: string | null;
   lasttimelogin: string | null;
   logincount: number | null;
   verify: string | null;
@@ -826,7 +824,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     // Validate higher education fields if pursuing higher education
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      workFieldsToValidate.push("highereducationinstitute", "highereducationprogram", "scholarship", "workCity", "workCountry", "higher_education_institute_email");
+      workFieldsToValidate.push("highereducationinstitute", "highereducationprogram", "scholarship", "workCity", "workCountry");
     }
     
     // No validation needed for unemployed options as reason is in the radio button value
@@ -864,7 +862,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         "scholarship",
         "workCity",
         "workCountry",
-        "higher_education_institute_email",
       ];
       for (const f of fields) {
         const val = watch(f);
@@ -2150,27 +2147,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   )}
                 </div>
 
-                <div>
-                  <label className={labelBase}>Student Email *</label>
-                  <input 
-                    type="email" 
-                    className={inputBase} 
-                    placeholder="Enter student email"
-                    {...register("higher_education_institute_email", { 
-                      required: true, 
-                      maxLength: 200,
-                      pattern: {
-                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                        message: "Please enter a valid email address (must contain @)"
-                      }
-                    })} 
-                  />
-                  {errors.higher_education_institute_email && (
-                    <p className="mt-1 text-xs text-red-600">
-                      {errors.higher_education_institute_email.message || "Student email is required"}
-                    </p>
-                  )}
-                </div>
               </>
             )}
 

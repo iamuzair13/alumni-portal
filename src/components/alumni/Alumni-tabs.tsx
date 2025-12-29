@@ -1533,8 +1533,6 @@ export const AlumniTabs: React.FC = () => {
         "Higher Education Degree Title": item.degree_title || "",
         "Is Scholarship": item.is_scholarship || "",
         "Higher Education Program": item.higher_education_program || "",
-        "Higher Education Institute Number": item.higher_education_intiture_number || "",
-        "Higher Education Institute Email": item.higher_education_institute_email || "",
         "Higher Education Institute Country": item.higher_education_institute_country || "",
         "Higher Education Institute Province": item.higher_education_institute_province || "",
         "Higher Education Institute City": item.higher_education_institute_city || "",

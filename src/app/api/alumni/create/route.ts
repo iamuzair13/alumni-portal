@@ -636,8 +636,6 @@ export async function POST(req: Request) {
             higher_education_institute_name = ${clean(body.highereducationinstitute)},
             higher_education_program = ${clean(body.highereducationprogram)},
             is_scholarship = ${clean(body.scholarship)},
-            higher_education_institute_email = ${clean((body as { higher_education_institute_email?: string | null }).higher_education_institute_email ?? null)},
-            higher_education_intiture_number = ${clean((body as { higher_education_intiture_number?: string | null }).higher_education_intiture_number ?? null)},
             higher_education_institute_country = ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
             higher_education_institute_city = ${clean((body as { workCity?: string | null }).workCity ?? null)}
           WHERE alumniid = ${existingAlumniId}
@@ -740,8 +738,6 @@ export async function POST(req: Request) {
           higher_education_institute_name,
           higher_education_program,
           is_scholarship,
-          higher_education_institute_email,
-          higher_education_intiture_number,
           higher_education_institute_country,
           higher_education_institute_city
         ) VALUES (
@@ -805,8 +801,6 @@ export async function POST(req: Request) {
           ${clean(body.highereducationinstitute)},
           ${clean(body.highereducationprogram)},
           ${clean(body.scholarship)},
-          ${clean((body as { higher_education_institute_email?: string | null }).higher_education_institute_email ?? null)},
-          ${clean((body as { higher_education_intiture_number?: string | null }).higher_education_intiture_number ?? null)},
           ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
           ${clean((body as { workCity?: string | null }).workCity ?? null)}
         ) RETURNING alumniid;

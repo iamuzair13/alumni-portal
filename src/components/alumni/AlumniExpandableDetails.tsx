@@ -116,8 +116,6 @@ type AlumniFullData = {
   higher_education_institute_country: string | null;
   higher_education_institute_city: string | null;
   is_scholarship: string | null;
-  higher_education_institute_email: string | null;
-  higher_education_intiture_number: string | null;
   chapter: string | null;
   chapter1_id: number | null;
   chapter2_id: number | null;
@@ -645,7 +643,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           is_scholarship: formData.is_scholarship,
           higher_education_institute_country: formData.higher_education_institute_country,
           higher_education_institute_city: formData.higher_education_institute_city,
-          higher_education_intiture_number: formData.higher_education_intiture_number,
           association_id: formData.association_id && String(formData.association_id) !== "" ? Number(formData.association_id) : null,
           chapter1_id: formData.chapter1_id && String(formData.chapter1_id) !== "" ? Number(formData.chapter1_id) : null,
           chapter2_id: formData.chapter2_id && String(formData.chapter2_id) !== "" ? Number(formData.chapter2_id) : null,

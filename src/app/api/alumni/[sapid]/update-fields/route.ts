@@ -225,8 +225,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const higherEducationInstituteCountryVal = "higher_education_institute_country" in body ? cleanValue("higher_education_institute_country", body.higher_education_institute_country) : undefined;
     const higherEducationInstituteCityVal = "higher_education_institute_city" in body ? cleanValue("higher_education_institute_city", body.higher_education_institute_city) : undefined;
     const isScholarshipVal = "is_scholarship" in body ? cleanValue("is_scholarship", body.is_scholarship) : undefined;
-    const higherEducationInstituteEmailVal = "higher_education_institute_email" in body ? cleanValue("higher_education_institute_email", body.higher_education_institute_email) : undefined;
-    const higherEducationIntitureNumberVal = "higher_education_intiture_number" in body ? cleanValue("higher_education_intiture_number", body.higher_education_intiture_number) : undefined;
     // Association field
     const associationIdVal = "association_id" in body ? (body.association_id !== null && body.association_id !== undefined && body.association_id !== "" ? Number(body.association_id) : null) : undefined;
     // System fields
@@ -331,8 +329,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       higher_education_institute_country: higherEducationInstituteCountryVal,
       higher_education_institute_city: higherEducationInstituteCityVal,
       is_scholarship: isScholarshipVal,
-      higher_education_institute_email: higherEducationInstituteEmailVal,
-      higher_education_intiture_number: higherEducationIntitureNumberVal,
       association_id: associationIdVal,
       verify: verifyVal,
       lasttimelogin: lasttimeloginVal,
@@ -426,8 +422,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("higher_education_institute_country", higherEducationInstituteCountryVal);
       addUpdate("higher_education_institute_city", higherEducationInstituteCityVal);
       addUpdate("is_scholarship", isScholarshipVal);
-      addUpdate("higher_education_institute_email", higherEducationInstituteEmailVal);
-      addUpdate("higher_education_intiture_number", higherEducationIntitureNumberVal);
       addUpdate("association_id", associationIdVal);
       addUpdate("verify", verifyVal);
       addUpdate("lasttimelogin", lasttimeloginVal);

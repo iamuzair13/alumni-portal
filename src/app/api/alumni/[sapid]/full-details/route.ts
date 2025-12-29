@@ -225,8 +225,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         higher_education_institute_country: row.higher_education_institute_country ?? null,
         higher_education_institute_city: row.higher_education_institute_city ?? null,
         is_scholarship: row.is_scholarship ?? null,
-        higher_education_institute_email: row.higher_education_institute_email ?? null,
-        higher_education_intiture_number: row.higher_education_intiture_number ?? null,
         // Chapter and Association fields
         chapter: chapterDisplay,
         chapter1_id: chapter1Id,
