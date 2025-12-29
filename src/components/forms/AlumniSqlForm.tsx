@@ -49,7 +49,6 @@ export type TblAlumniForm = {
   majorsubject: string | null;
   industry: string | null;
   employeed: string | null;
-  reason_of_unemployment: string | null;
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
@@ -420,7 +419,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       majorsubject: null,
       industry: null,
       employeed: "Unemployed, searching for job",
-      reason_of_unemployment: null,
       nameoforganization: null,
       designation: null,
       totalyearsofexpereince: null,

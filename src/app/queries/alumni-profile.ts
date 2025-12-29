@@ -70,7 +70,6 @@ export type AlumniFullDetails = {
   password: string | null;
   father_cnic: string | null;
   category: string | null;
-  reason_of_unemployment: string | null;
   // Higher Education fields
   degree_title: string | null;
   higher_education_institute_name: string | null;

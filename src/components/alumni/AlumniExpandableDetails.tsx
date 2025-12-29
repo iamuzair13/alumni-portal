@@ -108,7 +108,6 @@ type AlumniFullData = {
   password: string | null;
   father_cnic: string | null;
   category: string | null;
-  reason_of_unemployment: string | null;
   // Higher Education fields
   degree_title: string | null;
   higher_education_institute_name: string | null;
@@ -636,7 +635,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           organization_address: formData.organization_address,
           majorsubject: formData.majorsubject,
           aboutme: formData.aboutme,
-          reason_of_unemployment: formData.reason_of_unemployment,
           // Higher Education fields
           higher_education_institute_name: formData.higher_education_institute_name,
           higher_education_program: formData.higher_education_program,
@@ -1128,11 +1126,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           )}
           <CompactField label="Work Phone" value={data.officialnumber} isEditing={isEditing} readOnly={readOnly} register={register} name="officialnumber" />
           <CompactField label="Work Email" value={data.officialemail} isEditing={isEditing} readOnly={readOnly} register={register} name="officialemail" type="email" />
-          
-          {/* Reason of Unemployment - Show only for unemployed */}
-          {(selectedEmployeed === "Unemployed (By Choice)" || selectedEmployeed === "Unemployed (Searching Job)" || data?.employeed === "Unemployed (By Choice)" || data?.employeed === "Unemployed (Searching Job)") && (
-            <CompactField label="Reason of Unemployment" value={data.reason_of_unemployment} isEditing={isEditing} readOnly={readOnly} register={register} name="reason_of_unemployment" type="textarea" />
-          )}
 
           {/* Higher Education Information - Show only for pursuing higher education */}
           {(selectedEmployeed === "Pursuing Higher Education" || data?.employeed === "Pursuing Higher Education") && (

@@ -235,7 +235,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const academicsessionVal = "academicsession" in body ? cleanValue("academicsession", body.academicsession) : undefined;
     const fatherCnicVal = "father_cnic" in body ? cleanValue("father_cnic", body.father_cnic) : undefined;
     const categoryVal = "category" in body ? cleanValue("category", body.category) : undefined;
-    const reasonOfUnemploymentVal = "reason_of_unemployment" in body ? cleanValue("reason_of_unemployment", body.reason_of_unemployment) : undefined;
     // Chapter fields
     const chapter1IdVal = "chapter1_id" in body ? (body.chapter1_id !== null && body.chapter1_id !== undefined && body.chapter1_id !== "" ? Number(body.chapter1_id) : null) : undefined;
     const chapter2IdVal = "chapter2_id" in body ? (body.chapter2_id !== null && body.chapter2_id !== undefined && body.chapter2_id !== "" ? Number(body.chapter2_id) : null) : undefined;
@@ -337,7 +336,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       academicsession: academicsessionVal,
       father_cnic: fatherCnicVal,
       category: categoryVal,
-      reason_of_unemployment: reasonOfUnemploymentVal,
       chapter1_id: chapter1IdVal,
       chapter2_id: chapter2IdVal,
       chapter3_id: chapter3IdVal,
@@ -430,7 +428,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("academicsession", academicsessionVal);
       addUpdate("father_cnic", fatherCnicVal);
       addUpdate("category", categoryVal);
-      addUpdate("reason_of_unemployment", reasonOfUnemploymentVal);
       addUpdate("faculty", facultyIdVal);
       addUpdate("department", departmentIdVal);
       addUpdate("program", programIdVal);

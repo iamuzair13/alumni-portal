@@ -4391,7 +4391,7 @@ export const AlumniTabs: React.FC = () => {
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-3 gap-1">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
-                                <ErpDataDetails sapId={alum.id} registrationNo={alum.registrationNo} onClose={() => setExpandedRowId(null)} />
+                                <ErpDataDetails sapId={alum.sapId || undefined} registrationNo={alum.registrationNo || undefined} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>
                           </TableCell>
