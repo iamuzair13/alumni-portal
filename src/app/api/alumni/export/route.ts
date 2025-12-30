@@ -4,6 +4,9 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 
+// Increase timeout for large exports (max 5 minutes)
+export const maxDuration = 300;
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -521,18 +524,73 @@ export async function GET(req: Request) {
       ORDER BY a.alumniid DESC
     `;
 
+    // First, check the count to prevent timeouts on very large datasets
+    const countQuery = sql/* sql */`
+      SELECT COUNT(*) as total
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE ${baseWhere}
+        ${verifyFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
+        ${genderFilter}
+        ${maritalStatusFilter}
+        ${homeCountryFilter}
+        ${homeCityFilter}
+        ${provinceFilter}
+        ${campusFilter}
+        ${admissionYearFilter}
+        ${passingYearFilter}
+        ${occupationStatusFilter}
+        ${sectorFilter}
+        ${workCityFilter}
+        ${workCountryFilter}
+        ${institutionNameFilter}
+        ${programEnrolledFilter}
+        ${fundingSourceFilter}
+        ${institutionCountryFilter}
+        ${institutionCityFilter}
+        ${mrNoFilter}
+        ${accessFilterCondition}
+        ${searchCondition}
+    `;
+    
+    const countResult = await countQuery;
+    const totalCount = countResult[0]?.total || 0;
+    
+    console.log(`[API] Export count check: ${totalCount} records match filters`);
+    
+    // Limit export size to prevent timeouts (adjust as needed)
+    const MAX_EXPORT_SIZE = 100000;
+    if (totalCount > MAX_EXPORT_SIZE) {
+      return NextResponse.json({ 
+        error: `Export dataset is too large (${totalCount} records). Maximum allowed: ${MAX_EXPORT_SIZE} records.`,
+        suggestion: "Please apply more filters to reduce the dataset size before exporting.",
+        totalCount
+      }, { status: 413 }); // Payload Too Large
+    }
+    
     console.log("[API] Starting export query with filters applied");
     const startTime = Date.now();
     
+    // Execute the main query
     const rows = await query;
+    
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
     
     console.log(`[API] Export query completed in ${duration}s, returning ${rows.length} rows`);
     
-    // Check if result is too large (warn but still return)
-    if (rows.length > 100000) {
-      console.warn(`[API] Large export detected: ${rows.length} rows. Consider adding more filters.`);
+    // Warn if result is large but still return
+    if (rows.length > 50000) {
+      console.warn(`[API] Large export detected: ${rows.length} rows. This may cause performance issues.`);
+      return NextResponse.json({ 
+        items: rows,
+        warning: `Large dataset exported: ${rows.length} rows. Consider applying more filters for better performance.`
+      }, { status: 200 });
     }
     
     return NextResponse.json({ items: rows }, { status: 200 });

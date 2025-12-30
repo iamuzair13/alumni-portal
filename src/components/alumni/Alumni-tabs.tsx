@@ -1527,12 +1527,33 @@ export const AlumniTabs: React.FC = () => {
       clearTimeout(timeoutId);
       
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to fetch export data: ${res.status} - ${errorText}`);
+        let errorMessage = `Failed to fetch export data: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+            if (errorData.suggestion) {
+              errorMessage += `\n\n${errorData.suggestion}`;
+            }
+            if (errorData.totalCount) {
+              errorMessage += `\n\nTotal records matching filters: ${errorData.totalCount}`;
+            }
+          }
+        } catch {
+          // If JSON parsing fails, use the text response
+          const errorText = await res.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await res.json();
       const allItems = data.items || [];
+      
+      // Show warning if dataset is large
+      if (data.warning) {
+        console.warn(data.warning);
+      }
       
       if (!allItems || allItems.length === 0) {
         alert("No data found to export with the applied filters.");
@@ -1712,7 +1733,8 @@ export const AlumniTabs: React.FC = () => {
         }
       }
       
-      alert(`Failed to export data: ${errorMessage}. Please try again or contact support if the issue persists.`);
+      // Show error in a more user-friendly way (alert supports newlines)
+      alert(`Failed to export data:\n\n${errorMessage}\n\nPlease try applying more filters to reduce the dataset size, or contact support if the issue persists.`);
     }
   }, [debouncedQuery, statusFilter, selectedFaculties, selectedDepartments, selectedPrograms, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos, additionalFilter]);
   const [actionError, setActionError] = useState<string | null>(null);
