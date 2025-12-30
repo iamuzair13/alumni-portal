@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type InstitutionNameOption = {
   value: string;
@@ -12,9 +14,11 @@ export type InstitutionNamesResponse = {
   institutionNames: InstitutionNameOption[];
 };
 
-async function getInstitutionNames(signal?: AbortSignal): Promise<InstitutionNamesResponse> {
-  const url = "/api/alumni/institution-names";
-  const res = await fetch(url, { 
+async function getInstitutionNames(signal?: AbortSignal, filters?: MasterFilters): Promise<InstitutionNamesResponse> {
+  const url = new URL("/api/alumni/institution-names", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getInstitutionNames(signal?: AbortSignal): Promise<InstitutionNam
   return data;
 }
 
-export function useInstitutionNames() {
+export function useInstitutionNames(filters?: MasterFilters) {
   return useQuery<InstitutionNamesResponse, Error>({
-    queryKey: ["institution-names"],
-    queryFn: ({ signal }) => getInstitutionNames(signal),
+    queryKey: ["institution-names", filters],
+    queryFn: ({ signal }) => getInstitutionNames(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

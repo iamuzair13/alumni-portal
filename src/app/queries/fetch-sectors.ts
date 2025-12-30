@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type SectorOption = {
   value: string;
@@ -12,9 +14,11 @@ export type SectorsResponse = {
   sectors: SectorOption[];
 };
 
-async function getSectors(signal?: AbortSignal): Promise<SectorsResponse> {
-  const url = "/api/alumni/sectors";
-  const res = await fetch(url, { 
+async function getSectors(signal?: AbortSignal, filters?: MasterFilters): Promise<SectorsResponse> {
+  const url = new URL("/api/alumni/sectors", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getSectors(signal?: AbortSignal): Promise<SectorsResponse> {
   return data;
 }
 
-export function useSectors() {
+export function useSectors(filters?: MasterFilters) {
   return useQuery<SectorsResponse, Error>({
-    queryKey: ["sectors"],
-    queryFn: ({ signal }) => getSectors(signal),
+    queryKey: ["sectors", filters],
+    queryFn: ({ signal }) => getSectors(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

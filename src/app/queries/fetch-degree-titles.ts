@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type DegreeTitleOption = {
   value: string;
@@ -12,9 +14,11 @@ export type DegreeTitlesResponse = {
   degreeTitles: DegreeTitleOption[];
 };
 
-async function getDegreeTitles(signal?: AbortSignal): Promise<DegreeTitlesResponse> {
-  const url = "/api/alumni/degree-titles";
-  const res = await fetch(url, { 
+async function getDegreeTitles(signal?: AbortSignal, filters?: MasterFilters): Promise<DegreeTitlesResponse> {
+  const url = new URL("/api/alumni/degree-titles", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getDegreeTitles(signal?: AbortSignal): Promise<DegreeTitlesRespon
   return data;
 }
 
-export function useDegreeTitles() {
+export function useDegreeTitles(filters?: MasterFilters) {
   return useQuery<DegreeTitlesResponse, Error>({
-    queryKey: ["degree-titles"],
-    queryFn: ({ signal }) => getDegreeTitles(signal),
+    queryKey: ["degree-titles", filters],
+    queryFn: ({ signal }) => getDegreeTitles(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

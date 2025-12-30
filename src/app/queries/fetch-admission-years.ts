@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type AdmissionYearOption = {
   value: string;
@@ -12,9 +14,11 @@ export type AdmissionYearsResponse = {
   admissionYears: AdmissionYearOption[];
 };
 
-async function getAdmissionYears(signal?: AbortSignal): Promise<AdmissionYearsResponse> {
-  const url = "/api/alumni/admission-years";
-  const res = await fetch(url, { 
+async function getAdmissionYears(signal?: AbortSignal, filters?: MasterFilters): Promise<AdmissionYearsResponse> {
+  const url = new URL("/api/alumni/admission-years", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getAdmissionYears(signal?: AbortSignal): Promise<AdmissionYearsRe
   return data;
 }
 
-export function useAdmissionYears() {
+export function useAdmissionYears(filters?: MasterFilters) {
   return useQuery<AdmissionYearsResponse, Error>({
-    queryKey: ["admission-years"],
-    queryFn: ({ signal }) => getAdmissionYears(signal),
+    queryKey: ["admission-years", filters],
+    queryFn: ({ signal }) => getAdmissionYears(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

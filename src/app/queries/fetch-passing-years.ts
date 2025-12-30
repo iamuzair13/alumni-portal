@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type PassingYearOption = {
   value: string;
@@ -12,9 +14,11 @@ export type PassingYearsResponse = {
   passingYears: PassingYearOption[];
 };
 
-async function getPassingYears(signal?: AbortSignal): Promise<PassingYearsResponse> {
-  const url = "/api/alumni/passing-years";
-  const res = await fetch(url, { 
+async function getPassingYears(signal?: AbortSignal, filters?: MasterFilters): Promise<PassingYearsResponse> {
+  const url = new URL("/api/alumni/passing-years", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getPassingYears(signal?: AbortSignal): Promise<PassingYearsRespon
   return data;
 }
 
-export function usePassingYears() {
+export function usePassingYears(filters?: MasterFilters) {
   return useQuery<PassingYearsResponse, Error>({
-    queryKey: ["passing-years"],
-    queryFn: ({ signal }) => getPassingYears(signal),
+    queryKey: ["passing-years", filters],
+    queryFn: ({ signal }) => getPassingYears(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

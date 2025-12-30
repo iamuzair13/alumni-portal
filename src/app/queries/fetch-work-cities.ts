@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type WorkCityOption = {
   value: string;
@@ -12,9 +14,11 @@ export type WorkCitiesResponse = {
   workCities: WorkCityOption[];
 };
 
-async function getWorkCities(signal?: AbortSignal): Promise<WorkCitiesResponse> {
-  const url = "/api/alumni/work-cities";
-  const res = await fetch(url, { 
+async function getWorkCities(signal?: AbortSignal, filters?: MasterFilters): Promise<WorkCitiesResponse> {
+  const url = new URL("/api/alumni/work-cities", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getWorkCities(signal?: AbortSignal): Promise<WorkCitiesResponse> 
   return data;
 }
 
-export function useWorkCities() {
+export function useWorkCities(filters?: MasterFilters) {
   return useQuery<WorkCitiesResponse, Error>({
-    queryKey: ["work-cities"],
-    queryFn: ({ signal }) => getWorkCities(signal),
+    queryKey: ["work-cities", filters],
+    queryFn: ({ signal }) => getWorkCities(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

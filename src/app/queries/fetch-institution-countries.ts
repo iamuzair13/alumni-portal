@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type InstitutionCountryOption = {
   value: string;
@@ -12,9 +14,11 @@ export type InstitutionCountriesResponse = {
   institutionCountries: InstitutionCountryOption[];
 };
 
-async function getInstitutionCountries(signal?: AbortSignal): Promise<InstitutionCountriesResponse> {
-  const url = "/api/alumni/institution-countries";
-  const res = await fetch(url, { 
+async function getInstitutionCountries(signal?: AbortSignal, filters?: MasterFilters): Promise<InstitutionCountriesResponse> {
+  const url = new URL("/api/alumni/institution-countries", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getInstitutionCountries(signal?: AbortSignal): Promise<Institutio
   return data;
 }
 
-export function useInstitutionCountries() {
+export function useInstitutionCountries(filters?: MasterFilters) {
   return useQuery<InstitutionCountriesResponse, Error>({
-    queryKey: ["institution-countries"],
-    queryFn: ({ signal }) => getInstitutionCountries(signal),
+    queryKey: ["institution-countries", filters],
+    queryFn: ({ signal }) => getInstitutionCountries(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

@@ -1178,7 +1178,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
     return (
       <>
-        <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
+        <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
           {canDownload && (
             <PrintCardButton sapId={sapId} studentName={studentName} />
           )}
@@ -1193,7 +1193,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               aria-label="Delete Card"
               title="Delete Card"
             >
-              <TrashBinIcon className="h-5 w-5" />
+              <TrashBinIcon className="h-7 w-7" />
             </button>
           )}
         </div>

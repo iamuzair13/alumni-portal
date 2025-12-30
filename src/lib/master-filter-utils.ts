@@ -416,6 +416,24 @@ export function buildMasterFilterConditions(
     }
   }
 
+  // MR No filter (maps to registrationno column - exclude if querying mrNo - though mrNo doesn't have a counter endpoint)
+  if (excludeField !== "mrNo") {
+    const mrNo = getFilterValue("mrNo");
+    if (mrNo && (Array.isArray(mrNo) ? mrNo.length > 0 : mrNo)) {
+      const mrNos = Array.isArray(mrNo) ? mrNo : [mrNo];
+      const conditions = mrNos.map(m => {
+        const normalized = String(m).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          return sql`(registrationno IS NULL OR TRIM(COALESCE(registrationno, '')) = '')`;
+        }
+        return sql`LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${m}))`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
   // Combine all filter conditions with AND
   if (filterConditions.length === 0) {
     return sql``;

@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type InstitutionCityOption = {
   value: string;
@@ -12,9 +14,11 @@ export type InstitutionCitiesResponse = {
   institutionCities: InstitutionCityOption[];
 };
 
-async function getInstitutionCities(signal?: AbortSignal): Promise<InstitutionCitiesResponse> {
-  const url = "/api/alumni/institution-cities";
-  const res = await fetch(url, { 
+async function getInstitutionCities(signal?: AbortSignal, filters?: MasterFilters): Promise<InstitutionCitiesResponse> {
+  const url = new URL("/api/alumni/institution-cities", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getInstitutionCities(signal?: AbortSignal): Promise<InstitutionCi
   return data;
 }
 
-export function useInstitutionCities() {
+export function useInstitutionCities(filters?: MasterFilters) {
   return useQuery<InstitutionCitiesResponse, Error>({
-    queryKey: ["institution-cities"],
-    queryFn: ({ signal }) => getInstitutionCities(signal),
+    queryKey: ["institution-cities", filters],
+    queryFn: ({ signal }) => getInstitutionCities(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

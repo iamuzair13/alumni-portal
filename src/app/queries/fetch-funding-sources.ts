@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type FundingSourceOption = {
   value: string;
@@ -12,9 +14,11 @@ export type FundingSourcesResponse = {
   fundingSources: FundingSourceOption[];
 };
 
-async function getFundingSources(signal?: AbortSignal): Promise<FundingSourcesResponse> {
-  const url = "/api/alumni/funding-sources";
-  const res = await fetch(url, { 
+async function getFundingSources(signal?: AbortSignal, filters?: MasterFilters): Promise<FundingSourcesResponse> {
+  const url = new URL("/api/alumni/funding-sources", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getFundingSources(signal?: AbortSignal): Promise<FundingSourcesRe
   return data;
 }
 
-export function useFundingSources() {
+export function useFundingSources(filters?: MasterFilters) {
   return useQuery<FundingSourcesResponse, Error>({
-    queryKey: ["funding-sources"],
-    queryFn: ({ signal }) => getFundingSources(signal),
+    queryKey: ["funding-sources", filters],
+    queryFn: ({ signal }) => getFundingSources(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

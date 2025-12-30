@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type HomeCountryOption = {
   value: string;
@@ -12,9 +14,11 @@ export type HomeCountriesResponse = {
   homeCountries: HomeCountryOption[];
 };
 
-async function getHomeCountries(signal?: AbortSignal): Promise<HomeCountriesResponse> {
-  const url = "/api/alumni/home-countries";
-  const res = await fetch(url, { 
+async function getHomeCountries(signal?: AbortSignal, filters?: MasterFilters): Promise<HomeCountriesResponse> {
+  const url = new URL("/api/alumni/home-countries", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getHomeCountries(signal?: AbortSignal): Promise<HomeCountriesResp
   return data;
 }
 
-export function useHomeCountries() {
+export function useHomeCountries(filters?: MasterFilters) {
   return useQuery<HomeCountriesResponse, Error>({
-    queryKey: ["home-countries"],
-    queryFn: ({ signal }) => getHomeCountries(signal),
+    queryKey: ["home-countries", filters],
+    queryFn: ({ signal }) => getHomeCountries(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

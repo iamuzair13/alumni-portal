@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { searchParams } = new URL(req.url);
+    // Note: degree_title is not in master-filter-utils, but we still need to exclude it from filters
+    // Since degree_title is a different column than programEnrolled (higher_education_program),
+    // we don't have a corresponding excludeField, but we still apply other filters
+    const masterFilterConditions = buildMasterFilterConditions(searchParams);
 
     // Build access filter
     let accessFilterCondition = sql``;
@@ -32,6 +39,7 @@ export async function GET() {
       FROM public.tbl_alumni
       WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
         ${accessFilterCondition}
+        ${masterFilterConditions}
       GROUP BY 
         CASE 
           WHEN degree_title IS NULL OR TRIM(COALESCE(degree_title, '')) = '' 

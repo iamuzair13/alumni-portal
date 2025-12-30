@@ -27,6 +27,8 @@ import { useAdmissionYears } from "@/app/queries/fetch-admission-years";
 import { usePassingYears } from "@/app/queries/fetch-passing-years";
 import { useSectors } from "@/app/queries/fetch-sectors";
 import { useWorkCities } from "@/app/queries/fetch-work-cities";
+import { useHomeCities } from "@/app/queries/fetch-home-cities";
+import { useProvinces } from "@/app/queries/fetch-provinces";
 import { useInstitutionNames } from "@/app/queries/fetch-institution-names";
 import { useDegreeTitles } from "@/app/queries/fetch-degree-titles";
 import { useFundingSources } from "@/app/queries/fetch-funding-sources";
@@ -145,22 +147,6 @@ export const AlumniTabs: React.FC = () => {
   const router = useRouter();
   const [selected, setSelected] = useState<TabKey>("total");
   const { data: session } = useSession();
-  
-  
-  // Fetch institution names from database
-  const { data: institutionNamesData } = useInstitutionNames();
-  
-  // Fetch degree titles (program enrolled) from database
-  const { data: degreeTitlesData } = useDegreeTitles();
-  
-  // Fetch funding sources from database
-  const { data: fundingSourcesData } = useFundingSources();
-  
-  // Fetch institution countries from database
-  const { data: institutionCountriesData } = useInstitutionCountries();
-  
-  // Fetch institution cities from database
-  const { data: institutionCitiesData } = useInstitutionCities();
   
   // Refs for scroll synchronization
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -383,11 +369,6 @@ export const AlumniTabs: React.FC = () => {
     return Array.from(citySet).sort((a, b) => a.localeCompare(b));
   }, [selectedProvinces]);
   
-  // Check if Pakistan is selected in home countries
-  const hasPakistanSelected = useMemo(() => {
-    return selectedHomeCountries.includes("Pakistan");
-  }, [selectedHomeCountries]);
-  
   // Status filter: combine selected tab and additionalFilter
   const statusFilter = useMemo(() => {
     if (selected === "total") {
@@ -524,13 +505,22 @@ export const AlumniTabs: React.FC = () => {
   const { data: campusesData, error: campusesError, isLoading: isLoadingCampuses } = useCampuses(masterFilters);
   const { data: occupationStatusesData, error: occupationStatusesError, isLoading: isLoadingOccupationStatuses } = useOccupationStatuses(masterFilters);
   
-  // Additional master filter hooks
-  const { data: homeCountriesData } = useHomeCountries();
-  const { data: workCountriesData } = useWorkCountries();
-  const { data: admissionYearsData } = useAdmissionYears();
-  const { data: passingYearsData } = usePassingYears();
-  const { data: sectorsData } = useSectors();
-  const { data: workCitiesData } = useWorkCities();
+  // Additional master filter hooks - pass masterFilters to get dynamic counts
+  const { data: homeCountriesData } = useHomeCountries(masterFilters);
+  const { data: workCountriesData } = useWorkCountries(masterFilters);
+  const { data: admissionYearsData } = useAdmissionYears(masterFilters);
+  const { data: passingYearsData } = usePassingYears(masterFilters);
+  const { data: sectorsData } = useSectors(masterFilters);
+  const { data: workCitiesData } = useWorkCities(masterFilters);
+  const { data: homeCitiesData } = useHomeCities(masterFilters);
+  const { data: provincesData } = useProvinces(masterFilters);
+  
+  // Institution-related master filter hooks - pass masterFilters to get dynamic counts
+  const { data: institutionNamesData } = useInstitutionNames(masterFilters);
+  const { data: degreeTitlesData } = useDegreeTitles(masterFilters);
+  const { data: fundingSourcesData } = useFundingSources(masterFilters);
+  const { data: institutionCountriesData } = useInstitutionCountries(masterFilters);
+  const { data: institutionCitiesData } = useInstitutionCities(masterFilters);
 
   // Debug logging
   React.useEffect(() => {
@@ -577,22 +567,13 @@ export const AlumniTabs: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
   
-  // Reset province and city when home country changes (if Pakistan is removed)
+  // Reset home cities when provinces change - remove cities that are no longer available
   useEffect(() => {
-    if (!hasPakistanSelected && selectedProvinces.length > 0) {
-      setSelectedProvinces([]);
+    if (homeCitiesData?.homeCities) {
+      const availableCityValues = homeCitiesData.homeCities.map(c => c.value);
+      setSelectedHomeCities(prev => prev.filter(city => availableCityValues.includes(city)));
     }
-  }, [hasPakistanSelected, selectedProvinces]);
-  
-  useEffect(() => {
-    if (selectedProvinces.length === 0) {
-      setSelectedHomeCities([]);
-    } else {
-      // Remove cities that are no longer available
-      const availableCityNames = availableCities;
-      setSelectedHomeCities(prev => prev.filter(city => availableCityNames.includes(city)));
-    }
-  }, [selectedProvinces, availableCities]);
+  }, [homeCitiesData]);
   
   // Reset page when filters change
   useEffect(() => {
@@ -2743,54 +2724,54 @@ export const AlumniTabs: React.FC = () => {
                       </div>
 
                       {/* Province Filter */}
-                      {hasPakistanSelected && (
-                        <div className="relative" ref={provinceFilterRef}>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                            Province (Pakistan)
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedFilters(prev => ({ ...prev, province: !prev.province }))}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                      <div className="relative" ref={provinceFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Home Province (Pakistan)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, province: !prev.province }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedProvinces.length === 0
+                              ? "Select provinces..."
+                              : selectedProvinces.length === 1
+                              ? provincesData?.provinces?.find(p => p.value === selectedProvinces[0])?.label || selectedProvinces[0]
+                              : `${selectedProvinces.length} provinces selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.province ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            <span className="truncate">
-                              {selectedProvinces.length === 0
-                                ? "Select provinces..."
-                                : selectedProvinces.length === 1
-                                ? pakistanProvinces.find(p => p.value === selectedProvinces[0])?.label || selectedProvinces[0]
-                                : `${selectedProvinces.length} provinces selected`}
-                            </span>
-                            <svg
-                              className={`w-4 h-4 transition-transform ${expandedFilters.province ? "rotate-180" : ""}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          {expandedFilters.province && (
-                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                              <div className="p-2">
-                                <label
-                                  className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleProvinceSelectAll();
-                                  }}
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedProvinces.length === pakistanProvinces.length}
-                                      onChange={handleProvinceSelectAll}
-                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                    />
-                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Provinces</span>
-                                  </div>
-                                </label>
-                                <div className="max-h-48 overflow-y-auto">
-                                  {pakistanProvinces.map((province) => {
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.province && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleProvinceSelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={provincesData?.provinces && selectedProvinces.length === provincesData.provinces.length && provincesData.provinces.length > 0}
+                                    onChange={handleProvinceSelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Provinces</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {provincesData?.provinces && provincesData.provinces.length > 0 ? (
+                                  provincesData.provinces.map((province) => {
                                     const isChecked = selectedProvinces.includes(province.value);
                                     return (
                                       <label
@@ -2804,95 +2785,103 @@ export const AlumniTabs: React.FC = () => {
                                           onChange={() => handleProvinceToggle(province.value)}
                                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                         />
-                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{province.label}</span>
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                          {province.label} ({province.count.toLocaleString()})
+                                        </span>
                                       </label>
                                     );
-                                  })}
-                                </div>
+                                  })
+                                ) : (
+                                  <div className="p-2 text-sm text-gray-500">No provinces available</div>
+                                )}
                               </div>
                             </div>
-                          )}
-                          {selectedProvinces.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">{selectedProvinces.length} selected</p>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                        {selectedProvinces.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedProvinces.length} selected</p>
+                        )}
+                      </div>
                       
                       {/* Home City Filter */}
-                      {selectedProvinces.length > 0 && (
-                        <div className="relative" ref={homeCityFilterRef}>
-                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                            Home City
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedFilters(prev => ({ ...prev, homeCity: !prev.homeCity }))}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                      <div className="relative" ref={homeCityFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Home City
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, homeCity: !prev.homeCity }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedHomeCities.length === 0
+                              ? "Select cities..."
+                              : selectedHomeCities.length === 1
+                              ? selectedHomeCities[0]
+                              : `${selectedHomeCities.length} cities selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.homeCity ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            <span className="truncate">
-                              {selectedHomeCities.length === 0
-                                ? "Select cities..."
-                                : selectedHomeCities.length === 1
-                                ? selectedHomeCities[0]
-                                : `${selectedHomeCities.length} cities selected`}
-                            </span>
-                            <svg
-                              className={`w-4 h-4 transition-transform ${expandedFilters.homeCity ? "rotate-180" : ""}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          {expandedFilters.homeCity && (
-                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                              <div className="p-2">
-                                <label
-                                  className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleHomeCitySelectAll();
-                                  }}
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedHomeCities.length === availableCities.length && availableCities.length > 0}
-                                      onChange={handleHomeCitySelectAll}
-                                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                    />
-                                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Cities</span>
-                                  </div>
-                                </label>
-                                <div className="max-h-48 overflow-y-auto">
-                                  {availableCities.map((city) => {
-                                    const isChecked = selectedHomeCities.includes(city);
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.homeCity && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleHomeCitySelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={homeCitiesData?.homeCities && selectedHomeCities.length === homeCitiesData.homeCities.length && homeCitiesData.homeCities.length > 0}
+                                    onChange={handleHomeCitySelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Cities</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {homeCitiesData?.homeCities && homeCitiesData.homeCities.length > 0 ? (
+                                  homeCitiesData.homeCities.map((city) => {
+                                    const isChecked = selectedHomeCities.includes(city.value);
                                     return (
                                       <label
-                                        key={city}
+                                        key={city.value}
                                         className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         <input
                                           type="checkbox"
                                           checked={isChecked}
-                                          onChange={() => handleHomeCityToggle(city)}
+                                          onChange={() => handleHomeCityToggle(city.value)}
                                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                                         />
-                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{city}</span>
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                          {city.label} ({city.count.toLocaleString()})
+                                        </span>
                                       </label>
                                     );
-                                  })}
-                                </div>
+                                  })
+                                ) : (
+                                  <div className="p-2 text-sm text-gray-500">No cities available</div>
+                                )}
                               </div>
                             </div>
-                          )}
-                          {selectedHomeCities.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">{selectedHomeCities.length} selected</p>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                        {selectedHomeCities.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedHomeCities.length} selected</p>
+                        )}
+                      </div>
                       
                     
                       

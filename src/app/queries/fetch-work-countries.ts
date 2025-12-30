@@ -1,5 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import type { MasterFilters } from "./master-filter-types";
+import { addFilterParamsToUrl } from "./master-filter-types";
 
 export type WorkCountryOption = {
   value: string;
@@ -12,9 +14,11 @@ export type WorkCountriesResponse = {
   workCountries: WorkCountryOption[];
 };
 
-async function getWorkCountries(signal?: AbortSignal): Promise<WorkCountriesResponse> {
-  const url = "/api/alumni/work-countries";
-  const res = await fetch(url, { 
+async function getWorkCountries(signal?: AbortSignal, filters?: MasterFilters): Promise<WorkCountriesResponse> {
+  const url = new URL("/api/alumni/work-countries", typeof window !== "undefined" ? window.location.origin : "");
+  addFilterParamsToUrl(url, filters);
+  
+  const res = await fetch(url.toString(), { 
     signal,
     headers: { "accept": "application/json" } 
   });
@@ -29,10 +33,10 @@ async function getWorkCountries(signal?: AbortSignal): Promise<WorkCountriesResp
   return data;
 }
 
-export function useWorkCountries() {
+export function useWorkCountries(filters?: MasterFilters) {
   return useQuery<WorkCountriesResponse, Error>({
-    queryKey: ["work-countries"],
-    queryFn: ({ signal }) => getWorkCountries(signal),
+    queryKey: ["work-countries", filters],
+    queryFn: ({ signal }) => getWorkCountries(signal, filters),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
