@@ -1527,23 +1527,32 @@ export const AlumniTabs: React.FC = () => {
       clearTimeout(timeoutId);
       
       if (!res.ok) {
+        // Read body ONCE, then try to parse JSON from the raw text.
+        // This avoids "body stream already read" errors in some environments.
         let errorMessage = `Failed to fetch export data: ${res.status}`;
-        try {
-          const errorData = await res.json();
-          if (errorData.error) {
-            errorMessage = errorData.error;
-            if (errorData.suggestion) {
-              errorMessage += `\n\n${errorData.suggestion}`;
+        const rawBody = await res.text().catch(() => "");
+
+        if (rawBody) {
+          try {
+            const errorData = JSON.parse(rawBody);
+            if (errorData.error) {
+              errorMessage = errorData.error;
+              if (errorData.suggestion) {
+                errorMessage += `\n\n${errorData.suggestion}`;
+              }
+              if (errorData.totalCount) {
+                errorMessage += `\n\nTotal records matching filters: ${errorData.totalCount}`;
+              }
+            } else {
+              // Fallback to plain text if no structured error
+              errorMessage = rawBody || errorMessage;
             }
-            if (errorData.totalCount) {
-              errorMessage += `\n\nTotal records matching filters: ${errorData.totalCount}`;
-            }
+          } catch {
+            // Not JSON, use raw text
+            errorMessage = rawBody || errorMessage;
           }
-        } catch {
-          // If JSON parsing fails, use the text response
-          const errorText = await res.text();
-          errorMessage = errorText || errorMessage;
         }
+
         throw new Error(errorMessage);
       }
       
