@@ -114,32 +114,55 @@ export async function GET(req: Request) {
         OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTerm}
-        OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
+        OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
         OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
       )`;
     }
     
     // Build filters for faculty, department, program
+    // Faculty and department are now text-based from tbl_alumni columns
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        const facultyConditions = faculty.map(fac => sql`LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(${fac}))`);
+        const facultyConditions = faculty.map(fac => {
+          const normalized = String(fac).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${fac}))`;
+        });
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(faculty) && faculty) {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(${faculty}))`;
+        const normalized = String(faculty).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          facultyFilter = sql`AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+        } else {
+          facultyFilter = sql`AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        }
       }
     }
     
     let departmentFilter = sql``;
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        const departmentConditions = department.map(dept => sql`LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(${dept}))`);
+        const departmentConditions = department.map(dept => {
+          const normalized = String(dept).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+        });
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(department) && department) {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(${department}))`;
+        const normalized = String(department).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          departmentFilter = sql`AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+        } else {
+          departmentFilter = sql`AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+        }
       }
     }
     
@@ -443,9 +466,8 @@ export async function GET(req: Request) {
     const query = sql/* sql */`
       SELECT 
         a.*,
-        -- ID-based faculty, department, program names
-        f.faculty_name,
-        d.department_name,
+        -- Text-based faculty and department are in a.* (facultyname, departmentname)
+        -- Program name from ID-based join (program is still ID-based)
         p.program_name,
         -- Chapter data
         ac.chapter1 as chapter1_id,
@@ -485,8 +507,6 @@ export async function GET(req: Request) {
         asch.degree_title as scholarship_degree_title,
         asch.created_at as scholarship_created_at
       FROM public.tbl_alumni a
-      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
-      LEFT JOIN public.tbl_departments d ON d.id = a.department
       LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
       LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
@@ -540,7 +560,18 @@ export async function GET(req: Request) {
       console.log(`[API] Large export completed: ${rows.length} rows exported successfully.`);
     }
     
-    return NextResponse.json({ items: rows }, { status: 200 });
+    // Return response with headers to help with long-running requests
+    return NextResponse.json(
+      { items: rows }, 
+      { 
+        status: 200,
+        headers: {
+          'Connection': 'keep-alive',
+          'Keep-Alive': 'timeout=600',
+          'X-Content-Type-Options': 'nosniff',
+        }
+      }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export alumni data";
     console.error("[API] Export error:", message, err);
