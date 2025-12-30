@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
@@ -18,8 +18,18 @@ function MoreDetailsContent() {
   
   // Get identifier from URL params, or fallback to session (SAP ID or registration number)
   const urlSapId = searchParams.get("sapid") || "";
-  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
-  const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
+  
+  // Extract session identifiers
+  let sessionSapid: string | undefined;
+  let sessionRegNo: string | undefined;
+  if (session?.user) {
+    const user = session.user as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const sapIdValue = user["sapid"];
+    const regNoValue = user["registrationno"];
+    sessionSapid = sapIdValue ? String(sapIdValue).trim() : undefined;
+    sessionRegNo = regNoValue ? String(regNoValue).trim() : undefined;
+  }
   
   // Use URL param if available, otherwise use session SAP ID, otherwise use registration number
   const sapId = urlSapId || sessionSapid || sessionRegNo || "";
@@ -28,8 +38,63 @@ function MoreDetailsContent() {
   const updateMutation = useUpdateAlumniFields(sapId || undefined);
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Mark as initialized once data is loaded (prevents false positives on initial render)
+  // Also clear any pending changes that might have been set during initialization
+  useEffect(() => {
+    if (data && !isLoading && !isInitialized) {
+      // Clear any pending changes that might have been incorrectly set during initialization
+      setPendingChanges({});
+      // Longer delay to ensure all components (including nested ones) have finished their initial render
+      // This prevents any onValueChange calls during initialization from being tracked
+      const timer = setTimeout(() => {
+        setIsInitialized(true);
+        // Final check: clear any pending changes that might have been set during the delay
+        setPendingChanges((prev) => {
+          // Only clear if there are changes (to avoid unnecessary state updates)
+          if (Object.keys(prev).length > 0) {
+            return {};
+          }
+          return prev;
+        });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [data, isLoading, isInitialized]);
+
+  // Helper function to normalize values for comparison (treat null, undefined, and empty string as equivalent)
+  const normalizeValue = (val: unknown): unknown => {
+    if (val === null || val === undefined || val === "") return null;
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      // Treat "Not provided", "N/A", "NA", etc. as equivalent to null/empty
+      if (trimmed === "" || trimmed.toLowerCase() === "not provided" || trimmed.toLowerCase() === "n/a" || trimmed.toLowerCase() === "na") {
+        return null;
+      }
+      return trimmed;
+    }
+    return val;
+  };
+
+  // Helper function to check if two values are effectively the same
+  const valuesAreEqual = (val1: unknown, val2: unknown): boolean => {
+    const normalized1 = normalizeValue(val1);
+    const normalized2 = normalizeValue(val2);
+    // Also handle number comparisons (e.g., "123" === 123)
+    if (typeof normalized1 === "string" && typeof normalized2 === "number") {
+      return normalized1 === String(normalized2);
+    }
+    if (typeof normalized1 === "number" && typeof normalized2 === "string") {
+      return String(normalized1) === normalized2;
+    }
+    return normalized1 === normalized2;
+  };
 
   const handleFieldValueChange = useCallback((key: string, value: unknown) => {
+    // Don't track changes until component is fully initialized
+    if (!data || !isInitialized) return;
+    
     if (value === undefined) {
       // Remove from pending changes
       setPendingChanges((prev) => {
@@ -38,13 +103,25 @@ function MoreDetailsContent() {
         return next;
       });
     } else {
-      // Add or update pending change
-      setPendingChanges((prev) => ({
-        ...prev,
-        [key]: value,
-      }));
+      // Get the original value from data
+      const originalValue = (data as Record<string, unknown>)?.[key];
+      
+      // Only add to pending changes if the value is actually different from the original
+      if (!valuesAreEqual(value, originalValue)) {
+        setPendingChanges((prev) => ({
+          ...prev,
+          [key]: value,
+        }));
+      } else {
+        // If the value matches the original, remove it from pending changes (in case it was there before)
+        setPendingChanges((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
     }
-  }, []);
+  }, [data, isInitialized]);
 
   const handleSaveAll = async () => {
     if (!sapId || Object.keys(pendingChanges).length === 0 || isSavingAll) return;
@@ -102,7 +179,7 @@ function MoreDetailsContent() {
       }
     }
 
-    // Validate: If employment status is "Employed", all employment fields are required
+    // Validate: If employment status requires fields, validate them
     const employmentStatusChanged = pendingChanges.employeed !== undefined;
     const currentEmploymentStatus = employmentStatusChanged 
       ? pendingChanges.employeed 
@@ -114,19 +191,20 @@ function MoreDetailsContent() {
       return (data as Record<string, unknown>)?.[key] ?? null;
     };
     
-    // Check if status is being changed to "Employed" or is already "Employed"
-    const isEmployed = String(currentEmploymentStatus || "").toLowerCase() === "employed";
-    const isPursuingHigherEd = String(currentEmploymentStatus || "").toLowerCase() === "pursuing higher education" || String(currentEmploymentStatus || "").toLowerCase() === "highered";
+    // Check employment status (handle both DB values and display values)
+    const employmentStatusLower = String(currentEmploymentStatus || "").toLowerCase();
+    const isEmployedOrBusiness = employmentStatusLower === "employed" || employmentStatusLower === "employed/business";
+    const isSelfEmployed = employmentStatusLower === "self-emplo" || employmentStatusLower === "self-employed";
+    const isPursuingHigherEd = employmentStatusLower === "pursuing higher education" || employmentStatusLower === "highered";
     
-    if (isEmployed) {
+    // Both "Employed/Business" and "Self-employed" require the same fields
+    if (isEmployedOrBusiness || isSelfEmployed) {
       const requiredFields = [
         { key: "industry", label: "Industry" },
         { key: "nameoforganization", label: "Company Name" },
         { key: "designation", label: "Designation" },
         { key: "totalyearsofexpereince", label: "Total Years of Experience" },
         { key: "organization_address", label: "Company Address" },
-        { key: "officialnumber", label: "Company Official Phone Number" },
-        { key: "officialemail", label: "Company Official Email" },
       ];
 
       const missingFields: string[] = [];
@@ -140,8 +218,9 @@ function MoreDetailsContent() {
 
       if (missingFields.length > 0) {
         const fieldsList = missingFields.join(", ");
+        const statusLabel = isSelfEmployed ? "Self-employed" : "Employed/Business";
         toast.error(
-          `When employment status is "Employed", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
+          `When employment status is "${statusLabel}", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
           {
             duration: 6000,
             style: {
@@ -166,8 +245,6 @@ function MoreDetailsContent() {
         { key: "higher_education_institute_country", label: "Country" },
         { key: "higher_education_institute_city", label: "City" },
         { key: "is_scholarship", label: "Scholarship" },
-        { key: "higher_education_institute_email", label: "Institute Official Email" },
-        { key: "higher_education_intiture_number", label: "Institute Official Phone Number" },
       ];
 
       const missingFields: string[] = [];
@@ -339,15 +416,47 @@ function MoreDetailsContent() {
     return strValue === "" ? "Not provided" : strValue;
   };
 
+  // Normalize image path for Next.js Image component
+  const normalizeImagePath = (imagePath: unknown): string => {
+    // If empty or falsy, return default image
+    if (!imagePath || typeof imagePath !== "string" || imagePath.trim() === "" || imagePath === "null" || imagePath === "undefined") {
+      return "/images/person.jpg";
+    }
+    
+    let trimmedPath = String(imagePath).trim();
+    
+    // Remove old path references
+    trimmedPath = trimmedPath.replace(/\/tumbnail\//g, "/");
+    trimmedPath = trimmedPath.replace(/\/alumni-images\/thumbnail\//g, "/");
+    trimmedPath = trimmedPath.replace(/\/alumni-images\/card\//g, "/");
+    
+    // Normalize image path for Next.js Image component
+    // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
+    // Images are stored in /public/images/(imagename.extention)
+    if (!trimmedPath.startsWith("/") && !trimmedPath.startsWith("http://") && !trimmedPath.startsWith("https://")) {
+      // If it's just a filename, prepend the images directory
+      if (!trimmedPath.includes("/")) {
+        return `/images/${trimmedPath}`;
+      } else {
+        // If it's a relative path without leading slash, add it
+        return `/${trimmedPath}`;
+      }
+    }
+    return trimmedPath;
+  };
+
   const maritalStatusOptions = [
     { value: "Single", label: "Single" },
     { value: "Married", label: "Married" },
   ];
 
+  // Employment status options matching AlumniSqlForm.tsx
   const employmentStatusOptions = [
-    { value: "Employed", label: "Employed" },
-    { value: "Unemployed", label: "Unemployed" },
-    { value: "HigherEd", label: "Pursuing Higher Education" },
+    { value: "Employed/Business", label: "Employed/Business" },
+    { value: "Self-employed", label: "Self-employed" },
+    { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
+    { value: "Unemployed By choice", label: "Unemployed By choice" },
+    { value: "Unemployed, searching for job", label: "Unemployed, searching for job" },
   ];
 
   const sections = [
@@ -375,12 +484,12 @@ function MoreDetailsContent() {
       ],
     },
     {
-      title: "Address Information (For Pakistan Only)",
+      title: "Address Information",
       fields: [
-        { label: "Country", value: data.country, key: "country", editable: true, isSpecial: true },
-        { label: "Province (for Pakistan only)", value: data.province, key: "province", editable: true, isSpecial: true },
-        { label: "City", value: data.city, key: "city", editable: true, isSpecial: true },
-        { label: "Address", value: data.address, key: "address", editable: true, type: "textarea" as const },
+        { label: "Home Country", value: data.country, key: "country", editable: true, isSpecial: true },
+        { label: "Home Province", value: data.province, key: "province", editable: true, isSpecial: true },
+        { label: "Home City", value: data.city, key: "city", editable: true, isSpecial: true },
+        { label: "Home Address", value: data.address, key: "address", editable: true, type: "textarea" as const },
       ],
     },
     {
@@ -490,7 +599,7 @@ function MoreDetailsContent() {
               <div className="flex items-center gap-6">
                 <div className="relative w-32 h-32 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
                   <Image
-                    src={data.image1}
+                    src={normalizeImagePath(data.image1)}
                     alt={data.alumniname || "Profile"}
                     width={128}
                     height={128}
@@ -513,7 +622,7 @@ function MoreDetailsContent() {
                   {section.title}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {section.title === "Address Information (For Pakistan Only)" ? (
+                  {section.title === "Address Information" ? (
                     // Special rendering for Country/Province/City with dependencies
                     <>
                       <EditableCountryProvinceCity
@@ -543,32 +652,24 @@ function MoreDetailsContent() {
                         designationValue={pendingChanges.designation !== undefined ? pendingChanges.designation : data.designation}
                         totalyearsofexpereinceValue={pendingChanges.totalyearsofexpereince !== undefined ? pendingChanges.totalyearsofexpereince : data.totalyearsofexpereince}
                         organizationAddressValue={pendingChanges.organization_address !== undefined ? pendingChanges.organization_address : data.organization_address}
-                        officialEmailValue={pendingChanges.officialemail !== undefined ? pendingChanges.officialemail : data.officialemail}
-                        officialNumberValue={pendingChanges.officialnumber !== undefined ? pendingChanges.officialnumber : data.officialnumber}
                         degreeTitleValue={pendingChanges.degree_title !== undefined ? pendingChanges.degree_title : (data as Record<string, unknown>).degree_title ?? null}
                         instituteNameValue={pendingChanges.higher_education_institute_name !== undefined ? pendingChanges.higher_education_institute_name : (data as Record<string, unknown>).higher_education_institute_name ?? null}
                         programValue={pendingChanges.higher_education_program !== undefined ? pendingChanges.higher_education_program : (data as Record<string, unknown>).higher_education_program ?? null}
                         instituteCountryValue={pendingChanges.higher_education_institute_country !== undefined ? pendingChanges.higher_education_institute_country : (data as Record<string, unknown>).higher_education_institute_country ?? null}
                         instituteCityValue={pendingChanges.higher_education_institute_city !== undefined ? pendingChanges.higher_education_institute_city : (data as Record<string, unknown>).higher_education_institute_city ?? null}
                         scholarshipValue={pendingChanges.is_scholarship !== undefined ? pendingChanges.is_scholarship : (data as Record<string, unknown>).is_scholarship ?? null}
-                        instituteOfficialEmailValue={pendingChanges.higher_education_institute_email !== undefined ? pendingChanges.higher_education_institute_email : (data as Record<string, unknown>).higher_education_institute_email ?? null}
-                        instituteOfficialNumberValue={pendingChanges.higher_education_intiture_number !== undefined ? pendingChanges.higher_education_intiture_number : (data as Record<string, unknown>).higher_education_intiture_number ?? null}
                         onEmployeedChange={handleFieldValueChange}
                         onIndustryChange={handleFieldValueChange}
                         onOrganizationChange={handleFieldValueChange}
                         onDesignationChange={handleFieldValueChange}
                         onExperienceChange={handleFieldValueChange}
                         onOrganizationAddressChange={handleFieldValueChange}
-                        onOfficialEmailChange={handleFieldValueChange}
-                        onOfficialNumberChange={handleFieldValueChange}
                         onDegreeTitleChange={handleFieldValueChange}
                         onInstituteNameChange={handleFieldValueChange}
                         onProgramChange={handleFieldValueChange}
                         onInstituteCountryChange={handleFieldValueChange}
                         onInstituteCityChange={handleFieldValueChange}
                         onScholarshipChange={handleFieldValueChange}
-                        onInstituteOfficialEmailChange={handleFieldValueChange}
-                        onInstituteOfficialNumberChange={handleFieldValueChange}
                       />
                       {section.fields
                         .filter(f => {

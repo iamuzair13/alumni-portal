@@ -21,6 +21,7 @@ import PageBanner from "@/components/ui/PageBanner";
 import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
 import BenefitCard from "@/components/ui/BenefitCard";
+import RenewCardButton from "@/components/alumni/RenewCardButton";
 
 type Profile = {
   alumniname: string | null;
@@ -43,18 +44,66 @@ async function getProfile(searchParams: { sapid?: string }) {
   try {
     const session = await auth();
     const isAdmin = isAdminUser(session?.user);
+    const sessionAlumniId =
+      session?.user && (session.user as { userId?: number | null })?.userId
+        ? Number((session.user as { userId?: number | null }).userId)
+        : undefined;
     
-    if (sapid) {
-      // Admins can view any profile by SAP ID, regardless of verification status
+    if (sapid && isAdmin) {
+      // Admins can view any profile by SAP ID
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.sapid = ${sapid} 
+        LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
     
     // If admin and no sapid provided, return undefined (admins need to specify sapid to view profiles)
     if (isAdmin) {
       return undefined;
+    }
+
+    // Alumni: always load by the authenticated alumniid (never trust ?sapid=)
+    if (sessionAlumniId) {
+      const rows = await sql/* sql */`
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.alumniid = ${sessionAlumniId} 
+        LIMIT 1`;
+      if (rows[0]) return rows[0] as Profile | undefined;
     }
     
     // First try to get SAP ID from session (if alumni logged in with SAP ID)
@@ -64,27 +113,55 @@ async function getProfile(searchParams: { sapid?: string }) {
     
     if (sessionSapid) {
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.sapid = ${sessionSapid} 
+        LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
     
     if (sessionRegNo) {
       const rows = await sql/* sql */`
-        SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-        FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
+        SELECT 
+          a.alumniname, 
+          a.image1, 
+          a.image2, 
+          a.campusname, 
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle,
+          a.yearofending, 
+          a.facebook, 
+          a.instagram, 
+          a.youtube, 
+          a.linkedin, 
+          a.contactno
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.registrationno = ${sessionRegNo} 
+        LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
-    
-    // Fallback to email lookup (backward compatibility) - only for alumni users
-    const email = session?.user?.email ? String(session.user.email) : undefined;
-    if (!email) return undefined;
-    const rows = await sql/* sql */`
-      SELECT alumniname, image1, image2, campusname, facultyname, departmentname, degreetitle, yearofending, facebook, instagram, youtube, linkedin, contactno
-      FROM public.tbl_alumni 
-      WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
-    return rows[0] as Profile | undefined;
+
+    return undefined;
   } catch {
     return undefined;
   }
@@ -145,16 +222,37 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const contact = p?.contactno ?? "";
-  // Get SAP ID or registration number from session first, then from search params, then from email lookup
+  // Get SAP ID or registration number from session first, then (admin-only) from search params
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
-  const email = session?.user?.email ? String(session.user.email) : undefined;
+  const sessionAlumniId =
+    session?.user && (session.user as { userId?: number | null })?.userId
+      ? Number((session.user as { userId?: number | null }).userId)
+      : undefined;
+  const requestedSapid = isAdmin && sp?.sapid ? String(sp.sapid).trim() : undefined;
   
   let sapRows: Array<{ alumniid: number; sapid: string }> = [];
   let sapError: string | null = null;
   
-  // If we have SAP ID from session, use it directly
-  if (sessionSapid) {
+  // If admin requested a specific profile, use it
+  if (requestedSapid) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni 
+        WHERE sapid = ${requestedSapid} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load SAP ID (admin request)";
+    }
+  } else if (sessionAlumniId) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid, sapid FROM public.tbl_alumni
+        WHERE alumniid = ${sessionAlumniId} LIMIT 1`;
+    } catch (e) {
+      sapError = e instanceof Error ? e.message : "Failed to load alumni record from session";
+    }
+  } else if (sessionSapid) {
+    // If we have SAP ID from session, use it directly
     try {
       sapRows = await sql/* sql */`
         SELECT alumniid, sapid FROM public.tbl_alumni 
@@ -171,23 +269,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     } catch (e) {
       sapError = e instanceof Error ? e.message : "Failed to load SAP ID from registration number";
     }
-  } else if (email) {
-    // Fallback to email lookup (backward compatibility)
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-        ORDER BY alumniid DESC LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
-    }
   }
   
   // Use SAP ID if available, otherwise use registration number as identifier
   // The API endpoints support both SAP ID and registration number
   const sapId = String(
     sapRows[0]?.sapid ?? 
-    sp?.sapid ?? 
     sessionSapid ?? 
     sessionRegNo ?? 
     ""
@@ -197,6 +284,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   let cardStatusError: string | null = null;
 let cardPicture: string | null = null;
 let cardImageFile: string | null = null;
+  let reasonOnhold: string | null = null;
+  let validityDate: string | null = null;
   // Always check card status from database - don't auto-activate for admins or new users
   // New users should see "Apply" button until they actually apply for a card
   if (false) { // Disabled: was auto-setting to "active" for admins
@@ -208,25 +297,31 @@ let cardImageFile: string | null = null;
       if (sapId) {
         // Preload validation now uses sapid to check existing tblcard association
         const cr = await sql/* sql */`
-          SELECT c.status, c.cardpicture, c.card_image FROM public.tblcard c
+          SELECT c.status, c.cardpicture, c.card_image, c.reason_onhold, c.validity_date FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE a.sapid = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
-        const raw = String(cr[0]?.status ?? "").toLowerCase().trim();
+        const rawStatus = cr[0]?.status ? String(cr[0].status).trim() : "";
+        const upperStatus = rawStatus.toUpperCase();
         cardPicture = cr[0]?.cardpicture ?? null;
         cardImageFile = cr[0]?.card_image ?? null;
+        reasonOnhold = cr[0]?.reason_onhold ?? null;
+        validityDate = cr[0]?.validity_date ? String(cr[0].validity_date) : null;
+        
         // Map database statuses to CardStatus
-        if (raw === "delivered") {
-          cardStatus = "active";
-        } else if (raw === "rejected") {
-          cardStatus = "rejected";
-        } else if (raw === "pending") {
-          cardStatus = "pending";
-        } else if (raw === "full") {
+        // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+        if (upperStatus === "DELIVERED") {
+          cardStatus = "received"; // Show as "Received" in profile
+        } else if (upperStatus === "ACTIVE") {
+          cardStatus = "active"; // Show as "Active" only if not delivered
+        } else if (upperStatus === "PROCESS") {
+          cardStatus = "inprocess"; // Show as "In-Process"
+        } else if (upperStatus === "ONHOLD") {
+          cardStatus = "onhold"; // Show as "On Hold" with reason
+        } else if (upperStatus === "PENDING" || (!rawStatus && cr[0])) {
+          cardStatus = "pending"; // Show as "Pending"
+        } else if (rawStatus === "full") {
           cardStatus = "full";
-        } else if (raw && cr[0]) {
-          // If there's a record but status is unknown, default to pending
-          cardStatus = "pending";
         } else {
           // No record found - no application
           cardStatus = "none";
@@ -252,9 +347,21 @@ let cardImageFile: string | null = null;
     return undefined;
   })();
 
-  // Calculate validity from yearofending (add 5 years as default validity)
+  // Use validity_date from database if available, otherwise calculate from yearofending (add 5 years as default validity)
+  let validity: string | undefined = undefined;
+  if (validityDate) {
+    // Format validity_date (YYYY-MM-DD) to MM/YYYY for display
+    const date = new Date(validityDate);
+    if (!isNaN(date.getTime())) {
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      validity = `${month}/${year}`;
+    }
+  } else {
+    // Fallback: Calculate validity from yearofending (add 5 years as default validity)
   const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
-  const validity = validityYear ? `${validityYear}-12` : undefined;
+    validity = validityYear ? `${validityYear}-12` : undefined;
+  }
   // Mentorship application status for alumni users
   let mentorshipStatus: MentorshipStatus = "none";
   let mentorshipStatusError: string | null = null;
@@ -501,11 +608,15 @@ let cardImageFile: string | null = null;
                 </div>
                   <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-4 sm:pt-6 md:pt-8 lg:pt-10 mt-4 sm:mt-6 md:mt-0 order-2">
                     <div className={`shadow-sm border rounded-lg overflow-hidden text-center lg:mt-0 ${
-                      cardStatus === "active" 
+                      cardStatus === "received" 
                         ? "bg-green-100 border-gray-100" 
+                        : cardStatus === "active" 
+                        ? "bg-emerald-50 border-emerald-200" 
                         : cardStatus === "pending" 
                         ? "bg-amber-50 border-amber-200" 
-                        : cardStatus === "rejected" 
+                        : cardStatus === "inprocess"
+                        ? "bg-blue-50 border-blue-200"
+                        : cardStatus === "onhold" 
                         ? "bg-rose-50 border-rose-200" 
                         : cardStatus === "full" 
                         ? "bg-sky-50 border-sky-200" 
@@ -514,11 +625,15 @@ let cardImageFile: string | null = null;
                       <div className="p-4 sm:p-5 md:p-6">
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-3">
                           <h3 className={`text-lg sm:text-xl font-bold ${
-                            cardStatus === "active" 
-                              ? "text-indigo-600" 
+                            cardStatus === "received" 
+                              ? "text-green-700" 
+                              : cardStatus === "active" 
+                              ? "text-emerald-700" 
                               : cardStatus === "pending" 
                               ? "text-amber-700" 
-                              : cardStatus === "rejected" 
+                              : cardStatus === "inprocess"
+                              ? "text-blue-700"
+                              : cardStatus === "onhold" 
                               ? "text-rose-700" 
                               : cardStatus === "full" 
                               ? "text-sky-700" 
@@ -530,15 +645,25 @@ let cardImageFile: string | null = null;
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
                                 <span className="text-xs">{cardStatusError}</span>
                               </div>
+                            ) : cardStatus === "received" ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-green-50 text-green-700 px-2 py-0.5 border border-green-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-green-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
+                                <span className="text-xs">Received</span>
+                              </div>
                             ) : cardStatus === "active" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 border border-emerald-200">
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-emerald-600"><path className="fill-current" d="M9 16.17l-3.88-3.88L3 14.41 9 20.41 21 8.41 18.88 6.29z"/></svg>
                                 <span className="text-xs">Active</span>
                               </div>
-                            ) : cardStatus === "rejected" ? (
+                            ) : cardStatus === "inprocess" ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 px-2 py-0.5 border border-blue-200">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-blue-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
+                                <span className="text-xs">In-Process</span>
+                              </div>
+                            ) : cardStatus === "onhold" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200">
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
-                                <span className="text-xs">On hold</span>
+                                <span className="text-xs">On Hold</span>
                               </div>
                             ) : cardStatus === "pending" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 border border-amber-200">
@@ -558,7 +683,7 @@ let cardImageFile: string | null = null;
                             )}
                           </div>
                         </div>
-                        {cardStatus === "active" ? (
+                        {cardStatus === "received" || cardStatus === "active" ? (
                           <>
                             <div className="mt-3 sm:mt-4">
                               <AlumniCardTemplate
@@ -571,20 +696,33 @@ let cardImageFile: string | null = null;
                                 cardImage={cardTemplateImageFilename}
                               />
                             </div>
-                            {validity && (() => {
-                              // Parse validity date (format: "YYYY-12" means December of that year)
+                            {(() => {
+                              // Check expiration using validity_date from database, fallback to computed validity
+                              let expiryDate: Date | null = null;
+                              let isExpired = false;
+                              
+                              if (validityDate) {
+                                // Parse validity_date from database (format: YYYY-MM-DD)
+                                expiryDate = new Date(validityDate);
+                                expiryDate.setHours(0, 0, 0, 0);
+                              } else if (validity) {
+                                // Fallback to computed validity (format: "YYYY-12")
                               const [year] = validity.split("-").map(Number);
-                              // Create date for last day of December (December 31st of that year)
-                              const expiryDate = new Date(year, 11, 31); // December 31st (month is 0-indexed, so 11 = December)
-                              expiryDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
+                                expiryDate = new Date(year, 11, 31); // December 31st
+                                expiryDate.setHours(0, 0, 0, 0);
+                              }
+                              
+                              if (expiryDate) {
                               const today = new Date();
                               today.setHours(0, 0, 0, 0);
-                              const isExpired = today > expiryDate;
-                              const formattedExpiry = expiryDate.toLocaleDateString('en-US', { 
+                                isExpired = today > expiryDate;
+                              }
+                              
+                              const formattedExpiry = expiryDate ? expiryDate.toLocaleDateString('en-US', { 
                                 year: 'numeric', 
                                 month: 'long', 
                                 day: 'numeric' 
-                              });
+                              }) : "Not set";
                               
                               return (
                                 <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -601,17 +739,13 @@ let cardImageFile: string | null = null;
                                     </span>
                                   </div>
                                   {isExpired && (
-                                    <Link
-                                      href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                                      className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                    >
-                                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M23 4v6h-6"></path>
-                                        <path d="M1 20v-6h6"></path>
-                                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                                      </svg>
-                                      Renew Card
-                                    </Link>
+                                    <RenewCardButton
+                                      alumniId={alumniId}
+                                      name={name}
+                                      sapId={sapId || ""}
+                                      faculty={faculty}
+                                      department={dept}
+                                    />
                                   )}
                                 </div>
                               );
@@ -621,9 +755,19 @@ let cardImageFile: string | null = null;
                           <>
                             <div className="mt-3 sm:mt-4">
                               {cardStatus === "pending" ? (
-                                <p className="text-xs text-amber-700">Your application is under review.</p>
-                              ) : cardStatus === "rejected" ? (
-                                <p className="text-xs text-rose-700">Your application is on hold. Please contact us for more information.</p>
+                                <p className="text-xs text-amber-700">Your application is pending review.</p>
+                              ) : cardStatus === "inprocess" ? (
+                                <p className="text-xs text-blue-700">Your application is in process.</p>
+                              ) : cardStatus === "onhold" ? (
+                                <div className="text-xs text-rose-700">
+                                  <p className="font-medium mb-1">Your application is on hold.</p>
+                                  {reasonOnhold && (
+                                    <p className="text-[10px] mt-1 italic bg-rose-50 border border-rose-200 rounded px-2 py-1">
+                                      Reason: {reasonOnhold}
+                                    </p>
+                                  )}
+                                  <p className="mt-1">Please contact us for more information.</p>
+                                </div>
                               ) : cardStatus === "full" ? (
                                 <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
                               ) : (
@@ -639,7 +783,16 @@ let cardImageFile: string | null = null;
                             >
                               Under review
                             </button>
-                          ) : cardStatus === "rejected" ? (
+                          ) : cardStatus === "inprocess" ? (
+                            <button
+                              type="button"
+                              disabled
+                              aria-disabled
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+                            >
+                              In-Process
+                            </button>
+                          ) : cardStatus === "onhold" ? (
                             <div className="mt-2 sm:mt-3 space-y-2">
                               <button
                                 type="button"

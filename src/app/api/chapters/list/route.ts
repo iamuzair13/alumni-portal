@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
+import { parseChapterCities } from "@/lib/chapterCities";
 
 export async function GET() {
   try {
@@ -11,7 +12,8 @@ export async function GET() {
         chapter_whatsapp,
         chapter_image,
         is_active,
-        description
+        description,
+        cities
       FROM public.tblchapters
       WHERE is_active = true
       ORDER BY 
@@ -26,6 +28,7 @@ export async function GET() {
       whatsapp: r.chapter_whatsapp ? String(r.chapter_whatsapp) : null,
       image: r.chapter_image ? String(r.chapter_image) : null,
       description: r.description ? String(r.description) : null,
+      cities: parseChapterCities(r.cities),
     }));
     
     // Log for debugging - show all chapters

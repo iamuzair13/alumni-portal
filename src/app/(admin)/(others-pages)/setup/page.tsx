@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useUsersList } from "@/app/queries/fetch-users";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Modal } from "@/components/ui/modal";
@@ -16,6 +17,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AdminUser } from "@/app/queries/fetch-users";
 import { useSession } from "next-auth/react";
 import { canModify, isAdminUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
+import OrganizationComponent from "@/components/setup/OrganizationComponent";
+import ChaptersComponent from "@/components/setup/ChaptersComponent";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -45,8 +49,10 @@ const STORAGE_KEY_USERS = "setup_users_v1";
 type ToastItem = { id: string; type: "success" | "error"; message: string };
 
 
-export default function SetupPage() {
+function SetupPageContent() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const isAdmin = isAdminUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const hasModifyAccess = canModify(session?.user);
@@ -54,9 +60,27 @@ export default function SetupPage() {
 
   const TABS = [
     { key: "users", label: "Users" },
+    { key: "organizations", label: "Organizations" },
+    { key: "chapters", label: "Chapters" },
   ] as const;
 
-  const [selected, setSelected] = useState<typeof TABS[number]["key"]>("users");
+  // Get initial tab from URL search params, default to "users"
+  const tabFromUrl = searchParams.get("tab");
+  const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
+  const [selected, setSelected] = useState<typeof TABS[number]["key"]>(validTab);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: typeof TABS[number]["key"]) => {
+    setSelected(tab);
+    router.push(`/setup?tab=${tab}`, { scroll: false });
+  };
+
+  // Sync with URL on mount or when URL changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
+    setSelected(validTab);
+  }, [searchParams]);
 
   // Users management state
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -67,6 +91,10 @@ export default function SetupPage() {
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [removeUserId, setRemoveUserId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  // Get real-time users count for counter
+  const { data: realTimeUsers, isLoading: realTimeUsersLoading } = useUsersList();
+  const realTimeUsersCount = realTimeUsers?.length || 0;
 
   // hydrate from localStorage
   useEffect(() => {
@@ -110,6 +138,9 @@ export default function SetupPage() {
     list = list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
   }, [users, userSearch]);
+
+  // Calculate total users count after filteredUsers is defined
+  const totalUsersCount = filteredUsers.length + realTimeUsersCount;
 
   const formatDateTime = (iso: string) => {
     try {
@@ -273,7 +304,7 @@ export default function SetupPage() {
 
   return (
     <div className="">
-      <ComponentCard title="Setup" className="">
+      <ComponentCard title="Setup" className="overflow-x-hidden">
         {/* Role indicator */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -308,7 +339,7 @@ export default function SetupPage() {
                   ? "bg-white  text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                   : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
               }`}
-              onClick={() => setSelected(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
               role="tab"
               aria-selected={selected === tab.key}
               tabIndex={0}
@@ -316,19 +347,26 @@ export default function SetupPage() {
                 if (e.key === "ArrowRight") {
                   e.preventDefault();
                   const nextIdx = (idx + 1) % TABS.length;
-                  setSelected(TABS[nextIdx].key);
+                  handleTabChange(TABS[nextIdx].key);
                 } else if (e.key === "ArrowLeft") {
                   e.preventDefault();
                   const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                  setSelected(TABS[prevIdx].key);
+                  handleTabChange(TABS[prevIdx].key);
                 } else if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setSelected(tab.key);
+                  handleTabChange(tab.key);
                 }
               }}
               aria-label={`Open ${tab.label} tab`}
             >
+              <span className="flex items-center gap-2">
               {tab.label}
+                {tab.key === "users" && (
+                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {usersLoading || realTimeUsersLoading ? "..." : totalUsersCount.toLocaleString()}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -341,6 +379,13 @@ export default function SetupPage() {
                 <Alert key={t.id} variant={t.type} title={t.type === "success" ? "Success" : "Error"} message={t.message} />
               ))}
             </div>
+
+            {/* Users Counter */}
+            <UsersCounter 
+              realTimeCount={realTimeUsersCount}
+              localStorageCount={filteredUsers.length}
+              isLoading={usersLoading || realTimeUsersLoading}
+            />
 
             {/* Admin Control Panel */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -396,8 +441,9 @@ export default function SetupPage() {
 
             {/* Dashboard Access Management Table */}
             {!usersLoading && filteredUsers.length > 0 && (
-              <div className="mt-6 overflow-x-auto">
-                <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
+              <div className="mt-6">
+                <SyncedTableScroll minWidth={1100}>
+                  <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
                   <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
                     <tr className="border-b border-gray-200 dark:border-white/[0.06]">
                       <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
@@ -445,7 +491,8 @@ export default function SetupPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </SyncedTableScroll>
               </div>
             )}
 
@@ -498,6 +545,18 @@ export default function SetupPage() {
           </div>
         )}
 
+        {selected === "organizations" && (
+          <div className="mt-6">
+            <OrganizationComponent />
+          </div>
+        )}
+
+        {selected === "chapters" && (
+          <div className="mt-6">
+            <ChaptersComponent />
+          </div>
+        )}
+
         {/* Add/Edit User Form Component */}
         
         
@@ -518,6 +577,45 @@ export default function SetupPage() {
           .tab-item { flex-basis: 200px; }
         }
       `}</style>
+    </div>
+  );
+}
+
+function UsersCounter({ 
+  realTimeCount, 
+  localStorageCount, 
+  isLoading 
+}: { 
+  realTimeCount: number; 
+  localStorageCount: number; 
+  isLoading: boolean;
+}) {
+  const totalCount = realTimeCount + localStorageCount;
+
+  return (
+    <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</h3>
+          <p className="text-3xl font-bold text-blue-700 dark:text-blue-300 mt-1">
+            {isLoading ? "..." : totalCount.toLocaleString()}
+          </p>
+        </div>
+        <div className="flex gap-4 text-sm">
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400">Real-time</p>
+            <p className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+              {isLoading ? "..." : realTimeCount.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400">Local</p>
+            <p className="text-lg font-semibold text-indigo-700 dark:text-indigo-300">
+              {localStorageCount.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -574,7 +672,7 @@ function RealTimeUsers() {
 
   return (
     <div className="mt-6 overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
+      <SyncedTableScroll minWidth={1100} maxHeight={700}>
         <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
           <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
@@ -658,7 +756,7 @@ function RealTimeUsers() {
             ))}
           </tbody>
         </table>
-      </div>
+      </SyncedTableScroll>
       {/* Edit User Modal with UserForm */}
       {editUserId && canManage && (
         <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
@@ -687,5 +785,20 @@ function RealTimeUsers() {
       </Modal>
       )}
     </div>
+  );
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupPageContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon } from "@/icons";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 
 
-export type CardStatus = "active" | "inprocess" | "onhold" | "received" | "all";
+export type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "all";
 
 export type AlumniCardItem = {
   id: string;
@@ -44,6 +44,20 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-blue-500",
     pillBg: "bg-blue-100",
   },
+  pending: {
+    color: "text-amber-700",
+    bgColor: "bg-amber-50",
+    ringColor: "ring-amber-200",
+    iconColor: "text-amber-600",
+    pillBg: "bg-amber-100",
+  },
+  process: {
+    color: "text-blue-700",
+    bgColor: "bg-blue-50",
+    ringColor: "ring-blue-200",
+    iconColor: "text-blue-600",
+    pillBg: "bg-blue-100",
+  },
   active: {
     color: "text-emerald-700",
     bgColor: "bg-emerald-50",
@@ -51,12 +65,12 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-emerald-600",
     pillBg: "bg-emerald-100",
   },
-  inprocess: {
-    color: "text-amber-700",
-    bgColor: "bg-amber-50",
-    ringColor: "ring-amber-200",
-    iconColor: "text-amber-600",
-    pillBg: "bg-amber-100",
+  delivered: {
+    color: "text-green-700",
+    bgColor: "bg-green-50",
+    ringColor: "ring-green-200",
+    iconColor: "text-green-600",
+    pillBg: "bg-green-100",
   },
   onhold: {
     color: "text-rose-700",
@@ -65,22 +79,17 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-rose-600",
     pillBg: "bg-rose-100",
   },
-  received: {
-    color: "text-indigo-700",
-    bgColor: "bg-indigo-50",
-    ringColor: "ring-indigo-200",
-    iconColor: "text-indigo-600",
-    pillBg: "bg-indigo-100",
-  },
 };
 
 const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   all: GroupIcon,
-  active: BoltIcon,
-  inprocess: TimeIcon,
+  pending: TimeIcon,
+  process: BoltIcon,
+  active: CheckCircleIcon,
+  delivered: CheckCircleIcon,
   onhold: LockIcon,
-  received: CheckCircleIcon,
 };
+
 
 export type AlumniCardProps = {
   item: AlumniCardItem;
@@ -199,10 +208,12 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
                     </div>
                   </div>
                   <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${theme.pillBg} ${theme.color}`}>
-                    {alum.status === "active" ? "Active" : 
-                     alum.status === "inprocess" ? "In-Process" : 
-                     alum.status === "onhold" ? "On Hold" : 
-                     alum.status === "received" ? "Received" : 
+                    {alum.status === "pending" ? "Pending" : 
+                     alum.status === "process" ? "In-Process" : 
+                     alum.status === "active" ? "Active" :
+                     alum.status === "delivered" ? "Delivered" : 
+                     alum.status === "onhold" ? "On Hold" :
+                     alum.status === "all" ? "All" :
                      alum.status}
                   </span>
                 </div>
@@ -289,7 +300,7 @@ import { useCardApplicants } from "@/app/queries/fetch-card-applicants";
 import PrintCardButton from "./PrintCardButton";
 
 type SortDirection = "asc" | "desc";
-type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id";
+type SortKey = "name" | "passingYear" | "program" | "designation" | "organization" | "contact" | "department" | "id" | "faculty";
 
 export interface AlumniDataTableProps {
   items: AlumniListItem[];
@@ -317,6 +328,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [isExporting, setIsExporting] = React.useState<boolean>(false);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const { data: session } = useSession();
+  const topScrollbarRef = React.useRef<HTMLDivElement>(null);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const isScrollingRef = React.useRef<boolean>(false);
   // Only fetch if items are not provided (backward compatibility)
   const shouldFetch = !items || items.length === 0;
   const { data: applicantsData, isLoading: applicantsLoading, isError: applicantsError, error: applicantsErrorObj } = useCardApplicants("all", { enabled: shouldFetch });
@@ -336,19 +350,16 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     if (applicants && applicants.length) {
       return applicants.map((r) => {
         // Map database status to UI status
-        let uiStatus: CardStatus = "inprocess";
-        const dbStatus = r.status ? String(r.status).trim().toLowerCase() : "pending";
-        if (dbStatus === "delivered") {
-          uiStatus = "active";
-        } else if (dbStatus === "rejected") {
-          uiStatus = "onhold";
-        } else if (dbStatus === "received") {
-          uiStatus = "received";
-        } else if (dbStatus === "pending") {
-          uiStatus = "inprocess";
+        // Database values: "Pending", "Process", "Delivered"
+        let uiStatus: CardStatus = "pending";
+        const dbStatus = r.status ? String(r.status).trim() : "";
+        if (dbStatus.toUpperCase() === "DELIVERED") {
+          uiStatus = "delivered";
+        } else if (dbStatus.toUpperCase() === "PROCESS") {
+          uiStatus = "process";
         } else {
-          // Default to inprocess for any other status
-          uiStatus = "inprocess";
+          // Default to pending (NULL, empty, or "Pending")
+          uiStatus = "pending";
         }
         
         return {
@@ -383,7 +394,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         // Handle null, undefined, empty string, or actual status value
         let itemStatus: string;
         if (!i.status || String(i.status).trim() === "") {
-          itemStatus = "inprocess";
+          itemStatus = "pending";
         } else {
           itemStatus = String(i.status).trim().toLowerCase();
         }
@@ -425,8 +436,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             return (x.designation ?? "").toLowerCase();
           case "organization":
             return (x.organization ?? "").toLowerCase();
+          case "department":
+            return (x.department ?? "").toLowerCase();
+          case "faculty":
+            return (x.faculty ?? "").toLowerCase();
           case "contact":
             return `${x.email ?? ""} ${x.mobile ?? ""}`.toLowerCase();
+          case "id":
+            return String(x.id).toLowerCase();
           default:
             return x.name.toLowerCase();
         }
@@ -451,6 +468,67 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   React.useEffect(() => {
     setCurrentPage(1);
   }, [debouncedQuery, sortKey, sortDir, pageSize, statusFilter]);
+
+  // Sync scroll between top scrollbar and table container
+  React.useEffect(() => {
+    const tableContainer = tableContainerRef.current;
+    const topScrollbar = topScrollbarRef.current;
+    
+    if (!tableContainer || !topScrollbar) return;
+
+    // Sync scrollbar width with table content
+    const syncScrollbarWidth = () => {
+      const tableContent = tableContainer.querySelector('.table-content-wrapper') as HTMLElement;
+      if (tableContent) {
+        const scrollbarContent = topScrollbar.querySelector('.table-scrollbar-content') as HTMLElement;
+        if (scrollbarContent) {
+          scrollbarContent.style.minWidth = `${tableContent.scrollWidth}px`;
+        }
+      }
+    };
+
+    const handleTableScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        topScrollbar.scrollLeft = tableContainer.scrollLeft;
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 10);
+      }
+    };
+
+    const handleTopScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        tableContainer.scrollLeft = topScrollbar.scrollLeft;
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 10);
+      }
+    };
+
+    // Initial sync
+    syncScrollbarWidth();
+
+    // Watch for content changes
+    const resizeObserver = new ResizeObserver(() => {
+      syncScrollbarWidth();
+    });
+
+    const tableContent = tableContainer.querySelector('.table-content-wrapper');
+    if (tableContent) {
+      resizeObserver.observe(tableContent);
+    }
+
+    tableContainer.addEventListener('scroll', handleTableScroll);
+    topScrollbar.addEventListener('scroll', handleTopScroll);
+
+    return () => {
+      resizeObserver.disconnect();
+      tableContainer.removeEventListener('scroll', handleTableScroll);
+      topScrollbar.removeEventListener('scroll', handleTopScroll);
+    };
+  }, [pageItems, effectiveLoading]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -644,40 +722,65 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
     const { data: session } = useSession();
     const queryClient = useQueryClient();
-    const [localStatus, setLocalStatus] = React.useState<"pending" | "rejected" | "delivered" | "received" | null>(null);
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+    const [localStatus, setLocalStatus] = React.useState<"Pending" | "Process" | "Active" | "Delivered" | "Onhold" | null>(null);
+    const [reasonOnhold, setReasonOnhold] = React.useState<string>("");
+    const [showReasonInput, setShowReasonInput] = React.useState<boolean>(false);
     const [isUpdating, setIsUpdating] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+    const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold"; reason?: string } | null>(null);
     const hasUpdatedRef = React.useRef(false);
     const isAdmin = canModify(session?.user);
     
     // Map UI status (from items list) to DB status
-    const getDbStatusFromUI = (uiStatus?: CardStatus): "pending" | "rejected" | "delivered" | "received" => {
-      if (uiStatus === "active") return "delivered";
-      if (uiStatus === "onhold") return "rejected";
-      if (uiStatus === "received") return "received";
-      return "pending";
+    const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" => {
+      if (uiStatus === "delivered") return "Delivered";
+      if (uiStatus === "active") return "Active";
+      if (uiStatus === "process") return "Process";
+      if (uiStatus === "onhold") return "Onhold";
+      return "Pending"; // Default to Pending
     };
     
     // Get initial DB status from item prop or fetch from API
     const initialDbStatus = initialStatus ? getDbStatusFromUI(initialStatus) : null;
     
-    // Only fetch if we don't have initial status from props
-    const { data, isLoading } = useCardStatus(initialDbStatus ? undefined : sapId);
+    // Always fetch card data to get reason_onhold, even if we have initialStatus
+    const { data, isLoading } = useCardStatus(sapId);
     
     // Initialize local state from props first, then from fetched data
     React.useEffect(() => {
-      if (initialDbStatus && !hasUpdatedRef.current) {
-        setLocalStatus(initialDbStatus);
-        return;
-      }
-      
-      // Only initialize from API if we haven't manually updated and don't have initial status
-      if (!hasUpdatedRef.current && !initialDbStatus && data !== undefined) {
+      if (!hasUpdatedRef.current && data !== undefined) {
         if (data?.status) {
-          setLocalStatus(data.status as "pending" | "rejected" | "delivered" | "received");
+          // Map database status to local state (always use fetched data for accuracy)
+          const dbStatus = String(data.status).trim();
+          if (dbStatus === "Delivered") {
+            setLocalStatus("Delivered");
+          } else if (dbStatus === "Active") {
+            setLocalStatus("Active");
+          } else if (dbStatus === "Process") {
+            setLocalStatus("Process");
+          } else if (dbStatus === "Onhold") {
+            setLocalStatus("Onhold");
+            // Always load reason from database when status is Onhold
+            if (data.reason_onhold) {
+              setReasonOnhold(data.reason_onhold || "");
+            }
+            setShowReasonInput(true);
+          } else {
+            setLocalStatus("Pending");
+          }
         } else {
-          setLocalStatus("pending");
+          // If no data from API but we have initial status, use that
+          if (initialDbStatus && !data) {
+            setLocalStatus(initialDbStatus);
+          } else {
+            setLocalStatus("Pending");
+          }
         }
+      } else if (initialDbStatus && !hasUpdatedRef.current && !data) {
+        // Fallback: use initial status if no data fetched yet
+        setLocalStatus(initialDbStatus);
       }
     }, [data, initialDbStatus]);
     
@@ -688,26 +791,104 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     }, [initialDbStatus, localStatus]);
     
-    const current = localStatus ?? initialDbStatus ?? (data?.status ?? "pending") as "pending" | "rejected" | "delivered" | "received";
+    const current = localStatus ?? initialDbStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold";
+    
+    // Show reason input when Onhold is selected
+    React.useEffect(() => {
+      setShowReasonInput(current === "Onhold");
+      // Don't auto-fill the input field - it should only show what user types
+      // The database reason is displayed in the "Current Reason (from database)" section
+      if (current !== "Onhold") {
+        setReasonOnhold("");
+      }
+    }, [current]);
     
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = e.target.value as "pending" | "rejected" | "delivered" | "received";
+      const next = e.target.value as "Pending" | "Process" | "Active" | "Delivered" | "Onhold";
       
       // Don't update if same status
       if (next === current) return;
       
+      // If changing to Onhold, switch immediately (no confirmation needed) and show reason input
+      if (next === "Onhold") {
+        hasUpdatedRef.current = true; // Mark as manually updated to prevent useEffect from resetting
+        setLocalStatus("Onhold");
+        setShowReasonInput(true);
+        // Don't pre-fill the input field - let user see the reason in "Current Reason" section and type new one if needed
+        // Clear the input field so it's ready for new input
+        setReasonOnhold("");
+        return;
+      }
+      
+      // For other statuses, show confirmation modal first (only for admins)
+      if (isAdmin) {
+        setPendingStatusChange({ status: next });
+        setShowConfirmModal(true);
+      } else {
+        // Non-admins can change status directly (shouldn't happen, but just in case)
+        await submitStatusChange(next, "");
+      }
+    };
+    
+    const handleReasonSubmit = async () => {
+      if (!reasonOnhold.trim()) {
+        setError("Reason is required when status is Onhold");
+        return;
+      }
+      // Submit Onhold status with reason directly (no confirmation needed)
+      await submitStatusChange("Onhold", reasonOnhold.trim());
+    };
+    
+    const handleConfirmStatusChange = async () => {
+      if (!pendingStatusChange) return;
+      setShowConfirmModal(false);
+      await submitStatusChange(pendingStatusChange.status, pendingStatusChange.reason || "");
+      setPendingStatusChange(null);
+    };
+    
+    const handleCancelStatusChange = () => {
+      setShowConfirmModal(false);
+      // Revert local status to the actual current status from data
+      // Only revert if we're not in the middle of switching to Onhold
+      if (pendingStatusChange?.status !== "Onhold") {
+        if (data?.status) {
+          const dbStatus = String(data.status).trim();
+          if (dbStatus === "Delivered") {
+            setLocalStatus("Delivered");
+          } else if (dbStatus === "Active") {
+            setLocalStatus("Active");
+          } else if (dbStatus === "Process") {
+            setLocalStatus("Process");
+          } else if (dbStatus === "Onhold") {
+            setLocalStatus("Onhold");
+          } else {
+            setLocalStatus("Pending");
+          }
+        } else {
+          setLocalStatus("Pending");
+        }
+      }
+      setPendingStatusChange(null);
+    };
+    
+    const submitStatusChange = async (next: "Pending" | "Process" | "Active" | "Delivered" | "Onhold", reason: string) => {
       // Optimistic update
-      const previousStatus = localStatus ?? (data?.status as "pending" | "rejected" | "delivered" | "received" ?? "pending");
+      const previousStatus = localStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold";
       setLocalStatus(next);
       setIsUpdating(true);
       setError(null);
       hasUpdatedRef.current = true; // Mark that we've manually updated
       
       try {
+        const body: { status: string; reason_onhold?: string } = { status: next };
+        if (next === "Onhold" && reason) {
+          body.reason_onhold = reason;
+        }
+        
         const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: next }),
+          body: JSON.stringify(body),
         });
         
         if (!res.ok) {
@@ -728,13 +909,27 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               cardpicture: null,
               card_image: null,
               createdat: null,
+              reason_onhold: next === "Onhold" ? reason : null,
             };
           }
-          return { ...old, status: next };
+          return { 
+            ...old, 
+            status: next,
+            reason_onhold: next === "Onhold" ? reason : null
+          };
         });
         
         // Keep local state as the new status (don't let refetch override it)
         setLocalStatus(next);
+        
+        // If status is Onhold and reason was saved, clear the input field after a short delay
+        // This allows the cache update to complete first, then the reason will be displayed from database
+        if (next === "Onhold" && reason) {
+          // Clear input field after cache is updated
+          setTimeout(() => {
+            setReasonOnhold("");
+          }, 100);
+        }
         
         // Invalidate applicants list to update counts, but debounce to prevent rapid refetches
         setTimeout(() => {
@@ -754,32 +949,181 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     };
     
     // Map status to display label
-    const statusLabel = current === "delivered" ? "Active" : current === "rejected" ? "On Hold" : current === "received" ? "Received" : "In-Process";
+    const statusLabel = current === "Delivered" ? "Delivered" 
+      : current === "Active" ? "Active"
+      : current === "Process" ? "In-Process"
+      : current === "Onhold" ? "On Hold"
+      : "Pending";
     
     if (readOnly) {
       return (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">{statusLabel}</span>
+          {current === "Onhold" && data?.reason_onhold && (
+            <span className="text-[10px] text-gray-500" title={data.reason_onhold}>
+              (Reason: {data.reason_onhold})
+            </span>
+          )}
         </div>
       );
     }
     
     return (
-      <div className="flex items-center gap-2">
-        <select
-          aria-label="Card status"
-          className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[12px] text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
-          value={current}
-          disabled={isLoading || isUpdating || readOnly}
-          onChange={handleStatusChange}
-        >
-          <option value="pending">In-Process</option>
-          <option value="rejected">On Hold</option>
-          <option value="delivered">Active</option>
-          {isAdmin && <option value="received">Received</option>}
-        </select>
-        {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
-        {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Card status"
+            className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[12px] text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+            value={current}
+            disabled={isLoading || isUpdating || readOnly}
+            onChange={handleStatusChange}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Process">In-Process</option>
+            <option value="Active">Active</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Onhold">On Hold</option>
+          </select>
+          {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
+          {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
+        </div>
+        {showReasonInput && current === "Onhold" && isAdmin && (
+          <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-800/50 p-2.5">
+            {/* Field 1: Display current reason from database (always visible) */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                Current Reason (from database):
+              </label>
+              {isLoading ? (
+                <div className="rounded-md bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 px-3 py-2">
+                  <p className="text-[12px] text-gray-400 dark:text-gray-500 italic">
+                    Loading reason...
+                  </p>
+                </div>
+              ) : data?.reason_onhold ? (
+                <div className="rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2">
+                  <p className="text-[12px] text-gray-800 dark:text-gray-200 break-words leading-relaxed">
+                    {data.reason_onhold}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-md bg-gray-100 dark:bg-gray-900/50 border border-dashed border-gray-300 dark:border-gray-700 px-3 py-2">
+                  <p className="text-[12px] text-gray-400 dark:text-gray-500 italic">
+                    No reason has been set yet.
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Field 2: Input field to add/update reason */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                {data?.reason_onhold ? "Update Reason:" : "Add Reason:"} <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={reasonOnhold}
+                  onChange={(e) => {
+                    setReasonOnhold(e.target.value);
+                    setError(null); // Clear error when user types
+                  }}
+                  placeholder={data?.reason_onhold ? "Enter new reason..." : "Enter reason for on hold..."}
+                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-[12px] text-gray-700 dark:text-gray-300 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isUpdating}
+                />
+                <button
+                  onClick={handleReasonSubmit}
+                  disabled={isUpdating || !reasonOnhold.trim()}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {data?.reason_onhold && reasonOnhold !== data.reason_onhold ? "Update" : "Save"}
+                </button>
+              </div>
+            </div>
+            {error && (
+              <span className="text-[10px] text-red-600 dark:text-red-400">{error}</span>
+            )}
+          </div>
+        )}
+        {showReasonInput && current === "Onhold" && !isAdmin && data?.reason_onhold && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+            <span className="text-[10px] font-semibold text-gray-600">Reason for On Hold:</span>
+            <p className="text-[11px] text-gray-800 mt-1">{data.reason_onhold}</p>
+          </div>
+        )}
+        
+        {/* Confirmation Modal for Status Change */}
+        {isAdmin && (
+          <Modal
+            isOpen={showConfirmModal}
+            onClose={handleCancelStatusChange}
+            className="max-w-md mx-auto"
+            showCloseButton={true}
+          >
+            <div className="p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                    Confirm Status Change
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Are you sure you want to change the card status?
+                  </p>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Current Status:</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{statusLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">New Status:</span>
+                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {pendingStatusChange?.status === "Delivered" ? "Delivered" 
+                        : pendingStatusChange?.status === "Active" ? "Active"
+                        : pendingStatusChange?.status === "Process" ? "In-Process"
+                        : pendingStatusChange?.status === "Onhold" ? "On Hold"
+                        : "Pending"}
+                    </span>
+                  </div>
+                  {pendingStatusChange?.status === "Onhold" && pendingStatusChange?.reason && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 block mb-1">Reason:</span>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 rounded p-2 border border-gray-200 dark:border-gray-700">
+                        {pendingStatusChange.reason}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleCancelStatusChange}
+                  disabled={isUpdating}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmStatusChange}
+                  disabled={isUpdating}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isUpdating ? "Updating..." : "Confirm"}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
       </div>
     );
   };
@@ -792,20 +1136,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     // Try to get status from cache first, then from item status, fallback to pending
     const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
-    const itemStatus = alumItem.status ? String(alumItem.status).toLowerCase().trim() : null;
-    // Map UI status (active/onhold/inprocess/received) back to DB status (delivered/rejected/pending/received) for comparison
-    let dbStatusFromItem: "pending" | "rejected" | "delivered" | "received" | null = null;
-    if (itemStatus === "active") {
-      dbStatusFromItem = "delivered";
-    } else if (itemStatus === "onhold") {
-      dbStatusFromItem = "rejected";
-    } else if (itemStatus === "inprocess") {
-      dbStatusFromItem = "pending";
-    } else if (itemStatus === "received") {
-      dbStatusFromItem = "received";
-    }
-    const cardStatus = (cachedCardData?.status ?? dbStatusFromItem ?? "pending") as "pending" | "rejected" | "delivered" | "received";
-    const isDelivered = cardStatus === "delivered"; // Keep internal check as "delivered" for logic
+    // Get actual database status string for checking Active/Delivered
+    const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
+    const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED";
     const isAdmin = canModify(session?.user);
 
     const handleDelete = async () => {
@@ -845,8 +1178,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
     return (
       <>
-        <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2.5">
-          {isDelivered && (
+        <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
+          {canDownload && (
             <PrintCardButton sapId={sapId} studentName={studentName} />
           )}
           {isAdmin && (
@@ -860,7 +1193,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               aria-label="Delete Card"
               title="Delete Card"
             >
-              <TrashBinIcon className="h-5 w-5" />
+              <TrashBinIcon className="h-7 w-7" />
             </button>
           )}
         </div>
@@ -955,10 +1288,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             aria-label="Filter by status"
           >
             <option value="all">All Status</option>
-            <option value="pending">In-Process</option>
-            <option value="rejected">On Hold</option>
-            <option value="delivered">Active</option>
-            {canModify(session?.user) && <option value="received">Received</option>}
+            <option value="pending">Pending</option>
+            <option value="process">In-Process</option>
+            <option value="active">Active</option>
+            <option value="delivered">Delivered</option>
+            <option value="onhold">On Hold</option>
           </select>
           <button
             type="button"
@@ -1000,19 +1334,118 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-        <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto" aria-live="polite">
-          <div className="min-w-full xl:min-w-full">
+        {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
+        <div 
+          ref={topScrollbarRef}
+          className="top-horizontal-scrollbar w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+          style={{
+            height: '24px',
+            scrollbarWidth: 'auto' as const,
+            scrollbarColor: '#3b82f6 #e5e7eb',
+          }}
+        >
+          <div className="table-scrollbar-content h-full" style={{ minWidth: '800px' }}></div>
+        </div>
+        <div 
+          ref={tableContainerRef}
+          className="max-w-full overflow-x-hidden custom-scrollbar max-h-[700px] overflow-y-auto relative"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+          aria-live="polite"
+        >
+          <div className="table-content-wrapper" style={{ minWidth: '800px' }}>
             <Table className="min-w-full">
-              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm whitespace-nowrap">
+              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                 <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">{null}</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("name")} aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Name</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("id")} aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>SAP ID</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Mobile No</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Active Email</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider" onClick={() => toggleSort("department")} aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Card Status</TableCell>
-                  <TableCell isHeader className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">{null}</TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("name")} 
+                    aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Full Name</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "name" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "name" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("id")} 
+                    aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>SAP ID / Registration</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "id" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "id" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("contact")} 
+                    aria-sort={sortKey === "contact" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Email</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "contact" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "contact" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("faculty")} 
+                    aria-sort={sortKey === "faculty" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Faculty</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "faculty" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "faculty" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("department")} 
+                    aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Department</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "department" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "department" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+                    onClick={() => toggleSort("program")} 
+                    aria-sort={sortKey === "program" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Program</span>
+                      <div className="flex flex-col">
+                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "program" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "program" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Card Status</TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
@@ -1020,28 +1453,31 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 {effectiveLoading && (
                   Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                     <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
-                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
                         <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
                         <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
-                      <TableCell className="px-6 py-5">
+                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
+                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5">
                         <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                       </TableCell>
-                      <TableCell className="px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                      <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
                         <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                       </TableCell>
                     </TableRow>
@@ -1050,7 +1486,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={8}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={9}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1068,7 +1504,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={8}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={9}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1112,16 +1548,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                             <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === alum.id ? "rotate-45" : ""}`} />
                           </button>
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-start">
+                        <TableCell className="px-3 sm:px-6 py-5 text-start">
                           <div className="flex items-center gap-3">
                             <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{toTitleCase(alum.name)}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
-                          {formatSapId(alum.id)}
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
+                          {alum.registrationno ? (
+                            <div>
+                              <div>{formatSapId(alum.id)}</div>
+                              <div className="text-xs text-gray-500">{alum.registrationno}</div>
+                            </div>
+                          ) : (
+                            formatSapId(alum.id)
+                          )}
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{alum.mobile ?? "-"}</TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
                           <a 
                             href={alum.email ? `mailto:${alum.email}` : "#"} 
                             className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
@@ -1129,9 +1571,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                             {formatEmail(alum.email)}
                           </a>
                         </TableCell>
-                        <TableCell className="px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">{`${alum.faculty} - ${alum.department ?? "-"}`}</TableCell>
-                        <TableCell className="px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!isAdmin} /></TableCell>
-                        <TableCell className={`px-6 py-5 text-end sticky right-0 z-10 ${
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!isAdmin} /></TableCell>
+                        <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
                           selectedRowId === alum.id 
                             ? "bg-blue-50/80 dark:bg-blue-900/30" 
                             : idx % 2 === 0 
@@ -1143,7 +1587,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </TableRow>
                       {expandedRowId === alum.id && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={8} className="px-0 py-6">
+                          <TableCell colSpan={9} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!isAdmin} />
@@ -1175,14 +1619,46 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               const newPage = Math.max(1, Math.min(totalPages, p));
               setCurrentPage(newPage);
               // Scroll to top of table when page changes
-              const tableContainer = document.querySelector('.custom-scrollbar');
-              if (tableContainer) {
-                tableContainer.scrollTop = 0;
+              if (tableContainerRef.current) {
+                tableContainerRef.current.scrollTop = 0;
+              }
+              // Also reset horizontal scroll
+              if (topScrollbarRef.current) {
+                topScrollbarRef.current.scrollLeft = 0;
               }
             }}
           />
         </div>
       </div>
+      <style jsx global>{`
+        .top-horizontal-scrollbar::-webkit-scrollbar {
+          height: 24px !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-track {
+          background: #e5e7eb !important;
+          border-radius: 0 !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb {
+          background: #3b82f6 !important;
+          border-radius: 12px !important;
+          border: 3px solid #e5e7eb !important;
+          min-width: 50px !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #2563eb !important;
+          border-color: #d1d5db !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb:active {
+          background: #1d4ed8 !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .custom-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}</style>
     </section>
   );
 };

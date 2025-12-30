@@ -4,6 +4,8 @@ import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
 import { sendAlumniCardApplicationReceivedEmail } from "@/lib/email";
+import { auth } from "@/lib/auth";
+import { canModify } from "@/lib/alumniProfile";
 
 const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
@@ -45,6 +47,12 @@ async function saveCardImage(file: File, sapId: string) {
 
 export async function POST(req: Request) {
   try {
+    // Authentication check
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     const contentType = req.headers.get("content-type") || "";
 
     // Handle legacy JSON payloads (without file upload)
@@ -52,10 +60,57 @@ export async function POST(req: Request) {
       const body = await req.json();
       const alumniId = Number(body?.alumniId);
       if (!alumniId) return NextResponse.json({ error: "alumniId required" }, { status: 400 });
+      
+      // Verify alumni exists and user has permission
+      const alumniRows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail 
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${alumniId} 
+        LIMIT 1
+      ` as Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }>;
+      
+      if (!alumniRows[0]) {
+        return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
+      }
+      
+      const alumni = alumniRows[0];
+      const isAdmin = canModify(session.user);
+      
+      // Check if user owns this alumni record or is admin
+      if (!isAdmin) {
+        const userEmail = session.user.email ? String(session.user.email).toLowerCase().trim() : null;
+        const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).toLowerCase().trim() : null;
+        const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).toLowerCase().trim() : null;
+        
+        const dbSapid = alumni.sapid ? String(alumni.sapid).toLowerCase().trim() : "";
+        const dbRegNo = alumni.registrationno ? String(alumni.registrationno).toLowerCase().trim() : "";
+        const dbEmails = [
+          alumni.personalemail ? String(alumni.personalemail).toLowerCase().trim() : "",
+          alumni.universityemail ? String(alumni.universityemail).toLowerCase().trim() : "",
+          alumni.officialemail ? String(alumni.officialemail).toLowerCase().trim() : ""
+        ].filter(Boolean);
+        
+        const isOwnerBySapid = userSapid && dbSapid && dbSapid === userSapid;
+        const isOwnerByRegNo = userRegNo && dbRegNo && dbRegNo === userRegNo;
+        const isOwnerByEmail = userEmail && dbEmails.includes(userEmail);
+        const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
+        
+        if (!isOwner) {
+          return NextResponse.json({ error: "Forbidden: You don't have permission to apply for this alumni card" }, { status: 403 });
+        }
+      }
       const cnicno = String(body?.cnicno || "");
       const cardaddress = String(body?.cardaddress || "");
       const status = String(body?.status || "requested");
       const cardpicture = String(body?.cardpicture || "profile").slice(0, 50);
+      const validityDateStr = body?.validity_date ? String(body.validity_date) : null;
+      // Calculate validity date (3 years from application date) if not provided
+      let validityDate: string | null = validityDateStr;
+      if (!validityDate) {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 3);
+        validityDate = futureDate.toISOString().split("T")[0];
+      }
       
       if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
         return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
@@ -67,15 +122,16 @@ export async function POST(req: Request) {
       const isNewApplication = existingCard.length === 0;
 
       const rows = await sql/* sql */`
-        INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat)
-        VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW())
+        INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat, validity_date)
+        VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW(), ${validityDate})
         ON CONFLICT (alumniid) DO UPDATE
         SET cnicno = EXCLUDED.cnicno,
             cardaddress = EXCLUDED.cardaddress,
             status = EXCLUDED.status,
             cardpicture = EXCLUDED.cardpicture,
             card_image = EXCLUDED.card_image,
-            createdat = NOW()
+            createdat = NOW(),
+            validity_date = EXCLUDED.validity_date
         RETURNING cardid`;
       
       // Send email notification for new applications
@@ -118,6 +174,46 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const alumniId = Number(formData.get("alumniId"));
     if (!alumniId) return NextResponse.json({ error: "alumniId required" }, { status: 400 });
+    
+    // Verify alumni exists and user has permission
+    const alumniRows = await sql/* sql */`
+      SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail 
+      FROM public.tbl_alumni 
+      WHERE alumniid = ${alumniId} 
+      LIMIT 1
+    ` as Array<{ alumniid: number; sapid: string | null; registrationno: string | null; personalemail: string | null; universityemail: string | null; officialemail: string | null }>;
+    
+    if (!alumniRows[0]) {
+      return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
+    }
+    
+    const alumni = alumniRows[0];
+    const isAdmin = canModify(session.user);
+    
+    // Check if user owns this alumni record or is admin
+    if (!isAdmin) {
+      const userEmail = session.user.email ? String(session.user.email).toLowerCase().trim() : null;
+      const userSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).toLowerCase().trim() : null;
+      const userRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).toLowerCase().trim() : null;
+      
+      const dbSapid = alumni.sapid ? String(alumni.sapid).toLowerCase().trim() : "";
+      const dbRegNo = alumni.registrationno ? String(alumni.registrationno).toLowerCase().trim() : "";
+      const dbEmails = [
+        alumni.personalemail ? String(alumni.personalemail).toLowerCase().trim() : "",
+        alumni.universityemail ? String(alumni.universityemail).toLowerCase().trim() : "",
+        alumni.officialemail ? String(alumni.officialemail).toLowerCase().trim() : ""
+      ].filter(Boolean);
+      
+      const isOwnerBySapid = userSapid && dbSapid && dbSapid === userSapid;
+      const isOwnerByRegNo = userRegNo && dbRegNo && dbRegNo === userRegNo;
+      const isOwnerByEmail = userEmail && dbEmails.includes(userEmail);
+      const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
+      
+      if (!isOwner) {
+        return NextResponse.json({ error: "Forbidden: You don't have permission to apply for this alumni card" }, { status: 403 });
+      }
+    }
+    
     const sapId = String(formData.get("sapId") || "");
     const image = formData.get("image");
     const comment = String(formData.get("comment") || "").trim() || null;

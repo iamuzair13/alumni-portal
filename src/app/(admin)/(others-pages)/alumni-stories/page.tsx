@@ -7,6 +7,7 @@ import Link from "next/link";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
+import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { useForm, Controller } from "react-hook-form";
 import { storyFormSchema, type NewStoryPayload } from "@/lib/alumniStories";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -82,9 +83,8 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
 
   return (
     <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
-      <div className="max-w-full overflow-x-auto custom-scrollbar max-h-[700px] overflow-y-auto">
-        <div className="min-w-[950px] xl:min-w-full">
-          <Table className="min-w-full border border-gray-200 dark:border-gray-800">
+      <SyncedTableScroll minWidth={950} maxHeight={700}>
+        <Table className="min-w-full border border-gray-200 dark:border-gray-800">
             <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
               <TableRow>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SrNo.</TableCell>
@@ -202,7 +202,8 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
               ))}
             </TableBody>
           </Table>
-          <div className="px-4" aria-live="polite" aria-atomic="true">
+      </SyncedTableScroll>
+      <div className="px-4" aria-live="polite" aria-atomic="true">
             {actionMessage && (
               <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                 {actionMessage}
@@ -215,7 +216,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
             )}
           </div>
 
-          <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4">
             <span className="text-sm text-gray-500 dark:text-gray-400">
               {(() => {
                 const start = (currentPage - 1) * pageSize + 1;
@@ -240,8 +241,6 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
               <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)))} />
             </div>
           </div>
-        </div>
-      </div>
     </div>
   );
 };

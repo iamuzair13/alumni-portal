@@ -37,6 +37,10 @@ export type AlumniFullDetails = {
   campusname: string | null;
   departmentname: string | null;
   majorsubject: string | null;
+  // ID-based fields for faculty, department, program
+  faculty: number | null;
+  department: number | null;
+  program: number | null;
   industry: string | null;
   employeed: string | null;
   nameoforganization: string | null;
@@ -65,6 +69,7 @@ export type AlumniFullDetails = {
   alumnistatus: string | null;
   password: string | null;
   father_cnic: string | null;
+  category: string | null;
   // Higher Education fields
   degree_title: string | null;
   higher_education_institute_name: string | null;
@@ -72,8 +77,6 @@ export type AlumniFullDetails = {
   higher_education_institute_country: string | null;
   higher_education_institute_city: string | null;
   is_scholarship: string | null;
-  higher_education_institute_email: string | null;
-  higher_education_intiture_number: string | null;
   // Chapter and Association fields
   chapter: string | null;
   chapter1_id: number | null;
@@ -187,6 +190,11 @@ export function useUpdateAlumniFields(sapId: string | undefined) {
       qc.invalidateQueries({ queryKey: profileKey });
       // Also invalidate current user image query to update header
       qc.invalidateQueries({ queryKey: currentUserImageKey() });
+      // Invalidate filter queries when profile is updated
+      qc.invalidateQueries({ queryKey: ["marital-statuses"] });
+      qc.invalidateQueries({ queryKey: ["genders"] });
+      qc.invalidateQueries({ queryKey: ["campuses"] });
+      qc.invalidateQueries({ queryKey: ["occupation-statuses"] });
     },
   });
 }

@@ -5,38 +5,101 @@ import { sendAssociationApplicationEmail } from "@/lib/email";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET(request: NextRequest) {
+  console.log("[API] Alumni Association GET request received");
   try {
+    console.log("[API] Getting session...");
     const session = await auth();
+    console.log("[API] Session obtained:", session?.user?.email || "no user");
     const { searchParams } = new URL(request.url);
+    console.log("[API] URL search params:", Object.fromEntries(searchParams.entries()));
     
-    // Get filter parameters
-    const faculty = searchParams.get("faculty");
-    const department = searchParams.get("department");
+    // Get filter parameters (arrays for multi-select)
+    const facultiesParam = searchParams.get("faculties");
+    const departmentsParam = searchParams.get("departments");
+    const associationsParam = searchParams.get("associations");
+    const verified = searchParams.get("verified");
     const membershipFilter = searchParams.get("membershipFilter") || "members"; // "all", "members", "non-members"
+    
+    const selectedFaculties = facultiesParam ? facultiesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedDepartments = departmentsParam ? departmentsParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedAssociations = associationsParam ? associationsParam.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => !isNaN(n)) : [];
+    
+    // Pagination parameters
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500); // Max 500 per page
+    const offset = (page - 1) * limit;
     
     // Debug logging
     console.log("[API] Alumni Association Filters:", {
-      faculty: faculty || "none",
-      department: department || "none",
+      faculties: selectedFaculties.length > 0 ? selectedFaculties : "none",
+      departments: selectedDepartments.length > 0 ? selectedDepartments : "none",
+      associations: selectedAssociations.length > 0 ? selectedAssociations : "none",
       membershipFilter,
+      page,
+      limit,
     });
     
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
-    // Build faculty filter condition (case-insensitive with trim)
+    // Helper function to combine OR conditions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql``;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
+    
+    // Build faculty filter condition (case-insensitive with trim) - handle multiple
     let facultyFilterCondition = sql``;
-    if (faculty && faculty.trim()) {
-      const facultyValue = faculty.trim();
-      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(${facultyValue})`;
+    if (selectedFaculties.length > 0) {
+      const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      if (facultyConditions.length === 1) {
+        facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
+      } else if (facultyConditions.length > 1) {
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilterCondition = sql` AND (${combinedCondition})`;
+      }
     }
     
-    // Build department filter condition (case-insensitive with trim)
+    // Build department filter condition (case-insensitive with trim) - handle multiple
     let departmentFilterCondition = sql``;
-    if (department && department.trim()) {
-      const departmentValue = department.trim();
-      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(${departmentValue})`;
+    if (selectedDepartments.length > 0) {
+      const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      if (departmentConditions.length === 1) {
+        departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
+      } else if (departmentConditions.length > 1) {
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilterCondition = sql` AND (${combinedCondition})`;
+      }
+    }
+    
+    // Build association filter condition - handle multiple
+    let associationFilterCondition = sql``;
+    if (selectedAssociations.length > 0) {
+      // Build OR conditions for multiple associations
+      const associationConditions = selectedAssociations.map(id => sql`a.association_id = ${id}`);
+      if (associationConditions.length === 1) {
+        associationFilterCondition = sql` AND ${associationConditions[0]}`;
+      } else if (associationConditions.length > 1) {
+        const combinedCondition = combineOrConditions(associationConditions);
+        associationFilterCondition = sql` AND (${combinedCondition})`;
+      }
+    }
+    
+    // Build verified filter condition
+    let verifiedFilterCondition = sql``;
+    if (verified === "true") {
+      verifiedFilterCondition = sql` AND a.verify = 'true'`;
+    } else if (verified === "false") {
+      verifiedFilterCondition = sql` AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')`;
     }
     
     // Build membership filter condition
@@ -59,33 +122,82 @@ export async function GET(request: NextRequest) {
       : sql`FROM public.tbl_alumni a
       LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id`;
     
-    const rows = await sql/* sql */`
-      SELECT 
-        a.alumniid,
-        a.sapid,
-        a.alumniname,
-        a.departmentname,
-        a.facultyname,
-        a.degreetitle,
-        a.personalemail,
-        a.officialemail,
-        a.universityemail,
-        a.registrationno,
-        a.association_id,
-        assoc.title as association_title,
-        assoc.description as association_description,
-        assoc.dean as association_dean,
-        assoc.phone as association_phone,
-        assoc.email as association_email,
-        assoc.address as association_address,
-        assoc.created_at as association_created_at
-      ${baseQuery}
-      WHERE 1=1
-        ${accessFilterCondition}
-        ${facultyFilterCondition}
-        ${departmentFilterCondition}
-        ${membershipWhereCondition}
-      ORDER BY a.alumniid DESC`;
+    console.log("[API] Executing query with filters:", {
+      hasFacultyFilter: selectedFaculties.length > 0,
+      hasDepartmentFilter: selectedDepartments.length > 0,
+      hasAssociationFilter: selectedAssociations.length > 0,
+      membershipFilter,
+      page,
+      limit,
+      offset,
+    });
+    
+    // First, get the total count
+    let countResult;
+    try {
+      countResult = await sql/* sql */`
+        SELECT COUNT(*) as total
+        ${baseQuery}
+        WHERE 1=1
+          ${accessFilterCondition}
+          ${facultyFilterCondition}
+          ${departmentFilterCondition}
+          ${associationFilterCondition}
+          ${verifiedFilterCondition}
+          ${membershipWhereCondition}
+      `;
+    } catch (countError) {
+      console.error("[API] Count Query Error:", countError);
+      throw countError;
+    }
+    
+    const total = Number(countResult[0]?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    
+    // Then get the paginated results
+    let rows;
+    try {
+      rows = await sql/* sql */`
+        SELECT 
+          a.alumniid,
+          a.sapid,
+          a.alumniname,
+          a.departmentname,
+          a.facultyname,
+          a.degreetitle,
+          a.personalemail,
+          a.officialemail,
+          a.universityemail,
+          a.registrationno,
+          a.association_id,
+          assoc.title as association_title,
+          assoc.description as association_description,
+          assoc.dean as association_dean,
+          assoc.phone as association_phone,
+          assoc.email as association_email,
+          assoc.address as association_address,
+          assoc.created_at as association_created_at
+        ${baseQuery}
+        WHERE 1=1
+          ${accessFilterCondition}
+          ${facultyFilterCondition}
+          ${departmentFilterCondition}
+          ${associationFilterCondition}
+          ${verifiedFilterCondition}
+          ${membershipWhereCondition}
+        ORDER BY a.alumniid DESC
+        LIMIT ${limit} OFFSET ${offset}`;
+    } catch (queryError) {
+      console.error("[API] SQL Query Error:", queryError);
+      throw queryError;
+    }
+    
+    console.log("[API] Alumni Association Query Result:", {
+      rowCount: rows.length,
+      total,
+      totalPages,
+      page,
+    });
     
     const items = rows.map((r: Record<string, unknown>) => ({
       sapid: String(r.sapid ?? ""),
@@ -100,10 +212,20 @@ export async function GET(request: NextRequest) {
       createdAt: r.association_created_at || null,
     }));
     
-    return NextResponse.json({ items }, { status: 200 });
+    console.log("[API] Returning items:", items.length);
+    return NextResponse.json({ 
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+    }, { status: 200 });
   } catch (err) {
+    console.error("[API] Error fetching alumni association:", err);
     const msg = err instanceof Error ? err.message : "Failed to fetch association";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const errorDetails = err instanceof Error ? err.stack : String(err);
+    console.error("[API] Error details:", errorDetails);
+    return NextResponse.json({ error: msg, details: process.env.NODE_ENV === "development" ? errorDetails : undefined }, { status: 500 });
   }
 }
 

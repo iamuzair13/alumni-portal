@@ -156,12 +156,14 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       let strValue = String(value).trim();
       
       if (key === "employeed") {
-        // Map "Pursuing Higher Education" to "HigherEd" for VARCHAR(10) constraint
-        if (strValue === "Pursuing Higher Education") {
-          strValue = "HigherEd";
-        } else if (strValue.length > 10) {
-          strValue = strValue.substring(0, 10);
+        // Map display values to database values (matching AlumniSqlForm.tsx mapping)
+        if (strValue === "Employed/Business") {
+          strValue = "Employed";
+        } else if (strValue === "Self-employed") {
+          strValue = "Self-Emplo";
         }
+        // "Pursuing Higher Education", "Unemployed By choice", and "Unemployed, searching for job" are stored as-is
+        // Note: employeed is TEXT field in schema.sql, so no length constraint
       }
       
       if (key === "totalyearsofexpereince" && strValue.length > 10) {
@@ -223,8 +225,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const higherEducationInstituteCountryVal = "higher_education_institute_country" in body ? cleanValue("higher_education_institute_country", body.higher_education_institute_country) : undefined;
     const higherEducationInstituteCityVal = "higher_education_institute_city" in body ? cleanValue("higher_education_institute_city", body.higher_education_institute_city) : undefined;
     const isScholarshipVal = "is_scholarship" in body ? cleanValue("is_scholarship", body.is_scholarship) : undefined;
-    const higherEducationInstituteEmailVal = "higher_education_institute_email" in body ? cleanValue("higher_education_institute_email", body.higher_education_institute_email) : undefined;
-    const higherEducationIntitureNumberVal = "higher_education_intiture_number" in body ? cleanValue("higher_education_intiture_number", body.higher_education_intiture_number) : undefined;
     // Association field
     const associationIdVal = "association_id" in body ? (body.association_id !== null && body.association_id !== undefined && body.association_id !== "" ? Number(body.association_id) : null) : undefined;
     // System fields
@@ -234,10 +234,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const createddatetimeVal = "createddatetime" in body ? cleanValue("createddatetime", body.createddatetime) : undefined;
     const academicsessionVal = "academicsession" in body ? cleanValue("academicsession", body.academicsession) : undefined;
     const fatherCnicVal = "father_cnic" in body ? cleanValue("father_cnic", body.father_cnic) : undefined;
+    const categoryVal = "category" in body ? cleanValue("category", body.category) : undefined;
     // Chapter fields
     const chapter1IdVal = "chapter1_id" in body ? (body.chapter1_id !== null && body.chapter1_id !== undefined && body.chapter1_id !== "" ? Number(body.chapter1_id) : null) : undefined;
     const chapter2IdVal = "chapter2_id" in body ? (body.chapter2_id !== null && body.chapter2_id !== undefined && body.chapter2_id !== "" ? Number(body.chapter2_id) : null) : undefined;
     const chapter3IdVal = "chapter3_id" in body ? (body.chapter3_id !== null && body.chapter3_id !== undefined && body.chapter3_id !== "" ? Number(body.chapter3_id) : null) : undefined;
+    // New foreign key fields (faculty, department, program)
+    const facultyIdVal = "faculty" in body ? (body.faculty !== null && body.faculty !== undefined && body.faculty !== "" ? Number(body.faculty) : null) : undefined;
+    const departmentIdVal = "department" in body ? (body.department !== null && body.department !== undefined && body.department !== "" ? Number(body.department) : null) : undefined;
+    const programIdVal = "program" in body ? (body.program !== null && body.program !== undefined && body.program !== "" ? Number(body.program) : null) : undefined;
     
     // Handle password separately - store as plain text
     let passwordVal: string | undefined = undefined;
@@ -323,8 +328,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       higher_education_institute_country: higherEducationInstituteCountryVal,
       higher_education_institute_city: higherEducationInstituteCityVal,
       is_scholarship: isScholarshipVal,
-      higher_education_institute_email: higherEducationInstituteEmailVal,
-      higher_education_intiture_number: higherEducationIntitureNumberVal,
       association_id: associationIdVal,
       verify: verifyVal,
       lasttimelogin: lasttimeloginVal,
@@ -332,9 +335,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       createddatetime: createddatetimeVal,
       academicsession: academicsessionVal,
       father_cnic: fatherCnicVal,
+      category: categoryVal,
       chapter1_id: chapter1IdVal,
       chapter2_id: chapter2IdVal,
       chapter3_id: chapter3IdVal,
+      faculty: facultyIdVal,
+      department: departmentIdVal,
+      program: programIdVal,
     };
     
     const fieldsToUpdate = Object.entries(updateFields).filter(([, val]) => val !== undefined);
@@ -413,8 +420,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("higher_education_institute_country", higherEducationInstituteCountryVal);
       addUpdate("higher_education_institute_city", higherEducationInstituteCityVal);
       addUpdate("is_scholarship", isScholarshipVal);
-      addUpdate("higher_education_institute_email", higherEducationInstituteEmailVal);
-      addUpdate("higher_education_intiture_number", higherEducationIntitureNumberVal);
       addUpdate("association_id", associationIdVal);
       addUpdate("verify", verifyVal);
       addUpdate("lasttimelogin", lasttimeloginVal);
@@ -422,6 +427,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("createddatetime", createddatetimeVal);
       addUpdate("academicsession", academicsessionVal);
       addUpdate("father_cnic", fatherCnicVal);
+      addUpdate("category", categoryVal);
+      addUpdate("faculty", facultyIdVal);
+      addUpdate("department", departmentIdVal);
+      addUpdate("program", programIdVal);
       
       // Execute single UPDATE query if there are fields to update
       if (updates.length > 0) {

@@ -14,18 +14,25 @@ export async function GET(request: Request) {
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
     // Build status filter
-    // Note: NULL status should be treated as "pending" (default status)
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+    // NULL or empty status should be treated as "Pending" (default status)
     let statusCondition = sql``;
     if (status && status !== "all") {
-      if (status === "active") {
-        statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'delivered'`;
-      } else if (status === "pending") {
-        // Include anything that's NOT 'delivered', 'rejected', or 'received' (NULL, empty string, 'pending', or any other value)
-        statusCondition = sql` AND NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected', 'received'))`;
+      if (status === "pending") {
+        // Pending: NULL, empty, or "Pending"
+        statusCondition = sql` AND (c.status IS NULL OR TRIM(c.status) = '' OR UPPER(TRIM(c.status)) = 'PENDING')`;
+      } else if (status === "process") {
+        // Process: "Process" (note: "inprocess" maps to "Process" in database)
+        statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'PROCESS'`;
+      } else if (status === "active") {
+        // Active: "Active"
+        statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ACTIVE'`;
+      } else if (status === "delivered") {
+        // Delivered: "Delivered"
+        statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED'`;
       } else if (status === "onhold") {
-        statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'rejected'`;
-      } else if (status === "received") {
-        statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'received'`;
+        // Onhold: "Onhold"
+        statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD'`;
       }
     }
     
@@ -37,28 +44,31 @@ export async function GET(request: Request) {
         a.alumniname,
         COALESCE(a.personalemail, a.officialemail, a.universityemail) AS email,
         a.yearofending,
-        a.facultyname,
-        a.departmentname,
-        a.degreetitle,
+        f.faculty_name as facultyname,
+        d.department_name as departmentname,
+        COALESCE(p.program_name, a.degreetitle) as degreetitle,
         c.status,
         c.createdat
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE 1=1
         ${accessFilterCondition}
         ${statusCondition}
       ORDER BY c.createdat DESC`;
     
     // Fetch counts for all statuses
-    // Handle null status values, empty strings, and case-insensitive matching
-    // Anything that's NOT 'delivered', 'rejected', or 'received' should be treated as "pending" (default status)
-    // This ensures: all_count = active_count + pending_count + onhold_count + received_count
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+    // NULL or empty status should be treated as "Pending" (default status)
     const counts = await sql/* sql */`
       SELECT 
-        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) = 'delivered') as active_count,
-        COUNT(*) FILTER (WHERE NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected', 'received'))) as pending_count,
-        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) = 'rejected') as onhold_count,
-        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) = 'received') as received_count,
+        COUNT(*) FILTER (WHERE c.status IS NULL OR TRIM(c.status) = '' OR UPPER(TRIM(c.status)) = 'PENDING') as pending_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'PROCESS') as process_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ACTIVE') as active_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED') as delivered_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD') as onhold_count,
         COUNT(*) as all_count
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
@@ -66,28 +76,31 @@ export async function GET(request: Request) {
         ${accessFilterCondition}`;
     
     const countRow = counts[0] as {
-      active_count: bigint | number;
       pending_count: bigint | number;
+      process_count: bigint | number;
+      active_count: bigint | number;
+      delivered_count: bigint | number;
       onhold_count: bigint | number;
-      received_count: bigint | number;
       all_count: bigint | number;
     } | undefined;
     
     // Convert bigint to number safely
     const allCount = countRow?.all_count ? Number(countRow.all_count) : 0;
-    const activeCount = countRow?.active_count ? Number(countRow.active_count) : 0;
     const pendingCount = countRow?.pending_count ? Number(countRow.pending_count) : 0;
+    const processCount = countRow?.process_count ? Number(countRow.process_count) : 0;
+    const activeCount = countRow?.active_count ? Number(countRow.active_count) : 0;
+    const deliveredCount = countRow?.delivered_count ? Number(countRow.delivered_count) : 0;
     const onholdCount = countRow?.onhold_count ? Number(countRow.onhold_count) : 0;
-    const receivedCount = countRow?.received_count ? Number(countRow.received_count) : 0;
     
     return NextResponse.json({ 
       items: rows,
       counts: {
         all: allCount,
-        active: activeCount,
         pending: pendingCount,
+        process: processCount,
+        active: activeCount,
+        delivered: deliveredCount,
         onhold: onholdCount,
-        received: receivedCount,
       }
     }, { status: 200 });
   } catch (err) {

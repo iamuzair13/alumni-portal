@@ -6,9 +6,9 @@ import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
 
-// Images from public folder are referenced as URL strings
+// Images from public folder - using /images/card/ as specified
 const frontTemplate = "/images/cards/alumni-card-front.jpg";
-const backTemplate = "/images/cards/alumni-card-front.jpg";
+const backTemplate = "/images/cards/alumni-card-back.jpg";
 
 type FormState = {
   studentName: string;
@@ -19,7 +19,6 @@ type FormState = {
 };
 
 const ACCESS_PIN = "2374";
-
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -396,6 +395,7 @@ export default function Home() {
               </div>
 
               <div className="absolute right-[42px] top-[50px] flex h-[214px] w-[158px] items-center justify-center overflow-hidden ">
+              
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photoPreview || ""}
@@ -404,6 +404,7 @@ export default function Home() {
                     height={195}
                     className="h-full w-full object-cover"
                   />
+              
               </div>
             </div>
 
@@ -418,7 +419,7 @@ export default function Home() {
               />
 
               <div
-                className="absolute -right-[120px] top-[119px] flex h-[60px] w-[300px] items-stretch bg-white"
+                className="absolute -right-[120px] top-[119px] flex h-[60px] w-[550px] items-stretch bg-white"
                 style={{
                   transform: "rotate(90deg)",
                   transformOrigin: "center",

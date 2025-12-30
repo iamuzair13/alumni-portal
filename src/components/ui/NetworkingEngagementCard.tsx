@@ -14,8 +14,6 @@ type NetworkingCardProps = {
 };
 
 export default function NetworkingEngagementCard({
-  title,
-  description,
   action,
   href,
   disabled = false,
@@ -47,20 +45,14 @@ export default function NetworkingEngagementCard({
 
   if (disabled) {
     return (
-      <div className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
-        <div className="p-3 sm:p-4 md:p-5 text-center flex flex-col justify-between min-h-[10rem] sm:min-h-[12rem]">
-          <h3 className="text-base sm:text-lg font-semibold text-slate-900">{title}</h3>
-          <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">{description}</p>
-          <button
-            type="button"
-            disabled
-            aria-disabled
-            className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
-          >
-            {disabledText || action}
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        disabled
+        aria-disabled
+        className="mt-3 sm:mt-4 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+      >
+        {disabledText || action}
+      </button>
     );
   }
 

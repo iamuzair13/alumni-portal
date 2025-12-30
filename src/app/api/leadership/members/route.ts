@@ -44,15 +44,16 @@ export async function GET(req: NextRequest) {
         OR a.registrationno ILIKE ${`%${search}%`}
       )` : sql``;
       
-      const facultyCondition = faculty ? sql` AND a.facultyname = ${faculty}` : sql``;
+      const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
 
       const rows = await sql/* sql */`
         SELECT 
           a.alumniid,
           a.sapid,
           a.alumniname,
-          a.departmentname,
-          a.facultyname,
+          d.department_name as departmentname,
+          f.faculty_name as facultyname,
+          p.program_name as program_name,
           a.degreetitle,
           a.personalemail,
           a.officialemail,
@@ -69,6 +70,9 @@ export async function GET(req: NextRequest) {
           COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
         FROM public.tbl_alumni a
         JOIN public.chapter_leadership cl ON cl.id = a.chapter_leadership
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
         LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
@@ -101,7 +105,7 @@ export async function GET(req: NextRequest) {
           email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null) || "",
           faculty: r.facultyname ? String(r.facultyname) : null,
           department: r.departmentname ? String(r.departmentname) : null,
-          program: r.degreetitle ? String(r.degreetitle) : null,
+          program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
           position: r.post ? String(r.post) : "",
           createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : new Date().toISOString(),
           chapters,
@@ -115,7 +119,7 @@ export async function GET(req: NextRequest) {
         OR a.registrationno ILIKE ${`%${search}%`}
       )` : sql``;
       
-      const facultyCondition = faculty ? sql` AND a.facultyname = ${faculty}` : sql``;
+      const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
       
       const chapterCondition = chapter ? sql` AND assoc.title ILIKE ${`%${chapter}%`}` : sql``;
 
@@ -124,8 +128,9 @@ export async function GET(req: NextRequest) {
           a.alumniid,
           a.sapid,
           a.alumniname,
-          a.departmentname,
-          a.facultyname,
+          d.department_name as departmentname,
+          f.faculty_name as facultyname,
+          p.program_name as program_name,
           a.degreetitle,
           a.personalemail,
           a.officialemail,
@@ -137,6 +142,9 @@ export async function GET(req: NextRequest) {
           assoc.title as association_title
         FROM public.tbl_alumni a
         JOIN public.tblalumniassociation ass ON ass.id = a.association_job
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
         WHERE a.association_job IS NOT NULL
           AND ass.status = 'approved'
@@ -154,7 +162,7 @@ export async function GET(req: NextRequest) {
         email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null) || "",
         faculty: r.facultyname ? String(r.facultyname) : null,
         department: r.departmentname ? String(r.departmentname) : null,
-        program: r.degreetitle ? String(r.degreetitle) : null,
+        program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
         position: r.role ? String(r.role) : "",
         createdAt: r.createddatetime ? new Date(r.createddatetime as string).toISOString() : new Date().toISOString(),
       }));

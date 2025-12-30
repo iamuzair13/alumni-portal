@@ -9,8 +9,9 @@ import {
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
-  DocsIcon,
-  PlugInIcon,
+  PageIcon,
+  UserCircleIcon,
+  BoltIcon,
 } from "../icons/index";
 
 type NavItem = {
@@ -28,7 +29,7 @@ const navItems: NavItem[] = [
   },
  
   {
-    icon: <DocsIcon />,
+    icon: <PageIcon />,
     name: "Stories Management", //add dropdown with add and view
     path: "/alumni-stories",
   },
@@ -38,14 +39,18 @@ const navItems: NavItem[] = [
     path: "/events",
   },
   {
-    icon: <DocsIcon />,
+    icon: <UserCircleIcon />,
     name: "Leadership", 
     path: "/leadership",
   },
   {
-    icon: <PlugInIcon />,
-    name: "Setup", //add dropdown with users and locations
-    path : "/setup",	
+    icon: <BoltIcon />,
+    name: "Setup",
+    subItems: [
+      { name: "Users", path: "/setup?tab=users" },
+      { name: "Organizations", path: "/setup?tab=organizations" },
+      { name: "Chapters", path: "/setup?tab=chapters" },
+    ],
   },
 ];
 
@@ -299,14 +304,14 @@ const AppSidebar: React.FC = () => {
             <>
               <Image
                 className="dark:hidden"
-                src="/images/logo/logo.png"
+                src="/images/logo/UOL-Rebrand-ID_Final-03.png"
                 alt="Logo"
                 width={150}
                 height={40}
               />
               <Image
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src="/images/logo/UOL-Rebrand-ID_Final-03.svg"
                 alt="Logo"
                 width={150}
                 height={40}

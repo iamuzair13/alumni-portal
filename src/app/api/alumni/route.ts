@@ -4,6 +4,297 @@ import { alumniRegistrationComprehensiveSchema } from "@/lib/alumniRegistration"
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { parseChapterCities } from "@/lib/chapterCities";
+
+async function autoAssignChapter1FromHomeLocation(args: {
+  alumniId: number;
+  homeCountry: string | null | undefined;
+  homeCity: string | null | undefined;
+}) {
+  const homeCountryRaw = args.homeCountry ? String(args.homeCountry).trim() : "";
+  const homeCityRaw = args.homeCity ? String(args.homeCity).trim() : "";
+  const isPakistan = homeCountryRaw.toLowerCase().trim() === "pakistan";
+  const lookupType = isPakistan ? "city" : "country";
+  const lookupValueRaw = isPakistan ? homeCityRaw : homeCountryRaw;
+
+  console.log("[AUTO-CHAPTER] start", {
+    alumniId: args.alumniId,
+    homeCountry: homeCountryRaw || null,
+    homeCity: homeCityRaw || null,
+    lookupType,
+    lookupValue: lookupValueRaw || null,
+  });
+
+  if (!lookupValueRaw) {
+    console.log("[AUTO-CHAPTER] skip", {
+      alumniId: args.alumniId,
+      reason: isPakistan ? "Pakistan selected but home city missing" : "Home country missing",
+    });
+    return;
+  }
+
+  try {
+    const chapters = await sql<
+      {
+        id: number;
+        national_chapter: string | null;
+        international_chapter: string | null;
+        cities: unknown;
+      }[]
+    >/* sql */`
+      SELECT id, national_chapter, international_chapter, cities
+      FROM public.tblchapters
+      WHERE is_active = true
+        AND cities IS NOT NULL
+    `;
+
+    const lookupLower = lookupValueRaw.toLowerCase().trim();
+    const matches = chapters
+      .map((ch) => {
+        const parsed = parseChapterCities(ch.cities);
+        const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+        return {
+          id: Number(ch.id),
+          name: String(ch.national_chapter || ch.international_chapter || ""),
+          type: ch.national_chapter ? "national" : "international",
+          has,
+        };
+      })
+      .filter((m) => m.has);
+
+    const preferredType = lookupType === "city" ? "national" : "international";
+    matches.sort((a, b) => {
+      const aPref = a.type === preferredType ? 0 : 1;
+      const bPref = b.type === preferredType ? 0 : 1;
+      if (aPref !== bPref) return aPref - bPref;
+      return a.id - b.id;
+    });
+
+    const chosen = matches[0];
+    console.log("[AUTO-CHAPTER] matched", {
+      alumniId: args.alumniId,
+      lookupType,
+      lookupValue: lookupValueRaw,
+      matchedCount: matches.length,
+      chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
+    });
+
+    if (!chosen) return;
+
+    const existing = await sql<{ id: number; chapter1: number | null }[]>/* sql */`
+      SELECT id, "chapter1"
+      FROM public.alumni_chapter
+      WHERE id = ${args.alumniId}
+      LIMIT 1
+    `;
+
+    const currentChapter1 = existing[0]?.chapter1 ?? null;
+    if (currentChapter1) {
+      console.log("[AUTO-CHAPTER] skip", {
+        alumniId: args.alumniId,
+        reason: "chapter1 already set",
+        currentChapter1,
+        attemptedChapter1: chosen.id,
+      });
+      return;
+    }
+
+    if (existing.length > 0) {
+      await sql/* sql */`
+        UPDATE public.alumni_chapter
+        SET "chapter1" = ${chosen.id}
+        WHERE id = ${args.alumniId}
+      `;
+      console.log("[AUTO-CHAPTER] update", { alumniId: args.alumniId, chapter1: chosen.id });
+    } else {
+      await sql/* sql */`
+        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+        VALUES (${args.alumniId}, ${chosen.id}, NULL, NULL)
+      `;
+      console.log("[AUTO-CHAPTER] insert", { alumniId: args.alumniId, chapter1: chosen.id });
+    }
+  } catch (err) {
+    console.error("[AUTO-CHAPTER] error", { alumniId: args.alumniId, err });
+  }
+}
+
+async function autoAssignChapter2FromWorkLocation(args: {
+  alumniId: number;
+  workCountry: string | null | undefined;
+  workCity: string | null | undefined;
+}) {
+  const workCountryRaw = args.workCountry ? String(args.workCountry).trim() : "";
+  const workCityRaw = args.workCity ? String(args.workCity).trim() : "";
+  const isPakistan = workCountryRaw.toLowerCase().trim() === "pakistan";
+  const lookupType = isPakistan ? "city" : "country";
+  const lookupValueRaw = isPakistan ? workCityRaw : workCountryRaw;
+
+  console.log("[AUTO-CHAPTER2] start", {
+    alumniId: args.alumniId,
+    workCountry: workCountryRaw || null,
+    workCity: workCityRaw || null,
+    lookupType,
+    lookupValue: lookupValueRaw || null,
+  });
+
+  if (!lookupValueRaw) {
+    console.log("[AUTO-CHAPTER2] skip", {
+      alumniId: args.alumniId,
+      reason: isPakistan ? "Pakistan selected but work city missing" : "Work country missing",
+    });
+    return;
+  }
+
+  try {
+    const chapters = await sql<
+      {
+        id: number;
+        national_chapter: string | null;
+        international_chapter: string | null;
+        cities: unknown;
+      }[]
+    >/* sql */`
+      SELECT id, national_chapter, international_chapter, cities
+      FROM public.tblchapters
+      WHERE is_active = true
+        AND cities IS NOT NULL
+    `;
+
+    const lookupLower = lookupValueRaw.toLowerCase().trim();
+    const matches = chapters
+      .map((ch) => {
+        const parsed = parseChapterCities(ch.cities);
+        const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+        return {
+          id: Number(ch.id),
+          name: String(ch.national_chapter || ch.international_chapter || ""),
+          type: ch.national_chapter ? "national" : "international",
+          has,
+        };
+      })
+      .filter((m) => m.has);
+
+    const preferredType = lookupType === "city" ? "national" : "international";
+    matches.sort((a, b) => {
+      const aPref = a.type === preferredType ? 0 : 1;
+      const bPref = b.type === preferredType ? 0 : 1;
+      if (aPref !== bPref) return aPref - bPref;
+      return a.id - b.id;
+    });
+
+    const chosen = matches[0];
+    console.log("[AUTO-CHAPTER2] matched", {
+      alumniId: args.alumniId,
+      lookupType,
+      lookupValue: lookupValueRaw,
+      matchedCount: matches.length,
+      chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
+    });
+
+    if (!chosen) return;
+
+    const existing = await sql<{ id: number; chapter2: number | null }[]>/* sql */`
+      SELECT id, "chapter2"
+      FROM public.alumni_chapter
+      WHERE id = ${args.alumniId}
+      LIMIT 1
+    `;
+
+    const currentChapter2 = existing[0]?.chapter2 ?? null;
+    if (currentChapter2) {
+      console.log("[AUTO-CHAPTER2] skip", {
+        alumniId: args.alumniId,
+        reason: "chapter2 already set",
+        currentChapter2,
+        attemptedChapter2: chosen.id,
+      });
+      return;
+    }
+
+    if (existing.length > 0) {
+      await sql/* sql */`
+        UPDATE public.alumni_chapter
+        SET "chapter2" = ${chosen.id}
+        WHERE id = ${args.alumniId}
+      `;
+      console.log("[AUTO-CHAPTER2] update", { alumniId: args.alumniId, chapter2: chosen.id });
+    } else {
+      await sql/* sql */`
+        INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+        VALUES (${args.alumniId}, NULL, ${chosen.id}, NULL)
+      `;
+      console.log("[AUTO-CHAPTER2] insert", { alumniId: args.alumniId, chapter2: chosen.id });
+    }
+  } catch (err) {
+    console.error("[AUTO-CHAPTER2] error", { alumniId: args.alumniId, err });
+  }
+}
+
+async function autoAssignAssociationFromFaculty(args: { alumniId: number; facultyName: string | null | undefined }) {
+  const facultyName = args.facultyName ? String(args.facultyName).trim() : "";
+  if (!facultyName) {
+    console.log("[AUTO-ASSOCIATION] skip", { alumniId: args.alumniId, reason: "facultyName missing" });
+    return;
+  }
+
+  try {
+    const currentAssoc = await sql<{ association_id: number | null }[]>/* sql */`
+      SELECT association_id
+      FROM public.tbl_alumni
+      WHERE alumniid = ${args.alumniId}
+      LIMIT 1
+    `;
+    const existingAssociationId = currentAssoc[0]?.association_id ?? null;
+    console.log("[AUTO-ASSOCIATION] start", { alumniId: args.alumniId, facultyName, existingAssociationId });
+
+    if (existingAssociationId) {
+      console.log("[AUTO-ASSOCIATION] skip", {
+        alumniId: args.alumniId,
+        facultyName,
+        reason: "association_id already set",
+        existingAssociationId,
+      });
+      return;
+    }
+
+    const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
+      SELECT id, title
+      FROM public.tbl_associations
+      WHERE (
+        (title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+        OR (description IS NOT NULL AND LOWER(TRIM(description)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+        OR (dean IS NOT NULL AND LOWER(TRIM(dean)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
+      )
+      ORDER BY
+        CASE
+          WHEN title IS NOT NULL AND LOWER(TRIM(title)) = LOWER(TRIM(${facultyName})) THEN 0
+          WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
+          WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
+          ELSE 3
+        END,
+        id ASC
+      LIMIT 1
+    `;
+    const chosen = assocRows[0];
+
+    console.log("[AUTO-ASSOCIATION] matched", {
+      alumniId: args.alumniId,
+      facultyName,
+      chosen: chosen ? { associationId: chosen.id, title: chosen.title } : null,
+    });
+
+    if (!chosen?.id) return;
+
+    await sql/* sql */`
+      UPDATE public.tbl_alumni
+      SET association_id = ${chosen.id}
+      WHERE alumniid = ${args.alumniId}
+    `;
+    console.log("[AUTO-ASSOCIATION] update", { alumniId: args.alumniId, associationId: chosen.id });
+  } catch (err) {
+    console.error("[AUTO-ASSOCIATION] error", { alumniId: args.alumniId, facultyName, err });
+  }
+}
 
 // Helper: map validated payload to DB columns
 function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>) {
@@ -36,6 +327,8 @@ function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>)
     totalyearsofexpereince: payload.totalExperienceYears ?? null,
     officialemail: payload.officialEmail ?? null,
     officialnumber: payload.officialPhone ?? null,
+    work_city: payload.workCity ?? null,
+    work_country: payload.workCountry ?? null,
     datasource: payload.source ?? null,
     verify: payload.verified === true ? "true" : payload.verified === false ? "false" : "pending", // 'pending' for new registrations
     alumnistatus: payload.category ?? null,
@@ -52,7 +345,56 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500); // Max 500 per page for performance
     const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || ""; // Filter by verify status: "verified", "unverified", "underApproval"
+    // Get all values for multi-select filters
+    const statusParams = searchParams.getAll("status");
+    const facultyParams = searchParams.getAll("faculty");
+    const departmentParams = searchParams.getAll("department");
+    const programParams = searchParams.getAll("program");
+    const status = statusParams.length > 0 ? statusParams : (searchParams.get("status") || "");
+    const faculty = facultyParams.length > 0 ? facultyParams : (searchParams.get("faculty") || "");
+    const department = departmentParams.length > 0 ? departmentParams : (searchParams.get("department") || "");
+    const program = programParams.length > 0 ? programParams : (searchParams.get("program") || "");
+    
+    // Additional master filters
+    const genderParams = searchParams.getAll("gender");
+    const maritalStatusParams = searchParams.getAll("maritalStatus");
+    const homeCountryParams = searchParams.getAll("homeCountry");
+    const homeCityParams = searchParams.getAll("homeCity");
+    const provinceParams = searchParams.getAll("province");
+    const campusParams = searchParams.getAll("campus");
+    const admissionYearParams = searchParams.getAll("admissionYear");
+    const passingYearParams = searchParams.getAll("passingYear");
+    const occupationStatusParams = searchParams.getAll("occupationStatus");
+    const sectorParams = searchParams.getAll("sector");
+    const workCityParams = searchParams.getAll("workCity");
+    const workCountryParams = searchParams.getAll("workCountry");
+    const institutionNameParams = searchParams.getAll("institutionName");
+    const programEnrolledParams = searchParams.getAll("programEnrolled");
+    const fundingSourceParams = searchParams.getAll("fundingSource");
+    const institutionCountryParams = searchParams.getAll("institutionCountry");
+    const institutionCityParams = searchParams.getAll("institutionCity");
+    const mrNoParams = searchParams.getAll("mrNo");
+    
+    // Convert to arrays (support multi-select)
+    const gender = genderParams.length > 0 ? genderParams : (searchParams.get("gender") || "");
+    const maritalStatus = maritalStatusParams.length > 0 ? maritalStatusParams : (searchParams.get("maritalStatus") || "");
+    const homeCountry = homeCountryParams.length > 0 ? homeCountryParams : (searchParams.get("homeCountry") || "");
+    const homeCity = homeCityParams.length > 0 ? homeCityParams : (searchParams.get("homeCity") || "");
+    const province = provinceParams.length > 0 ? provinceParams : (searchParams.get("province") || "");
+    const campus = campusParams.length > 0 ? campusParams : (searchParams.get("campus") || "");
+    const admissionYear = admissionYearParams.length > 0 ? admissionYearParams : (searchParams.get("admissionYear") || "");
+    const passingYear = passingYearParams.length > 0 ? passingYearParams : (searchParams.get("passingYear") || "");
+    const occupationStatus = occupationStatusParams.length > 0 ? occupationStatusParams : (searchParams.get("occupationStatus") || "");
+    const sector = sectorParams.length > 0 ? sectorParams : (searchParams.get("sector") || "");
+    const workCity = workCityParams.length > 0 ? workCityParams : (searchParams.get("workCity") || "");
+    const workCountry = workCountryParams.length > 0 ? workCountryParams : (searchParams.get("workCountry") || "");
+    const institutionName = institutionNameParams.length > 0 ? institutionNameParams : (searchParams.get("institutionName") || "");
+    const programEnrolled = programEnrolledParams.length > 0 ? programEnrolledParams : (searchParams.get("programEnrolled") || "");
+    const fundingSource = fundingSourceParams.length > 0 ? fundingSourceParams : (searchParams.get("fundingSource") || "");
+    const institutionCountry = institutionCountryParams.length > 0 ? institutionCountryParams : (searchParams.get("institutionCountry") || "");
+    const institutionCity = institutionCityParams.length > 0 ? institutionCityParams : (searchParams.get("institutionCity") || "");
+    const mrNo = mrNoParams.length > 0 ? mrNoParams : (searchParams.get("mrNo") || "");
+    
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
     
@@ -74,6 +416,553 @@ export async function GET(req: Request) {
     // Wrap the entire OR chain in parentheses since AND has higher precedence than OR
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
+    // Helper function to combine SQL conditions with OR
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql``;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
+    
+    // Build filters for faculty, department, and program (handle arrays)
+    // Faculty and department are now text-based from tbl_alumni columns
+    let facultyFilter = sql``;
+    if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
+      if (Array.isArray(faculty) && faculty.length > 0) {
+        // Build OR conditions for multiple faculties
+        const facultyConditions = faculty.map((f) => {
+          const normalized = String(f).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${f}))`;
+        });
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(faculty) && faculty) {
+        const normalized = String(faculty).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          facultyFilter = sql`AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+        } else {
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        }
+      }
+      console.log("[API] Filtering for faculty:", faculty);
+    }
+    
+    let departmentFilter = sql``;
+    if (department && (Array.isArray(department) ? department.length > 0 : department)) {
+      if (Array.isArray(department) && department.length > 0) {
+        // Build OR conditions for multiple departments
+        const departmentConditions = department.map((dept) => {
+          const normalized = String(dept).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+        });
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(department) && department) {
+        const normalized = String(department).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          departmentFilter = sql`AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+        } else {
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+        }
+      }
+      console.log("[API] Filtering for department:", department);
+    }
+    
+    let programFilter = sql``;
+    if (program && (Array.isArray(program) ? program.length > 0 : program)) {
+      if (Array.isArray(program) && program.length > 0) {
+        // Build OR conditions for multiple programs
+        const programConditions = program.map((prog) => {
+          const normalized = String(prog).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(p.program_name IS NULL AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = ''))`;
+          }
+          return sql`(LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
+        });
+        const combinedCondition = combineOrConditions(programConditions);
+        programFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(program) && program) {
+        const normalized = String(program).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          programFilter = sql`AND (p.program_name IS NULL AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = ''))`;
+        } else {
+        programFilter = sql`AND (LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
+        }
+      }
+      console.log("[API] Filtering for program:", program);
+    }
+    
+    // Build individual filters for each field (following existing pattern)
+    // Gender filter
+    let genderFilter = sql``;
+    if (gender && (Array.isArray(gender) ? gender.length > 0 : gender)) {
+      if (Array.isArray(gender) && gender.length > 0) {
+        const genderConditions = gender.map(g => {
+          const normalized = String(g).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(gender IS NULL OR TRIM(COALESCE(gender, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${g}))`;
+        });
+        const combinedCondition = combineOrConditions(genderConditions);
+        genderFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(gender) && gender) {
+        const normalized = String(gender).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          genderFilter = sql`AND (gender IS NULL OR TRIM(COALESCE(gender, '')) = '')`;
+        } else {
+          genderFilter = sql`AND LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${gender}))`;
+        }
+      }
+    }
+    
+    // Marital Status filter
+    // Handle any unique value from the database, including NULL
+    let maritalStatusFilter = sql``;
+    if (maritalStatus && (Array.isArray(maritalStatus) ? maritalStatus.length > 0 : maritalStatus)) {
+      if (Array.isArray(maritalStatus) && maritalStatus.length > 0) {
+        const conditions = maritalStatus.map(m => {
+          const normalized = String(m).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(maritalstatus, ''))) = LOWER(TRIM(${m}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        maritalStatusFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(maritalStatus) && maritalStatus) {
+        const normalized = String(maritalStatus).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          maritalStatusFilter = sql`AND (maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '')`;
+        } else {
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          maritalStatusFilter = sql`AND LOWER(TRIM(COALESCE(maritalstatus, ''))) = LOWER(TRIM(${maritalStatus}))`;
+        }
+      }
+    }
+    
+    // Home Country filter
+    // Handle any unique value from the database, including NULL
+    let homeCountryFilter = sql``;
+    if (homeCountry && (Array.isArray(homeCountry) ? homeCountry.length > 0 : homeCountry)) {
+      if (Array.isArray(homeCountry) && homeCountry.length > 0) {
+        const conditions = homeCountry.map(c => {
+          const normalized = String(c).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(country IS NULL OR TRIM(COALESCE(country, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${c}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        homeCountryFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(homeCountry) && homeCountry) {
+        const normalized = String(homeCountry).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          homeCountryFilter = sql`AND (country IS NULL OR TRIM(COALESCE(country, '')) = '')`;
+        } else {
+          homeCountryFilter = sql`AND LOWER(TRIM(COALESCE(country, ''))) = LOWER(TRIM(${homeCountry}))`;
+        }
+      }
+    }
+    
+    // Home City filter
+    // Handle any unique value from the database, including NULL
+    let homeCityFilter = sql``;
+    if (homeCity && (Array.isArray(homeCity) ? homeCity.length > 0 : homeCity)) {
+      if (Array.isArray(homeCity) && homeCity.length > 0) {
+        const conditions = homeCity.map(c => {
+          const normalized = String(c).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(city IS NULL OR TRIM(COALESCE(city, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${c}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        homeCityFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(homeCity) && homeCity) {
+        const normalized = String(homeCity).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          homeCityFilter = sql`AND (city IS NULL OR TRIM(COALESCE(city, '')) = '')`;
+        } else {
+          homeCityFilter = sql`AND LOWER(TRIM(COALESCE(city, ''))) = LOWER(TRIM(${homeCity}))`;
+        }
+      }
+    }
+    
+    // Province filter
+    // Handle any unique value from the database, including NULL
+    let provinceFilter = sql``;
+    if (province && (Array.isArray(province) ? province.length > 0 : province)) {
+      if (Array.isArray(province) && province.length > 0) {
+        const conditions = province.map(p => {
+          const normalized = String(p).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(province IS NULL OR TRIM(COALESCE(province, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${p}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        provinceFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(province) && province) {
+        const normalized = String(province).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          provinceFilter = sql`AND (province IS NULL OR TRIM(COALESCE(province, '')) = '')`;
+        } else {
+          provinceFilter = sql`AND LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${province}))`;
+        }
+      }
+    }
+    
+    // Campus filter
+    // Handle any unique value from the database, including NULL
+    let campusFilter = sql``;
+    if (campus && (Array.isArray(campus) ? campus.length > 0 : campus)) {
+      if (Array.isArray(campus) && campus.length > 0) {
+        const conditions = campus.map(c => {
+          const normalized = String(c).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(campusname IS NULL OR TRIM(COALESCE(campusname, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${c}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        campusFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(campus) && campus) {
+        const normalized = String(campus).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          campusFilter = sql`AND (campusname IS NULL OR TRIM(COALESCE(campusname, '')) = '')`;
+        } else {
+          campusFilter = sql`AND LOWER(TRIM(COALESCE(campusname, ''))) = LOWER(TRIM(${campus}))`;
+        }
+      }
+    }
+    
+    // Admission Year filter (integer)
+    // Handle any unique value from the database, including NULL
+    let admissionYearFilter = sql``;
+    if (admissionYear && (Array.isArray(admissionYear) ? admissionYear.length > 0 : admissionYear)) {
+      if (Array.isArray(admissionYear) && admissionYear.length > 0) {
+        const conditions = admissionYear.map(y => {
+          const normalized = String(y).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(yearofstarting IS NULL)`;
+          }
+          const year = parseInt(y, 10);
+          if (isNaN(year)) return sql`1=0`;
+          return sql`yearofstarting = ${year}`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        admissionYearFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(admissionYear) && admissionYear) {
+        const normalized = String(admissionYear).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          admissionYearFilter = sql`AND (yearofstarting IS NULL)`;
+        } else {
+          const year = parseInt(admissionYear, 10);
+          if (!isNaN(year)) {
+            admissionYearFilter = sql`AND yearofstarting = ${year}`;
+          }
+        }
+      }
+    }
+    
+    // Passing Year filter (integer)
+    // Handle any unique value from the database, including NULL
+    let passingYearFilter = sql``;
+    if (passingYear && (Array.isArray(passingYear) ? passingYear.length > 0 : passingYear)) {
+      if (Array.isArray(passingYear) && passingYear.length > 0) {
+        const conditions = passingYear.map(y => {
+          const normalized = String(y).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(yearofending IS NULL)`;
+          }
+          const year = parseInt(y, 10);
+          if (isNaN(year)) return sql`1=0`;
+          return sql`yearofending = ${year}`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        passingYearFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(passingYear) && passingYear) {
+        const normalized = String(passingYear).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          passingYearFilter = sql`AND (yearofending IS NULL)`;
+        } else {
+          const year = parseInt(passingYear, 10);
+          if (!isNaN(year)) {
+            passingYearFilter = sql`AND yearofending = ${year}`;
+          }
+        }
+      }
+    }
+    
+    // Occupation Status filter
+    // Handle any unique value from the database, including NULL
+    let occupationStatusFilter = sql``;
+    if (occupationStatus && (Array.isArray(occupationStatus) ? occupationStatus.length > 0 : occupationStatus)) {
+      const statusArray = Array.isArray(occupationStatus) ? occupationStatus : [occupationStatus];
+      const conditions: ReturnType<typeof sql>[] = [];
+      
+      statusArray.forEach(status => {
+        const normalized = String(status).trim();
+        // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+        if (normalized === "NULL" || normalized === "null") {
+          conditions.push(sql`(employeed IS NULL OR TRIM(COALESCE(employeed, '')) = '')`);
+        } else {
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          conditions.push(sql`LOWER(TRIM(COALESCE(employeed, ''))) = LOWER(TRIM(${status}))`);
+        }
+      });
+      
+      if (conditions.length > 0) {
+        const combinedCondition = combineOrConditions(conditions);
+        occupationStatusFilter = sql`AND (${combinedCondition})`;
+      }
+    }
+    
+    // Sector filter (partial matching with LIKE for text input)
+    // Handle any unique value from the database, including NULL
+    let sectorFilter = sql``;
+    if (sector && (Array.isArray(sector) ? sector.length > 0 : sector)) {
+      if (Array.isArray(sector) && sector.length > 0) {
+        const conditions = sector.map(s => {
+          const normalized = String(s).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(industry IS NULL OR TRIM(COALESCE(industry, '')) = '')`;
+          }
+          // Handle any other value - partial match (case-insensitive)
+          const searchTerm = `%${normalized.toLowerCase()}%`;
+          return sql`LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        sectorFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(sector) && sector) {
+        const normalized = String(sector).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          sectorFilter = sql`AND (industry IS NULL OR TRIM(COALESCE(industry, '')) = '')`;
+        } else {
+          const searchTerm = `%${normalized.toLowerCase()}%`;
+          sectorFilter = sql`AND LOWER(TRIM(COALESCE(industry, ''))) LIKE ${searchTerm}`;
+        }
+      }
+    }
+    
+    // Work City filter
+    // Handle any unique value from the database, including NULL
+    let workCityFilter = sql``;
+    if (workCity && (Array.isArray(workCity) ? workCity.length > 0 : workCity)) {
+      if (Array.isArray(workCity) && workCity.length > 0) {
+        const conditions = workCity.map(w => {
+          const normalized = String(w).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${w}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        workCityFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(workCity) && workCity) {
+        const normalized = String(workCity).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          workCityFilter = sql`AND (work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '')`;
+        } else {
+          workCityFilter = sql`AND LOWER(TRIM(COALESCE(work_city, ''))) = LOWER(TRIM(${workCity}))`;
+        }
+      }
+    }
+    
+    // Work Country filter
+    // Handle any unique value from the database, including NULL
+    let workCountryFilter = sql``;
+    if (workCountry && (Array.isArray(workCountry) ? workCountry.length > 0 : workCountry)) {
+      if (Array.isArray(workCountry) && workCountry.length > 0) {
+        const conditions = workCountry.map(w => {
+          const normalized = String(w).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(work_country IS NULL OR TRIM(COALESCE(work_country, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${w}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        workCountryFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(workCountry) && workCountry) {
+        const normalized = String(workCountry).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          workCountryFilter = sql`AND (work_country IS NULL OR TRIM(COALESCE(work_country, '')) = '')`;
+        } else {
+          workCountryFilter = sql`AND LOWER(TRIM(COALESCE(work_country, ''))) = LOWER(TRIM(${workCountry}))`;
+        }
+      }
+    }
+    
+    // Institution Name filter
+    // Handle any unique value from the database, including NULL
+    let institutionNameFilter = sql``;
+    if (institutionName && (Array.isArray(institutionName) ? institutionName.length > 0 : institutionName)) {
+      if (Array.isArray(institutionName) && institutionName.length > 0) {
+        const conditions = institutionName.map(i => {
+          const normalized = String(i).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_institute_name IS NULL OR TRIM(COALESCE(higher_education_institute_name, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${i}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        institutionNameFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(institutionName) && institutionName) {
+        const normalized = String(institutionName).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          institutionNameFilter = sql`AND (higher_education_institute_name IS NULL OR TRIM(COALESCE(higher_education_institute_name, '')) = '')`;
+        } else {
+          institutionNameFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_name, ''))) = LOWER(TRIM(${institutionName}))`;
+        }
+      }
+    }
+    
+    // Program Enrolled filter
+    // Handle any unique value from the database, including NULL
+    let programEnrolledFilter = sql``;
+    if (programEnrolled && (Array.isArray(programEnrolled) ? programEnrolled.length > 0 : programEnrolled)) {
+      if (Array.isArray(programEnrolled) && programEnrolled.length > 0) {
+        const conditions = programEnrolled.map(p => {
+          const normalized = String(p).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_program IS NULL OR TRIM(COALESCE(higher_education_program, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${p}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        programEnrolledFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(programEnrolled) && programEnrolled) {
+        const normalized = String(programEnrolled).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          programEnrolledFilter = sql`AND (higher_education_program IS NULL OR TRIM(COALESCE(higher_education_program, '')) = '')`;
+        } else {
+          programEnrolledFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_program, ''))) = LOWER(TRIM(${programEnrolled}))`;
+        }
+      }
+    }
+    
+    // Funding Source filter
+    // Handle any unique value from the database, including NULL
+    let fundingSourceFilter = sql``;
+    if (fundingSource && (Array.isArray(fundingSource) ? fundingSource.length > 0 : fundingSource)) {
+      if (Array.isArray(fundingSource) && fundingSource.length > 0) {
+        const conditions = fundingSource.map(f => {
+          const normalized = String(f).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${f}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        fundingSourceFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(fundingSource) && fundingSource) {
+        const normalized = String(fundingSource).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          fundingSourceFilter = sql`AND (is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '')`;
+        } else {
+          fundingSourceFilter = sql`AND LOWER(TRIM(COALESCE(is_scholarship, ''))) = LOWER(TRIM(${fundingSource}))`;
+        }
+      }
+    }
+    
+    // Institution Country filter
+    // Handle any unique value from the database, including NULL
+    let institutionCountryFilter = sql``;
+    if (institutionCountry && (Array.isArray(institutionCountry) ? institutionCountry.length > 0 : institutionCountry)) {
+      if (Array.isArray(institutionCountry) && institutionCountry.length > 0) {
+        const conditions = institutionCountry.map(i => {
+          const normalized = String(i).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${i}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        institutionCountryFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(institutionCountry) && institutionCountry) {
+        const normalized = String(institutionCountry).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          institutionCountryFilter = sql`AND (higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '')`;
+        } else {
+          institutionCountryFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_country, ''))) = LOWER(TRIM(${institutionCountry}))`;
+        }
+      }
+    }
+    
+    // Institution City filter
+    // Handle any unique value from the database, including NULL
+    let institutionCityFilter = sql``;
+    if (institutionCity && (Array.isArray(institutionCity) ? institutionCity.length > 0 : institutionCity)) {
+      if (Array.isArray(institutionCity) && institutionCity.length > 0) {
+        const conditions = institutionCity.map(i => {
+          const normalized = String(i).trim();
+          // Handle NULL values (from dropdown, value is "NULL" but label is "Null")
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(higher_education_institute_city IS NULL OR TRIM(COALESCE(higher_education_institute_city, '')) = '')`;
+          }
+          // Handle any other value - match exactly as stored in database (case-insensitive)
+          return sql`LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${i}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        institutionCityFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(institutionCity) && institutionCity) {
+        const normalized = String(institutionCity).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          institutionCityFilter = sql`AND (higher_education_institute_city IS NULL OR TRIM(COALESCE(higher_education_institute_city, '')) = '')`;
+        } else {
+          institutionCityFilter = sql`AND LOWER(TRIM(COALESCE(higher_education_institute_city, ''))) = LOWER(TRIM(${institutionCity}))`;
+        }
+      }
+    }
+    
+    // MR No (Registration No) filter
+    let mrNoFilter = sql``;
+    if (mrNo && (Array.isArray(mrNo) ? mrNo.length > 0 : mrNo)) {
+      if (Array.isArray(mrNo) && mrNo.length > 0) {
+        const conditions = mrNo.map(m => sql`LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${m}))`);
+        const combinedCondition = combineOrConditions(conditions);
+        mrNoFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(mrNo) && mrNo) {
+        mrNoFilter = sql`AND LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${mrNo}))`;
+      }
+    }
+    
     // If only counts are needed, return early with just counts
     if (getCountsOnly) {
       const searchTermForCount = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
@@ -82,6 +971,27 @@ export async function GET(req: Request) {
             SELECT COUNT(*) as total
             FROM public.tbl_alumni
             WHERE sapid IS NOT NULL AND sapid != ''
+              ${facultyFilter}
+              ${departmentFilter}
+              ${programFilter}
+              ${genderFilter}
+              ${maritalStatusFilter}
+              ${homeCountryFilter}
+              ${homeCityFilter}
+              ${provinceFilter}
+              ${campusFilter}
+              ${admissionYearFilter}
+              ${passingYearFilter}
+              ${occupationStatusFilter}
+              ${sectorFilter}
+              ${workCityFilter}
+              ${workCountryFilter}
+              ${institutionNameFilter}
+              ${programEnrolledFilter}
+              ${fundingSourceFilter}
+              ${institutionCountryFilter}
+              ${institutionCityFilter}
+              ${mrNoFilter}
               ${accessFilterCondition}
               AND (
                 LOWER(sapid) LIKE ${searchTermForCount}
@@ -97,6 +1007,27 @@ export async function GET(req: Request) {
             SELECT COUNT(*) as total
             FROM public.tbl_alumni
             WHERE sapid IS NOT NULL AND sapid != ''
+              ${facultyFilter}
+              ${departmentFilter}
+              ${programFilter}
+              ${genderFilter}
+              ${maritalStatusFilter}
+              ${homeCountryFilter}
+              ${homeCityFilter}
+              ${provinceFilter}
+              ${campusFilter}
+              ${admissionYearFilter}
+              ${passingYearFilter}
+              ${occupationStatusFilter}
+              ${sectorFilter}
+              ${workCityFilter}
+              ${workCountryFilter}
+              ${institutionNameFilter}
+              ${programEnrolledFilter}
+              ${fundingSourceFilter}
+              ${institutionCountryFilter}
+              ${institutionCityFilter}
+              ${mrNoFilter}
               ${accessFilterCondition}`;
       
       const countResult = await countQuery;
@@ -111,41 +1042,83 @@ export async function GET(req: Request) {
       }, { status: 200 });
     }
 
-    // Build WHERE clause for verify status filtering
+    // Build WHERE clause for verify status filtering (handle arrays)
     // Verify field is now VARCHAR(10) - handle as string only
     let verifyFilter = sql``;
-    if (status === "verified") {
-      verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
-      console.log("[API] Filtering for verified alumni");
-    } else if (status === "unverified") {
-      verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
-      console.log("[API] Filtering for unverified alumni");
-    } else if (status === "underApproval") {
-      // Under Approval: verify = 'pending' (new registrations awaiting admin approval)
-      // For under approval, show all records with verify = 'pending' (even if sapid/registrationno is null)
-      verifyFilter = sql`AND verify = 'pending'`;
-      console.log("[API] Filtering for under approval alumni (verify = 'pending', including null sapid/registrationno)");
-    } else if (status === "active") {
-      // Active: has logged in (has lasttimelogin OR logincount > 0)
-      verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
-      console.log("[API] Filtering for active alumni (has logged in)");
-    } else if (status === "inactive") {
-      // Inactive: never logged in (no lasttimelogin AND logincount is 0 or null)
-      verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
-      console.log("[API] Filtering for inactive alumni (never logged in)");
-    } else if (status === "category") {
-      // Category tab - for now return empty (data will be added later)
-      verifyFilter = sql`AND 1 = 0`; // Return no results for now
-      console.log("[API] Category tab - no data available yet");
+    if (status && (Array.isArray(status) ? status.length > 0 : status)) {
+      if (Array.isArray(status) && status.length > 0) {
+        // Build OR conditions for multiple statuses
+        const statusConditions: ReturnType<typeof sql>[] = [];
+        
+        status.forEach(s => {
+          if (s === "verified") {
+            statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'true'`);
+          } else if (s === "unverified") {
+            statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'false'`);
+          } else if (s === "underApproval") {
+            statusConditions.push(sql`verify = 'pending'`);
+          } else if (s === "active") {
+            statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
+          } else if (s === "inactive") {
+            statusConditions.push(sql`((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`);
+          } else if (s === "category:aPlus") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`);
+          } else if (s === "category:a") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`);
+          } else if (s === "category:b") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`);
+          } else if (s === "category:c") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`);
+          }
+        });
+        
+        if (statusConditions.length > 0) {
+          const combinedCondition = combineOrConditions(statusConditions);
+          verifyFilter = sql`AND (${combinedCondition})`;
+        }
+        console.log("[API] Filtering for multiple statuses:", status);
+      } else if (!Array.isArray(status)) {
+        // Single status filter (backward compatibility)
+        if (status === "verified") {
+          verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
+          console.log("[API] Filtering for verified alumni");
+        } else if (status === "unverified") {
+          verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
+          console.log("[API] Filtering for unverified alumni");
+        } else if (status === "underApproval") {
+          verifyFilter = sql`AND verify = 'pending'`;
+          console.log("[API] Filtering for under approval alumni (verify = 'pending', including null sapid/registrationno)");
+        } else if (status === "active") {
+          verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
+          console.log("[API] Filtering for active alumni (has logged in)");
+        } else if (status === "inactive") {
+          verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
+          console.log("[API] Filtering for inactive alumni (never logged in)");
+        } else if (status === "category:aPlus") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`;
+          console.log("[API] Filtering for A+ category");
+        } else if (status === "category:a") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`;
+          console.log("[API] Filtering for A category");
+        } else if (status === "category:b") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`;
+          console.log("[API] Filtering for B category");
+        } else if (status === "category:c") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`;
+          console.log("[API] Filtering for C category");
+        }
+      }
     } else {
-      // For "total" and other tabs, include records with either sapid OR registrationno
       console.log("[API] No status filter applied, status:", status);
     }
-
+    
     // Build query with optional search and status filter
     let query;
     // Base WHERE clause: require either sapid OR registrationno (except for underApproval which we handle separately)
-    const baseWhere = status === "underApproval" 
+    const hasUnderApproval = Array.isArray(status) 
+      ? status.includes("underApproval")
+      : status === "underApproval";
+    const baseWhere = hasUnderApproval
       ? sql`1=1` 
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
     
@@ -153,72 +1126,142 @@ export async function GET(req: Request) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
       query = sql/* sql */`
         SELECT
-          alumniid,
-          registrationno,
-          sapid,
-          alumniname,
-          facultyname,
-          campusname,
-          departmentname,
-          degreetitle,
-          yearofending,
-          country,
-          city,
-          verify,
-          employeed,
-          nameoforganization,
-          designation,
-          officialnumber,
-          officialemail,
-          personalemail,
-          contactno,
-          lasttimelogin,
-          logincount
-        FROM public.tbl_alumni
+        a.alumniid,
+        a.registrationno,
+        a.sapid,
+        a.alumniname,
+        a.gender,
+        a.maritalstatus,
+        a.facultyname,
+        a.campusname,
+        a.departmentname,
+        COALESCE(p.program_name, a.degreetitle) as degreetitle,
+        a.yearofstarting,
+        a.yearofending,
+        a.country,
+        a.city,
+        a.province,
+        a.verify,
+        a.employeed,
+        a.industry,
+        a.work_city,
+        a.work_country,
+        a.nameoforganization,
+        a.designation,
+        a.higher_education_institute_name,
+        a.higher_education_program,
+        a.is_scholarship,
+        a.higher_education_institute_country,
+        a.higher_education_institute_city,
+        a.officialnumber,
+        a.officialemail,
+        a.personalemail,
+        a.contactno,
+        a.lasttimelogin,
+        a.logincount,
+        a.category
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ${baseWhere}
           ${verifyFilter}
+          ${facultyFilter}
+          ${departmentFilter}
+          ${programFilter}
+          ${genderFilter}
+          ${maritalStatusFilter}
+          ${homeCountryFilter}
+          ${homeCityFilter}
+          ${provinceFilter}
+          ${campusFilter}
+          ${admissionYearFilter}
+          ${passingYearFilter}
+          ${occupationStatusFilter}
+          ${sectorFilter}
+          ${workCityFilter}
+          ${workCountryFilter}
+          ${institutionNameFilter}
+          ${programEnrolledFilter}
+          ${fundingSourceFilter}
+          ${institutionCountryFilter}
+          ${institutionCityFilter}
+          ${mrNoFilter}
           ${accessFilterCondition}
           AND (
-            LOWER(sapid) LIKE ${searchTerm}
-            OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(alumniname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(personalemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTerm}
+            LOWER(a.sapid) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
           )
-        ORDER BY alumniid DESC
+        ORDER BY a.alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
     } else {
       query = sql/* sql */`
       SELECT
-        alumniid,
-        registrationno,
-        sapid,
-        alumniname,
-        facultyname,
-        campusname,
-        departmentname,
-        degreetitle,
-        yearofending,
-        country,
-        city,
-        verify,
-        employeed,
-        nameoforganization,
-        designation,
-        officialnumber,
-        officialemail,
-        personalemail,
-        contactno,
-        lasttimelogin,
-        logincount
-      FROM public.tbl_alumni
+        a.alumniid,
+        a.registrationno,
+        a.sapid,
+        a.alumniname,
+        a.gender,
+        a.maritalstatus,
+        a.facultyname,
+        a.campusname,
+        a.departmentname,
+        COALESCE(p.program_name, a.degreetitle) as degreetitle,
+        a.yearofstarting,
+        a.yearofending,
+        a.country,
+        a.city,
+        a.province,
+        a.verify,
+        a.employeed,
+        a.industry,
+        a.work_city,
+        a.work_country,
+        a.nameoforganization,
+        a.designation,
+        a.higher_education_institute_name,
+        a.higher_education_program,
+        a.is_scholarship,
+        a.higher_education_institute_country,
+        a.higher_education_institute_city,
+        a.officialnumber,
+        a.officialemail,
+        a.personalemail,
+        a.contactno,
+        a.lasttimelogin,
+        a.logincount,
+        a.category
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${baseWhere}
         ${verifyFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
+        ${genderFilter}
+        ${maritalStatusFilter}
+        ${homeCountryFilter}
+        ${homeCityFilter}
+        ${provinceFilter}
+        ${campusFilter}
+        ${admissionYearFilter}
+        ${passingYearFilter}
+        ${occupationStatusFilter}
+        ${sectorFilter}
+        ${workCityFilter}
+        ${workCountryFilter}
+        ${institutionNameFilter}
+        ${programEnrolledFilter}
+        ${fundingSourceFilter}
+        ${institutionCountryFilter}
+        ${institutionCityFilter}
+        ${mrNoFilter}
         ${accessFilterCondition}
-        ORDER BY alumniid DESC
+        ORDER BY a.alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
     }
 
@@ -307,28 +1350,78 @@ export async function GET(req: Request) {
     }
     
     // Get total count for pagination (only if needed)
+    // IMPORTANT: Include all the same filters as the main query to get accurate filtered count
     const searchTermForCount = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
     const countQuery = searchTermForCount
       ? sql/* sql */`
           SELECT COUNT(*) as total
-          FROM public.tbl_alumni
+          FROM public.tbl_alumni a
+          LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+          LEFT JOIN public.tbl_departments d ON d.id = a.department
+          LEFT JOIN public.tbl_programs p ON p.id = a.program
           WHERE ${baseWhere}
             ${verifyFilter}
+            ${facultyFilter}
+            ${departmentFilter}
+            ${programFilter}
+            ${genderFilter}
+            ${maritalStatusFilter}
+            ${homeCountryFilter}
+            ${homeCityFilter}
+            ${provinceFilter}
+            ${campusFilter}
+            ${admissionYearFilter}
+            ${passingYearFilter}
+            ${occupationStatusFilter}
+            ${sectorFilter}
+            ${workCityFilter}
+            ${workCountryFilter}
+            ${institutionNameFilter}
+            ${programEnrolledFilter}
+            ${fundingSourceFilter}
+            ${institutionCountryFilter}
+            ${institutionCityFilter}
+            ${mrNoFilter}
             ${accessFilterCondition}
             AND (
-              LOWER(sapid) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(alumniname, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(personalemail, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTermForCount}
+              LOWER(a.sapid) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTermForCount}
             )`
           : sql/* sql */`
               SELECT COUNT(*) as total
-              FROM public.tbl_alumni
+              FROM public.tbl_alumni a
+              LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+              LEFT JOIN public.tbl_departments d ON d.id = a.department
+              LEFT JOIN public.tbl_programs p ON p.id = a.program
               WHERE ${baseWhere}
                 ${verifyFilter}
+                ${facultyFilter}
+                ${departmentFilter}
+                ${programFilter}
+                ${genderFilter}
+                ${maritalStatusFilter}
+                ${homeCountryFilter}
+                ${homeCityFilter}
+                ${provinceFilter}
+                ${campusFilter}
+                ${admissionYearFilter}
+                ${passingYearFilter}
+                ${occupationStatusFilter}
+                ${sectorFilter}
+                ${workCityFilter}
+                ${workCountryFilter}
+                ${institutionNameFilter}
+                ${programEnrolledFilter}
+                ${fundingSourceFilter}
+                ${institutionCountryFilter}
+                ${institutionCityFilter}
+                ${mrNoFilter}
                 ${accessFilterCondition}`;
     
     const countResult = await countQuery;
@@ -610,6 +1703,8 @@ export async function POST(req: Request) {
           province = ${d.province},
           city = ${d.city},
           country = ${d.country},
+          work_city = ${d.work_city},
+          work_country = ${d.work_country},
           campusname = ${d.campusname},
           facultyname = ${d.facultyname},
           departmentname = ${d.departmentname},
@@ -636,6 +1731,25 @@ export async function POST(req: Request) {
         verify: updated.verify,
         previousVerify: existingRecord.verify
       });
+
+      // Auto-assign chapter1 based on home location (Pakistan=>city, otherwise=>country)
+      await autoAssignChapter1FromHomeLocation({
+        alumniId: Number(updated.alumniid),
+        homeCountry: d.country,
+        homeCity: d.city,
+      });
+
+      // Auto-assign chapter2 based on work location (Pakistan=>work city, otherwise=>work country)
+      await autoAssignChapter2FromWorkLocation({
+        alumniId: Number(updated.alumniid),
+        workCountry: d.work_country,
+        workCity: d.work_city,
+      });
+
+      await autoAssignAssociationFromFaculty({
+        alumniId: Number(updated.alumniid),
+        facultyName: d.facultyname,
+      });
       
       return NextResponse.json({ 
         ok: true, 
@@ -655,18 +1769,40 @@ export async function POST(req: Request) {
       INSERT INTO public.tbl_alumni (
         registrationno, sapid, alumniname, gender, fathername, dateofbirth, maritalstatus,
         cnicpassport, contactno, personalemail, password, address, province, city, country,
+        work_city, work_country,
         campusname, facultyname, departmentname, degreetitle, yearofending, employeed, industry,
         nameoforganization, designation, totalyearsofexpereince, officialemail, officialnumber,
         datasource, verify, alumnistatus, todaydate
       ) VALUES (
         ${d.registrationno}, ${d.sapid}, ${d.alumniname}, ${d.gender}, ${d.fathername}, ${d.dateofbirth}, ${d.maritalstatus},
         ${d.cnicpassport}, ${d.contactno}, ${d.personalemail}, ${d.password}, ${d.address}, ${d.province}, ${d.city}, ${d.country},
+        ${d.work_city}, ${d.work_country},
         ${d.campusname}, ${d.facultyname}, ${d.departmentname}, ${d.degreetitle}, ${d.yearofending}, ${d.employeed}, ${d.industry},
         ${d.nameoforganization}, ${d.designation}, ${d.totalyearsofexpereince}, ${d.officialemail}, ${d.officialnumber},
         ${d.datasource}, ${d.verify}, ${d.alumnistatus}, ${d.todaydate}
       )
       RETURNING alumniid, registrationno, sapid, verify`;
     const created = rows[0];
+
+    // Auto-assign chapter1 based on home location (Pakistan=>city, otherwise=>country)
+    await autoAssignChapter1FromHomeLocation({
+      alumniId: Number((created as { alumniid: number }).alumniid),
+      homeCountry: d.country,
+      homeCity: d.city,
+    });
+
+    // Auto-assign chapter2 based on work location (Pakistan=>work city, otherwise=>work country)
+    await autoAssignChapter2FromWorkLocation({
+      alumniId: Number((created as { alumniid: number }).alumniid),
+      workCountry: d.work_country,
+      workCity: d.work_city,
+    });
+
+    await autoAssignAssociationFromFaculty({
+      alumniId: Number((created as { alumniid: number }).alumniid),
+      facultyName: d.facultyname,
+    });
+
     return NextResponse.json({ ok: true, created }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create alumni";

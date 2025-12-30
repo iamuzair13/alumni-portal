@@ -12,7 +12,7 @@ type AlumniCardTemplateWrapperProps = {
   validity?: string;
   photoUrl?: string | null;
   cardImage?: string | null;
-  isAdmin?: boolean;
+  cardStatus?: string | null; // Card status from database: "Pending", "Process", "Active", "Delivered", "Onhold"
 };
 
 export default function AlumniCardTemplateWrapper({
@@ -23,17 +23,30 @@ export default function AlumniCardTemplateWrapper({
   validity,
   photoUrl,
   cardImage,
-  isAdmin = false,
+  cardStatus,
 }: AlumniCardTemplateWrapperProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Show download button for Active or Delivered status
+  const normalizedStatus = cardStatus ? String(cardStatus).trim().toUpperCase() : "";
+  const canDownload = normalizedStatus === "ACTIVE" || normalizedStatus === "DELIVERED";
+
   return (
     <div>
-      {isAdmin && (
+      {canDownload && (
         <div className="mb-4 flex justify-end">
           <AlumniCardPDFExport 
             cardRef={cardRef} 
             studentName={studentName}
+            cardData={{
+              studentName,
+              department,
+              faculty,
+              alumniId,
+              validity,
+              photoUrl,
+              cardImage,
+            }}
           />
         </div>
       )}

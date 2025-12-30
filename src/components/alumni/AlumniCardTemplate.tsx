@@ -2,6 +2,7 @@
 
 import { Roboto } from "next/font/google";
 import { useState, useMemo, useEffect } from "react";
+import { formatCardValidityMonthYear } from "@/lib/cardValidity";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -122,26 +123,8 @@ export default function AlumniCardTemplate({
     });
   };
   // Format validity date
-  const formattedValidity = (() => {
-    if (!validity) return "MM/YYYY";
-    
-    // Handle both YYYY-MM and MM/YYYY formats
-    let date: Date;
-    if (validity.includes("/")) {
-      // MM/YYYY format
-      const [month, year] = validity.split("/");
-      date = new Date(`${year}-${month.padStart(2, "0")}-01T00:00:00`);
-    } else {
-      // YYYY-MM format
-      date = new Date(`${validity}-01T00:00:00`);
-    }
-    
-    if (Number.isNaN(date.getTime())) return validity;
-    
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${month}/${year}`;
-  })();
+  // validity can be in MM/YYYY format (from database validity_date) or YYYY-MM format (computed fallback)
+  const formattedValidity = formatCardValidityMonthYear(validity ?? null);
 
   return (
     <div className={`${roboto.className} w-full`}>
@@ -154,7 +137,7 @@ export default function AlumniCardTemplate({
           className="w-full h-auto object-contain"
         />
 
-        <div className="absolute left-3 right-[35%] top-11 flex flex-col justify-center items-start  gap-1 text-[13px] leading-tight text-[#0f7a3a]">
+        <div className="absolute left-3 right-[35%] top-11 flex flex-col justify-center items-start  gap-0.8 text-[13px] leading-tight text-[#0f7a3a]">
           <span className="text-[12px] font-semibold tracking-tight">
             {studentName || "Alumni Name"}
           </span>
@@ -171,7 +154,7 @@ export default function AlumniCardTemplate({
           <span>{formattedValidity}</span>
         </div>
 
-        <div className="absolute right-[25px] top-7 flex h-[120px] w-[100x] items-center justify-center overflow-hidden rounded bg-gray-100">
+        <div className="absolute right-[20px] top-6 flex h-[120px] w-[100x] items-center justify-center overflow-hidden rounded bg-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={`${activeImageSrc}-${imageIndex}`}

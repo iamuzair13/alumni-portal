@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 
 import { auth } from "@/lib/auth";
-import { isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 type DbUser = {
   userid: number;
@@ -27,10 +27,11 @@ export async function GET() {
     
     const isAdmin = isAdminUser(session?.user);
     const isSuperAdmin = isSuperAdminUser(session?.user);
+    const isViewer = isViewerUser(session?.user);
     
-    // SECURITY: Only admins and superadmins can see user list (viewers cannot)
-    if (!isAdmin && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden: Only admins can view user list" }, { status: 403 });
+    // Allow viewer to see user list (read-only), but never reveal passwords.
+    if (!isAdmin && !isSuperAdmin && !isViewer) {
+      return NextResponse.json({ error: "Forbidden: Only staff can view user list" }, { status: 403 });
     }
     
     // Get current user's ID from session
@@ -73,6 +74,13 @@ export async function GET() {
         FROM public.tbl_users
         ORDER BY userid DESC` as DbUser[];
       
+      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+    } else if (isViewer) {
+      // Viewer: never return passwords (even for own row)
+      const rows = await sql/* sql */`
+        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
+        FROM public.tbl_users
+        ORDER BY userid DESC` as DbUser[];
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords

@@ -121,14 +121,21 @@ class ErpApiClient {
 
       // Handle OData endpoint - construct the full URL
       // Base URL format: http://uolerp.uol.edu.pk:8000/sap/opu/odata/sap/ZSTUDENTHMIS_SRV/
+      // or: http://uolerp.uol.edu.pk:8000/sap/opu/odata/sap/ZSTUDENTHMIS_SRV/studentSet()
       let url: string;
       if (endpoint.startsWith("http")) {
         url = endpoint;
       } else {
-        // Base URL no longer includes studentSet(), so we append it
-        const baseUrl = this.config.apiUrl.trim();
+        // Get base URL and strip any existing studentSet() from the end
+        let baseUrl = this.config.apiUrl.trim();
+        // Remove studentSet() or studentSet('...') from the end if present
+        baseUrl = baseUrl.replace(/\/studentSet(\([^)]*\))?\/?$/, "");
+        // Remove any trailing = characters (sometimes URLs end with =)
+        baseUrl = baseUrl.replace(/=+$/, "");
+        // Remove any trailing slashes
+        baseUrl = baseUrl.replace(/\/+$/, "");
         // Ensure base URL ends with / for proper concatenation
-        const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+        const normalizedBaseUrl = `${baseUrl}/`;
         
         if (endpoint.startsWith("studentSet(")) {
           // Key-based lookup format: studentSet('1234567') or studentSet("1234567")
@@ -139,7 +146,7 @@ class ErpApiClient {
           // OData query format: studentSet()?$filter=...
           // Append to base URL: baseUrl/studentSet()?$filter=...
           url = `${normalizedBaseUrl}${endpoint}`;
-          console.log(`[ERP Client ${requestId}] Constructed URL (query): ${url}`);
+          console.log(`[ERP Client ${requestId}] Constructed URL ($filter query): ${url}`);
         } else if (endpoint.startsWith("/")) {
           url = `${normalizedBaseUrl}${endpoint.slice(1)}`; // Remove leading / to avoid double slashes
         } else {
@@ -147,16 +154,66 @@ class ErpApiClient {
         }
       }
 
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json, application/xml, text/xml, application/atom+xml", // Accept both JSON and XML
-          "Authorization": `Basic ${token}`, // Using Basic Auth
-          ...options.headers,
-        },
-        signal: AbortSignal.timeout(this.config.timeout || 30000),
-      });
+      // Use AbortController for better compatibility and error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout || 30000);
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json, application/xml, text/xml, application/atom+xml", // Accept both JSON and XML
+            "Authorization": `Basic ${token}`, // Using Basic Auth
+            ...options.headers,
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        // Check for specific network errors
+        if (fetchError instanceof Error) {
+          // Check for abort signal (timeout)
+          if (fetchError.name === 'AbortError' || fetchError.message.includes('aborted')) {
+            return {
+              success: false,
+              error: "TIMEOUT",
+              message: `Request timed out after ${this.config.timeout || 30000}ms`,
+            };
+          }
+          
+          // Check for network connection errors
+          if (fetchError.message.includes('ECONNREFUSED') || 
+              fetchError.message.includes('ENOTFOUND') ||
+              fetchError.message.includes('getaddrinfo') ||
+              fetchError.message.includes('network') ||
+              fetchError.message.includes('fetch failed')) {
+            return {
+              success: false,
+              error: "NETWORK_ERROR",
+              message: `Cannot connect to ERP server: ${fetchError.message}`,
+            };
+          }
+          
+          // Check for SSL/certificate errors
+          if (fetchError.message.includes('certificate') || 
+              fetchError.message.includes('SSL') ||
+              fetchError.message.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE') ||
+              fetchError.message.includes('certificate has expired')) {
+            return {
+              success: false,
+              error: "SSL_ERROR",
+              message: `SSL/Certificate error: ${fetchError.message}`,
+            };
+          }
+        }
+        
+        // Re-throw if it's not a handled network error
+        throw fetchError;
+      }
 
       if (!response.ok) {
         // Handle 404 (Not Found) as a special case - record doesn't exist
@@ -448,10 +505,9 @@ class ErpApiClient {
 
   /**
    * Fetch student/alumni data from ERP using SAP ID or Registration Number
-   * Based on Postman testing, the working format is: studentSet('1234567')
-   * This is a key-based lookup format, not a $filter query
+   * Tries multiple formats: key-based lookup and $filter queries
    */
-  async fetchStudentData(identifier: string): Promise<ErpApiResponse> {
+  async fetchStudentData(identifier: string, isSapId: boolean = true): Promise<ErpApiResponse> {
     if (!identifier || !identifier.trim()) {
       return {
         success: false,
@@ -460,78 +516,109 @@ class ErpApiClient {
     }
 
     const trimmedIdentifier = identifier.trim();
-    
-    // Based on Postman testing and error messages, the working format is: studentSet('identifier')
-    // The key field is 'SapNo' (from error: "Invalid key predicate type for 'SapNo'")
-    // But we use the identifier directly in the key-based lookup
-    
     const fetchStartTime = Date.now();
-    console.log(`[ERP Client] fetchStudentData started for identifier: ${trimmedIdentifier.substring(0, 10)}...`);
+    console.log(`[ERP Client] fetchStudentData started for ${isSapId ? 'SAP ID' : 'Registration No'}: ${trimmedIdentifier.substring(0, 10)}...`);
     
-    // Try only the format that works in Postman first
-    // Format: studentSet('1234567') with single quotes
-    console.log(`[ERP Client] Attempting format: studentSet('${trimmedIdentifier}')`);
-    const response = await this.request(`studentSet('${trimmedIdentifier}')`);
-    
-    const fetchDuration = Date.now() - fetchStartTime;
-    console.log(`[ERP Client] First attempt completed in ${fetchDuration}ms:`, {
-      success: response.success,
-      error: response.error,
-      hasData: !!response.data,
-    });
-    
-    if (response.success) {
-      console.log(`[ERP Client] Successfully fetched data in ${fetchDuration}ms`);
-      return response;
-    }
-    
-    // If NOT_FOUND, return immediately (don't try other formats)
-    if (response.error === "NOT_FOUND") {
-      console.log(`[ERP Client] Record not found in ERP (${fetchDuration}ms)`);
-      return response;
-    }
-    
-    // If we get a clear error that indicates the format is wrong but record might exist,
-    // try one alternative format with double quotes
-    const lastError = response.error || "";
-    if (lastError.includes("Malformed URI") || lastError.includes("Invalid key predicate")) {
-      console.log(`[ERP Client] Trying alternative format: studentSet("${trimmedIdentifier}")`);
-      const altStartTime = Date.now();
-      const altResponse = await this.request(`studentSet("${trimmedIdentifier}")`);
-      const altDuration = Date.now() - altStartTime;
+    // Try key-based lookup first (only for SAP ID as it's the primary key)
+    if (isSapId) {
+      console.log(`[ERP Client] Attempting key-based lookup: studentSet('${trimmedIdentifier}')`);
+      const keyBasedResponse = await this.request(`studentSet('${trimmedIdentifier}')`);
       
-      console.log(`[ERP Client] Alternative attempt completed in ${altDuration}ms:`, {
-        success: altResponse.success,
-        error: altResponse.error,
+      const keyBasedDuration = Date.now() - fetchStartTime;
+      console.log(`[ERP Client] Key-based lookup completed in ${keyBasedDuration}ms:`, {
+        success: keyBasedResponse.success,
+        error: keyBasedResponse.error,
+        hasData: !!keyBasedResponse.data,
       });
       
-      if (altResponse.success || altResponse.error === "NOT_FOUND") {
-        return altResponse;
+      if (keyBasedResponse.success) {
+        console.log(`[ERP Client] Successfully fetched data using key-based lookup`);
+        return keyBasedResponse;
+      }
+      
+      // If NOT_FOUND, try $filter as fallback (in case key lookup doesn't work)
+      if (keyBasedResponse.error === "NOT_FOUND") {
+        console.log(`[ERP Client] Key-based lookup returned NOT_FOUND, trying $filter query as fallback...`);
+      } else if (!keyBasedResponse.error?.includes("Malformed URI") && !keyBasedResponse.error?.includes("Invalid key predicate")) {
+        // If it's a real NOT_FOUND or other non-format error, return it
+        return keyBasedResponse;
       }
     }
     
-    const totalDuration = Date.now() - fetchStartTime;
-    console.error(`[ERP Client] Failed to fetch data after ${totalDuration}ms:`, {
-      error: response.error,
-      message: response.message,
-    });
+    // Try $filter query format with multiple field name variations
+    // For SAP ID: try sapid, SapNo, SapID, SAPID, SAP_ID, student_id, StudentID
+    // For Registration No: try registrationno, RegistrationNo, RegistrationNO, REG_NO, reg_no, RegistrationNumber, registration_number
+    const fieldNameVariations = isSapId 
+      ? ["sapid", "SapNo", "SapID", "SAPID", "SAP_ID", "student_id", "StudentID", "StudentId"]
+      : ["registrationno", "RegistrationNo", "RegistrationNO", "REG_NO", "reg_no", "RegistrationNumber", "registration_number", "RegNo"];
     
-    // If all formats fail, return the first error
-    return response;
+    // Try each field name variation
+    for (let i = 0; i < fieldNameVariations.length; i++) {
+      const fieldName = fieldNameVariations[i];
+      const filterQuery = `studentSet()?$filter=${fieldName} eq '${trimmedIdentifier}'`;
+      console.log(`[ERP Client] Attempting $filter query (${i + 1}/${fieldNameVariations.length}) with field: ${fieldName}`);
+      const filterResponse = await this.request(filterQuery);
+      
+      const filterDuration = Date.now() - fetchStartTime;
+      console.log(`[ERP Client] $filter query (${i + 1}/${fieldNameVariations.length}) completed in ${filterDuration}ms:`, {
+        success: filterResponse.success,
+        error: filterResponse.error,
+        hasData: !!filterResponse.data,
+        fieldName,
+      });
+      
+      if (filterResponse.success) {
+        console.log(`[ERP Client] Successfully fetched data using field: ${fieldName}`);
+        return filterResponse;
+      }
+      
+      // If NOT_FOUND, continue to try other field names
+      if (filterResponse.error === "NOT_FOUND") {
+        console.log(`[ERP Client] Field ${fieldName} returned NOT_FOUND, trying next field name...`);
+        continue;
+      }
+      
+      // If it's a property error, try next field name
+      if (filterResponse.error && filterResponse.error.includes("Property")) {
+        console.log(`[ERP Client] Field ${fieldName} not found in entity, trying next field name...`);
+        continue;
+      }
+      
+      // For other errors (network, timeout, etc.), return immediately
+      const totalDuration = Date.now() - fetchStartTime;
+      console.error(`[ERP Client] Failed to fetch data after ${totalDuration}ms (tried ${i + 1} field names):`, {
+        error: filterResponse.error,
+        message: filterResponse.message,
+        lastFieldName: fieldName,
+      });
+      return filterResponse;
+    }
+    
+    // If all field name variations failed, return the last response (which should be NOT_FOUND)
+    const totalDuration = Date.now() - fetchStartTime;
+    console.error(`[ERP Client] Failed to fetch data after ${totalDuration}ms (tried all ${fieldNameVariations.length} field name variations):`, {
+      error: "NOT_FOUND",
+      message: "No matching field found or record does not exist",
+    });
+    return {
+      success: false,
+      error: "NOT_FOUND",
+      message: "Record not found after trying all field name variations",
+    };
   }
 
   /**
    * Fetch student data by SAP ID
    */
   async fetchBySapId(sapId: string): Promise<ErpApiResponse> {
-    return this.fetchStudentData(sapId);
+    return this.fetchStudentData(sapId, true);
   }
 
   /**
    * Fetch student data by Registration Number
    */
   async fetchByRegistrationNo(registrationNo: string): Promise<ErpApiResponse> {
-    return this.fetchStudentData(registrationNo);
+    return this.fetchStudentData(registrationNo, false);
   }
 
   /**

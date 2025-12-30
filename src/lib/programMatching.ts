@@ -1,28 +1,9 @@
 /**
  * Program name normalization and matching utilities
- * Uses the hierarchical structure from mock-programs.json to improve matching
+ * Uses the normalized structure from `src/data/programs-departments.ts`
  */
 
-import programsData from "../../mock-programs.json";
-
-type ProgramData = {
-  faculties: Array<{
-    faculty: string;
-    departments: Array<{
-      department: string;
-      programs: Array<{
-        program: string;
-        count: number;
-      }>;
-    }>;
-  }>;
-  standalonePrograms: Array<{
-    program: string;
-    count: number;
-  }>;
-};
-
-const programs = programsData as ProgramData;
+import { facultyDepartmentPrograms, getAllPrograms } from "@/data/programs-departments";
 
 /**
  * Normalize program name for comparison
@@ -117,12 +98,13 @@ export function findMatchingPrograms(
   minSimilarity: number = 0.6
 ): Array<{ program: string; similarity: number; faculty: string; department: string }> {
   const matches: Array<{ program: string; similarity: number; faculty: string; department: string }> = [];
+  const seenPrograms = new Set<string>();
   
   // Search through faculties and departments
-  for (const facultyData of programs.faculties) {
+  for (const facultyData of facultyDepartmentPrograms) {
     // If faculty is specified, only search in that faculty
     if (faculty) {
-      const normalizedFaculty = normalizeProgramName(facultyData.faculty);
+      const normalizedFaculty = normalizeProgramName(facultyData.name);
       const normalizedSearchFaculty = normalizeProgramName(faculty);
       if (normalizedFaculty !== normalizedSearchFaculty && 
           !normalizedFaculty.includes(normalizedSearchFaculty) &&
@@ -134,7 +116,7 @@ export function findMatchingPrograms(
     for (const deptData of facultyData.departments) {
       // If department is specified, only search in that department
       if (department) {
-        const normalizedDept = normalizeProgramName(deptData.department);
+        const normalizedDept = normalizeProgramName(deptData.name);
         const normalizedSearchDept = normalizeProgramName(department);
         if (normalizedDept !== normalizedSearchDept &&
             !normalizedDept.includes(normalizedSearchDept) &&
@@ -144,29 +126,26 @@ export function findMatchingPrograms(
       }
       
       for (const programData of deptData.programs) {
-        const similarity = calculateProgramSimilarity(searchProgram, programData.program);
+        const similarity = calculateProgramSimilarity(searchProgram, programData.name);
         if (similarity >= minSimilarity) {
           matches.push({
-            program: programData.program,
+            program: programData.name,
             similarity,
-            faculty: facultyData.faculty,
-            department: deptData.department
+            faculty: facultyData.name,
+            department: deptData.name
           });
         }
+        seenPrograms.add(programData.name);
       }
     }
   }
   
-  // Also search standalone programs
-  for (const programData of programs.standalonePrograms) {
-    const similarity = calculateProgramSimilarity(searchProgram, programData.program);
+  // Also search any programs not present in the hierarchy (standalone)
+  for (const prog of getAllPrograms()) {
+    if (seenPrograms.has(prog)) continue;
+    const similarity = calculateProgramSimilarity(searchProgram, prog);
     if (similarity >= minSimilarity) {
-      matches.push({
-        program: programData.program,
-        similarity,
-        faculty: "",
-        department: ""
-      });
+      matches.push({ program: prog, similarity, faculty: "", department: "" });
     }
   }
   

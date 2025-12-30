@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 
 type ErpDataDetailsProps = {
-  sapId: string;
+  sapId?: string;
   registrationNo?: string | null;
   onClose: () => void;
 };
@@ -51,13 +51,20 @@ const CompactField: React.FC<{
  * Fetch ERP data for a given SAP ID or Registration Number
  */
 async function fetchErpData(sapId?: string, registrationNo?: string | null): Promise<ErpRecord | null> {
-  if (!sapId && !registrationNo) {
+  // Only use sapId if it's a non-empty string after trimming
+  const validSapId = sapId && sapId.trim() && sapId.trim().length > 0 ? sapId.trim() : undefined;
+  // Only use registrationNo if it's a non-empty string after trimming
+  const validRegistrationNo = registrationNo && String(registrationNo).trim() && String(registrationNo).trim().length > 0 
+    ? String(registrationNo).trim() 
+    : undefined;
+  
+  if (!validSapId && !validRegistrationNo) {
     throw new Error("Either SAP ID or Registration Number is required");
   }
 
   const params = new URLSearchParams();
-  if (sapId) params.append("sapid", sapId);
-  if (registrationNo) params.append("registrationno", registrationNo);
+  if (validSapId) params.append("sapid", validSapId);
+  if (validRegistrationNo) params.append("registrationno", validRegistrationNo);
 
   const res = await fetch(`/api/erp/fetch?${params.toString()}`);
   const data = await res.json();
@@ -102,24 +109,20 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
 }
 
 export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrationNo, onClose }) => {
-  const [currentSapId, setCurrentSapId] = useState(sapId);
-
+  // Only enable query if we have a valid (non-empty) SAP ID or registration number
+  const validSapId = sapId && sapId.trim() ? sapId.trim() : undefined;
+  const validRegistrationNo = registrationNo && String(registrationNo).trim() ? String(registrationNo).trim() : undefined;
+  
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["erp-data", currentSapId, registrationNo],
-    queryFn: () => fetchErpData(currentSapId, registrationNo),
-    enabled: !!currentSapId || !!registrationNo,
+    queryKey: ["erp-data", validSapId, validRegistrationNo],
+    queryFn: () => fetchErpData(validSapId, validRegistrationNo),
+    enabled: !!validSapId || !!validRegistrationNo,
     staleTime: 1 * 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     refetchOnMount: true,
   });
-
-  useEffect(() => {
-    if (sapId && sapId !== currentSapId) {
-      setCurrentSapId(sapId);
-    }
-  }, [sapId, currentSapId]);
 
   if (isLoading) {
     return (

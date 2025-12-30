@@ -5,18 +5,41 @@ import { validatePayload } from "./validation";
 import { sendMentorshipApplicationEmail } from "@/lib/email";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     
-    // Build access filter for admin/viewer users
-    const accessFilter = await buildAccessFilterSQL(session, "");
-    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     
-    const rows = await sql/* sql */`
+    // Build access filter for admin/viewer users
+    let accessFilter;
+    try {
+      accessFilter = await buildAccessFilterSQL(session, "");
+    } catch (filterError) {
+      console.error("[API] Error building access filter:", filterError);
+      return NextResponse.json({ 
+        error: "Failed to build access filter", 
+        details: filterError instanceof Error ? filterError.message : String(filterError) 
+      }, { status: 500 });
+    }
+    
+    const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+
+    const { searchParams } = new URL(req.url);
+    const sapidParam = String(searchParams.get("sapid") || "").trim();
+    const sapidCondition = sapidParam
+      ? sql` AND (a.sapid = ${sapidParam} OR a.registrationno = ${sapidParam})`
+      : sql``;
+    
+    let rows;
+    try {
+      // Use t.* to avoid runtime failures if optional columns (day/week/month) don't exist in a given DB.
+      rows = await sql/* sql */`
       SELECT 
-        a.alumniid,
         a.sapid,
+        a.registrationno,
         a.alumniname,
         a.departmentname,
         a.facultyname,
@@ -24,17 +47,27 @@ export async function GET() {
         a.personalemail,
         a.officialemail,
         a.universityemail,
-        t.topic,
-        t.day,
-        t.timings,
-        t.activity
+          t.*
       FROM public.tbl_alumni a
-      JOIN public.tblalumnitalks t ON t.alumniid = a.alumniid
-      WHERE 1=1
+        INNER JOIN public.tblalumnitalks t ON t.alumniid = a.alumniid
+        WHERE (
+          (a.sapid IS NOT NULL AND a.sapid != '')
+          OR (a.registrationno IS NOT NULL AND a.registrationno != '')
+        )
+        ${sapidCondition}
         ${accessFilterCondition}
-      ORDER BY t.alumniid DESC`;
-    const typedRows = rows as unknown as {
+        ORDER BY t.alumniid DESC
+      `;
+    } catch (queryError) {
+      console.error("[API] Error executing talks query:", queryError);
+      return NextResponse.json({ 
+        error: "Failed to fetch talks", 
+        details: queryError instanceof Error ? queryError.message : String(queryError) 
+      }, { status: 500 });
+    }
+    const typedRows = rows as unknown as Array<Record<string, unknown> & {
       sapid: string;
+      registrationno: string | null;
       alumniname: string;
       departmentname: string | null;
       facultyname: string | null;
@@ -42,27 +75,75 @@ export async function GET() {
       personalemail: string | null;
       officialemail: string | null;
       universityemail: string | null;
-      topic: string | null;
-      day: string;
-      timings: string;
-      activity: string | null;
-    }[];
+      alumnitalks?: string | null;
+      mentorshipprogram?: string | null;
+      topic?: string | null;
+      activity?: string | null;
+      linkedin?: string | null;
+      mode?: string | null;
+      brief_outline?: string | null;
+      date_1?: string | null;
+      timings_1?: string | null;
+      date_2?: string | null;
+      timings_2?: string | null;
+      date_3?: string | null;
+      timings_3?: string | null;
+      day_2?: string | null;
+      day_3?: string | null;
+      week_1?: string | null;
+      week_2?: string | null;
+      week_3?: string | null;
+      month_1?: string | null;
+      month_2?: string | null;
+      month_3?: string | null;
+    }>;
     const items = typedRows.map((r) => ({
       sapid: r.sapid,
+      registrationNo: r.registrationno,
       name: r.alumniname,
       department: r.departmentname,
       faculty: r.facultyname,
       program: r.degreetitle || null,
       email: r.personalemail || r.officialemail || r.universityemail,
-      topics: String(r.topic || "").split(/[,|]/).map((s) => s.trim()).filter(Boolean),
-      areas: String(r.activity || "").split(/[,|]/).map((s) => s.trim()).filter(Boolean),
-      day: r.day,
-      time: r.timings,
+      alumnitalks: (r.alumnitalks ?? null) as string | null,
+      mentorshipprogram: (r.mentorshipprogram ?? null) as string | null,
+      topics: String(r.topic ?? "").split(/[,|]/).map((s) => s.trim()).filter(Boolean),
+      areas: String(r.activity ?? "").split(/[,|]/).map((s) => s.trim()).filter(Boolean),
+      linkedin: (r.linkedin ?? null) as string | null,
+      mode: (r.mode ?? null) as string | null,
+      briefOutline: (r.brief_outline ?? null) as string | null,
+      // Availability dates and timings
+      date1: (r.date_1 ?? null) as string | null,
+      timings1: (r.timings_1 ?? null) as string | null,
+      date2: (r.date_2 ?? null) as string | null,
+      timings2: (r.timings_2 ?? null) as string | null,
+      date3: (r.date_3 ?? null) as string | null,
+      timings3: (r.timings_3 ?? null) as string | null,
+      // Day variations
+      day2: (r.day_2 ?? null) as string | null,
+      day3: (r.day_3 ?? null) as string | null,
+      // Week variations
+      week1: (r.week_1 ?? null) as string | null,
+      week2: (r.week_2 ?? null) as string | null,
+      week3: (r.week_3 ?? null) as string | null,
+      // Month variations
+      month1: (r.month_1 ?? null) as string | null,
+      month2: (r.month_2 ?? null) as string | null,
+      month3: (r.month_3 ?? null) as string | null,
     }));
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to fetch talks";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : undefined;
+    console.error("[API] Error in GET /api/alumni/talks:", {
+      message: errorMessage,
+      stack: errorStack,
+      error: err
+    });
+    return NextResponse.json({ 
+      error: "Failed to fetch talks",
+      message: errorMessage 
+    }, { status: 500 });
   }
 }
 

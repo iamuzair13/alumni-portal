@@ -1,273 +1,131 @@
-export const dynamic = "force-dynamic";
-import type { Viewport } from "next";
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-};
-
-import { sql } from "@/lib/dbconnect";
-import AlumniCardForm from "@/components/forms/alumni-card";
-import AlumniCardTemplateWrapper from "@/components/alumni/AlumniCardTemplateWrapper";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
+import { useState, Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 import AppHeader from "@/layout/AppHeader";
-import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
+import { Toaster } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
+import AlumniCardForm from "@/components/forms/alumni-card";
 
-type Profile = {
-  alumniname: string | null;
-  facultyname: string | null;
-  departmentname: string | null;
-  degreetitle: string | null;
-  image1: string | null;
-  yearofending: number | null;
-};
+function CardApplicationContent() {
+  const searchParams = useSearchParams();
+  const sapIdFromParams = searchParams.get("sapid");
+  const [sapId, setSapId] = useState(sapIdFromParams || "");
+  
+  // Try to get SAP ID from session if not in params
+  useEffect(() => {
+    if (!sapId) {
+      // Fetch current user's SAP ID from API
+      fetch("/api/alumni/current-sapid")
+        .then(res => res.json())
+        .then(data => {
+          if (data.sapid) {
+            setSapId(data.sapid);
+          }
+        })
+        .catch(() => {
+          // If API fails, try to get from URL or show error
+        });
+    }
+  }, [sapId]);
+  
+  const { data, isLoading, error } = useAlumniFullDetails(sapId || undefined);
 
-async function getProfile(searchParams: { sapid?: string }) {
-  const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
-  try {
-    if (sapid) {
-      const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
-        FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
-      return rows[0] as Profile | undefined;
-    }
-    const session = await auth();
-    
-    // First try to get SAP ID or registration number from session
-    const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
-    const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
-    
-    if (sessionSapid) {
-      const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
-        FROM public.tbl_alumni WHERE sapid = ${sessionSapid} LIMIT 1`;
-      if (rows[0]) return rows[0] as Profile | undefined;
-    }
-    
-    if (sessionRegNo) {
-      const rows = await sql/* sql */`
-        SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
-        FROM public.tbl_alumni WHERE registrationno = ${sessionRegNo} LIMIT 1`;
-      if (rows[0]) return rows[0] as Profile | undefined;
-    }
-    
-    // Fallback to email lookup (backward compatibility)
-    const email = session?.user?.email ? String(session.user.email) : undefined;
-    if (!email) return undefined;
-    const rows = await sql/* sql */`
-      SELECT alumniname, facultyname, departmentname, degreetitle, image1, yearofending
-      FROM public.tbl_alumni 
-      WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-      ORDER BY alumniid DESC LIMIT 1`;
-    return rows[0] as Profile | undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-async function getCardStatus(sapId: string) {
-  if (!sapId) return null;
-  try {
-    const rows = await sql/* sql */`
-      SELECT c.status, c.cardpicture, c.card_image
-      FROM public.tblcard c
-      JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-      WHERE a.sapid = ${sapId}
-      ORDER BY c.cardid DESC LIMIT 1`;
-    return rows[0] as { status: string | null; cardpicture: string | null; card_image: string | null } | undefined;
-  } catch {
-    return null;
-  }
-}
-
-type AlumniProfileSearchParams = { sapid?: string };
-
-export default async function CardPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
-  const session = await auth();
-  
-  // Redirect to signin if no session
-  if (!session?.user) {
-    redirect("/signin");
-  }
-  
-  const sp = await searchParams;
-  let p: Profile | undefined;
-  let profileError: string | null = null;
-  try {
-    p = await getProfile(sp);
-  } catch (e) {
-    profileError = e instanceof Error ? e.message : "Failed to load profile";
-  }
-  const name = p?.alumniname ?? "";
-  const faculty = p?.facultyname ?? "";
-  const dept = p?.departmentname ?? "";
-  // Get SAP ID or registration number from session first, then from search params, then from email lookup
-  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
-  const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
-  const email = session?.user?.email ? String(session.user.email) : undefined;
-  
-  let sapRows: Array<{ alumniid: number; sapid: string }> = [];
-  let sapError: string | null = null;
-  
-  // If we have SAP ID from session, use it directly
-  if (sessionSapid) {
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE sapid = ${sessionSapid} LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from session";
-    }
-  } else if (sessionRegNo) {
-    // If we have registration number from session, use it
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE registrationno = ${sessionRegNo} LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from registration number";
-    }
-  } else if (email) {
-    // Fallback to email lookup (backward compatibility)
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-        ORDER BY alumniid DESC LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
-    }
-  }
-  
-  // Use SAP ID if available, otherwise use registration number as identifier
-  // The API endpoints support both SAP ID and registration number
-  const sapId = String(
-    sapRows[0]?.sapid ?? 
-    sp?.sapid ?? 
-    sessionSapid ?? 
-    sessionRegNo ?? 
-    ""
-  ).trim();
-  const alumniId = String(sapRows[0]?.alumniid ?? "");
-
-  // Get card status and card picture
-  let cardStatus: string | null = null;
-  let cardPicture: string | null = null;
-  let cardImageFilename: string | null = null;
-  let cardStatusError: string | null = null;
-  
-  if (sapId && sapId !== "") {
-    try {
-      const cardData = await getCardStatus(sapId);
-      if (cardData) {
-        cardStatus = cardData.status;
-        cardPicture = cardData.cardpicture;
-        cardImageFilename = cardData.card_image ?? cardData.cardpicture ?? null;
-      }
-    } catch (e) {
-      cardStatusError = e instanceof Error ? e.message : "Failed to load card status";
-    }
+  if (isLoading) {
+    return (
+      <>
+        <AppHeader />
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <PageBanner title="Apply for Alumni Card" />
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+                <p className="text-center text-gray-600 dark:text-gray-400">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
   }
 
-  // Determine if we should show template (delivered or active status)
-  // Normalize status: trim whitespace and convert to lowercase for comparison
-  const normalizedStatus = cardStatus ? String(cardStatus).trim().toLowerCase() : "";
-  const showTemplate = normalizedStatus === "delivered" || normalizedStatus === "active";
-  
-  const profileImageFilename = (() => {
-    if (p?.image1 && p.image1.trim() && p.image1.trim().toLowerCase() !== "null") {
-      return p.image1.trim();
-    }
-    return undefined;
-  })();
+  if (error || !data) {
+    return (
+      <>
+        <AppHeader />
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <PageBanner title="Apply for Alumni Card" />
+          <div className="container mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+                <p className="text-center text-red-600 dark:text-red-400">
+                  {error ? "Error loading alumni data. Please try again." : "Alumni data not found."}
+                </p>
+                <div className="mt-4 flex justify-center">
+                  <BackButton />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
-  const cardTemplateImageFilename = (() => {
-    const raw = cardImageFilename ?? cardPicture ?? null;
-    if (raw && raw.trim() && raw.trim().toLowerCase() !== "null") {
-      return raw.trim();
-    }
-    return undefined;
-  })();
-
-  // Calculate validity from yearofending (add 5 years as default validity)
-  const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
-  const validity = validityYear ? `${validityYear}-12` : undefined;
-
-  // Check if user is admin or superadmin
-  const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
+  const alumniId = String(data.alumniid || "");
+  const name = data.alumniname || "";
+  const faculty = data.facultyname || "";
+  const department = data.departmentname || "";
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
-          <AppHeader />
-        </div>
-        {(() => {
-          const b = computeLoginBanner(session?.user);
-          return b.show ? (
-            <div className="mt-4">
-              <Alert variant="error" title="Access Restricted" message={b.message} />
-            </div>
-          ) : null;
-        })()}
-        {profileError && (
-          <div className="mt-4">
-            <Alert variant="error" title="Profile Load Failed" message={profileError} />
-          </div>
-        )}
-        {sapError && (
-          <div className="mt-2">
-            <Alert variant="error" title="Account Lookup Failed" message={sapError} />
-          </div>
-        )}
-        {cardStatusError && (
-          <div className="mt-2">
-            <Alert variant="error" title="Card Status Error" message={cardStatusError} />
-          </div>
-        )}
-        {/* Debug info - remove in production */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-2 mx-auto max-w-4xl px-4 text-xs text-gray-500 bg-yellow-50 p-2 rounded">
-            Debug: SAP ID: {sapId || "none"} | Card Status: {cardStatus || "none"} | Normalized: {normalizedStatus || "none"} | Show Template: {showTemplate ? "YES" : "NO"}
-          </div>
-        )}
-        <PageBanner title="Alumni Card" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-slate-900">
-                {showTemplate ? "Your Alumni Card" : "Apply for Alumni Card"}
-              </h1>
+      <AppHeader />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <PageBanner title="Apply for Alumni Card" />
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-4">
               <BackButton />
             </div>
-            {showTemplate ? (
-              <AlumniCardTemplateWrapper
-                studentName={name}
-                department={dept}
-                faculty={faculty}
-                alumniId={sapId || "UOL-AL-0000"}
-                validity={validity}
-                photoUrl={profileImageFilename}
-                cardImage={cardTemplateImageFilename}
-                isAdmin={isAdmin}
-              />
-            ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 md:p-8">
               <AlumniCardForm
                 alumniId={alumniId}
                 name={name}
                 sapId={sapId}
                 faculty={faculty}
-                department={dept}
+                department={department}
               />
-            )}
+            </div>
           </div>
         </div>
       </div>
+      <Toaster position="top-right" />
     </>
+  );
+}
+
+export default function CardApplicationPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <AppHeader />
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <PageBanner title="Apply for Alumni Card" />
+            <div className="container mx-auto px-4 py-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+                  <p className="text-center text-gray-600 dark:text-gray-400">Loading...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      }
+    >
+      <CardApplicationContent />
+    </Suspense>
   );
 }
 

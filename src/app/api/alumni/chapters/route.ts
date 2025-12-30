@@ -9,20 +9,27 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     const { searchParams } = new URL(request.url);
     
-    // Get filter parameters
-    const nationalChapter = searchParams.get("nationalChapter");
-    const internationalChapter = searchParams.get("internationalChapter");
-    const faculty = searchParams.get("faculty");
-    const department = searchParams.get("department");
+    // Get filter parameters (arrays for multi-select)
+    const nationalChaptersParam = searchParams.get("nationalChapters");
+    const internationalChaptersParam = searchParams.get("internationalChapters");
+    const facultiesParam = searchParams.get("faculties");
+    const departmentsParam = searchParams.get("departments");
     const verified = searchParams.get("verified");
     const membershipFilter = searchParams.get("membershipFilter") || "members"; // "all", "members", "non-members"
+    const chapterCountParam = searchParams.get("chapterCount"); // "1", "2", "3", etc.
+    const chapterCount = chapterCountParam ? Number(chapterCountParam) : undefined;
+    
+    const selectedNationalChapters = nationalChaptersParam ? nationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedInternationalChapters = internationalChaptersParam ? internationalChaptersParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedFaculties = facultiesParam ? facultiesParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const selectedDepartments = departmentsParam ? departmentsParam.split(',').map(s => s.trim()).filter(Boolean) : [];
     
     // Debug logging
     console.log("[API] Alumni Chapters Filters:", {
-      nationalChapter: nationalChapter || "none",
-      internationalChapter: internationalChapter || "none",
-      faculty: faculty || "none",
-      department: department || "none",
+      nationalChapters: selectedNationalChapters.length > 0 ? selectedNationalChapters : "none",
+      internationalChapters: selectedInternationalChapters.length > 0 ? selectedInternationalChapters : "none",
+      faculties: selectedFaculties.length > 0 ? selectedFaculties : "none",
+      departments: selectedDepartments.length > 0 ? selectedDepartments : "none",
       verified: verified || "none",
       membershipFilter,
     });
@@ -32,67 +39,111 @@ export async function GET(request: NextRequest) {
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
     // Build chapter filter conditions
-    // First, get chapter IDs from chapter names if provided
-    let nationalChapterId: number | null = null;
-    let internationalChapterId: number | null = null;
+    // Get chapter IDs from chapter names if provided
+    const nationalChapterIds: number[] = [];
+    const internationalChapterIds: number[] = [];
     
-    if (nationalChapter && nationalChapter.trim()) {
-      const chapterRows = await sql/* sql */`
-        SELECT id FROM public.tblchapters 
-        WHERE LOWER(TRIM(COALESCE(national_chapter, ''))) = LOWER(${nationalChapter.trim()})
-        AND is_active = true
-        LIMIT 1
-      `;
-      if (chapterRows[0]) {
-        nationalChapterId = Number((chapterRows[0] as { id: number }).id);
+    if (selectedNationalChapters.length > 0) {
+      for (const chapterName of selectedNationalChapters) {
+        const chapterRows = await sql/* sql */`
+          SELECT id FROM public.tblchapters 
+          WHERE LOWER(TRIM(COALESCE(national_chapter, ''))) = LOWER(${chapterName})
+          AND is_active = true
+          LIMIT 1
+        `;
+        if (chapterRows[0]) {
+          nationalChapterIds.push(Number((chapterRows[0] as { id: number }).id));
+        }
       }
     }
     
-    if (internationalChapter && internationalChapter.trim()) {
-      const chapterRows = await sql/* sql */`
-        SELECT id FROM public.tblchapters 
-        WHERE LOWER(TRIM(COALESCE(international_chapter, ''))) = LOWER(${internationalChapter.trim()})
-        AND is_active = true
-        LIMIT 1
-      `;
-      if (chapterRows[0]) {
-        internationalChapterId = Number((chapterRows[0] as { id: number }).id);
+    if (selectedInternationalChapters.length > 0) {
+      for (const chapterName of selectedInternationalChapters) {
+        const chapterRows = await sql/* sql */`
+          SELECT id FROM public.tblchapters 
+          WHERE LOWER(TRIM(COALESCE(international_chapter, ''))) = LOWER(${chapterName})
+          AND is_active = true
+          LIMIT 1
+        `;
+        if (chapterRows[0]) {
+          internationalChapterIds.push(Number((chapterRows[0] as { id: number }).id));
+        }
       }
     }
     
     let chapterFilterCondition = sql``;
-    if (nationalChapterId !== null && internationalChapterId !== null) {
-      // If both are selected, use OR (alumni with either chapter)
+    const allChapterIds = [...nationalChapterIds, ...internationalChapterIds];
+    
+    // If chapters are selected but no matching IDs found, return empty result
+    if ((selectedNationalChapters.length > 0 || selectedInternationalChapters.length > 0) && allChapterIds.length === 0) {
+      // Return empty result set if filters are selected but no matching chapter IDs found
+      return NextResponse.json({ items: [] }, { status: 200 });
+    }
+    
+    if (allChapterIds.length > 0) {
+      // Use OR to match any of the selected chapters
+      // Build IN clause by passing array directly to postgres
       chapterFilterCondition = sql` AND (
-        (ac."chapter1" = ${nationalChapterId} OR ac."chapter2" = ${nationalChapterId} OR ac."chapter3" = ${nationalChapterId})
-        OR
-        (ac."chapter1" = ${internationalChapterId} OR ac."chapter2" = ${internationalChapterId} OR ac."chapter3" = ${internationalChapterId})
+        ac."chapter1" = ANY(${allChapterIds})
+        OR ac."chapter2" = ANY(${allChapterIds})
+        OR ac."chapter3" = ANY(${allChapterIds})
       )`;
-    } else if (nationalChapterId !== null) {
-      chapterFilterCondition = sql` AND (ac."chapter1" = ${nationalChapterId} OR ac."chapter2" = ${nationalChapterId} OR ac."chapter3" = ${nationalChapterId})`;
-    } else if (internationalChapterId !== null) {
-      chapterFilterCondition = sql` AND (ac."chapter1" = ${internationalChapterId} OR ac."chapter2" = ${internationalChapterId} OR ac."chapter3" = ${internationalChapterId})`;
     }
     
     console.log("[API] Chapter filter IDs:", {
-      nationalChapterId,
-      internationalChapterId,
-      hasNationalFilter: nationalChapterId !== null,
-      hasInternationalFilter: internationalChapterId !== null,
+      nationalChapterIds,
+      internationalChapterIds,
+      allChapterIds,
     });
     
-    // Build faculty filter condition (case-insensitive with trim)
+    // Build faculty filter condition (case-insensitive with trim) - handle multiple
     let facultyFilterCondition = sql``;
-    if (faculty && faculty.trim()) {
-      const facultyValue = faculty.trim();
-      facultyFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(${facultyValue})`;
+    if (selectedFaculties.length > 0) {
+      const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
+      // Build OR conditions for multiple faculties (similar to alumni route)
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      if (facultyConditions.length === 1) {
+        facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
+      } else if (facultyConditions.length > 1) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const combineOrConditions = (conditions: any[]): any => {
+          if (conditions.length === 0) return sql``;
+          if (conditions.length === 1) return conditions[0];
+          if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+          const mid = Math.ceil(conditions.length / 2);
+          const left = combineOrConditions(conditions.slice(0, mid));
+          const right = combineOrConditions(conditions.slice(mid));
+          return sql`${left} OR ${right}`;
+        };
+        const combinedCondition = combineOrConditions(facultyConditions);
+        facultyFilterCondition = sql` AND (${combinedCondition})`;
+      }
+      console.log("[API] Filtering for faculties:", selectedFaculties);
     }
     
-    // Build department filter condition (case-insensitive with trim)
+    // Build department filter condition (case-insensitive with trim) - handle multiple
     let departmentFilterCondition = sql``;
-    if (department && department.trim()) {
-      const departmentValue = department.trim();
-      departmentFilterCondition = sql` AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(${departmentValue})`;
+    if (selectedDepartments.length > 0) {
+      const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
+      // Build OR conditions for multiple departments (similar to alumni route)
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      if (departmentConditions.length === 1) {
+        departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
+      } else if (departmentConditions.length > 1) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const combineOrConditions = (conditions: any[]): any => {
+          if (conditions.length === 0) return sql``;
+          if (conditions.length === 1) return conditions[0];
+          if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+          const mid = Math.ceil(conditions.length / 2);
+          const left = combineOrConditions(conditions.slice(0, mid));
+          const right = combineOrConditions(conditions.slice(mid));
+          return sql`${left} OR ${right}`;
+        };
+        const combinedCondition = combineOrConditions(departmentConditions);
+        departmentFilterCondition = sql` AND (${combinedCondition})`;
+      }
+      console.log("[API] Filtering for departments:", selectedDepartments);
     }
     
     // Build verified filter condition
@@ -114,6 +165,22 @@ export async function GET(request: NextRequest) {
     }
     // For "all": no additional condition needed, just use LEFT JOIN
     
+    // Chapter count filter - filter by exact number of chapters
+    let chapterCountCondition = sql``;
+    if (chapterCount !== undefined && chapterCount > 0) {
+      // Count non-null chapters and match exactly
+      // Using CASE to count non-null chapters
+      chapterCountCondition = sql` AND (
+        CASE 
+          WHEN ac."chapter1" IS NOT NULL THEN 1 ELSE 0 END +
+          CASE 
+          WHEN ac."chapter2" IS NOT NULL THEN 1 ELSE 0 END +
+          CASE 
+          WHEN ac."chapter3" IS NOT NULL THEN 1 ELSE 0 END
+        ) = ${chapterCount}
+      `;
+    }
+    
     // Build the query based on membership filter
     const baseQuery = membershipJoinType === "JOIN"
       ? sql`FROM public.tbl_alumni a
@@ -121,42 +188,58 @@ export async function GET(request: NextRequest) {
       : sql`FROM public.tbl_alumni a
       LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid`;
     
-    const rows = await sql/* sql */`
-      SELECT 
-        a.alumniid,
-        a.sapid,
-        a.alumniname,
-        a.departmentname,
-        a.facultyname,
-        a.degreetitle,
-        a.personalemail,
-        a.officialemail,
-        a.universityemail,
-        a.registrationno,
-        ac."chapter1",
-        ac."chapter2",
-        ac."chapter3",
-        c1.national_chapter as chapter1_national,
-        c1.international_chapter as chapter1_international,
-        c2.national_chapter as chapter2_national,
-        c2.international_chapter as chapter2_international,
-        c3.national_chapter as chapter3_national,
-        c3.international_chapter as chapter3_international,
-        COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
-        COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
-        COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
-      ${baseQuery}
-      LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
-      LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
-      LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
-      WHERE 1=1
-        ${accessFilterCondition}
-        ${chapterFilterCondition}
-        ${facultyFilterCondition}
-        ${departmentFilterCondition}
-        ${verifiedFilterCondition}
-        ${membershipWhereCondition}
-      ORDER BY a.alumniid DESC`;
+    console.log("[API] Executing query with filters:", {
+      hasChapterFilter: allChapterIds.length > 0,
+      hasFacultyFilter: selectedFaculties.length > 0,
+      hasDepartmentFilter: selectedDepartments.length > 0,
+      hasVerifiedFilter: verified === "true",
+      membershipFilter,
+      chapterCount: chapterCount !== undefined ? chapterCount : "none",
+    });
+    
+    let rows;
+    try {
+      rows = await sql/* sql */`
+        SELECT 
+          a.alumniid,
+          a.sapid,
+          a.alumniname,
+          a.departmentname,
+          a.facultyname,
+          a.degreetitle,
+          a.personalemail,
+          a.officialemail,
+          a.universityemail,
+          a.registrationno,
+          ac."chapter1",
+          ac."chapter2",
+          ac."chapter3",
+          c1.national_chapter as chapter1_national,
+          c1.international_chapter as chapter1_international,
+          c2.national_chapter as chapter2_national,
+          c2.international_chapter as chapter2_international,
+          c3.national_chapter as chapter3_national,
+          c3.international_chapter as chapter3_international,
+          COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
+          COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
+          COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
+        ${baseQuery}
+        LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
+        LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
+        LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
+        WHERE 1=1
+          ${accessFilterCondition}
+          ${chapterFilterCondition}
+          ${facultyFilterCondition}
+          ${departmentFilterCondition}
+          ${verifiedFilterCondition}
+          ${membershipWhereCondition}
+          ${chapterCountCondition}
+        ORDER BY a.alumniid DESC`;
+    } catch (queryError) {
+      console.error("[API] SQL Query Error:", queryError);
+      throw queryError;
+    }
     
     console.log("[API] Alumni Chapters Query Result:", {
       rowCount: rows.length,
@@ -183,8 +266,11 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
+    console.error("[API] Error fetching alumni chapters:", err);
     const msg = err instanceof Error ? err.message : "Failed to fetch chapters";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const errorDetails = err instanceof Error ? err.stack : String(err);
+    console.error("[API] Error details:", errorDetails);
+    return NextResponse.json({ error: msg, details: process.env.NODE_ENV === "development" ? errorDetails : undefined }, { status: 500 });
   }
 }
 

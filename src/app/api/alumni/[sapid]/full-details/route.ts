@@ -13,17 +13,37 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch all details from tbl_alumni
+    // Fetch all details from tbl_alumni with faculty, department, and program names
     // Try SAP ID first, then registration number
     const normalizedIdentifier = String(sapid || "").trim();
     
     let rows = await sql/* sql */`
-      SELECT * FROM public.tbl_alumni WHERE sapid = ${normalizedIdentifier} LIMIT 1`;
+      SELECT 
+        a.*,
+        COALESCE(f.faculty_name, a.facultyname) as facultyname,
+        COALESCE(d.department_name, a.departmentname) as departmentname,
+        COALESCE(p.program_name, a.degreetitle) as degreetitle
+      FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
+      WHERE a.sapid = ${normalizedIdentifier} 
+      LIMIT 1`;
     
     // If not found by SAP ID, try registration number
     if (!rows[0]) {
       rows = await sql/* sql */`
-        SELECT * FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
+        SELECT 
+          a.*,
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.registrationno = ${normalizedIdentifier} 
+        LIMIT 1`;
     }
     
     if (!rows[0]) {
@@ -163,6 +183,10 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         campusname: row.campusname ?? null,
         departmentname: row.departmentname ?? null,
         majorsubject: row.majorsubject ?? null,
+        // ID-based fields for faculty, department, program
+        faculty: row.faculty ?? null,
+        department: row.department ?? null,
+        program: row.program ?? null,
         industry: row.industry ?? null,
         employeed: row.employeed ?? null,
         nameoforganization: row.nameoforganization ?? null,
@@ -189,9 +213,10 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        // SECURITY: Only return password for alumni (owners), not for admins
-        password: (isAlumni && isOwner) ? (row.password ?? null) : null,
+        // SECURITY: Return password for alumni (owners) and admins who can modify
+        password: (isAlumni && isOwner) || canAccess ? (row.password ?? null) : null,
         father_cnic: row.father_cnic ?? null,
+        category: row.category ?? null,
         // Higher Education fields
         degree_title: row.degree_title ?? null,
         higher_education_institute_name: row.higher_education_institute_name ?? null,
@@ -199,8 +224,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         higher_education_institute_country: row.higher_education_institute_country ?? null,
         higher_education_institute_city: row.higher_education_institute_city ?? null,
         is_scholarship: row.is_scholarship ?? null,
-        higher_education_institute_email: row.higher_education_institute_email ?? null,
-        higher_education_intiture_number: row.higher_education_intiture_number ?? null,
         // Chapter and Association fields
         chapter: chapterDisplay,
         chapter1_id: chapter1Id,

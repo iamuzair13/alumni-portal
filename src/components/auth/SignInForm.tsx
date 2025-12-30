@@ -24,6 +24,13 @@ export default function SignInForm() {
   const params = useSearchParams();
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
+  
+  // Forgot Password states
+  const { isOpen: isForgotPasswordOpen, openModal: openForgotPassword, closeModal: closeForgotPassword } = useModal();
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState<string | null>(null);
+  const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     const err = params.get("error");
@@ -108,10 +115,13 @@ export default function SignInForm() {
             
             // Admin, Super Admin, and viewer (including legacy "user") redirect to admin dashboard
             if (isAdmin || isSuperAdmin || isViewer) {
+              // Keep loading state active during redirect
               router.replace("/dashboard");
+              // Don't set isVerifying to false - let it stay until page navigates
               return;
             } else if (isAlumni) {
               router.replace("/alumni-profile");
+              // Don't set isVerifying to false - let it stay until page navigates
               return;
             }
           }
@@ -127,15 +137,18 @@ export default function SignInForm() {
           const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
           if (isStaff) {
             router.replace("/dashboard");
+            // Don't set isVerifying to false - let it stay until page navigates
             return;
           }
         }
         // Default to alumni profile for alumni users
         router.replace("/alumni-profile");
+        // Don't set isVerifying to false - let it stay until page navigates
       };
       
       try {
         await checkSession();
+        // Keep isVerifying true during redirect - it will be cleared when component unmounts
       } catch (ve) {
         const msg = ve instanceof Error ? ve.message : String(ve);
         setVerificationError(msg || "Failed to verify session");
@@ -147,7 +160,7 @@ export default function SignInForm() {
             const normalizedType = String(userType).toLowerCase().trim();
             const isStaff = normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user";
             if (isStaff) {
-              router.replace("/");
+              router.replace("/dashboard");
             } else {
               router.replace("/alumni-profile");
             }
@@ -157,7 +170,7 @@ export default function SignInForm() {
         } catch {
           router.replace("/alumni-profile"); // Default redirect on error
         }
-      } finally {
+        // Only set to false on error, not on successful redirect
         setIsVerifying(false);
       }
     } catch {
@@ -170,13 +183,74 @@ export default function SignInForm() {
   // Removed automatic redirect on authentication to prevent redirect loops
   // Redirects are now handled in the handleCredentials function after successful login
 
+  const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      setForgotPasswordLoading(true);
+      setForgotPasswordError(null);
+      setForgotPasswordMessage(null);
+
+      if (!forgotPasswordEmail.trim()) {
+        setForgotPasswordError("Email is required");
+        setForgotPasswordLoading(false);
+        return;
+      }
+
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotPasswordEmail.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setForgotPasswordMessage(data.message || "A new password has been sent to your email address.");
+        setForgotPasswordEmail("");
+        // Close modal after 3 seconds
+        setTimeout(() => {
+          closeForgotPassword();
+          setForgotPasswordMessage(null);
+        }, 3000);
+      } else {
+        setForgotPasswordError(data.error || "Failed to reset password. Please try again.");
+      }
+    } catch (err) {
+      setForgotPasswordError("An error occurred. Please try again later.");
+      console.error("Forgot password error:", err);
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const isProcessing = isLoading || isVerifying;
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-6 sm:py-8">
-      <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-12">
+    <div className="min-h-screen w-full bg-gradient-to-br from-green-400 to-green-700 flex items-center justify-center px-4 py-6 sm:py-8 relative">
+      {/* Full-page loading overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin"></div>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-gray-900">
+                {isLoading ? "Signing in..." : "Verifying session..."}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                {isLoading ? "Please wait while we verify your credentials" : "Redirecting you to your dashboard"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className={`w-full max-w-6xl flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-12 ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}>
         {/* Left Side - University Info */}
         <div className="flex-1 flex flex-col items-center lg:items-start justify-start text-center lg:text-left">
           <div className="mb-6 flex justify-center lg:justify-start">
-            <Image src="/images/logo/login-1.jpg" alt="University Logo" width={128} height={128} className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 object-contain rounded-full bg-white p-2 shadow-lg" sizes="(max-width: 640px) 96px, (max-width: 1024px) 128px, 128px" priority />
+            <Image src="/images/logo/UOL-Rebrand-ID_Final-02.png" alt="University Logo" width={128} height={128} className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 object-contain rounded-full bg-white p-2 shadow-lg" sizes="(max-width: 640px) 96px, (max-width: 1024px) 128px, 128px" priority />
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 sm:mb-8">
             University of Lahore
@@ -192,7 +266,7 @@ export default function SignInForm() {
           <div className="w-full max-w-md mx-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-md bg-gray-100 dark:bg-white/10 bg-gray-600 flex items-center justify-center" aria-label="Logo">
-                <Image src="/images/logo/login-1.jpg" alt="Logo" width={40} height={40} className="rounded" sizes="40px" />
+                <Image src="/images/logo/UOL-Rebrand-ID_Final-02.png" alt="Logo" width={40} height={40} className="rounded" sizes="40px" />
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Welcome !</h1>
@@ -207,6 +281,75 @@ export default function SignInForm() {
         <div className="mt-4">
           <AlumniSqlForm excludeAdminStep={true} onSuccess={closeModal} />
         </div>
+      </div>
+    </Modal>
+
+    {/* Forgot Password Modal */}
+    <Modal isOpen={isForgotPasswordOpen} onClose={closeForgotPassword} isFullscreen={false} showCloseButton={true}>
+      <div className="w-full lg:w-1/2 max-w-md mx-auto bg-white rounded-2xl p-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-slate-900">Reset Your Password</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Enter your email address and we&apos;ll send you a new password.
+          </p>
+        </div>
+
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div>
+            <label htmlFor="forgot-password-email" className="block text-sm font-medium text-slate-700">
+              Email Address
+            </label>
+            <input
+              id="forgot-password-email"
+              type="email"
+              placeholder="Enter your personal email"
+              required
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              value={forgotPasswordEmail}
+              onChange={(e) => setForgotPasswordEmail(e.target.value)}
+              disabled={forgotPasswordLoading}
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Enter the email address registered in your personal email field
+            </p>
+          </div>
+
+          {forgotPasswordError && (
+            <div className="rounded-md bg-red-50 border border-red-200 p-3">
+              <p className="text-sm text-red-600">{forgotPasswordError}</p>
+            </div>
+          )}
+
+          {forgotPasswordMessage && (
+            <div className="rounded-md bg-green-50 border border-green-200 p-3">
+              <p className="text-sm text-green-600">{forgotPasswordMessage}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={closeForgotPassword}
+              disabled={forgotPasswordLoading}
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={forgotPasswordLoading}
+              className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {forgotPasswordLoading && (
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {forgotPasswordLoading ? "Sending..." : "Reset Password"}
+            </button>
+          </div>
+        </form>
       </div>
     </Modal>
     </div>
@@ -231,6 +374,13 @@ export default function SignInForm() {
               <div>
                 <div className="flex items-center justify-between">
                   <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
+                  <button
+                    type="button"
+                    onClick={openForgotPassword}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
                 <div className="relative mt-1">
                   <input
