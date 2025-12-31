@@ -182,18 +182,62 @@ export async function GET(request: NextRequest) {
     `;
     
     // Get verified count (verified = true, with all other filters)
-    // Count rows in alumni_chapter where verified = 'true'
+    // MATCH EXTERNAL API LOGIC: Use UNION to count chapter memberships (not unique alumni)
+    // This matches external API where an alumni in multiple chapters counts in each chapter
+    // Build chapter filter for each UNION branch separately
+    let chapter1Filter = sql``;
+    let chapter2Filter = sql``;
+    let chapter3Filter = sql``;
+    if (allChapterIds.length > 0) {
+      chapter1Filter = sql` AND ac.chapter1 = ANY(${allChapterIds})`;
+      chapter2Filter = sql` AND ac.chapter2 = ANY(${allChapterIds})`;
+      chapter3Filter = sql` AND ac.chapter3 = ANY(${allChapterIds})`;
+    }
+    
     const verifiedCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN ac.id END) as count
-      ${baseQueryFromChapter}
-      WHERE 1=1
-      ${chapterFilterCondition}
-      ${chapterMembershipCondition}
-      ${chapterCountCondition}
-      ${accessFilterCondition}
-      ${facultyFilterCondition}
-      ${departmentFilterCondition}
-      AND a.verify = 'true'
+      WITH chapter_members AS (
+        SELECT DISTINCT ac.id as alumni_id
+        FROM public.alumni_chapter ac
+        LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
+        WHERE ac.chapter1 IS NOT NULL
+        ${chapter1Filter}
+        ${chapterMembershipCondition}
+        ${chapterCountCondition}
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${departmentFilterCondition}
+        AND a.verify = 'true'
+        
+        UNION
+        
+        SELECT DISTINCT ac.id as alumni_id
+        FROM public.alumni_chapter ac
+        LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
+        WHERE ac.chapter2 IS NOT NULL
+        ${chapter2Filter}
+        ${chapterMembershipCondition}
+        ${chapterCountCondition}
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${departmentFilterCondition}
+        AND a.verify = 'true'
+        
+        UNION
+        
+        SELECT DISTINCT ac.id as alumni_id
+        FROM public.alumni_chapter ac
+        LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
+        WHERE ac.chapter3 IS NOT NULL
+        ${chapter3Filter}
+        ${chapterMembershipCondition}
+        ${chapterCountCondition}
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+        ${departmentFilterCondition}
+        AND a.verify = 'true'
+      )
+      SELECT COUNT(*) as count
+      FROM chapter_members cm
     `;
     
     // Get unverified count (verified = false, with all other filters)
