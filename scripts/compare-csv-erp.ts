@@ -374,11 +374,11 @@ function compareRowWithErp(csvRow: CSVRow, erpData: ErpStudentData): {
 } {
   return {
     identifier: csvRow.sapIdOrRegNo,
-    nameMatch: compareValues(csvRow.fullName, erpData.Name),
-    cnicMatch: compareValues(csvRow.cnic, erpData.Cnic),
-    fatherNameMatch: { match: true, csvValue: null, erpValue: erpData.Fname || null }, // CSV doesn't have father name
-    departmentMatch: { match: true, csvValue: null, erpValue: erpData.DeptName || null }, // CSV doesn't have department
-    degreeMatch: compareValues(csvRow.programName, erpData.DegrTitle),
+    nameMatch: compareValues(csvRow.fullName, erpData.Name ?? null),
+    cnicMatch: compareValues(csvRow.cnic, erpData.Cnic ?? null),
+    fatherNameMatch: { match: true, csvValue: null, erpValue: erpData.Fname ?? null }, // CSV doesn't have father name
+    departmentMatch: { match: true, csvValue: null, erpValue: erpData.DeptName ?? null }, // CSV doesn't have department
+    degreeMatch: compareValues(csvRow.programName, erpData.DegrTitle ?? null),
     rowNumber: csvRow.rowNumber,
   };
 }

@@ -30,27 +30,25 @@ export async function GET(request: NextRequest) {
 
     // Build WHERE conditions dynamically
     let whereConditions = sql``;
-    const conditions: ReturnType<typeof sql>[] = [];
     
-    if (category) {
-      conditions.push(sql`category = ${category}`);
-    }
-
-    if (type) {
-      conditions.push(sql`type = ${type}`);
-    }
-
-    if (search) {
+    if (category && type && search) {
       const searchPattern = `%${search}%`;
-      conditions.push(sql`(title ILIKE ${searchPattern} OR shortdescription ILIKE ${searchPattern} OR longdescription ILIKE ${searchPattern})`);
-    }
-
-    // Combine conditions
-    if (conditions.length > 0) {
-      whereConditions = conditions.reduce((acc, condition, index) => {
-        if (index === 0) return condition;
-        return sql`${acc} AND ${condition}`;
-      });
+      whereConditions = sql`category = ${category} AND type = ${type} AND (title ILIKE ${searchPattern} OR shortdescription ILIKE ${searchPattern} OR longdescription ILIKE ${searchPattern})`;
+    } else if (category && type) {
+      whereConditions = sql`category = ${category} AND type = ${type}`;
+    } else if (category && search) {
+      const searchPattern = `%${search}%`;
+      whereConditions = sql`category = ${category} AND (title ILIKE ${searchPattern} OR shortdescription ILIKE ${searchPattern} OR longdescription ILIKE ${searchPattern})`;
+    } else if (type && search) {
+      const searchPattern = `%${search}%`;
+      whereConditions = sql`type = ${type} AND (title ILIKE ${searchPattern} OR shortdescription ILIKE ${searchPattern} OR longdescription ILIKE ${searchPattern})`;
+    } else if (category) {
+      whereConditions = sql`category = ${category}`;
+    } else if (type) {
+      whereConditions = sql`type = ${type}`;
+    } else if (search) {
+      const searchPattern = `%${search}%`;
+      whereConditions = sql`(title ILIKE ${searchPattern} OR shortdescription ILIKE ${searchPattern} OR longdescription ILIKE ${searchPattern})`;
     } else {
       whereConditions = sql`1=1`;
     }

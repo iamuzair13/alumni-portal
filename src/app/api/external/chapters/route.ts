@@ -9,25 +9,20 @@ export async function GET(request: NextRequest) {
 
     // Build WHERE conditions dynamically
     let whereConditions = sql``;
-    const conditions: ReturnType<typeof sql>[] = [];
 
-    if (type === 'national') {
-      conditions.push(sql`national_chapter IS NOT NULL`);
-    } else if (type === 'international') {
-      conditions.push(sql`international_chapter IS NOT NULL`);
-    }
-
-    if (isActive !== null) {
+    if (type === 'national' && isActive !== null) {
       const isActiveBool = isActive === 'true';
-      conditions.push(sql`is_active = ${isActiveBool}`);
-    }
-
-    // Combine conditions
-    if (conditions.length > 0) {
-      whereConditions = conditions.reduce((acc, condition, index) => {
-        if (index === 0) return condition;
-        return sql`${acc} AND ${condition}`;
-      });
+      whereConditions = sql`national_chapter IS NOT NULL AND is_active = ${isActiveBool}`;
+    } else if (type === 'national') {
+      whereConditions = sql`national_chapter IS NOT NULL`;
+    } else if (type === 'international' && isActive !== null) {
+      const isActiveBool = isActive === 'true';
+      whereConditions = sql`international_chapter IS NOT NULL AND is_active = ${isActiveBool}`;
+    } else if (type === 'international') {
+      whereConditions = sql`international_chapter IS NOT NULL`;
+    } else if (isActive !== null) {
+      const isActiveBool = isActive === 'true';
+      whereConditions = sql`is_active = ${isActiveBool}`;
     } else {
       whereConditions = sql`1=1`;
     }
