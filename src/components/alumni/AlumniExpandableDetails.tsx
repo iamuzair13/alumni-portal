@@ -825,7 +825,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             type="button"
             onClick={onClose}
             className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded transition-colors"
-          >
+            >
             Close
           </button>
         </div>
@@ -837,17 +837,45 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
           </div>
-          <CompactField label="SAP ID" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} />
+          <CompactField label="Degree Title" value={data.degreetitle} isEditing={isFieldEditing("degreetitle")} readOnly={readOnly} register={register} name="degreetitle" onEdit={() => startEditingField("degreetitle")} />
+          {/* Department Field */}
+          {!isFieldEditing("department") || readOnly ? (
+            <CompactField 
+              label="Department" 
+              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("department")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
+              <select
+                {...register("department", { valueAsNumber: true })}
+                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
+                {allDepartments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+
+          <CompactField label="Mobile" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} />
+          <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} />
           <CompactField label="Registration No" value={data.registrationno} isEditing={isFieldEditing("registrationno")} readOnly={readOnly} register={register} name="registrationno" onEdit={() => startEditingField("registrationno")} />
           <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} />
+          <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} />
+          <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} />
           <CompactField label="Gender" value={data.gender} isEditing={isFieldEditing("gender")} readOnly={readOnly} register={register} name="gender" type="select" options={[
             { value: "", label: "Select" },
             { value: "Male", label: "Male" },
             { value: "Female", label: "Female" }
           ]} onEdit={() => startEditingField("gender")} />
           <CompactField label="Date of Birth" value={data.dateofbirth} isEditing={isFieldEditing("dateofbirth")} readOnly={readOnly} register={register} name="dateofbirth" onEdit={() => startEditingField("dateofbirth")} />
-          <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} />
-          <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} />
           <CompactField label="Marital Status" value={data.maritalstatus} isEditing={isFieldEditing("maritalstatus")} readOnly={readOnly} register={register} name="maritalstatus" type="select" options={[
             { value: "", label: "Select" },
             { value: "Married", label: "Married" },
@@ -858,7 +886,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
           </div>
-          <CompactField label="Primary Contact" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
           <CompactField label="Password" value={data.password || ""} isEditing={isFieldEditing("password")} readOnly={readOnly} register={register} name="password" type="password" onEdit={() => startEditingField("password")} />
@@ -981,65 +1008,40 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
           </div>
           
-          {/* Faculty Field */}
-          {!isFieldEditing("faculty") || readOnly ? (
-            <CompactField 
-              label="Faculty" 
-              value={facultiesLoading ? "Loading..." : displayFacultyName} 
-              isEditing={false} 
-              readOnly={readOnly}
-              onEdit={() => startEditingField("faculty")}
-            />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
-              <select
-                {...register("faculty", { 
-                  valueAsNumber: true,
-                  onChange: (e) => {
-                    const value = e.target.value;
-                    setValue("faculty", value ? Number(value) : null);
-                    setValue("department", null);
-                  }
-                })}
-                disabled={readOnly}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">Select Faculty</option>
-                {allFaculties.map((faculty) => (
-                  <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
           
-          {/* Department Field */}
-          {!isFieldEditing("department") || readOnly ? (
-            <CompactField 
-              label="Department" 
-              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
-              isEditing={false} 
-              readOnly={readOnly}
-              onEdit={() => startEditingField("department")}
-            />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
-              <select
-                {...register("department", { valueAsNumber: true })}
-                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
-                {allDepartments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+                      {/* Faculty Field */}
+            {!isFieldEditing("faculty") || readOnly ? (
+              <CompactField 
+                label="Faculty" 
+                value={facultiesLoading ? "Loading..." : displayFacultyName} 
+                isEditing={false} 
+                readOnly={readOnly}
+                onEdit={() => startEditingField("faculty")}
+              />
+            ) : (
+              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
+                <select
+                  {...register("faculty", { 
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      const value = e.target.value;
+                      setValue("faculty", value ? Number(value) : null);
+                      setValue("department", null);
+                    }
+                  })}
+                  disabled={readOnly}
+                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">Select Faculty</option>
+                  {allFaculties.map((faculty) => (
+                    <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           
           {/* Program Field - Text-based (Programs setup is pending) */}
-          <CompactField label="Program" value={data.degreetitle} isEditing={isFieldEditing("degreetitle")} readOnly={readOnly} register={register} name="degreetitle" onEdit={() => startEditingField("degreetitle")} />
           <CompactField label="Campus" value={data.campusname} isEditing={isFieldEditing("campusname")} readOnly={readOnly} register={register} name="campusname" type="select" options={[
             { value: "", label: "Select" },
             { value: "Lahore", label: "Lahore" },

@@ -173,27 +173,20 @@ type ErpStudentData = {
   [key: string]: unknown;
 };
 
-// Type for CSV row data
+// Type for CSV row data (new format)
 type CSVRow = {
   timestamp: string | null;
   sapIdOrRegNo: string;
   fullName: string | null;
-  cnic: string | null;
   contactNo: string | null;
-  activeEmail: string | null;
-  homeCity: string | null;
-  homeCountry: string | null;
-  employmentStatus: string | null;
-  organizationName: string | null;
-  designation: string | null;
-  sector: string | null;
-  workCountry: string | null;
-  workCity: string | null;
-  instituteName: string | null;
-  programName: string | null;
-  funding: string | null;
-  universityCity: string | null;
-  universityCountry: string | null;
+  graduationYear: string | null;
+  degreeName: string | null;
+  departmentName: string | null;
+  facultyName: string | null;
+  currentCity: string | null;
+  jobTitle: string | null;
+  employer: string | null;
+  email: string | null;
   rowNumber: number;
 };
 
@@ -207,12 +200,43 @@ function clean(value: any): string | null {
 }
 
 /**
- * Clean email
+ * Clean email and validate format
  */
 function cleanEmail(value: any): string | null {
   const email = clean(value);
   if (!email) return null;
-  return email.toLowerCase();
+  const lowerEmail = email.toLowerCase();
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(lowerEmail)) {
+    console.warn(`  ⚠️  Invalid email format: ${email}`);
+    return null;
+  }
+  return lowerEmail;
+}
+
+/**
+ * Validate and truncate string to max length
+ */
+function validateLength(value: string | null, maxLength: number, fieldName: string): string | null {
+  if (!value) return null;
+  if (value.length > maxLength) {
+    console.warn(`  ⚠️  ${fieldName} truncated from ${value.length} to ${maxLength} characters`);
+    return value.substring(0, maxLength);
+  }
+  return value;
+}
+
+/**
+ * Validate year
+ */
+function validateYear(yearStr: string | null): number | null {
+  if (!yearStr) return null;
+  const year = parseInt(yearStr.trim());
+  if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 10) {
+    return null;
+  }
+  return year;
 }
 
 /**
@@ -254,15 +278,19 @@ function parseCSV(filePath: string): CSVRow[] {
 
     const rows: CSVRow[] = [];
 
-    // Skip first 2 lines (header spans 2 lines due to newline in "Full Name")
-    for (let i = 2; i < lines.length; i++) {
+    // Skip first line (header)
+    for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line || line === '') continue; // Skip empty lines
       
       const values = parseCSVLine(line);
       
-      const sapIdOrRegNo = clean(values[1]); // Column 1: SAP ID/ Registration no.
-      if (!sapIdOrRegNo) continue; // Skip rows without SAP ID/Registration number
+      // Column 3: SAP ID/Reg ID
+      const sapIdOrRegNo = clean(values[3]);
+      if (!sapIdOrRegNo) {
+        console.warn(`  ⚠️  Row ${i + 1}: Skipping - no SAP ID/Reg ID found`);
+        continue; // Skip rows without SAP ID/Registration number
+      }
 
       // Handle cases where there might be multiple values separated by "/"
       const identifiers = sapIdOrRegNo
@@ -274,25 +302,18 @@ function parseCSV(filePath: string): CSVRow[] {
       const identifier = identifiers[0];
 
       rows.push({
-        timestamp: clean(values[0]), // Column 0: Timestamp
-        sapIdOrRegNo: identifier,
-        fullName: clean(values[2]), // Column 2: Full Name
-        cnic: clean(values[3]), // Column 3: CNIC
-        contactNo: clean(values[4]), // Column 4: Contact no.
-        activeEmail: cleanEmail(values[5]), // Column 5: Active email
-        homeCity: clean(values[6]), // Column 6: Home City
-        homeCountry: clean(values[7]), // Column 7: Home Country
-        employmentStatus: clean(values[8]), // Column 8: Employment Status
-        organizationName: clean(values[9]), // Column 9: Organization Name
-        designation: clean(values[10]), // Column 10: Designation
-        sector: clean(values[11]), // Column 11: Sector
-        workCountry: clean(values[12]), // Column 12: Work Country
-        workCity: clean(values[13]), // Column 13: Work City
-        instituteName: clean(values[14]), // Column 14: Institute Name
-        programName: clean(values[15]), // Column 15: Program Name
-        funding: clean(values[16]), // Column 16: Funding
-        universityCity: clean(values[17]), // Column 17: University City
-        universityCountry: clean(values[18]), // Column 18: University Country
+        timestamp: clean(values[0]),           // Column 0: Timestamp
+        sapIdOrRegNo: identifier,              // Column 3: SAP ID/Reg ID
+        fullName: clean(values[2]),            // Column 2: Full Name
+        contactNo: clean(values[4]),           // Column 4: Contact Number
+        graduationYear: clean(values[8]),      // Column 8: Graduation Year
+        degreeName: clean(values[9]),          // Column 9: Degree Name
+        departmentName: clean(values[10]),     // Column 10: Department Name
+        facultyName: clean(values[11]),        // Column 11: Faculty Name
+        currentCity: clean(values[12]),        // Column 12: Current City of Residence
+        jobTitle: clean(values[14]),           // Column 14: Current Job Title
+        employer: clean(values[15]),           // Column 15: Current Employer/Organization
+        email: cleanEmail(values[16]),         // Column 16: Email
         rowNumber: i + 1,
       });
     }
@@ -368,9 +389,9 @@ async function fetchErpData(identifier: string): Promise<ErpStudentData | null> 
 }
 
 /**
- * Check if alumni record exists
+ * Check if alumni record exists (by SAP ID/Registration No or email)
  */
-async function findAlumniRecord(identifier: string, isSapId: boolean): Promise<number | null> {
+async function findAlumniRecord(identifier: string, isSapId: boolean, email?: string | null): Promise<number | null> {
   try {
     let result;
     if (isSapId) {
@@ -387,6 +408,19 @@ async function findAlumniRecord(identifier: string, isSapId: boolean): Promise<n
       `;
     }
 
+    // If not found by ID, check by email (to avoid duplicates)
+    if (result.length === 0 && email) {
+      const emailResult = await sql`
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE LOWER(alumniemail) = LOWER(${email})
+        LIMIT 1
+      `;
+      if (emailResult.length > 0) {
+        console.warn(`  ⚠️  Found existing record with same email: ${email}`);
+        return emailResult[0].alumniid;
+      }
+    }
+
     return result.length > 0 ? result[0].alumniid : null;
   } catch (error) {
     console.error(`  ❌ Error finding alumni record:`, error instanceof Error ? error.message : String(error));
@@ -395,13 +429,49 @@ async function findAlumniRecord(identifier: string, isSapId: boolean): Promise<n
 }
 
 /**
- * Map CSV row and ERP data to database record
+ * Lookup faculty ID by name (safe lookup)
  */
-function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): any {
+async function lookupFacultyId(facultyName: string | null): Promise<number | null> {
+  if (!facultyName) return null;
+  try {
+    const result = await sql`
+      SELECT id FROM public.tbl_faculties
+      WHERE LOWER(TRIM(name)) = LOWER(TRIM(${facultyName}))
+      LIMIT 1
+    `;
+    return result.length > 0 ? result[0].id : null;
+  } catch (error) {
+    console.warn(`  ⚠️  Error looking up faculty "${facultyName}":`, error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
+/**
+ * Lookup department ID by name (safe lookup)
+ */
+async function lookupDepartmentId(departmentName: string | null): Promise<number | null> {
+  if (!departmentName) return null;
+  try {
+    const result = await sql`
+      SELECT id FROM public.tbl_departments
+      WHERE LOWER(TRIM(name)) = LOWER(TRIM(${departmentName}))
+      LIMIT 1
+    `;
+    return result.length > 0 ? result[0].id : null;
+  } catch (error) {
+    console.warn(`  ⚠️  Error looking up department "${departmentName}":`, error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
+/**
+ * Map CSV row and ERP data to database record (with validation)
+ */
+async function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): Promise<any> {
   const isSap = isSapId(csvRow.sapIdOrRegNo);
   
-  // Generate email if not provided
-  let alumniemail = csvRow.activeEmail;
+  // Generate email if not provided (required field)
+  let alumniemail = csvRow.email;
   if (!alumniemail) {
     if (isSap) {
       alumniemail = `alumni_${csvRow.sapIdOrRegNo}@uol.edu.pk`;
@@ -409,6 +479,7 @@ function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): any 
       alumniemail = `alumni_${csvRow.sapIdOrRegNo.replace(/\s+/g, '_')}@uol.edu.pk`;
     }
   }
+  alumniemail = alumniemail.toLowerCase();
 
   // Parse timestamp
   let todaydate: Date | null = null;
@@ -425,75 +496,67 @@ function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): any 
     todaydate = new Date();
   }
 
-  // Map employment status
-  let employeed: string | null = null;
-  if (csvRow.employmentStatus) {
-    const status = csvRow.employmentStatus.toLowerCase();
-    if (status.includes('employed')) {
-      employeed = 'Yes';
-    } else if (status.includes('unemployed')) {
-      employeed = 'No';
-    } else if (status.includes('self')) {
-      employeed = 'Self';
-    } else {
-      employeed = csvRow.employmentStatus;
-    }
-  }
+  // Parse graduation year
+  const yearofending = validateYear(csvRow.graduationYear);
 
-  // Map funding to is_scholarship
-  let is_scholarship: string | null = null;
-  if (csvRow.funding) {
-    const funding = csvRow.funding.toLowerCase();
-    if (funding.includes('scholarship')) {
-      is_scholarship = 'Yes';
-    } else if (funding.includes('self')) {
-      is_scholarship = 'No';
-    } else {
-      is_scholarship = csvRow.funding;
-    }
-  }
+  // Lookup faculty and department IDs
+  const facultyId = await lookupFacultyId(csvRow.facultyName);
+  const departmentId = await lookupDepartmentId(csvRow.departmentName);
+
+  // Validate and truncate fields to match database constraints
+  const alumniname = validateLength(csvRow.fullName, 200, 'alumniname');
+  const contactno = validateLength(csvRow.contactNo, 50, 'contactno');
+  const degreetitle = validateLength(csvRow.degreeName || erpData?.DegrTitle || null, 300, 'degreetitle');
+  const departmentname = validateLength(csvRow.departmentName || erpData?.DeptName || null, 300, 'departmentname');
+  const facultyname = validateLength(csvRow.facultyName, 100, 'facultyname');
+  const city = validateLength(csvRow.currentCity, 50, 'city');
+  const designation = validateLength(csvRow.jobTitle, 100, 'designation');
+  const nameoforganization = validateLength(csvRow.employer, 100, 'nameoforganization');
+  const fathername = validateLength(erpData?.Fname || null, 200, 'fathername');
+  const cnicpassport = validateLength(erpData?.Cnic || null, 50, 'cnicpassport');
+  const address = validateLength(erpData?.Address || null, 250, 'address');
 
   return {
-    alumniemail: alumniemail.toLowerCase(),
+    alumniemail: alumniemail,
     password: null,
     todaydate: todaydate,
-    registrationno: isSap ? null : csvRow.sapIdOrRegNo,
-    sapid: isSap ? csvRow.sapIdOrRegNo : null,
-    alumniname: csvRow.fullName,
+    registrationno: isSap ? null : validateLength(csvRow.sapIdOrRegNo, 20, 'registrationno'),
+    sapid: isSap ? validateLength(csvRow.sapIdOrRegNo, 20, 'sapid') : null,
+    alumniname: alumniname,
     gender: null,
-    fathername: erpData?.Fname || null, // From ERP
+    fathername: fathername,
     dateofbirth: null,
     maritalstatus: null,
-    cnicpassport: csvRow.cnic,
-    contactno: csvRow.contactNo,
+    cnicpassport: cnicpassport,
+    contactno: contactno,
     contactno1: null,
     contactno1show: null,
-    personalemail: csvRow.activeEmail,
+    personalemail: csvRow.email,
     personalemailshow: null,
     universityemail: null,
-    country: csvRow.homeCountry,
+    country: null, // Not in new CSV format
     province: null,
-    city: csvRow.homeCity,
-    address: null,
+    city: city,
+    address: address,
     academicsession: null,
-    degreetitle: erpData?.DegrTitle || null, // From ERP
+    degreetitle: degreetitle,
     cgpa: null,
     yearofstarting: null,
-    yearofending: null,
-    facultyname: null,
+    yearofending: yearofending,
+    facultyname: facultyname,
     campusname: null,
-    departmentname: erpData?.DeptName || null, // From ERP
+    departmentname: departmentname,
     majorsubject: null,
-    industry: csvRow.sector,
-    employeed: employeed,
-    nameoforganization: csvRow.organizationName,
-    designation: csvRow.designation,
+    industry: null, // Not in new CSV format
+    employeed: null, // Not in new CSV format
+    nameoforganization: nameoforganization,
+    designation: designation,
     totalyearsofexpereince: null,
     officialemail: null,
     officialnumber: null,
-    work_city: csvRow.workCity,
+    work_city: null, // Not in new CSV format
     supervisordesignation: null,
-    work_country: csvRow.workCountry,
+    work_country: null, // Not in new CSV format
     supervisornumber: null,
     image1: null,
     cv: null,
@@ -510,10 +573,10 @@ function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): any 
     linkedin: null,
     datasource: 'Form Import',
     alumnistatus: null,
-    higher_education_institute_name: csvRow.instituteName,
-    degree_title: csvRow.programName, // Program Name from form
-    is_scholarship: is_scholarship,
-    higher_education_program: csvRow.programName,
+    higher_education_institute_name: null, // Not in new CSV format
+    degree_title: validateLength(csvRow.degreeName, 300, 'degree_title'),
+    is_scholarship: null, // Not in new CSV format
+    higher_education_program: null, // Not in new CSV format
     father_cnic: null,
     image2: null,
     association_id: null,
@@ -522,14 +585,14 @@ function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): any 
     organization_address: null,
     higher_education_intiture_number: null,
     higher_education_institute_email: null,
-    higher_education_institute_country: csvRow.universityCountry,
+    higher_education_institute_country: null, // Not in new CSV format
     higher_education_institute_province: null,
-    higher_education_institute_city: csvRow.universityCity,
+    higher_education_institute_city: null, // Not in new CSV format
     about: null,
     reason_of_unemployment: null,
     category: null,
-    faculty: null,
-    department: null,
+    faculty: facultyId,
+    department: departmentId,
     program: null,
   };
 }
@@ -540,36 +603,31 @@ function mapToAlumniRecord(csvRow: CSVRow, erpData: ErpStudentData | null): any 
 async function upsertAlumniRecord(record: any, alumniid: number | null): Promise<{ success: boolean; updated: boolean }> {
   try {
     if (alumniid) {
-      // Update existing record
+      // Update existing record (only update non-null fields to preserve existing data)
       await sql`
         UPDATE public.tbl_alumni SET
           alumniemail = ${record.alumniemail},
           todaydate = ${record.todaydate},
-          registrationno = ${record.registrationno},
-          sapid = ${record.sapid},
-          alumniname = ${record.alumniname},
-          fathername = ${record.fathername},
-          cnicpassport = ${record.cnicpassport},
-          contactno = ${record.contactno},
-          personalemail = ${record.personalemail},
-          country = ${record.country},
-          city = ${record.city},
-          degreetitle = ${record.degreetitle},
-          departmentname = ${record.departmentname},
-          industry = ${record.industry},
-          employeed = ${record.employeed},
-          nameoforganization = ${record.nameoforganization},
-          designation = ${record.designation},
-          work_city = ${record.work_city},
-          work_country = ${record.work_country},
-          datasource = ${record.datasource},
-          higher_education_institute_name = ${record.higher_education_institute_name},
-          degree_title = ${record.degree_title},
-          is_scholarship = ${record.is_scholarship},
-          higher_education_program = ${record.higher_education_program},
-          higher_education_institute_country = ${record.higher_education_institute_country},
-          higher_education_institute_city = ${record.higher_education_institute_city},
-          createddatetime = ${record.createddatetime}
+          registrationno = COALESCE(${record.registrationno}, registrationno),
+          sapid = COALESCE(${record.sapid}, sapid),
+          alumniname = COALESCE(${record.alumniname}, alumniname),
+          fathername = COALESCE(${record.fathername}, fathername),
+          cnicpassport = COALESCE(${record.cnicpassport}, cnicpassport),
+          contactno = COALESCE(${record.contactno}, contactno),
+          personalemail = COALESCE(${record.personalemail}, personalemail),
+          city = COALESCE(${record.city}, city),
+          degreetitle = COALESCE(${record.degreetitle}, degreetitle),
+          departmentname = COALESCE(${record.departmentname}, departmentname),
+          facultyname = COALESCE(${record.facultyname}, facultyname),
+          nameoforganization = COALESCE(${record.nameoforganization}, nameoforganization),
+          designation = COALESCE(${record.designation}, designation),
+          address = COALESCE(${record.address}, address),
+          yearofending = COALESCE(${record.yearofending}, yearofending),
+          degree_title = COALESCE(${record.degree_title}, degree_title),
+          faculty = COALESCE(${record.faculty}, faculty),
+          department = COALESCE(${record.department}, department),
+          datasource = COALESCE(${record.datasource}, datasource),
+          createddatetime = COALESCE(${record.createddatetime}, createddatetime)
         WHERE alumniid = ${alumniid}
       `;
       return { success: true, updated: true };
@@ -640,8 +698,26 @@ async function main() {
   if (!csvFilePath) {
     console.error('❌ Please provide the CSV file path as an argument');
     console.error('\nUsage: npm run import-form-data-with-erp <csv-file-path>');
+    console.error('\nExpected CSV Format:');
+    console.error('  Column 0: Timestamp');
+    console.error('  Column 1: Score (ignored)');
+    console.error('  Column 2: Full Name');
+    console.error('  Column 3: SAP ID/Reg ID');
+    console.error('  Column 4: Contact Number');
+    console.error('  Column 5: Book your slots (ignored)');
+    console.error('  Column 6: Are you interested in being a mentor/speaker... (ignored)');
+    console.error('  Column 7: What type of sessions... (ignored)');
+    console.error('  Column 8: Graduation Year');
+    console.error('  Column 9: Degree Name');
+    console.error('  Column 10: Department Name');
+    console.error('  Column 11: Faculty Name');
+    console.error('  Column 12: Current City of Residence');
+    console.error('  Column 13: How would you like UOL... (ignored)');
+    console.error('  Column 14: Current Job Title');
+    console.error('  Column 15: Current Employer/Organization');
+    console.error('  Column 16: Email');
     console.error('\nExample:');
-    console.error('  npm run import-form-data-with-erp "scripts/UOL Alumni Portal Registration Form (Responses) - Form Responses 1.csv"');
+    console.error('  npm run import-form-data-with-erp "scripts/alumni-form-responses.csv"');
     process.exit(1);
   }
 
@@ -684,14 +760,34 @@ async function main() {
 
         // Check if record exists
         const isSap = isSapId(csvRow.sapIdOrRegNo);
-        const existingId = await findAlumniRecord(csvRow.sapIdOrRegNo, isSap);
+        const existingId = await findAlumniRecord(csvRow.sapIdOrRegNo, isSap, csvRow.email);
 
-        // Map to database record
-        const record = mapToAlumniRecord(csvRow, erpData);
+        // Map to database record (async now due to lookups)
+        console.log(`  🔍 Mapping data to database record...`);
+        const record = await mapToAlumniRecord(csvRow, erpData);
+
+        // Validate required fields before insertion
+        if (!record.alumniemail) {
+          throw new Error('Email is required but could not be generated');
+        }
+
+        // Check for duplicate email if inserting new record
+        let recordIdToUse = existingId;
+        if (!existingId) {
+          const emailCheck = await sql`
+            SELECT alumniid FROM public.tbl_alumni
+            WHERE LOWER(alumniemail) = LOWER(${record.alumniemail})
+            LIMIT 1
+          `;
+          if (emailCheck.length > 0) {
+            console.warn(`  ⚠️  Email already exists for alumni ID ${emailCheck[0].alumniid}, updating that record instead`);
+            recordIdToUse = emailCheck[0].alumniid;
+          }
+        }
 
         // Insert or update
-        console.log(`  💾 ${existingId ? 'Updating' : 'Inserting'} record...`);
-        const result = await upsertAlumniRecord(record, existingId);
+        console.log(`  💾 ${recordIdToUse ? 'Updating' : 'Inserting'} record...`);
+        const result = await upsertAlumniRecord(record, recordIdToUse);
 
         if (result.success) {
           if (result.updated) {
