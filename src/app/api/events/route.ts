@@ -14,6 +14,9 @@ type EventListItem = {
   category?: string;
   startTimeUTC?: string;
   endTimeUTC?: string;
+  chapterName?: string | null;
+  chapterType?: string | null;
+  associationTitle?: string | null;
 };
 
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
@@ -44,14 +47,47 @@ type EventRow = {
   image3: string | null;
   image4: string | null;
   image5: string | null;
+  chapter_id: number | null;
+  association_id: number | null;
+  chapter_name: string | null;
+  chapter_type: string | null;
+  association_title: string | null;
 };
 
 export async function GET() {
   try {
     const rows = await sql/* sql */`
-      SELECT id, category, title, shortdescription, longdescription, fromdate, todate, eventtime, image1, image2, image3, image4, image5
-      FROM public.tbl_events
-      ORDER BY fromdate DESC
+      SELECT 
+        e.id, 
+        e.category, 
+        e.title, 
+        e.shortdescription, 
+        e.longdescription, 
+        e.fromdate, 
+        e.todate, 
+        e.eventtime, 
+        e.image1, 
+        e.image2, 
+        e.image3, 
+        e.image4, 
+        e.image5,
+        e.chapter_id,
+        e.association_id,
+        CASE 
+          WHEN c.national_chapter IS NOT NULL THEN c.national_chapter
+          WHEN c.international_chapter IS NOT NULL THEN c.international_chapter
+          ELSE NULL
+        END as chapter_name,
+        CASE 
+          WHEN c.national_chapter IS NOT NULL THEN 'national'
+          WHEN c.international_chapter IS NOT NULL THEN 'international'
+          ELSE NULL
+        END as chapter_type,
+        a.title as association_title
+      FROM public.tbl_events e
+      LEFT JOIN public.tblchapters c ON e.chapter_id = c.id
+      LEFT JOIN public.tbl_associations a ON e.association_id = a.id
+      ORDER BY e.fromdate DESC
       LIMIT 200` as EventRow[];
     const items = rows.map((r): EventListItem => {
       const id = String(r.id ?? "");
@@ -62,7 +98,22 @@ export async function GET() {
       const category = String(r.category ?? "");
       const startTimeUTC = toUtcIso(r.fromdate, r.eventtime);
       const endTimeUTC = toUtcIso(r.todate, r.eventtime) ?? startTimeUTC;
-      return { id, title, venue, shortDescription, imageUrl, category, startTimeUTC, endTimeUTC };
+      const chapterName = r.chapter_name ? String(r.chapter_name) : null;
+      const chapterType = r.chapter_type ? String(r.chapter_type) : null;
+      const associationTitle = r.association_title ? String(r.association_title) : null;
+      return { 
+        id, 
+        title, 
+        venue, 
+        shortDescription, 
+        imageUrl, 
+        category, 
+        startTimeUTC, 
+        endTimeUTC,
+        chapterName,
+        chapterType,
+        associationTitle,
+      };
     });
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
@@ -90,14 +141,23 @@ export async function POST(req: Request) {
     const formData = await req.formData();
 
     // Extract text fields
+    const title = String(formData.get("title") || "").trim();
     const category = String(formData.get("category") || "").trim();
     const fromDate = String(formData.get("fromDate") || "").trim();
     const toDate = String(formData.get("toDate") || "").trim();
     const eventTime = String(formData.get("eventTime") || "").trim();
     const shortDescription = String(formData.get("shortDescription") || "").trim();
     const description = String(formData.get("description") || "").trim();
+    const chapterId = formData.get("chapterId") ? Number(formData.get("chapterId")) : null;
+    const associationId = formData.get("associationId") ? Number(formData.get("associationId")) : null;
 
     // Validation
+    if (!title) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+    if (title.length > 200) {
+      return NextResponse.json({ error: "Title must be 200 characters or less" }, { status: 400 });
+    }
     if (!category) {
       return NextResponse.json({ error: "Category is required" }, { status: 400 });
     }
@@ -200,8 +260,8 @@ export async function POST(req: Request) {
 
       // Insert event record with image filenames
       const result = await sql/* sql */`
-        INSERT INTO public.tbl_events (category, title, shortdescription, longdescription, fromdate, todate, eventtime, image1, image2, image3, image4, image5)
-        VALUES (${category}, ${""}, ${shortDescription.slice(0, 500)}, ${description || null}, ${fromDate}, ${toDate}, ${eventTime}, ${savedImages[1]}, ${savedImages[2] || null}, ${savedImages[3] || null}, ${savedImages[4] || null}, ${savedImages[5] || null})
+        INSERT INTO public.tbl_events (category, title, shortdescription, longdescription, fromdate, todate, eventtime, image1, image2, image3, image4, image5, chapter_id, association_id)
+        VALUES (${category}, ${title}, ${shortDescription.slice(0, 500)}, ${description || null}, ${fromDate}, ${toDate}, ${eventTime}, ${savedImages[1]}, ${savedImages[2] || null}, ${savedImages[3] || null}, ${savedImages[4] || null}, ${savedImages[5] || null}, ${chapterId}, ${associationId})
         RETURNING id
       ` as Array<{ id: number }>;
 

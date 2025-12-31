@@ -13,7 +13,6 @@ import Link from "next/link";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,6 +27,7 @@ import toast from "react-hot-toast";
 // TypeScript typings for Events
 type EventItem = {
   id: string;
+  title: string;
   category: string;
   fromDate: string | null;
   toDate: string | null;
@@ -39,6 +39,9 @@ type EventItem = {
   image3?: string | null;
   image4?: string | null;
   image5?: string | null;
+  chapterName?: string | null;
+  chapterType?: string | null;
+  associationTitle?: string | null;
 };
 
 // Tabs typing
@@ -88,6 +91,9 @@ type EventListProps = {
 const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const topScrollbarRef = React.useRef<HTMLDivElement>(null);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const isScrollingRef = React.useRef<boolean>(false);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -105,34 +111,119 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
   const startIdx = (currentPage - 1) * pageSize;
   const paged = safeItems.slice(startIdx, startIdx + pageSize);
 
+  // Sync scroll between top scrollbar and table container
+  useEffect(() => {
+    const tableContainer = tableContainerRef.current;
+    const topScrollbar = topScrollbarRef.current;
+    
+    if (!tableContainer || !topScrollbar) return;
+
+    const syncScrollbarWidth = () => {
+      const tableContent = tableContainer.querySelector('.table-content-wrapper') as HTMLElement;
+      if (tableContent) {
+        const scrollbarContent = topScrollbar.querySelector('.table-scrollbar-content') as HTMLElement;
+        if (scrollbarContent) {
+          scrollbarContent.style.minWidth = `${tableContent.scrollWidth}px`;
+        }
+      }
+    };
+
+    const handleTableScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        topScrollbar.scrollLeft = tableContainer.scrollLeft;
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 10);
+      }
+    };
+
+    const handleTopScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        tableContainer.scrollLeft = topScrollbar.scrollLeft;
+        setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 10);
+      }
+    };
+
+    syncScrollbarWidth();
+
+    const resizeObserver = new ResizeObserver(() => {
+      syncScrollbarWidth();
+    });
+
+    const tableContent = tableContainer.querySelector('.table-content-wrapper');
+    if (tableContent) {
+      resizeObserver.observe(tableContent);
+    }
+
+    tableContainer.addEventListener('scroll', handleTableScroll);
+    topScrollbar.addEventListener('scroll', handleTopScroll);
+
+    return () => {
+      resizeObserver.disconnect();
+      tableContainer.removeEventListener('scroll', handleTableScroll);
+      topScrollbar.removeEventListener('scroll', handleTopScroll);
+    };
+  }, [paged, loading]);
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-      <SyncedTableScroll minWidth={900} maxHeight={750}>
-        <Table className="min-w-full">
+    <div className="px-3  sm:px-1 pb-8">
+      <div className="overflow-hidden rounded-2xl border max-w-[1150px] border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
+        {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
+        <div 
+          ref={topScrollbarRef}
+          className="top-horizontal-scrollbar w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+          style={{
+            height: '24px',
+            scrollbarWidth: 'auto' as const,
+            scrollbarColor: '#3b82f6 #e5e7eb',
+          }}
+        >
+          <div className="table-scrollbar-content h-full" style={{ minWidth: '1300px' }}></div>
+        </div>
+        <div 
+          ref={tableContainerRef}
+          className="max-w-full overflow-x-hidden custom-scrollbar max-h-[750px] overflow-y-auto relative"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+        <div className="table-content-wrapper" style={{ minWidth: '1300px' }}>
+          <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
               <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[60px]">
                   Sr. No.
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px]">
+                  Title
+                </TableCell>
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
                   Category
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[110px]">
                   From Date
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[110px]">
                   To Date
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                  Event Time
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">
+                  Time
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                  Short Description
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] hidden lg:table-cell">
+                  Description
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                  Image
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
+                  Chapter
                 </TableCell>
-                <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px]">
+                  Association
+                </TableCell>
+                <TableCell className="px-3  sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20 min-w-[140px]">
                   Actions
                 </TableCell>
               </TableRow>
@@ -142,36 +233,42 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               {loading && (
                 Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
-                    <TableCell className="px-3 sm:px-6 py-5">
+                    <TableCell className="px-3  sm:px-6 py-5">
                       <div className="h-5 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5">
-                      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    <TableCell className="px-3  sm:px-6 py-5">
+                      <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5">
+                    <TableCell className="px-3  sm:px-6 py-5">
+                      <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
+                    </TableCell>
+                    <TableCell className="px-3  sm:px-6 py-5">
                       <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5">
+                    <TableCell className="px-3  sm:px-6 py-5">
                       <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5">
+                    <TableCell className="px-3  sm:px-6 py-5">
                       <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5">
+                    <TableCell className="px-3  sm:px-6 py-5 hidden lg:table-cell">
                       <div className="h-5 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5">
-                      <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    <TableCell className="px-3  sm:px-6 py-5">
+                      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
-                      <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
+                    <TableCell className="px-3  sm:px-6 py-5">
+                      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3  sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                      <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                     </TableCell>
                   </TableRow>
                 ))
               )}
               {!loading && paged.length === 0 && (
                 <TableRow>
-                  <TableCell className="px-6 py-16 text-center" colSpan={8}>
+                  <TableCell className="px-6 py-16 text-center" colSpan={10}>
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,68 +285,99 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               {!loading && paged.map((evt, idx) => (
                 <TableRow
                   key={evt.id}
-                  className="hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"
+                  className="hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20 group"
                 >
-                  <TableCell className="px-3 sm:px-6 py-5 text-start">
-                    <span className="block text-gray-800 text-sm dark:text-white/90">{startIdx + idx + 1}</span>
+                  <TableCell className="px-3  sm:px-6 py-5 text-start">
+                    <span className="block text-gray-800 text-sm font-medium dark:text-white/90">{startIdx + idx + 1}</span>
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-start">
-                    <span className="block text-gray-800 text-sm font-medium dark:text-white/90 capitalize">{evt.category || "-"}</span>
+                  <TableCell className="px-3  sm:px-6 py-5 text-start">
+                    <div className="flex flex-col gap-1">
+                      <span className="block text-gray-900 text-sm font-semibold dark:text-white/95 line-clamp-1">{evt.title || "Untitled Event"}</span>
+                      <span className="block text-gray-500 text-xs dark:text-gray-400 line-clamp-1 lg:hidden">{evt.shortDescription || "-"}</span>
+                    </div>
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                    {formatDate(evt.fromDate)}
+                  <TableCell className="px-3  sm:px-6 py-5 text-start">
+                    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 capitalize">
+                      {evt.category || "-"}
+                    </span>
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                    {formatDate(evt.toDate)}
+                  <TableCell className="px-3  sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{formatDate(evt.fromDate)}</span>
+                    </div>
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                    {formatTime(evt.eventTime)}
+                  <TableCell className="px-3  sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{formatDate(evt.toDate)}</span>
+                    </div>
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
-                    <span className="line-clamp-2">{evt.shortDescription || "-"}</span>
+                  <TableCell className="px-3  sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
+                    <span className="inline-flex items-center gap-1.5 font-medium">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formatTime(evt.eventTime)}
+                    </span>
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-start">
-                    {evt.image1 ? (
-                      <img
-                        src={`/images/alumni-images/thumbnail/${evt.image1}`}
-                        alt={`${evt.category} event`}
-                        className="w-12 h-12 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/64";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">No image</span>
+                  <TableCell className="px-3  sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                    <span className="line-clamp-2 text-gray-600 dark:text-gray-400">{evt.shortDescription || "-"}</span>
+                  </TableCell>
+                  <TableCell className="px-3  sm:px-6 py-5 text-start">
+                    {evt.chapterName ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                          {evt.chapterName}
+                        </span>
+                        {evt.chapterType && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{evt.chapterType}</span>
+                        )}
                       </div>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="px-3 sm:px-6 py-5 text-end sticky right-0 bg-white dark:bg-gray-800/30 z-10">
-                    <div role="group" aria-label="Row actions" className="inline-flex items-center gap-1.5 sm:gap-2.5 justify-end">
+                  <TableCell className="px-3  sm:px-6 py-5 text-start">
+                    {evt.associationTitle ? (
+                      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        {evt.associationTitle}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
+                    idx % 2 === 0 
+                      ? "bg-gray-50 dark:bg-gray-800/20" 
+                      : "bg-white dark:bg-gray-800/30"
+                  }`}>
+                    <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2 justify-end">
                       <Link
                         href={`/events/${evt.id}`}
-                        className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                         aria-label="View event"
                         title="View event"
                       >
-                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
+                        <span className="hidden sm:inline">View</span>
                       </Link>
                       <button
                         type="button"
                         onClick={() => onDelete?.(evt.id)}
                         disabled={Boolean(deletingIds?.has(evt.id))}
-                        className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                         aria-label="Delete event"
                         title="Delete event"
                       >
                         {deletingIds?.has(evt.id) ? (
-                          <div className="h-4 w-4 sm:h-5 sm:w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                          <div className="h-4 w-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <TrashBinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <>
+                            <TrashBinIcon className="h-4 w-4" />
+                            <span className="hidden sm:inline">Delete</span>
+                          </>
                         )}
                       </button>
                     </div>
@@ -257,9 +385,10 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                 </TableRow>
               ))}
             </TableBody>
-        </Table>
-      </SyncedTableScroll>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+            </Table>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
               {(() => {
                 const start = (currentPage - 1) * pageSize + 1;
@@ -299,18 +428,51 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               />
             </div>
           </div>
+        </div>
+      <style jsx global>{`
+        .top-horizontal-scrollbar::-webkit-scrollbar {
+          height: 24px !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-track {
+          background: #e5e7eb !important;
+          border-radius: 0 !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb {
+          background: #3b82f6 !important;
+          border-radius: 12px !important;
+          border: 3px solid #e5e7eb !important;
+          min-width: 50px !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #2563eb !important;
+          border-color: #d1d5db !important;
+        }
+        .top-horizontal-scrollbar::-webkit-scrollbar-thumb:active {
+          background: #1d4ed8 !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .custom-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}</style>
     </div>
   );
 };
 
 // Form schema
 type EventFormValues = {
+  title: string;
   category: string;
   fromDate: string;
   toDate: string;
   eventTime: string;
   shortDescription: string;
   description: string;
+  chapterId?: string;
+  associationId?: string;
   image1: File | null;
   image2?: File | null;
   image3?: File | null;
@@ -319,12 +481,15 @@ type EventFormValues = {
 };
 
 const eventFormSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title must be 200 characters or less"),
   category: z.string().min(1, "Category is required"),
   fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "From date is required"),
   toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "To date is required"),
   eventTime: z.string().regex(/^\d{2}:\d{2}$/u, "Event time is required (HH:MM format)"),
   shortDescription: z.string().min(1, "Short description is required").max(500, "Short description must be 500 characters or less"),
   description: z.string().min(1, "Description is required"),
+  chapterId: z.string().optional(),
+  associationId: z.string().optional(),
   image1: z
     .any()
     .refine((f) => f instanceof File, { message: "Image 1 is required" })
@@ -371,6 +536,10 @@ const AddEventForm: React.FC = () => {
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
+  const [chapters, setChapters] = useState<Array<{ id: number; name: string; type: string }>>([]);
+  const [associations, setAssociations] = useState<Array<{ id: number; title: string }>>([]);
+  const [loadingChapters, setLoadingChapters] = useState(true);
+  const [loadingAssociations, setLoadingAssociations] = useState(true);
 
   const {
     register,
@@ -383,12 +552,15 @@ const AddEventForm: React.FC = () => {
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
+      title: "",
       category: "",
       fromDate: "",
       toDate: "",
       eventTime: "",
       shortDescription: "",
       description: "",
+      chapterId: "",
+      associationId: "",
       image1: null,
       image2: undefined,
       image3: undefined,
@@ -397,6 +569,40 @@ const AddEventForm: React.FC = () => {
     },
     mode: "onChange",
   });
+
+  // Fetch chapters and associations on mount
+  useEffect(() => {
+    const fetchChapters = async () => {
+      try {
+        const res = await fetch("/api/chapters/list");
+        if (res.ok) {
+          const data = await res.json();
+          setChapters(data.chapters || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch chapters:", err);
+      } finally {
+        setLoadingChapters(false);
+      }
+    };
+
+    const fetchAssociations = async () => {
+      try {
+        const res = await fetch("/api/associations/list");
+        if (res.ok) {
+          const data = await res.json();
+          setAssociations(data.associations || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch associations:", err);
+      } finally {
+        setLoadingAssociations(false);
+      }
+    };
+
+    fetchChapters();
+    fetchAssociations();
+  }, []);
 
   // Watch all image fields for preview
   const image1 = watch("image1");
@@ -429,12 +635,16 @@ const AddEventForm: React.FC = () => {
     try {
       // Create FormData for file uploads
       const formData = new FormData();
+      formData.append("title", data.title);
       formData.append("category", data.category);
       formData.append("fromDate", data.fromDate);
       formData.append("toDate", data.toDate);
       formData.append("eventTime", data.eventTime);
       formData.append("shortDescription", data.shortDescription);
       formData.append("description", data.description);
+      
+      if (data.chapterId) formData.append("chapterId", data.chapterId);
+      if (data.associationId) formData.append("associationId", data.associationId);
       
       if (data.image1) formData.append("image1", data.image1);
       if (data.image2) formData.append("image2", data.image2);
@@ -497,6 +707,22 @@ const AddEventForm: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+        {/* Title */}
+        <div className="sm:col-span-2">
+          <Label htmlFor="title">Event Title *</Label>
+          <input
+            id="title"
+            type="text"
+            className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+              errors.title ? "border-red-500 dark:border-red-500" : "border-gray-300"
+            }`}
+            placeholder="Enter event title"
+            {...register("title")}
+          />
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Maximum 200 characters</p>
+          {errors.title && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.title.message}</p>}
+        </div>
+
         {/* Category */}
         <div>
           <Label htmlFor="category">Category *</Label>
@@ -556,6 +782,44 @@ const AddEventForm: React.FC = () => {
             {...register("toDate")}
           />
           {errors.toDate && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.toDate.message}</p>}
+        </div>
+
+        {/* Chapter */}
+        <div>
+          <Label htmlFor="chapterId">Chapter (Optional)</Label>
+          <select
+            id="chapterId"
+            className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+            {...register("chapterId")}
+            disabled={loadingChapters}
+          >
+            <option value="">Select a chapter (optional)</option>
+            {chapters.map((chapter) => (
+              <option key={chapter.id} value={chapter.id}>
+                {chapter.name} ({chapter.type})
+              </option>
+            ))}
+          </select>
+          {loadingChapters && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Loading chapters...</p>}
+        </div>
+
+        {/* Association */}
+        <div>
+          <Label htmlFor="associationId">Association (Optional)</Label>
+          <select
+            id="associationId"
+            className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+            {...register("associationId")}
+            disabled={loadingAssociations}
+          >
+            <option value="">Select an association (optional)</option>
+            {associations.map((association) => (
+              <option key={association.id} value={association.id}>
+                {association.title}
+              </option>
+            ))}
+          </select>
+          {loadingAssociations && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Loading associations...</p>}
         </div>
 
         {/* Short Description */}
@@ -690,6 +954,7 @@ export default function EventsPage() {
   useEffect(() => {
     const mapped: EventItem[] = (rawEvents ?? []).map((e: EventListItem) => ({
       id: e.id,
+      title: e.title || "",
       category: e.category || "",
       fromDate: e.startTimeUTC ? new Date(e.startTimeUTC).toISOString().split('T')[0] : null,
       toDate: e.endTimeUTC ? new Date(e.endTimeUTC).toISOString().split('T')[0] : null,
@@ -701,6 +966,9 @@ export default function EventsPage() {
       image3: null,
       image4: null,
       image5: null,
+      chapterName: e.chapterName || null,
+      chapterType: e.chapterType || null,
+      associationTitle: e.associationTitle || null,
     }));
     setEvents(mapped);
   }, [rawEvents]);
@@ -712,6 +980,7 @@ export default function EventsPage() {
     
     return events.filter((e) => {
       const searchFields = [
+        e.title,
         e.category,
         e.shortDescription,
         e.description,
@@ -916,3 +1185,4 @@ export default function EventsPage() {
     </ComponentCard>
   );
 }
+

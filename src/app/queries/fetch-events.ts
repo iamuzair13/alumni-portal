@@ -10,6 +10,9 @@ export type EventListItem = {
   category?: string;
   startTimeUTC?: string;
   endTimeUTC?: string;
+  chapterName?: string | null;
+  chapterType?: string | null;
+  associationTitle?: string | null;
 };
 
 export const eventsKey = ["events", "list"] as const;
