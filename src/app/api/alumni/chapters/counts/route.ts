@@ -195,50 +195,44 @@ export async function GET(request: NextRequest) {
       chapter3Filter = sql` AND ac.chapter3 = ANY(${allChapterIds})`;
     }
     
+    // EXACT COPY OF EXTERNAL API LOGIC - use same COUNT method
+    // External API: COUNT(DISTINCT CASE WHEN verify = 'true' THEN alumniid END) per chapter, then sums
+    // We do the same but without GROUP BY to get total
     const verifiedCountQuery = sql`
       WITH chapter_members AS (
-        SELECT ac.id as alumni_id, ac.chapter1 as chapter_id
+        SELECT DISTINCT ac.id as alumni_id, ac.chapter1 as chapter_id
         FROM public.alumni_chapter ac
-        LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
         WHERE ac.chapter1 IS NOT NULL
         ${chapter1Filter}
         ${chapterMembershipCondition}
         ${chapterCountCondition}
-        ${accessFilterCondition}
-        ${facultyFilterCondition}
-        ${departmentFilterCondition}
-        AND a.verify = 'true'
         
         UNION
         
-        SELECT ac.id as alumni_id, ac.chapter2 as chapter_id
+        SELECT DISTINCT ac.id as alumni_id, ac.chapter2 as chapter_id
         FROM public.alumni_chapter ac
-        LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
         WHERE ac.chapter2 IS NOT NULL
         ${chapter2Filter}
         ${chapterMembershipCondition}
         ${chapterCountCondition}
-        ${accessFilterCondition}
-        ${facultyFilterCondition}
-        ${departmentFilterCondition}
-        AND a.verify = 'true'
         
         UNION
         
-        SELECT ac.id as alumni_id, ac.chapter3 as chapter_id
+        SELECT DISTINCT ac.id as alumni_id, ac.chapter3 as chapter_id
         FROM public.alumni_chapter ac
-        LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
         WHERE ac.chapter3 IS NOT NULL
         ${chapter3Filter}
         ${chapterMembershipCondition}
         ${chapterCountCondition}
-        ${accessFilterCondition}
-        ${facultyFilterCondition}
-        ${departmentFilterCondition}
-        AND a.verify = 'true'
       )
-      SELECT COUNT(*) as count
+      SELECT 
+        COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN cm.alumni_id END) as count
       FROM chapter_members cm
+      LEFT JOIN public.tbl_alumni a ON a.alumniid = cm.alumni_id
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+      ${departmentFilterCondition}
     `;
     
     // Get unverified count (verified = false, with all other filters)
@@ -265,6 +259,15 @@ export async function GET(request: NextRequest) {
       verifiedCountQuery,
       unverifiedCountQuery,
     ]);
+    
+    // Debug: Log verified count query details
+    console.log('[API] Verified count query executed. Filters:', {
+      hasChapterFilter: allChapterIds.length > 0,
+      chapterIds: allChapterIds,
+      hasAccessFilter: accessFilter.hasFilter,
+      hasFacultyFilter: selectedFaculties.length > 0,
+      hasDeptFilter: selectedDepartments.length > 0,
+    });
     
     const total = Number((totalResult as unknown as Array<{ count: bigint }>)[0]?.count || 0);
     const all = Number((allResult as unknown as Array<{ count: bigint }>)[0]?.count || 0);
