@@ -5,9 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
-import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departments";
 import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
+import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
+import { useAlumniNationalChapters, useAlumniInternationalChapters } from "@/app/queries/fetch-alumni-chapters";
+import type { MasterFilters } from "@/app/queries/master-filter-types";
 
 type ChapterItem = {
   sapid: string;
@@ -18,12 +21,6 @@ type ChapterItem = {
   program: string | null;
   email: string | null;
   chapters: string[];
-};
-
-type Chapter = {
-  id: number;
-  name: string;
-  type: "national" | "international";
 };
 
 type MembershipFilter = "all" | "members" | "non-members";
@@ -128,15 +125,6 @@ async function getAlumniChapters(
   return data.items ?? [];
 }
 
-async function getChaptersList(): Promise<Chapter[]> {
-  const res = await fetch("/api/chapters/list", { headers: { "accept": "application/json" } });
-  if (!res.ok) {
-    throw new Error("Failed to fetch chapters list");
-  }
-  const data = (await res.json()) as { chapters: Chapter[] };
-  return data.chapters ?? [];
-}
-
 async function getAlumniChaptersCounts(
   nationalChapters?: string[],
   internationalChapters?: string[],
@@ -230,39 +218,56 @@ export const AlumniChaptersTab: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Fetch chapters list for dropdowns
-  const { data: chaptersList = [] } = useQuery<Chapter[]>({
-    queryKey: ["chapters-list"],
-    queryFn: getChaptersList,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
 
-  // Get national and international chapters separately
+  // Build master filters for dependent filter queries
+  const masterFilters = useMemo(() => {
+    const filters: MasterFilters = {};
+    if (selectedFaculties.length > 0) {
+      filters.faculty = selectedFaculties;
+    }
+    if (selectedDepartments.length > 0) {
+      filters.department = selectedDepartments;
+    }
+    // Note: We don't include chapters in masterFilters to avoid circular dependency
+    return filters;
+  }, [selectedFaculties, selectedDepartments]);
+
+  // Fetch dynamic filter options with counts
+  const { data: alumniFacultiesData } = useAlumniFaculties(masterFilters);
+  const { data: alumniDepartmentsData } = useAlumniDepartments(masterFilters);
+  const { data: alumniNationalChaptersData, isLoading: isLoadingNationalChapters, error: nationalChaptersError } = useAlumniNationalChapters(masterFilters);
+  const { data: alumniInternationalChaptersData, isLoading: isLoadingInternationalChapters, error: internationalChaptersError } = useAlumniInternationalChapters(masterFilters);
+
+  // Get filter options with counts
+  const facultyOptions = useMemo(() => {
+    return alumniFacultiesData?.faculties || [];
+  }, [alumniFacultiesData]);
+
+  const departmentOptions = useMemo(() => {
+    return alumniDepartmentsData?.departments || [];
+  }, [alumniDepartmentsData]);
+
   const nationalChapters = useMemo(() => {
-    const filtered = chaptersList.filter(ch => ch.type === "national").sort((a, b) => a.name.localeCompare(b.name));
-    console.log("[AlumniChaptersTab] National chapters:", filtered.length, filtered.map(ch => ch.name));
-    return filtered;
-  }, [chaptersList]);
+    const chapters = alumniNationalChaptersData?.chapters || [];
+    console.log("[AlumniChaptersTab] National chapters data:", { 
+      data: alumniNationalChaptersData, 
+      chapters, 
+      count: chapters.length,
+      error: nationalChaptersError 
+    });
+    return chapters;
+  }, [alumniNationalChaptersData, nationalChaptersError]);
 
   const internationalChapters = useMemo(() => {
-    const filtered = chaptersList.filter(ch => ch.type === "international").sort((a, b) => a.name.localeCompare(b.name));
-    console.log("[AlumniChaptersTab] International chapters:", filtered.length, filtered.map(ch => ch.name));
-    return filtered;
-  }, [chaptersList]);
-
-  // Get faculties and departments
-  const faculties = useMemo(() => getFaculties(), []);
-  const availableDepartments = useMemo(() => {
-    if (selectedFaculties.length === 0) return [];
-    // Get all departments from selected faculties
-    const deptSet = new Set<string>();
-    selectedFaculties.forEach(faculty => {
-      const depts = getDepartmentsByFaculty(faculty);
-      depts.forEach(dept => deptSet.add(dept));
+    const chapters = alumniInternationalChaptersData?.chapters || [];
+    console.log("[AlumniChaptersTab] International chapters data:", { 
+      data: alumniInternationalChaptersData, 
+      chapters, 
+      count: chapters.length,
+      error: internationalChaptersError 
     });
-    return Array.from(deptSet).sort();
-  }, [selectedFaculties]);
+    return chapters;
+  }, [alumniInternationalChaptersData, internationalChaptersError]);
 
   // Reset departments when faculties change
   useEffect(() => {
@@ -270,10 +275,10 @@ export const AlumniChaptersTab: React.FC = () => {
       setSelectedDepartments([]);
     } else {
       // Remove departments that are no longer available
-      const availableDeptNames = availableDepartments;
-      setSelectedDepartments(prev => prev.filter(dept => availableDeptNames.includes(dept)));
+      const availableDeptValues = departmentOptions.map(d => d.value);
+      setSelectedDepartments(prev => prev.filter(dept => availableDeptValues.includes(dept)));
     }
-  }, [selectedFaculties, availableDepartments]);
+  }, [selectedFaculties, departmentOptions]);
   
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -308,10 +313,11 @@ export const AlumniChaptersTab: React.FC = () => {
   };
   
   const handleNationalChapterSelectAll = () => {
-    if (selectedNationalChapters.length === nationalChapters.length) {
+    const allChapterNames = nationalChapters.map(ch => ch.value);
+    if (selectedNationalChapters.length === allChapterNames.length && allChapterNames.length > 0) {
       setSelectedNationalChapters([]);
     } else {
-      setSelectedNationalChapters(nationalChapters.map(ch => ch.name));
+      setSelectedNationalChapters(allChapterNames);
     }
   };
   
@@ -324,10 +330,11 @@ export const AlumniChaptersTab: React.FC = () => {
   };
   
   const handleInternationalChapterSelectAll = () => {
-    if (selectedInternationalChapters.length === internationalChapters.length) {
+    const allChapterNames = internationalChapters.map(ch => ch.value);
+    if (selectedInternationalChapters.length === allChapterNames.length && allChapterNames.length > 0) {
       setSelectedInternationalChapters([]);
     } else {
-      setSelectedInternationalChapters(internationalChapters.map(ch => ch.name));
+      setSelectedInternationalChapters(allChapterNames);
     }
   };
   
@@ -340,10 +347,11 @@ export const AlumniChaptersTab: React.FC = () => {
   };
   
   const handleFacultySelectAll = () => {
-    if (selectedFaculties.length === faculties.length) {
+    const allFacultyValues = facultyOptions.map(f => f.value);
+    if (selectedFaculties.length === allFacultyValues.length && allFacultyValues.length > 0) {
       setSelectedFaculties([]);
     } else {
-      setSelectedFaculties(faculties);
+      setSelectedFaculties(allFacultyValues);
     }
   };
   
@@ -356,10 +364,11 @@ export const AlumniChaptersTab: React.FC = () => {
   };
   
   const handleDepartmentSelectAll = () => {
-    if (selectedDepartments.length === availableDepartments.length) {
+    const allDepartmentValues = departmentOptions.map(d => d.value);
+    if (selectedDepartments.length === allDepartmentValues.length && allDepartmentValues.length > 0) {
       setSelectedDepartments([]);
     } else {
-      setSelectedDepartments(availableDepartments);
+      setSelectedDepartments(allDepartmentValues);
     }
   };
 
@@ -873,31 +882,42 @@ export const AlumniChaptersTab: React.FC = () => {
                   >
                     <input
                       type="checkbox"
-                      checked={selectedNationalChapters.length === nationalChapters.length}
+                      checked={selectedNationalChapters.length === nationalChapters.length && nationalChapters.length > 0}
                       onChange={handleNationalChapterSelectAll}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                     />
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All National Chapters</span>
                   </label>
                   <div className="max-h-48 overflow-y-auto">
-                    {nationalChapters.map((chapter) => {
-                      const isChecked = selectedNationalChapters.includes(chapter.name);
+                    {isLoadingNationalChapters ? (
+                      <div className="p-2 text-xs text-gray-500 dark:text-gray-400">Loading chapters...</div>
+                    ) : nationalChaptersError ? (
+                      <div className="p-2 text-xs text-red-500">Error loading chapters</div>
+                    ) : nationalChapters.length === 0 ? (
+                      <div className="p-2 text-xs text-gray-500 dark:text-gray-400">No chapters available</div>
+                    ) : (
+                      nationalChapters.map((chapter) => {
+                      const isChecked = selectedNationalChapters.includes(chapter.value);
                       return (
                         <label
-                          key={chapter.id}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          key={chapter.value}
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleNationalChapterToggle(chapter.name)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.name}</span>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleNationalChapterToggle(chapter.value)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{chapter.count}</span>
                         </label>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </div>
               </div>
@@ -945,38 +965,49 @@ export const AlumniChaptersTab: React.FC = () => {
                   >
                     <input
                       type="checkbox"
-                      checked={selectedInternationalChapters.length === internationalChapters.length}
+                      checked={selectedInternationalChapters.length === internationalChapters.length && internationalChapters.length > 0}
                       onChange={handleInternationalChapterSelectAll}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                     />
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All International Chapters</span>
                   </label>
                   <div className="max-h-48 overflow-y-auto">
-                    {internationalChapters.map((chapter) => {
-                      const isChecked = selectedInternationalChapters.includes(chapter.name);
+                    {isLoadingInternationalChapters ? (
+                      <div className="p-2 text-xs text-gray-500 dark:text-gray-400">Loading chapters...</div>
+                    ) : internationalChaptersError ? (
+                      <div className="p-2 text-xs text-red-500">Error loading chapters</div>
+                    ) : internationalChapters.length === 0 ? (
+                      <div className="p-2 text-xs text-gray-500 dark:text-gray-400">No chapters available</div>
+                    ) : (
+                      internationalChapters.map((chapter) => {
+                      const isChecked = selectedInternationalChapters.includes(chapter.value);
                       return (
                         <label
-                          key={chapter.id}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          key={chapter.value}
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleInternationalChapterToggle(chapter.name)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.name}</span>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleInternationalChapterToggle(chapter.value)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{chapter.count}</span>
                         </label>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </div>
               </div>
             )}
           </div>
         </div>
-
+        
         {/* Faculty Filter */}
         <div className="flex-1 sm:min-w-[180px]">
           <label htmlFor="faculty-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
@@ -992,7 +1023,7 @@ export const AlumniChaptersTab: React.FC = () => {
               <span>
                 {selectedFaculties.length === 0 
                   ? "All Faculties" 
-                  : selectedFaculties.length === faculties.length
+                  : selectedFaculties.length === facultyOptions.length && facultyOptions.length > 0
                   ? "All Faculties"
                   : `${selectedFaculties.length} Selected`}
               </span>
@@ -1017,28 +1048,31 @@ export const AlumniChaptersTab: React.FC = () => {
                   >
                     <input
                       type="checkbox"
-                      checked={selectedFaculties.length === faculties.length}
+                      checked={selectedFaculties.length === facultyOptions.length && facultyOptions.length > 0}
                       onChange={handleFacultySelectAll}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                     />
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Faculties</span>
                   </label>
                   <div className="max-h-48 overflow-y-auto">
-                    {faculties.map((faculty) => {
-                      const isChecked = selectedFaculties.includes(faculty);
+                    {facultyOptions.map((faculty) => {
+                      const isChecked = selectedFaculties.includes(faculty.value);
                       return (
                         <label
-                          key={faculty}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          key={faculty.value}
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleFacultyToggle(faculty)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{faculty}</span>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleFacultyToggle(faculty.value)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{faculty.count}</span>
                         </label>
                       );
                     })}
@@ -1067,7 +1101,7 @@ export const AlumniChaptersTab: React.FC = () => {
               <span>
                 {selectedDepartments.length === 0 
                   ? selectedFaculties.length === 0 ? "Select Faculty First" : "All Departments"
-                  : selectedDepartments.length === availableDepartments.length
+                  : selectedDepartments.length === departmentOptions.length && departmentOptions.length > 0
                   ? "All Departments"
                   : `${selectedDepartments.length} Selected`}
               </span>
@@ -1083,7 +1117,7 @@ export const AlumniChaptersTab: React.FC = () => {
             {expandedFilters.department && selectedFaculties.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                 <div className="p-2">
-                  {availableDepartments.length === 0 ? (
+                  {departmentOptions.length === 0 ? (
                     <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select faculties first</p>
                   ) : (
                     <>
@@ -1096,28 +1130,31 @@ export const AlumniChaptersTab: React.FC = () => {
                       >
                         <input
                           type="checkbox"
-                          checked={selectedDepartments.length === availableDepartments.length}
+                          checked={selectedDepartments.length === departmentOptions.length && departmentOptions.length > 0}
                           onChange={handleDepartmentSelectAll}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                         />
                         <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
                       </label>
                       <div className="max-h-48 overflow-y-auto">
-                        {availableDepartments.map((dept) => {
-                          const isChecked = selectedDepartments.includes(dept);
+                        {departmentOptions.map((dept) => {
+                          const isChecked = selectedDepartments.includes(dept.value);
                           return (
                             <label
-                              key={dept}
-                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                              key={dept.value}
+                              className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => handleDepartmentToggle(dept)}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span className="text-sm text-gray-700 dark:text-gray-300">{dept}</span>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleDepartmentToggle(dept.value)}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{dept.label}</span>
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{dept.count}</span>
                             </label>
                           );
                         })}

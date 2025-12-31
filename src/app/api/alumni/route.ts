@@ -1069,6 +1069,8 @@ export async function GET(req: Request) {
             statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`);
           } else if (s === "category:c") {
             statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`);
+          } else if (s === "category:d") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`);
           }
         });
         
@@ -1106,6 +1108,9 @@ export async function GET(req: Request) {
         } else if (status === "category:c") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`;
           console.log("[API] Filtering for C category");
+        } else if (status === "category:d") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`;
+          console.log("[API] Filtering for D category");
         }
       }
     } else {

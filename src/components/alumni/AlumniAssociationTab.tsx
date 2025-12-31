@@ -5,10 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
-import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departments";
 import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import * as XLSX from "xlsx";
+import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
+import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
+import { useAlumniAssociations } from "@/app/queries/fetch-alumni-associations";
+import type { MasterFilters } from "@/app/queries/master-filter-types";
 
 type MembershipFilter = "all" | "members" | "non-members";
 
@@ -68,25 +71,6 @@ type AssociationItem = {
   associationId: number | null;
   createdAt: string | null;
 };
-
-type Association = {
-  id: number;
-  title: string;
-  description: string | null;
-  dean: string | null;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-};
-
-async function getAssociationsList(): Promise<Association[]> {
-  const res = await fetch("/api/associations/list", { headers: { "accept": "application/json" } });
-  if (!res.ok) {
-    throw new Error("Failed to fetch associations list");
-  }
-  const data = (await res.json()) as { associations: Association[] };
-  return data.associations ?? [];
-}
 
 async function getAlumniAssociationCounts(
   faculties?: string[],
@@ -251,26 +235,36 @@ export const AlumniAssociationTab: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Get faculties and departments
-  const faculties = useMemo(() => getFaculties(), []);
-  
-  // Get available departments based on selected faculties
-  const availableDepartments = useMemo(() => {
-    if (selectedFaculties.length === 0) return [];
-    const deptSet = new Set<string>();
-    selectedFaculties.forEach(faculty => {
-      const depts = getDepartmentsByFaculty(faculty);
-      depts.forEach(dept => deptSet.add(dept));
-    });
-    return Array.from(deptSet).sort();
-  }, [selectedFaculties]);
-  
-  // Fetch associations list
-  const { data: associationsList = [] } = useQuery<Association[]>({
-    queryKey: ["associations-list"],
-    queryFn: getAssociationsList,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  // Build master filters for dependent filter queries
+  const masterFilters = useMemo(() => {
+    const filters: MasterFilters = {};
+    if (selectedFaculties.length > 0) {
+      filters.faculty = selectedFaculties;
+    }
+    if (selectedDepartments.length > 0) {
+      filters.department = selectedDepartments;
+    }
+    // Note: We don't include associations in masterFilters to avoid circular dependency
+    return filters;
+  }, [selectedFaculties, selectedDepartments]);
+
+  // Fetch dynamic filter options with counts
+  const { data: alumniFacultiesData } = useAlumniFaculties(masterFilters);
+  const { data: alumniDepartmentsData } = useAlumniDepartments(masterFilters);
+  const { data: alumniAssociationsData } = useAlumniAssociations(masterFilters);
+
+  // Get filter options with counts
+  const facultyOptions = useMemo(() => {
+    return alumniFacultiesData?.faculties || [];
+  }, [alumniFacultiesData]);
+
+  const departmentOptions = useMemo(() => {
+    return alumniDepartmentsData?.departments || [];
+  }, [alumniDepartmentsData]);
+
+  const associationsOptions = useMemo(() => {
+    return alumniAssociationsData?.associations || [];
+  }, [alumniAssociationsData]);
 
   // Reset department when faculty changes
   useEffect(() => {
@@ -278,10 +272,10 @@ export const AlumniAssociationTab: React.FC = () => {
       setSelectedDepartments([]);
     } else {
       // Remove departments that are no longer available
-      const availableDeptNames = availableDepartments;
-      setSelectedDepartments(prev => prev.filter(dept => availableDeptNames.includes(dept)));
+      const availableDeptValues = departmentOptions.map(d => d.value);
+      setSelectedDepartments(prev => prev.filter(dept => availableDeptValues.includes(dept)));
     }
-  }, [selectedFaculties, availableDepartments]);
+  }, [selectedFaculties, departmentOptions]);
   
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -313,10 +307,11 @@ export const AlumniAssociationTab: React.FC = () => {
   };
   
   const handleFacultySelectAll = () => {
-    if (selectedFaculties.length === faculties.length) {
+    const allFacultyValues = facultyOptions.map(f => f.value);
+    if (selectedFaculties.length === allFacultyValues.length && allFacultyValues.length > 0) {
       setSelectedFaculties([]);
     } else {
-      setSelectedFaculties(faculties);
+      setSelectedFaculties(allFacultyValues);
     }
   };
   
@@ -329,10 +324,11 @@ export const AlumniAssociationTab: React.FC = () => {
   };
   
   const handleDepartmentSelectAll = () => {
-    if (selectedDepartments.length === availableDepartments.length) {
+    const allDepartmentValues = departmentOptions.map(d => d.value);
+    if (selectedDepartments.length === allDepartmentValues.length && allDepartmentValues.length > 0) {
       setSelectedDepartments([]);
     } else {
-      setSelectedDepartments([...availableDepartments]);
+      setSelectedDepartments(allDepartmentValues);
     }
   };
   
@@ -345,10 +341,11 @@ export const AlumniAssociationTab: React.FC = () => {
   };
   
   const handleAssociationSelectAll = () => {
-    if (selectedAssociations.length === associationsList.length) {
+    const allAssociationIds = associationsOptions.map(a => Number(a.value));
+    if (selectedAssociations.length === allAssociationIds.length && allAssociationIds.length > 0) {
       setSelectedAssociations([]);
     } else {
-      setSelectedAssociations(associationsList.map(a => a.id));
+      setSelectedAssociations(allAssociationIds);
     }
   };
 
@@ -753,7 +750,7 @@ export const AlumniAssociationTab: React.FC = () => {
               <span>
                 {selectedFaculties.length === 0 
                   ? "All Faculties" 
-                  : selectedFaculties.length === faculties.length
+                  : selectedFaculties.length === facultyOptions.length && facultyOptions.length > 0
                   ? "All Faculties"
                   : `${selectedFaculties.length} Selected`}
               </span>
@@ -778,28 +775,31 @@ export const AlumniAssociationTab: React.FC = () => {
                   >
                     <input
                       type="checkbox"
-                      checked={selectedFaculties.length === faculties.length}
+                      checked={selectedFaculties.length === facultyOptions.length && facultyOptions.length > 0}
                       onChange={handleFacultySelectAll}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                     />
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Faculties</span>
                   </label>
                   <div className="max-h-48 overflow-y-auto">
-                    {faculties.map((faculty) => {
-                      const isChecked = selectedFaculties.includes(faculty);
+                    {facultyOptions.map((faculty) => {
+                      const isChecked = selectedFaculties.includes(faculty.value);
                       return (
                         <label
-                          key={faculty}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          key={faculty.value}
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleFacultyToggle(faculty)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{faculty}</span>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleFacultyToggle(faculty.value)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{faculty.count}</span>
                         </label>
                       );
                     })}
@@ -825,8 +825,8 @@ export const AlumniAssociationTab: React.FC = () => {
             >
               <span>
                 {selectedDepartments.length === 0 
-                  ? "All Departments" 
-                  : selectedDepartments.length === availableDepartments.length
+                  ? selectedFaculties.length === 0 ? "Select Faculty First" : "All Departments" 
+                  : selectedDepartments.length === departmentOptions.length && departmentOptions.length > 0
                   ? "All Departments"
                   : `${selectedDepartments.length} Selected`}
               </span>
@@ -842,7 +842,7 @@ export const AlumniAssociationTab: React.FC = () => {
             {expandedFilters.department && selectedFaculties.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                 <div className="p-2">
-                  {availableDepartments.length === 0 ? (
+                  {departmentOptions.length === 0 ? (
                     <p className="text-xs text-gray-500 dark:text-gray-400 p-2">Select faculties first</p>
                   ) : (
                     <>
@@ -855,28 +855,31 @@ export const AlumniAssociationTab: React.FC = () => {
                       >
                         <input
                           type="checkbox"
-                          checked={selectedDepartments.length === availableDepartments.length}
+                          checked={selectedDepartments.length === departmentOptions.length && departmentOptions.length > 0}
                           onChange={handleDepartmentSelectAll}
                           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                         />
                         <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Departments</span>
                       </label>
                       <div className="max-h-48 overflow-y-auto">
-                        {availableDepartments.map((dept) => {
-                          const isChecked = selectedDepartments.includes(dept);
+                        {departmentOptions.map((dept) => {
+                          const isChecked = selectedDepartments.includes(dept.value);
                           return (
                             <label
-                              key={dept}
-                              className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                              key={dept.value}
+                              className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => handleDepartmentToggle(dept)}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span className="text-sm text-gray-700 dark:text-gray-300">{dept}</span>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleDepartmentToggle(dept.value)}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{dept.label}</span>
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{dept.count}</span>
                             </label>
                           );
                         })}
@@ -904,7 +907,7 @@ export const AlumniAssociationTab: React.FC = () => {
               <span>
                 {selectedAssociations.length === 0 
                   ? "All Associations" 
-                  : selectedAssociations.length === associationsList.length
+                  : selectedAssociations.length === associationsOptions.length && associationsOptions.length > 0
                   ? "All Associations"
                   : `${selectedAssociations.length} Selected`}
               </span>
@@ -929,28 +932,32 @@ export const AlumniAssociationTab: React.FC = () => {
                   >
                     <input
                       type="checkbox"
-                      checked={selectedAssociations.length === associationsList.length}
+                      checked={selectedAssociations.length === associationsOptions.length && associationsOptions.length > 0}
                       onChange={handleAssociationSelectAll}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                     />
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Associations</span>
                   </label>
                   <div className="max-h-48 overflow-y-auto">
-                    {associationsList.map((association) => {
-                      const isChecked = selectedAssociations.includes(association.id);
+                    {associationsOptions.map((association) => {
+                      const associationId = Number(association.value);
+                      const isChecked = selectedAssociations.includes(associationId);
                       return (
                         <label
-                          key={association.id}
-                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                          key={association.value}
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleAssociationToggle(association.id)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{association.title}</span>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleAssociationToggle(associationId)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{association.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{association.count}</span>
                         </label>
                       );
                     })}

@@ -635,7 +635,12 @@ export async function GET(req: Request) {
             WHEN LOWER(TRIM(COALESCE(category, ''))) = 'c' 
                OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%'
             THEN 1 
-          END) as category_c
+          END) as category_c,
+          COUNT(CASE 
+            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'd' 
+               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%'
+            THEN 1 
+          END) as category_d
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
           ${facultyFilter}
@@ -723,7 +728,12 @@ export async function GET(req: Request) {
             WHEN LOWER(TRIM(COALESCE(category, ''))) = 'c' 
                OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%'
             THEN 1 
-          END) as category_c
+          END) as category_c,
+          COUNT(CASE 
+            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'd' 
+               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%'
+            THEN 1 
+          END) as category_d
         FROM public.tbl_alumni
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '' OR verify = 'pending')
           ${facultyFilter}
@@ -762,6 +772,7 @@ export async function GET(req: Request) {
       category_a?: number | string | bigint;
       category_b?: number | string | bigint;
       category_c?: number | string | bigint;
+      category_d?: number | string | bigint;
     } | undefined;
 
     if (!row) {
@@ -772,7 +783,7 @@ export async function GET(req: Request) {
         underApproval: 0,
         active: 0,
         inactive: 0,
-        category: { aPlus: 0, a: 0, b: 0, c: 0 },
+        category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0 },
       }, { status: 200 });
     }
 
@@ -789,6 +800,7 @@ export async function GET(req: Request) {
         a: Number(row.category_a || 0),
         b: Number(row.category_b || 0),
         c: Number(row.category_c || 0),
+        d: Number(row.category_d || 0),
       },
     };
 
