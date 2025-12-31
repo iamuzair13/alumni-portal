@@ -95,7 +95,7 @@ const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?
   { key: "all", label: "All", icon: GroupIcon },
   { key: "pending", label: "Pending", icon: TimeIcon },
   { key: "process", label: "In-Process", icon: BoltIcon },
-  { key: "active", label: "Active", icon: CheckLineIcon },
+  { key: "active", label: "Ready for Delivery", icon: CheckLineIcon },
   { key: "delivered", label: "Delivered", icon: CheckLineIcon },
   { key: "onhold", label: "On Hold", icon: LockIcon },
 ];

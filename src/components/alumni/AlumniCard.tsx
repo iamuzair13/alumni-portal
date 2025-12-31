@@ -210,7 +210,7 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
                   <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${theme.pillBg} ${theme.color}`}>
                     {alum.status === "pending" ? "Pending" : 
                      alum.status === "process" ? "In-Process" : 
-                     alum.status === "active" ? "Active" :
+                     alum.status === "active" ? "Ready for Delivery" :
                      alum.status === "delivered" ? "Delivered" : 
                      alum.status === "onhold" ? "On Hold" :
                      alum.status === "all" ? "All" :
@@ -950,7 +950,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     // Map status to display label
     const statusLabel = current === "Delivered" ? "Delivered" 
-      : current === "Active" ? "Active"
+      : current === "Active" ? "Ready for Delivery"
       : current === "Process" ? "In-Process"
       : current === "Onhold" ? "On Hold"
       : "Pending";
@@ -980,7 +980,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           >
             <option value="Pending">Pending</option>
             <option value="Process">In-Process</option>
-            <option value="Active">Active</option>
+            <option value="Active">Ready for Delivery</option>
             <option value="Delivered">Delivered</option>
             <option value="Onhold">On Hold</option>
           </select>
@@ -1087,7 +1087,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">New Status:</span>
                     <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                       {pendingStatusChange?.status === "Delivered" ? "Delivered" 
-                        : pendingStatusChange?.status === "Active" ? "Active"
+                        : pendingStatusChange?.status === "Active" ? "Ready for Delivery"
                         : pendingStatusChange?.status === "Process" ? "In-Process"
                         : pendingStatusChange?.status === "Onhold" ? "On Hold"
                         : "Pending"}
@@ -1290,7 +1290,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="process">In-Process</option>
-            <option value="active">Active</option>
+            <option value="active">Ready for Delivery</option>
             <option value="delivered">Delivered</option>
             <option value="onhold">On Hold</option>
           </select>
