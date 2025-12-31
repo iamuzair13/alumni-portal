@@ -98,9 +98,11 @@ export async function GET(request: NextRequest) {
       : sql`FROM public.tbl_alumni a
       LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id`;
     
+    // MATCH EXTERNAL API LOGIC: Always count only verified alumni by default
+    // Use CASE WHEN to count only verified alumni, matching external API pattern
     // Get total count (with all filters except membership and verified)
     const totalCountQuery = sql`
-      SELECT COUNT(DISTINCT a.alumniid) as count
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
       ${baseQuery}
       WHERE 1=1
       ${accessFilterCondition}
@@ -112,7 +114,7 @@ export async function GET(request: NextRequest) {
     
     // Get all count (membershipFilter = "all", with verified filter)
     const allCountQuery = sql`
-      SELECT COUNT(DISTINCT a.alumniid) as count
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
       FROM public.tbl_alumni a
       LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
       WHERE 1=1
@@ -125,7 +127,7 @@ export async function GET(request: NextRequest) {
     
     // Get members count (membershipFilter = "members", with verified filter)
     const membersCountQuery = sql`
-      SELECT COUNT(DISTINCT a.alumniid) as count
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
       FROM public.tbl_alumni a
       JOIN public.tbl_associations assoc ON assoc.id = a.association_id
       WHERE 1=1
@@ -139,7 +141,7 @@ export async function GET(request: NextRequest) {
     
     // Get non-members count (membershipFilter = "non-members", with verified filter)
     const nonMembersCountQuery = sql`
-      SELECT COUNT(DISTINCT a.alumniid) as count
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
       FROM public.tbl_alumni a
       LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
       WHERE 1=1
@@ -153,7 +155,7 @@ export async function GET(request: NextRequest) {
     
     // Get verified count (verified = true, with all other filters)
     const verifiedCountQuery = sql`
-      SELECT COUNT(DISTINCT a.alumniid) as count
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
       ${baseQuery}
       WHERE 1=1
       ${accessFilterCondition}
@@ -165,6 +167,7 @@ export async function GET(request: NextRequest) {
     `;
     
     // Get unverified count (verified = false, with all other filters)
+    // Note: This counts unverified alumni, so we don't use CASE WHEN verify = 'true'
     const unverifiedCountQuery = sql`
       SELECT COUNT(DISTINCT a.alumniid) as count
       ${baseQuery}
