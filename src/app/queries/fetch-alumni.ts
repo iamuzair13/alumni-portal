@@ -192,6 +192,7 @@ export type AlumniCounts = {
     a: number;
     b: number;
     c: number;
+    d: number;
   };
 };
 

@@ -1,8 +1,8 @@
 "use client";
-import React, { useEffect, useRef, useState,useCallback } from "react";
+import React, { useEffect, useRef, useState,useCallback, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
   CalenderIcon,
@@ -24,8 +24,15 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
-    name: "Dashboards", 
-    path: "/dashboard",
+    name: "Dashboard",
+    subItems: [
+      { name: "Dashboard", path: "/dashboard?tab=dashboard" },
+      { name: "Alumni Cards", path: "/dashboard?tab=alumni-cards" },
+      { name: "Alumni Talks", path: "/dashboard?tab=alumni-talks" },
+      { name: "Alumni Chapters", path: "/dashboard?tab=alumni-chapters" },
+      { name: "Alumni Association", path: "/dashboard?tab=alumni-association" },
+      { name: "Add Alumni", path: "/dashboard?tab=add-alumni" },
+    ],
   },
  
   {
@@ -62,9 +69,10 @@ const TEXT_COLORS = {
   focus: "focus-visible:text-blue-700 dark:focus-visible:text-blue-200",
 };
 
-const AppSidebar: React.FC = () => {
+const AppSidebarContent: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -233,7 +241,27 @@ const AppSidebar: React.FC = () => {
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // const isActive = (path: string) => path === pathname;
-   const isActive = useCallback((path: string) => path === pathname, [pathname]);
+   const isActive = useCallback((path: string) => {
+     // Handle dashboard routes with query parameters
+     if (path.startsWith("/dashboard")) {
+       // Parse the tab from the path string
+       const pathMatch = path.match(/[?&]tab=([^&]*)/);
+       const pathTab = pathMatch ? pathMatch[1] : null;
+       const currentTab = searchParams.get("tab");
+       
+       // If pathname is /dashboard
+       if (pathname === "/dashboard") {
+         // If path has a tab, check if it matches current tab
+         if (pathTab) {
+           return pathTab === currentTab;
+         }
+         // If path has no tab, it's the default dashboard (tab=dashboard)
+         // Check if current tab is dashboard or null/undefined
+         return !currentTab || currentTab === "dashboard";
+       }
+     }
+     return path === pathname;
+   }, [pathname, searchParams]);
 
   useEffect(() => {
     let submenuMatched = false;
@@ -311,7 +339,7 @@ const AppSidebar: React.FC = () => {
               />
               <Image
                 className="hidden dark:block"
-                src="/images/logo/UOL-Rebrand-ID_Final-03.svg"
+                src="/images/logo/UOL-Rebrand-ID_Final-03.png"
                 alt="Logo"
                 width={150}
                 height={40}
@@ -346,6 +374,18 @@ const AppSidebar: React.FC = () => {
         </nav>
       </div>
     </aside>
+  );
+};
+
+const AppSidebar: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <aside className="fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 w-[90px] lg:translate-x-0">
+        <div className="py-8 lg:justify-center"></div>
+      </aside>
+    }>
+      <AppSidebarContent />
+    </Suspense>
   );
 };
 

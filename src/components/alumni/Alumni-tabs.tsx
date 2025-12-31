@@ -47,7 +47,8 @@ type TabKey =
   | "aPlus"
   | "a"
   | "b"
-  | "c";
+  | "c"
+  | "d";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "total", label: "Total" },
@@ -61,6 +62,7 @@ const CATEGORY_TABS: { key: TabKey; label: string }[] = [
   { key: "a", label: "A Category" },
   { key: "b", label: "B Category" },
   { key: "c", label: "C Category" },
+  { key: "d", label: "D Category" },
 ];
 
 // Counts are computed dynamically from fetched data
@@ -139,6 +141,14 @@ const STATUS_CLASS_MAP: Record<
     iconBg: "bg-amber-100 dark:bg-amber-800",
     iconColor: "text-amber-700 dark:text-amber-200",
     labelText: "text-amber-600 dark:text-amber-300",
+  },
+  d: {
+    selectedContainer:
+      "border-gray-500 bg-gray-50 dark:border-gray-500 dark:bg-gray-900/20",
+    hoverBorder: "hover:border-gray-400",
+    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconColor: "text-gray-700 dark:text-gray-200",
+    labelText: "text-gray-600 dark:text-gray-300",
   },
 };
 
@@ -385,6 +395,8 @@ export const AlumniTabs: React.FC = () => {
           return "category:b";
         case "c":
           return "category:c";
+        case "d":
+          return "category:d";
         default:
           return tab; // "verified", "underApproval", "active" map directly
       }
@@ -1171,6 +1183,7 @@ export const AlumniTabs: React.FC = () => {
   const counts = useMemo(() => {
     // Always use server counts if available (real-time data)
     if (countsData) {
+      const category = countsData.category || { aPlus: 0, a: 0, b: 0, c: 0, d: 0 };
       return {
         total: countsData.total || 0,
         verified: countsData.verified || 0,
@@ -1178,7 +1191,13 @@ export const AlumniTabs: React.FC = () => {
         underApproval: countsData.underApproval || 0,
         active: countsData.active || 0,
         inactive: countsData.inactive || 0,
-        category: countsData.category || { aPlus: 0, a: 0, b: 0, c: 0 },
+        category: {
+          aPlus: category.aPlus || 0,
+          a: category.a || 0,
+          b: category.b || 0,
+          c: category.c || 0,
+          d: category.d || 0,
+        },
       };
     }
     // Fallback: use total from paginated response while counts are loading
@@ -1189,7 +1208,7 @@ export const AlumniTabs: React.FC = () => {
       underApproval: 0,
       active: 0,
       inactive: 0,
-      category: { aPlus: 0, a: 0, b: 0, c: 0 },
+      category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0 },
     };
   }, [countsData, totalRecords]);
 
@@ -2020,6 +2039,8 @@ export const AlumniTabs: React.FC = () => {
                   return counts.category?.b || 0;
                 case "c":
                   return counts.category?.c || 0;
+                case "d":
+                  return counts.category?.d || 0;
                 default:
                   return 0;
               }
