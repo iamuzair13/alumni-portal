@@ -22,25 +22,12 @@ export async function GET(
       return addCorsHeaders(response, request);
     }
 
-    // Get alumni IDs for this chapter
-    const chapterMembersResult = await sql/* sql */`
-      SELECT id
-      FROM public.alumni_chapter
-      WHERE chapter1 = ${chapterId} OR chapter2 = ${chapterId} OR chapter3 = ${chapterId}
-    `;
-
-    if (chapterMembersResult.length === 0) {
-      const response = NextResponse.json({ count: 0, error: null });
-      return addCorsHeaders(response, request);
-    }
-
-    const alumniIds = chapterMembersResult.map((row: Record<string, unknown>) => Number(row.id));
-
-    // Count verified alumni
+    // OPTIMIZED: Single query with JOIN instead of two separate queries
     const countResult = await sql/* sql */`
-      SELECT COUNT(*) as total
-      FROM public.tbl_alumni
-      WHERE alumniid = ANY(${alumniIds}) AND verify = ${'true'}
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as total
+      FROM public.alumni_chapter ac
+      LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
+      WHERE (ac.chapter1 = ${chapterId} OR ac.chapter2 = ${chapterId} OR ac.chapter3 = ${chapterId})
     `;
 
     const count = parseInt(String(countResult[0]?.total || 0), 10);
