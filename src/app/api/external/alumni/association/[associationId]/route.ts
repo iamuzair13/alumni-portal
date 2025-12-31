@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(
   request: NextRequest,
@@ -15,10 +20,11 @@ export async function GET(
 
     // Validate pagination
     if (page < 1 || limit < 1 || limit > 100) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: null, error: 'Invalid pagination parameters' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     let whereConditions = sql`association_id = ${associationId}`;
@@ -45,7 +51,7 @@ export async function GET(
       OFFSET ${offset}
     `;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: result,
       count: total,
       pagination: {
@@ -56,15 +62,17 @@ export async function GET(
       },
       error: null
     });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/alumni/association/[associationId]:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: null,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

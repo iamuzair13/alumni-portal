@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(
   request: NextRequest,
@@ -17,10 +22,11 @@ export async function GET(
 
     // Validate pagination
     if (page < 1 || limit < 1 || limit > 100) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: null, error: 'Invalid pagination parameters' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     // Whitelist allowed columns for ORDER BY to prevent SQL injection
@@ -32,10 +38,11 @@ export async function GET(
 
     const chapterId = parseInt(id, 10);
     if (isNaN(chapterId) || chapterId < 1) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: null, error: 'Invalid chapter ID' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     // Step 1: Get alumni_chapter records for this chapter
@@ -46,12 +53,13 @@ export async function GET(
     `;
 
     if (chapterMembersResult.length === 0) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         data: [],
         count: 0,
         pagination: { page, limit, total: 0, totalPages: 0 },
         error: null
       });
+      return addCorsHeaders(response, request);
     }
 
     const alumniIds = chapterMembersResult.map((row: Record<string, unknown>) => Number(row.id));
@@ -83,7 +91,7 @@ export async function GET(
       OFFSET ${offset}
     `;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: result,
       count: total,
       pagination: {
@@ -94,15 +102,17 @@ export async function GET(
       },
       error: null
     });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/chapters/[id]/members:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: null,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

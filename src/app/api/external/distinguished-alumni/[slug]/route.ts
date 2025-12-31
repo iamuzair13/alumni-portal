@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(
   request: NextRequest,
@@ -16,22 +21,25 @@ export async function GET(
     `;
 
     if (result.length === 0) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: null, error: 'Story not found' },
         { status: 404 }
       );
+      return addCorsHeaders(response, request);
     }
 
-    return NextResponse.json({ data: result[0], error: null });
+    const response = NextResponse.json({ data: result[0], error: null });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/distinguished-alumni/[slug]:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: null,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

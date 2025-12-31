@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(
   request: NextRequest,
@@ -12,18 +17,20 @@ export async function GET(
     const chapterIdNum = parseInt(chapterId, 10);
 
     if (isNaN(chapterIdNum) || chapterIdNum < 1) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: null, error: 'Invalid chapter ID' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     // Validate limit
     if (limit < 1 || limit > 100) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: null, error: 'Limit must be between 1 and 100' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     const result = await sql/* sql */`
@@ -34,16 +41,18 @@ export async function GET(
       LIMIT ${limit}
     `;
 
-    return NextResponse.json({ data: result, error: null });
+    const response = NextResponse.json({ data: result, error: null });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/events/chapter/[chapterId]:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: null,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

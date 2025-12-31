@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,19 +25,21 @@ export async function GET(request: NextRequest) {
 
     const count = parseInt(String(result[0]?.total || 0), 10);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       count,
       error: null
     });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/alumni/count:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         count: 0,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

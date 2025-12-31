@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,16 +27,18 @@ export async function GET(request: NextRequest) {
       LIMIT ${limit}
     `;
 
-    return NextResponse.json({ data: result, error: null });
+    const response = NextResponse.json({ data: result, error: null });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/events/home-coaching:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: null,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

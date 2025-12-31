@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,16 +12,18 @@ export async function GET(request: NextRequest) {
     const idsParam = searchParams.get('ids');
 
     if (!idsParam) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { data: {}, error: 'ids parameter required' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     const chapterIds = idsParam.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
 
     if (chapterIds.length === 0) {
-      return NextResponse.json({ data: {}, error: null });
+      const response = NextResponse.json({ data: {}, error: null });
+      return addCorsHeaders(response, request);
     }
 
     // Get all alumni_chapter records for these chapters
@@ -68,16 +75,18 @@ export async function GET(request: NextRequest) {
       counts[chapterId] = parseInt(String(countResult[0]?.total || 0), 10);
     }
 
-    return NextResponse.json({ data: counts, error: null });
+    const response = NextResponse.json({ data: counts, error: null });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/chapters/member-counts:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: {},
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 

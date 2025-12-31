@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
+import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreflight(request);
+}
 
 export async function GET(
   request: NextRequest,
@@ -10,10 +15,11 @@ export async function GET(
     const chapterId = parseInt(id, 10);
 
     if (isNaN(chapterId) || chapterId < 1) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { count: 0, error: 'Invalid chapter ID' },
         { status: 400 }
       );
+      return addCorsHeaders(response, request);
     }
 
     // Get alumni IDs for this chapter
@@ -24,7 +30,8 @@ export async function GET(
     `;
 
     if (chapterMembersResult.length === 0) {
-      return NextResponse.json({ count: 0, error: null });
+      const response = NextResponse.json({ count: 0, error: null });
+      return addCorsHeaders(response, request);
     }
 
     const alumniIds = chapterMembersResult.map((row: Record<string, unknown>) => Number(row.id));
@@ -38,19 +45,21 @@ export async function GET(
 
     const count = parseInt(String(countResult[0]?.total || 0), 10);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       count,
       error: null
     });
+    return addCorsHeaders(response, request);
   } catch (error) {
     console.error('Error in /api/external/chapters/[id]/member-count:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         count: 0,
         error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
+    return addCorsHeaders(response, request);
   }
 }
 
