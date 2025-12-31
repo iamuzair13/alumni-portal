@@ -93,16 +93,6 @@ export async function GET(request: NextRequest) {
       verifiedFilterCondition = sql` AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')`;
     }
     
-    // Determine join type based on membership filter
-    const membershipJoinType: "JOIN" | "LEFT JOIN" = membershipFilter === "members" ? "JOIN" : "LEFT JOIN";
-    let membershipWhereCondition = sql``;
-    
-    if (membershipFilter === "non-members") {
-      membershipWhereCondition = sql` AND (ac.id IS NULL OR (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL))`;
-    } else if (membershipFilter === "members") {
-      membershipWhereCondition = sql` AND ac.id IS NOT NULL AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)`;
-    }
-    
     // Chapter count filter - filter by exact number of chapters
     let chapterCountCondition = sql``;
     if (chapterCount !== undefined && chapterCount > 0) {
