@@ -25,75 +25,58 @@ export async function GET(request: NextRequest) {
       return addCorsHeaders(response, request);
     }
 
-    const chapterIds = idsParam.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    const associationIds = idsParam.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
 
     // Limit batch size to prevent performance issues
-    if (chapterIds.length > 100) {
+    if (associationIds.length > 100) {
       const response = NextResponse.json(
-        { data: {}, error: 'Maximum 100 chapter IDs per request' },
+        { data: {}, error: 'Maximum 100 association IDs per request' },
         { status: 400 }
       );
       return addCorsHeaders(response, request);
     }
 
-    if (chapterIds.length === 0) {
+    if (associationIds.length === 0) {
       const response = NextResponse.json({ data: {}, error: null });
       return addCorsHeaders(response, request);
     }
 
     // Check cache
-    const cacheKey = `member-counts-${idsParam}`;
+    const cacheKey = `association-counts-${idsParam}`;
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       const duration = Date.now() - startTime;
-      console.log(`[API] Member counts (cached) took ${duration}ms for ${chapterIds.length} chapters`);
+      console.log(`[API] Association counts (cached) took ${duration}ms for ${associationIds.length} associations`);
       const response = NextResponse.json({ data: cached.data, error: null });
       return addCorsHeaders(response, request);
     }
 
-    // OPTIMIZED: Single query with UNION to handle OR conditions efficiently
-    // This replaces the previous approach of multiple sequential queries
+    // OPTIMIZED: Single query to get counts for all associations
+    // Count verified alumni for each association
     const result = await sql/* sql */`
-      WITH chapter_members AS (
-        SELECT DISTINCT ac.id as alumni_id, ac.chapter1 as chapter_id
-        FROM public.alumni_chapter ac
-        WHERE ac.chapter1 = ANY(${chapterIds}) AND ac.chapter1 IS NOT NULL
-        
-        UNION
-        
-        SELECT DISTINCT ac.id as alumni_id, ac.chapter2 as chapter_id
-        FROM public.alumni_chapter ac
-        WHERE ac.chapter2 = ANY(${chapterIds}) AND ac.chapter2 IS NOT NULL
-        
-        UNION
-        
-        SELECT DISTINCT ac.id as alumni_id, ac.chapter3 as chapter_id
-        FROM public.alumni_chapter ac
-        WHERE ac.chapter3 = ANY(${chapterIds}) AND ac.chapter3 IS NOT NULL
-      )
       SELECT 
-        cm.chapter_id,
-        COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM chapter_members cm
-      LEFT JOIN public.tbl_alumni a ON a.alumniid = cm.alumni_id
-      GROUP BY cm.chapter_id
+        association_id,
+        COUNT(DISTINCT CASE WHEN verify = ${'true'} THEN alumniid END) as count
+      FROM public.tbl_alumni
+      WHERE association_id = ANY(${associationIds}) AND association_id IS NOT NULL
+      GROUP BY association_id
     `;
 
     // Build counts object
     const counts: { [key: number]: number } = {};
     
-    // Initialize all chapter IDs with 0
-    chapterIds.forEach(id => {
+    // Initialize all association IDs with 0
+    associationIds.forEach(id => {
       counts[id] = 0;
     });
 
     // Update with actual counts from query result
     result.forEach((row: Record<string, unknown>) => {
-      const chapterId = row.chapter_id ? Number(row.chapter_id) : null;
+      const associationId = row.association_id ? Number(row.association_id) : null;
       const count = row.count ? parseInt(String(row.count), 10) : 0;
       
-      if (chapterId && chapterIds.includes(chapterId)) {
-        counts[chapterId] = count;
+      if (associationId && associationIds.includes(associationId)) {
+        counts[associationId] = count;
       }
     });
 
@@ -101,13 +84,13 @@ export async function GET(request: NextRequest) {
     cache.set(cacheKey, { data: counts, timestamp: Date.now() });
 
     const duration = Date.now() - startTime;
-    console.log(`[API] Member counts query took ${duration}ms for ${chapterIds.length} chapters`);
+    console.log(`[API] Association counts query took ${duration}ms for ${associationIds.length} associations`);
 
     const response = NextResponse.json({ data: counts, error: null });
     return addCorsHeaders(response, request);
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`[API] Error in /api/external/chapters/member-counts (${duration}ms):`, error);
+    console.error(`[API] Error in /api/external/alumni/association-counts (${duration}ms):`, error);
     const response = NextResponse.json(
       {
         data: {},
