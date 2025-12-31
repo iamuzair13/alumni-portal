@@ -182,9 +182,10 @@ export async function GET(request: NextRequest) {
     `;
     
     // Get verified count (verified = true, with all other filters)
-    // MATCH EXTERNAL API LOGIC: Use UNION to count chapter memberships (not unique alumni)
-    // This matches external API where an alumni in multiple chapters counts in each chapter
-    // Build chapter filter for each UNION branch separately
+    // MATCH EXTERNAL API LOGIC EXACTLY: Count chapter memberships, not unique alumni
+    // External API creates (alumni_id, chapter_id) pairs and counts verified per chapter
+    // We need to count ALL verified chapter memberships (sum across all chapters)
+    // Build chapter filter for each UNION branch - apply filter to the specific chapter column
     let chapter1Filter = sql``;
     let chapter2Filter = sql``;
     let chapter3Filter = sql``;
@@ -196,7 +197,7 @@ export async function GET(request: NextRequest) {
     
     const verifiedCountQuery = sql`
       WITH chapter_members AS (
-        SELECT DISTINCT ac.id as alumni_id
+        SELECT ac.id as alumni_id, ac.chapter1 as chapter_id
         FROM public.alumni_chapter ac
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
         WHERE ac.chapter1 IS NOT NULL
@@ -210,7 +211,7 @@ export async function GET(request: NextRequest) {
         
         UNION
         
-        SELECT DISTINCT ac.id as alumni_id
+        SELECT ac.id as alumni_id, ac.chapter2 as chapter_id
         FROM public.alumni_chapter ac
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
         WHERE ac.chapter2 IS NOT NULL
@@ -224,7 +225,7 @@ export async function GET(request: NextRequest) {
         
         UNION
         
-        SELECT DISTINCT ac.id as alumni_id
+        SELECT ac.id as alumni_id, ac.chapter3 as chapter_id
         FROM public.alumni_chapter ac
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id
         WHERE ac.chapter3 IS NOT NULL
