@@ -118,99 +118,107 @@ export async function GET(request: NextRequest) {
       `;
     }
     
-    // Base query structure
-    const baseQuery = membershipJoinType === "JOIN"
-      ? sql`FROM public.tbl_alumni a
-      JOIN public.alumni_chapter ac ON ac.id = a.alumniid`
-      : sql`FROM public.tbl_alumni a
-      LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid`;
+    // MATCH EXTERNAL API LOGIC: Start from alumni_chapter table, count rows where chapter1/2/3 matches
+    // Total count = number of rows having at least one chapter filled (regardless of verification)
+    // Verified count = rows where at least one chapter filled AND verified = 'true'
+    // Base query structure - start from alumni_chapter
+    const baseQueryFromChapter = sql`FROM public.alumni_chapter ac
+      LEFT JOIN public.tbl_alumni a ON a.alumniid = ac.id`;
     
-    // MATCH EXTERNAL API LOGIC: Always count only verified alumni by default
-    // Use CASE WHEN to count only verified alumni, matching external API pattern
-    // Get total count (with all filters except membership and verified)
+    // Build chapter filter - must have at least one chapter filled
+    let chapterMembershipCondition = sql``;
+    if (membershipFilter === "members") {
+      chapterMembershipCondition = sql` AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)`;
+    } else if (membershipFilter === "non-members") {
+      chapterMembershipCondition = sql` AND (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL)`;
+    }
+    
+    // Total count: Count ALL rows in alumni_chapter where at least one chapter matches (not just verified)
     const totalCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      ${baseQuery}
+      SELECT COUNT(DISTINCT ac.id) as count
+      ${baseQueryFromChapter}
       WHERE 1=1
-      ${accessFilterCondition}
       ${chapterFilterCondition}
+      ${chapterMembershipCondition}
+      ${chapterCountCondition}
+      ${accessFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
-      ${chapterCountCondition}
     `;
     
     // Get all count (membershipFilter = "all", with verified filter)
+    // Count ALL rows in alumni_chapter matching filters
     const allCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM public.tbl_alumni a
-      LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
+      SELECT COUNT(DISTINCT ac.id) as count
+      ${baseQueryFromChapter}
       WHERE 1=1
-      ${accessFilterCondition}
       ${chapterFilterCondition}
+      ${chapterCountCondition}
+      ${accessFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
-      ${chapterCountCondition}
     `;
     
     // Get members count (membershipFilter = "members", with verified filter)
+    // Count rows in alumni_chapter where at least one chapter is filled
     const membersCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM public.tbl_alumni a
-      JOIN public.alumni_chapter ac ON ac.id = a.alumniid
+      SELECT COUNT(DISTINCT ac.id) as count
+      ${baseQueryFromChapter}
       WHERE 1=1
-      ${accessFilterCondition}
       ${chapterFilterCondition}
+      AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)
+      ${chapterCountCondition}
+      ${accessFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
-      AND ac.id IS NOT NULL AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)
-      ${chapterCountCondition}
     `;
     
     // Get non-members count (membershipFilter = "non-members", with verified filter)
+    // Count rows in alumni_chapter where no chapters are filled
     const nonMembersCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM public.tbl_alumni a
-      LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
+      SELECT COUNT(DISTINCT ac.id) as count
+      ${baseQueryFromChapter}
       WHERE 1=1
-      ${accessFilterCondition}
       ${chapterFilterCondition}
+      AND (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL)
+      ${chapterCountCondition}
+      ${accessFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
-      AND (ac.id IS NULL OR (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL))
-      ${chapterCountCondition}
     `;
     
     // Get verified count (verified = true, with all other filters)
+    // Count rows in alumni_chapter where verified = 'true'
     const verifiedCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      ${baseQuery}
+      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN ac.id END) as count
+      ${baseQueryFromChapter}
       WHERE 1=1
-      ${accessFilterCondition}
       ${chapterFilterCondition}
+      ${chapterMembershipCondition}
+      ${chapterCountCondition}
+      ${accessFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
-      ${membershipWhereCondition}
       AND a.verify = 'true'
-      ${chapterCountCondition}
     `;
     
     // Get unverified count (verified = false, with all other filters)
-    // Note: This counts unverified alumni, so we don't use CASE WHEN verify = 'true'
+    // Count rows in alumni_chapter where verified != 'true'
     const unverifiedCountQuery = sql`
-      SELECT COUNT(DISTINCT a.alumniid) as count
-      ${baseQuery}
+      SELECT COUNT(DISTINCT ac.id) as count
+      ${baseQueryFromChapter}
       WHERE 1=1
-      ${accessFilterCondition}
       ${chapterFilterCondition}
+      ${chapterMembershipCondition}
+      ${chapterCountCondition}
+      ${accessFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
-      ${membershipWhereCondition}
       AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')
-      ${chapterCountCondition}
     `;
     
     // Execute all queries in parallel
