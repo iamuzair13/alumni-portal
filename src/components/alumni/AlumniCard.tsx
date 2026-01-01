@@ -296,7 +296,7 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useCardStatus, cardStatusKey, type CardData } from "@/app/queries/fetch-card-status";
-import { useCardApplicants } from "@/app/queries/fetch-card-applicants";
+import { useCardApplicants, cardApplicantsKey, type CardApplicantsResponse, type CardStatusFilter } from "@/app/queries/fetch-card-applicants";
 import PrintCardButton from "./PrintCardButton";
 
 type SortDirection = "asc" | "desc";
@@ -921,6 +921,40 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         
         // Keep local state as the new status (don't let refetch override it)
         setLocalStatus(next);
+        
+        // Reorder items to move the updated item to the first position
+        const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold"];
+        for (const s of statuses) {
+          const key = cardApplicantsKey(s);
+          const current = queryClient.getQueryData<CardApplicantsResponse>(key);
+          
+          if (current) {
+            const itemIndex = current.items.findIndex((r) => String(r.sapid) === String(sapId));
+            if (itemIndex !== -1 && itemIndex !== 0) {
+              // Move the updated item to the first position
+              const updatedItem = { ...current.items[itemIndex], status: next };
+              const reorderedItems = [
+                updatedItem,
+                ...current.items.slice(0, itemIndex),
+                ...current.items.slice(itemIndex + 1)
+              ];
+              queryClient.setQueryData(key, {
+                ...current,
+                items: reorderedItems,
+              });
+            } else if (itemIndex !== -1) {
+              // Item is already first, just update its status
+              const updatedItem = { ...current.items[itemIndex], status: next };
+              queryClient.setQueryData(key, {
+                ...current,
+                items: [
+                  updatedItem,
+                  ...current.items.slice(1)
+                ],
+              });
+            }
+          }
+        }
         
         // If status is Onhold and reason was saved, clear the input field after a short delay
         // This allows the cache update to complete first, then the reason will be displayed from database

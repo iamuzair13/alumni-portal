@@ -791,12 +791,12 @@ export const AlumniAssociationTab: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
                               onChange={() => handleFacultyToggle(faculty.value)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                            />
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
                             <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.label}</span>
                           </div>
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{faculty.count}</span>
@@ -871,12 +871,12 @@ export const AlumniAssociationTab: React.FC = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
                                   onChange={() => handleDepartmentToggle(dept.value)}
-                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                />
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
                                 <span className="text-sm text-gray-700 dark:text-gray-300">{dept.label}</span>
                               </div>
                               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{dept.count}</span>
@@ -949,12 +949,12 @@ export const AlumniAssociationTab: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
                               onChange={() => handleAssociationToggle(associationId)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                            />
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
                             <span className="text-sm text-gray-700 dark:text-gray-300">{association.label}</span>
                           </div>
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{association.count}</span>

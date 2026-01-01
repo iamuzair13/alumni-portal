@@ -229,7 +229,7 @@ export async function POST(req: Request) {
           }
 
           // Create uploads directory if it doesn't exist
-          const uploadsDir = join(process.cwd(), "public", "images", "alumni-images", "thumbnail");
+          const uploadsDir = join(process.cwd(), "public", "images");
           if (!existsSync(uploadsDir)) {
             await mkdir(uploadsDir, { recursive: true });
           }
@@ -250,7 +250,7 @@ export async function POST(req: Request) {
         const { unlink } = await import("fs/promises");
         for (const filename of Object.values(savedImages)) {
           try {
-            await unlink(join(process.cwd(), "public", "images", "alumni-images", "thumbnail", filename));
+            await unlink(join(process.cwd(), "public", "images", filename));
           } catch {
             // Ignore cleanup errors
           }
@@ -271,7 +271,7 @@ export async function POST(req: Request) {
         const { unlink } = await import("fs/promises");
         for (const filename of Object.values(savedImages)) {
           try {
-            await unlink(join(process.cwd(), "public", "images", "alumni-images", "thumbnail", filename));
+            await unlink(join(process.cwd(), "public", "images", filename));
           } catch {
             // Ignore cleanup errors
           }
@@ -285,7 +285,7 @@ export async function POST(req: Request) {
       const { unlink } = await import("fs/promises");
       for (const filename of Object.values(savedImages)) {
         try {
-          await unlink(join(process.cwd(), "public", "images", "alumni-images", "thumbnail", filename));
+          await unlink(join(process.cwd(), "public", "images", filename));
         } catch {
           // Ignore cleanup errors
         }

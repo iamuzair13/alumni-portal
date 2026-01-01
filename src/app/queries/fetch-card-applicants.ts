@@ -113,17 +113,62 @@ export function useUpdateApplicantStatus() {
         prevData[s] = prev;
         
         if (prev) {
-          const next = {
-            ...prev,
-            items: prev.items.map((r) => 
-              String(r.sapid) === String(sapId) ? { ...r, status } : r
-            ),
-          };
-          qc.setQueryData(key, next);
+          // Find the item to update
+          const itemIndex = prev.items.findIndex((r) => String(r.sapid) === String(sapId));
+          if (itemIndex !== -1) {
+            // Update the item's status
+            const updatedItem = { ...prev.items[itemIndex], status };
+            // Move the updated item to the first position
+            const reorderedItems = [
+              updatedItem,
+              ...prev.items.slice(0, itemIndex),
+              ...prev.items.slice(itemIndex + 1)
+            ];
+            const next = {
+              ...prev,
+              items: reorderedItems,
+            };
+            qc.setQueryData(key, next);
+          } else {
+            // If item not found, just update status normally
+            const next = {
+              ...prev,
+              items: prev.items.map((r) => 
+                String(r.sapid) === String(sapId) ? { ...r, status } : r
+              ),
+            };
+            qc.setQueryData(key, next);
+          }
         }
       }
       
       return { prev: prevData["all"]?.items };
+    },
+    onSuccess: (_data, { sapId }) => {
+      // After successful update, ensure the updated item is first in all relevant queries
+      const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold"];
+      
+      for (const s of statuses) {
+        const key = cardApplicantsKey(s);
+        const current = qc.getQueryData<CardApplicantsResponse>(key);
+        
+        if (current) {
+          const itemIndex = current.items.findIndex((r) => String(r.sapid) === String(sapId));
+          if (itemIndex !== -1 && itemIndex !== 0) {
+            // Move the updated item to the first position
+            const updatedItem = current.items[itemIndex];
+            const reorderedItems = [
+              updatedItem,
+              ...current.items.slice(0, itemIndex),
+              ...current.items.slice(itemIndex + 1)
+            ];
+            qc.setQueryData(key, {
+              ...current,
+              items: reorderedItems,
+            });
+          }
+        }
+      }
     },
     onError: (_err, _vars, ctx) => {
       // Restore previous data on error

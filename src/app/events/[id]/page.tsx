@@ -252,7 +252,7 @@ export default function EventDetailPage() {
                         onClick={() => hasMultipleImages && setIsImageModalOpen(true)}
                       >
                         <Image
-                          src={`/images/alumni-images/thumbnail/${mainImage}`}
+                          src={`/images/${mainImage}`}
                           alt={`${event.title} - Image ${selectedImageIndex + 1}`}
                           fill
                           className="object-cover"
@@ -303,7 +303,7 @@ export default function EventDetailPage() {
                           }`}
                         >
                           <Image
-                            src={`/images/alumni-images/thumbnail/${image}`}
+                            src={`/images/${image}`}
                             alt={`Thumbnail ${idx + 1}`}
                             fill
                             className="object-cover"
@@ -342,7 +342,7 @@ export default function EventDetailPage() {
             
             <div className="relative w-full h-[90vh]">
               <Image
-                src={`/images/alumni-images/thumbnail/${mainImage}`}
+                src={`/images/${mainImage}`}
                 alt={`${event.title} - Full View`}
                 fill
                 className="object-contain"

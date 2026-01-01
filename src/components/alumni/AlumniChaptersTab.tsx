@@ -905,12 +905,12 @@ export const AlumniChaptersTab: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
                               onChange={() => handleNationalChapterToggle(chapter.value)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                            />
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
                             <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.label}</span>
                           </div>
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{chapter.count}</span>
@@ -988,12 +988,12 @@ export const AlumniChaptersTab: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
                               onChange={() => handleInternationalChapterToggle(chapter.value)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                            />
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
                             <span className="text-sm text-gray-700 dark:text-gray-300">{chapter.label}</span>
                           </div>
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{chapter.count}</span>
@@ -1007,7 +1007,7 @@ export const AlumniChaptersTab: React.FC = () => {
             )}
           </div>
         </div>
-        
+
         {/* Faculty Filter */}
         <div className="flex-1 sm:min-w-[180px]">
           <label htmlFor="faculty-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
@@ -1064,12 +1064,12 @@ export const AlumniChaptersTab: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
                               onChange={() => handleFacultyToggle(faculty.value)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                            />
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                          />
                             <span className="text-sm text-gray-700 dark:text-gray-300">{faculty.label}</span>
                           </div>
                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{faculty.count}</span>
@@ -1146,12 +1146,12 @@ export const AlumniChaptersTab: React.FC = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
                                   onChange={() => handleDepartmentToggle(dept.value)}
-                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                                />
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
                                 <span className="text-sm text-gray-700 dark:text-gray-300">{dept.label}</span>
                               </div>
                               <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{dept.count}</span>

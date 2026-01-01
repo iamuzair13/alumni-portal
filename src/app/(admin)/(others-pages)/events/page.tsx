@@ -193,7 +193,7 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
           }}
         >
         <div className="table-content-wrapper" style={{ minWidth: '1300px' }}>
-          <Table className="min-w-full">
+        <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
               <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
                 <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[60px]">
@@ -316,7 +316,7 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {formatTime(evt.eventTime)}
+                    {formatTime(evt.eventTime)}
                     </span>
                   </TableCell>
                   <TableCell className="px-3  sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
@@ -385,10 +385,10 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                 </TableRow>
               ))}
             </TableBody>
-            </Table>
+        </Table>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
               {(() => {
                 const start = (currentPage - 1) * pageSize + 1;
