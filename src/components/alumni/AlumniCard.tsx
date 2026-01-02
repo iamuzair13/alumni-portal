@@ -1170,9 +1170,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     // Try to get status from cache first, then from item status, fallback to pending
     const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
-    // Get actual database status string for checking Active/Delivered
+    // Get actual database status string for checking Active/Delivered/Process/Pending
     const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
-    const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED";
+    const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED" || dbStatusString === "PROCESS" || dbStatusString === "PENDING";
     const isAdmin = canModify(session?.user);
 
     const handleDelete = async () => {

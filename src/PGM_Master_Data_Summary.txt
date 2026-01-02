@@ -1,0 +1,788 @@
+=== FACULTY, DEPARTMENT, AND PROGRAM STRUCTURE ===
+
+
+1. FACULTY: International Programs
+   Total Departments: 7
+   Total Programs: 55
+
+   1.1. DEPARTMENT: Academy of International Certifications (Code: 112702)
+      Programs: 3
+      1.1.1. BFCP-LHR - Business Formation Certificate - Pre Incubation Plan
+      1.1.2. CBF-LHR - Certificate in Business Formation/Entrepreneurship
+      1.1.3. ISO-LHR - ISO 14001:2015 IRCA EMS Lead Auditor Training
+
+   1.2. DEPARTMENT: Academy of International Qualifications (Code: 112701)
+      Programs: 33
+      1.2.1. ADPHSC-LHR - ADP in Health and Social Care (Level 4 & 5)
+      1.2.2. ADPHM-LHR - ADP in Hospitality Management (Level 4 & 5)
+      1.2.3. ADPSCW-LHR - ADP in Social and Community Work (Level 4 & 5)
+      1.2.4. BSBAAIQ-LHR - B.Sc(Hons)Artifical Intelligence
+      1.2.5. BSBMIQ-LHR - B.Sc(Hons)Bussiness Management
+      1.2.6. BSBMITQ-LHR - B.Sc(Hons)Bussiness Management(Top Up Level-6)
+      1.2.7. BSCSIQ-LHR - B.Sc(Hons)Computer Science
+      1.2.8. BSCSTIQ-LHR - B.Sc(Hons)Computer Science(Top Up Level-6)
+      1.2.9. BSCBSIQ-LHR - B.Sc(Hons)Cyber Security
+      1.2.10. BSHSIQ-LHR - B.Sc(Hons)Health and Social Care
+      1.2.11. BSHSTIQ-LHR - B.Sc(Hons)Health and Social Care(Top Level-6)
+      1.2.12. BSHMIQ-LHR - B.Sc(Hons)International Hospitality Management
+      1.2.13. BSHMTIQ-LHR - B.Sc(Hons)International Hospitality Management(Top Level-6)
+      1.2.14. BSNIQ-LHR - B.Sc(Hons)Nursing
+      1.2.15. BSPTIQ-LHR - B.Sc(Hons)Physical Therapy
+      1.2.16. BSPYIQ-LHR - B.Sc(Hons)Psychology
+      1.2.17. HNCAD-LHR - HNC Arts and Design
+      1.2.18. HNCBU-LHR - HNC Business( Level 4)
+      1.2.19. HNCC-LHR - HNC Computing(Level 4)
+      1.2.20. HNCHSC-LHR - HNC Health and Social Care(Level 4)
+      1.2.21. HNCHM-LHR - HNC Hospitality Management(Level 4)
+      1.2.22. HNCSCW-LHR - HNC Social and Community Work(Level 4)
+      1.2.23. HNDAD-LHR - HND Arts and Design
+      1.2.24. HNDBU-LHR - HND Business
+      1.2.25. HNDC-LHR - HND Computing
+      1.2.26. HNDHSC-LHR - HND Health and Social Care
+      1.2.27. HNDHM-LHR - HND Hospitality Management
+      1.2.28. HNDSCW-LHR - HND Social and Community Work
+      1.2.29. ICHSC-LHR - International Certificate in Health & Social Care
+      1.2.30. ICH-LHR - International Certificate in Hospitality
+      1.2.31. ICIT-LHR - International Certificate in Information Technology
+      1.2.32. LLBIQ-LHR - LLB(Hons)
+      1.2.33. PHPIQ-LHR - Pre-Sessional Program
+
+   1.3. DEPARTMENT: Academy of Languages & Professional Dev. (Code: 111603)
+      Programs: 8
+      1.3.1. ALCB-LHR - Arabic - Beginner Level
+      1.3.2. ALCI-LHR - Arabic - Intermediate Level
+      1.3.3. ALC-LHR - Arabic Language Course
+      1.3.4. GLCA1-LHR - German - A1 Level
+      1.3.5. GLCA2-LHR - German - A2 Level
+      1.3.6. GLC-LHR - German Language Course
+      1.3.7. JLC-LHR - Japanese Language Course
+      1.3.8. PLCB-LHR - Persian-Beginner Level
+
+   1.4. DEPARTMENT: Elumni (Code: Elumni)
+      Programs: 5
+      1.4.1. BEWD-LHR - Back-End Web Development
+      1.4.2. CCD-LHR - Cloud Computing and Devops
+      1.4.3. FEWD-LHR - Front-End Web Development
+      1.4.4. FSCP-LHR - Full Stack Capstone Project
+      1.4.5. FSWD-LHR - Full Stack Web Development
+
+   1.5. DEPARTMENT: PM Kamyab Nojawan Program (Code: 11250201)
+      Programs: 3
+      1.5.1. ACM-LHR - AutoCad Mechanical
+      1.5.2. CIT-LHR - PM Kamyab Nijawan Program
+      1.5.3. SAP-LHR - SAP - ERP
+
+   1.6. DEPARTMENT: Postgraduate Institute of Law (Code: 111502)
+      Programs: 1
+      1.6.1. LLM-LHR - Master of Laws
+
+   1.7. DEPARTMENT: UOL - CSUN (Code: 112703)
+      Programs: 2
+      1.7.1. BSBA-CSN-LHR - BS Business Administration(Finance)-CSUN
+      1.7.2. BSCS-CSN-LHR - BS Computer Science - CSUN
+
+2. FACULTY: Faculty of Allied Health Sciences
+   Total Departments: 17
+   Total Programs: 121
+
+   2.1. DEPARTMENT: Center for Research in Molecular Medicin (Code: 111904)
+      Programs: 1
+      2.1.1. DMRD-LHR - Diploma in Medical Radiology (Diagnostic)
+
+   2.2. DEPARTMENT: Department of Audiology (Code: 112214)
+      Programs: 1
+      2.2.1. BSA-LHR - Bachelor of Science in Audiology
+
+   2.3. DEPARTMENT: Department of Optometry & Vision Science (Code: 112209)
+      Programs: 6
+      2.3.1. BVS-LHR - Bachelor of Vision Sciences
+      2.3.2. OD-LHR - Doctor of Optometry
+      2.3.3. POD-LHR - Post Professional Doctor of Optometry
+      2.3.4. PPDO-LHR - Post Professional Doctor of Optometry
+      2.3.5. TOD-LHR - Transitional Doctor of Optometry
+      2.3.6. TDO-LHR - Transitional Doctor of Optometry
+
+   2.4. DEPARTMENT: Department of Rehabilitation Sciences (Code: 112211)
+      Programs: 8
+      2.4.1. BSOT-LHR - Bachelor of Science in Occupational Therapy
+      2.4.2. BSORPT-LHR - Bachelor of Science in Orthotics and Prosthetic Technology
+      2.4.3. BSRS-LHR - Bachelor of Science in Rehabilitation Sciences
+      2.4.4. BSSLP-LHR - Bachelor of Science in Speech and Language Pathology
+      2.4.5. MSSLHS-LHR - Master of Science in Speech Language Pathology / Hearing Sciences (Audiology)
+      2.4.6. PGDAS-LHR - Post Graduate Diploma in Clinical Speech Language Pathology Autism Spectrum Disorders
+      2.4.7. PGDD-LHR - Post Graduate Diploma in Clinical Speech Language Pathology Dysphagiaate Diploma in Clinical Speech Language Pathology Dysphagia
+      2.4.8. PGDA-LHR - Post Graduate Diploma in Clinical Speech Language Pathology Aphasia
+
+   2.5. DEPARTMENT: Department of Sports Sciences (Code: 112203)
+      Programs: 8
+      2.5.1. BSSPE-LHR - Bachelor of Science in Sports Sciences and Physical Education
+      2.5.2. BSPE-LHR - Bachelor of Studies in Physical Education(Sports Sciences)
+      2.5.3. DSSPE-LHR - Doctor of Philosophy in Sports Science and Physical Education
+      2.5.4. DSS-LHR - Doctor of Philosophy in Sports Science
+      2.5.5. PSSPE-LHR - Master of Philosophy in Sports Sciences and Physical Education
+      2.5.6. MSSM-LHR - Master of Science in Sports Medicine
+      2.5.7. SPPSY-LHR - Master of Science in Sports and Exercise Psychology
+      2.5.8. MSSPE-LHR - Master of Sports Sciences and Physical Education
+
+   2.6. DEPARTMENT: Dept of Health Professional Technologies (Code: 112201)
+      Programs: 10
+      2.6.1. BSAT-LHR - Bachelor of Science in Anesthesia Technology
+      2.6.2. BSCCT-LHR - Bachelor of Science in Critical Care Technorogy
+      2.6.3. BSEMT-LHR - Bachelor of Science in Emergency Technology
+      2.6.4. BSEICT-LHR - Bachelor of Science in Emergency and Intensive Care Technology
+      2.6.5. BSICT-LHR - Bachelor of Science in Intensive Care Technology
+      2.6.6. BSRPT-LHR - Bachelor of Science in Respiratory Therapy
+      2.6.7. BSSUT-LHR - Bachelor of Science in Surgical Technology
+      2.6.8. BSOPT-LHR - Bachelors of Science in Operation Theater
+      2.6.9. DOT-LHR - Doctor of Occupational Therapy
+      2.6.10. PGDNI-LHR - Postgraduate Diploma in Non-Invasive Orthopaedic
+
+   2.7. DEPARTMENT: Dept of Radiological Sciences and MIT (Code: 112206)
+      Programs: 30
+      2.7.1. TDMIT-LHR - 1 Yr Transitional Diploma in MIT
+      2.7.2. BSMDT-LHR - 4 Years Bs (Medical Imaging Technology)
+      2.7.3. BMIS-LHR - Bachelor of Medical Imaging Sciences
+      2.7.4. BSCUT-LHR - Bachelor of Science Medicl Ultrasound Technology
+      2.7.5. BSMUT-LHR - Bachelor of Science in Medical Ultrasound Technology
+      2.7.6. BSMUS-LHR - Bachelor of Science in Medical Ultrasound and Sonography
+      2.7.7. BSRIT-LHR - Bachelor of Science in Radiography and Imaging Technology
+      2.7.8. BOEC-LHR - Basics of Echocardiography
+      2.7.9. CMUT-LHR - Certificate in Medical Ultrasound Technology
+      2.7.10. DU-LHR - Diploma in Medical Diagnostic Ultrasound
+      2.7.11. DDU-LHR - Doctor of Philosophy in Diagnostic Ultrasound
+      2.7.12. DMIT-LHR - Doctor of Philosophy in Medical Imaging Technology
+      2.7.13. DR-LHR - Doctor of Philosophy in Radiology
+      2.7.14. DUT-LHR - Doctor of Philosophy in Ultrasound Techn
+      2.7.15. EDMIT-LHR - Extended Diploma In Medical Imaging Technology - 2 Years
+      2.7.16. PFM-LHR - M Phil in Fetal Medicine Ultrasound
+      2.7.17. POGYN-LHR - M Phil in Obgyn Ultrasound
+      2.7.18. MDR-LHR - M.D.Radiology
+      2.7.19. MMUT-LHR - M.Phil Medical Ultrasound Technology
+      2.7.20. PVU-LHR - M.Phil in Vascular Ultrasound
+      2.7.21. PGU-LHR - Master of Philosophy in General Ultrasound
+      2.7.22. MPMU-LHR - Master of Philosophy in Musculoskeletal Ultrasound
+      2.7.23. MSDD-LHR - Master of Science in  Diagnostic Ultrasound
+      2.7.24. PDU-LHR - Master of Science in Diagnostic Ultrasound
+      2.7.25. MSMIT-LHR - Master of Science in Medical Imaging Technology
+      2.7.26. MSMDT-LHR - Master of Science in Medical Imaging Technology - 2 Years
+      2.7.27. MSCMU-LHR - Master of Science in Medical Ultrasound Technology - 2 Years
+      2.7.28. MID-LHR - Medical Imaging Doctor
+      2.7.29. DMDU-LHR - PhD.Medical Diagnotic ultrasound
+      2.7.30. PGDU-LHR - Post Graduate Diploma in Medical Diagnostic Ultrasound
+
+   2.8. DEPARTMENT: Dept of Radiological Sciences and MIT (Code: 122206)
+      Programs: 1
+      2.8.1. BMUT-LHR - B.Sc Medical Ultrasound Technology
+
+   2.9. DEPARTMENT: Deptt. of Emerging Allied Health Tech. (Code: 112212)
+      Programs: 8
+      2.9.1. BSCPT-LHR - Bachelor of Science in Cardiac Perfusion Technology
+      2.9.2. BSCAT-LHR - Bachelor of Science in Cardiac Technology
+      2.9.3. BSCVT-LHR - Bachelor of Science in Cardiovascular Technology
+      2.9.4. BSDIT-LHR - Bachelor of Science in Dermatology Technology
+      2.9.5. BSDT-LHR - Bacheror of Science in Dialysis Technology
+      2.9.6. BSENT-LHR - Bachelor of Science in Endoscopy Technology
+      2.9.7. BSNET-LHR - Bachelor of Science in Neurophysiology Technology
+      2.9.8. BSVT-LHR - Bachelor of Science in Vascular Technology
+
+   2.10. DEPARTMENT: Lahore Institue of Future Education (Code: 113002)
+      Programs: 3
+      2.10.1. MELT-LHR - Master of Arts in English Language Literature
+      2.10.2. MAEL-LHR - Master of Arts in English Language Literature
+      2.10.3. PAL-LHR - Masters of Philosophy in Applied Linguistics
+
+   2.11. DEPARTMENT: Lahore School of Nursing (Code: 112204)
+      Programs: 4
+      2.11.1. PBSN-LHR - Bachelor of Science Post RN Nursing Program - 2 Years
+      2.11.2. BSN-LHR - Bachelor of Sciences in Nursing
+      2.11.3. MSN-LHR - Master of Science in Nursing
+      2.11.4. OET-LHR - Occupational English Test
+
+   2.12. DEPARTMENT: NHNC (Code: 113005)
+      Programs: 1
+      2.12.1. BSNRN-LHR - BSN POST RN (TWO YEAR)
+
+   2.13. DEPARTMENT: Uni. Inst. of Food Science & Technology (Code: 112210)
+      Programs: 8
+      2.13.1. BSDAT-LHR - Bachelor of Science in Dairy Technology
+      2.13.2. BSFSQ-LHR - Bachelor of Science in Food Safety and Quality Management
+      2.13.3. BSFST-LHR - Bachelor of Science in Food Science and Technology
+      2.13.4. BSFMT-LHR - Bachelor of Science in Meat Technology
+      2.13.5. DFST-LHR - Doctor of Philosophy in Food Science and Technology
+      2.13.6. PDST-LHR - Master of Philosophy in Dairy Science and Technology
+      2.13.7. PFST-LHR - Master of Philosophy in Food Sciences and Technology
+      2.13.8. PMST-LHR - Master of Philosophy in Meat Science and Technology
+
+   2.14. DEPARTMENT: University Inst of Diet & Nutri Sciences (Code: 112202)
+      Programs: 7
+      2.14.1. BDNS-LHR - Bachelor of Dietetics and Nutritional Sciences
+      2.14.2. BSHND-LHR - Bachelor of Science (Hons) in Diet and Nutritional Sciences
+      2.14.3. BHND-LHR - Bachelor of Science in Human Nutrition and Dietetics
+      2.14.4. DDNS-LHR - Doctor of Diet and Nutritional Sciences
+      2.14.5. DHND-LHR - Doctor of Philosophy in Human Nutrition and Dietetics
+      2.14.6. PHND-LHR - Master of Philosophy in Human Nuitrition and Dietetics
+      2.14.7. PDPH-LHR - Practical Dietary Practices in Healthcare
+
+   2.15. DEPARTMENT: University Institute of Medical Lab Tech (Code: 112205)
+      Programs: 9
+      2.15.1. BMLS-LHR - Bachelor of Medical Laboratory Sciences
+      2.15.2. BSMLT-LHR - Bachelor of Science (Hons) in Medical Lab Technology
+      2.15.3. BMLT-LHR - Bachelor of Science in Medical Laboratory Technology
+      2.15.4. CAHPE-LHR - Certificate of Allied Health Professions
+      2.15.5. DMLS-LHR - Doctor of Medical Laboratory Sciences
+      2.15.6. DIMP-LHR - Doctor of Philosophy in Immunology and Molecular Pathology
+      2.15.7. DVMP-LHR - Doctor of Philosophy in Virology and Molecular Pathology
+      2.15.8. PIMP-LHR - Master of Philosophy in Immunology and Molecular Pathology
+      2.15.9. PVMP-LHR - Master of Philosophy in Virology and Molecular Pathology
+
+   2.16. DEPARTMENT: University Institute of Physical Therapy (Code: 112207)
+      Programs: 12
+      2.16.1. DPTH-LHR - Doctor of Philosophy in Physical Therapy
+      2.16.2. DPT-LHR - Doctor of Physical Therapy
+      2.16.3. MPPTB-LHR - M.Phil Physical Therapy (Biomechanics)
+      2.16.4. MPPTK-LHR - M.Phil Physical Therapy(Kinesiology)
+      2.16.5. MSPTM-LHR - MS. Physical Therapy (Musculoskeletal)
+      2.16.6. MSPTN-LHR - MS. Physical Therapy (Neurology)
+      2.16.7. PPTM-LHR - Master of Philosophy in Physical Therapy - Musculoskeletal
+      2.16.8. MSCPT-LHR - Master of Science in Cardiopulmonary Physical Therapy
+      2.16.9. MSGPT-LHR - Master of Science in Physical Therapy (Geriatric Physical Therapy)
+      2.16.10. MSPPT-LHR - Master of Science in Physical Therapy(Paediatric Physical Therapy)
+      2.16.11. MSWH-LHR - Master of Science in Physical Therapy(Women's Health)
+      2.16.12. MSSPT-LHR - Master of Science in Sports Physical Therapy
+
+   2.17. DEPARTMENT: University Institute of Public Health (Code: 112208)
+      Programs: 4
+      2.17.1. BSPH-LHR - Bachelor of Science in Public Health
+      2.17.2. PPH-LHR - Doctor of Philosophy in Public Health
+      2.17.3. MPH-LHR - Master of  Public Health
+      2.17.4. PPHL-LHR - Master of Philosophy in Public Health
+
+3. FACULTY: Faculty of Natural Sciences
+   Total Departments: 6
+   Total Programs: 95
+
+   3.1. DEPARTMENT: Department of Chemistry (Code: 111905)
+      Programs: 11
+      3.1.1. BSAC-LHR - Bachelor of Science in Applied Chemistry
+      3.1.2. BSCHEM-LHR - Bachelor of Science in Chemistry ( 4 Years)
+      3.1.3. BSCH-LHR - Bachelor of Science in Chemistry
+      3.1.4. BSCAI-LHR - Bachelor of Science in Chemistry with Artificial Intelligence
+      3.1.5. BSFC-LHR - Bachelor of Science in Forensic Chemistry
+      3.1.6. DCHEM-LHR - Doctor of Philosophy in Chemistry
+      3.1.7. MPCH-LHR - M. Phil Chemistry
+      3.1.8. MCHEM-LHR - M.Sc Chemistry ( 2 Years )
+      3.1.9. PCHEM-LHR - Master of Philosophy in Chemistry
+      3.1.10. MScCH-LHR - Master of Science In Chemistry
+      3.1.11. MCH-LHR - Master of Science in Chemistry
+
+   3.2. DEPARTMENT: Department of Environmental Sciences (Code: 111906)
+      Programs: 8
+      3.2.1. BSEN-LHR - Bachelor of Science Environmental Sciences
+      3.2.2. BSGIS-LHR - Bachelor of Science in Deigraphic Information System
+      3.2.3. BSDMAI-LHR - Bachelor of Science in Disadter Management with Artificial Intelligence
+      3.2.4. BSHSE-LHR - Bachelor of Science in Health Safety and Enviroment
+      3.2.5. DEN-LHR - Doctor of Philosophy in Environmental Sciences
+      3.2.6. MEN-LHR - Master of Environmental Sciences
+      3.2.7. PEN-LHR - Master of Philosophy in Environmental Sciences
+      3.2.8. MSEN-LHR - Master of Science in Environmental Sciences
+
+   3.3. DEPARTMENT: Department of Mathematics and Statistics (Code: 111901)
+      Programs: 10
+      3.3.1. BSMAT-LHR - Bachelor of Science (Hons) in Mathematics
+      3.3.2. BSCF-LHR - Bachelor of Science in Computational Finance
+      3.3.3. BSMDS-LHR - Bachelor of Science in Mathematics for Data Science
+      3.3.4. BSMAI-LHR - Bachelor of Science in Mathematics with Artificial Intelligence
+      3.3.5. BSMCS-LHR - Bachelor of Science in Mathematics with Computer Science
+      3.3.6. BSST-LHR - Bachelor of Science in Statistics
+      3.3.7. DMAT-LHR - Doctor Of Philosphy In Mathematics
+      3.3.8. PMT-LHR - Master of Philosophy in Mathematics
+      3.3.9. PHMAT-LHR - Master of Philosophy in Mathematics
+      3.3.10. PST-LHR - Master of Philosophy in Statistics
+
+   3.4. DEPARTMENT: Department of Physics (Code: 111902)
+      Programs: 12
+      3.4.1. BSCP-LHR - Bachelor of Science Computational Physics
+      3.4.2. BSBP-LHR - Bachelor of Science in Bio Physics
+      3.4.3. BSEP-LHR - Bachelor of Science in Engineering Physics
+      3.4.4. BSENP-LHR - Bachelor of Science in Environmental Physics
+      3.4.5. BSGP-LHR - Bachelor of Science in Geo Physics
+      3.4.6. BSPHM-LHR - Bachelor of Science in Medical Physics
+      3.4.7. BSP-LHR - Bachelor of Science in Physics
+      3.4.8. BSMP-LHR - Bachelor of Science in Physics (Medical Physics)
+      3.4.9. DPH-LHR - Doctor of Philosphy in  Physics
+      3.4.10. PHP-LHR - Master of Philosophy in Physics
+      3.4.11. MPHY-LHR - Master of Science in Physics
+      3.4.12. MSCPH-LHR - Master of Science in Physics
+
+   3.5. DEPARTMENT: Institute of Molecular Biology & Biotech (Code: 111903)
+      Programs: 48
+      3.5.1. BBC-LHR - Bachelor of Science (Hons) in Biochemistry
+      3.5.2. BBCH-LHR - Bachelor of Science in Biochemistry
+      3.5.3. BSBB-LHR - Bachelor of Science in Biochemistry and Biotechnology
+      3.5.4. BSBIOF-LHR - Bachelor of Science in Bioinformatics
+      3.5.5. BSBAI-LHR - Bachelor of Science in Bioinformatics with Artificial Intelligence
+      3.5.6. BSBT-LHR - Bachelor of Science in Biotechnology
+      3.5.7. BSBOT-LHR - Bachelor of Science in Botany
+      3.5.8. BSCBT-LHR - Bachelor of Science in Clinical Biochemistry
+      3.5.9. BSFRS-LHR - Bachelor of Science in Forensic Sciences
+      3.5.10. BSIBT-LHR - Bachelor of Science in Industrial Biochemistry
+      3.5.11. BSM-LHR - Bachelor of Science in Microbiology
+      3.5.12. BSMIB-LHR - Bachelor of Science in Microbiology and Biotechnology
+      3.5.13. BSML-LHR - Bachelor of Science in Molecular Biology
+      3.5.14. BSMB-LHR - Bachelor of Science in Molecular Biology and Biotechnology
+      3.5.15. BSMPC-LHR - Bachelor of Science in Molecular Pathology with Cytogenetics
+      3.5.16. BSPS-LHR - Bachelor of Science in Poultry Sciences
+      3.5.17. BSZOOL-LHR - Bachelor of Science in Zoology
+      3.5.18. BSIB-LHR - Bachlor of Scieces in Industrial Biotechnology
+      3.5.19. DMB-LHR - Doctor of Philosophy Microbiology
+      3.5.20. DBC-LHR - Doctor of Philosophy in Biochemistry
+      3.5.21. DBT-LHR - Doctor of Philosophy in Biotechnology
+      3.5.22. DBOT-LHR - Doctor of Philosophy in Botany
+      3.5.23. DFS-LHR - Doctor of Philosophy in Forensic Sciences
+      3.5.24. DML-LHR - Doctor of Philosophy in Molecular Biology
+      3.5.25. DPS-LHR - Doctor of Philosophy in Physiology
+      3.5.26. DZOO-LHR - Doctor of Philosophy in Zoology
+      3.5.27. PDPS-LHR - M.Phil Leading To Doctor of Philosophy in Physiology
+      3.5.28. PDBC-LHR - M.Phil Leading To Doctor of Philosophy in Biochemistry
+      3.5.29. PZOOL-LHR - M.Phil in Zoology
+      3.5.30. PSCRM-LHR - Master of Philosophy Stem Cells and Rege
+      3.5.31. PBC-LHR - Master of Philosophy in Biochemistry
+      3.5.32. MSBIOF-LHR - Master of Philosophy in Bioinformatics
+      3.5.33. PBT-LHR - Master of Philosophy in Biotechnology
+      3.5.34. PBB-LHR - Master of Philosophy in Biotechnology
+      3.5.35. PBOT-LHR - Master of Philosophy in Botany
+      3.5.36. PMC-LHR - Master of Philosophy in Microbiology
+      3.5.37. PML-LHR - Master of Philosophy in Molecular Biology
+      3.5.38. PPS-LHR - Master of Philosophy in Physiology
+      3.5.39. PFS-LHR - Master of Philosphy in Forensic Sciences
+      3.5.40. MBC-LHR - Master of Science in Biochemistry
+      3.5.41. MBB-LHR - Master of Science in Biochemistry and Biotechnology
+      3.5.42. MBT-LHR - Master of Science in Biotechnology
+      3.5.43. MMC-LHR - Master of Science in Microbiology
+      3.5.44. MSMIB-LHR - Master of Science in Microbiology and Biotechnology
+      3.5.45. MMLB-LHR - Master of Science in Molecular Biology
+      3.5.46. MMB-LHR - Master of Science in Molecular Biology and Biotechnology
+      3.5.47. MPS-LHR - Master of Science in Physiology
+      3.5.48. SCE-LHR - Stem Cell Engineering
+
+   3.6. DEPARTMENT: School of Pain & Regenrative Medicine (Code: 111907)
+      Programs: 6
+      3.6.1. BSRGS-LHR - Bachelor of Science in Regenerartive Sciences
+      3.6.2. DN-LHR - Dry Needling
+      3.6.3. PGDAP-LHR - Postgraduate Diploma in Acupuncture
+      3.6.4. PGDRS-LHR - Postgraduate Diploma in Regenerative Sciences
+      3.6.5. RA-LHR - Regenerative Aesthetics
+      3.6.6. RIT-LHR - Regenerative Injections Therapy
+
+4. FACULTY: Faculty of Engineering
+   Total Departments: 6
+   Total Programs: 48
+
+   4.1. DEPARTMENT: Department of Civil Engineering (Code: 111802)
+      Programs: 3
+      4.1.1. BSCE-LHR - Bachelor of Science in Civil Engineering
+      4.1.2. DCE-LHR - Doctor of Philosphy in Civil Engineering
+      4.1.3. MSCE-LHR - Master of Science in Civil Engineering
+
+   4.2. DEPARTMENT: Department of Computer Engineering (Code: 111806)
+      Programs: 2
+      4.2.1. BSC-LHR - Bachelor of Science in Computer Engineering
+      4.2.2. MSCPE-LHR - Master of Science in Computer Engineering
+
+   4.3. DEPARTMENT: Department of Electrical Engineering (Code: 111801)
+      Programs: 4
+      4.3.1. BSEE-LHR - Bachelor  of Science in Electrical Engineering
+      4.3.2. BEEC-LHR - Bachelor in Electronics and Communication
+      4.3.3. DEE-LHR - Doctor of Philosphy in Electrical Engineering
+      4.3.4. MSEE-LHR - Master of Science in Electrical Engineering
+
+   4.4. DEPARTMENT: Department of Mechanical Engineering (Code: 111803)
+      Programs: 3
+      4.4.1. BSME-LHR - Bachelor of Science in Mechanical Engineering
+      4.4.2. DME-LHR - Doctor of Philosophy in Mechanical Engineering
+      4.4.3. MSME-LHR - Master of Science in Mechanical Engineering
+
+   4.5. DEPARTMENT: Department of Technology (Code: 111804)
+      Programs: 30
+      4.5.1. ADPBET-LHR - Associate Degree Program in Biomedical Engineering Technology
+      4.5.2. BETB-LHR - Bachelor of Engineering Technologly(Biomedical)
+      4.5.3. BETC-LHR - Bachelor of Engineering Technology (Civil).
+      4.5.4. BETM-LHR - Bachelor of Engineering Technology (Mechanical)
+      4.5.5. BETAI-LHR - Bachelor of Engineering Technology in (Artificial Intelligence)
+      4.5.6. BETIS-LHR - Bachelor of Engineering Technology in Information Security
+      4.5.7. BETA-LHR - Bachelor of Engineering Technology(Architectural)
+      4.5.8. BSAGT-LHR - Bachelor of Science in Agriculture Engineering Technology
+      4.5.9. BSART-LHR - Bachelor of Science in Architectural Engineering Technology
+      4.5.10. BSBMD-LHR - BS Biomedical Engineering Technology
+      4.5.11. BSCET-LHR - Bachelor of Science in Civil Engineering Technology
+      4.5.12. BTC-LHR - Bachelor of Science in Civil Technology
+      4.5.13. BSCT-LHR - Bachelor of Science in Civil Technology
+      4.5.14. BSCM-LHR - Bachelor of Science in Construction Management
+      4.5.15. BSEET-LHR - Bachelor of Science in Electrical Engineering Technology
+      4.5.16. BTE-LHR - Bachelor of Science in Electrical Technology
+      4.5.17. BSET-LHR - Bachelor of Science in Electrical Technology
+      4.5.18. BSNT-LHR - Bachelor of Science in Electronics Technology
+      4.5.19. BTN-LHR - Bachelor of Science in Electronics Technology
+      4.5.20. BEIT-LHR - Bachelor of Science in Information Engineering Technology
+      4.5.21. BSIET-LHR - Bachelor of Science in Information Engineering Technology
+      4.5.22. BSMET-LHR - Bachelor of Science in Mechanical Engineering Technology
+      4.5.23. BTM-LHR - Bachelor of Science in Mechanical Technology
+      4.5.24. BSMT-LHR - Bachelor of Science in Mechanical Technology
+      4.5.25. MSMET-LHR - Master of Science in Mechanical Engineering Technology
+      4.5.26. PCDMT-LHR - Professional Certificate in Digital Media Technology
+      4.5.27. PCIAT-LHR - Professional Certificate in Industrial Automation Control
+      4.5.28. PCIAC-LHR - Professional Certificate in Industrial Automation & Control
+      4.5.29. PCLT-LHR - Professional Certificate in Logistics Technology
+      4.5.30. PCVT-LHR - Professional Certificate in Vehicle Technology
+
+   4.6. DEPARTMENT: Deptt of Electronics & Electrical System (Code: 111805)
+      Programs: 6
+      4.6.1. BSCIT-LHR - Bachelor of Science in Communication and Information Technology
+      4.6.2. BSEC-LHR - Bachelor of Science in Electronics and Communication
+      4.6.3. BSEES-LHR - Bachelor of Science in Electronics and Electrical Systems
+      4.6.4. BSPES-LHR - Bachelor of Science in Power and Energy Systems
+      4.6.5. MSEC-LHR - Master of Science in Electronics and Communication
+      4.6.6. MSEES-LHR - Master of Science in Electronics and Electrical Systems
+
+5. FACULTY: Faculty of CS & IT
+   Total Departments: 3
+   Total Programs: 27
+
+   5.1. DEPARTMENT: Department of Computer Sciences & IT (Code: 112001)
+      Programs: 11
+      5.1.1. BSCBS-LHR - BS(Cyber Security)
+      5.1.2. BSCS-LHR - Bachelor of Science in Computer Science
+      5.1.3. BCS-LHR - Bachelor of Science in Computer Science
+      5.1.4. BSIT-LHR - Bachelor of Science in Information Technology
+      5.1.5. BSDS-LHR - Bachelor of Sciences in Data Science
+      5.1.6. DCS-LHR - Doctor of Philosophy in Computer Science
+      5.1.7. MCS-LHR - Master in Computer Science
+      5.1.8. MSCS-LHR - Master of Science in Computer Science
+      5.1.9. MSDS-LHR - Master of Science in Data Science
+      5.1.10. MSCIT-LHR - Master of Science in Information Technology
+      5.1.11. MSIT-LHR - Master of Science in Information Technology
+
+   5.2. DEPARTMENT: Department of Intelligent Systems (Code: 112003)
+      Programs: 3
+      5.2.1. ADPES-LHR - Associate Degree in Embedded Systems
+      5.2.2. BSES-LHR - Bachelor of Science in Embedded Systems
+      5.2.3. BSRAI-LHR - Bachelor of Science in Robotics and Artificial Intelligence
+
+   5.3. DEPARTMENT: Department of Software Engineering (Code: 112002)
+      Programs: 13
+      5.3.1. AFW-LHR - Amazon FBA Wholesale
+      5.3.2. AOA-LHR - Amazon Online Arbitrage
+      5.3.3. APL-LHR - Amazon Private Label
+      5.3.4. AVAWS-LHR - Amazon Virtual Assistant (FBA Wholesale) 2 months
+      5.3.5. AVAOA-LHR - Amazon Virtual Assistant (Online Arbitrage) 2 Months
+      5.3.6. AVAPL-LHR - Amazon Virtual Assistant (Private Label) 2 months
+      5.3.7. AVA-2-LHR - Amazon Virtual Assistant Course (2 Months)
+      5.3.8. BSAI-LHR - Bachelor of Science in Artificial Intelligence
+      5.3.9. BSSE-LHR - Bachelor of Science in Software Engineering
+      5.3.10. DSE-LHR - Doctor of Philosophy in Software Engineering
+      5.3.11. MSSE-LHR - Master of Science in Software Engineering
+      5.3.12. PGDERP-LHR - Post Graduate Diploma in Enterprise Resource Planning
+      5.3.13. STC-LHR - Shadowing Training Course (1 Month)
+
+6. FACULTY: Faculty of Social Sciences
+   Total Departments: 6
+   Total Programs: 37
+
+   6.1. DEPARTMENT: Department of Criminology (Code: 111708)
+      Programs: 1
+      6.1.1. BSCCJ-LHR - Bachelor of Science in Criminology and Criminal Justice
+
+   6.2. DEPARTMENT: Department of Education (Code: 111702)
+      Programs: 15
+      6.2.1. BSED-LHR - B.Ed. (Hons.) Elementary
+      6.2.2. B.ED(H)-LHR - Bachelor of Education(B.ED Hons)
+      6.2.3. BSEdM-LHR - Bachelor of Science In Education (Management)
+      6.2.4. BSEM-LHR - Bachelor of Science in Education (Educational Management)
+      6.2.5. BSEB-LHR - Bachelor of Science in Education (with Business)
+      6.2.6. BSSEd-LHR - Bachelor of Science in Science Education
+      6.2.7. BSSEDU-LHR - Bachelor of Science in Special Education
+      6.2.8. BSTEE-LHR - Bachelor of Science in Stem Education
+      6.2.9. DPE-LHR - Doctor of Philosophy in Education
+      6.2.10. MALM-LHR - Master in Leadership Management
+      6.2.11. MAECE-LHR - Master of Arts Education (Early Childhood Education)
+      6.2.12. MAEMP-LHR - Master of Arts Education (Educational Management and Planning)
+      6.2.13. MASE-LHR - Master of Arts Education (Special Education)
+      6.2.14. PED-LHR - Master of Philosophy in Education
+      6.2.15. MTTP-LHR - Montessori Teachers Traning programme
+
+   6.3. DEPARTMENT: Department of Islamic Studies (Code: 111703)
+      Programs: 5
+      6.3.1. BSQS-LHR - BS Islamic Studies with specialization in Quranic Sciences
+      6.3.2. BSIS-LHR - Bachelor of Science in Islamic Studies
+      6.3.3. DIS-LHR - Doctor of Philosophy in Islamic Studies
+      6.3.4. DI-LHR - Doctor of Philosophy in Islamic Studies
+      6.3.5. PIS-LHR - Master of Philosophy in Islamic Studies
+
+   6.4. DEPARTMENT: Department of Sociology (Code: 111707)
+      Programs: 2
+      6.4.1. BSSO-LHR - Bachelor of Science in Sociology
+      6.4.2. MPSO-LHR - Master of Philosophy in Sociology
+
+   6.5. DEPARTMENT: Lahore School of Behavioural Sciences (Code: 111305)
+      Programs: 10
+      6.5.1. BSPAP-LHR - Bachelor Of Science in Psychology(Applied Psychology)
+      6.5.2. BSPCP-LHR - Bachelor Of Science in Psychology(Clinical Psychology)
+      6.5.3. BSCPSY-LHR - Bachelor of Science in Clinical Psychology
+      6.5.4. BSPSY-LHR - Bachelor of Science in Psychology
+      6.5.5. DPSY-LHR - Doctor of Philosophy in Psychology
+      6.5.6. PHAP-LHR - Master of Philosophy in Applied Psychology
+      6.5.7. MSCP-LHR - Master of Science in Clinical Psychology
+      6.5.8. MSM-LHR - Master of Science in Management
+      6.5.9. MPSY-LHR - Master of Science in Psychology
+      6.5.10. MSTQM-LHR - Master of Science in Total Quality Management
+
+   6.6. DEPARTMENT: School of Integrated Social Science (Code: 111705)
+      Programs: 4
+      6.6.1. BSSS-LHR - Bachelor of Science in Social Sciences
+      6.6.2. DIR-LHR - Doctor of Philosophy in International Relations
+      6.6.3. PHISS-LHR - Master of Philosophy in Intelligence and Security Studies
+      6.6.4. PPTS-LHR - Master of Philosophy in Political Science
+
+7. FACULTY: Faculty of Management Sciences
+   Total Departments: 5
+   Total Programs: 79
+
+   7.1. DEPARTMENT: Department of Economics (Code: 111701)
+      Programs: 11
+      7.1.1. BSBEF-LHR - Bachelor Of Science In Business Economics: Banking And Finance
+      7.1.2. BSBE-LHR - Bachelor of Science in Business Economics : Banking and Finance
+      7.1.3. BECON-LHR - Bachelor of Science in Economics
+      7.1.4. BECOF-LHR - Bachelor of Science in Economics and Finance
+      7.1.5. BSEDA-LHR - Bachelor of Science in Economics with Data Analytics
+      7.1.6. DECON-LHR - Doctor of Philosophy in Economics
+      7.1.7. MGEBF-LHR - Master of  Business Economics: Banking and Finance
+      7.1.8. MBEBF-LHR - Master of  Business Economics: Banking and Finance
+      7.1.9. MSECON-LHR - Master of  Economics
+      7.1.10. PECON-LHR - Master of Philosophy in Economics
+      7.1.11. MECON-LHR - Master of Science in Economics
+
+   7.2. DEPARTMENT: Department of Information Management (Code: 111303)
+      Programs: 1
+      7.2.1. PHIM-LHR - Master Of Philosophy in Infromation Managment
+
+   7.3. DEPARTMENT: Lahore Business School (Code: 111301)
+      Programs: 50
+      7.3.1. BHR-LHR - BA (Hons) HRM
+      7.3.2. BMK-LHR - BA (Hons) Marketing
+      7.3.3. BBA2Y-LHR - Bachelor of Business Administration
+      7.3.4. BBA-LHR - Bachelor of Business Administration (Hons)
+      7.3.5. BBS-LHR - Bachelor of Business Studies
+      7.3.6. B.COM-LHR - Bachelor of Commerce
+      7.3.7. BCM-LHR - Bachelor of Commerce (Hons) - 4 Year
+      7.3.8. BFD-LHR - Bachelor of Management in Textile and Fashion Designing
+      7.3.9. BSBA-LHR - Bachelor of Science in Business Analytics
+      7.3.10. BSDM-LHR - Bachelor of Science in Digital Marketing
+      7.3.11. BSFNTUOB-LHR - Bachelor of Science in Financial Technology (Fintech 3+1)
+      7.3.12. BSFNT-LHR - Bachelor of Science in Financial Technology (FINTECH)
+      7.3.13. BSHRA-LHR - Bachelor of Science in Human Resource Analytics
+      7.3.14. BSSCA-LHR - Bachelor of Science in Supply Chain Analytics
+      7.3.15. CACF-LHR - Certificate in Accounting and Finance
+      7.3.16. CTAX-LHR - Certificate in Taxation
+      7.3.17. DIAF-LHR - Diploma in Accounting and Finance
+      7.3.18. DTAX-LHR - Diploma in Taxation
+      7.3.19. DG-LHR - Doctor of Philosophy in Human Resource Development
+      7.3.20. DMG-LHR - Doctor of Philosophy in Management
+      7.3.21. MSMG-LHR - MS Management
+      7.3.22. MHR-LHR - MSc Human Resource Management
+      7.3.23. MSAIDA-LHR - MSc in Applied Artificial Intelligence and Data Analytics(1+2)
+      7.3.24. MPM-LHR - Master in Project Management
+      7.3.25. MHP-LHR - Master in Public Health
+      7.3.26. MBA-LHR - Master of Business Administration
+      7.3.27. MBPM-LHR - Master of Business Administration - 1.5 Years - Project Managment
+      7.3.28. MBA1Y-LHR - Master of Business Administration - 1.5 Year
+      7.3.29. MBEPM-LHR - Master of Business Administration - 1.5 Years - Project Management
+      7.3.30. MBEIE-LHR - Master of Business Administration - 1.5 Years-Innovation and
+      7.3.31. MBA2Y-LHR - Master of Business Administration - 2 Years
+      7.3.32. MB2.5-LHR - Master of Business Administration - 2.5  Years
+      7.3.33. MBA3Y-LHR - Master of Business Administration - 3 Years
+      7.3.34. MB3.5-LHR - Master of Business Administration - 3.5 Years
+      7.3.35. MBE-LHR - Master of Business Administration Executive
+      7.3.36. MMA-LHR - Master of Business Administration-After 4 Year BBA
+      7.3.37. MFD-LHR - Master of Management in Textile and Fashion Designing
+      7.3.38. PBA-LHR - Master of Philosophy in Management Sciences
+      7.3.39. PM-LHR - Master of Public Management
+      7.3.40. MSDM-LHR - Master of Science in Digital Marketing
+      7.3.41. MSECM-LHR - Master of Science in E-Commerce
+      7.3.42. MSEM-LHR - Master of Science in Engineering Management
+      7.3.43. MSPM-LHR - Master of Science in Project Management
+      7.3.44. MSHRA-LHR - Master of Science in Strategic Human Resource Analytics
+      7.3.45. MSSCM-LHR - Master of Science in Supply Chain Management
+      7.3.46. MSBA-LHR - Masters of Science in Management Sciences
+      7.3.47. PGDAF-LHR - Post Graduate Diploma in Accounting and Finance
+      7.3.48. PGDBA-LHR - Post Graduate Diploma in Business Administration
+      7.3.49. PGDCD-LHR - Postgraduate Diploma for Corporate Directorship
+      7.3.50. PGIBF-LHR - Postgraduate Diploma in Islamic Banking and Finance
+
+   7.4. DEPARTMENT: Lahore School of Aviation (Code: 111302)
+      Programs: 2
+      7.4.1. BSAMT-LHR - Bachelor of Science in Aircraft Maintenance Technology
+      7.4.2. BSAM-LHR - Bachelor of Science in Aviation Management (Hons)
+
+   7.5. DEPARTMENT: School of Accountancy & Finance (Code: 113001)
+      Programs: 15
+      7.5.1. BCMA-LHR - Bachelor of Commerce (Associate Degree) - 2 Years
+      7.5.2. BCOM-LHR - Bachelor of Commerce (Associate Degree) - 2 Years
+      7.5.3. BAF-LHR - Bachelor of Science in Accountancy and Finance
+      7.5.4. DAF-LHR - Doctor of Philosophy in Accounting and Finance
+      7.5.5. MCM-LHR - Master of Commerce
+      7.5.6. M.COM-LHR - Master of Commerce - 2 Years
+      7.5.7. PAF-LHR - Master of Philosophy in Accounting and Finance
+      7.5.8. MSAF-LHR - Master of Science in Accountancy and Finance - 3.5 Years (No
+      7.5.9. MSACT-LHR - Master of Science in Accountancy and Finance - 3 Years (Comm
+      7.5.10. MSNC-LHR - Master of Science in Accountancy and Finance - 2.5 Years (No
+      7.5.11. MAF-LHR - Master of Science in Accounting and Finance
+      7.5.12. MSA-LHR - Master of Science in Accounting and Finance - 2 Years (Comme
+      7.5.13. MSCF-LHR - Master of Science in Accounting and Finance
+      7.5.14. MSF-LHR - Master of Science in Accounting and Finance - 1.5 Years
+      7.5.15. MSFN-LHR - Master of Science in Accounting and Finance - 2 Years (Non C
+
+8. FACULTY: Faculty of Medicine & Dentistry
+   Total Departments: 4
+   Total Programs: 33
+
+   8.1. DEPARTMENT: Department of Medical Education (Code: 112103)
+      Programs: 5
+      8.1.1. ALHMT-LHR - Advanced Leadership and Health Management Training
+      8.1.2. CBHR-LHR - Certificate in Basic Health Research
+      8.1.3. CHPE-LHR - Certificate in Health Professions Education
+      8.1.4. CHR-LHR - Certificate in Health Research
+      8.1.5. MME-LHR - Master of Science in Medical Education
+
+   8.2. DEPARTMENT: Heath Professional Develoment & Lifelong (Code: 112104)
+      Programs: 13
+      8.2.1. BLS-LHR - Basic Life Support
+      8.2.2. CLSM-LHR - Certificate in LifeStyle Medicine
+      8.2.3. CHSPCC-LHR - Certified HealthCare Simulation Professional Certificate Course
+      8.2.4. DCAIDH-LHR - Diploma in Artifical Intelligence and Digital Health
+      8.2.5. FAM-LHR - Fellowship in Aesthetic Medicine
+      8.2.6. FHT-LHR - Fellowship in Hair Transplant
+      8.2.7. CIFMTP-LHR - International Family Medicine Training Program
+      8.2.8. MSDSS-LHR - Minimum Service Delivery Standards
+      8.2.9. PGCAM-LHR - Post Graduate Certificate in Aesthetic Medicine
+      8.2.10. PGCDB-LHR - Post Graduate Certificate in Diabetology
+      8.2.11. PGCFM-LHR - Post Graduate Certificate in Family Medicine
+      8.2.12. PGVRT-LHR - Post Graduate Certificate in Vascular Access and Renal Transplantation
+      8.2.13. CITPFM-LHR - Trainning Pathways in Family Medicine
+
+   8.3. DEPARTMENT: University College of Dentistry (Code: 112102)
+      Programs: 9
+      8.3.1. BDS-LHR - Bachelor of Dental Surgery
+      8.3.2. DDH-LHR - Diploma in Dental Hygienist
+      8.3.3. DDT-LHR - Diploma in Dental Technician
+      8.3.4. FCPSO-LHR - Fellow College of Surgeons and Physicians Orthodontics (FCPS)
+      8.3.5. MDS-LHR - Master of Dental Surgery
+      8.3.6. MDSO-LHR - Master of Dental Surgery (Operative Dentistry)
+      8.3.7. MDSOMF-LHR - Master of Dental Surgery (Oral and Maxillo Facial Surgery)
+      8.3.8. MDSOR-LHR - Master of Dental Surgery (Orthodontics)
+      8.3.9. MDSPRO-LHR - Master of Dental Surgery (Prosthodontics)
+
+   8.4. DEPARTMENT: University College of Medicine (Code: 112101)
+      Programs: 6
+      8.4.1. ACAP-LHR - Advanced Course in Assessment Practices
+      8.4.2. BMS-LHR - Bachelor of Medicine and Bachelor of Surgery
+      8.4.3. CCE-LHR - Certificate in Clinical Education
+      8.4.4. DAMA-LHR - Diploma in Aesthetic Medicine
+      8.4.5. DAMB-LHR - Diploma in Aesthetic Medicine
+      8.4.6. FS-LHR - Foundation Semester
+
+9. FACULTY: Faculty of Pharmacy
+   Total Departments: 1
+   Total Programs: 20
+
+   9.1. DEPARTMENT: Department of Pharmacy (Code: 112301)
+      Programs: 20
+      9.1.1. BPH-LHR - Bachelor of Pharmacy
+      9.1.2. BSPT-LHR - Bachelor of Science in Pharmacology and Toxicology
+      9.1.3. BSNHM-LHR - Bachelor of Sciences in Nutraceutical and Herbal Medicine
+      9.1.4. CD-LHR - Condensed
+      9.1.5. DPHR-LHR - Doctor Of Philosophy In Pharmacology
+      9.1.6. PHARM D-LHR - Doctor of Pharmacy
+      9.1.7. BPD-LHR - Doctor of Pharmacy
+      9.1.8. DPCH-LHR - Doctor of Philosophy in Pharmaceutical Chemistry
+      9.1.9. DPCU-LHR - Doctor of Philosophy in Pharmaceutics
+      9.1.10. DPP-LHR - Doctor of Philosophy in Pharmacognosy
+      9.1.11. DHRP-LHR - Doctor of Philosophy in Pharmacy Practice
+      9.1.12. FLETP-LHR - Foreign Licensing Exam Training for Pharmacists
+      9.1.13. PHRP-LHR - M. Phil Pharmacy Practice
+      9.1.14. PHBT-LHR - M.Phil PHARMACEUTICAL BIOTECHNOLOGY
+      9.1.15. PHCLP-LHR - Master of Philosophy in Clinical Pharmacy
+      9.1.16. PHRC-LHR - Master of Philosophy in Pharmaceutical Chemistry
+      9.1.17. PHPHT-LHR - Master of Philosophy in Pharmaceutical Technology
+      9.1.18. PHRM-LHR - Master of Philosophy in Pharmaceutics
+      9.1.19. PHMG-LHR - Master of Philosophy in Pharmacognosy
+      9.1.20. PHMY-LHR - Master of Philosophy in Pharmacology
+
+10. FACULTY: Faculty of Language & Literature
+   Total Departments: 2
+   Total Programs: 10
+
+   10.1. DEPARTMENT: Department of Urdu (Code: 111602)
+      Programs: 2
+      10.1.1. BSUR-LHR - Bachelor of Studies in Urdu
+      10.1.2. PUD-LHR - Master of Philosophy in Urdu
+
+   10.2. DEPARTMENT: Dept of English Language and Literature (Code: 111601)
+      Programs: 8
+      10.2.1. ACS-LHR - Advanced Communication Skills: Public Speaking, Reading and Writing
+      10.2.2. BSELC-LHR - Bachelor of Science English Language and Communication
+      10.2.3. BSELL-LHR - Bachelor of Science in English Language and Literature
+      10.2.4. DET-LHR - Doctor of Philosophy in English
+      10.2.5. MET-LHR - Master of Arts in English Language Teaching and Linguistics
+      10.2.6. MEL-LHR - Master of Arts in English Literature
+      10.2.7. PET-LHR - Master of Philosophy in English Applied Linguistics
+      10.2.8. PEL-LHR - Master of Philosophy in English Literature
+
+11. FACULTY: Faculty of Law
+   Total Departments: 1
+   Total Programs: 3
+
+   11.1. DEPARTMENT: M.A Raoof College of Law (Code: 111501)
+      Programs: 3
+      11.1.1. BALLB-LHR - Bachelor of Arts in LLB (Hons)
+      11.1.2. ITRET-LHR - Income Tax Return E-Filling Trainning
+      11.1.3. LLB3Y-LHR - LLB 3 Years
+
+12. FACULTY: Faculty of Arts & Architecture
+   Total Departments: 3
+   Total Programs: 27
+
+   12.1. DEPARTMENT: School of Architecture (Code: 111401)
+      Programs: 10
+      12.1.1. BARCH-LHR - Bachelor of Architecture
+      12.1.2. BINT-LHR - Bachelors of Interior Design
+      12.1.3. CCAA-LHR - Certificate Course of Autodesk Autocad
+      12.1.4. CCARA-LHR - Certificate Course of Autodesk Revit Architecture
+      12.1.5. CCDR-LHR - Certificate Course of Drawing
+      12.1.6. CCGSL-LHR - Certificate Course of Google Sketchup & Lumion
+      12.1.7. CCID-LHR - Certificate Course of Interior Design
+      12.1.8. CCP-LHR - Certificate Course of Painting
+      12.1.9. MARCH-LHR - Master of Architecture
+      12.1.10. MIDN-LHR - Master of Interior Design
+
+   12.2. DEPARTMENT: School of Creative Arts (Code: 111402)
+      Programs: 15
+      12.2.1. BFAV-LHR - Bachelor of  Fine Arts ( Visual Arts )
+      12.2.2. BAFT-LHR - Bachelor of Arts (Hons) in Film and Television
+      12.2.3. BAMCM-LHR - Bachelor of Arts Mass Communication
+      12.2.4. BSMC-LHR - Bachelor of Science (Hons) in Media Communication
+      12.2.5. BSVFX-LHR - Bachelor of Science in  Animation and VFX
+      12.2.6. BSGD-LHR - Bachelor of Science in Game Design
+      12.2.7. BSMMC-LHR - Bachelor of Science in Media and Mass Communication
+      12.2.8. BSVCD-LHR - Bachelor of Science in Visual Communication Design
+      12.2.9. CGD-LHR - 
+      12.2.10. DMMCS-LHR - Doctor of Philosophy in Media and Communication Studies
+      12.2.11. PMMC-LHR - Master of Philosophy in Media and Mass Communication
+      12.2.12. PMMCP-LHR - Master of Philosophy in Media and Mass Communication (Professional Track)
+      12.2.13. PMMCR-LHR - Master of Philosophy in Media and Mass Communication (Research Track)
+      12.2.14. MC-LHR - Master of Science in Mass Communication
+      12.2.15. MSMCS-LHR - Master of Studies in Media and Communication Studies
+
+   12.3. DEPARTMENT: School of Fashion and Textile (Code: 111406)
+      Programs: 2
+      12.3.1. BFS-LHR - Bachelor in Fashion and Styling
+      12.3.2. BSFD-LHR - Bachelor of Studies in Fashion Design

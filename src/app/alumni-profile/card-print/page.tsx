@@ -40,6 +40,8 @@ function CardPrintPageContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   
   const previewRef = useRef<HTMLDivElement>(null);
+  const frontSideRef = useRef<HTMLDivElement>(null);
+  const backSideRef = useRef<HTMLDivElement>(null);
   const sapBarcodeRef = useRef<SVGSVGElement>(null);
   const regBarcodeRef = useRef<SVGSVGElement>(null);
   const alumniInfoRef = useRef<HTMLDivElement>(null);
@@ -160,7 +162,7 @@ function CardPrintPageContent() {
   };
 
   const handleDownloadPDF = async () => {
-    if (!previewRef.current || isGenerating || !cardData) return;
+    if (!frontSideRef.current || !backSideRef.current || isGenerating || !cardData) return;
 
     let originalAlumniTransform: string | null = null;
 
@@ -171,21 +173,56 @@ function CardPrintPageContent() {
         alumniInfoRef.current.style.transform = "translateY(-6px)";
       }
 
-      const canvas = await html2canvas(previewRef.current, {
+      // Capture front side
+      const frontCanvas = await html2canvas(frontSideRef.current, {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         allowTaint: true,
       });
 
-      const imageData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
-        unit: "pt",
-        format: [canvas.width, canvas.height],
+      // Capture back side
+      const backCanvas = await html2canvas(backSideRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
       });
 
-      pdf.addImage(imageData, "PNG", 0, 0, canvas.width, canvas.height);
+      // Create PDF with standard page size (landscape for card format)
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4", // Use A4 size, we'll scale the images to fit
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Calculate dimensions to fit the card on the page while maintaining aspect ratio
+      const cardAspectRatio = frontCanvas.width / frontCanvas.height;
+      let cardWidth = pdfWidth - 40; // 20pt margin on each side
+      let cardHeight = cardWidth / cardAspectRatio;
+
+      // If card is too tall, scale based on height instead
+      if (cardHeight > pdfHeight - 40) {
+        cardHeight = pdfHeight - 40;
+        cardWidth = cardHeight * cardAspectRatio;
+      }
+
+      // Center the card on the page
+      const xOffset = (pdfWidth - cardWidth) / 2;
+      const yOffset = (pdfHeight - cardHeight) / 2;
+
+      // Add front side to first page
+      const frontImageData = frontCanvas.toDataURL("image/png");
+      pdf.addImage(frontImageData, "PNG", xOffset, yOffset, cardWidth, cardHeight);
+
+      // Add back side to second page
+      pdf.addPage();
+      const backImageData = backCanvas.toDataURL("image/png");
+      pdf.addImage(backImageData, "PNG", xOffset, yOffset, cardWidth, cardHeight);
+
       const filename = `${(cardData.studentName || "alumni-card").replace(/\s+/g, "-")}.pdf`;
       pdf.save(filename.toLowerCase());
     } finally {
@@ -259,7 +296,7 @@ function CardPrintPageContent() {
           className="flex flex-col items-center gap-10 bg-white p-10 rounded-lg shadow-lg"
         >
           {/* Front Side */}
-          <div className="relative w-full max-w-[550px] overflow-hidden rounded-lg">
+          <div ref={frontSideRef} className="relative w-full max-w-[550px] overflow-hidden rounded-lg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={frontTemplate}
@@ -305,7 +342,7 @@ function CardPrintPageContent() {
           </div>
 
           {/* Back Side */}
-          <div className="relative aspect-7/4 w-full max-w-[520px] overflow-hidden rounded-3xl">
+          <div ref={backSideRef} className="relative aspect-7/4 w-full max-w-[520px] overflow-hidden rounded-3xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={backTemplate}

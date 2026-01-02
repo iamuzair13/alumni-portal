@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
           d.id,
           d.department_name,
           d.faculty_id,
+          d.department_code,
           f.faculty_name,
           d.created_at
         FROM public.tbl_departments d
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
           d.id,
           d.department_name,
           d.faculty_id,
+          d.department_code,
           f.faculty_name,
           d.created_at
         FROM public.tbl_departments d
@@ -49,6 +51,7 @@ export async function GET(request: NextRequest) {
       department_name: String(row.department_name || ""),
       faculty_id: row.faculty_id ? Number(row.faculty_id) : null,
       faculty_name: row.faculty_name ? String(row.faculty_name) : null,
+      department_code: row.department_code ? String(row.department_code) : null,
       created_at: row.created_at ? new Date(row.created_at as string) : new Date(),
     }));
 
@@ -69,16 +72,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { department_name, faculty_id } = body;
+    const { department_name, faculty_id, department_code } = body;
 
     if (!department_name || typeof department_name !== "string" || !faculty_id) {
       return NextResponse.json({ error: "Department name and faculty ID are required" }, { status: 400 });
     }
 
+    const departmentCodeValue = department_code && typeof department_code === "string" ? department_code.trim() || null : null;
+
     const rows = await sql/* sql */`
-      INSERT INTO public.tbl_departments (department_name, faculty_id)
-      VALUES (${department_name.trim()}, ${Number(faculty_id)})
-      RETURNING id, department_name, faculty_id, created_at
+      INSERT INTO public.tbl_departments (department_name, faculty_id, department_code)
+      VALUES (${department_name.trim()}, ${Number(faculty_id)}, ${departmentCodeValue})
+      RETURNING id, department_name, faculty_id, department_code, created_at
     `;
 
     // Get faculty name
@@ -90,6 +95,7 @@ export async function POST(req: NextRequest) {
       id: Number(rows[0].id),
       department_name: String(rows[0].department_name),
       faculty_id: Number(rows[0].faculty_id),
+      department_code: rows[0].department_code ? String(rows[0].department_code) : null,
       faculty_name: facultyRows.length > 0 ? String(facultyRows[0].faculty_name) : null,
       created_at: new Date(rows[0].created_at as string),
     };
@@ -111,17 +117,19 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, department_name, faculty_id } = body;
+    const { id, department_name, faculty_id, department_code } = body;
 
     if (!id || !department_name || typeof department_name !== "string" || !faculty_id) {
       return NextResponse.json({ error: "ID, department name, and faculty ID are required" }, { status: 400 });
     }
 
+    const departmentCodeValue = department_code && typeof department_code === "string" ? department_code.trim() || null : null;
+
     const rows = await sql/* sql */`
       UPDATE public.tbl_departments
-      SET department_name = ${department_name.trim()}, faculty_id = ${Number(faculty_id)}
+      SET department_name = ${department_name.trim()}, faculty_id = ${Number(faculty_id)}, department_code = ${departmentCodeValue}
       WHERE id = ${Number(id)}
-      RETURNING id, department_name, faculty_id, created_at
+      RETURNING id, department_name, faculty_id, department_code, created_at
     `;
 
     if (rows.length === 0) {
@@ -137,6 +145,7 @@ export async function PUT(req: NextRequest) {
       id: Number(rows[0].id),
       department_name: String(rows[0].department_name),
       faculty_id: Number(rows[0].faculty_id),
+      department_code: rows[0].department_code ? String(rows[0].department_code) : null,
       faculty_name: facultyRows.length > 0 ? String(facultyRows[0].faculty_name) : null,
       created_at: new Date(rows[0].created_at as string),
     };

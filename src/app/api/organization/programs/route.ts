@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
           p.id,
           p.program_name,
           p.department_id,
+          p.program_abv,
           d.department_name,
           d.faculty_id,
           f.faculty_name,
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
           p.id,
           p.program_name,
           p.department_id,
+          p.program_abv,
           d.department_name,
           d.faculty_id,
           f.faculty_name,
@@ -57,6 +59,7 @@ export async function GET(request: NextRequest) {
       department_name: row.department_name ? String(row.department_name) : null,
       faculty_id: row.faculty_id ? Number(row.faculty_id) : null,
       faculty_name: row.faculty_name ? String(row.faculty_name) : null,
+      program_abv: row.program_abv ? String(row.program_abv) : null,
       created_at: row.created_at ? new Date(row.created_at as string) : new Date(),
     }));
 
@@ -77,16 +80,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { program_name, department_id } = body;
+    const { program_name, department_id, program_abv } = body;
 
     if (!program_name || typeof program_name !== "string" || !department_id) {
       return NextResponse.json({ error: "Program name and department ID are required" }, { status: 400 });
     }
 
+    const programAbvValue = program_abv && typeof program_abv === "string" ? program_abv.trim() || null : null;
+
     const rows = await sql/* sql */`
-      INSERT INTO public.tbl_programs (program_name, department_id)
-      VALUES (${program_name.trim()}, ${Number(department_id)})
-      RETURNING id, program_name, department_id, created_at
+      INSERT INTO public.tbl_programs (program_name, department_id, program_abv)
+      VALUES (${program_name.trim()}, ${Number(department_id)}, ${programAbvValue})
+      RETURNING id, program_name, department_id, program_abv, created_at
     `;
 
     // Get department and faculty names
@@ -101,6 +106,7 @@ export async function POST(req: NextRequest) {
       id: Number(rows[0].id),
       program_name: String(rows[0].program_name),
       department_id: Number(rows[0].department_id),
+      program_abv: rows[0].program_abv ? String(rows[0].program_abv) : null,
       department_name: deptRows.length > 0 ? String(deptRows[0].department_name) : null,
       faculty_id: deptRows.length > 0 && deptRows[0].faculty_id ? Number(deptRows[0].faculty_id) : null,
       faculty_name: deptRows.length > 0 ? String(deptRows[0].faculty_name) : null,
@@ -124,17 +130,19 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, program_name, department_id } = body;
+    const { id, program_name, department_id, program_abv } = body;
 
     if (!id || !program_name || typeof program_name !== "string" || !department_id) {
       return NextResponse.json({ error: "ID, program name, and department ID are required" }, { status: 400 });
     }
 
+    const programAbvValue = program_abv && typeof program_abv === "string" ? program_abv.trim() || null : null;
+
     const rows = await sql/* sql */`
       UPDATE public.tbl_programs
-      SET program_name = ${program_name.trim()}, department_id = ${Number(department_id)}
+      SET program_name = ${program_name.trim()}, department_id = ${Number(department_id)}, program_abv = ${programAbvValue}
       WHERE id = ${Number(id)}
-      RETURNING id, program_name, department_id, created_at
+      RETURNING id, program_name, department_id, program_abv, created_at
     `;
 
     if (rows.length === 0) {
@@ -153,6 +161,7 @@ export async function PUT(req: NextRequest) {
       id: Number(rows[0].id),
       program_name: String(rows[0].program_name),
       department_id: Number(rows[0].department_id),
+      program_abv: rows[0].program_abv ? String(rows[0].program_abv) : null,
       department_name: deptRows.length > 0 ? String(deptRows[0].department_name) : null,
       faculty_id: deptRows.length > 0 && deptRows[0].faculty_id ? Number(deptRows[0].faculty_id) : null,
       faculty_name: deptRows.length > 0 ? String(deptRows[0].faculty_name) : null,

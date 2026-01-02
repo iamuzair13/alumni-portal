@@ -27,9 +27,9 @@ export default function AlumniCardTemplateWrapper({
 }: AlumniCardTemplateWrapperProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Show download button for Active or Delivered status
+  // Show download button for Active, Delivered, In-Process, or Pending status
   const normalizedStatus = cardStatus ? String(cardStatus).trim().toUpperCase() : "";
-  const canDownload = normalizedStatus === "ACTIVE" || normalizedStatus === "DELIVERED";
+  const canDownload = normalizedStatus === "ACTIVE" || normalizedStatus === "DELIVERED" || normalizedStatus === "PROCESS" || normalizedStatus === "PENDING";
 
   return (
     <div>

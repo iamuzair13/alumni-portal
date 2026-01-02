@@ -144,7 +144,8 @@ export default function OrganizationComponent() {
       filtered = filtered.filter(
         (d) =>
           d.department_name?.toLowerCase().includes(q) ||
-          d.faculty_name?.toLowerCase().includes(q)
+          d.faculty_name?.toLowerCase().includes(q) ||
+          (d.department_code && d.department_code.toLowerCase().includes(q))
       );
     }
     
@@ -196,7 +197,8 @@ export default function OrganizationComponent() {
         (p) =>
           p.program_name.toLowerCase().includes(q) ||
           p.department_name?.toLowerCase().includes(q) ||
-          p.faculty_name?.toLowerCase().includes(q)
+          p.faculty_name?.toLowerCase().includes(q) ||
+          (p.program_abv && p.program_abv.toLowerCase().includes(q))
       );
     }
     
@@ -242,6 +244,7 @@ export default function OrganizationComponent() {
     return filtered;
   }, [programs, searchQuery, sortField, sortDirection, selectedTab]);
 
+
   // Faculty handlers
   const handleCreateFaculty = async (faculty_name: string) => {
     try {
@@ -274,9 +277,9 @@ export default function OrganizationComponent() {
   };
 
   // Department handlers
-  const handleCreateDepartment = async (department_name: string, faculty_id: number) => {
+  const handleCreateDepartment = async (department_name: string, faculty_id: number, department_code?: string | null) => {
     try {
-      await createDepartmentMutation.mutateAsync({ department_name, faculty_id });
+      await createDepartmentMutation.mutateAsync({ department_name, faculty_id, department_code });
       toast.success("Department created successfully");
       setAddDepartmentOpen(false);
     } catch (error) {
@@ -287,10 +290,11 @@ export default function OrganizationComponent() {
   const handleUpdateDepartment = async (
     id: number,
     department_name: string,
-    faculty_id: number
+    faculty_id: number,
+    department_code?: string | null
   ) => {
     try {
-      await updateDepartmentMutation.mutateAsync({ id, department_name, faculty_id });
+      await updateDepartmentMutation.mutateAsync({ id, department_name, faculty_id, department_code });
       toast.success("Department updated successfully");
       setEditDepartmentId(null);
     } catch (error) {
@@ -309,9 +313,9 @@ export default function OrganizationComponent() {
   };
 
   // Program handlers
-  const handleCreateProgram = async (program_name: string, department_id: number) => {
+  const handleCreateProgram = async (program_name: string, department_id: number, program_abv?: string | null) => {
     try {
-      await createProgramMutation.mutateAsync({ program_name, department_id });
+      await createProgramMutation.mutateAsync({ program_name, department_id, program_abv });
       toast.success("Program created successfully");
       setAddProgramOpen(false);
     } catch (error) {
@@ -322,10 +326,11 @@ export default function OrganizationComponent() {
   const handleUpdateProgram = async (
     id: number,
     program_name: string,
-    department_id: number
+    department_id: number,
+    program_abv?: string | null
   ) => {
     try {
-      await updateProgramMutation.mutateAsync({ id, program_name, department_id });
+      await updateProgramMutation.mutateAsync({ id, program_name, department_id, program_abv });
       toast.success("Program updated successfully");
       setEditProgramId(null);
     } catch (error) {
@@ -342,6 +347,7 @@ export default function OrganizationComponent() {
       toast.error(error instanceof Error ? error.message : "Failed to delete program");
     }
   };
+
 
   if (!isSuperAdmin) {
     return (
@@ -549,6 +555,7 @@ export default function OrganizationComponent() {
         updating={updateProgramMutation.isPending}
         deleting={deleteProgramMutation.isPending}
       />
+
     </div>
   );
 }
@@ -861,6 +868,9 @@ function DepartmentsTable({
                 </div>
               </TableCell>
               <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Department Code
+              </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Created
               </TableCell>
               <TableCell className="px-6 py-4 text-center text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -885,6 +895,9 @@ function DepartmentsTable({
                     <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
+                    <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
                     <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
@@ -897,7 +910,7 @@ function DepartmentsTable({
               ))
             ) : departments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No departments found
                 </TableCell>
               </TableRow>
@@ -914,6 +927,9 @@ function DepartmentsTable({
                       </TableCell>
                       <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
                         {dept.faculty_name || "-"}
+                      </TableCell>
+                      <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                        {dept.department_code || "-"}
                       </TableCell>
                       <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
                         {formatDate((dept as unknown as { created_at?: unknown }).created_at)}
@@ -955,7 +971,7 @@ function DepartmentsTable({
                     </TableRow>
                     {isExpanded && (
                       <TableRow className="bg-gray-50 dark:bg-gray-900/30">
-                        <TableCell colSpan={6} className="px-6 py-4">
+                        <TableCell colSpan={7} className="px-6 py-4">
                           <div className="pl-8">
                             {deptPrograms.length === 0 ? (
                               <p className="text-sm text-gray-500 dark:text-gray-400 italic">
@@ -1068,6 +1084,9 @@ function ProgramsTable({
                   </div>
                 </div>
               </TableCell>
+              <TableCell className="px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Program Abbreviation
+              </TableCell>
               <TableCell className="px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 Actions
               </TableCell>
@@ -1090,13 +1109,16 @@ function ProgramsTable({
                     <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                   </TableCell>
                   <TableCell className="px-6 py-5">
+                    <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                  </TableCell>
+                  <TableCell className="px-6 py-5">
                     <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                   </TableCell>
                 </TableRow>
               ))
             ) : programs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No programs found
                 </TableCell>
               </TableRow>
@@ -1112,6 +1134,9 @@ function ProgramsTable({
                   </TableCell>
                   <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
                     {program.faculty_name || "-"}
+                  </TableCell>
+                  <TableCell className="px-6 py-5 text-gray-700 dark:text-gray-300">
+                    {program.program_abv || "-"}
                   </TableCell>
                   <TableCell className="px-6 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -1308,8 +1333,8 @@ function DepartmentModals({
   onDeleteClose: () => void;
   faculties: Faculty[];
   departments: Department[];
-  onCreate: (name: string, faculty_id: number) => Promise<void>;
-  onUpdate: (id: number, name: string, faculty_id: number) => Promise<void>;
+  onCreate: (name: string, faculty_id: number, department_code?: string | null) => Promise<void>;
+  onUpdate: (id: number, name: string, faculty_id: number, department_code?: string | null) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   creating: boolean;
   updating: boolean;
@@ -1317,6 +1342,7 @@ function DepartmentModals({
 }) {
   const [name, setName] = useState("");
   const [facultyId, setFacultyId] = useState("");
+  const [departmentCode, setDepartmentCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const editingDepartment = editId ? departments.find((d) => d.id === editId) : null;
@@ -1326,10 +1352,12 @@ function DepartmentModals({
     if (editId && editingDepartment) {
       setName(editingDepartment.department_name || "");
       setFacultyId(String(editingDepartment.faculty_id || ""));
+      setDepartmentCode(editingDepartment.department_code || "");
       setError(null);
     } else if (addOpen) {
       setName("");
       setFacultyId("");
+      setDepartmentCode("");
       setError(null);
     }
   }, [editId, editingDepartment, addOpen]);
@@ -1344,10 +1372,11 @@ function DepartmentModals({
       return;
     }
     setError(null);
+    const codeValue = departmentCode.trim() || null;
     if (editId) {
-      onUpdate(editId, name, Number(facultyId));
+      onUpdate(editId, name, Number(facultyId), codeValue);
     } else {
-      onCreate(name, Number(facultyId));
+      onCreate(name, Number(facultyId), codeValue);
     }
   };
 
@@ -1383,6 +1412,15 @@ function DepartmentModals({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter department name"
+              disabled={creating}
+            />
+          </div>
+          <div>
+            <Label>Department Code (Optional)</Label>
+            <Input
+              value={departmentCode}
+              onChange={(e) => setDepartmentCode(e.target.value)}
+              placeholder="Enter department code"
               disabled={creating}
             />
           </div>
@@ -1422,6 +1460,15 @@ function DepartmentModals({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter department name"
+              disabled={updating}
+            />
+          </div>
+          <div>
+            <Label>Department Code (Optional)</Label>
+            <Input
+              value={departmentCode}
+              onChange={(e) => setDepartmentCode(e.target.value)}
+              placeholder="Enter department code"
               disabled={updating}
             />
           </div>
@@ -1488,8 +1535,8 @@ function ProgramModals({
   faculties: Faculty[];
   departments: Department[];
   programs: Program[];
-  onCreate: (name: string, department_id: number) => Promise<void>;
-  onUpdate: (id: number, name: string, department_id: number) => Promise<void>;
+  onCreate: (name: string, department_id: number, program_abv?: string | null) => Promise<void>;
+  onUpdate: (id: number, name: string, department_id: number, program_abv?: string | null) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   creating: boolean;
   updating: boolean;
@@ -1498,6 +1545,7 @@ function ProgramModals({
   const [name, setName] = useState("");
   const [facultyId, setFacultyId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [programAbv, setProgramAbv] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const editingProgram = editId ? programs.find((p) => p.id === editId) : null;
@@ -1520,6 +1568,7 @@ function ProgramModals({
   React.useEffect(() => {
     if (editId && editingProgram) {
       setName(editingProgram.program_name);
+      setProgramAbv(editingProgram.program_abv || "");
       // Find the department to get its faculty_id
       const dept = departments.find((d) => d.id === editingProgram.department_id);
       if (dept && dept.faculty_id) {
@@ -1534,6 +1583,7 @@ function ProgramModals({
       setName("");
       setFacultyId("");
       setDepartmentId("");
+      setProgramAbv("");
       setError(null);
     }
   }, [editId, editingProgram, addOpen, departments]);
@@ -1559,10 +1609,11 @@ function ProgramModals({
       return;
     }
     setError(null);
+    const abvValue = programAbv.trim() || null;
     if (editId) {
-      onUpdate(editId, name, Number(departmentId));
+      onUpdate(editId, name, Number(departmentId), abvValue);
     } else {
-      onCreate(name, Number(departmentId));
+      onCreate(name, Number(departmentId), abvValue);
     }
   };
 
@@ -1662,6 +1713,17 @@ function ProgramModals({
               </p>
             )}
           </div>
+
+          {/* Step 4: Enter Program Abbreviation */}
+          <div>
+            <Label>Step 4: Enter Program Abbreviation (Optional)</Label>
+            <Input
+              value={programAbv}
+              onChange={(e) => setProgramAbv(e.target.value)}
+              placeholder="Enter program abbreviation"
+              disabled={creating || !departmentId}
+            />
+          </div>
         </div>
         <div className="flex items-center justify-end gap-3">
           <Button size="sm" variant="outline" onClick={onAddClose} disabled={creating}>
@@ -1735,6 +1797,15 @@ function ProgramModals({
               disabled={updating}
             />
           </div>
+          <div>
+            <Label>Program Abbreviation (Optional)</Label>
+            <Input
+              value={programAbv}
+              onChange={(e) => setProgramAbv(e.target.value)}
+              placeholder="Enter program abbreviation"
+              disabled={updating}
+            />
+          </div>
         </div>
         <div className="flex items-center justify-end gap-3">
           <Button size="sm" variant="outline" onClick={onEditClose} disabled={updating}>
@@ -1770,4 +1841,5 @@ function ProgramModals({
     </>
   );
 }
+
 

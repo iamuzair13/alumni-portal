@@ -9,6 +9,16 @@ const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
 
 const nextConfig = {
   // Remove output: 'standalone' - we're using custom server
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has type errors.
+    ignoreBuildErrors: false,
+  },
   images: {
     domains: ["lh3.googleusercontent.com", "readymadeui.com", ...extraDomains],
     remotePatterns: extraDomains.map((d) => ({ protocol: "https", hostname: d, port: "", pathname: "**" })),

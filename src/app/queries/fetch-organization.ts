@@ -13,6 +13,7 @@ export type Department = {
   department_name: string;
   faculty_id: number | null;
   faculty_name: string | null;
+  department_code: string | null;
   created_at: Date;
 };
 
@@ -23,7 +24,14 @@ export type Program = {
   department_name: string | null;
   faculty_id: number | null;
   faculty_name: string | null;
+  program_abv: string | null;
   created_at: Date;
+};
+
+export type Course = {
+  id: number;
+  course_name: string;
+  course_code: number | null;
 };
 
 // Fetch functions
@@ -69,6 +77,18 @@ async function fetchPrograms(departmentId?: number): Promise<Program[]> {
   return data.programs ?? [];
 }
 
+async function fetchCourses(): Promise<Course[]> {
+  const res = await fetch("/api/organization/courses", {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || "Failed to fetch courses");
+  }
+  const data = (await res.json()) as { success: boolean; courses: Course[] };
+  return data.courses ?? [];
+}
+
 // Mutation functions
 async function createFaculty(faculty_name: string): Promise<Faculty> {
   const res = await fetch("/api/organization/faculties", {
@@ -108,11 +128,11 @@ async function deleteFaculty(id: number): Promise<void> {
   }
 }
 
-async function createDepartment(department_name: string, faculty_id: number): Promise<Department> {
+async function createDepartment(department_name: string, faculty_id: number, department_code?: string | null): Promise<Department> {
   const res = await fetch("/api/organization/departments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ department_name, faculty_id }),
+    body: JSON.stringify({ department_name, faculty_id, department_code: department_code || null }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Failed to create department" }));
@@ -122,11 +142,11 @@ async function createDepartment(department_name: string, faculty_id: number): Pr
   return data.department;
 }
 
-async function updateDepartment(id: number, department_name: string, faculty_id: number): Promise<Department> {
+async function updateDepartment(id: number, department_name: string, faculty_id: number, department_code?: string | null): Promise<Department> {
   const res = await fetch("/api/organization/departments", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, department_name, faculty_id }),
+    body: JSON.stringify({ id, department_name, faculty_id, department_code: department_code || null }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Failed to update department" }));
@@ -146,11 +166,11 @@ async function deleteDepartment(id: number): Promise<void> {
   }
 }
 
-async function createProgram(program_name: string, department_id: number): Promise<Program> {
+async function createProgram(program_name: string, department_id: number, program_abv?: string | null): Promise<Program> {
   const res = await fetch("/api/organization/programs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ program_name, department_id }),
+    body: JSON.stringify({ program_name, department_id, program_abv: program_abv || null }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Failed to create program" }));
@@ -160,11 +180,11 @@ async function createProgram(program_name: string, department_id: number): Promi
   return data.program;
 }
 
-async function updateProgram(id: number, program_name: string, department_id: number): Promise<Program> {
+async function updateProgram(id: number, program_name: string, department_id: number, program_abv?: string | null): Promise<Program> {
   const res = await fetch("/api/organization/programs", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, program_name, department_id }),
+    body: JSON.stringify({ id, program_name, department_id, program_abv: program_abv || null }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Failed to update program" }));
@@ -184,12 +204,51 @@ async function deleteProgram(id: number): Promise<void> {
   }
 }
 
+async function createCourse(course_name: string, course_code: number | null): Promise<Course> {
+  const res = await fetch("/api/organization/courses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ course_name, course_code }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to create course" }));
+    throw new Error(err.error || "Failed to create course");
+  }
+  const data = (await res.json()) as { success: boolean; course: Course };
+  return data.course;
+}
+
+async function updateCourse(id: number, course_name: string, course_code: number | null): Promise<Course> {
+  const res = await fetch("/api/organization/courses", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, course_name, course_code }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to update course" }));
+    throw new Error(err.error || "Failed to update course");
+  }
+  const data = (await res.json()) as { success: boolean; course: Course };
+  return data.course;
+}
+
+async function deleteCourse(id: number): Promise<void> {
+  const res = await fetch(`/api/organization/courses?id=${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to delete course" }));
+    throw new Error(err.error || "Failed to delete course");
+  }
+}
+
 // Query hooks
 export const organizationKeys = {
   all: ["organization"] as const,
   faculties: () => [...organizationKeys.all, "faculties"] as const,
   departments: (facultyId?: number) => [...organizationKeys.all, "departments", facultyId] as const,
   programs: (departmentId?: number) => [...organizationKeys.all, "programs", departmentId] as const,
+  courses: () => [...organizationKeys.all, "courses"] as const,
 };
 
 export function useFaculties() {
@@ -216,6 +275,16 @@ export function usePrograms(departmentId?: number) {
   return useQuery<Program[], Error>({
     queryKey: organizationKeys.programs(departmentId),
     queryFn: () => fetchPrograms(departmentId),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+}
+
+export function useCourses() {
+  return useQuery<Course[], Error>({
+    queryKey: organizationKeys.courses(),
+    queryFn: fetchCourses,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -259,8 +328,8 @@ export function useDeleteFaculty() {
 export function useCreateDepartment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ department_name, faculty_id }: { department_name: string; faculty_id: number }) =>
-      createDepartment(department_name, faculty_id),
+    mutationFn: ({ department_name, faculty_id, department_code }: { department_name: string; faculty_id: number; department_code?: string | null }) =>
+      createDepartment(department_name, faculty_id, department_code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.departments() });
     },
@@ -270,8 +339,8 @@ export function useCreateDepartment() {
 export function useUpdateDepartment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, department_name, faculty_id }: { id: number; department_name: string; faculty_id: number }) =>
-      updateDepartment(id, department_name, faculty_id),
+    mutationFn: ({ id, department_name, faculty_id, department_code }: { id: number; department_name: string; faculty_id: number; department_code?: string | null }) =>
+      updateDepartment(id, department_name, faculty_id, department_code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.departments() });
       queryClient.invalidateQueries({ queryKey: organizationKeys.programs() });
@@ -293,8 +362,8 @@ export function useDeleteDepartment() {
 export function useCreateProgram() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ program_name, department_id }: { program_name: string; department_id: number }) =>
-      createProgram(program_name, department_id),
+    mutationFn: ({ program_name, department_id, program_abv }: { program_name: string; department_id: number; program_abv?: string | null }) =>
+      createProgram(program_name, department_id, program_abv),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.programs() });
     },
@@ -304,8 +373,8 @@ export function useCreateProgram() {
 export function useUpdateProgram() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, program_name, department_id }: { id: number; program_name: string; department_id: number }) =>
-      updateProgram(id, program_name, department_id),
+    mutationFn: ({ id, program_name, department_id, program_abv }: { id: number; program_name: string; department_id: number; program_abv?: string | null }) =>
+      updateProgram(id, program_name, department_id, program_abv),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.programs() });
     },
@@ -318,6 +387,38 @@ export function useDeleteProgram() {
     mutationFn: deleteProgram,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.programs() });
+    },
+  });
+}
+
+export function useCreateCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ course_name, course_code }: { course_name: string; course_code: number | null }) =>
+      createCourse(course_name, course_code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.courses() });
+    },
+  });
+}
+
+export function useUpdateCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, course_name, course_code }: { id: number; course_name: string; course_code: number | null }) =>
+      updateCourse(id, course_name, course_code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.courses() });
+    },
+  });
+}
+
+export function useDeleteCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.courses() });
     },
   });
 }
