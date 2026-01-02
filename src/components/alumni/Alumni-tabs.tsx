@@ -4430,7 +4430,7 @@ export const AlumniTabs: React.FC = () => {
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
                           <TableCell colSpan={9} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
-                              <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-3 gap-1">
+                              <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start ">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} />
                                 <ErpDataDetails sapId={alum.sapId || undefined} registrationNo={alum.registrationNo || undefined} onClose={() => setExpandedRowId(null)} />
                               </div>

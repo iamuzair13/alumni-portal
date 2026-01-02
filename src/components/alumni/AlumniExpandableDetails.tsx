@@ -76,9 +76,10 @@ type AlumniFullData = {
   campusname: string | null;
   departmentname: string | null;
   majorsubject: string | null;
-  // New ID-based fields (program is still text-based)
+  // New ID-based fields
   faculty: number | null;
   department: number | null;
+  program: number | null;
   industry: string | null;
   employeed: string | null;
   nameoforganization: string | null;
@@ -388,12 +389,15 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const cityInputRef = useRef<HTMLInputElement>(null);
   const cityDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Faculty and Department state (Programs are text-based for now)
+  // Faculty, Department, and Program state
   const [allFaculties, setAllFaculties] = useState<{ id: number; faculty_name: string }[]>([]);
   const [allDepartments, setAllDepartments] = useState<{ id: number; department_name: string; faculty_id: number }[]>([]);
+  const [allPrograms, setAllPrograms] = useState<{ id: number; program_name: string; department_id: number }[]>([]);
   const [facultiesLoading, setFacultiesLoading] = useState(true);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
+  const [programsLoading, setProgramsLoading] = useState(false);
   const selectedFacultyId = watch("faculty");
+  const selectedDepartmentId = watch("department");
 
   // Fetch chapters and associations for dropdowns
   const { data: chaptersList = [] } = useQuery<Chapter[]>({
@@ -472,7 +476,51 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     fetchDepartments();
   }, [selectedFacultyId]);
 
-  // Reset department when faculty changes (only during editing)
+  // Fetch programs when department changes
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      if (!selectedDepartmentId) {
+        setAllPrograms([]);
+        return;
+      }
+      setProgramsLoading(true);
+      try {
+        const res = await fetch(`/api/organization/programs?department_id=${selectedDepartmentId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllPrograms(data.programs || []);
+        }
+      } catch (error) {
+        console.error("Error fetching programs:", error);
+      } finally {
+        setProgramsLoading(false);
+      }
+    };
+    fetchPrograms();
+  }, [selectedDepartmentId]);
+
+  // Fetch initial programs on mount if department ID exists (for display mode)
+  useEffect(() => {
+    const fetchInitialPrograms = async () => {
+      if (data?.department) {
+        setProgramsLoading(true);
+        try {
+          const res = await fetch(`/api/organization/programs?department_id=${data.department}`);
+          if (res.ok) {
+            const result = await res.json();
+            setAllPrograms(result.programs || []);
+          }
+        } catch (error) {
+          console.error("Error fetching initial programs:", error);
+        } finally {
+          setProgramsLoading(false);
+        }
+      }
+    };
+    fetchInitialPrograms();
+  }, [data?.department]);
+
+  // Reset department and program when faculty changes (only during editing)
   useEffect(() => {
     if (editingFields.has("faculty") && selectedFacultyId !== undefined) {
       const currentDept = watch("department");
@@ -480,10 +528,24 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         const deptExists = allDepartments.some(d => d.id === Number(currentDept));
         if (!deptExists) {
           setValue("department", null);
+          setValue("program", null);
         }
       }
     }
   }, [selectedFacultyId, allDepartments, editingFields, watch, setValue]);
+
+  // Reset program when department changes (only during editing)
+  useEffect(() => {
+    if (editingFields.has("department") && selectedDepartmentId !== undefined) {
+      const currentProgram = watch("program");
+      if (currentProgram && allPrograms.length > 0) {
+        const programExists = allPrograms.some(p => p.id === Number(currentProgram));
+        if (!programExists) {
+          setValue("program", null);
+        }
+      }
+    }
+  }, [selectedDepartmentId, allPrograms, editingFields, watch, setValue]);
 
   // Computed faculty and department names from IDs
   const displayFacultyName = useMemo(() => {
@@ -612,9 +674,10 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         personalemailshow: data.personalemailshow !== null && data.personalemailshow !== undefined 
           ? String(data.personalemailshow) 
           : null,
-        // Ensure ID fields are properly set (faculty and department)
+        // Ensure ID fields are properly set (faculty, department, and program)
         faculty: data.faculty || null,
         department: data.department || null,
+        program: data.program || null,
       };
       reset(formData);
       // Set initial city search value
@@ -663,6 +726,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           degreetitle: formData.degreetitle,
           faculty: formData.faculty,
           department: formData.department,
+          program: formData.program,
           yearofending: formData.yearofending,
           yearofstarting: formData.yearofstarting,
           cgpa: formData.cgpa,
@@ -791,7 +855,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-4">
+      <div className="flex items-center justify-center py-4 w-full">
         <div className="h-6 w-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
         <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">Loading...</span>
       </div>
@@ -837,34 +901,6 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
           </div>
-          <CompactField label="Degree Title" value={data.degreetitle} isEditing={isFieldEditing("degreetitle")} readOnly={readOnly} register={register} name="degreetitle" onEdit={() => startEditingField("degreetitle")} />
-          {/* Department Field */}
-          {!isFieldEditing("department") || readOnly ? (
-            <CompactField 
-              label="Department" 
-              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
-              isEditing={false} 
-              readOnly={readOnly}
-              onEdit={() => startEditingField("department")}
-            />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
-              <select
-                {...register("department", { valueAsNumber: true })}
-                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
-                {allDepartments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-
-          <CompactField label="Mobile" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} />
           <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} />
           <CompactField label="Registration No" value={data.registrationno} isEditing={isFieldEditing("registrationno")} readOnly={readOnly} register={register} name="registrationno" onEdit={() => startEditingField("registrationno")} />
           <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} />
@@ -886,6 +922,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
           </div>
+          <CompactField label="Mobile" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
           <CompactField label="Password" value={data.password || ""} isEditing={isFieldEditing("password")} readOnly={readOnly} register={register} name="password" type="password" onEdit={() => startEditingField("password")} />
@@ -1008,40 +1045,135 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
           </div>
           
-          
-                      {/* Faculty Field */}
-            {!isFieldEditing("faculty") || readOnly ? (
-              <CompactField 
-                label="Faculty" 
-                value={facultiesLoading ? "Loading..." : displayFacultyName} 
-                isEditing={false} 
-                readOnly={readOnly}
-                onEdit={() => startEditingField("faculty")}
-              />
-            ) : (
-              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
-                <select
-                  {...register("faculty", { 
-                    valueAsNumber: true,
-                    onChange: (e) => {
-                      const value = e.target.value;
-                      setValue("faculty", value ? Number(value) : null);
-                      setValue("department", null);
+          {/* Faculty Field */}
+          {!isFieldEditing("faculty") || readOnly ? (
+            <CompactField 
+              label="Faculty" 
+              value={facultiesLoading ? "Loading..." : displayFacultyName} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("faculty")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
+              <select
+                {...register("faculty", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    const facultyId = value ? Number(value) : null;
+                    setValue("faculty", facultyId);
+                    setValue("department", null);
+                    setValue("program", null);
+                    setValue("departmentname", null);
+                    setValue("degreetitle", null);
+                    // Update facultyname from selected faculty
+                    if (facultyId) {
+                      const selectedFaculty = allFaculties.find(f => f.id === facultyId);
+                      if (selectedFaculty) {
+                        setValue("facultyname", selectedFaculty.faculty_name);
+                      }
+                    } else {
+                      setValue("facultyname", null);
                     }
-                  })}
-                  disabled={readOnly}
-                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-                >
-                  <option value="">Select Faculty</option>
-                  {allFaculties.map((faculty) => (
-                    <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+                  }
+                })}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select Faculty</option>
+                {allFaculties.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Department Field */}
+          {!isFieldEditing("department") || readOnly ? (
+            <CompactField 
+              label="Department" 
+              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("department")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
+              <select
+                {...register("department", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    const departmentId = value ? Number(value) : null;
+                    setValue("department", departmentId);
+                    setValue("program", null);
+                    setValue("degreetitle", null);
+                    // Update departmentname from selected department
+                    if (departmentId) {
+                      const selectedDepartment = allDepartments.find(d => d.id === departmentId);
+                      if (selectedDepartment) {
+                        setValue("departmentname", selectedDepartment.department_name);
+                      }
+                    } else {
+                      setValue("departmentname", null);
+                    }
+                  }
+                })}
+                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
+                {allDepartments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           
-          {/* Program Field - Text-based (Programs setup is pending) */}
+          {/* Program Field */}
+          {!isFieldEditing("program") || readOnly ? (
+            <CompactField 
+              label="Program" 
+              value={programsLoading ? "Loading..." : (allPrograms.find(p => p.id === data?.program)?.program_name || data?.degreetitle || "-")} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("program")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Program:</label>
+              <select
+                {...register("program", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    const programId = value ? Number(value) : null;
+                    setValue("program", programId);
+                    // Update degreetitle from selected program
+                    if (programId) {
+                      const selectedProgram = allPrograms.find(p => p.id === programId);
+                      if (selectedProgram) {
+                        setValue("degreetitle", selectedProgram.program_name);
+                      }
+                    } else {
+                      setValue("degreetitle", null);
+                    }
+                  }
+                })}
+                disabled={readOnly || !selectedDepartmentId || allPrograms.length === 0}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedDepartmentId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{!selectedDepartmentId ? "Select Department First" : "Select Program"}</option>
+                {allPrograms.map((program) => (
+                  <option key={program.id} value={program.id}>{program.program_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <CompactField label="Campus" value={data.campusname} isEditing={isFieldEditing("campusname")} readOnly={readOnly} register={register} name="campusname" type="select" options={[
             { value: "", label: "Select" },
             { value: "Lahore", label: "Lahore" },
@@ -1160,24 +1292,20 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Work Phone" value={data.officialnumber} isEditing={isFieldEditing("officialnumber")} readOnly={readOnly} register={register} name="officialnumber" onEdit={() => startEditingField("officialnumber")} />
           <CompactField label="Work Email" value={data.officialemail} isEditing={isFieldEditing("officialemail")} readOnly={readOnly} register={register} name="officialemail" type="email" onEdit={() => startEditingField("officialemail")} />
 
-          {/* Higher Education Information - Show only for pursuing higher education */}
-          {(selectedEmployeed === "Pursuing Higher Education" || data?.employeed === "Pursuing Higher Education") && (
-            <>
-              <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-                <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Higher Education</h4>
-              </div>
-              <CompactField label="Institution Name" value={data.higher_education_institute_name} isEditing={isFieldEditing("higher_education_institute_name")} readOnly={readOnly} register={register} name="higher_education_institute_name" onEdit={() => startEditingField("higher_education_institute_name")} />
-              <CompactField label="Program Enrolled" value={data.higher_education_program} isEditing={isFieldEditing("higher_education_program")} readOnly={readOnly} register={register} name="higher_education_program" onEdit={() => startEditingField("higher_education_program")} />
-              <CompactField label="Funding Source" value={data.is_scholarship} isEditing={isFieldEditing("is_scholarship")} readOnly={readOnly} register={register} name="is_scholarship" type="select" options={[
-                { value: "", label: "Select" },
-                { value: "Full Scholarship", label: "Full Scholarship" },
-                { value: "Partial Scholarship", label: "Partial Scholarship" },
-                { value: "Self Paid", label: "Self Paid" }
-              ]} onEdit={() => startEditingField("is_scholarship")} />
-              <CompactField label="Institution Country" value={data.higher_education_institute_country} isEditing={isFieldEditing("higher_education_institute_country")} readOnly={readOnly} register={register} name="higher_education_institute_country" onEdit={() => startEditingField("higher_education_institute_country")} />
-              <CompactField label="Institution City" value={data.higher_education_institute_city} isEditing={isFieldEditing("higher_education_institute_city")} readOnly={readOnly} register={register} name="higher_education_institute_city" onEdit={() => startEditingField("higher_education_institute_city")} />
-            </>
-          )}
+          {/* Higher Education Information */}
+          <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Higher Education</h4>
+          </div>
+          <CompactField label="Institution Name" value={data.higher_education_institute_name} isEditing={isFieldEditing("higher_education_institute_name")} readOnly={readOnly} register={register} name="higher_education_institute_name" onEdit={() => startEditingField("higher_education_institute_name")} />
+          <CompactField label="Program Enrolled" value={data.higher_education_program} isEditing={isFieldEditing("higher_education_program")} readOnly={readOnly} register={register} name="higher_education_program" onEdit={() => startEditingField("higher_education_program")} />
+          <CompactField label="Funding Source" value={data.is_scholarship} isEditing={isFieldEditing("is_scholarship")} readOnly={readOnly} register={register} name="is_scholarship" type="select" options={[
+            { value: "", label: "Select" },
+            { value: "Full Scholarship", label: "Full Scholarship" },
+            { value: "Partial Scholarship", label: "Partial Scholarship" },
+            { value: "Self Paid", label: "Self Paid" }
+          ]} onEdit={() => startEditingField("is_scholarship")} />
+          <CompactField label="Institution Country" value={data.higher_education_institute_country} isEditing={isFieldEditing("higher_education_institute_country")} readOnly={readOnly} register={register} name="higher_education_institute_country" onEdit={() => startEditingField("higher_education_institute_country")} />
+          <CompactField label="Institution City" value={data.higher_education_institute_city} isEditing={isFieldEditing("higher_education_institute_city")} readOnly={readOnly} register={register} name="higher_education_institute_city" onEdit={() => startEditingField("higher_education_institute_city")} />
 
           {/* Chapter and Association Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">

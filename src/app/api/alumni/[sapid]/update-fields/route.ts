@@ -370,6 +370,42 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         }
       };
       
+      // If faculty ID is being updated and facultyname is not explicitly provided, fetch and update facultyname
+      if (facultyIdVal !== undefined && facultyIdVal !== null && facultynameVal === undefined) {
+        try {
+          const facultyRow = await tx`SELECT faculty_name FROM public.tbl_faculties WHERE id = ${facultyIdVal}`;
+          if (facultyRow && facultyRow.length > 0) {
+            addUpdate("facultyname", facultyRow[0].faculty_name);
+          }
+        } catch (err) {
+          console.error("[API] Error fetching faculty name:", err);
+        }
+      }
+      
+      // If department ID is being updated and departmentname is not explicitly provided, fetch and update departmentname
+      if (departmentIdVal !== undefined && departmentIdVal !== null && departmentnameVal === undefined) {
+        try {
+          const deptRow = await tx`SELECT department_name FROM public.tbl_departments WHERE id = ${departmentIdVal}`;
+          if (deptRow && deptRow.length > 0) {
+            addUpdate("departmentname", deptRow[0].department_name);
+          }
+        } catch (err) {
+          console.error("[API] Error fetching department name:", err);
+        }
+      }
+      
+      // If program ID is being updated and degreetitle is not explicitly provided, fetch and update degreetitle
+      if (programIdVal !== undefined && programIdVal !== null && degreetitleVal === undefined) {
+        try {
+          const programRow = await tx`SELECT program_name FROM public.tbl_programs WHERE id = ${programIdVal}`;
+          if (programRow && programRow.length > 0) {
+            addUpdate("degreetitle", programRow[0].program_name);
+          }
+        } catch (err) {
+          console.error("[API] Error fetching program name:", err);
+        }
+      }
+      
       // Add all fields that need updating
       addUpdate("sapid", sapidVal);
       addUpdate("registrationno", registrationnoVal);

@@ -10,19 +10,20 @@ type ErpDataDetailsProps = {
 };
 
 type ErpRecord = {
-  sapid?: string | null;
-  registrationno?: string | null;
-  alumniname?: string | null;
-  personalemail?: string | null;
-  officialemail?: string | null;
-  universityemail?: string | null;
-  facultyname?: string | null;
-  departmentname?: string | null;
-  degreetitle?: string | null;
-  yearofending?: number | null;
-  yearofstarting?: number | null;
-  cgpa?: number | null;
-  campusname?: string | null;
+  DegrTitle?: string | null;
+  DeptName?: string | null;
+  Doc?: string | null;
+  Mobile?: string | null;
+  SapNo?: string | null;
+  Mrno?: string | null;
+  Name?: string | null;
+  Fname?: string | null;
+  Cnic?: string | null;
+  Address?: string | null;
+  Nationality?: string | null;
+  Regligion?: string | null;
+  __metadata?: unknown;
+  torel?: unknown;
   [key: string]: unknown;
 };
 
@@ -30,6 +31,43 @@ type ErpRecord = {
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
+};
+
+// Helper to format field label (convert camelCase/PascalCase to readable format)
+const formatLabel = (key: string): string => {
+  // Skip metadata and nested objects
+  if (key === "__metadata" || key === "torel" || key.startsWith("__")) {
+    return "";
+  }
+  
+  // Handle common abbreviations and special cases
+  const labelMap: Record<string, string> = {
+    "DegrTitle": "Degree Title",
+    "DeptName": "Department Name",
+    "SapNo": "SAP Number",
+    "Mrno": "MR Number",
+    "Fname": "Father Name",
+    "Cnic": "CNIC",
+    "Regligion": "Religion",
+    "Doc": "Date of Completion",
+    "Mobile": "Mobile Number",
+    "Name": "Name",
+    "Address": "Address",
+    "Nationality": "Nationality",
+  };
+  
+  if (labelMap[key]) {
+    return labelMap[key];
+  }
+  
+  // Convert camelCase/PascalCase to Title Case
+  return key
+    .replace(/([A-Z])/g, " $1") // Add space before capital letters
+    .replace(/_/g, " ") // Replace underscores with spaces
+    .trim()
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 };
 
 // Compact field component (read-only for ERP data)
@@ -220,32 +258,101 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
       </div>
 
       <div className="space-y-1 text-xs">
-        
+        {/* Personal Information */}
+        <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
+        </div>
+        <CompactField label="Sap No" value={data?.SapNo || null} />
+        <CompactField label="Registration No" value={data?.Mrno || null} />
+        <CompactField label="Full Name" value={data?.Name || null} />
+        <CompactField label="Father Name" value={data?.Fname || null} />
+        <CompactField label="CNIC/Passport" value={data?.Cnic || null} />
+        <CompactField label="Gender" value={null} />
+        <CompactField label="Date of Birth" value={null} />
+        <CompactField label="Marital Status" value={null} />
 
-        {/* Additional ERP Fields */}
-        {data && typeof data === "object" && !Array.isArray(data) && Object.keys(data).length > 0 && (
-          <>
-            
-            {Object.entries(data)
-              .filter(([key, value]) => {
-                // Skip if value is a string that looks like XML (starts with < or ?xml)
-                if (typeof value === "string" && (value.trim().startsWith("<") || value.trim().startsWith("<?xml"))) {
-                  return false;
-                }
-                // Skip known fields that are already displayed
-                return !["sapid", "registrationno", "alumniname", "personalemail", "officialemail", 
-                  "universityemail", "facultyname", "departmentname", "degreetitle", 
-                  "yearofending", "yearofstarting", "cgpa", "campusname"].includes(key.toLowerCase());
-              })
-              .map(([key, value]) => (
-                <CompactField 
-                  key={key} 
-                  label={key.replace(/_/g, " ").replace(/([A-Z])/g, " $1").trim()} 
-                  value={value as string | number | null | undefined} 
-                />
-              ))}
-          </>
-        )}
+        {/* Contact Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
+        </div>
+        <CompactField label="Mobile" value={data?.Mobile || null} />
+        <CompactField label="Secondary Contact" value={null} />
+        <CompactField label="Personal Email" value={null} />
+        <CompactField label="Password" value={null} />
+        <CompactField label="Home Address" value={data?.Address || null} />
+        <CompactField label="Home Country" value={data?.Nationality || null} />
+        <CompactField label="Home Province (Pak only)" value={null} />
+        <CompactField label="Home City" value={null} />
+
+        {/* Academic Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
+        </div>
+        <CompactField label="Faculty" value={null} />
+        <CompactField label="Department" value={data?.DeptName || null} />
+        <CompactField label="Program" value={data?.DegrTitle || null} />
+        <CompactField label="Campus" value={null} />
+        <CompactField label="Admission Year" value={null} />
+        <CompactField label="Passing Out Year" value={null} />
+        <CompactField label="CGPA" value={null} />
+        <CompactField label="Major Subject" value={null} />
+
+        {/* Professional Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Occupation</h4>
+        </div>
+        <CompactField label="Occupation Status" value={null} />
+        <CompactField label="Current Organization" value={null} />
+        <CompactField label="Current Designation" value={null} />
+        <CompactField label="Sector" value={null} />
+        <CompactField label="Work Address" value={null} />
+        <CompactField label="Work City" value={null} />
+        <CompactField label="Work Country" value={null} />
+        <CompactField label="Work Phone" value={null} />
+        <CompactField label="Work Email" value={null} />
+
+        {/* Higher Education Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Higher Education</h4>
+        </div>
+        <CompactField label="Institution Name" value={null} />
+        <CompactField label="Program Enrolled" value={null} />
+        <CompactField label="Funding Source" value={null} />
+        <CompactField label="Institution Country" value={null} />
+        <CompactField label="Institution City" value={null} />
+
+        {/* Chapter and Association Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Chapter & Association</h4>
+        </div>
+        <CompactField label="Chapter" value={null} />
+        <CompactField label="Association" value={null} />
+
+        {/* Additional Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
+        </div>
+        <CompactField label="About Me" value={null} />
+
+        {/* Social Links */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Social Links</h4>
+        </div>
+        <CompactField label="Facebook" value={null} />
+        <CompactField label="Instagram" value={null} />
+        <CompactField label="YouTube" value={null} />
+        <CompactField label="LinkedIn" value={null} />
+
+        {/* System Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">System</h4>
+        </div>
+        <CompactField label="Verification Status" value={null} />
+        <CompactField label="Last Login" value={null} />
+        <CompactField label="Login Count" value={null} />
+        <CompactField label="Alumni Status" value={null} />
+        <CompactField label="Alumni Category" value={null} />
+        <CompactField label="Created Date" value={null} />
       </div>
     </div>
   );
