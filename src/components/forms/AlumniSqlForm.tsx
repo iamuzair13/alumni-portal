@@ -3,10 +3,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import {
-  getDepartmentsByFaculty,
-  getFaculties,
-} from "@/data/programs-departments";
+// Removed static data imports - now using database-backed data
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
 export type TblAlumniForm = {
@@ -472,6 +469,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   // Database-backed faculties, departments, and programs
   const [dbFaculties, setDbFaculties] = useState<Array<{ id: number; name: string }>>([]);
   const [dbDepartments, setDbDepartments] = useState<Array<{ id: number; name: string; facultyId: number }>>([]);
+  const [dbPrograms, setDbPrograms] = useState<Array<{ id: number; name: string; departmentId: number }>>([]);
   const [loadingDbData, setLoadingDbData] = useState(true);
 
   // Fetch faculties from database
@@ -525,6 +523,34 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     fetchDepartments();
   }, [watch("faculty")]);
 
+  // Fetch programs when department changes
+  useEffect(() => {
+    const departmentId = watch("department");
+    if (!departmentId) {
+      setDbPrograms([]);
+      return;
+    }
+
+    const fetchPrograms = async () => {
+      try {
+        const res = await fetch(`/api/organization/programs?department_id=${departmentId}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Map program_name to name for frontend compatibility
+          const mappedPrograms = (data.programs || []).map((p: { id: number; program_name: string; department_id: number }) => ({
+            id: p.id,
+            name: p.program_name,
+            departmentId: p.department_id
+          }));
+          setDbPrograms(mappedPrograms);
+        }
+      } catch (err) {
+        console.error("Failed to fetch programs:", err);
+      }
+    };
+    fetchPrograms();
+  }, [watch("department")]);
+
 
   // Fetch user access assignments
   useEffect(() => {
@@ -576,46 +602,46 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
   const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed, searching for job") as string;
-  const selectedFaculty = watch("facultyname") || "";
-  const selectedDepartment = watch("departmentname") || "";
   const selectedHomeCountry = watch("country") || "";
   const selectedHomeProvince = watch("province") || "";
   const selectedHomeCity = watch("homeCity") || "";
   
-  // Filter faculties based on user access
-  const availableFaculties = useMemo(() => {
-    const allFaculties = getFaculties();
+  // Filter database-backed faculties based on user access
+  const filteredFaculties = useMemo(() => {
     if (!userAccess || userAccess.isSuperAdmin) {
-      return allFaculties;
+      return dbFaculties;
     }
     if (userAccess.faculties.length === 0) {
       return []; // No access
     }
-    return allFaculties.filter(f => 
-      userAccess.faculties.some(af => af.toLowerCase().trim() === f.toLowerCase().trim())
+    return dbFaculties.filter(f => 
+      userAccess.faculties.some(af => af.toLowerCase().trim() === f.name.toLowerCase().trim())
     );
-  }, [userAccess]);
+  }, [dbFaculties, userAccess]);
 
-  // Filter departments based on user access and selected faculty
-  const deptOptions = useMemo(() => {
-    const allDepts = getDepartmentsByFaculty(selectedFaculty);
+  // Filter database-backed departments based on user access
+  const filteredDepartments = useMemo(() => {
     if (!userAccess || userAccess.isSuperAdmin) {
-      return allDepts;
+      return dbDepartments;
     }
     if (userAccess.departments.length === 0) {
-      // If no department-level access, check if we have faculty-level access
-      if (selectedFaculty && userAccess.faculties.some(f => 
-        f.toLowerCase().trim() === selectedFaculty.toLowerCase().trim()
-      )) {
-        return allDepts; // Show all departments in the faculty
+      // If no department-level access, check if we have faculty-level access for the selected faculty
+      const selectedFacultyId = watch("faculty");
+      if (selectedFacultyId) {
+        const selectedFaculty = dbFaculties.find(f => f.id === selectedFacultyId);
+        if (selectedFaculty && userAccess.faculties.some(f => 
+          f.toLowerCase().trim() === selectedFaculty.name.toLowerCase().trim()
+        )) {
+          return dbDepartments; // Show all departments in the faculty
+        }
       }
       return [];
     }
-    // Filter departments that are in the selected faculty AND in user's access
-    return allDepts.filter(d => 
-      userAccess.departments.some(ad => ad.toLowerCase().trim() === d.toLowerCase().trim())
+    // Filter departments that are in user's access
+    return dbDepartments.filter(d => 
+      userAccess.departments.some(ad => ad.toLowerCase().trim() === d.name.toLowerCase().trim())
     );
-  }, [selectedFaculty, userAccess]);
+  }, [dbDepartments, userAccess, dbFaculties, watch("faculty")]);
 
   // // Filter programs based on user access, selected faculty and department
   // const programOptions = useMemo(() => {
@@ -671,8 +697,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   
   // Reset department and program when faculty changes
   useEffect(() => {
+    const facultyId = watch("faculty");
     // Don't reset if user is currently typing in "Other" input
-    if (isTypingFacultyOther.current || (facultyOtherSelected && selectedFaculty && selectedFaculty !== "other")) {
+    if (isTypingFacultyOther.current || (facultyOtherSelected && facultyId)) {
       // User is typing a custom faculty name, don't interfere
       return;
     }
@@ -681,31 +708,35 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     setValue("degreetitle", "");
     setDepartmentOtherSelected(false);
     // Only set facultyOtherSelected if faculty is explicitly "other", otherwise reset it
-    if (selectedFaculty === "other") {
-      setFacultyOtherSelected(true);
-    } else if (selectedFaculty && selectedFaculty !== "" && availableFaculties.includes(selectedFaculty)) {
-      // Only reset if it's a valid faculty from the list
+    if (!facultyId) {
+      // Faculty cleared or not selected
+      setFacultyOtherSelected(false);
+    } else if (facultyId && !dbFaculties.find(f => f.id === facultyId)) {
+      // Faculty ID not in database list (shouldn't happen, but handle it)
       setFacultyOtherSelected(false);
     }
-  }, [selectedFaculty, setValue, facultyOtherSelected, availableFaculties]);
+  }, [watch("faculty"), setValue, facultyOtherSelected, dbFaculties]);
 
   // Reset program when department changes
   useEffect(() => {
+    const departmentId = watch("department");
     // Don't reset if user is currently typing in "Other" input
-    if (isTypingDepartmentOther.current || (departmentOtherSelected && selectedDepartment && selectedDepartment !== "other")) {
+    if (isTypingDepartmentOther.current || (departmentOtherSelected && departmentId)) {
       // User is typing a custom department name, don't interfere
       return;
     }
     
+    setValue("program", null);
     setValue("degreetitle", "");
     // Only set departmentOtherSelected if department is explicitly "other", otherwise reset it
-    if (selectedDepartment === "other") {
-      setDepartmentOtherSelected(true);
-    } else if (selectedDepartment && selectedDepartment !== "" && deptOptions.includes(selectedDepartment)) {
-      // Only reset if it's a valid department from the list
+    if (!departmentId) {
+      // Department cleared or not selected
+      setDepartmentOtherSelected(false);
+    } else if (departmentId && !dbDepartments.find(d => d.id === departmentId)) {
+      // Department ID not in database list (shouldn't happen, but handle it)
       setDepartmentOtherSelected(false);
     }
-  }, [selectedDepartment, setValue, departmentOtherSelected, deptOptions]);
+  }, [watch("department"), setValue, departmentOtherSelected, dbDepartments]);
   
 
   // Sync country to homeCountry for form submission
@@ -802,14 +833,22 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
 
     // Validate Academic Information section
-    const academicOk = await trigger([
+    const academicFields: Array<keyof TblAlumniForm> = [
       "campusname",
       "faculty",
       "department",
-      "degreetitle",
       "yearofstarting",
       "yearofending",
-    ]);
+    ];
+    
+    // If using custom department, validate degreetitle; otherwise validate program
+    if (departmentOtherSelected) {
+      academicFields.push("degreetitle");
+    } else {
+      academicFields.push("program");
+    }
+    
+    const academicOk = await trigger(academicFields);
     if (!academicOk) return false;
 
     // Validate Work Status section
@@ -1658,15 +1697,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       setDepartmentOtherSelected(false);
                     }
                   })}
-                disabled={loadingDbData || (userAccess ? (!userAccess.isSuperAdmin && dbFaculties.length === 0) : false)}
+                disabled={loadingDbData || (userAccess ? (!userAccess.isSuperAdmin && filteredFaculties.length === 0) : false)}
               >
                 <option value="">
                   {loadingDbData ? "Loading..." : 
-                   userAccess && !userAccess.isSuperAdmin && dbFaculties.length === 0 
+                   userAccess && !userAccess.isSuperAdmin && filteredFaculties.length === 0 
                      ? "No access to any faculty" 
                      : "Select"}
                 </option>
-                {dbFaculties.map((faculty) => (
+                {filteredFaculties.map((faculty) => (
                   <option key={faculty.id} value={faculty.id}>{faculty.name}</option>
                 ))}
                   <option value="other">Other</option>
@@ -1741,16 +1780,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       setValue("degreetitle", "");
                     }
                   })}
-                disabled={loadingDbData || !watch("faculty") || (userAccess ? (!userAccess.isSuperAdmin && dbDepartments.length === 0) : false)}
+                disabled={loadingDbData || !watch("faculty") || (userAccess ? (!userAccess.isSuperAdmin && filteredDepartments.length === 0) : false)}
               >
                 <option value="">
                   {loadingDbData ? "Loading..." :
                    !watch("faculty") ? "Select Faculty first" :
-                   userAccess && !userAccess.isSuperAdmin && dbDepartments.length === 0 
+                   userAccess && !userAccess.isSuperAdmin && filteredDepartments.length === 0 
                      ? "No access to any department in this faculty" 
                      : "Select"}
                 </option>
-                {dbDepartments.map((d) => (
+                {filteredDepartments.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
                   <option value="other">Other</option>
@@ -1802,13 +1841,51 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             <div>
               <label className={labelBase}>Program *</label>
-              <input 
-                type="text" 
-                className={inputBase} 
-                placeholder="Enter program name"
-                {...register("degreetitle", { required: true, maxLength: 200 })} 
-              />
-              {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
+              {departmentOtherSelected ? (
+                <>
+                  <input 
+                    type="text" 
+                    className={inputBase} 
+                    placeholder="Enter program name"
+                    {...register("degreetitle", { required: true, maxLength: 200 })} 
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">Enter program name manually when using custom department</p>
+                  {errors.degreetitle && <p className="mt-1 text-xs text-red-600">Program is required</p>}
+                </>
+              ) : (
+                <select 
+                  className={inputBase} 
+                  {...register("program", { 
+                    required: true,
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      const selectedProgramId = e.target.value;
+                      if (selectedProgramId) {
+                        // Find the selected program to set degreetitle for backward compatibility
+                        const selectedProgram = dbPrograms.find(p => p.id === Number(selectedProgramId));
+                        if (selectedProgram) {
+                          setValue("degreetitle", selectedProgram.name, { shouldValidate: false });
+                        }
+                      } else {
+                        setValue("degreetitle", "");
+                      }
+                    }
+                  })}
+                  disabled={!watch("department") || dbPrograms.length === 0}
+                >
+                  <option value="">
+                    {!watch("department") ? "Select Department first" :
+                     dbPrograms.length === 0 ? "No programs available" :
+                     "Select"}
+                  </option>
+                  {dbPrograms.map((program) => (
+                    <option key={program.id} value={program.id}>{program.name}</option>
+                  ))}
+                </select>
+              )}
+              {!departmentOtherSelected && errors.program && (
+                <p className="mt-1 text-xs text-red-600">{errors.program.message || "Program is required"}</p>
+              )}
             </div>
             <div>
               <label className={labelBase}>Admission Year *</label>
