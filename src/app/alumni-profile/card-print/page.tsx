@@ -189,39 +189,21 @@ function CardPrintPageContent() {
         allowTaint: true,
       });
 
-      // Create PDF with standard page size (landscape for card format)
+      // Create PDF with page size matching the card dimensions exactly (no margins)
       const pdf = new jsPDF({
-        orientation: "portrait",
+        orientation: frontCanvas.width >= frontCanvas.height ? "landscape" : "portrait",
         unit: "pt",
-        format: "a4", // Use A4 size, we'll scale the images to fit
+        format: [frontCanvas.width, frontCanvas.height],
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      // Calculate dimensions to fit the card on the page while maintaining aspect ratio
-      const cardAspectRatio = frontCanvas.width / frontCanvas.height;
-      let cardWidth = pdfWidth - 40; // 20pt margin on each side
-      let cardHeight = cardWidth / cardAspectRatio;
-
-      // If card is too tall, scale based on height instead
-      if (cardHeight > pdfHeight - 40) {
-        cardHeight = pdfHeight - 40;
-        cardWidth = cardHeight * cardAspectRatio;
-      }
-
-      // Center the card on the page
-      const xOffset = (pdfWidth - cardWidth) / 2;
-      const yOffset = (pdfHeight - cardHeight) / 2;
-
-      // Add front side to first page
+      // Add front side to first page (full size, no offsets)
       const frontImageData = frontCanvas.toDataURL("image/png");
-      pdf.addImage(frontImageData, "PNG", xOffset, yOffset, cardWidth, cardHeight);
+      pdf.addImage(frontImageData, "PNG", 0, 0, frontCanvas.width, frontCanvas.height);
 
-      // Add back side to second page
-      pdf.addPage();
+      // Add back side to second page (matching dimensions)
+      pdf.addPage([backCanvas.width, backCanvas.height], backCanvas.width >= backCanvas.height ? "landscape" : "portrait");
       const backImageData = backCanvas.toDataURL("image/png");
-      pdf.addImage(backImageData, "PNG", xOffset, yOffset, cardWidth, cardHeight);
+      pdf.addImage(backImageData, "PNG", 0, 0, backCanvas.width, backCanvas.height);
 
       const filename = `${(cardData.studentName || "alumni-card").replace(/\s+/g, "-")}.pdf`;
       pdf.save(filename.toLowerCase());
