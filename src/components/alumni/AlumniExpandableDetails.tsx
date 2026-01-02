@@ -948,25 +948,29 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             </div>
           )}
           
-          {/* Province Field - Only show for Pakistan */}
-          {selectedCountry === "Pakistan" && (
-            !isFieldEditing("province") || readOnly ? (
-              <CompactField label="Home Province (Pak only)" value={data.province} isEditing={false} readOnly={readOnly} onEdit={() => startEditingField("province")} />
-            ) : (
-              <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">HomeProvince:</label>
-                <select
-                  {...register("province")}
-                  disabled={readOnly}
-                  className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-                >
-                  <option value="">Select</option>
-                  {provinceOptions.map((province) => (
-                    <option key={province.value} value={province.value}>{province.label}</option>
-                  ))}
-                </select>
-              </div>
-            )
+          {/* Province Field - Always show, empty if country is not Pakistan */}
+          {!isFieldEditing("province") || readOnly ? (
+            <CompactField 
+              label="Home Province" 
+              value={selectedCountry === "Pakistan" ? data.province : null} 
+              isEditing={false} 
+              readOnly={readOnly} 
+              onEdit={() => startEditingField("province")} 
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Home Province:</label>
+              <select
+                {...register("province")}
+                disabled={readOnly || selectedCountry !== "Pakistan"}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || selectedCountry !== "Pakistan" ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{selectedCountry === "Pakistan" ? "Select" : "N/A (Not Pakistan)"}</option>
+                {selectedCountry === "Pakistan" && provinceOptions.map((province) => (
+                  <option key={province.value} value={province.value}>{province.label}</option>
+                ))}
+              </select>
+            </div>
           )}
           
           {/* City Field */}

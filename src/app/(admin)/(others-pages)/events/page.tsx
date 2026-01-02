@@ -52,15 +52,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "addEvent", label: "Add Event" },
 ];
 
-// Event category options
-const EVENT_CATEGORY_OPTIONS = [
-  "alumni homecoming",
-  "alumni awards",
-  "alumni meetups",
-  "alumni talk",
-  "news",
-  "upcoming events",
-];
+// Event category options - will be fetched from database
 
 // Helper to format date safely
 function formatDate(dateStr: string | null | undefined): string {
@@ -538,8 +530,10 @@ const AddEventForm: React.FC = () => {
   const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
   const [chapters, setChapters] = useState<Array<{ id: number; name: string; type: string }>>([]);
   const [associations, setAssociations] = useState<Array<{ id: number; title: string }>>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loadingChapters, setLoadingChapters] = useState(true);
   const [loadingAssociations, setLoadingAssociations] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   const {
     register,
@@ -570,7 +564,7 @@ const AddEventForm: React.FC = () => {
     mode: "onChange",
   });
 
-  // Fetch chapters and associations on mount
+  // Fetch chapters, associations, and categories on mount
   useEffect(() => {
     const fetchChapters = async () => {
       try {
@@ -600,8 +594,23 @@ const AddEventForm: React.FC = () => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/events/categories");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
     fetchChapters();
     fetchAssociations();
+    fetchCategories();
   }, []);
 
   // Watch all image fields for preview
@@ -730,9 +739,10 @@ const AddEventForm: React.FC = () => {
             id="category"
             className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
             {...register("category")}
+            disabled={loadingCategories}
           >
-            <option value="">Select category</option>
-            {EVENT_CATEGORY_OPTIONS.map((opt) => (
+            <option value="">{loadingCategories ? "Loading categories..." : "Select category"}</option>
+            {categories.map((opt) => (
               <option key={opt} value={opt}>
                 {opt.charAt(0).toUpperCase() + opt.slice(1)}
               </option>
