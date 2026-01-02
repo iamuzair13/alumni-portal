@@ -11,6 +11,88 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { canModify } from "@/lib/alumniProfile";
 
+// ERP Record type for comparison
+type ErpRecord = {
+  DegrTitle?: string | null;
+  DeptName?: string | null;
+  Doc?: string | null;
+  Mobile?: string | null;
+  SapNo?: string | null;
+  Mrno?: string | null;
+  Name?: string | null;
+  Fname?: string | null;
+  Cnic?: string | null;
+  Address?: string | null;
+  Nationality?: string | null;
+  Regligion?: string | null;
+  [key: string]: unknown;
+};
+
+// Comparison result type
+type ComparisonResult = "same" | "minor" | "major" | "no_data";
+
+// Helper function to normalize values for comparison
+const normalizeValue = (value: unknown): string => {
+  if (value === null || value === undefined || value === "") return "";
+  return String(value).trim().toLowerCase();
+};
+
+// Compare two values and return comparison result
+const compareValues = (alumniValue: unknown, erpValue: unknown): ComparisonResult => {
+  const alumniNorm = normalizeValue(alumniValue);
+  const erpNorm = normalizeValue(erpValue);
+  
+  // If both are empty, consider them same
+  if (alumniNorm === "" && erpNorm === "") return "no_data";
+  
+  // If one is empty and other is not, it's a major difference
+  if (alumniNorm === "" || erpNorm === "") return "major";
+  
+  // Exact match
+  if (alumniNorm === erpNorm) return "same";
+  
+  // Check for minor differences (similar but not exact)
+  // Remove common punctuation and spaces for comparison
+  const alumniClean = alumniNorm.replace(/[^\w]/g, "");
+  const erpClean = erpNorm.replace(/[^\w]/g, "");
+  
+  if (alumniClean === erpClean) return "minor";
+  
+  // Check if one contains the other (partial match)
+  if (alumniClean.includes(erpClean) || erpClean.includes(alumniClean)) {
+    // If the difference is small (less than 30% of longer string), consider it minor
+    const longer = Math.max(alumniClean.length, erpClean.length);
+    const shorter = Math.min(alumniClean.length, erpClean.length);
+    const diff = longer - shorter;
+    if (diff / longer < 0.3) return "minor";
+  }
+  
+  // Major difference
+  return "major";
+};
+
+// Map field labels to ERP field names
+const getErpFieldValue = (label: string, erpData: ErpRecord | null): unknown => {
+  if (!erpData) return null;
+  
+  const fieldMap: Record<string, keyof ErpRecord> = {
+    "Sap No": "SapNo",
+    "Registration No": "Mrno",
+    "Full Name": "Name",
+    "Father Name": "Fname",
+    "CNIC/Passport": "Cnic",
+    "Mobile": "Mobile",
+    "Home Address": "Address",
+    "Home Country": "Nationality",
+    "Department": "DeptName",
+    "Program": "DegrTitle",
+    "Date of Completion": "Doc",
+  };
+  
+  const erpField = fieldMap[label];
+  return erpField ? erpData[erpField] : null;
+};
+
 type Chapter = {
   id: number;
   name: string;
@@ -142,15 +224,38 @@ const CompactField: React.FC<{
   type?: string;
   options?: { value: string; label: string }[];
   onEdit?: () => void;
-}> = ({ label, value, isEditing = false, readOnly = false, register, name, type = "text", options, onEdit }) => {
+  comparisonStatus?: ComparisonResult;
+}> = ({ label, value, isEditing = false, readOnly = false, register, name, type = "text", options, onEdit, comparisonStatus }) => {
   // If readOnly is true, always show as display (not editing)
   const effectiveIsEditing = readOnly ? false : isEditing;
   const displayValue = formatValue(value);
   
+  // Get indicator dot based on comparison status
+  const getIndicator = () => {
+    if (!comparisonStatus || comparisonStatus === "same" || comparisonStatus === "no_data") return null;
+    
+    if (comparisonStatus === "major") {
+      return (
+        <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="Major difference with ERP data" />
+      );
+    }
+    
+    if (comparisonStatus === "minor") {
+      return (
+        <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" title="Minor difference with ERP data" />
+      );
+    }
+    
+    return null;
+  };
+  
   if (!effectiveIsEditing) {
     return (
       <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</span>
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0 flex items-center gap-1.5">
+          {label}:
+          {getIndicator()}
+        </span>
         <span className="text-xs text-gray-900 dark:text-gray-100 flex-1 break-words">{displayValue}</span>
         {!readOnly && onEdit && (
           <button
@@ -339,6 +444,47 @@ const getCitiesByProvince = (province: string): string[] => {
   return citiesByProvince[province] || [];
 };
 
+// Fetch ERP data function
+async function fetchErpData(sapId?: string, registrationNo?: string | null): Promise<ErpRecord | null> {
+  const validSapId = sapId && sapId.trim() ? sapId.trim() : undefined;
+  const validRegistrationNo = registrationNo && String(registrationNo).trim() ? String(registrationNo).trim() : undefined;
+  
+  if (!validSapId && !validRegistrationNo) {
+    return null;
+  }
+
+  const params = new URLSearchParams();
+  if (validSapId) params.append("sapid", validSapId);
+  if (validRegistrationNo) params.append("registrationno", validRegistrationNo);
+
+  try {
+    const res = await fetch(`/api/erp/fetch?${params.toString()}`);
+    const responseData = await res.json();
+
+    if (responseData.success === false && responseData.error === "NOT_FOUND") {
+      return null;
+    }
+
+    if (!res.ok) {
+      return null;
+    }
+
+    if (!responseData.success || !responseData.data) {
+      return null;
+    }
+
+    const erpData = Array.isArray(responseData.data) ? responseData.data[0] : responseData.data;
+    
+    if (typeof erpData === "string" || (erpData && typeof erpData === "object" && Object.keys(erpData).every(k => /^\d+$/.test(k)))) {
+      return null;
+    }
+    
+    return erpData as ErpRecord;
+  } catch {
+    return null;
+  }
+}
+
 export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = ({ sapId, onClose, readOnly = false }) => {
   const [currentSapId, setCurrentSapId] = useState(sapId);
   const { data, isLoading, error} = useAlumniFullDetails(currentSapId);
@@ -349,6 +495,22 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const deleteModal = useModal();
+  
+  // Fetch ERP data for comparison
+  const { data: erpData } = useQuery({
+    queryKey: ["erp-data-comparison", currentSapId, data?.registrationno],
+    queryFn: () => fetchErpData(currentSapId, data?.registrationno || null),
+    enabled: !!currentSapId && !!data,
+    staleTime: 1 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  
+  // Helper function to get comparison status for a field
+  const getComparisonStatus = (label: string, alumniValue: unknown): ComparisonResult => {
+    if (!erpData || !data) return "no_data";
+    const erpValue = getErpFieldValue(label, erpData);
+    return compareValues(alumniValue, erpValue);
+  };
   
   // Helper functions for field editing
   const startEditingField = (fieldName: string) => {
@@ -901,11 +1063,11 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
           </div>
-          <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} />
-          <CompactField label="Registration No" value={data.registrationno} isEditing={isFieldEditing("registrationno")} readOnly={readOnly} register={register} name="registrationno" onEdit={() => startEditingField("registrationno")} />
-          <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} />
-          <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} />
-          <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} />
+          <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} comparisonStatus={getComparisonStatus("Sap No", data.sapid)} />
+          <CompactField label="Registration No" value={data.registrationno} isEditing={isFieldEditing("registrationno")} readOnly={readOnly} register={register} name="registrationno" onEdit={() => startEditingField("registrationno")} comparisonStatus={getComparisonStatus("Registration No", data.registrationno)} />
+          <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} comparisonStatus={getComparisonStatus("Full Name", data.alumniname)} />
+          <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} comparisonStatus={getComparisonStatus("Father Name", data.fathername)} />
+          <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} comparisonStatus={getComparisonStatus("CNIC/Passport", data.cnicpassport)} />
           <CompactField label="Gender" value={data.gender} isEditing={isFieldEditing("gender")} readOnly={readOnly} register={register} name="gender" type="select" options={[
             { value: "", label: "Select" },
             { value: "Male", label: "Male" },
@@ -922,16 +1084,16 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
           </div>
-          <CompactField label="Mobile" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} />
+          <CompactField label="Mobile" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
           <CompactField label="Password" value={data.password || ""} isEditing={isFieldEditing("password")} readOnly={readOnly} register={register} name="password" type="password" onEdit={() => startEditingField("password")} />
          
-          <CompactField label="Home Address" value={data.address} isEditing={isFieldEditing("address")} readOnly={readOnly} register={register} name="address" type="textarea" onEdit={() => startEditingField("address")} />
+          <CompactField label="Home Address" value={data.address} isEditing={isFieldEditing("address")} readOnly={readOnly} register={register} name="address" type="textarea" onEdit={() => startEditingField("address")} comparisonStatus={getComparisonStatus("Home Address", data.address)} />
           
           {/* Country Field */}
           {!isFieldEditing("country") || readOnly ? (
-            <CompactField label="Home Country" value={data.country} isEditing={false} readOnly={readOnly} onEdit={() => startEditingField("country")} />
+            <CompactField label="Home Country" value={data.country} isEditing={false} readOnly={readOnly} onEdit={() => startEditingField("country")} comparisonStatus={getComparisonStatus("Home Country", data.country)} />
           ) : (
             <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Home Country:</label>
@@ -1102,6 +1264,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
               isEditing={false} 
               readOnly={readOnly}
               onEdit={() => startEditingField("department")}
+              comparisonStatus={getComparisonStatus("Department", displayDepartmentName)}
             />
           ) : (
             <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
@@ -1145,6 +1308,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
               isEditing={false} 
               readOnly={readOnly}
               onEdit={() => startEditingField("program")}
+              comparisonStatus={getComparisonStatus("Program", allPrograms.find(p => p.id === data?.program)?.program_name || data?.degreetitle)}
             />
           ) : (
             <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">

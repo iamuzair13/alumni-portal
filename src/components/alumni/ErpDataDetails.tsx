@@ -2,11 +2,77 @@
 
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
 
 type ErpDataDetailsProps = {
   sapId?: string;
   registrationNo?: string | null;
   onClose: () => void;
+  alumniData?: Record<string, unknown> | null;
+};
+
+// Comparison result type
+type ComparisonResult = "same" | "minor" | "major" | "no_data";
+
+// Helper function to normalize values for comparison
+const normalizeValue = (value: unknown): string => {
+  if (value === null || value === undefined || value === "") return "";
+  return String(value).trim().toLowerCase();
+};
+
+// Compare two values and return comparison result
+const compareValues = (alumniValue: unknown, erpValue: unknown): ComparisonResult => {
+  const alumniNorm = normalizeValue(alumniValue);
+  const erpNorm = normalizeValue(erpValue);
+  
+  // If both are empty, consider them same
+  if (alumniNorm === "" && erpNorm === "") return "no_data";
+  
+  // If one is empty and other is not, it's a major difference
+  if (alumniNorm === "" || erpNorm === "") return "major";
+  
+  // Exact match
+  if (alumniNorm === erpNorm) return "same";
+  
+  // Check for minor differences (similar but not exact)
+  // Remove common punctuation and spaces for comparison
+  const alumniClean = alumniNorm.replace(/[^\w]/g, "");
+  const erpClean = erpNorm.replace(/[^\w]/g, "");
+  
+  if (alumniClean === erpClean) return "minor";
+  
+  // Check if one contains the other (partial match)
+  if (alumniClean.includes(erpClean) || erpClean.includes(alumniClean)) {
+    // If the difference is small (less than 30% of longer string), consider it minor
+    const longer = Math.max(alumniClean.length, erpClean.length);
+    const shorter = Math.min(alumniClean.length, erpClean.length);
+    const diff = longer - shorter;
+    if (diff / longer < 0.3) return "minor";
+  }
+  
+  // Major difference
+  return "major";
+};
+
+// Map field labels to Alumni data field names
+const getAlumniFieldValue = (label: string, alumniData: Record<string, unknown> | null | undefined): unknown => {
+  if (!alumniData) return null;
+  
+  const fieldMap: Record<string, string> = {
+    "Sap No": "sapid",
+    "Registration No": "registrationno",
+    "Full Name": "alumniname",
+    "Father Name": "fathername",
+    "CNIC/Passport": "cnicpassport",
+    "Mobile": "contactno",
+    "Home Address": "address",
+    "Home Country": "country",
+    "Department": "departmentname",
+    "Program": "degreetitle",
+  };
+  
+  const alumniField = fieldMap[label];
+  return alumniField ? alumniData[alumniField] : null;
 };
 
 type ErpRecord = {
@@ -74,12 +140,35 @@ const formatLabel = (key: string): string => {
 const CompactField: React.FC<{
   label: string;
   value: string | number | null | undefined;
-}> = ({ label, value }) => {
+  comparisonStatus?: ComparisonResult;
+}> = ({ label, value, comparisonStatus }) => {
   const displayValue = formatValue(value);
+  
+  // Get indicator dot based on comparison status
+  const getIndicator = () => {
+    if (!comparisonStatus || comparisonStatus === "same" || comparisonStatus === "no_data") return null;
+    
+    if (comparisonStatus === "major") {
+      return (
+        <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="Major difference with Alumni data" />
+      );
+    }
+    
+    if (comparisonStatus === "minor") {
+      return (
+        <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" title="Minor difference with Alumni data" />
+      );
+    }
+    
+    return null;
+  };
   
   return (
     <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</span>
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0 flex items-center gap-1.5">
+        {label}:
+        {getIndicator()}
+      </span>
       <span className="text-xs text-gray-900 dark:text-gray-100 flex-1 break-words">{displayValue}</span>
     </div>
   );
@@ -146,10 +235,14 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
   return erpData as ErpRecord;
 }
 
-export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrationNo, onClose }) => {
+export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrationNo, onClose, alumniData: propAlumniData }) => {
   // Only enable query if we have a valid (non-empty) SAP ID or registration number
   const validSapId = sapId && sapId.trim() ? sapId.trim() : undefined;
   const validRegistrationNo = registrationNo && String(registrationNo).trim() ? String(registrationNo).trim() : undefined;
+  
+  // Fetch alumni data for comparison if not provided
+  const { data: alumniDataFromQuery } = useAlumniFullDetails(validSapId || "");
+  const alumniData = propAlumniData || alumniDataFromQuery;
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["erp-data", validSapId, validRegistrationNo],
@@ -161,6 +254,13 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
     refetchOnReconnect: true,
     refetchOnMount: true,
   });
+
+  // Helper function to get comparison status for a field
+  const getComparisonStatus = (label: string, erpValue: unknown): ComparisonResult => {
+    if (!alumniData || !data) return "no_data";
+    const alumniValue = getAlumniFieldValue(label, alumniData);
+    return compareValues(alumniValue, erpValue);
+  };
 
   if (isLoading) {
     return (
@@ -262,11 +362,11 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
         </div>
-        <CompactField label="Sap No" value={data?.SapNo || null} />
-        <CompactField label="Registration No" value={data?.Mrno || null} />
-        <CompactField label="Full Name" value={data?.Name || null} />
-        <CompactField label="Father Name" value={data?.Fname || null} />
-        <CompactField label="CNIC/Passport" value={data?.Cnic || null} />
+        <CompactField label="Sap No" value={data?.SapNo || null} comparisonStatus={getComparisonStatus("Sap No", data?.SapNo)} />
+        <CompactField label="Registration No" value={data?.Mrno || null} comparisonStatus={getComparisonStatus("Registration No", data?.Mrno)} />
+        <CompactField label="Full Name" value={data?.Name || null} comparisonStatus={getComparisonStatus("Full Name", data?.Name)} />
+        <CompactField label="Father Name" value={data?.Fname || null} comparisonStatus={getComparisonStatus("Father Name", data?.Fname)} />
+        <CompactField label="CNIC/Passport" value={data?.Cnic || null} comparisonStatus={getComparisonStatus("CNIC/Passport", data?.Cnic)} />
         <CompactField label="Gender" value={null} />
         <CompactField label="Date of Birth" value={null} />
         <CompactField label="Marital Status" value={null} />
@@ -275,12 +375,12 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
         </div>
-        <CompactField label="Mobile" value={data?.Mobile || null} />
+        <CompactField label="Mobile" value={data?.Mobile || null} comparisonStatus={getComparisonStatus("Mobile", data?.Mobile)} />
         <CompactField label="Secondary Contact" value={null} />
         <CompactField label="Personal Email" value={null} />
         <CompactField label="Password" value={null} />
-        <CompactField label="Home Address" value={data?.Address || null} />
-        <CompactField label="Home Country" value={data?.Nationality || null} />
+        <CompactField label="Home Address" value={data?.Address || null} comparisonStatus={getComparisonStatus("Home Address", data?.Address)} />
+        <CompactField label="Home Country" value={data?.Nationality || null} comparisonStatus={getComparisonStatus("Home Country", data?.Nationality)} />
         <CompactField label="Home Province (Pak only)" value={null} />
         <CompactField label="Home City" value={null} />
 
@@ -289,8 +389,8 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
         </div>
         <CompactField label="Faculty" value={null} />
-        <CompactField label="Department" value={data?.DeptName || null} />
-        <CompactField label="Program" value={data?.DegrTitle || null} />
+        <CompactField label="Department" value={data?.DeptName || null} comparisonStatus={getComparisonStatus("Department", data?.DeptName)} />
+        <CompactField label="Program" value={data?.DegrTitle || null} comparisonStatus={getComparisonStatus("Program", data?.DegrTitle)} />
         <CompactField label="Campus" value={null} />
         <CompactField label="Admission Year" value={null} />
         <CompactField label="Passing Out Year" value={null} />
