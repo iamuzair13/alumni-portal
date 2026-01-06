@@ -8,11 +8,21 @@ import { AlumniCards } from "@/components/alumni/Alumini-cards";
 import { AlumniTalksTab } from "@/components/alumni/AlumniTalksTab";
 import { AlumniChaptersTab } from "@/components/alumni/AlumniChaptersTab";
 import { AlumniAssociationTab } from "@/components/alumni/AlumniAssociationTab";
+import { AlumniScholarshipsTab } from "@/components/alumni/AlumniScholarshipsTab";
+import { AlumniMembershipsTab } from "@/components/alumni/AlumniMembershipsTab";
 
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
 
-type MenuKey = "AlumniTabs" | "AlumniCards" | "AlumniTalks" | "AlumniChapters" | "AlumniAssociation" | "AadAlumni";
+type MenuKey =
+  | "AlumniTabs"
+  | "AlumniCards"
+  | "AlumniTalks"
+  | "AlumniChapters"
+  | "AlumniAssociation"
+  | "AlumniScholarships"
+  | "AlumniMemberships"
+  | "AadAlumni";
 
 const MENU_TABS: { key: MenuKey; label: string; urlTab: string }[] = [
   { key: "AlumniTabs", label: "Dashboard", urlTab: "dashboard" },
@@ -20,6 +30,8 @@ const MENU_TABS: { key: MenuKey; label: string; urlTab: string }[] = [
   { key: "AlumniTalks", label: "Alumni Talks", urlTab: "alumni-talks" },
   { key: "AlumniChapters", label: "Alumni Chapters", urlTab: "alumni-chapters" },
   { key: "AlumniAssociation", label: "Alumni Association", urlTab: "alumni-association" },
+  { key: "AlumniScholarships", label: "Alumni Scholarships", urlTab: "alumni-scholarships" },
+  { key: "AlumniMemberships", label: "Alumni Memberships", urlTab: "alumni-memberships" },
   { key: "AadAlumni", label: "Add Alumni", urlTab: "add-alumni" },
 ];
 
@@ -30,6 +42,8 @@ const urlTabToMenuKey: Record<string, MenuKey> = {
   "alumni-talks": "AlumniTalks",
   "alumni-chapters": "AlumniChapters",
   "alumni-association": "AlumniAssociation",
+  "alumni-scholarships": "AlumniScholarships",
+  "alumni-memberships": "AlumniMemberships",
   "add-alumni": "AadAlumni",
 };
 
@@ -40,6 +54,8 @@ const menuKeyToUrlTab: Record<MenuKey, string> = {
   "AlumniTalks": "alumni-talks",
   "AlumniChapters": "alumni-chapters",
   "AlumniAssociation": "alumni-association",
+  "AlumniScholarships": "alumni-scholarships",
+  "AlumniMemberships": "alumni-memberships",
   "AadAlumni": "add-alumni",
 };
 
@@ -112,14 +128,16 @@ export const AlumniTabbedMenu: FC = () => {
         ))}
       </div>
 
-      <div className=" ">
-        {selected === "AlumniTabs" && <AlumniTabs />}
-        {selected === "AlumniCards" && <AlumniCards />}
-        {selected === "AlumniTalks" && <AlumniTalksTab />}
-        {selected === "AlumniChapters" && <AlumniChaptersTab />}
-        {selected === "AlumniAssociation" && <AlumniAssociationTab />}
-        {selected === "AadAlumni" && <AlumniRegistrationFormComponent />}
-      </div>
+            <div className=" ">
+              {selected === "AlumniTabs" && <AlumniTabs />}
+              {selected === "AlumniCards" && <AlumniCards />}
+              {selected === "AlumniTalks" && <AlumniTalksTab />}
+              {selected === "AlumniChapters" && <AlumniChaptersTab />}
+              {selected === "AlumniAssociation" && <AlumniAssociationTab />}
+              {selected === "AlumniScholarships" && <AlumniScholarshipsTab />}
+              {selected === "AlumniMemberships" && <AlumniMembershipsTab />}
+              {selected === "AadAlumni" && <AlumniRegistrationFormComponent />}
+            </div>
 
       <style jsx>{`
         .tab-list {

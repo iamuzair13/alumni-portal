@@ -61,14 +61,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Alumni not found or access denied" }, { status: 404 });
     }
 
-    // Insert swimming pool membership application
-    // Note: id is both primary key and foreign key to tbl_alumni(alumniid)
+    // Insert swimming pool membership application (creates a new record each time)
     await sql/* sql */`
-      INSERT INTO public.alumni_memberships (id, swimmingpool_membership_month, created_at)
-      VALUES (${alum.alumniid}, ${month.trim()}, NOW())
-      ON CONFLICT (id) DO UPDATE SET
-        swimmingpool_membership_month = EXCLUDED.swimmingpool_membership_month,
-        created_at = NOW()
+      INSERT INTO public.alumni_memberships (alumniid, swimmingpool_membership_month, created_at, status)
+      VALUES (${alum.alumniid}, ${month.trim()}, NOW(), 'pending')
     `;
 
     // Send confirmation email

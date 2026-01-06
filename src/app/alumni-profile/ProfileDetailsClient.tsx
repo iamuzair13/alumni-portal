@@ -603,7 +603,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {program || "N/A"}</div>
               <div className="col-span-1"><span className="font-semibold">Passing Year:</span> <br/> {passingYear ? String(passingYear) : "N/A"}</div>
             </div>
-            <div className="mt-3 sm:mt-4">
+            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3">
               <LoadingLink
                 href={`/alumni-profile/more-details?sapid=${encodeURIComponent(sapId)}`}
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -611,6 +611,15 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 More Details
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </LoadingLink>
+              <LoadingLink
+                href={`/alumni-profile/view-applications?sapid=${encodeURIComponent(sapId)}`}
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                View Applications
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </LoadingLink>
             </div>

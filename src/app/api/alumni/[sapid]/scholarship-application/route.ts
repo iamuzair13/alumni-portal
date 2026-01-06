@@ -43,14 +43,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     // Verify the user is authenticated
     const userEmail = session?.user?.email ? String(session.user.email) : null;
     const userSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid) : null) : null;
+    const userRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno) : null) : null;
 
-    if (!userEmail && !userSapid) {
+    if (!userEmail && !userSapid && !userRegNo) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify alumni exists and user has access
-    const rows = await sql/* sql */`
-      SELECT alumniid, sapid, alumniname, personalemail, universityemail, officialemail, cnicpassport, father_cnic FROM public.tbl_alumni WHERE sapid = ${sapid} LIMIT 1`;
+    // Verify alumni exists and user has access - try by sapid first, then by registrationno
+    let rows: Array<Record<string, unknown>> = [];
+    
+    // Try to find by SAP ID first
+    rows = await sql/* sql */`
+      SELECT alumniid, sapid, registrationno, alumniname, personalemail, universityemail, officialemail, cnicpassport, father_cnic 
+      FROM public.tbl_alumni 
+      WHERE sapid = ${sapid} 
+      LIMIT 1`;
+
+    // If not found by SAP ID, try by registration number
+    if (!rows[0]) {
+      rows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, alumniname, personalemail, universityemail, officialemail, cnicpassport, father_cnic 
+        FROM public.tbl_alumni 
+        WHERE registrationno = ${sapid} 
+        LIMIT 1`;
+    }
 
     if (!rows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
@@ -62,14 +78,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     const alumniEmail = String(row.personalemail || row.universityemail || row.officialemail || userEmail || "");
     const alumniCnic = String(row.cnicpassport || "");
 
-    // Check ownership
+    // Check ownership - by SAP ID, registration number, or email
     const isOwnerBySapid = userSapid && String(row.sapid ?? "").toLowerCase().trim() === userSapid.toLowerCase().trim();
+    const isOwnerByRegNo = userRegNo && String(row.registrationno ?? "").toLowerCase().trim() === userRegNo.toLowerCase().trim();
     const isOwnerByEmail = userEmail && (
       String(row.personalemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
       String(row.universityemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim() ||
       String(row.officialemail ?? "").toLowerCase().trim() === userEmail.toLowerCase().trim()
     );
-    const isOwner = isOwnerBySapid || isOwnerByEmail;
+    const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
 
     if (!isOwner && !isAdminUser(session?.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -113,6 +130,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           kinship_cnic,
           apply_for,
           degree_title,
+          status,
           created_at
         )
         VALUES (
@@ -122,6 +140,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           ${discountType === "kinship" ? (kinshipCnic || null) : null},
           ${applyingFor || null},
           ${degreeTitle || null},
+          'pending',
           NOW()
         )
         ON CONFLICT (id) DO UPDATE
@@ -131,6 +150,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           kinship_cnic = EXCLUDED.kinship_cnic,
           apply_for = EXCLUDED.apply_for,
           degree_title = EXCLUDED.degree_title,
+          status = 'pending',
           created_at = NOW()
       `;
     } catch (insertError) {
