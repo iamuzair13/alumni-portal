@@ -3,6 +3,21 @@ import { sql } from '@/lib/dbconnect';
 import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
 
 /**
+ * Database row type for jobs
+ */
+type JobRow = {
+  id: bigint | number;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  category: string | null;
+  job_link: string | null;
+  deadline: Date | string | null;
+  created_at: Date | string | null;
+  description?: string | null;
+};
+
+/**
  * Convert date to ISO 8601 format (UTC)
  */
 function toUtcIso(date: unknown): string | null {
@@ -19,17 +34,7 @@ function toUtcIso(date: unknown): string | null {
 /**
  * Format job data from database row
  */
-function formatJob(row: {
-  id: bigint | number;
-  title: string | null;
-  company: string | null;
-  location: string | null;
-  category: string | null;
-  job_link: string | null;
-  deadline: Date | string | null;
-  created_at: Date | string | null;
-  description?: string | null;
-}) {
+function formatJob(row: JobRow) {
   return {
     id: Number(row.id),
     title: row.title || null,
@@ -135,7 +140,7 @@ export async function GET(
     }
 
     // Format the result
-    const job = formatJob(rows[0]);
+    const job = formatJob(rows[0] as unknown as JobRow);
 
     const response = NextResponse.json({
       data: job,
