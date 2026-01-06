@@ -204,6 +204,8 @@ type AlumniFullData = {
   chapter3_id: number | null;
   association: string | null;
   association_id: number | null;
+  alumni_consent_info: boolean | null;
+  alumni_consent_pic: boolean | null;
 };
 
 // Helper to format field value
@@ -491,7 +493,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { register, handleSubmit, reset, watch, setValue, control } = useForm<AlumniFullData>();
+  const { register, handleSubmit, reset, watch, setValue, control, getValues } = useForm<AlumniFullData>();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const deleteModal = useModal();
@@ -531,6 +533,8 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         personalemailshow: data.personalemailshow !== null && data.personalemailshow !== undefined 
           ? String(data.personalemailshow) 
           : null,
+        alumni_consent_info: data.alumni_consent_info ?? null,
+        alumni_consent_pic: data.alumni_consent_pic ?? null,
       };
       reset(formData);
       // Reset city search
@@ -840,8 +844,11 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         faculty: data.faculty || null,
         department: data.department || null,
         program: data.program || null,
+        // Ensure boolean consent field is properly set
+        alumni_consent_info: data.alumni_consent_info ?? null,
       };
-      reset(formData);
+      // Reset form with all data - this registers all fields with react-hook-form
+      reset(formData, { keepDefaultValues: false });
       // Set initial city search value
       if (data.city) {
         setCitySearch(data.city);
@@ -858,74 +865,54 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     
     setIsSaving(true);
     try {
+      // Get all current form values to ensure we capture edited fields
+      const allFormValues = getValues();
+      
+      // Build update payload - include all fields that are currently being edited
+      const updatePayload: Record<string, unknown> = {};
+      
+      // Add all fields that are currently in editing mode
+      editingFields.forEach((fieldName) => {
+        const value = allFormValues[fieldName as keyof AlumniFullData];
+        // Include the value even if it's null or empty string (to allow clearing fields)
+        if (value !== undefined) {
+          updatePayload[fieldName] = value;
+        }
+      });
+      
+      // If no fields are being edited, don't send the request
+      if (Object.keys(updatePayload).length === 0) {
+        toast.error("No fields are being edited");
+        setIsSaving(false);
+        return;
+      }
+      
+      // Always include related text fields for ID-based fields
+      if (editingFields.has("faculty") && allFormValues.faculty !== undefined) {
+        updatePayload.faculty = allFormValues.faculty;
+        if (allFormValues.facultyname !== undefined) {
+          updatePayload.facultyname = allFormValues.facultyname;
+        }
+      }
+      if (editingFields.has("department") && allFormValues.department !== undefined) {
+        updatePayload.department = allFormValues.department;
+        if (allFormValues.departmentname !== undefined) {
+          updatePayload.departmentname = allFormValues.departmentname;
+        }
+      }
+      if (editingFields.has("program") && allFormValues.program !== undefined) {
+        updatePayload.program = allFormValues.program;
+        if (allFormValues.degreetitle !== undefined) {
+          updatePayload.degreetitle = allFormValues.degreetitle;
+        }
+      }
+      
+      console.log("[AlumniExpandableDetails] Sending update payload:", updatePayload);
+      
       const res = await fetch(`/api/alumni/${encodeURIComponent(currentSapId)}/update-fields`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sapid: formData.sapid,
-          registrationno: formData.registrationno,
-          alumniname: formData.alumniname,
-          gender: formData.gender,
-          fathername: formData.fathername,
-          dateofbirth: formData.dateofbirth,
-          maritalstatus: formData.maritalstatus,
-          cnicpassport: formData.cnicpassport,
-          contactno: formData.contactno,
-          contactno1: formData.contactno1,
-          contactno1show: formData.contactno1show,
-          personalemail: formData.personalemail,
-          personalemailshow: formData.personalemailshow,
-          password: formData.password,
-          officialemail: formData.officialemail,
-          officialnumber: formData.officialnumber,
-          address: formData.address,
-          province: formData.province,
-          city: formData.city,
-          country: formData.country,
-          campusname: formData.campusname,
-          facultyname: formData.facultyname,
-          departmentname: formData.departmentname,
-          degreetitle: formData.degreetitle,
-          faculty: formData.faculty,
-          department: formData.department,
-          program: formData.program,
-          yearofending: formData.yearofending,
-          yearofstarting: formData.yearofstarting,
-          cgpa: formData.cgpa,
-          employeed: formData.employeed,
-          industry: formData.industry,
-          nameoforganization: formData.nameoforganization,
-          designation: formData.designation,
-          totalyearsofexpereince: formData.totalyearsofexpereince,
-          work_city: formData.work_city,
-          work_country: formData.work_country,
-          organization_address: formData.organization_address,
-          majorsubject: formData.majorsubject,
-          aboutme: formData.aboutme,
-          // Higher Education fields
-          higher_education_institute_name: formData.higher_education_institute_name,
-          higher_education_program: formData.higher_education_program,
-          is_scholarship: formData.is_scholarship,
-          higher_education_institute_country: formData.higher_education_institute_country,
-          higher_education_institute_city: formData.higher_education_institute_city,
-          association_id: formData.association_id && String(formData.association_id) !== "" ? Number(formData.association_id) : null,
-          chapter1_id: formData.chapter1_id && String(formData.chapter1_id) !== "" ? Number(formData.chapter1_id) : null,
-          chapter2_id: formData.chapter2_id && String(formData.chapter2_id) !== "" ? Number(formData.chapter2_id) : null,
-          chapter3_id: formData.chapter3_id && String(formData.chapter3_id) !== "" ? Number(formData.chapter3_id) : null,
-          facebook: formData.facebook,
-          instagram: formData.instagram,
-          youtube: formData.youtube,
-          linkedin: formData.linkedin,
-          datasource: formData.datasource,
-          alumnistatus: formData.alumnistatus,
-          verify: formData.verify,
-          lasttimelogin: formData.lasttimelogin,
-          logincount: formData.logincount,
-          createddatetime: formData.createddatetime,
-          academicsession: formData.academicsession,
-          father_cnic: formData.father_cnic,
-          category: formData.category,
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!res.ok) {
@@ -1591,8 +1578,21 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "A", label: "A" },
             { value: "B", label: "B" },
             { value: "C", label: "C" },
+            { value: "D", label: "D" },
           ]} onEdit={() => startEditingField("category")} />
+          <CompactField 
+            label="Allowed to use information Officially" 
+            value={data.alumni_consent_info === true ? "Yes" : data.alumni_consent_info === false ? "No" : "Not Set"} 
+            isEditing={false} 
+            readOnly={true}
+          />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isFieldEditing("createddatetime")} readOnly={readOnly} register={register} name="createddatetime" onEdit={() => startEditingField("createddatetime")} />
+          <CompactField 
+            label="Photo Usage Consent" 
+            value={data.alumni_consent_pic === true ? "Allowed for Honor Card and other official purposes" : data.alumni_consent_pic === false ? "Allowed only for Honor Card" : "Not Set"} 
+            isEditing={false} 
+            readOnly={true}
+          />
         </div>
 
         {editingFields.size > 0 && !readOnly && (

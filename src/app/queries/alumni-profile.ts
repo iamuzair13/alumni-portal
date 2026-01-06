@@ -84,6 +84,8 @@ export type AlumniFullDetails = {
   chapter3_id: number | null;
   association: string | null;
   association_id: number | null;
+  alumni_consent_info: boolean | null;
+  alumni_consent_pic: boolean | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {

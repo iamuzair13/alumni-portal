@@ -142,7 +142,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       if (value === null || value === undefined || value === "") return null;
       
       // Handle boolean fields
-      if (key === "contactno1show" || key === "personalemailshow") {
+      if (key === "contactno1show" || key === "personalemailshow" || key === "alumni_consent_info") {
+        if (value === null || value === undefined || value === "") return null;
         return value === true || value === "true" || value === 1 || value === "1";
       }
       
@@ -235,6 +236,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const academicsessionVal = "academicsession" in body ? cleanValue("academicsession", body.academicsession) : undefined;
     const fatherCnicVal = "father_cnic" in body ? cleanValue("father_cnic", body.father_cnic) : undefined;
     const categoryVal = "category" in body ? cleanValue("category", body.category) : undefined;
+    // Consent field
+    const alumniConsentInfoVal = "alumni_consent_info" in body ? cleanValue("alumni_consent_info", body.alumni_consent_info) : undefined;
     // Chapter fields
     const chapter1IdVal = "chapter1_id" in body ? (body.chapter1_id !== null && body.chapter1_id !== undefined && body.chapter1_id !== "" ? Number(body.chapter1_id) : null) : undefined;
     const chapter2IdVal = "chapter2_id" in body ? (body.chapter2_id !== null && body.chapter2_id !== undefined && body.chapter2_id !== "" ? Number(body.chapter2_id) : null) : undefined;
@@ -336,6 +339,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       academicsession: academicsessionVal,
       father_cnic: fatherCnicVal,
       category: categoryVal,
+      alumni_consent_info: alumniConsentInfoVal,
       chapter1_id: chapter1IdVal,
       chapter2_id: chapter2IdVal,
       chapter3_id: chapter3IdVal,
@@ -464,14 +468,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("academicsession", academicsessionVal);
       addUpdate("father_cnic", fatherCnicVal);
       addUpdate("category", categoryVal);
+      addUpdate("alumni_consent_info", alumniConsentInfoVal);
       addUpdate("faculty", facultyIdVal);
       addUpdate("department", departmentIdVal);
       addUpdate("program", programIdVal);
       
       // Execute single UPDATE query if there are fields to update
       if (updates.length > 0) {
-        // Build SET clause with parameterized values
-        const setClause = updates.map(([field], idx) => `${field} = $${idx + 1}`).join(", ");
+        // Build SET clause with parameterized values - quote column names to handle special characters
+        const setClause = updates.map(([field], idx) => `"${field}" = $${idx + 1}`).join(", ");
         const values = updates.map(([, val]) => val) as (string | number | boolean | null)[];
         
         // Execute single UPDATE query using tx.unsafe for dynamic queries

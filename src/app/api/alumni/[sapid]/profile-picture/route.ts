@@ -122,9 +122,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     const formData = await req.formData();
     const file = formData.get("image") as File | null;
+    const consentPic = formData.get("alumni_consent_pic");
 
     if (!file) {
       return NextResponse.json({ error: "No image file provided" }, { status: 400 });
+    }
+
+    // Parse consent value - convert string to boolean
+    let consentPicValue: boolean | null = null;
+    if (consentPic !== null && consentPic !== undefined) {
+      const consentStr = String(consentPic).toLowerCase().trim();
+      if (consentStr === "true" || consentStr === "1") {
+        consentPicValue = true;
+      } else if (consentStr === "false" || consentStr === "0") {
+        consentPicValue = false;
+      }
     }
 
     // Validate file size first (max 5MB)
@@ -360,13 +372,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       // image1 is empty, save to image1
       await sql/* sql */`
         UPDATE public.tbl_alumni 
-        SET image1 = ${filename}
+        SET image1 = ${filename}, alumni_consent_pic = ${consentPicValue}
         WHERE alumniid = ${alumni.alumniid}`;
     } else {
       // image1 has value, save to image2
       await sql/* sql */`
         UPDATE public.tbl_alumni 
-        SET image2 = ${filename}
+        SET image2 = ${filename}, alumni_consent_pic = ${consentPicValue}
         WHERE alumniid = ${alumni.alumniid}`;
     }
 

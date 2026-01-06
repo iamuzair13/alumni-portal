@@ -75,6 +75,7 @@ export type TblAlumniForm = {
   alumnistatus: string | null;
   category: string | null;
   chapters: number[] | null; // Array of selected chapter IDs (up to 3)
+  alumni_consent_info: boolean | null;
 };
 
 const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
@@ -443,6 +444,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       highereducationprogram: null,
       scholarship: null,
       chapters: null,
+      alumni_consent_info: null,
     },
   });
 
@@ -916,6 +918,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       const adminOk = await trigger(["datasource", "verify", "alumnistatus"]);
       if (!adminOk) return false;
     }
+
+    // Validate consent checkbox
+    const consentOk = await trigger("alumni_consent_info");
+    if (!consentOk) return false;
 
     return true;
   }
@@ -2436,6 +2442,33 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           </div>
         </section>
       )}
+
+      {/* Declaration and Consent */}
+      <section className="mb-6 mt-8">
+        <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-4">
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="alumni_consent_info"
+              {...register("alumni_consent_info", {
+                required: "You must confirm the declaration to proceed",
+                setValueAs: (value) => value === true || value === "true" || value === 1 || value === "1"
+              })}
+              className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            />
+            <label htmlFor="alumni_consent_info" className="text-sm text-neutral-800 cursor-pointer">
+              <span className="font-semibold">Declaration</span>
+              <br />
+              <span className="text-xs text-neutral-600 mt-1 block">
+                I confirm that the information provided is accurate and up to date. I also consent to the University and Alumni Office using this information for official purposes (academic, administrative, communication, and alumni engagement) in line with University Policies, and applicable government regulations.
+              </span>
+            </label>
+          </div>
+          {errors.alumni_consent_info && (
+            <p className="mt-2 text-xs text-red-600 ml-7">{errors.alumni_consent_info.message}</p>
+          )}
+        </div>
+      </section>
 
       {/* Submit and Reset Buttons */}
       <div className="mt-6 flex flex-wrap items-center gap-3">

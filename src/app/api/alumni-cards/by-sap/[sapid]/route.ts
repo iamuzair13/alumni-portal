@@ -87,9 +87,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     const newStatus = String(body?.status || "");
     const reasonOnhold = body?.reason_onhold ? String(body.reason_onhold).trim() : null;
     
-    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
-    if (!newStatus || !["Pending", "Process", "Active", "Delivered", "Onhold"].includes(newStatus)) {
-      return NextResponse.json({ error: "Invalid status. Must be one of: Pending, Process, Active, Delivered, Onhold" }, { status: 400 });
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
+    if (!newStatus || !["Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"].includes(newStatus)) {
+      return NextResponse.json({ error: "Invalid status. Must be one of: Pending, Process, Active, Delivered, Onhold, UnderPrinting, Printed" }, { status: 400 });
     }
     
     // If status is "Onhold", reason_onhold is required

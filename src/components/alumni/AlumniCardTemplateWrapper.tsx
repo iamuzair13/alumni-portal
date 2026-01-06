@@ -12,7 +12,7 @@ type AlumniCardTemplateWrapperProps = {
   validity?: string;
   photoUrl?: string | null;
   cardImage?: string | null;
-  cardStatus?: string | null; // Card status from database: "Pending", "Process", "Active", "Delivered", "Onhold"
+  cardStatus?: string | null; // Card status from database: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
 };
 
 export default function AlumniCardTemplateWrapper({

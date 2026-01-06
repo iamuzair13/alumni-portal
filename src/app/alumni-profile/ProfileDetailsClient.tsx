@@ -34,6 +34,9 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [photoConsent, setPhotoConsent] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Calculate profile completion percentage
@@ -168,12 +171,34 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       return;
     }
 
+    // Store file and show consent modal
+    setSelectedFile(file);
+    setShowConsentModal(true);
+    setPhotoConsent(null);
+  };
+
+  const handleUploadWithConsent = async () => {
+    if (!selectedFile || photoConsent === null) {
+      toast.error("Please select a photo usage option.", {
+        duration: 5000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '16px',
+          borderRadius: '8px',
+        },
+      });
+      return;
+    }
+
     setUploading(true);
+    setShowConsentModal(false);
     const loadingToast = toast.loading("Uploading profile picture...");
 
     try {
       const formData = new FormData();
-      formData.append("image", file);
+      formData.append("image", selectedFile);
+      formData.append("alumni_consent_pic", String(photoConsent));
 
       const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/profile-picture`, {
         method: "POST",
@@ -236,6 +261,8 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       });
     } finally {
       setUploading(false);
+      setSelectedFile(null);
+      setPhotoConsent(null);
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -590,6 +617,80 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
           </div>
         </div>
       </div>
+
+      {/* Photo Usage Consent Modal */}
+      {showConsentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowConsentModal(false);
+            setSelectedFile(null);
+            setPhotoConsent(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+          }
+        }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile update (picture upload)</h3>
+            <p className="text-sm text-gray-600 mb-4">Please select how you would like your photo to be used:</p>
+            
+            <div className="space-y-3 mb-6">
+              <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="photoConsent"
+                  value="false"
+                  checked={photoConsent === false}
+                  onChange={() => setPhotoConsent(false)}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span className="text-sm text-gray-700">
+                  I allow my photo to be used only to issue my Alumni Honor Card
+                </span>
+              </label>
+              
+              <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  type="radio"
+                  name="photoConsent"
+                  value="true"
+                  checked={photoConsent === true}
+                  onChange={() => setPhotoConsent(true)}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span className="text-sm text-gray-700">
+                  I allow my photo to be used for my Alumni Honor Card and other official purposes (such as university & alumni websites and official publications)
+                </span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConsentModal(false);
+                  setSelectedFile(null);
+                  setPhotoConsent(null);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUploadWithConsent}
+                disabled={photoConsent === null || uploading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
+              >
+                {uploading ? "Uploading..." : "Upload"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

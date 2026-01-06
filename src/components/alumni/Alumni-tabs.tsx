@@ -36,8 +36,9 @@ import { useInstitutionCountries } from "@/app/queries/fetch-institution-countri
 import { useInstitutionCities } from "@/app/queries/fetch-institution-cities";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import * as XLSX from "xlsx";
+import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import type { AlumniFilterOption } from "@/app/queries/fetch-alumni-faculties";
+import toast from "react-hot-toast";
 
 type TabKey =
   | "total"
@@ -1409,12 +1410,11 @@ export const AlumniTabs: React.FC = () => {
   const queryClient = useQueryClient();
   const [mutatingIds, setMutatingIds] = useState<Set<string>>(new Set());
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
 
-  // Export to Excel function - comprehensive export with ALL fields
+  // Export to Excel function with column selection
   const handleExportToExcel = useCallback(async () => {
     try {
-      setIsExporting(true);
       
       // Fetch comprehensive data from export endpoint
       const url = new URL("/api/alumni/export", typeof window !== "undefined" ? window.location.origin : "");
@@ -1584,8 +1584,7 @@ export const AlumniTabs: React.FC = () => {
       }
       
       if (!allItems || allItems.length === 0) {
-        alert("No data found to export with the applied filters.");
-        setIsExporting(false);
+        toast.error("No data found to export with the applied filters.");
         return;
       }
 
@@ -1727,30 +1726,122 @@ export const AlumniTabs: React.FC = () => {
         "Today Date": item.todaydate || "",
       }));
 
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Set column widths for all columns (auto-width for comprehensive export)
-      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
-      ws["!cols"] = colWidths;
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Alumni List");
+      // Define column options
+      const columns: ColumnOption[] = [
+        { key: "Alumni ID", label: "Alumni ID", defaultSelected: true },
+        { key: "SAP ID", label: "SAP ID", defaultSelected: true },
+        { key: "Registration No", label: "Registration No", defaultSelected: true },
+        { key: "Alumni Email", label: "Alumni Email", defaultSelected: true },
+        { key: "Full Name", label: "Full Name", defaultSelected: true },
+        { key: "Gender", label: "Gender", defaultSelected: true },
+        { key: "Father Name", label: "Father Name", defaultSelected: false },
+        { key: "Father CNIC", label: "Father CNIC", defaultSelected: false },
+        { key: "Date of Birth", label: "Date of Birth", defaultSelected: false },
+        { key: "Marital Status", label: "Marital Status", defaultSelected: false },
+        { key: "CNIC/Passport", label: "CNIC/Passport", defaultSelected: true },
+        { key: "Contact No", label: "Contact No", defaultSelected: true },
+        { key: "Contact No 1", label: "Contact No 1", defaultSelected: false },
+        { key: "Contact No 1 Show", label: "Contact No 1 Show", defaultSelected: false },
+        { key: "Personal Email", label: "Personal Email", defaultSelected: true },
+        { key: "Personal Email Show", label: "Personal Email Show", defaultSelected: false },
+        { key: "University Email", label: "University Email", defaultSelected: false },
+        { key: "Official Email", label: "Official Email", defaultSelected: false },
+        { key: "Official Number", label: "Official Number", defaultSelected: false },
+        { key: "Address", label: "Address", defaultSelected: false },
+        { key: "Country", label: "Country", defaultSelected: true },
+        { key: "Province", label: "Province", defaultSelected: false },
+        { key: "City", label: "City", defaultSelected: true },
+        { key: "Academic Session", label: "Academic Session", defaultSelected: false },
+        { key: "Degree Title", label: "Degree Title", defaultSelected: true },
+        { key: "CGPA", label: "CGPA", defaultSelected: false },
+        { key: "Year of Starting", label: "Year of Starting", defaultSelected: false },
+        { key: "Year of Ending", label: "Year of Ending", defaultSelected: true },
+        { key: "Faculty", label: "Faculty", defaultSelected: true },
+        { key: "Campus", label: "Campus", defaultSelected: true },
+        { key: "Department", label: "Department", defaultSelected: true },
+        { key: "Major Subject", label: "Major Subject", defaultSelected: false },
+        { key: "Industry", label: "Industry", defaultSelected: false },
+        { key: "Employment Status", label: "Employment Status", defaultSelected: false },
+        { key: "Organization", label: "Organization", defaultSelected: false },
+        { key: "Designation", label: "Designation", defaultSelected: false },
+        { key: "Total Years of Experience", label: "Total Years of Experience", defaultSelected: false },
+        { key: "Work City", label: "Work City", defaultSelected: false },
+        { key: "Work Country", label: "Work Country", defaultSelected: false },
+        { key: "Organization Address", label: "Organization Address", defaultSelected: false },
+        { key: "Supervisor Designation", label: "Supervisor Designation", defaultSelected: false },
+        { key: "Supervisor Number", label: "Supervisor Number", defaultSelected: false },
+        { key: "Higher Education Institute Name", label: "Higher Education Institute Name", defaultSelected: false },
+        { key: "Higher Education Degree Title", label: "Higher Education Degree Title", defaultSelected: false },
+        { key: "Is Scholarship", label: "Is Scholarship", defaultSelected: false },
+        { key: "Higher Education Program", label: "Higher Education Program", defaultSelected: false },
+        { key: "Higher Education Institute Country", label: "Higher Education Institute Country", defaultSelected: false },
+        { key: "Higher Education Institute Province", label: "Higher Education Institute Province", defaultSelected: false },
+        { key: "Higher Education Institute City", label: "Higher Education Institute City", defaultSelected: false },
+        { key: "Chapter 1 ID", label: "Chapter 1 ID", defaultSelected: false },
+        { key: "Chapter 1", label: "Chapter 1", defaultSelected: false },
+        { key: "Chapter 2 ID", label: "Chapter 2 ID", defaultSelected: false },
+        { key: "Chapter 2", label: "Chapter 2", defaultSelected: false },
+        { key: "Chapter 3 ID", label: "Chapter 3 ID", defaultSelected: false },
+        { key: "Chapter 3", label: "Chapter 3", defaultSelected: false },
+        { key: "All Chapters", label: "All Chapters", defaultSelected: false },
+        { key: "Chapter Remarks", label: "Chapter Remarks", defaultSelected: false },
+        { key: "Association ID", label: "Association ID", defaultSelected: false },
+        { key: "Association Title", label: "Association Title", defaultSelected: false },
+        { key: "Association Description", label: "Association Description", defaultSelected: false },
+        { key: "Association Dean", label: "Association Dean", defaultSelected: false },
+        { key: "Association Phone", label: "Association Phone", defaultSelected: false },
+        { key: "Association Email", label: "Association Email", defaultSelected: false },
+        { key: "Association Address", label: "Association Address", defaultSelected: false },
+        { key: "Chapter Leadership ID", label: "Chapter Leadership ID", defaultSelected: false },
+        { key: "Chapter Leadership Post", label: "Chapter Leadership Post", defaultSelected: false },
+        { key: "Chapter Leadership Status", label: "Chapter Leadership Status", defaultSelected: false },
+        { key: "Chapter Leadership Rejection Reason", label: "Chapter Leadership Rejection Reason", defaultSelected: false },
+        { key: "Chapter Leadership Created At", label: "Chapter Leadership Created At", defaultSelected: false },
+        { key: "Chapter Leadership Updated At", label: "Chapter Leadership Updated At", defaultSelected: false },
+        { key: "Gym Membership Month", label: "Gym Membership Month", defaultSelected: false },
+        { key: "Swimming Pool Membership Month", label: "Swimming Pool Membership Month", defaultSelected: false },
+        { key: "Membership Created At", label: "Membership Created At", defaultSelected: false },
+        { key: "Scholarship Kinship First Name", label: "Scholarship Kinship First Name", defaultSelected: false },
+        { key: "Scholarship Kinship Last Name", label: "Scholarship Kinship Last Name", defaultSelected: false },
+        { key: "Scholarship Kinship CNIC", label: "Scholarship Kinship CNIC", defaultSelected: false },
+        { key: "Scholarship Apply For", label: "Scholarship Apply For", defaultSelected: false },
+        { key: "Scholarship Degree Title", label: "Scholarship Degree Title", defaultSelected: false },
+        { key: "Scholarship Created At", label: "Scholarship Created At", defaultSelected: false },
+        { key: "About Me", label: "About Me", defaultSelected: false },
+        { key: "About", label: "About", defaultSelected: false },
+        { key: "Image 1", label: "Image 1", defaultSelected: false },
+        { key: "Image 2", label: "Image 2", defaultSelected: false },
+        { key: "CV", label: "CV", defaultSelected: false },
+        { key: "Facebook", label: "Facebook", defaultSelected: false },
+        { key: "Instagram", label: "Instagram", defaultSelected: false },
+        { key: "YouTube", label: "YouTube", defaultSelected: false },
+        { key: "LinkedIn", label: "LinkedIn", defaultSelected: false },
+        { key: "Verification Status", label: "Verification Status", defaultSelected: true },
+        { key: "Last Login", label: "Last Login", defaultSelected: false },
+        { key: "Login Count", label: "Login Count", defaultSelected: false },
+        { key: "Email Send Count", label: "Email Send Count", defaultSelected: false },
+        { key: "Email Send Status", label: "Email Send Status", defaultSelected: false },
+        { key: "Data Source", label: "Data Source", defaultSelected: false },
+        { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
+        { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
+        { key: "Today Date", label: "Today Date", defaultSelected: false },
+      ];
 
       // Generate filename with current date and filters
       const dateStr = new Date().toISOString().split("T")[0];
       const statusStr = statusFilter ? `_${statusFilter}` : "";
       const searchStr = debouncedQuery ? `_search` : "";
-      const filename = `alumni_export${statusStr}${searchStr}_${dateStr}.xlsx`;
+      const filename = `alumni_export${statusStr}${searchStr}_${dateStr}`;
 
-      // Write and download
-      XLSX.writeFile(wb, filename);
-      
-      setIsExporting(false);
+      // Open export modal
+      openExportModal({
+        data: excelData,
+        columns,
+        filename,
+        sheetName: "Alumni List",
+      });
     } catch (error) {
       console.error("Export error:", error);
-      setIsExporting(false);
       
       let errorMessage = "Unknown error";
       if (error instanceof Error) {
@@ -4675,6 +4766,7 @@ export const AlumniTabs: React.FC = () => {
           scrollbar-width: none !important;
         }
       `}</style>
+      <ExportModal />
     </ComponentCard>
   );
 };

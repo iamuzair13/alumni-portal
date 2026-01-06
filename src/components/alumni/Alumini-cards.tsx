@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon } from "@/icons";
+import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIcon } from "@/icons";
 import { AlumniDataTable } from "./AlumniCard";
 import { useCardApplicants, type CardStatusFilter, type CardApplicant } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
@@ -13,7 +13,7 @@ import toast from "react-hot-toast";
  * Uses TanStack Query for data fetching with real-time counters.
  */
 
-type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "all";
+type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting" | "printed" | "all";
 
 type AlumniCardItem = {
   id: string;
@@ -42,7 +42,7 @@ type AlumniCardsProps = {
 };
 
 // Map database status to UI status
-// Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+// Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
 function mapDbStatusToUI(dbStatus: string | null): CardStatus {
   if (!dbStatus) return "pending";
   const upper = dbStatus.trim().toUpperCase();
@@ -50,6 +50,8 @@ function mapDbStatusToUI(dbStatus: string | null): CardStatus {
   if (upper === "ACTIVE") return "active";
   if (upper === "PROCESS") return "process";
   if (upper === "ONHOLD") return "onhold";
+  if (upper === "UNDERPRINTING") return "underprinting";
+  if (upper === "PRINTED") return "printed";
   return "pending"; // Default to pending for "Pending" or any other value
 }
 
@@ -91,10 +93,87 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
   }
 }
 
+// Color mapping for status tabs
+const STATUS_TAB_COLORS: Record<CardStatus, {
+  border: string;
+  bg: string;
+  text: string;
+  badgeBg: string;
+  badgeText: string;
+  hoverBorder: string;
+}> = {
+  all: {
+    border: "border-blue-500",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    text: "text-blue-700 dark:text-blue-300",
+    badgeBg: "bg-blue-200 dark:bg-blue-800",
+    badgeText: "text-blue-800 dark:text-blue-200",
+    hoverBorder: "hover:border-blue-400",
+  },
+  pending: {
+    border: "border-amber-500",
+    bg: "bg-amber-50 dark:bg-amber-900/20",
+    text: "text-amber-700 dark:text-amber-300",
+    badgeBg: "bg-amber-200 dark:bg-amber-800",
+    badgeText: "text-amber-800 dark:text-amber-200",
+    hoverBorder: "hover:border-amber-400",
+  },
+  process: {
+    border: "border-blue-500",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    text: "text-blue-700 dark:text-blue-300",
+    badgeBg: "bg-blue-200 dark:bg-blue-800",
+    badgeText: "text-blue-800 dark:text-blue-200",
+    hoverBorder: "hover:border-blue-400",
+  },
+  underprinting: {
+    border: "border-purple-500",
+    bg: "bg-purple-50 dark:bg-purple-900/20",
+    text: "text-purple-700 dark:text-purple-300",
+    badgeBg: "bg-purple-200 dark:bg-purple-800",
+    badgeText: "text-purple-800 dark:text-purple-200",
+    hoverBorder: "hover:border-purple-400",
+  },
+  printed: {
+    border: "border-indigo-500",
+    bg: "bg-indigo-50 dark:bg-indigo-900/20",
+    text: "text-indigo-700 dark:text-indigo-300",
+    badgeBg: "bg-indigo-200 dark:bg-indigo-800",
+    badgeText: "text-indigo-800 dark:text-indigo-200",
+    hoverBorder: "hover:border-indigo-400",
+  },
+  active: {
+    border: "border-emerald-500",
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    text: "text-emerald-700 dark:text-emerald-300",
+    badgeBg: "bg-emerald-200 dark:bg-emerald-800",
+    badgeText: "text-emerald-800 dark:text-emerald-200",
+    hoverBorder: "hover:border-emerald-400",
+  },
+  delivered: {
+    border: "border-green-500",
+    bg: "bg-green-50 dark:bg-green-900/20",
+    text: "text-green-700 dark:text-green-300",
+    badgeBg: "bg-green-200 dark:bg-green-800",
+    badgeText: "text-green-800 dark:text-green-200",
+    hoverBorder: "hover:border-green-400",
+  },
+  onhold: {
+    border: "border-rose-500",
+    bg: "bg-rose-50 dark:bg-rose-900/20",
+    text: "text-rose-700 dark:text-rose-300",
+    badgeBg: "bg-rose-200 dark:bg-rose-800",
+    badgeText: "text-rose-800 dark:text-rose-200",
+    hoverBorder: "hover:border-rose-400",
+  },
+};
+
 const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?: string }> }[] = [
   { key: "all", label: "All", icon: GroupIcon },
   { key: "pending", label: "Pending", icon: TimeIcon },
   { key: "process", label: "In-Process", icon: BoltIcon },
+  { key: "underprinting", label: "Under-Printing", icon: FileIcon },
+  { key: "printed", label: "Printed", icon: FileIcon },
   { key: "active", label: "Ready for Delivery", icon: CheckLineIcon },
   { key: "delivered", label: "Delivered", icon: CheckLineIcon },
   { key: "onhold", label: "On Hold", icon: LockIcon },
@@ -126,7 +205,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (countsFromData) {
       return countsFromData;
     }
-    return { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0 };
+    return { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0, printed: 0 };
   }, [countsData, data]);
   
   // Debug: Log counts to console (remove in production if needed)
@@ -171,8 +250,8 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       }
 
       // Handle status updates
-      // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
-      let newDbStatus: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | null = null;
+      // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
+      let newDbStatus: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed" | null = null;
       
       if (key === "verify" && alumni.status === "pending") {
         newDbStatus = "Process";
@@ -220,16 +299,21 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 count = counts.delivered || 0;
               } else if (tab.key === "onhold") {
                 count = counts.onhold || 0;
+              } else if (tab.key === "underprinting") {
+                count = counts.underprinting || 0;
+              } else if (tab.key === "printed") {
+                count = counts.printed || 0;
               }
               const isSelected = selectedStatus === tab.key;
+              const colors = STATUS_TAB_COLORS[tab.key];
               
               return (
                 <button
                   key={tab.key}
                   className={`rounded-xl border px-4 py-2.5 cursor-pointer transform scale-100 transform-gpu transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm flex items-center gap-2 ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 shadow-md"
-                      : "border-gray-200 bg-slate-100 text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] hover:border-blue-400"
+                      ? `${colors.border} ${colors.bg} ${colors.text} shadow-md`
+                      : `border-gray-300 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:opacity-100 ${colors.hoverBorder}`
                   }`}
                   onClick={() => setSelectedStatus(tab.key as CardStatusFilter)}
                   role="tab"
@@ -240,8 +324,8 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                   <span className="font-medium">{tab.label}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                     isSelected
-                      ? "bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200"
-                      : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                      ? `${colors.badgeBg} ${colors.badgeText}`
+                      : `bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300`
                   }`}>
                     {countsLoading || isLoading ? "..." : count.toLocaleString()}
                   </span>

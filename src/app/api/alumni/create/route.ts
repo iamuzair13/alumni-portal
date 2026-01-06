@@ -70,6 +70,7 @@ type TblAlumniBody = {
   highereducationprogram: string | null;
   scholarship: string | null;
   chapters: number[] | null; // Array of selected chapter IDs (up to 3)
+  alumni_consent_info: boolean | null;
 };
 
 /**
@@ -637,7 +638,8 @@ export async function POST(req: Request) {
             higher_education_program = ${clean(body.highereducationprogram)},
             is_scholarship = ${clean(body.scholarship)},
             higher_education_institute_country = ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
-            higher_education_institute_city = ${clean((body as { workCity?: string | null }).workCity ?? null)}
+            higher_education_institute_city = ${clean((body as { workCity?: string | null }).workCity ?? null)},
+            alumni_consent_info = ${body.alumni_consent_info ?? false}
           WHERE alumniid = ${existingAlumniId}
           RETURNING alumniid, verify
         `;
@@ -739,7 +741,8 @@ export async function POST(req: Request) {
           higher_education_program,
           is_scholarship,
           higher_education_institute_country,
-          higher_education_institute_city
+          higher_education_institute_city,
+          alumni_consent_info
         ) VALUES (
           ${clean(normalizedAlumniEmail)},
           ${plainPassword},
@@ -802,7 +805,8 @@ export async function POST(req: Request) {
           ${clean(body.highereducationprogram)},
           ${clean(body.scholarship)},
           ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
-          ${clean((body as { workCity?: string | null }).workCity ?? null)}
+          ${clean((body as { workCity?: string | null }).workCity ?? null)},
+          ${body.alumni_consent_info ?? false}
         ) RETURNING alumniid;
       `;
       const alumniId = rows[0]?.alumniid;

@@ -173,37 +173,44 @@ function CardPrintPageContent() {
         alumniInfoRef.current.style.transform = "translateY(-6px)";
       }
 
+      // Card dimensions: 8.5cm width x 5.2cm height
+      // Convert cm to points: 1cm = 28.35pt
+      const cardWidthPt = 8.5 * 28.35;  // 240.975pt
+      const cardHeightPt = 5.2 * 28.35; // 147.42pt
+
       // Capture front side
       const frontCanvas = await html2canvas(frontSideRef.current, {
         scale: 2,
-        backgroundColor: "#ffffff",
+        backgroundColor: null, // Transparent background to avoid white space
         useCORS: true,
         allowTaint: true,
+        logging: false,
       });
 
       // Capture back side
       const backCanvas = await html2canvas(backSideRef.current, {
         scale: 2,
-        backgroundColor: "#ffffff",
+        backgroundColor: null, // Transparent background to avoid white space
         useCORS: true,
         allowTaint: true,
+        logging: false,
       });
 
-      // Create PDF with page size matching the card dimensions exactly (no margins)
+      // Create PDF with exact card dimensions (8.5cm x 5.2cm in points)
       const pdf = new jsPDF({
-        orientation: frontCanvas.width >= frontCanvas.height ? "landscape" : "portrait",
+        orientation: "landscape", // Width > Height
         unit: "pt",
-        format: [frontCanvas.width, frontCanvas.height],
+        format: [cardWidthPt, cardHeightPt],
       });
 
-      // Add front side to first page (full size, no offsets)
+      // Add front side to first page (exact dimensions, no offsets)
       const frontImageData = frontCanvas.toDataURL("image/png");
-      pdf.addImage(frontImageData, "PNG", 0, 0, frontCanvas.width, frontCanvas.height);
+      pdf.addImage(frontImageData, "PNG", 0, 0, cardWidthPt, cardHeightPt);
 
-      // Add back side to second page (matching dimensions)
-      pdf.addPage([backCanvas.width, backCanvas.height], backCanvas.width >= backCanvas.height ? "landscape" : "portrait");
+      // Add back side to second page (exact dimensions)
+      pdf.addPage([cardWidthPt, cardHeightPt], "landscape");
       const backImageData = backCanvas.toDataURL("image/png");
-      pdf.addImage(backImageData, "PNG", 0, 0, backCanvas.width, backCanvas.height);
+      pdf.addImage(backImageData, "PNG", 0, 0, cardWidthPt, cardHeightPt);
 
       const filename = `${(cardData.studentName || "alumni-card").replace(/\s+/g, "-")}.pdf`;
       pdf.save(filename.toLowerCase());
@@ -278,43 +285,52 @@ function CardPrintPageContent() {
           className="flex flex-col items-center gap-10 bg-white p-10 rounded-lg shadow-lg"
         >
           {/* Front Side */}
-          <div ref={frontSideRef} className="relative w-full max-w-[550px] overflow-hidden rounded-lg">
+          <div 
+            ref={frontSideRef} 
+            className="relative overflow-hidden rounded-lg"
+            style={{
+              width: "8.5cm",
+              height: "5.2cm",
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={frontTemplate}
               alt="Alumni card front template"
-              width={550}
-              height={740}
-              className="w-full h-auto object-cover"
+              className="w-full h-full object-cover"
+              style={{
+                borderRadius: "8px",
+              }}
             />
 
-            <div className="absolute left-6 right-[40%] top-18 flex flex-col gap-2 text-[15px] leading-tight text-[#0f7a3a]">
-              <span className="text-lg font-semibold tracking-tight">
+            {/* Student Name, Department, Faculty */}
+            <div className="absolute left-[1%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a]">
+              <span className="text-[11px] font-semibold leading-tight tracking-tight">
                 {cardData.studentName || "Alumni Name"}
               </span>
-              <span className="font-semibold text-lg leading-tight">
+              <span className="text-[9px] font-semibold leading-tight">
                 {cardData.department || "Department"}
               </span>
-              <span className="font-semibold text-medium">
+              <span className="text-[8px] font-semibold leading-tight">
                 {cardData.faculty || "Faculty"}
               </span>
             </div>
 
+            {/* Alumni ID and Validity */}
             <div
               ref={alumniInfoRef}
-              className="absolute bottom-[87px] left-28 flex flex-col text-sm font-medium text-[#0f7a3a]"
+              className="absolute bottom-[28%] left-[20%] flex flex-col gap-0.5 text-[#0f7a3a]"
             >
-              <span>{cardData.alumniId || "UOL-AL-0000"}</span>
-              <span>{formattedValidity()}</span>
+              <span className="text-[8px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
+              <span className="text-[8px] font-medium">{formattedValidity()}</span>
             </div>
 
-            <div className="absolute right-[42px] top-[50px] flex h-[214px] w-[158px] items-center justify-center overflow-hidden">
+            {/* Photo */}
+            <div className="absolute right-[4%] top-[16%] flex h-[70%] w-[32%] items-center justify-center overflow-hidden rounded-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getPhotoUrl()}
                 alt={cardData.studentName || "Student"}
-                width={150}
-                height={195}
                 className="h-full w-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "/images/person.jpg";
@@ -324,14 +340,22 @@ function CardPrintPageContent() {
           </div>
 
           {/* Back Side */}
-          <div ref={backSideRef} className="relative aspect-7/4 w-full max-w-[520px] overflow-hidden rounded-3xl">
+          <div 
+            ref={backSideRef} 
+            className="relative overflow-hidden rounded-lg"
+            style={{
+              width: "8.5cm",
+              height: "5.2cm",
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={backTemplate}
               alt="Alumni card back template"
-              width={520}
-              height={740}
-              className="object-cover"
+              className="w-full h-full object-cover"
+              style={{
+                borderRadius: "8px",
+              }}
             />
 
             {/* Barcode Container - Rotated 90 degrees - Only one barcode at a time */}

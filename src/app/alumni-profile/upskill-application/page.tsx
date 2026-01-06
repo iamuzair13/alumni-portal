@@ -2,7 +2,6 @@
 import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAlumniFullDetails } from "@/app/queries/alumni-profile";
-import { getFaculties, getDepartmentsByFaculty } from "@/data/programs-departments";
 import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import { Toaster, toast } from "react-hot-toast";
@@ -35,12 +34,57 @@ function UpskillApplicationContent() {
   const [formData, setFormData] = useState({
     courseName: "",
     departmentName: "",
-    facultyName: "",
+    facultyId: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const faculties = getFaculties();
-  const departments = formData.facultyName ? getDepartmentsByFaculty(formData.facultyName) : [];
+  // Database-backed faculties and departments
+  const [faculties, setFaculties] = useState<Array<{ id: number; faculty_name: string }>>([]);
+  const [departments, setDepartments] = useState<Array<{ id: number; department_name: string }>>([]);
+  const [facultiesLoading, setFacultiesLoading] = useState(true);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+
+  // Fetch faculties from database
+  useEffect(() => {
+    const fetchFaculties = async () => {
+      setFacultiesLoading(true);
+      try {
+        const res = await fetch("/api/organization/faculties");
+        if (res.ok) {
+          const data = await res.json();
+          setFaculties(data.faculties || []);
+        }
+      } catch (error) {
+        console.error("Error fetching faculties:", error);
+      } finally {
+        setFacultiesLoading(false);
+      }
+    };
+    fetchFaculties();
+  }, []);
+
+  // Fetch departments when faculty changes
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!formData.facultyId) {
+        setDepartments([]);
+        return;
+      }
+      setDepartmentsLoading(true);
+      try {
+        const res = await fetch(`/api/organization/departments?faculty_id=${formData.facultyId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDepartments(data.departments || []);
+        }
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+      } finally {
+        setDepartmentsLoading(false);
+      }
+    };
+    fetchDepartments();
+  }, [formData.facultyId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,7 +189,7 @@ function UpskillApplicationContent() {
       setFormData({
         courseName: "",
         departmentName: "",
-        facultyName: "",
+        facultyId: "",
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
@@ -166,7 +210,7 @@ function UpskillApplicationContent() {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
       // Reset department when faculty changes
-      if (field === "facultyName") {
+      if (field === "facultyId") {
         updated.departmentName = "";
       }
       return updated;
@@ -248,26 +292,29 @@ function UpskillApplicationContent() {
               </div>
 
               <div>
-                <label htmlFor="facultyName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="facultyId" className="block text-sm font-medium text-gray-700 mb-2">
                   Faculty <span className="text-red-500">*</span>
                 </label>
                 <select
-                  id="facultyName"
-                  value={formData.facultyName}
-                  onChange={(e) => handleChange("facultyName", e.target.value)}
+                  id="facultyId"
+                  value={formData.facultyId}
+                  onChange={(e) => handleChange("facultyId", e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
+                  disabled={facultiesLoading}
                 >
-                  <option value="">Select Faculty</option>
+                  <option value="">
+                    {facultiesLoading ? "Loading..." : "Select Faculty"}
+                  </option>
                   {faculties.map((faculty) => (
-                    <option key={faculty} value={faculty}>
-                      {faculty}
+                    <option key={faculty.id} value={faculty.id}>
+                      {faculty.faculty_name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {formData.facultyName && (
+              {formData.facultyId && (
                 <div>
                   <label htmlFor="departmentName" className="block text-sm font-medium text-gray-700 mb-2">
                     Department Offering Course <span className="text-red-500">*</span>
@@ -278,14 +325,15 @@ function UpskillApplicationContent() {
                     onChange={(e) => handleChange("departmentName", e.target.value)}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                    disabled={departments.length === 0}
+                    disabled={departmentsLoading || departments.length === 0}
                   >
                     <option value="">
-                      {departments.length === 0 ? "No departments available" : "Select Department"}
+                      {departmentsLoading ? "Loading..." : 
+                       departments.length === 0 ? "No departments available" : "Select Department"}
                     </option>
                     {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
+                      <option key={dept.id} value={dept.department_name}>
+                        {dept.department_name}
                       </option>
                     ))}
                   </select>

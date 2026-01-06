@@ -156,19 +156,24 @@ export default function Home() {
         originalAlumniTransform = alumniInfoRef.current.style.transform;
         alumniInfoRef.current.style.transform = "translateY(-6px)";
       }
+      // Card dimensions: 8.5cm width x 5.2cm height
+      // Convert cm to points: 1cm = 28.35pt
+      const cardWidthPt = 8.5 * 28.35;  // 240.975pt
+      const cardHeightPt = 5.2 * 28.35; // 147.42pt
+
       const canvas = await html2canvas(previewRef.current, {
         scale: 2,
-        backgroundColor: "#ffffff",
+        backgroundColor: null, // Transparent background to avoid white space
       });
 
       const imageData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
-        orientation: canvas.width >= canvas.height ? "landscape" : "portrait",
+        orientation: "landscape", // Width > Height
         unit: "pt",
-        format: [canvas.width, canvas.height],
+        format: [cardWidthPt, cardHeightPt],
       });
 
-      pdf.addImage(imageData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.addImage(imageData, "PNG", 0, 0, cardWidthPt, cardHeightPt);
       const filename = `${(formData.studentName || "alumni-card").replace(/\s+/g, "-")}.pdf`;
       pdf.save(filename.toLowerCase());
     } finally {
@@ -362,60 +367,73 @@ export default function Home() {
             ref={previewRef}
             className="flex w-full flex-col items-center gap-10 rounded-3xl bg-white/70 p-10 shadow-xl shadow-emerald-900/10"
           >
-            <div className="relative aspect-7/4 w-full max-w-[550px] overflow-hidden rounded-3xl">
+            <div 
+              className="relative overflow-hidden rounded-lg"
+              style={{
+                width: "8.5cm",
+                height: "5.2cm",
+              }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={frontTemplate}
                 alt="Alumni card front template"
-                width={550}
-                height={740}
-                className="object-cover"
+                className="w-full h-full object-cover"
+                style={{
+                  borderRadius: "8px",
+                }}
               />
 
-              <div className="absolute left-6 right-[40%] top-18 flex flex-col gap-2 text-[15px] leading-tight text-[#0f7a3a]">
-                <span className="text-lg font-semibold  tracking-tight">
+              {/* Student Name, Department, Faculty */}
+              <div className="absolute left-[6%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a]">
+                <span className="text-[11px] font-semibold leading-tight tracking-tight">
                   {formData.studentName || "Shan Muhammad"}
                 </span>
-                <span className="font-semibold text-lg leading-tight">
+                <span className="text-[9px] font-semibold leading-tight">
                   {formData.department || "Department of Computer Science"}
                 </span>
-                <span className="font-semibold text-medium">
+                <span className="text-[8px] font-semibold leading-tight">
                   {formData.faculty || "Faculty of Computer Science and Engineering"}
                 </span>
               </div>
 
+              {/* Alumni ID and Validity */}
               <div
                 ref={alumniInfoRef}
-                className="absolute bottom-[87px] left-28 flex flex-col text-sm font-medium text-[#0f7a3a]"
+                className="absolute bottom-[27%] left-[20%] flex flex-col gap-0.5 text-[#0f7a3a]"
               >
-                <span>
-                   {formData.alumniId || "UOL-AL-0000"}
+                <span className="text-[8px] font-medium">
+                  {formData.alumniId || "UOL-AL-0000"}
                 </span>
-                <span>{formattedValidity}</span>
+                <span className="text-[8px] font-medium">{formattedValidity}</span>
               </div>
 
-              <div className="absolute right-[42px] top-[50px] flex h-[214px] w-[158px] items-center justify-center overflow-hidden ">
-              
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoPreview || ""}
-                    alt={formData.studentName || "Student"}
-                    width={150}
-                    height={195}
-                    className="h-full w-full object-cover"
-                  />
-              
+              {/* Photo */}
+              <div className="absolute right-[6%] top-[18%] flex h-[50%] w-[30%] items-center justify-center overflow-hidden rounded-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoPreview || "/images/person.jpg"}
+                  alt={formData.studentName || "Student"}
+                  className="h-full w-full object-cover"
+                />
               </div>
             </div>
 
-            <div className="relative aspect-7/4 w-full max-w-[520px] overflow-hidden rounded-3xl">
+            <div 
+              className="relative overflow-hidden rounded-lg"
+              style={{
+                width: "8.5cm",
+                height: "5.2cm",
+              }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={backTemplate}
                 alt="Alumni card back template"
-                width={520}
-                height={740}
-                className="object-cover"
+                className="w-full h-full object-cover"
+                style={{
+                  borderRadius: "8px",
+                }}
               />
 
               <div

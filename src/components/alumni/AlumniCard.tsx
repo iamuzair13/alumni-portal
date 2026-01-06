@@ -1,15 +1,17 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon } from "@/icons";
+import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
+import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
+import toast from "react-hot-toast";
 
 
-export type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "all";
+export type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting" | "printed" | "all";
 
 export type AlumniCardItem = {
   id: string;
@@ -79,12 +81,28 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-rose-600",
     pillBg: "bg-rose-100",
   },
+  underprinting: {
+    color: "text-purple-700",
+    bgColor: "bg-purple-50",
+    ringColor: "ring-purple-200",
+    iconColor: "text-purple-600",
+    pillBg: "bg-purple-100",
+  },
+  printed: {
+    color: "text-indigo-700",
+    bgColor: "bg-indigo-50",
+    ringColor: "ring-indigo-200",
+    iconColor: "text-indigo-600",
+    pillBg: "bg-indigo-100",
+  },
 };
 
 const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   all: GroupIcon,
   pending: TimeIcon,
   process: BoltIcon,
+  underprinting: FileIcon,
+  printed: FileIcon,
   active: CheckCircleIcon,
   delivered: CheckCircleIcon,
   onhold: LockIcon,
@@ -210,6 +228,8 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
                   <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${theme.pillBg} ${theme.color}`}>
                     {alum.status === "pending" ? "Pending" : 
                      alum.status === "process" ? "In-Process" : 
+                     alum.status === "underprinting" ? "Under-Printing" :
+                     alum.status === "printed" ? "Printed" :
                      alum.status === "active" ? "Ready for Delivery" :
                      alum.status === "delivered" ? "Delivered" : 
                      alum.status === "onhold" ? "On Hold" :
@@ -325,9 +345,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
-  const [isExporting, setIsExporting] = React.useState<boolean>(false);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const { data: session } = useSession();
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
   const topScrollbarRef = React.useRef<HTMLDivElement>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
   const isScrollingRef = React.useRef<boolean>(false);
@@ -350,13 +370,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     if (applicants && applicants.length) {
       return applicants.map((r) => {
         // Map database status to UI status
-        // Database values: "Pending", "Process", "Delivered"
+        // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
         let uiStatus: CardStatus = "pending";
         const dbStatus = r.status ? String(r.status).trim() : "";
-        if (dbStatus.toUpperCase() === "DELIVERED") {
+        const upperStatus = dbStatus.toUpperCase();
+        if (upperStatus === "DELIVERED") {
           uiStatus = "delivered";
-        } else if (dbStatus.toUpperCase() === "PROCESS") {
+        } else if (upperStatus === "PROCESS") {
           uiStatus = "process";
+        } else if (upperStatus === "ACTIVE") {
+          uiStatus = "active";
+        } else if (upperStatus === "ONHOLD") {
+          uiStatus = "onhold";
+        } else if (upperStatus === "UNDERPRINTING") {
+          uiStatus = "underprinting";
+        } else if (upperStatus === "PRINTED") {
+          uiStatus = "printed";
         } else {
           // Default to pending (NULL, empty, or "Pending")
           uiStatus = "pending";
@@ -553,14 +582,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return v.includes("@") ? v : "-";
   }
 
-  // Export to Excel function - comprehensive export with ALL fields
+  // Export to Excel function with column selection
   const handleExportToExcel = React.useCallback(async () => {
-    if (isExporting) return;
-    setIsExporting(true);
     try {
-      // Dynamically import xlsx to avoid server-side bundling issues
-      const XLSX = await import("xlsx");
-      
       // Fetch comprehensive data from export endpoint
       const url = new URL("/api/alumni-cards/export", typeof window !== "undefined" ? window.location.origin : "");
       if (debouncedQuery) {
@@ -580,6 +604,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       
       const data = await res.json();
       const allItems = data.items || [];
+
+      if (!allItems || allItems.length === 0) {
+        toast.error("No data found to export with the applied filters.");
+        return;
+      }
 
       // Helper function to format chapter names
       const formatChapters = (item: Record<string, unknown>) => {
@@ -692,53 +721,127 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         "Created Date Time": item.createddatetime || "",
       }));
 
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Set column widths for all columns (auto-width for comprehensive export)
-      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
-      ws["!cols"] = colWidths;
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Alumni Cards");
+      // Define column options
+      const columns: ColumnOption[] = [
+        { key: "Card ID", label: "Card ID", defaultSelected: true },
+        { key: "Card Status", label: "Card Status", defaultSelected: true },
+        { key: "Card Created At", label: "Card Created At", defaultSelected: false },
+        { key: "Alumni ID", label: "Alumni ID", defaultSelected: true },
+        { key: "SAP ID", label: "SAP ID", defaultSelected: true },
+        { key: "Registration No", label: "Registration No", defaultSelected: true },
+        { key: "Alumni Email", label: "Alumni Email", defaultSelected: true },
+        { key: "Full Name", label: "Full Name", defaultSelected: true },
+        { key: "Gender", label: "Gender", defaultSelected: true },
+        { key: "Father Name", label: "Father Name", defaultSelected: false },
+        { key: "Father CNIC", label: "Father CNIC", defaultSelected: false },
+        { key: "Date of Birth", label: "Date of Birth", defaultSelected: false },
+        { key: "Marital Status", label: "Marital Status", defaultSelected: false },
+        { key: "CNIC/Passport", label: "CNIC/Passport", defaultSelected: true },
+        { key: "Contact No", label: "Contact No", defaultSelected: true },
+        { key: "Contact No 1", label: "Contact No 1", defaultSelected: false },
+        { key: "Contact No 1 Show", label: "Contact No 1 Show", defaultSelected: false },
+        { key: "Personal Email", label: "Personal Email", defaultSelected: true },
+        { key: "Personal Email Show", label: "Personal Email Show", defaultSelected: false },
+        { key: "University Email", label: "University Email", defaultSelected: false },
+        { key: "Official Email", label: "Official Email", defaultSelected: false },
+        { key: "Official Number", label: "Official Number", defaultSelected: false },
+        { key: "Address", label: "Address", defaultSelected: false },
+        { key: "Country", label: "Country", defaultSelected: true },
+        { key: "Province", label: "Province", defaultSelected: false },
+        { key: "City", label: "City", defaultSelected: true },
+        { key: "Academic Session", label: "Academic Session", defaultSelected: false },
+        { key: "Degree Title", label: "Degree Title", defaultSelected: true },
+        { key: "CGPA", label: "CGPA", defaultSelected: false },
+        { key: "Year of Starting", label: "Year of Starting", defaultSelected: false },
+        { key: "Year of Ending", label: "Year of Ending", defaultSelected: true },
+        { key: "Faculty", label: "Faculty", defaultSelected: true },
+        { key: "Campus", label: "Campus", defaultSelected: true },
+        { key: "Department", label: "Department", defaultSelected: true },
+        { key: "Major Subject", label: "Major Subject", defaultSelected: false },
+        { key: "Industry", label: "Industry", defaultSelected: false },
+        { key: "Employment Status", label: "Employment Status", defaultSelected: false },
+        { key: "Organization", label: "Organization", defaultSelected: false },
+        { key: "Designation", label: "Designation", defaultSelected: false },
+        { key: "Total Years of Experience", label: "Total Years of Experience", defaultSelected: false },
+        { key: "Work City", label: "Work City", defaultSelected: false },
+        { key: "Work Country", label: "Work Country", defaultSelected: false },
+        { key: "Organization Address", label: "Organization Address", defaultSelected: false },
+        { key: "Supervisor Designation", label: "Supervisor Designation", defaultSelected: false },
+        { key: "Supervisor Number", label: "Supervisor Number", defaultSelected: false },
+        { key: "Chapter 1 ID", label: "Chapter 1 ID", defaultSelected: false },
+        { key: "Chapter 1", label: "Chapter 1", defaultSelected: false },
+        { key: "Chapter 2 ID", label: "Chapter 2 ID", defaultSelected: false },
+        { key: "Chapter 2", label: "Chapter 2", defaultSelected: false },
+        { key: "Chapter 3 ID", label: "Chapter 3 ID", defaultSelected: false },
+        { key: "Chapter 3", label: "Chapter 3", defaultSelected: false },
+        { key: "All Chapters", label: "All Chapters", defaultSelected: false },
+        { key: "Chapter Remarks", label: "Chapter Remarks", defaultSelected: false },
+        { key: "Association ID", label: "Association ID", defaultSelected: false },
+        { key: "Association Title", label: "Association Title", defaultSelected: false },
+        { key: "Association Description", label: "Association Description", defaultSelected: false },
+        { key: "Association Dean", label: "Association Dean", defaultSelected: false },
+        { key: "Association Phone", label: "Association Phone", defaultSelected: false },
+        { key: "Association Email", label: "Association Email", defaultSelected: false },
+        { key: "Association Address", label: "Association Address", defaultSelected: false },
+        { key: "About Me", label: "About Me", defaultSelected: false },
+        { key: "Image 1", label: "Image 1", defaultSelected: false },
+        { key: "Image 2", label: "Image 2", defaultSelected: false },
+        { key: "CV", label: "CV", defaultSelected: false },
+        { key: "Facebook", label: "Facebook", defaultSelected: false },
+        { key: "Instagram", label: "Instagram", defaultSelected: false },
+        { key: "YouTube", label: "YouTube", defaultSelected: false },
+        { key: "LinkedIn", label: "LinkedIn", defaultSelected: false },
+        { key: "Verification Status", label: "Verification Status", defaultSelected: true },
+        { key: "Last Login", label: "Last Login", defaultSelected: false },
+        { key: "Login Count", label: "Login Count", defaultSelected: false },
+        { key: "Email Send Count", label: "Email Send Count", defaultSelected: false },
+        { key: "Email Send Status", label: "Email Send Status", defaultSelected: false },
+        { key: "Data Source", label: "Data Source", defaultSelected: false },
+        { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
+        { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
+      ];
 
       // Generate filename with current date and filters
       const dateStr = new Date().toISOString().split("T")[0];
       const statusStr = statusFilter && statusFilter !== "all" ? `_${statusFilter}` : "";
       const searchStr = debouncedQuery ? `_search` : "";
-      const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}.xlsx`;
+      const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}`;
 
-      // Write and download
-      XLSX.writeFile(wb, filename);
-      setIsExporting(false);
+      // Open export modal
+      openExportModal({
+        data: excelData,
+        columns,
+        filename,
+        sheetName: "Alumni Cards",
+      });
     } catch (error) {
       console.error("Export error:", error);
-      setIsExporting(false);
-      alert("Failed to export data. Please try again.");
+      toast.error("Failed to fetch export data. Please try again.");
     }
-  }, [isExporting, debouncedQuery, statusFilter]);
+  }, [debouncedQuery, statusFilter, openExportModal]);
 
   const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
     const { data: session } = useSession();
     const queryClient = useQueryClient();
-    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
-    const [localStatus, setLocalStatus] = React.useState<"Pending" | "Process" | "Active" | "Delivered" | "Onhold" | null>(null);
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
+    const [localStatus, setLocalStatus] = React.useState<"Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed" | null>(null);
     const [reasonOnhold, setReasonOnhold] = React.useState<string>("");
     const [showReasonInput, setShowReasonInput] = React.useState<boolean>(false);
     const [isUpdating, setIsUpdating] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [showConfirmModal, setShowConfirmModal] = React.useState(false);
-    const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold"; reason?: string } | null>(null);
+    const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed"; reason?: string } | null>(null);
     const hasUpdatedRef = React.useRef(false);
     const isAdmin = canModify(session?.user);
     
     // Map UI status (from items list) to DB status
-    const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" => {
+    const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed" => {
       if (uiStatus === "delivered") return "Delivered";
       if (uiStatus === "active") return "Active";
       if (uiStatus === "process") return "Process";
       if (uiStatus === "onhold") return "Onhold";
+      if (uiStatus === "underprinting") return "UnderPrinting";
+      if (uiStatus === "printed") return "Printed";
       return "Pending"; // Default to Pending
     };
     
@@ -767,6 +870,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               setReasonOnhold(data.reason_onhold || "");
             }
             setShowReasonInput(true);
+          } else if (dbStatus === "UnderPrinting") {
+            setLocalStatus("UnderPrinting");
+          } else if (dbStatus === "Printed") {
+            setLocalStatus("Printed");
           } else {
             setLocalStatus("Pending");
           }
@@ -791,7 +898,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     }, [initialDbStatus, localStatus]);
     
-    const current = localStatus ?? initialDbStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold";
+    const current = localStatus ?? initialDbStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed";
     
     // Show reason input when Onhold is selected
     React.useEffect(() => {
@@ -804,7 +911,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     }, [current]);
     
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = e.target.value as "Pending" | "Process" | "Active" | "Delivered" | "Onhold";
+      const next = e.target.value as "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed";
       
       // Don't update if same status
       if (next === current) return;
@@ -861,6 +968,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             setLocalStatus("Process");
           } else if (dbStatus === "Onhold") {
             setLocalStatus("Onhold");
+          } else if (dbStatus === "UnderPrinting") {
+            setLocalStatus("UnderPrinting");
+          } else if (dbStatus === "Printed") {
+            setLocalStatus("Printed");
           } else {
             setLocalStatus("Pending");
           }
@@ -871,9 +982,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       setPendingStatusChange(null);
     };
     
-    const submitStatusChange = async (next: "Pending" | "Process" | "Active" | "Delivered" | "Onhold", reason: string) => {
+    const submitStatusChange = async (next: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed", reason: string) => {
       // Optimistic update
-      const previousStatus = localStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold";
+      const previousStatus = localStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed";
       setLocalStatus(next);
       setIsUpdating(true);
       setError(null);
@@ -923,7 +1034,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         setLocalStatus(next);
         
         // Reorder items to move the updated item to the first position
-        const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold"];
+        const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold", "underprinting", "printed"];
         for (const s of statuses) {
           const key = cardApplicantsKey(s);
           const current = queryClient.getQueryData<CardApplicantsResponse>(key);
@@ -986,6 +1097,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const statusLabel = current === "Delivered" ? "Delivered" 
       : current === "Active" ? "Ready for Delivery"
       : current === "Process" ? "In-Process"
+      : current === "UnderPrinting" ? "Under-Printing"
+      : current === "Printed" ? "Printed"
       : current === "Onhold" ? "On Hold"
       : "Pending";
     
@@ -1014,6 +1127,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           >
             <option value="Pending">Pending</option>
             <option value="Process">In-Process</option>
+            <option value="UnderPrinting">Under-Printing</option>
+            <option value="Printed">Printed</option>
             <option value="Active">Ready for Delivery</option>
             <option value="Delivered">Delivered</option>
             <option value="Onhold">On Hold</option>
@@ -1122,6 +1237,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                     <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                       {pendingStatusChange?.status === "Delivered" ? "Delivered" 
                         : pendingStatusChange?.status === "Active" ? "Ready for Delivery"
+                        : pendingStatusChange?.status === "UnderPrinting" ? "Under-Printing"
+                        : pendingStatusChange?.status === "Printed" ? "Printed"
                         : pendingStatusChange?.status === "Process" ? "In-Process"
                         : pendingStatusChange?.status === "Onhold" ? "On Hold"
                         : "Pending"}
@@ -1693,6 +1810,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           scrollbar-width: none !important;
         }
       `}</style>
+      <ExportModal />
     </section>
   );
 };

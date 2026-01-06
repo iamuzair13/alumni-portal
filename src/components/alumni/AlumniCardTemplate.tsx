@@ -129,32 +129,44 @@ export default function AlumniCardTemplate({
   return (
     <div className={`${roboto.className} w-full`}>
       {/* Front of Card Only */}
-      <div className="relative w-full overflow-hidden rounded-lg shadow-md">
+      <div 
+        className="relative overflow-hidden rounded-lg shadow-md"
+        style={{
+          width: "8.5cm",
+          height: "5.2cm",
+        }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={frontTemplate}
           alt="Alumni card front template"
-          className="w-full h-auto object-contain"
+          className="w-full h-full object-cover border border-red-600"
+          style={{
+            borderRadius: "8px",
+          }}
         />
 
-        <div className="absolute left-3 right-[35%] top-11 flex flex-col justify-center items-start  gap-0.8 text-[13px] leading-tight text-[#0f7a3a]">
-          <span className="text-[12px] font-semibold tracking-tight">
+        {/* Student Name, Department, Faculty */}
+        <div className="absolute left-[6%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a]">
+          <span className="text-[11px] font-semibold leading-tight tracking-tight">
             {studentName || "Alumni Name"}
           </span>
-          <span className=" text-[10px] leading-tight flex justify-start items-start text-left">
+          <span className="text-[9px] font-semibold leading-tight">
             {department || "Department"}
           </span>
-          <span className=" text-[10px]">
+          <span className="text-[8px] font-semibold leading-tight">
             {faculty || "Faculty"}
           </span>
         </div>
 
-        <div className="absolute bottom-12 left-20 flex flex-col text-[8px] font-medium text-[#0f7a3a]">
-          <span>{alumniId || "UOL-AL-0000"}</span>
-          <span>{formattedValidity}</span>
+        {/* Alumni ID and Validity */}
+        <div className="absolute bottom-[27%] left-[20%] flex flex-col gap-0.5 text-[#0f7a3a]">
+          <span className="text-[8px] font-medium">{alumniId || "UOL-AL-0000"}</span>
+          <span className="text-[8px] font-medium">{formattedValidity}</span>
         </div>
 
-        <div className="absolute right-[20px] top-6 flex h-[120px] w-[100x] items-center justify-center overflow-hidden rounded bg-gray-100">
+        {/* Photo */}
+        <div className="absolute right-[6%] top-[18%] flex h-[50%] w-[30%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={`${activeImageSrc}-${imageIndex}`}

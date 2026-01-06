@@ -231,6 +231,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         chapter3_id: chapter3Id,
         association: associationTitle,
         association_id: associationId,
+        // Consent fields
+        alumni_consent_info: row.alumni_consent_info ?? null,
+        alumni_consent_pic: row.alumni_consent_pic ?? null,
       }
     }, { status: 200 });
   } catch (err) {
