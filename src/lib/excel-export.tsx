@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Modal } from "@/components/ui/modal";
-import { useModal } from "@/hooks/useModal";
 import toast from "react-hot-toast";
 
 export type ColumnOption = {
@@ -12,7 +11,8 @@ export type ColumnOption = {
 };
 
 export type ExcelExportOptions = {
-  data: Record<string, unknown>[];
+  // Either: ready data array, or a function that returns data when called
+  data: Record<string, unknown>[] | (() => Promise<Record<string, unknown>[]>);
   columns: ColumnOption[];
   filename: string;
   sheetName?: string;
@@ -20,29 +20,40 @@ export type ExcelExportOptions = {
 };
 
 /**
- * Hook for Excel export with column selection modal
+ * Simple reusable Excel export hook with column-selection modal.
+ * - Modal opens instantly.
+ * - Data is only fetched when "Export" is clicked.
  */
 export function useExcelExport() {
   const [isExporting, setIsExporting] = useState(false);
-  const columnModal = useModal();
-  const [exportConfig, setExportConfig] = useState<ExcelExportOptions | null>(null);
-  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
+  const [isOpen, setIsOpen] = useState(false);
+  const [exportConfig, setExportConfig] = useState<ExcelExportOptions | null>(
+    null
+  );
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
+    new Set()
+  );
 
   const openExportModal = useCallback((options: ExcelExportOptions) => {
-    // Initialize selected columns based on defaultSelected flags
     const initialSelected = new Set<string>();
-    options.columns.forEach(col => {
+    options.columns.forEach((col) => {
       if (col.defaultSelected !== false) {
         initialSelected.add(col.key);
       }
     });
-    setSelectedColumns(initialSelected);
+
     setExportConfig(options);
-    columnModal.openModal();
-  }, [columnModal]);
+    setSelectedColumns(initialSelected);
+    setIsOpen(true);
+  }, []);
+
+  const closeExportModal = useCallback(() => {
+    if (isExporting) return;
+    setIsOpen(false);
+  }, [isExporting]);
 
   const toggleColumn = useCallback((key: string) => {
-    setSelectedColumns(prev => {
+    setSelectedColumns((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
@@ -55,91 +66,98 @@ export function useExcelExport() {
 
   const selectAllColumns = useCallback(() => {
     if (!exportConfig) return;
-    setSelectedColumns(new Set(exportConfig.columns.map(col => col.key)));
+    setSelectedColumns(new Set(exportConfig.columns.map((c) => c.key)));
   }, [exportConfig]);
 
   const deselectAllColumns = useCallback(() => {
     setSelectedColumns(new Set());
   }, []);
 
+  const memoizedColumns = useMemo(
+    () => exportConfig?.columns ?? [],
+    [exportConfig]
+  );
+
   const handleExport = useCallback(async () => {
-    if (!exportConfig || selectedColumns.size === 0) {
+    if (!exportConfig) return;
+    if (selectedColumns.size === 0) {
       toast.error("Please select at least one column to export");
       return;
     }
 
     setIsExporting(true);
-    columnModal.closeModal();
+    setIsOpen(false);
 
     try {
-      // Dynamically import xlsx to avoid server-side bundling issues
-      const XLSX = await import("xlsx");
+      let data: Record<string, unknown>[];
 
-      // Filter data to only include selected columns
-      const selectedColumnKeys = Array.from(selectedColumns);
-      const filteredData = exportConfig.data.map(item => {
-        const filtered: Record<string, unknown> = {};
-        selectedColumnKeys.forEach(key => {
-          filtered[key] = item[key] ?? "";
+      if (Array.isArray(exportConfig.data)) {
+        data = exportConfig.data;
+      } else if (typeof exportConfig.data === "function") {
+        const loadingToast = toast.loading("Preparing export data...");
+        try {
+          data = await exportConfig.data();
+          toast.dismiss(loadingToast);
+        } catch (err) {
+          toast.dismiss(loadingToast);
+          throw err;
+        }
+      } else {
+        throw new Error("Invalid data format for export");
+      }
+
+      const selectedKeys = Array.from(selectedColumns);
+      const filteredData = data.map((row) => {
+        const out: Record<string, unknown> = {};
+        selectedKeys.forEach((key) => {
+          out[key] = row[key] ?? "";
         });
-        return filtered;
+        return out;
       });
 
-      if (filteredData.length === 0) {
-        toast.error("No data to export");
-        setIsExporting(false);
+      if (!filteredData.length) {
+        toast.error("No data to export with the current filters");
         return;
       }
 
-      // Create workbook and worksheet
+      const XLSX = await import("xlsx");
+
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(filteredData);
+      ws["!cols"] = selectedKeys.map(() => ({ wch: 20 }));
 
-      // Set column widths
-      const colWidths = selectedColumnKeys.map(() => ({ wch: 20 }));
-      ws["!cols"] = colWidths;
-
-      // Add worksheet to workbook
       const sheetName = exportConfig.sheetName || "Export";
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-      // Generate filename with current date
       const dateStr = new Date().toISOString().split("T")[0];
       const filename = `${exportConfig.filename}_${dateStr}.xlsx`;
 
-      // Write and download
       XLSX.writeFile(wb, filename);
-
       toast.success("Export completed successfully");
 
-      // Call optional callback
       if (exportConfig.onExport) {
-        exportConfig.onExport(selectedColumnKeys);
+        exportConfig.onExport(selectedKeys);
       }
     } catch (error) {
-      console.error("Export error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to export data";
-      toast.error(errorMessage);
+      const message =
+        error instanceof Error ? error.message : "Failed to export data";
+      toast.error(message);
     } finally {
       setIsExporting(false);
     }
-  }, [exportConfig, selectedColumns, columnModal]);
+  }, [exportConfig, selectedColumns]);
 
   const ExportModal: React.FC = () => {
     if (!exportConfig) return null;
 
     return (
       <Modal
-        isOpen={columnModal.isOpen}
-        onClose={() => {
-          if (!isExporting) {
-            columnModal.closeModal();
-          }
-        }}
+        isOpen={isOpen}
+        onClose={closeExportModal}
         className="max-w-2xl mx-auto"
         showCloseButton={true}
       >
-        <div className="p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6">
           <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
             Select Columns to Export
           </h3>
@@ -151,37 +169,41 @@ export function useExcelExport() {
             <button
               type="button"
               onClick={selectAllColumns}
-              className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              disabled={isExporting}
+              className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Select All
             </button>
             <button
               type="button"
               onClick={deselectAllColumns}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              disabled={isExporting}
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Deselect All
             </button>
             <span className="ml-auto text-sm text-gray-500 dark:text-gray-400">
-              {selectedColumns.size} of {exportConfig.columns.length} selected
+              {selectedColumns.size} of {memoizedColumns.length} selected
             </span>
           </div>
 
-          <div className="max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
+          <div className="max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4 bg-white dark:bg-gray-900">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {exportConfig.columns.map((column) => (
+              {memoizedColumns.map((column) => (
                 <label
                   key={column.key}
-                  className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
+                  className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
                 >
                   <input
                     type="checkbox"
                     checked={selectedColumns.has(column.key)}
                     onChange={() => toggleColumn(column.key)}
                     disabled={isExporting}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:cursor-not-allowed"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{column.label}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
+                    {column.label}
+                  </span>
                 </label>
               ))}
             </div>
@@ -190,7 +212,7 @@ export function useExcelExport() {
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => columnModal.closeModal()}
+              onClick={closeExportModal}
               disabled={isExporting}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -217,3 +239,48 @@ export function useExcelExport() {
   };
 }
 
+// Simple helper to export data to Excel without any modal UI.
+// `data` should already be filtered/limited; `columns` controls which keys are included.
+export async function exportJsonToExcel(options: {
+  data: Record<string, unknown>[];
+  columns: ColumnOption[];
+  filename: string;
+  sheetName?: string;
+}) {
+  const { data, columns, filename, sheetName } = options;
+
+  if (!data || data.length === 0) {
+    toast.error("No data to export");
+    return;
+  }
+
+  const selectedKeys = columns.map((c) => c.key);
+  const filteredData = data.map((row) => {
+    const out: Record<string, unknown> = {};
+    selectedKeys.forEach((key) => {
+      out[key] = row[key] ?? "";
+    });
+    return out;
+  });
+
+  try {
+    const XLSX = await import("xlsx");
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(filteredData);
+    ws["!cols"] = selectedKeys.map(() => ({ wch: 20 }));
+
+    const sheet = sheetName || "Export";
+    XLSX.utils.book_append_sheet(wb, ws, sheet);
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    const finalName = `${filename}_${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, finalName);
+    toast.success("Export completed successfully");
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to export data";
+    toast.error(message);
+  }
+}

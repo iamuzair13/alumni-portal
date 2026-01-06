@@ -583,8 +583,21 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   }
 
   // Export to Excel function with column selection
-  const handleExportToExcel = React.useCallback(async () => {
-    try {
+  const handleExportToExcel = React.useCallback(() => {
+    // Helper function to format chapter names
+    const formatChapters = (item: Record<string, unknown>) => {
+      const chapters: string[] = [];
+      const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+      const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+      const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+      if (chapter1) chapters.push(chapter1);
+      if (chapter2) chapters.push(chapter2);
+      if (chapter3) chapters.push(chapter3);
+      return chapters.filter(c => c).join(", ") || "";
+    };
+
+    // Async function to fetch and transform data (only called when Export is clicked)
+    const fetchAndTransformData = async (): Promise<Record<string, unknown>[]> => {
       // Fetch comprehensive data from export endpoint
       const url = new URL("/api/alumni-cards/export", typeof window !== "undefined" ? window.location.origin : "");
       if (debouncedQuery) {
@@ -606,24 +619,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       const allItems = data.items || [];
 
       if (!allItems || allItems.length === 0) {
-        toast.error("No data found to export with the applied filters.");
-        return;
+        throw new Error("No data found to export with the applied filters.");
       }
 
-      // Helper function to format chapter names
-      const formatChapters = (item: Record<string, unknown>) => {
-        const chapters: string[] = [];
-        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
-        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
-        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
-        if (chapter1) chapters.push(chapter1);
-        if (chapter2) chapters.push(chapter2);
-        if (chapter3) chapters.push(chapter3);
-        return chapters.filter(c => c).join(", ") || "";
-      };
-
       // Map ALL fields to Excel format
-      const excelData = allItems.map((item: Record<string, unknown>) => ({
+      return allItems.map((item: Record<string, unknown>) => ({
         // Card Information
         "Card ID": item.id || "",
         "Card Status": item.status || "",
@@ -720,9 +720,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         "Alumni Status": item.alumnistatus || "",
         "Created Date Time": item.createddatetime || "",
       }));
+    };
 
-      // Define column options
-      const columns: ColumnOption[] = [
+    // Define column options
+    const columns: ColumnOption[] = [
         { key: "Card ID", label: "Card ID", defaultSelected: true },
         { key: "Card Status", label: "Card Status", defaultSelected: true },
         { key: "Card Created At", label: "Card Created At", defaultSelected: false },
@@ -801,23 +802,19 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
       ];
 
-      // Generate filename with current date and filters
-      const dateStr = new Date().toISOString().split("T")[0];
-      const statusStr = statusFilter && statusFilter !== "all" ? `_${statusFilter}` : "";
-      const searchStr = debouncedQuery ? `_search` : "";
-      const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}`;
+    // Generate filename with current date and filters
+    const dateStr = new Date().toISOString().split("T")[0];
+    const statusStr = statusFilter && statusFilter !== "all" ? `_${statusFilter}` : "";
+    const searchStr = debouncedQuery ? `_search` : "";
+    const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}`;
 
-      // Open export modal
-      openExportModal({
-        data: excelData,
-        columns,
-        filename,
-        sheetName: "Alumni Cards",
-      });
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Failed to fetch export data. Please try again.");
-    }
+    // Open export modal immediately with async data function
+    openExportModal({
+      data: fetchAndTransformData,
+      columns,
+      filename,
+      sheetName: "Alumni Cards",
+    });
   }, [debouncedQuery, statusFilter, openExportModal]);
 
   const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
