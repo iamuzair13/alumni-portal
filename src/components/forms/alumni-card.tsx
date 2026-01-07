@@ -256,7 +256,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         <label className={labelBase} htmlFor="picture">
           Image
           <span className="text-red-600 ml-1">*</span>
-          <span className="ml-2 text-xs text-slate-500">Please Upload Passport size image</span>
+          <span className="ml-2 text-xs text-slate-500">Please Upload Passport size image </span>
         </label>
         <div className="relative flex items-center">
           <input

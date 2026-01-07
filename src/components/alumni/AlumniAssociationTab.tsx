@@ -12,6 +12,8 @@ import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
 import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
 import { useAlumniAssociations } from "@/app/queries/fetch-alumni-associations";
 import type { MasterFilters } from "@/app/queries/master-filter-types";
+import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
+import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
 
 type MembershipFilter = "all" | "members" | "non-members";
 
@@ -213,6 +215,7 @@ export const AlumniAssociationTab: React.FC = () => {
   const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("members");
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(undefined);
   const [isExporting, setIsExporting] = useState(false);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   
   // State for expanded filter sections
   const [expandedFilters, setExpandedFilters] = useState<{
@@ -1092,29 +1095,61 @@ export const AlumniAssociationTab: React.FC = () => {
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && !isError && pageItems.map((item, idx) => (
-                <TableRow key={`${item.sapid}-${idx}`} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50">
-                  <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
-                    {item.sapid || item.registrationNo || "-"}
-                    {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
-                      <span className="text-gray-500"> / {item.registrationNo}</span>
+              {!isLoading && !isError && pageItems.map((item, idx) => {
+                const rowId = `${item.sapid || item.registrationNo || "row"}-${idx}`;
+                const isExpanded = expandedRowId === rowId;
+                
+                return (
+                  <React.Fragment key={rowId}>
+                    <TableRow
+                      className={`odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 cursor-pointer ${
+                        isExpanded ? "bg-blue-50/70" : ""
+                      }`}
+                      onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
+                      aria-selected={isExpanded}
+                    >
+                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
+                        {item.sapid || item.registrationNo || "-"}
+                        {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
+                          <span className="text-gray-500"> / {item.registrationNo}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">{item.name}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm">
+                        <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline">
+                          {item.email || "-"}
+                        </a>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-slate-700">{item.faculty || "-"}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-slate-700">{item.department || "-"}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm">
+                        {item.associationTitle ? (
+                          <Badge size="sm" color="primary">{item.associationTitle}</Badge>
+                        ) : "-"}
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && (
+                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
+                        <TableCell colSpan={6} className="px-0 py-4">
+                          <div className="w-full overflow-x-hidden" style={{ maxWidth: "calc(100vw - 2rem)", boxSizing: "border-box" }}>
+                            <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4 px-4">
+                              <AlumniExpandableDetails
+                                sapId={item.sapid || item.registrationNo || ""}
+                                onClose={() => setExpandedRowId(null)}
+                              />
+                              <ErpDataDetails
+                                sapId={item.sapid || undefined}
+                                registrationNo={item.registrationNo || undefined}
+                                onClose={() => setExpandedRowId(null)}
+                              />
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableCell>
-                  <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">{item.name}</TableCell>
-                  <TableCell className="px-6 py-4 text-sm">
-                    <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline">
-                      {item.email || "-"}
-                    </a>
-                  </TableCell>
-                  <TableCell className="px-6 py-4 text-sm text-slate-700">{item.faculty || "-"}</TableCell>
-                  <TableCell className="px-6 py-4 text-sm text-slate-700">{item.department || "-"}</TableCell>
-                  <TableCell className="px-6 py-4 text-sm">
-                    {item.associationTitle ? (
-                      <Badge size="sm" color="primary">{item.associationTitle}</Badge>
-                    ) : "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </SyncedTableScroll>

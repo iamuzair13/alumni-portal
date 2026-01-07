@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import { ArrowUpIcon, ArrowDownIcon, CheckLineIcon, CloseLineIcon } from "@/icons";
+import { ArrowUpIcon, ArrowDownIcon, CheckLineIcon, CloseLineIcon, PlusIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
@@ -448,18 +448,35 @@ export const AlumniMembershipsTab: React.FC = () => {
                 !error &&
                 sortedItems.map((item) => (
                   <React.Fragment key={item.id}>
-                    <TableRow
-                      className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 cursor-pointer"
-                      onClick={() =>
-                        setExpandedRowId(expandedRowId === item.id ? null : item.id)
-                      }
-                      aria-selected={expandedRowId === item.id}
-                    >
+                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50">
                       <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
-                        {item.sapid || item.registrationNo || "-"}
-                        {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
-                          <span className="text-gray-500"> / {item.registrationNo}</span>
-                        )}
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedRowId(expandedRowId === item.id ? null : item.id)
+                            }
+                            className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
+                              expandedRowId === item.id
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
+                            }`}
+                            aria-label={expandedRowId === item.id ? "Collapse details" : "Expand details"}
+                            title={expandedRowId === item.id ? "Collapse details" : "Expand details"}
+                          >
+                            <PlusIcon
+                              className={`w-4 h-4 transition-transform ${
+                                expandedRowId === item.id ? "rotate-45" : ""
+                              }`}
+                            />
+                          </button>
+                          <span>
+                            {item.sapid || item.registrationNo || "-"}
+                            {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
+                              <span className="text-gray-500"> / {item.registrationNo}</span>
+                            )}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">
                         {item.name}

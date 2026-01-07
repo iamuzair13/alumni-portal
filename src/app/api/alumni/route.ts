@@ -374,6 +374,9 @@ export async function GET(req: Request) {
     const institutionCountryParams = searchParams.getAll("institutionCountry");
     const institutionCityParams = searchParams.getAll("institutionCity");
     const mrNoParams = searchParams.getAll("mrNo");
+    const photoConsentParams = searchParams.getAll("photoConsent");
+    const sapIdStateParams = searchParams.getAll("sapIdState");
+    const regNoStateParams = searchParams.getAll("regNoState");
     
     // Convert to arrays (support multi-select)
     const gender = genderParams.length > 0 ? genderParams : (searchParams.get("gender") || "");
@@ -394,6 +397,9 @@ export async function GET(req: Request) {
     const institutionCountry = institutionCountryParams.length > 0 ? institutionCountryParams : (searchParams.get("institutionCountry") || "");
     const institutionCity = institutionCityParams.length > 0 ? institutionCityParams : (searchParams.get("institutionCity") || "");
     const mrNo = mrNoParams.length > 0 ? mrNoParams : (searchParams.get("mrNo") || "");
+    const photoConsent = photoConsentParams.length > 0 ? photoConsentParams : (searchParams.get("photoConsent") || "");
+    const sapIdState = sapIdStateParams.length > 0 ? sapIdStateParams : (searchParams.get("sapIdState") || "");
+    const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
     
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
@@ -951,16 +957,90 @@ export async function GET(req: Request) {
       }
     }
     
+    // Photo Consent filter
+    let photoConsentFilter = sql``;
+    if (photoConsent && (Array.isArray(photoConsent) ? photoConsent.length > 0 : photoConsent)) {
+      if (Array.isArray(photoConsent) && photoConsent.length > 0) {
+        const conditions = photoConsent.map(c => {
+          const normalized = String(c).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(alumni_consent_pic IS NULL)`;
+          } else if (normalized === "Allowed" || normalized === "allowed") {
+            return sql`alumni_consent_pic = true`;
+          } else if (normalized === "Not Allowed" || normalized === "not allowed" || normalized === "NotAllowed") {
+            return sql`alumni_consent_pic = false`;
+          }
+          return sql`(alumni_consent_pic IS NULL)`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        photoConsentFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(photoConsent) && photoConsent) {
+        const normalized = String(photoConsent).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          photoConsentFilter = sql`AND (alumni_consent_pic IS NULL)`;
+        } else if (normalized === "Allowed" || normalized === "allowed") {
+          photoConsentFilter = sql`AND alumni_consent_pic = true`;
+        } else if (normalized === "Not Allowed" || normalized === "not allowed" || normalized === "NotAllowed") {
+          photoConsentFilter = sql`AND alumni_consent_pic = false`;
+        } else {
+          photoConsentFilter = sql`AND (alumni_consent_pic IS NULL)`;
+        }
+      }
+    }
+
     // MR No (Registration No) filter
     let mrNoFilter = sql``;
     if (mrNo && (Array.isArray(mrNo) ? mrNo.length > 0 : mrNo)) {
       if (Array.isArray(mrNo) && mrNo.length > 0) {
-        const conditions = mrNo.map(m => sql`LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${m}))`);
+        const conditions = mrNo.map(m => {
+          const normalized = String(m).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(registrationno IS NULL OR TRIM(COALESCE(registrationno, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${m}))`;
+        });
         const combinedCondition = combineOrConditions(conditions);
         mrNoFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(mrNo) && mrNo) {
-        mrNoFilter = sql`AND LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${mrNo}))`;
+        const normalized = String(mrNo).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          mrNoFilter = sql`AND (registrationno IS NULL OR TRIM(COALESCE(registrationno, '')) = '')`;
+        } else {
+          mrNoFilter = sql`AND LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${mrNo}))`;
+        }
       }
+    }
+
+    // SAP ID state filter (NULL only)
+    let sapIdStateFilter = sql``;
+    const hasSapIdStateFilter = sapIdState && (Array.isArray(sapIdState) ? sapIdState.length > 0 : sapIdState);
+    if (hasSapIdStateFilter) {
+      const states = Array.isArray(sapIdState) ? sapIdState : [sapIdState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(a.sapid IS NULL)`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      sapIdStateFilter = sql`AND (${combinedCondition})`;
+    }
+
+    // Registration No state filter (NULL only)
+    let regNoStateFilter = sql``;
+    const hasRegNoStateFilter = regNoState && (Array.isArray(regNoState) ? regNoState.length > 0 : regNoState);
+    if (hasRegNoStateFilter) {
+      const states = Array.isArray(regNoState) ? regNoState : [regNoState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(a.registrationno IS NULL)`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      regNoStateFilter = sql`AND (${combinedCondition})`;
     }
     
     // If only counts are needed, return early with just counts
@@ -991,6 +1071,7 @@ export async function GET(req: Request) {
               ${fundingSourceFilter}
               ${institutionCountryFilter}
               ${institutionCityFilter}
+              ${photoConsentFilter}
               ${mrNoFilter}
               ${accessFilterCondition}
               AND (
@@ -1027,6 +1108,7 @@ export async function GET(req: Request) {
               ${fundingSourceFilter}
               ${institutionCountryFilter}
               ${institutionCityFilter}
+              ${photoConsentFilter}
               ${mrNoFilter}
               ${accessFilterCondition}`;
       
@@ -1123,7 +1205,7 @@ export async function GET(req: Request) {
     const hasUnderApproval = Array.isArray(status) 
       ? status.includes("underApproval")
       : status === "underApproval";
-    const baseWhere = hasUnderApproval
+    const baseWhere = hasUnderApproval || hasSapIdStateFilter || hasRegNoStateFilter
       ? sql`1=1` 
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
     
@@ -1189,10 +1271,13 @@ export async function GET(req: Request) {
           ${fundingSourceFilter}
           ${institutionCountryFilter}
           ${institutionCityFilter}
+          ${photoConsentFilter}
           ${mrNoFilter}
+          ${sapIdStateFilter}
+          ${regNoStateFilter}
           ${accessFilterCondition}
           AND (
-            LOWER(a.sapid) LIKE ${searchTerm}
+            LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
@@ -1263,11 +1348,14 @@ export async function GET(req: Request) {
         ${programEnrolledFilter}
         ${fundingSourceFilter}
         ${institutionCountryFilter}
-        ${institutionCityFilter}
-        ${mrNoFilter}
-        ${accessFilterCondition}
-        ORDER BY a.alumniid DESC
-        LIMIT ${limit} OFFSET ${offset}`;
+          ${institutionCityFilter}
+          ${photoConsentFilter}
+          ${mrNoFilter}
+          ${sapIdStateFilter}
+          ${regNoStateFilter}
+          ${accessFilterCondition}
+      ORDER BY a.alumniid DESC
+      LIMIT ${limit} OFFSET ${offset}`;
     }
 
     const rows = await query;
@@ -1385,9 +1473,11 @@ export async function GET(req: Request) {
             ${programEnrolledFilter}
             ${fundingSourceFilter}
             ${institutionCountryFilter}
-            ${institutionCityFilter}
-            ${mrNoFilter}
-            ${accessFilterCondition}
+          ${institutionCityFilter}
+          ${mrNoFilter}
+          ${sapIdStateFilter}
+          ${regNoStateFilter}
+          ${accessFilterCondition}
             AND (
               LOWER(a.sapid) LIKE ${searchTermForCount}
               OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTermForCount}

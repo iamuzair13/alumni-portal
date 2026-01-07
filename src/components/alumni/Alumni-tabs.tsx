@@ -35,6 +35,7 @@ import { useFundingSources } from "@/app/queries/fetch-funding-sources";
 import { useInstitutionCountries } from "@/app/queries/fetch-institution-countries";
 import { useInstitutionCities } from "@/app/queries/fetch-institution-cities";
 import { useVerifyStatuses } from "@/app/queries/fetch-verify-statuses";
+import { usePhotoConsent } from "@/app/queries/fetch-photo-consent";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { exportJsonToExcel, type ColumnOption } from "@/lib/excel-export";
@@ -187,6 +188,7 @@ export const AlumniTabs: React.FC = () => {
   const genderFilterRef = React.useRef<HTMLDivElement>(null);
   const maritalStatusFilterRef = React.useRef<HTMLDivElement>(null);
   const occupationStatusFilterRef = React.useRef<HTMLDivElement>(null);
+  const photoConsentFilterRef = React.useRef<HTMLDivElement>(null);
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -275,7 +277,11 @@ export const AlumniTabs: React.FC = () => {
   const [exportInstitutionCountry, setExportInstitutionCountry] = useState<boolean>(true);
   const [exportInstitutionCity, setExportInstitutionCity] = useState<boolean>(true);
   const [exportMrNo, setExportMrNo] = useState<boolean>(true);
+  const [exportPhotoConsent, setExportPhotoConsent] = useState<boolean>(true);
   const [selectedMrNos, setSelectedMrNos] = useState<string[]>([]);
+  const [selectedSapIdStates, setSelectedSapIdStates] = useState<string[]>([]);
+  const [selectedRegNoStates, setSelectedRegNoStates] = useState<string[]>([]);
+  const [selectedPhotoConsents, setSelectedPhotoConsents] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   
   // Sorting state
@@ -306,6 +312,7 @@ export const AlumniTabs: React.FC = () => {
     gender: boolean;
     maritalStatus: boolean;
     occupationStatus: boolean;
+    photoConsent: boolean;
   }>({
     faculty: false,
     department: false,
@@ -329,6 +336,7 @@ export const AlumniTabs: React.FC = () => {
     gender: false,
     maritalStatus: false,
     occupationStatus: false,
+    photoConsent: false,
   });
   
   // Countries are now fetched from database via useHomeCountries() and useWorkCountries()
@@ -508,6 +516,15 @@ export const AlumniTabs: React.FC = () => {
     if (selectedMrNos.length > 0) {
       filters.mrNo = selectedMrNos;
     }
+    if (selectedSapIdStates.length > 0) {
+      filters.sapIdState = selectedSapIdStates;
+    }
+    if (selectedRegNoStates.length > 0) {
+      filters.regNoState = selectedRegNoStates;
+    }
+    if (selectedPhotoConsents.length > 0) {
+      filters.photoConsent = selectedPhotoConsents;
+    }
     return Object.keys(filters).length > 0 ? filters : undefined;
   }, [
     statusFilter,
@@ -532,6 +549,9 @@ export const AlumniTabs: React.FC = () => {
     selectedInstitutionCountries,
     selectedInstitutionCities,
     selectedMrNos,
+    selectedPhotoConsents,
+    selectedSapIdStates,
+    selectedRegNoStates,
   ]);
   
   // Faculty / Department / Program options - fetched dynamically from database (tbl_alumni)
@@ -562,6 +582,7 @@ export const AlumniTabs: React.FC = () => {
   const { data: fundingSourcesData } = useFundingSources(masterFilters);
   const { data: institutionCountriesData } = useInstitutionCountries(masterFilters);
   const { data: institutionCitiesData } = useInstitutionCities(masterFilters);
+  const { data: photoConsentData } = usePhotoConsent(masterFilters);
 
   // Debug logging
   React.useEffect(() => {
@@ -687,6 +708,9 @@ export const AlumniTabs: React.FC = () => {
       if (occupationStatusFilterRef.current && !occupationStatusFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, occupationStatus: false }));
       }
+      if (photoConsentFilterRef.current && !photoConsentFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, photoConsent: false }));
+      }
     };
     
     document.addEventListener('mousedown', handleClickOutside);
@@ -772,6 +796,7 @@ export const AlumniTabs: React.FC = () => {
     setSelectedInstitutionCountries([]);
     setSelectedInstitutionCities([]);
     setSelectedMrNos([]);
+    setSelectedPhotoConsents([]);
     setCurrentPage(1);
   }, []);
 
@@ -800,9 +825,12 @@ export const AlumniTabs: React.FC = () => {
       selectedFundingSources.length > 0 ||
       selectedInstitutionCountries.length > 0 ||
       selectedInstitutionCities.length > 0 ||
-      selectedMrNos.length > 0
+      selectedMrNos.length > 0 ||
+      selectedPhotoConsents.length > 0 ||
+      selectedSapIdStates.length > 0 ||
+      selectedRegNoStates.length > 0
     );
-  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos]);
+  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos, selectedPhotoConsents, selectedSapIdStates, selectedRegNoStates]);
   
   const handleStatusToggle = (status: string) => {
     setAdditionalFilter(prev => 
@@ -922,6 +950,40 @@ export const AlumniTabs: React.FC = () => {
     }
   };
 
+  // Photo Consent filter handlers
+  const handlePhotoConsentToggle = (consent: string) => {
+    setSelectedPhotoConsents(prev => 
+      prev.includes(consent) 
+        ? prev.filter(c => c !== consent)
+        : [...prev, consent]
+    );
+  };
+  
+  const handlePhotoConsentSelectAll = () => {
+    if (photoConsentData?.photoConsents && selectedPhotoConsents.length === photoConsentData.photoConsents.length && photoConsentData.photoConsents.length > 0) {
+      setSelectedPhotoConsents([]);
+    } else {
+      setSelectedPhotoConsents(photoConsentData?.photoConsents?.map(c => c.value) || []);
+    }
+  };
+
+  // SAP ID / Registration No state filter handlers (NULL / EMPTY only)
+  const handleSapIdStateToggle = (value: string) => {
+    setSelectedSapIdStates(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
+  const handleRegNoStateToggle = (value: string) => {
+    setSelectedRegNoStates(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
   // Occupation Status filter handlers
   const handleOccupationStatusToggle = (status: string) => {
     setSelectedOccupationStatuses(prev => 
@@ -1028,8 +1090,11 @@ export const AlumniTabs: React.FC = () => {
     selectedProgramsEnrolled.length > 0 ? selectedProgramsEnrolled : undefined,
     selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
     selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
-    selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
-    selectedMrNos.length > 0 ? selectedMrNos : undefined
+      selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
+      selectedMrNos.length > 0 ? selectedMrNos : undefined,
+      selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
+      selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
+      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined
   );
   
   // Debug logging - commented out to fix build issue
@@ -1075,7 +1140,10 @@ export const AlumniTabs: React.FC = () => {
       selectedFundingSources,
       selectedInstitutionCountries,
       selectedInstitutionCities,
-      selectedMrNos
+      selectedMrNos,
+      selectedPhotoConsents,
+      selectedSapIdStates,
+      selectedRegNoStates
     ],
     queryFn: ({ signal }) => getAlumniCounts(
       signal, 
@@ -1100,7 +1168,10 @@ export const AlumniTabs: React.FC = () => {
       selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
       selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
       selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
-      selectedMrNos.length > 0 ? selectedMrNos : undefined
+      selectedMrNos.length > 0 ? selectedMrNos : undefined,
+      selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
+      selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
+      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined
     ),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
@@ -1610,6 +1681,21 @@ export const AlumniTabs: React.FC = () => {
           url.searchParams.append("mrNo", mrNo);
         });
       }
+      if (selectedPhotoConsents.length > 0) {
+        selectedPhotoConsents.forEach(consent => {
+          url.searchParams.append("photoConsent", consent);
+        });
+      }
+      if (selectedSapIdStates.length > 0) {
+        selectedSapIdStates.forEach(state => {
+          url.searchParams.append("sapIdState", state);
+        });
+      }
+      if (selectedRegNoStates.length > 0) {
+        selectedRegNoStates.forEach(state => {
+          url.searchParams.append("regNoState", state);
+        });
+      }
       
       // Add timeout and abort controller for large exports
       const controller = new AbortController();
@@ -1670,6 +1756,7 @@ export const AlumniTabs: React.FC = () => {
         "Alumni ID": item.alumniid || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
+        "MR No": item.registrationno || "",
         "Alumni Email": item.alumniemail || "",
         "Full Name": item.alumniname || "",
         "Gender": item.gender || "",
@@ -1786,6 +1873,7 @@ export const AlumniTabs: React.FC = () => {
         "Email Send Status": item.emailsendstatus || "",
         "Data Source": item.datasource || "",
         "Alumni Status": item.alumnistatus || "",
+        "Photo Usage Consent": item.alumni_consent_pic === true ? "Allowed" : item.alumni_consent_pic === false ? "Not Allowed" : "Null",
         "Created Date Time": item.createddatetime || "",
         "Today Date": item.todaydate || "",
       }));
@@ -1796,6 +1884,7 @@ export const AlumniTabs: React.FC = () => {
         { key: "Alumni ID", label: "Alumni ID", defaultSelected: true },
         { key: "SAP ID", label: "SAP ID", defaultSelected: true },
         { key: "Registration No", label: "Registration No", defaultSelected: true },
+        { key: "MR No", label: "MR No", defaultSelected: false },
         { key: "Alumni Email", label: "Alumni Email", defaultSelected: true },
         { key: "Full Name", label: "Full Name", defaultSelected: true },
         { key: "Gender", label: "Gender", defaultSelected: true },
@@ -1887,6 +1976,7 @@ export const AlumniTabs: React.FC = () => {
         { key: "Email Send Status", label: "Email Send Status", defaultSelected: false },
         { key: "Data Source", label: "Data Source", defaultSelected: false },
         { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
+        { key: "Photo Usage Consent", label: "Photo Usage Consent", defaultSelected: false },
         { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
         { key: "Today Date", label: "Today Date", defaultSelected: false },
       ];
@@ -1924,7 +2014,8 @@ export const AlumniTabs: React.FC = () => {
     const fundingSourceKeys = ["Is Scholarship"];
     const institutionCountryKeys = ["Higher Education Institute Country"];
     const institutionCityKeys = ["Higher Education Institute City"];
-    const mrNoKeys = ["Mrno", "MR No"];
+    const mrNoKeys = ["MR No"];
+    const photoConsentKeys = ["Photo Usage Consent"];
 
     const filteredColumns = columns.filter((col) => {
       const key = col.key;
@@ -1952,6 +2043,7 @@ export const AlumniTabs: React.FC = () => {
       if (institutionCountryKeys.includes(key)) return exportInstitutionCountry;
       if (institutionCityKeys.includes(key)) return exportInstitutionCity;
       if (mrNoKeys.includes(key)) return exportMrNo;
+      if (photoConsentKeys.includes(key)) return exportPhotoConsent;
 
       // Any column that doesn't belong to a specific checkbox group is not exported
       // so that ONLY explicitly checked groups control what is exported.
@@ -1983,9 +2075,24 @@ export const AlumniTabs: React.FC = () => {
       if (loadingToast) toast.dismiss(loadingToast);
       processingToast = toast.loading(`Processing ${data.length} records for export...`);
       
-      // Export to Excel
+      // Get the list of selected column keys
+      const selectedColumnKeys = new Set(filteredColumns.map(col => col.key));
+      
+      // Filter data to ONLY include selected columns
+      const filteredData = data.map((row) => {
+        const filteredRow: Record<string, unknown> = {};
+        selectedColumnKeys.forEach((key) => {
+          // Only include columns that are in the selected columns list
+          if (row.hasOwnProperty(key)) {
+            filteredRow[key] = row[key] ?? "";
+          }
+        });
+        return filteredRow;
+      });
+      
+      // Export to Excel with filtered data and columns
       await exportJsonToExcel({
-        data,
+        data: filteredData,
         columns: filteredColumns,
         filename: filenameBase,
         sheetName: "Alumni List",
@@ -2028,6 +2135,9 @@ export const AlumniTabs: React.FC = () => {
     selectedInstitutionCountries,
     selectedInstitutionCities,
     selectedMrNos,
+    selectedPhotoConsents,
+    selectedSapIdStates,
+    selectedRegNoStates,
     exportFaculty,
     exportDepartment,
     exportProgram,
@@ -4386,6 +4496,133 @@ export const AlumniTabs: React.FC = () => {
                           }}
                           className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                      </div>
+                      
+                      {/* Photo Consent Filter */}
+                      <div className="relative" ref={photoConsentFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                          <span>Photo Consent</span>
+                          <input
+                            type="checkbox"
+                            checked={exportPhotoConsent}
+                            onChange={(e) => setExportPhotoConsent(e.target.checked)}
+                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
+                            title="Include Photo Consent column in Excel export"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, photoConsent: !prev.photoConsent }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedPhotoConsents.length === 0
+                              ? "Select photo consent..."
+                              : selectedPhotoConsents.length === 1
+                              ? photoConsentData?.photoConsents?.find(c => c.value === selectedPhotoConsents[0])?.label || selectedPhotoConsents[0]
+                              : `${selectedPhotoConsents.length} selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.photoConsent ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.photoConsent && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePhotoConsentSelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={photoConsentData?.photoConsents && selectedPhotoConsents.length === photoConsentData.photoConsents.length && photoConsentData.photoConsents.length > 0}
+                                    onChange={handlePhotoConsentSelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Options</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {photoConsentData?.photoConsents && photoConsentData.photoConsents.length > 0 ? (
+                                  photoConsentData.photoConsents.map((consent) => {
+                                    const isChecked = selectedPhotoConsents.includes(consent.value);
+                                    return (
+                                      <label
+                                        key={consent.value}
+                                        className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => handlePhotoConsentToggle(consent.value)}
+                                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                          {consent.label} ({consent.count.toLocaleString()})
+                                        </span>
+                                      </label>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="p-2 text-sm text-gray-500">No photo consent options available</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedPhotoConsents.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedPhotoConsents.length} selected</p>
+                        )}
+                      </div>
+
+                      {/* SAP ID State Filter (NULL only) */}
+                      <div className="relative">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          SAP ID (Missing)
+                        </label>
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedSapIdStates.includes("NULL")}
+                                onChange={() => handleSapIdStateToggle("NULL")}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span>NULL</span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Registration No State Filter (NULL only) */}
+                      <div className="relative">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Registration No (Missing)
+                        </label>
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedRegNoStates.includes("NULL")}
+                                onChange={() => handleRegNoStateToggle("NULL")}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span>NULL</span>
+                            </span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>

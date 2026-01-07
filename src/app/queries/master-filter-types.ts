@@ -25,6 +25,9 @@ export type MasterFilters = {
   institutionCountry?: string | string[];
   institutionCity?: string | string[];
   mrNo?: string | string[];
+  photoConsent?: string | string[];
+  sapIdState?: string | string[];
+  regNoState?: string | string[];
 };
 
 /**
@@ -65,6 +68,9 @@ export function addFilterParamsToUrl(url: URL, filters?: MasterFilters): void {
   addFilterParam("institutionCountry", filters.institutionCountry);
   addFilterParam("institutionCity", filters.institutionCity);
   addFilterParam("mrNo", filters.mrNo);
+  addFilterParam("photoConsent", filters.photoConsent);
+  addFilterParam("sapIdState", filters.sapIdState);
+  addFilterParam("regNoState", filters.regNoState);
 }
 
 

@@ -1,0 +1,95 @@
+import { NextResponse } from "next/server";
+import { sql } from "@/lib/dbconnect";
+import { auth } from "@/lib/auth";
+import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
+
+export async function GET(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const masterFilterConditions = buildMasterFilterConditions(searchParams, "photoConsent");
+
+    // Build access filter
+    let accessFilterCondition = sql``;
+    try {
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
+    } catch (filterError) {
+      console.error("[API] Error building access filter for photo consent:", filterError);
+      return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
+    }
+
+    // Fetch unique photo consent values with counts
+    // true -> "Allowed", false -> "Not Allowed", null -> "Null"
+    const rows = await sql/* sql */`
+      SELECT 
+        CASE 
+          WHEN alumni_consent_pic IS NULL 
+          THEN 'Null'
+          WHEN alumni_consent_pic = true 
+          THEN 'Allowed'
+          WHEN alumni_consent_pic = false 
+          THEN 'Not Allowed'
+          ELSE 'Null'
+        END as consent_value,
+        COUNT(*) as count
+      FROM public.tbl_alumni
+      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+        ${accessFilterCondition}
+        ${masterFilterConditions}
+      GROUP BY 
+        CASE 
+          WHEN alumni_consent_pic IS NULL 
+          THEN 'Null'
+          WHEN alumni_consent_pic = true 
+          THEN 'Allowed'
+          WHEN alumni_consent_pic = false 
+          THEN 'Not Allowed'
+          ELSE 'Null'
+        END
+      ORDER BY 
+        CASE 
+          WHEN alumni_consent_pic IS NULL 
+          THEN 'Null'
+          WHEN alumni_consent_pic = true 
+          THEN 'Allowed'
+          WHEN alumni_consent_pic = false 
+          THEN 'Not Allowed'
+          ELSE 'Null'
+        END ASC
+    `;
+
+    console.log("[API] Photo consent query returned", rows.length, "rows");
+    if (rows.length === 0) {
+      console.warn("[API] No photo consent values found in database");
+    }
+
+    const photoConsents = (rows as unknown as Array<{ consent_value: string; count: number | string | bigint }>).map((row) => {
+      const consentValue = row.consent_value || 'Null';
+      const isNull = consentValue === 'Null';
+      return {
+        value: isNull ? 'NULL' : consentValue,
+        label: consentValue,
+        count: Number(row.count || 0)
+      };
+    });
+
+    console.log("[API] Processed photo consents:", JSON.stringify(photoConsents, null, 2));
+
+    return NextResponse.json({
+      success: true,
+      photoConsents
+    }, { status: 200 });
+  } catch (err) {
+    console.error("[API] Error fetching photo consent:", err);
+    const message = err instanceof Error ? err.message : "Failed to fetch photo consent";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+

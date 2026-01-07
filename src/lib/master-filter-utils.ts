@@ -416,6 +416,29 @@ export function buildMasterFilterConditions(
     }
   }
 
+  // Photo Consent filter (exclude if querying photo consent)
+  if (excludeField !== "photoConsent") {
+    const photoConsent = getFilterValue("photoConsent");
+    if (photoConsent && (Array.isArray(photoConsent) ? photoConsent.length > 0 : photoConsent)) {
+      const consents = Array.isArray(photoConsent) ? photoConsent : [photoConsent];
+      const conditions = consents.map(c => {
+        const normalized = String(c).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          return sql`(alumni_consent_pic IS NULL)`;
+        } else if (normalized === "Allowed" || normalized === "allowed") {
+          return sql`alumni_consent_pic = true`;
+        } else if (normalized === "Not Allowed" || normalized === "not allowed" || normalized === "NotAllowed") {
+          return sql`alumni_consent_pic = false`;
+        }
+        // Default to null if unrecognized
+        return sql`(alumni_consent_pic IS NULL)`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
   // MR No filter (maps to registrationno column - exclude if querying mrNo - though mrNo doesn't have a counter endpoint)
   if (excludeField !== "mrNo") {
     const mrNo = getFilterValue("mrNo");
@@ -427,6 +450,43 @@ export function buildMasterFilterConditions(
           return sql`(registrationno IS NULL OR TRIM(COALESCE(registrationno, '')) = '')`;
         }
         return sql`LOWER(TRIM(COALESCE(registrationno, ''))) = LOWER(TRIM(${m}))`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
+  // SAP ID state filter (NULL only)
+  if (excludeField !== "sapIdState") {
+    const sapIdState = getFilterValue("sapIdState");
+    if (sapIdState && (Array.isArray(sapIdState) ? sapIdState.length > 0 : sapIdState)) {
+      const states = Array.isArray(sapIdState) ? sapIdState : [sapIdState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(sapid IS NULL)`;
+        }
+        // Unknown value – do not match anything
+        return sql`1 = 0`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
+  // Registration No state filter (NULL only)
+  if (excludeField !== "regNoState") {
+    const regNoState = getFilterValue("regNoState");
+    if (regNoState && (Array.isArray(regNoState) ? regNoState.length > 0 : regNoState)) {
+      const states = Array.isArray(regNoState) ? regNoState : [regNoState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(registrationno IS NULL)`;
+        }
+        return sql`1 = 0`;
       });
       if (conditions.length > 0) {
         filterConditions.push(sql`(${combineOrConditions(conditions)})`);

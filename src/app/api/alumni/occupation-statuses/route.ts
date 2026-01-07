@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/dbconnect";
+import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     // Fetch unique occupation status values with counts
     // NULL or empty values will be mapped as "Null"
     // This query fetches all unique employeed values from tbl_alumni with their counts
-    const rows = await sql/* sql */`
+    const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         CASE 
           WHEN employeed IS NULL OR TRIM(COALESCE(employeed, '')) = '' 
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
           THEN 'Null'
           ELSE TRIM(employeed)
         END ASC
-    `;
+    `);
 
     console.log("[API] Occupation statuses query returned", rows.length, "rows");
     if (rows.length === 0) {
@@ -76,6 +76,23 @@ export async function GET(req: Request) {
     }, { status: 200 });
   } catch (err) {
     console.error("[API] Error fetching occupation statuses:", err);
+    
+    // Check for connection timeout errors
+    const isConnectionError = err instanceof Error && (
+      err.message.includes('CONNECT_TIMEOUT') ||
+      err.message.includes('ETIMEDOUT') ||
+      err.message.includes('timeout') ||
+      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+      (err as Error & { code?: string }).code === 'ETIMEDOUT'
+    );
+    
+    if (isConnectionError) {
+      return NextResponse.json({ 
+        error: "Database connection timeout. Please try again in a moment.",
+        retryable: true
+      }, { status: 503 });
+    }
+    
     const message = err instanceof Error ? err.message : "Failed to fetch occupation statuses";
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -1601,14 +1601,14 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           ]} onEdit={() => startEditingField("category")} />
           <CompactField 
             label="Allowed to use information Officially" 
-            value={data.alumni_consent_info === true ? "Yes" : data.alumni_consent_info === false ? "No" : "Not Set"} 
+            value={data.alumni_consent_info === true ? "Allowed" : data.alumni_consent_info === false ? "Not Allowed" : "Not Set"} 
             isEditing={false} 
             readOnly={true}
           />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isFieldEditing("createddatetime")} readOnly={readOnly} register={register} name="createddatetime" onEdit={() => startEditingField("createddatetime")} />
           <CompactField 
             label="Photo Usage Consent" 
-            value={data.alumni_consent_pic === true ? "Allowed for Honor Card and other official purposes" : data.alumni_consent_pic === false ? "Allowed only for Honor Card" : "Not Set"} 
+            value={data.alumni_consent_pic === true ? "Allowed" : data.alumni_consent_pic === false ? "Not Allowed" : "Not Set"} 
             isEditing={false} 
             readOnly={true}
           />

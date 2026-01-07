@@ -13,7 +13,7 @@ import toast from "react-hot-toast";
  * Uses TanStack Query for data fetching with real-time counters.
  */
 
-type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting" | "printed" | "all";
+type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting" | "all";
 
 type AlumniCardItem = {
   id: string;
@@ -42,7 +42,7 @@ type AlumniCardsProps = {
 };
 
 // Map database status to UI status
-// Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
+// Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
 function mapDbStatusToUI(dbStatus: string | null): CardStatus {
   if (!dbStatus) return "pending";
   const upper = dbStatus.trim().toUpperCase();
@@ -51,7 +51,6 @@ function mapDbStatusToUI(dbStatus: string | null): CardStatus {
   if (upper === "PROCESS") return "process";
   if (upper === "ONHOLD") return "onhold";
   if (upper === "UNDERPRINTING") return "underprinting";
-  if (upper === "PRINTED") return "printed";
   return "pending"; // Default to pending for "Pending" or any other value
 }
 
@@ -134,14 +133,6 @@ const STATUS_TAB_COLORS: Record<CardStatus, {
     badgeText: "text-purple-800 dark:text-purple-200",
     hoverBorder: "hover:border-purple-400",
   },
-  printed: {
-    border: "border-indigo-500",
-    bg: "bg-indigo-50 dark:bg-indigo-900/20",
-    text: "text-indigo-700 dark:text-indigo-300",
-    badgeBg: "bg-indigo-200 dark:bg-indigo-800",
-    badgeText: "text-indigo-800 dark:text-indigo-200",
-    hoverBorder: "hover:border-indigo-400",
-  },
   active: {
     border: "border-emerald-500",
     bg: "bg-emerald-50 dark:bg-emerald-900/20",
@@ -173,7 +164,6 @@ const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?
   { key: "pending", label: "Pending", icon: TimeIcon },
   { key: "process", label: "In-Process", icon: BoltIcon },
   { key: "underprinting", label: "Under-Printing", icon: FileIcon },
-  { key: "printed", label: "Printed", icon: FileIcon },
   { key: "active", label: "Ready for Delivery", icon: CheckLineIcon },
   { key: "delivered", label: "Delivered", icon: CheckLineIcon },
   { key: "onhold", label: "On Hold", icon: LockIcon },
@@ -205,7 +195,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (countsFromData) {
       return countsFromData;
     }
-    return { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0, printed: 0 };
+    return { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0 };
   }, [countsData, data]);
   
   // Debug: Log counts to console (remove in production if needed)
@@ -250,8 +240,8 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       }
 
       // Handle status updates
-      // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
-      let newDbStatus: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | "Printed" | null = null;
+      // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
+      let newDbStatus: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | null = null;
       
       if (key === "verify" && alumni.status === "pending") {
         newDbStatus = "Process";
@@ -301,8 +291,6 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 count = counts.onhold || 0;
               } else if (tab.key === "underprinting") {
                 count = counts.underprinting || 0;
-              } else if (tab.key === "printed") {
-                count = counts.printed || 0;
               }
               const isSelected = selectedStatus === tab.key;
               const colors = STATUS_TAB_COLORS[tab.key];

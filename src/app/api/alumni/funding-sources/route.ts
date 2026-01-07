@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/dbconnect";
+import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     }
 
     // Fetch unique scholarship/funding source values with counts
-    const rows = await sql/* sql */`
+    const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         CASE 
           WHEN is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '' 
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
           THEN 'Null'
           ELSE TRIM(is_scholarship)
         END ASC
-    `;
+    `);
 
     const fundingSources = (rows as unknown as Array<{ funding_source_value: string; count: number | string | bigint }>).map((row) => {
       const fundingValue = row.funding_source_value || 'Null';
@@ -67,6 +67,23 @@ export async function GET(req: Request) {
     }, { status: 200 });
   } catch (err) {
     console.error("[API] Error fetching funding sources:", err);
+    
+    // Check for connection timeout errors
+    const isConnectionError = err instanceof Error && (
+      err.message.includes('CONNECT_TIMEOUT') ||
+      err.message.includes('ETIMEDOUT') ||
+      err.message.includes('timeout') ||
+      (err as Error & { code?: string }).code === 'CONNECT_TIMEOUT' ||
+      (err as Error & { code?: string }).code === 'ETIMEDOUT'
+    );
+    
+    if (isConnectionError) {
+      return NextResponse.json({ 
+        error: "Database connection timeout. Please try again in a moment.",
+        retryable: true
+      }, { status: 503 });
+    }
+    
     const message = err instanceof Error ? err.message : "Failed to fetch funding sources";
     return NextResponse.json({ error: message }, { status: 500 });
   }

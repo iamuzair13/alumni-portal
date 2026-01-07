@@ -61,7 +61,10 @@ export async function getAlumniList(
   fundingSource?: string | string[],
   institutionCountry?: string | string[],
   institutionCity?: string | string[],
-  mrNo?: string | string[]
+  mrNo?: string | string[],
+  photoConsent?: string | string[],
+  sapIdState?: string | string[],
+  regNoState?: string | string[]
 ): Promise<AlumniListResponse> {
   const url = new URL("/api/alumni", typeof window !== "undefined" ? window.location.origin : "");
   if (search) {
@@ -125,6 +128,9 @@ export async function getAlumniList(
   addFilterParam("institutionCountry", institutionCountry);
   addFilterParam("institutionCity", institutionCity);
   addFilterParam("mrNo", mrNo);
+  addFilterParam("photoConsent", photoConsent);
+  addFilterParam("sapIdState", sapIdState);
+  addFilterParam("regNoState", regNoState);
   
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
@@ -164,13 +170,16 @@ export function useAlumniListPaginated(
   fundingSource?: string | string[],
   institutionCountry?: string | string[],
   institutionCity?: string | string[],
-  mrNo?: string | string[]
+  mrNo?: string | string[],
+  photoConsent?: string | string[],
+  sapIdState?: string | string[],
+  regNoState?: string | string[]
 ) {
   return useQuery<AlumniListResponse, Error>({
-    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo],
+    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState],
     queryFn: ({ signal }) => {
-      console.log("[useAlumniListPaginated] Fetching with filters:", { status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo });
-      return getAlumniList(signal, search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo);
+      console.log("[useAlumniListPaginated] Fetching with filters:", { status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState });
+      return getAlumniList(signal, search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState);
     },
     staleTime: 0, // Always consider data stale - refetch on mount/tab change
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
@@ -220,7 +229,10 @@ export async function getAlumniCounts(
   fundingSource?: string | string[],
   institutionCountry?: string | string[],
   institutionCity?: string | string[],
-  mrNo?: string | string[]
+  mrNo?: string | string[],
+  photoConsent?: string | string[],
+  sapIdState?: string | string[],
+  regNoState?: string | string[]
 ): Promise<AlumniCounts> {
   const url = new URL("/api/alumni/counts", typeof window !== "undefined" ? window.location.origin : "");
   if (search) {
@@ -277,6 +289,9 @@ export async function getAlumniCounts(
   addFilterParam("institutionCountry", institutionCountry);
   addFilterParam("institutionCity", institutionCity);
   addFilterParam("mrNo", mrNo);
+  addFilterParam("photoConsent", photoConsent);
+  addFilterParam("sapIdState", sapIdState);
+  addFilterParam("regNoState", regNoState);
   
   const res = await fetch(url.toString(), { signal, headers: { "accept": "application/json" } });
   if (!res.ok) {

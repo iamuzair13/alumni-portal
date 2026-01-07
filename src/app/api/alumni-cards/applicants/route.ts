@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     
     // Build status filter
-    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
     // NULL or empty status should be treated as "Pending" (default status)
     let statusCondition = sql``;
     if (status && status !== "all") {
@@ -36,9 +36,6 @@ export async function GET(request: Request) {
       } else if (status === "underprinting") {
         // UnderPrinting: "UnderPrinting"
         statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'UNDERPRINTING'`;
-      } else if (status === "printed") {
-        // Printed: "Printed"
-        statusCondition = sql` AND c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'PRINTED'`;
       }
     }
     
@@ -66,7 +63,7 @@ export async function GET(request: Request) {
       ORDER BY c.createdat DESC`;
     
     // Fetch counts for all statuses
-    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting", "Printed"
+    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
     // NULL or empty status should be treated as "Pending" (default status)
     const counts = await sql/* sql */`
       SELECT 
@@ -76,7 +73,6 @@ export async function GET(request: Request) {
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED') as delivered_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD') as onhold_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'UNDERPRINTING') as underprinting_count,
-        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'PRINTED') as printed_count,
         COUNT(*) as all_count
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
@@ -90,7 +86,6 @@ export async function GET(request: Request) {
       delivered_count: bigint | number;
       onhold_count: bigint | number;
       underprinting_count: bigint | number;
-      printed_count: bigint | number;
       all_count: bigint | number;
     } | undefined;
     
@@ -102,7 +97,6 @@ export async function GET(request: Request) {
     const deliveredCount = countRow?.delivered_count ? Number(countRow.delivered_count) : 0;
     const onholdCount = countRow?.onhold_count ? Number(countRow.onhold_count) : 0;
     const underprintingCount = countRow?.underprinting_count ? Number(countRow.underprinting_count) : 0;
-    const printedCount = countRow?.printed_count ? Number(countRow.printed_count) : 0;
     
     return NextResponse.json({ 
       items: rows,
@@ -114,7 +108,6 @@ export async function GET(request: Request) {
         delivered: deliveredCount,
         onhold: onholdCount,
         underprinting: underprintingCount,
-        printed: printedCount,
       }
     }, { status: 200 });
   } catch (err) {

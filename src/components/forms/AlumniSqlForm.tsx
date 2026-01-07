@@ -363,6 +363,26 @@ const getCitiesByProvince = (province: string): string[] => {
   return sorted;
 };
 
+// Get all Pakistan cities across all provinces (used for work city when country = Pakistan)
+const getAllPakistanCities = (): string[] => {
+  const allProvinces = Object.keys(citiesByProvinceRaw);
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  allProvinces.forEach((province) => {
+    const cities = getCitiesByProvince(province);
+    cities.forEach((city) => {
+      const normalized = city.trim().toLowerCase();
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        result.push(city);
+      }
+    });
+  });
+
+  return result.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+};
+
 export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: { excludeAdminStep?: boolean; onSuccess?: () => void }) {
   const router = useRouter();
   const {
@@ -607,6 +627,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const selectedHomeCountry = watch("country") || "";
   const selectedHomeProvince = watch("province") || "";
   const selectedHomeCity = watch("homeCity") || "";
+  const selectedWorkCountry = watch("workCountry") || "";
   
   // Filter database-backed faculties based on user access
   const filteredFaculties = useMemo(() => {
@@ -676,6 +697,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     }
     return [];
   }, [selectedHomeCountry, selectedHomeProvince]);
+
+  // Get cities for work location when work country is Pakistan (no province for work)
+  const workCountryCities = useMemo(() => {
+    if (selectedWorkCountry === "Pakistan") {
+      return getAllPakistanCities();
+    }
+    return [];
+  }, [selectedWorkCountry]);
 
   
   // Province options based on selected home country
@@ -1696,6 +1725,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                         return;
                       }
                       
+                      // Update facultyname from selected faculty
+                      if (selectedId) {
+                        const selectedFaculty = filteredFaculties.find(f => f.id === Number(selectedId));
+                        if (selectedFaculty) {
+                          setValue("facultyname", selectedFaculty.name, { shouldValidate: false });
+                        }
+                      } else {
+                        setValue("facultyname", null, { shouldValidate: false });
+                      }
+                      
                       // Reset department and program when faculty changes
                       setValue("department", null);
                       setValue("program", null);
@@ -1779,6 +1818,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           isTypingDepartmentOther.current = false;
                         }, 100);
                         return;
+                      }
+                      
+                      // Update departmentname from selected department
+                      if (selectedId) {
+                        const selectedDepartment = filteredDepartments.find(d => d.id === Number(selectedId));
+                        if (selectedDepartment) {
+                          setValue("departmentname", selectedDepartment.name, { shouldValidate: false });
+                        }
+                      } else {
+                        setValue("departmentname", null, { shouldValidate: false });
                       }
                       
                       // Reset program when department changes
@@ -2110,16 +2159,54 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Work City */}
                 <div>
                   <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed" ? "Business City *" : "Work City *"}</label>
-                  <input 
-                    type="text" 
-                    className={inputBase} 
-                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business city" : "Enter work city name"}
-                    {...register("workCity", { 
-                      required: true
-                    })} 
+                  <Controller
+                    name="workCity"
+                    control={control}
+                    rules={{
+                      required: (employeedVal || "").toLowerCase() === "self-employed"
+                        ? "Business city is required"
+                        : "Work city is required",
+                      maxLength: {
+                        value: 50,
+                        message: "City must be 50 characters or less"
+                      }
+                    }}
+                    render={({ field }) => (
+                      <>
+                        <input
+                          type="text"
+                          className={inputBase}
+                          list={selectedWorkCountry === "Pakistan" ? "work-city-datalist" : undefined}
+                          placeholder={
+                            selectedWorkCountry === "Pakistan"
+                              ? "Select from list or type your city"
+                              : (employeedVal || "").toLowerCase() === "self-employed"
+                                ? "Enter your business city"
+                                : "Enter work city name"
+                          }
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
+                        {selectedWorkCountry === "Pakistan" && workCountryCities.length > 0 && (
+                          <datalist id="work-city-datalist">
+                            {workCountryCities.map((city) => (
+                              <option key={city} value={city} />
+                            ))}
+                          </datalist>
+                        )}
+                      </>
+                    )}
                   />
                   {errors.workCity && (
-                    <p className="mt-1 text-xs text-red-600">{(employeedVal || "").toLowerCase() === "self-employed" ? "Business city is required" : "Work city is required"}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.workCity.message ||
+                        ((employeedVal || "").toLowerCase() === "self-employed"
+                          ? "Business city is required"
+                          : "Work city is required")}
+                    </p>
                   )}
                 </div>
                 {/* Work Country */}

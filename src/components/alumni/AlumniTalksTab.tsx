@@ -6,6 +6,8 @@ import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
+import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
 
 type TalkItem = {
   sapid: string;
@@ -271,7 +273,7 @@ export const AlumniTalksTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow className="bg-blue-50/30">
+                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
                         <TableCell colSpan={9} className="px-4 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                             {/* Basic Info */}
@@ -360,6 +362,30 @@ export const AlumniTalksTab: React.FC = () => {
                                 </div>
                               </div>
                             )}
+
+                            {/* Alumni Profile & ERP */}
+                            <div className="space-y-2 md:col-span-3">
+                              <h4 className="font-semibold text-slate-700 mb-2">Alumni Profile & ERP</h4>
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <AlumniExpandableDetails
+                                  sapId={item.sapid || item.registrationNo || ""}
+                                  onClose={() => setExpandedRows(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(rowId);
+                                    return next;
+                                  })}
+                                />
+                                <ErpDataDetails
+                                  sapId={item.sapid || undefined}
+                                  registrationNo={item.registrationNo || undefined}
+                                  onClose={() => setExpandedRows(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(rowId);
+                                    return next;
+                                  })}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
