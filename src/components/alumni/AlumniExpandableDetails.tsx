@@ -1468,8 +1468,27 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           </div>
           {!isFieldEditing("chapters") ? (
             <>
-              <CompactField label="Chapter" value={data.chapter} isEditing={false} onEdit={() => startEditingField("chapters")} />
-              <CompactField label="Association" value={data.association} isEditing={false} onEdit={() => startEditingField("association_id")} />
+              <CompactField 
+                label="Chapter 1" 
+                value={data.chapter1_id ? chaptersList.find(c => c.id === data.chapter1_id)?.name || "-" : "-"} 
+                isEditing={false} 
+                readOnly={readOnly}
+                onEdit={() => startEditingField("chapters")} 
+              />
+              <CompactField 
+                label="Chapter 2" 
+                value={data.chapter2_id ? chaptersList.find(c => c.id === data.chapter2_id)?.name || "-" : "-"} 
+                isEditing={false} 
+                readOnly={readOnly}
+                onEdit={() => startEditingField("chapters")} 
+              />
+              <CompactField 
+                label="Chapter 3" 
+                value={data.chapter3_id ? chaptersList.find(c => c.id === data.chapter3_id)?.name || "-" : "-"} 
+                isEditing={false} 
+                readOnly={readOnly}
+                onEdit={() => startEditingField("chapters")} 
+              />
             </>
           ) : (
             <>

@@ -31,6 +31,8 @@ const navItems: NavItem[] = [
       { name: "Alumni Talks", path: "/dashboard?tab=alumni-talks" },
       { name: "Alumni Chapters", path: "/dashboard?tab=alumni-chapters" },
       { name: "Alumni Association", path: "/dashboard?tab=alumni-association" },
+      { name: "Alumni Scholarships", path: "/dashboard?tab=alumni-scholarships" },
+      { name: "Alumni Memberships", path: "/dashboard?tab=alumni-memberships" },
       { name: "Add Alumni", path: "/dashboard?tab=add-alumni" },
     ],
   },

@@ -10,7 +10,7 @@ export async function GET() {
       FROM public.tbl_events
       WHERE category IS NOT NULL 
         AND TRIM(category) != ''
-      ORDER BY category ASC
+      ORDER BY category_value ASC
     ` as Array<{ category_value: string }>;
 
     const categories = rows.map((row) => row.category_value).filter(Boolean);
