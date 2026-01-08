@@ -28,7 +28,23 @@ type ProfileDetailsClientProps = {
 
 export default function ProfileDetailsClient({ sapId, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: ProfileDetailsClientProps) {
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
-  const { data: fullDetails, isLoading: isLoadingFullDetails } = useAlumniFullDetails(sapId);
+  const { data: fullDetails, isLoading: isLoadingFullDetails, isError: isFullDetailsError, error: fullDetailsError } = useAlumniFullDetails(sapId);
+  
+  // Show error if API calls fail
+  useEffect(() => {
+    if (isError && error) {
+      console.error("[ProfileDetailsClient] Error fetching profile:", error);
+      toast.error(`Failed to load profile: ${error instanceof Error ? error.message : String(error)}`, {
+        duration: 5000,
+      });
+    }
+    if (isFullDetailsError && fullDetailsError) {
+      console.error("[ProfileDetailsClient] Error fetching full details:", fullDetailsError);
+      toast.error(`Failed to load full details: ${fullDetailsError instanceof Error ? fullDetailsError.message : String(fullDetailsError)}`, {
+        duration: 5000,
+      });
+    }
+  }, [isError, error, isFullDetailsError, fullDetailsError]);
   const queryClient = useQueryClient();
   const { start, stop } = useProgress();
   const [showSocialForm, setShowSocialForm] = useState(false);
@@ -119,19 +135,21 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
   // Debug: Log data to console for troubleshooting
   useEffect(() => {
-    if (fullDetails || data) {
-      console.log("[ProfileDetailsClient] Data loaded:", {
-        fullDetails,
-        data,
-        name,
-        faculty,
-        dept,
-        program,
-        contact,
-        sapId
-      });
-    }
-  }, [fullDetails, data, name, faculty, dept, program, contact, sapId]);
+    console.log("[ProfileDetailsClient] State:", {
+      sapId,
+      fullDetails,
+      data,
+      isLoading,
+      isLoadingFullDetails,
+      isError,
+      error,
+      name,
+      faculty,
+      dept,
+      program,
+      contact
+    });
+  }, [sapId, fullDetails, data, isLoading, isLoadingFullDetails, isError, error, name, faculty, dept, program, contact]);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();

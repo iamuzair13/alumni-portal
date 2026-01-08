@@ -79,6 +79,31 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
     const canAccess = canModify(session.user); // Checks for both admin and superadmin
     const isViewer = isViewerUser(session.user); // Checks for viewer users
+    const isAdminOrViewer = canAccess || isViewer;
+    
+    // SECURITY: For admin/viewer users, check access filter
+    if (isAdminOrViewer) {
+      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+      const accessFilter = await buildAccessFilterSQL(session, "");
+      
+      if (accessFilter.hasFilter && accessFilter.sql) {
+        const alumniId = Number(row.alumniid);
+        if (!alumniId) {
+          return NextResponse.json({ error: "Invalid alumni record" }, { status: 400 });
+        }
+        const accessCheck = await sql/* sql */`
+          SELECT alumniid FROM public.tbl_alumni 
+          WHERE alumniid = ${alumniId} 
+          AND (${accessFilter.sql})
+          LIMIT 1
+        `;
+        
+        if (!accessCheck[0]) {
+          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        }
+      }
+    }
+    
     const canView = isOwner || canAccess || isViewer; // Allow owners, admins, and viewers
 
     // Debug logging

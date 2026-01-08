@@ -581,7 +581,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 min-w-[150px]">
                         {isAdmin && (
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             {item.status !== "approved" && (

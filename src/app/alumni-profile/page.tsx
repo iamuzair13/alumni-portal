@@ -13,7 +13,7 @@ import { redirect } from "next/navigation";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner, isAdminUser } from "@/lib/alumniProfile";
+import { computeLoginBanner, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
@@ -43,7 +43,7 @@ async function getProfile(searchParams: { sapid?: string }) {
   const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
   try {
     const session = await auth();
-    const isAdmin = isAdminUser(session?.user);
+    const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
     const sessionAlumniId =
       session?.user && (session.user as { userId?: number | null })?.userId
         ? Number((session.user as { userId?: number | null }).userId)
@@ -187,7 +187,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   } catch (e) {
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
-  const isAdmin = isAdminUser(session?.user);
+  const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
   
@@ -273,7 +273,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   
   // Use SAP ID if available, otherwise use registration number as identifier
   // The API endpoints support both SAP ID and registration number
+  // For admins viewing a specific profile, prioritize the requested sapid from query params
+  // If admin requested a specific profile but database query failed, still use requestedSapid
+  // (the API will handle validation and access control)
   const sapId = String(
+    (isAdmin && requestedSapid && requestedSapid.trim()) ? requestedSapid.trim() :
     sapRows[0]?.sapid ?? 
     sessionSapid ?? 
     sessionRegNo ?? 

@@ -6,6 +6,7 @@ import {
   buildProgramMatchPattern
 } from "./programMatching";
 import { getAllFacultyNamesCached } from "./orgAccessLookup";
+import { buildIdBasedAccessFilterSQL } from "./rbac";
 
 export type UserAccessAssignment = {
   faculty_name: string | null;
@@ -15,6 +16,7 @@ export type UserAccessAssignment = {
 
 /**
  * Fetch user access assignments from database
+ * @deprecated Use getUserAccessAssignmentsWithIds from rbac.ts for ID-based access
  */
 export async function getUserAccessAssignments(userId: number): Promise<UserAccessAssignment[]> {
   try {
@@ -42,15 +44,40 @@ export function getUserIdFromSession(session: Session | null): number | null {
 
 /**
  * Build SQL WHERE clause fragment for filtering alumni data based on user access
- * Returns { sql: null, hasFilter: false } if user is superadmin, admin, or viewer (no filtering needed)
- * Note: Admin and viewer now have the same data access as superadmin
- * Restrictions: Admin cannot create/modify access users or see passwords of other users
+ * 
+ * This function now uses ID-based filtering (faculty/department IDs) as the primary method,
+ * with name-based fallback for backward compatibility.
+ * 
+ * Rules:
+ * - superadmin: no filter (full access)
+ * - admin/viewer with all faculties: no filter (full access, including NULL)
+ * - admin/viewer with specific assignments: filter by faculty_id and department_id
+ * 
+ * @param session - User session
+ * @param _tableAlias - Table alias (deprecated, always uses "a")
+ * @returns SQL condition and hasFilter flag
  */
 export async function buildAccessFilterSQL(
   session: Session | null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _tableAlias: string = ""
 ): Promise<{ sql: ReturnType<typeof sql> | null; hasFilter: boolean }> {
+  // Try ID-based filtering first (preferred method)
+  try {
+    const idBasedFilter = await buildIdBasedAccessFilterSQL(session);
+    // If ID-based filter succeeded (either has filter or no filter needed), use it
+    // hasFilter=false means full access (superadmin or all faculties)
+    // hasFilter=true with sql means filtered access
+    // hasFilter=true with sql=null should not happen, but fallback handles it
+    if (!idBasedFilter.hasFilter || idBasedFilter.sql !== null) {
+      return idBasedFilter;
+    }
+  } catch (error) {
+    console.warn("[buildAccessFilterSQL] ID-based filtering failed, falling back to name-based:", error);
+    // Fall through to name-based filtering for backward compatibility
+  }
+  
+  // Fallback to name-based filtering (for backward compatibility)
   // Super admin always has full access - no filtering
   if (isSuperAdminUser(session?.user)) {
     return { sql: null, hasFilter: false };
