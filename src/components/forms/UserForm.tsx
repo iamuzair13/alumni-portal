@@ -7,6 +7,8 @@ import AccessControlPicker, { type AccessAssignmentsValue } from "@/components/u
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { USER_ROLES, type UserRole } from "@/lib/rbac-constants";
+import { useSession } from "next-auth/react";
+import { isSuperAdminUser, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 type UserFormValues = {
   email: string;
@@ -57,8 +59,17 @@ function isValidRole(role: string): role is UserRole {
 }
 
 export default function UserForm({ userId, initialData, onSuccess }: UserFormProps = {}) {
+  const { data: session } = useSession();
   const isEditMode = !!userId;
   const queryClient = useQueryClient();
+  const isSuperAdmin = isSuperAdminUser(session?.user);
+  const isAdmin = isAdminUser(session?.user);
+  const isViewer = isViewerUser(session?.user);
+  const currentUserId = (session?.user as { userId?: number })?.userId;
+  
+  // Check if user can view/edit password
+  const canViewPassword = isSuperAdmin || (userId && currentUserId && Number(currentUserId) === Number(userId));
+  const canEditPassword = isSuperAdmin || (userId && currentUserId && Number(currentUserId) === Number(userId));
   const [values, setValues] = useState<UserFormValues>({
     email: "",
     password: "",
@@ -185,6 +196,12 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
     }
 
     // Only validate password if provided (required for new users, optional for edit)
+    // Only superadmin can create new users
+    if (!isEditMode && !isSuperAdmin) {
+      setError("Only Super Admin can create new users");
+      toast.error("Only Super Admin can create new users");
+      return;
+    }
     if (!isEditMode && !passwordValid) {
       setError("Password must be at least 8 characters");
       toast.error("Password must be at least 8 characters");
@@ -378,7 +395,8 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                 )}
         </div>
 
-              {/* Password */}
+              {/* Password - Only show for superadmin or own account */}
+              {canViewPassword && (
               <div className="lg:col-span-2">
                 <Label htmlFor="password">
                   Password <span className="text-red-500">*</span>
@@ -391,6 +409,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   error={!!(values.password && !passwordValid)}
                   placeholder={isEditMode ? "Leave empty to keep existing password" : "Minimum 8 characters"}
                   className="w-full"
+                  disabled={!canEditPassword}
                 />
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   {isEditMode 
@@ -401,6 +420,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">Password must be at least 8 characters</p>
                 )}
         </div>
+              )}
 
               {/* First Name */}
         <div>
@@ -428,7 +448,8 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                 />
         </div>
 
-              {/* Department */}
+              {/* Department - Only superadmin can edit */}
+              {isSuperAdmin && (
         <div>
                 <Label htmlFor="department">Department</Label>
                 <Input
@@ -440,8 +461,10 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   className="w-full"
                 />
         </div>
+              )}
 
-              {/* Role */}
+              {/* Role - Only superadmin can edit */}
+              {isSuperAdmin && (
         <div>
                 <Label htmlFor="type">
                   Role <span className="text-red-500">*</span>
@@ -470,9 +493,11 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   </p>
                 )}
               </div>
+              )}
             </div>
 
-            {/* Blocked Checkbox */}
+            {/* Blocked Checkbox - Only superadmin can edit */}
+            {isSuperAdmin && (
             <div className="mt-6 flex items-center gap-3 p-4 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
               <input
                 id="blocked"
@@ -485,10 +510,11 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                 Block this user from accessing the system
               </label>
             </div>
+            )}
           </div>
 
-          {/* Access Control Section - Only for Admin and Viewer roles */}
-          {showAccessControl && (
+          {/* Access Control Section - Only for Admin and Viewer roles, and only superadmin can edit */}
+          {showAccessControl && isSuperAdmin && (
             <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:border-blue-800 dark:from-gray-800/50 dark:to-gray-900/50">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">

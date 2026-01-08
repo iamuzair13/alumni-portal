@@ -30,26 +30,26 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '' 
+          WHEN a.maritalstatus IS NULL OR TRIM(COALESCE(a.maritalstatus, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(maritalstatus)
+          ELSE TRIM(a.maritalstatus)
         END as marital_status,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '' 
+          WHEN a.maritalstatus IS NULL OR TRIM(COALESCE(a.maritalstatus, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(maritalstatus)
+          ELSE TRIM(a.maritalstatus)
         END
       ORDER BY 
         CASE 
-          WHEN maritalstatus IS NULL OR TRIM(COALESCE(maritalstatus, '')) = '' 
+          WHEN a.maritalstatus IS NULL OR TRIM(COALESCE(a.maritalstatus, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(maritalstatus)
+          ELSE TRIM(a.maritalstatus)
         END ASC
     `;
 

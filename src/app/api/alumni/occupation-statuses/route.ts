@@ -30,26 +30,26 @@ export async function GET(req: Request) {
     const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         CASE 
-          WHEN employeed IS NULL OR TRIM(COALESCE(employeed, '')) = '' 
+          WHEN a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(employeed)
+          ELSE TRIM(a.employeed)
         END as occupation_status,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN employeed IS NULL OR TRIM(COALESCE(employeed, '')) = '' 
+          WHEN a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(employeed)
+          ELSE TRIM(a.employeed)
         END
       ORDER BY 
         CASE 
-          WHEN employeed IS NULL OR TRIM(COALESCE(employeed, '')) = '' 
+          WHEN a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(employeed)
+          ELSE TRIM(a.employeed)
         END ASC
     `);
 

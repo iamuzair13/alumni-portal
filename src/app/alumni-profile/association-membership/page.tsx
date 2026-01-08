@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner } from "@/lib/alumniProfile";
+import { computeLoginBanner, isViewerUser } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
@@ -84,6 +84,8 @@ export default async function AssociationMembershipPage({ searchParams }: { sear
     sapError = e instanceof Error ? e.message : "Failed to load alumni ID";
   }
 
+  const isViewer = isViewerUser(session?.user);
+
   return (
     <>
       <div className="bg-slate-100 overflow-x-hidden min-h-screen">
@@ -98,6 +100,11 @@ export default async function AssociationMembershipPage({ searchParams }: { sear
             </div>
           ) : null;
         })()}
+        {isViewer && (
+          <div className="mt-4">
+            <Alert variant="error" title="Access Restricted" message="Viewers cannot submit association membership applications. This feature is read-only for your role." />
+          </div>
+        )}
         {sapError && (
           <div className="mt-2">
             <Alert variant="error" title="Account Lookup Failed" message={sapError} />
@@ -118,7 +125,13 @@ export default async function AssociationMembershipPage({ searchParams }: { sear
                 Join a faculty or department association to connect with alumni who share your academic background. Stay engaged with your field and expand your professional network.
               </p>
             </div>
-            <AlumniAssociationMembershipForm alumniId={alumniId} />
+            {!isViewer ? (
+              <AlumniAssociationMembershipForm alumniId={alumniId} />
+            ) : (
+              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                <p className="text-gray-600">This form is not available for viewers. Please contact an administrator if you need to submit an association membership application.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

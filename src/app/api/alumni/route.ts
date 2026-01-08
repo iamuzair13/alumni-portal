@@ -410,12 +410,16 @@ export async function GET(req: Request) {
     // Debug logging
     console.log("[alumni/route] Access filter:", {
       hasFilter: accessFilter.hasFilter,
-      isSuperAdmin: !accessFilter.hasFilter
+      isSuperAdmin: !accessFilter.hasFilter,
+      userId: (session?.user as { userId?: number })?.userId,
+      userType: (session?.user as { type?: string })?.type
     });
     
     // Log the actual SQL condition for debugging (if it's a program-level filter)
     if (accessFilter.hasFilter && accessFilter.sql) {
       console.log("[alumni/route] Access filter SQL condition is active");
+      // Try to log a sample of what the condition might look like
+      console.log("[alumni/route] Filter will be applied in WHERE clause");
     }
     
     // Build access filter condition for WHERE clause

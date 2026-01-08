@@ -11,7 +11,7 @@ import AlumniAssociationForm from "@/components/forms/AlumniAssociationForm";
 import { auth } from "@/lib/auth";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner } from "@/lib/alumniProfile";
+import { computeLoginBanner, isViewerUser } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
@@ -77,6 +77,7 @@ export default async function AssociationPage({ searchParams }: { searchParams: 
   }
   
   const session = await auth();
+  const isViewer = isViewerUser(session?.user);
 
   return (
     <>
@@ -92,6 +93,11 @@ export default async function AssociationPage({ searchParams }: { searchParams: 
             </div>
           ) : null;
         })()}
+        {isViewer && (
+          <div className="mt-4">
+            <Alert variant="error" title="Access Restricted" message="Viewers cannot submit association applications. This feature is read-only for your role." />
+          </div>
+        )}
         {sapError && (
           <div className="mt-2">
             <Alert variant="error" title="Account Lookup Failed" message={sapError} />
@@ -112,7 +118,13 @@ export default async function AssociationPage({ searchParams }: { searchParams: 
                 The UOL Alumni Association brings graduates together to connect, engage, and contribute to the university community. You can join and connect with alumni across disciplines, and contribute to the growth of the network.
               </p>
             </div>
-            <AlumniAssociationForm alumniId={alumniId} />
+            {!isViewer ? (
+              <AlumniAssociationForm alumniId={alumniId} />
+            ) : (
+              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                <p className="text-gray-600">This form is not available for viewers. Please contact an administrator if you need to submit an association application.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

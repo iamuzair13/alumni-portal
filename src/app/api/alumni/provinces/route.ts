@@ -49,37 +49,37 @@ export async function GET(req: Request) {
       return sql`${left} OR ${right}`;
     };
     
-    const provinceConditions = PAKISTAN_PROVINCES.map(p => sql`LOWER(TRIM(COALESCE(province, ''))) = LOWER(TRIM(${p}))`);
+    const provinceConditions = PAKISTAN_PROVINCES.map(p => sql`LOWER(TRIM(COALESCE(a.province, ''))) = LOWER(TRIM(${p}))`);
     const provinceFilter = combineOrConditions(provinceConditions);
     
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN province IS NULL OR TRIM(COALESCE(province, '')) = '' 
+          WHEN a.province IS NULL OR TRIM(COALESCE(a.province, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(province)
+          ELSE TRIM(a.province)
         END as province_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
         AND (
-          province IS NULL 
-          OR TRIM(COALESCE(province, '')) = '' 
+          a.province IS NULL 
+          OR TRIM(COALESCE(a.province, '')) = '' 
           OR ${provinceFilter}
         )
       GROUP BY 
         CASE 
-          WHEN province IS NULL OR TRIM(COALESCE(province, '')) = '' 
+          WHEN a.province IS NULL OR TRIM(COALESCE(a.province, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(province)
+          ELSE TRIM(a.province)
         END
       ORDER BY 
         CASE 
-          WHEN province IS NULL OR TRIM(COALESCE(province, '')) = '' 
+          WHEN a.province IS NULL OR TRIM(COALESCE(a.province, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(province)
+          ELSE TRIM(a.province)
         END ASC
     `;
 

@@ -75,12 +75,36 @@ export async function GET() {
         ORDER BY userid DESC` as DbUser[];
       
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
-    } else if (isViewer) {
-      // Viewer: never return passwords (even for own row)
+    } else if (isViewer && currentUserId) {
+      // Viewer: can only see their own password
+      const userIdNum = Number(currentUserId);
+      if (isNaN(userIdNum)) {
+        // Invalid user ID, return without passwords
+        const rows = await sql/* sql */`
+          SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
+          FROM public.tbl_users
+          ORDER BY userid DESC` as DbUser[];
+        return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+      }
+      
+      // Fetch all users, but only include password for the current viewer user
       const rows = await sql/* sql */`
-        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
+        SELECT 
+          userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          type, 
+          blocked, 
+          lastlogindatetime,
+          CASE 
+            WHEN userid = ${userIdNum} THEN password 
+            ELSE NULL 
+          END as password
         FROM public.tbl_users
         ORDER BY userid DESC` as DbUser[];
+      
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords

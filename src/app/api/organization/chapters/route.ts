@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { isSuperAdminUser, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { parseChapterCities, serializeChapterCities } from "@/lib/chapterCities";
 
 // GET - Fetch all chapters
@@ -13,8 +13,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isSuperAdminUser(session.user)) {
-      return NextResponse.json({ error: "Forbidden - Super Admin only" }, { status: 403 });
+    // Allow admin and viewer to view chapters (read-only)
+    if (!isSuperAdminUser(session.user) && !isAdminUser(session.user) && !isViewerUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const chapters = await sql/* sql */`
@@ -66,8 +67,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isSuperAdminUser(session.user)) {
-      return NextResponse.json({ error: "Forbidden - Super Admin only" }, { status: 403 });
+    // Only admin and superadmin can create chapters
+    if (!isSuperAdminUser(session.user) && !isAdminUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -159,8 +161,9 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isSuperAdminUser(session.user)) {
-      return NextResponse.json({ error: "Forbidden - Super Admin only" }, { status: 403 });
+    // Only admin and superadmin can update chapters
+    if (!isSuperAdminUser(session.user) && !isAdminUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -254,8 +257,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isSuperAdminUser(session.user)) {
-      return NextResponse.json({ error: "Forbidden - Super Admin only" }, { status: 403 });
+    // Only admin and superadmin can delete chapters
+    if (!isSuperAdminUser(session.user) && !isAdminUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);

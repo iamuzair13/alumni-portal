@@ -92,8 +92,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
           return NextResponse.json({ error: "Invalid alumni record" }, { status: 400 });
         }
         const accessCheck = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
-          WHERE alumniid = ${alumniId} 
+          SELECT a.alumniid FROM public.tbl_alumni a
+          WHERE a.alumniid = ${alumniId} 
           AND (${accessFilter.sql})
           LIMIT 1
         `;

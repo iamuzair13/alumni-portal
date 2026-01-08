@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
-import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isSuperAdminUser(session.user)) {
-      return NextResponse.json({ error: "Forbidden - Super Admin only" }, { status: 403 });
+    // Only admin and superadmin can upload images
+    if (!isSuperAdminUser(session.user) && !isAdminUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
     }
 
     const formData = await req.formData();

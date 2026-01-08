@@ -30,23 +30,23 @@ export async function GET(req: Request) {
       WITH year_data AS (
         SELECT 
           CASE 
-            WHEN yearofending IS NULL 
+            WHEN a.yearofending IS NULL 
             THEN 'Null'
-            ELSE yearofending::text
+            ELSE a.yearofending::text
           END as year_value,
-          yearofending as year_raw,
+          a.yearofending as year_raw,
           COUNT(*) as count
-        FROM public.tbl_alumni
-        WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+        FROM public.tbl_alumni a
+        WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
           ${accessFilterCondition}
           ${masterFilterConditions}
         GROUP BY 
           CASE 
-            WHEN yearofending IS NULL 
+            WHEN a.yearofending IS NULL 
             THEN 'Null'
-            ELSE yearofending::text
+            ELSE a.yearofending::text
           END,
-          yearofending
+          a.yearofending
       )
       SELECT year_value, count
       FROM year_data

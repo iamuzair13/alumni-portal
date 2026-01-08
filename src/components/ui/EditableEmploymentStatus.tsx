@@ -75,6 +75,7 @@ type EditableEmploymentStatusProps = {
   onInstituteCountryChange?: (key: string, value: unknown) => void;
   onInstituteCityChange?: (key: string, value: unknown) => void;
   onScholarshipChange?: (key: string, value: unknown) => void;
+  disabled?: boolean;
 };
 
 export default function EditableEmploymentStatus({
@@ -102,6 +103,7 @@ export default function EditableEmploymentStatus({
   onInstituteCountryChange,
   onInstituteCityChange,
   onScholarshipChange,
+  disabled = false,
 }: EditableEmploymentStatusProps) {
   // Map database value to display value for the select dropdown
   const displayValue = mapDbValueToDisplay(employeedValue);
@@ -132,6 +134,7 @@ export default function EditableEmploymentStatus({
         type="select"
         options={employmentStatusOptions}
         batchMode={true}
+        disabled={disabled}
       />
       {showEmploymentFields && (
         <>
@@ -142,6 +145,7 @@ export default function EditableEmploymentStatus({
             onValueChange={onIndustryChange}
             type="text"
             batchMode={true}
+            disabled={disabled}
           />
           <EditableField
             label="Company Name *"
@@ -150,6 +154,7 @@ export default function EditableEmploymentStatus({
             onValueChange={onOrganizationChange}
             type="text"
             batchMode={true}
+            disabled={disabled}
           />
           <EditableField
             label="Designation *"
@@ -158,6 +163,7 @@ export default function EditableEmploymentStatus({
             onValueChange={onDesignationChange}
             type="text"
             batchMode={true}
+            disabled={disabled}
           />
           <EditableField
             label="Total Years of Experience *"
@@ -175,6 +181,7 @@ export default function EditableEmploymentStatus({
               onValueChange={onOrganizationAddressChange}
               type="textarea"
               batchMode={true}
+              disabled={disabled}
             />
           )}
         </>
@@ -189,6 +196,7 @@ export default function EditableEmploymentStatus({
               onValueChange={onDegreeTitleChange}
               type="text"
               batchMode={true}
+              disabled={disabled}
             />
           )}
           {onInstituteNameChange && (
@@ -199,6 +207,7 @@ export default function EditableEmploymentStatus({
               onValueChange={onInstituteNameChange}
               type="text"
               batchMode={true}
+              disabled={disabled}
             />
           )}
           {onProgramChange && (
@@ -213,6 +222,7 @@ export default function EditableEmploymentStatus({
                 { value: "PhD", label: "PhD (Doctor of Philosophy)" },
               ]}
               batchMode={true}
+              disabled={disabled}
             />
           )}
           {onInstituteCountryChange && (
@@ -223,6 +233,7 @@ export default function EditableEmploymentStatus({
               onValueChange={onInstituteCountryChange}
               type="text"
               batchMode={true}
+              disabled={disabled}
             />
           )}
           {onInstituteCityChange && (
@@ -244,6 +255,7 @@ export default function EditableEmploymentStatus({
               type="select"
               options={scholarshipOptions}
               batchMode={true}
+              disabled={disabled}
             />
           )}
         </>

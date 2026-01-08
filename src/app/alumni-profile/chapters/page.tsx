@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner } from "@/lib/alumniProfile";
+import { computeLoginBanner, isViewerUser } from "@/lib/alumniProfile";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 
@@ -125,6 +125,7 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
   }
   
   const alumniId = String(sapRows[0]?.alumniid ?? "");
+  const isViewer = isViewerUser(session?.user);
 
   return (
     <>
@@ -140,6 +141,11 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
             </div>
           ) : null;
         })()}
+        {isViewer && (
+          <div className="mt-4">
+            <Alert variant="error" title="Access Restricted" message="Viewers cannot submit chapter membership applications. This feature is read-only for your role." />
+          </div>
+        )}
         {profileError && (
           <div className="mt-4">
             <Alert variant="error" title="Profile Load Failed" message={profileError} />
@@ -165,10 +171,16 @@ export default async function ChaptersPage({ searchParams }: { searchParams: Pro
                 Stay connected anywhere! Join up to two chapters at a time. Moving to a new city or country? Switch your chapter or join both your international and hometown chapters. 
               </p>
             </div>
-            <AlumniChaptersForm
-              contactNumber={contact}
-              alumniId={alumniId}
-            />
+            {!isViewer ? (
+              <AlumniChaptersForm
+                contactNumber={contact}
+                alumniId={alumniId}
+              />
+            ) : (
+              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                <p className="text-gray-600">This form is not available for viewers. Please contact an administrator if you need to submit a chapter membership application.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

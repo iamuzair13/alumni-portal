@@ -16,7 +16,7 @@ import UserForm from "@/components/forms/UserForm";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AdminUser } from "@/app/queries/fetch-users";
 import { useSession } from "next-auth/react";
-import { canModify, isAdminUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, isViewerUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
 import OrganizationComponent from "@/components/setup/OrganizationComponent";
 import ChaptersComponent from "@/components/setup/ChaptersComponent";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
@@ -624,6 +624,7 @@ function RealTimeUsers() {
   const { data: session } = useSession();
   const canManage = canManageUsers(session?.user);
   const isAdmin = isAdminUser(session?.user);
+  const isViewer = isViewerUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const currentUserId = (session?.user as { userId?: number })?.userId;
   const { data, isLoading, error } = useUsersList();
@@ -748,7 +749,7 @@ function RealTimeUsers() {
                           </>
                         );
                       }
-                      return <span className="text-xs text-gray-500 dark:text-gray-400">{isAdmin ? "Admin - Cannot manage users" : "View only"}</span>;
+                      return <span className="text-xs text-gray-500 dark:text-gray-400">{(isAdmin || isViewer) ? `${isAdmin ? "Admin" : "Viewer"} - Cannot manage other users` : "View only"}</span>;
                     })()}
                   </div>
                 </td>
@@ -758,11 +759,13 @@ function RealTimeUsers() {
         </table>
       </SyncedTableScroll>
       {/* Edit User Modal with UserForm */}
-      {editUserId && canManage && (
+      {editUserId && (
         <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
           <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
             <h4 className="text-2xl font-bold text-gray-900 dark:text-white">Edit User</h4>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Update user account and access permissions</p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              {canManage ? "Update user account and access permissions" : "Update your account"}
+            </p>
           </div>
           <UserForm 
             userId={editUserId} 

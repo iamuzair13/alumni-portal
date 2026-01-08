@@ -742,59 +742,59 @@ export async function GET(req: Request) {
           COUNT(*) as total,
           -- Verified: verify = 'true' (string)
           COUNT(CASE 
-            WHEN LOWER(COALESCE(verify, '')) = 'true' 
+            WHEN LOWER(COALESCE(a.verify, '')) = 'true' 
             THEN 1 
           END) as verified,
           -- Unverified: verify = 'false' (string)
           COUNT(CASE 
-            WHEN LOWER(COALESCE(verify, '')) = 'false' 
+            WHEN LOWER(COALESCE(a.verify, '')) = 'false' 
             THEN 1 
           END) as unverified,
           -- Under Approval: verify = 'pending' (new registrations awaiting admin approval)
           COUNT(CASE 
-            WHEN verify = 'pending'
+            WHEN a.verify = 'pending'
             THEN 1 
           END) as under_approval,
           -- Active: has logged in
           COUNT(CASE 
-            WHEN (lasttimelogin IS NOT NULL AND lasttimelogin != '') 
-            OR (logincount IS NOT NULL AND logincount > 0) 
+            WHEN (a.lasttimelogin IS NOT NULL AND a.lasttimelogin != '') 
+            OR (a.logincount IS NOT NULL AND a.logincount > 0) 
             THEN 1 
           END) as active,
           -- Inactive: never logged in
           COUNT(CASE 
-            WHEN (lasttimelogin IS NULL OR lasttimelogin = '') 
-            AND (logincount IS NULL OR logincount = 0) 
+            WHEN (a.lasttimelogin IS NULL OR a.lasttimelogin = '') 
+            AND (a.logincount IS NULL OR a.logincount = 0) 
             THEN 1 
           END) as inactive,
           -- Category counts
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'a+' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
             THEN 1 
           END) as category_a_plus,
           COUNT(CASE 
-            WHEN (LOWER(TRIM(COALESCE(category, ''))) = 'a' 
-               OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' 
-               AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))
+            WHEN (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' 
+               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' 
+               AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))
             THEN 1 
           END) as category_a,
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'b' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'b' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
             THEN 1 
           END) as category_b,
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'c' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'c' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
             THEN 1 
           END) as category_c,
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'd' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'd' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
             THEN 1 
           END) as category_d
-        FROM public.tbl_alumni
+        FROM public.tbl_alumni a a
         WHERE ${baseWhere}
           ${facultyFilter}
           ${departmentFilter}
@@ -823,14 +823,14 @@ export async function GET(req: Request) {
           ${verifyFilter}
           ${accessFilterCondition}
           AND (
-            LOWER(COALESCE(sapid, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(alumniname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(personalemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTerm}
+            LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
           )
       `);
     } else {
@@ -839,59 +839,59 @@ export async function GET(req: Request) {
           COUNT(*) as total,
           -- Verified: verify = 'true' (string)
           COUNT(CASE 
-            WHEN LOWER(COALESCE(verify, '')) = 'true' 
+            WHEN LOWER(COALESCE(a.verify, '')) = 'true' 
             THEN 1 
           END) as verified,
           -- Unverified: verify = 'false' (string)
           COUNT(CASE 
-            WHEN LOWER(COALESCE(verify, '')) = 'false' 
+            WHEN LOWER(COALESCE(a.verify, '')) = 'false' 
             THEN 1 
           END) as unverified,
           -- Under Approval: verify = 'pending' (new registrations awaiting admin approval)
           COUNT(CASE 
-            WHEN verify = 'pending'
+            WHEN a.verify = 'pending'
             THEN 1 
           END) as under_approval,
           -- Active: has logged in
           COUNT(CASE 
-            WHEN (lasttimelogin IS NOT NULL AND lasttimelogin != '') 
-            OR (logincount IS NOT NULL AND logincount > 0) 
+            WHEN (a.lasttimelogin IS NOT NULL AND a.lasttimelogin != '') 
+            OR (a.logincount IS NOT NULL AND a.logincount > 0) 
             THEN 1 
           END) as active,
           -- Inactive: never logged in
           COUNT(CASE 
-            WHEN (lasttimelogin IS NULL OR lasttimelogin = '') 
-            AND (logincount IS NULL OR logincount = 0) 
+            WHEN (a.lasttimelogin IS NULL OR a.lasttimelogin = '') 
+            AND (a.logincount IS NULL OR a.logincount = 0) 
             THEN 1 
           END) as inactive,
           -- Category counts
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'a+' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
             THEN 1 
           END) as category_a_plus,
           COUNT(CASE 
-            WHEN (LOWER(TRIM(COALESCE(category, ''))) = 'a' 
-               OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' 
-               AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))
+            WHEN (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' 
+               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' 
+               AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))
             THEN 1 
           END) as category_a,
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'b' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'b' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
             THEN 1 
           END) as category_b,
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'c' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'c' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
             THEN 1 
           END) as category_c,
           COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(category, ''))) = 'd' 
-               OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%'
+            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'd' 
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
             THEN 1 
           END) as category_d
-        FROM public.tbl_alumni
+        FROM public.tbl_alumni a
         WHERE ${baseWhere}
           ${facultyFilter}
           ${departmentFilter}

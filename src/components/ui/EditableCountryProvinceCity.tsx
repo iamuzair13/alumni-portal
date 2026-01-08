@@ -291,6 +291,7 @@ type EditableCountryProvinceCityProps = {
   onCountryChange: (key: string, value: unknown) => void;
   onProvinceChange: (key: string, value: unknown) => void;
   onCityChange: (key: string, value: unknown) => void;
+  disabled?: boolean;
 };
 
 export default function EditableCountryProvinceCity({
@@ -300,6 +301,7 @@ export default function EditableCountryProvinceCity({
   onCountryChange,
   onProvinceChange,
   onCityChange,
+  disabled = false,
 }: EditableCountryProvinceCityProps) {
   const selectedCountry = String(countryValue || "");
   const selectedProvince = String(provinceValue || "");
@@ -353,6 +355,7 @@ export default function EditableCountryProvinceCity({
         type="select"
         options={countryOptions}
         batchMode={true}
+        disabled={disabled}
       />
       {/* Province - only shown for Pakistan */}
       {selectedCountry === "Pakistan" && (
@@ -364,6 +367,7 @@ export default function EditableCountryProvinceCity({
           type="select"
           options={provinceOptions}
           batchMode={true}
+          disabled={disabled}
         />
       )}
       {/* City field - uses datalist for Pakistan, text input for others */}

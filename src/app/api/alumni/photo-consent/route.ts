@@ -29,36 +29,36 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN alumni_consent_pic IS NULL 
+          WHEN a.alumni_consent_pic IS NULL 
           THEN 'Null'
-          WHEN alumni_consent_pic = true 
+          WHEN a.alumni_consent_pic = true 
           THEN 'Allowed'
-          WHEN alumni_consent_pic = false 
+          WHEN a.alumni_consent_pic = false 
           THEN 'Not Allowed'
           ELSE 'Null'
         END as consent_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN alumni_consent_pic IS NULL 
+          WHEN a.alumni_consent_pic IS NULL 
           THEN 'Null'
-          WHEN alumni_consent_pic = true 
+          WHEN a.alumni_consent_pic = true 
           THEN 'Allowed'
-          WHEN alumni_consent_pic = false 
+          WHEN a.alumni_consent_pic = false 
           THEN 'Not Allowed'
           ELSE 'Null'
         END
       ORDER BY 
         CASE 
-          WHEN alumni_consent_pic IS NULL 
+          WHEN a.alumni_consent_pic IS NULL 
           THEN 'Null'
-          WHEN alumni_consent_pic = true 
+          WHEN a.alumni_consent_pic = true 
           THEN 'Allowed'
-          WHEN alumni_consent_pic = false 
+          WHEN a.alumni_consent_pic = false 
           THEN 'Not Allowed'
           ELSE 'Null'
         END ASC

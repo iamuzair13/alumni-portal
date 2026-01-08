@@ -11,10 +11,12 @@ import EditableField from "@/components/ui/EditableField";
 import EditableCountryProvinceCity from "@/components/ui/EditableCountryProvinceCity";
 import EditableEmploymentStatus from "@/components/ui/EditableEmploymentStatus";
 import { Toaster, toast } from "react-hot-toast";
+import { isViewerUser } from "@/lib/alumniProfile";
 
 function MoreDetailsContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const isViewer = isViewerUser(session?.user);
   
   // Get identifier from URL params, or fallback to session (SAP ID or registration number)
   const urlSapId = searchParams.get("sapid") || "";
@@ -514,6 +516,8 @@ function MoreDetailsContent() {
         { label: "Company Name", value: data.nameoforganization, key: "nameoforganization", editable: true, isSpecial: true },
         { label: "Designation", value: data.designation, key: "designation", editable: true, isSpecial: true },
         { label: "Total Years of Experience", value: data.totalyearsofexpereince, key: "totalyearsofexpereince", editable: true, isSpecial: true },
+        { label: "Work Country", value: (data as Record<string, unknown>).work_country, key: "work_country", editable: true },
+        { label: "Work City", value: (data as Record<string, unknown>).work_city, key: "work_city", editable: true },
       ],
     },
     {
@@ -556,36 +560,40 @@ function MoreDetailsContent() {
                     <span className="text-sm font-medium text-yellow-800 whitespace-nowrap">
                       {Object.keys(pendingChanges).length} change{Object.keys(pendingChanges).length > 1 ? 's' : ''} pending
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleCancelAll}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors whitespace-nowrap"
-                    >
-                      Cancel All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveAll}
-                      disabled={isSavingAll}
-                      className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap shadow-md"
-                    >
-                      {isSavingAll ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Save All Changes
-                        </>
-                      )}
-                    </button>
+                    {!isViewer && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleCancelAll}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors whitespace-nowrap"
+                        >
+                          Cancel All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveAll}
+                          disabled={isSavingAll}
+                          className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap shadow-md"
+                        >
+                          {isSavingAll ? (
+                            <>
+                              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Save All Changes
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
                 <BackButton />
@@ -632,6 +640,7 @@ function MoreDetailsContent() {
                         onCountryChange={handleFieldValueChange}
                         onProvinceChange={handleFieldValueChange}
                         onCityChange={handleFieldValueChange}
+                        disabled={isViewer}
                       />
                       <EditableField
                         label="Address"
@@ -640,6 +649,7 @@ function MoreDetailsContent() {
                         onValueChange={handleFieldValueChange}
                         type="textarea"
                         batchMode={true}
+                        disabled={isViewer}
                       />
                     </>
                   ) : section.title === "Employment Information" ? (
@@ -652,6 +662,7 @@ function MoreDetailsContent() {
                         designationValue={pendingChanges.designation !== undefined ? pendingChanges.designation : data.designation}
                         totalyearsofexpereinceValue={pendingChanges.totalyearsofexpereince !== undefined ? pendingChanges.totalyearsofexpereince : data.totalyearsofexpereince}
                         organizationAddressValue={pendingChanges.organization_address !== undefined ? pendingChanges.organization_address : data.organization_address}
+                        disabled={isViewer}
                         degreeTitleValue={pendingChanges.degree_title !== undefined ? pendingChanges.degree_title : (data as Record<string, unknown>).degree_title ?? null}
                         instituteNameValue={pendingChanges.higher_education_institute_name !== undefined ? pendingChanges.higher_education_institute_name : (data as Record<string, unknown>).higher_education_institute_name ?? null}
                         programValue={pendingChanges.higher_education_program !== undefined ? pendingChanges.higher_education_program : (data as Record<string, unknown>).higher_education_program ?? null}
@@ -731,6 +742,7 @@ function MoreDetailsContent() {
                             type={fieldWithExtras.type || "text"}
                             options={fieldWithExtras.options}
                             batchMode={true}
+                            disabled={isViewer}
                           />
                         );
                       }

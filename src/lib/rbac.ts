@@ -161,9 +161,18 @@ export async function buildIdBasedAccessFilterSQL(
   // Get assignments with IDs
   const assignments = await getUserAccessAssignmentsWithIds(userId);
   
+  console.log("[RBAC] ========== ID-BASED ACCESS FILTER DEBUG ==========");
+  console.log("[RBAC] User ID:", userId);
+  console.log("[RBAC] Assignments count:", assignments.length);
+  console.log("[RBAC] Assignments:", JSON.stringify(assignments, null, 2));
+  
   if (assignments.length === 0) {
-    // No assignments = no access
-    return { sql: sql`1 = 0`, hasFilter: true };
+    // Default behavior: if no assignments are configured for an admin/viewer,
+    // do NOT block the entire system. Treat as full access (read-only for viewer, enforced elsewhere).
+    // This matches the fallback behavior in userAccess.ts
+    console.log("[RBAC] No assignments found - allowing full access (no filtering)");
+    console.log("[RBAC] ============================================");
+    return { sql: null, hasFilter: false };
   }
   
   // Build ID-based filter conditions
@@ -181,23 +190,34 @@ export async function buildIdBasedAccessFilterSQL(
   const programToDepartment = new Map<number, number>();
   
   for (const assignment of assignments) {
-    if (assignment.program_id !== null) {
-      programIds.add(assignment.program_id);
-      if (assignment.department_id !== null) {
-        programToDepartment.set(assignment.program_id, assignment.department_id);
+    // Convert IDs to numbers (they may come as strings from the database)
+    const programId = assignment.program_id !== null ? Number(assignment.program_id) : null;
+    const departmentId = assignment.department_id !== null ? Number(assignment.department_id) : null;
+    const facultyId = assignment.faculty_id !== null ? Number(assignment.faculty_id) : null;
+    
+    if (programId !== null && !isNaN(programId)) {
+      programIds.add(programId);
+      if (departmentId !== null && !isNaN(departmentId)) {
+        programToDepartment.set(programId, departmentId);
       }
-      if (assignment.faculty_id !== null) {
+      if (facultyId !== null && !isNaN(facultyId)) {
         // Track faculty for program-level access
       }
-    } else if (assignment.department_id !== null) {
-      departmentIds.add(assignment.department_id);
-      if (assignment.faculty_id !== null) {
-        departmentToFaculty.set(assignment.department_id, assignment.faculty_id);
+    } else if (departmentId !== null && !isNaN(departmentId)) {
+      departmentIds.add(departmentId);
+      if (facultyId !== null && !isNaN(facultyId)) {
+        departmentToFaculty.set(departmentId, facultyId);
       }
-    } else if (assignment.faculty_id !== null) {
-      facultyIds.add(assignment.faculty_id);
+    } else if (facultyId !== null && !isNaN(facultyId)) {
+      facultyIds.add(facultyId);
     }
   }
+  
+  console.log("[RBAC] Collected IDs:", {
+    facultyIds: Array.from(facultyIds),
+    departmentIds: Array.from(departmentIds),
+    programIds: Array.from(programIds)
+  });
   
   // Build conditions: program > department > faculty (most specific first)
   // Note: We build conditions without table alias prefix since most queries use "a" as alias
@@ -267,19 +287,33 @@ export async function buildIdBasedAccessFilterSQL(
     );
     
     if (uncoveredFacultyIds.length > 0) {
-      const facultyIdArray = Array.from(uncoveredFacultyIds);
-      conditionsArray.push(
-        sql`a.faculty = ANY(${facultyIdArray})`
-      );
+      // Ensure all IDs are numbers for the SQL array
+      const facultyIdArray = uncoveredFacultyIds.map(id => Number(id)).filter(id => !isNaN(id));
+      if (facultyIdArray.length > 0) {
+        conditionsArray.push(
+          sql`a.faculty = ANY(${facultyIdArray})`
+        );
+      }
     }
   }
   
   if (conditionsArray.length === 0) {
+    console.log("[RBAC] ⚠️ No valid conditions generated - blocking access");
+    console.log("[RBAC] ============================================");
     return { sql: sql`1 = 0`, hasFilter: true }; // No access
   }
   
   // Combine all conditions with OR
   const combinedCondition = combineOrConditions(conditionsArray);
+  
+  console.log("[RBAC] ✅ Generated filter with", conditionsArray.length, "condition(s)");
+  console.log("[RBAC] Condition summary:", {
+    facultyLevel: facultyIds.size,
+    departmentLevel: departmentIds.size,
+    programLevel: programIds.size,
+    totalConditions: conditionsArray.length
+  });
+  console.log("[RBAC] ============================================");
   
   return { sql: combinedCondition, hasFilter: true };
 }

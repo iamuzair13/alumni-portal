@@ -28,26 +28,26 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN industry IS NULL OR TRIM(COALESCE(industry, '')) = '' 
+          WHEN a.industry IS NULL OR TRIM(COALESCE(a.industry, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(industry)
+          ELSE TRIM(a.industry)
         END as sector_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN industry IS NULL OR TRIM(COALESCE(industry, '')) = '' 
+          WHEN a.industry IS NULL OR TRIM(COALESCE(a.industry, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(industry)
+          ELSE TRIM(a.industry)
         END
       ORDER BY 
         CASE 
-          WHEN industry IS NULL OR TRIM(COALESCE(industry, '')) = '' 
+          WHEN a.industry IS NULL OR TRIM(COALESCE(a.industry, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(industry)
+          ELSE TRIM(a.industry)
         END ASC
     `;
 

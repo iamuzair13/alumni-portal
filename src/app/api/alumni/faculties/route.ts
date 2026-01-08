@@ -26,26 +26,26 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN facultyname IS NULL OR TRIM(COALESCE(facultyname, '')) = '' 
+          WHEN a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(facultyname)
+          ELSE TRIM(a.facultyname)
         END as faculty_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN facultyname IS NULL OR TRIM(COALESCE(facultyname, '')) = '' 
+          WHEN a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(facultyname)
+          ELSE TRIM(a.facultyname)
         END
       ORDER BY 
         CASE 
-          WHEN facultyname IS NULL OR TRIM(COALESCE(facultyname, '')) = '' 
+          WHEN a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(facultyname)
+          ELSE TRIM(a.facultyname)
         END ASC
     `;
 

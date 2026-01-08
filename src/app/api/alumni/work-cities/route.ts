@@ -28,26 +28,26 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '' 
+          WHEN a.work_city IS NULL OR TRIM(COALESCE(a.work_city, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(work_city)
+          ELSE TRIM(a.work_city)
         END as work_city_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '' 
+          WHEN a.work_city IS NULL OR TRIM(COALESCE(a.work_city, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(work_city)
+          ELSE TRIM(a.work_city)
         END
       ORDER BY 
         CASE 
-          WHEN work_city IS NULL OR TRIM(COALESCE(work_city, '')) = '' 
+          WHEN a.work_city IS NULL OR TRIM(COALESCE(a.work_city, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(work_city)
+          ELSE TRIM(a.work_city)
         END ASC
     `;
 

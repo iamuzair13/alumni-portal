@@ -18,10 +18,56 @@ type DbUser = {
 
 export async function GET(req: Request) {
   try {
+    const session = await auth();
     const url = new URL(req.url);
     const idStr = url.pathname.split("/").pop() || "";
     const id = Number(idStr);
-    const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE userid = ${id} LIMIT 1` as DbUser[];
+    
+    const isSuperAdmin = isSuperAdminUser(session?.user);
+    const isAdmin = isAdminUser(session?.user);
+    const isViewer = isViewerUser(session?.user);
+    const currentUserId = (session?.user as { userId?: number })?.userId;
+    
+    // Check if user can access this user's data
+    if (!isSuperAdmin && !isAdmin && !isViewer) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    
+    // Admin and viewer can only view their own user data
+    if ((isAdmin || isViewer) && !isSuperAdmin) {
+      if (!currentUserId || Number(currentUserId) !== id) {
+        return NextResponse.json({ error: "Forbidden: You can only view your own account" }, { status: 403 });
+      }
+    }
+    
+    // Fetch user data with password based on role
+    let rows;
+    if (isSuperAdmin) {
+      // Superadmin can see all passwords
+      rows = await sql/* sql */`
+        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime, password
+        FROM public.tbl_users 
+        WHERE userid = ${id} 
+        LIMIT 1
+      ` as Array<DbUser & { password?: string | null }>;
+    } else if ((isAdmin || isViewer) && currentUserId && Number(currentUserId) === id) {
+      // Admin/viewer can only see their own password
+      rows = await sql/* sql */`
+        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime, password
+        FROM public.tbl_users 
+        WHERE userid = ${id} 
+        LIMIT 1
+      ` as Array<DbUser & { password?: string | null }>;
+    } else {
+      // Should not reach here due to earlier check, but just in case
+      rows = await sql/* sql */`
+        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
+        FROM public.tbl_users 
+        WHERE userid = ${id} 
+        LIMIT 1
+      ` as DbUser[];
+    }
+    
     const user = rows[0] ?? null;
     
     if (!user) {
@@ -58,11 +104,17 @@ export async function GET(req: Request) {
       };
     }
     
+    // Build response with password based on permissions
+    const userResponse: DbUser & { password?: string | null; accessAssignments?: typeof accessAssignments } = {
+      ...user,
+      accessAssignments
+    };
+    
+    // Password is already included in the query result if user has permission
+    // No need to remove it - the SQL query already handles the permission check
+    
     return NextResponse.json({ 
-      item: {
-        ...user,
-        accessAssignments
-      }
+      item: userResponse
     }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

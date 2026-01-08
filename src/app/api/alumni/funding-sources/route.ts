@@ -28,26 +28,26 @@ export async function GET(req: Request) {
     const rows = await retryDbOperation(async () => await sql/* sql */`
       SELECT 
         CASE 
-          WHEN is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '' 
+          WHEN a.is_scholarship IS NULL OR TRIM(COALESCE(a.is_scholarship, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(is_scholarship)
+          ELSE TRIM(a.is_scholarship)
         END as funding_source_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '' 
+          WHEN a.is_scholarship IS NULL OR TRIM(COALESCE(a.is_scholarship, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(is_scholarship)
+          ELSE TRIM(a.is_scholarship)
         END
       ORDER BY 
         CASE 
-          WHEN is_scholarship IS NULL OR TRIM(COALESCE(is_scholarship, '')) = '' 
+          WHEN a.is_scholarship IS NULL OR TRIM(COALESCE(a.is_scholarship, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(is_scholarship)
+          ELSE TRIM(a.is_scholarship)
         END ASC
     `);
 

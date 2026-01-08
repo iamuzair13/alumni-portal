@@ -28,26 +28,26 @@ export async function GET(req: Request) {
     const rows = await sql/* sql */`
       SELECT 
         CASE 
-          WHEN higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '' 
+          WHEN a.higher_education_institute_country IS NULL OR TRIM(COALESCE(a.higher_education_institute_country, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(higher_education_institute_country)
+          ELSE TRIM(a.higher_education_institute_country)
         END as institution_country_value,
         COUNT(*) as count
-      FROM public.tbl_alumni
-      WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
+      FROM public.tbl_alumni a
+      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 
         CASE 
-          WHEN higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '' 
+          WHEN a.higher_education_institute_country IS NULL OR TRIM(COALESCE(a.higher_education_institute_country, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(higher_education_institute_country)
+          ELSE TRIM(a.higher_education_institute_country)
         END
       ORDER BY 
         CASE 
-          WHEN higher_education_institute_country IS NULL OR TRIM(COALESCE(higher_education_institute_country, '')) = '' 
+          WHEN a.higher_education_institute_country IS NULL OR TRIM(COALESCE(a.higher_education_institute_country, '')) = '' 
           THEN 'Null'
-          ELSE TRIM(higher_education_institute_country)
+          ELSE TRIM(a.higher_education_institute_country)
         END ASC
     `;
 

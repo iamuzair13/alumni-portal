@@ -4,6 +4,7 @@ import React from "react";
 import BackButton from "@/components/ui/BackButton";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
+import { isViewerUser } from "@/lib/alumniProfile";
 
 const benefitsData: Record<string, { title: string; description: string; content: string; icon: React.ReactElement }> = {
   "academic-benefits": {
@@ -570,8 +571,10 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
 
   // Get SAP ID for the scholarship application link
   let sapId = "";
+  const session = await auth();
+  const isViewer = isViewerUser(session?.user);
+  
   try {
-    const session = await auth();
     const userSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
     const userEmail = session?.user?.email ? String(session.user.email) : undefined;
 
@@ -613,6 +616,24 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
       'href="/alumni-profile/swimming-pool-membership"',
       `href="/alumni-profile/swimming-pool-membership?sapid=${encodeURIComponent(sapId)}"`
     );
+  }
+
+  // Remove Apply links for viewers
+  if (isViewer) {
+    // Remove Apply buttons/links from content using regex
+    content = content.replace(/<a[^>]*href="[^"]*alumni-profile\/(scholarship-application|gym-membership|swimming-pool-membership|mentorship|upskill-application)"[^>]*>[\s\S]*?<\/a>/gi, '');
+    // Remove the entire "Apply for Scholarships" section for academic-benefits
+    if (slug === "academic-benefits") {
+      content = content.replace(/<div class="bg-gradient-to-br from-blue-50 to-indigo-50[^>]*>[\s\S]*?Apply Now[\s\S]*?<\/a>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi, '');
+    }
+    // Remove Apply buttons from campus-facilities table cells
+    if (slug === "campus-facilities") {
+      content = content.replace(/<td class="px-4 py-4">[\s\S]*?<a[^>]*href="[^"]*alumni-profile\/(gym-membership|swimming-pool-membership)"[^>]*>[\s\S]*?<\/a>[\s\S]*?<\/td>/gi, '<td class="px-4 py-4"></td>');
+    }
+    // Remove Apply Now button from career-mentorship
+    if (slug === "career-mentorship") {
+      content = content.replace(/<a[^>]*href="[^"]*alumni-profile\/upskill-application"[^>]*>[\s\S]*?Apply Now[\s\S]*?<\/a>/gi, '');
+    }
   }
 
   return (

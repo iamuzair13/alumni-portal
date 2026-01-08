@@ -131,8 +131,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
           return NextResponse.json({ error: "Invalid alumni record" }, { status: 400 });
         }
         const accessCheck = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
-          WHERE alumniid = ${alumniId} 
+          SELECT a.alumniid FROM public.tbl_alumni a
+          WHERE a.alumniid = ${alumniId} 
           AND (${accessFilter.sql})
           LIMIT 1
         `;
@@ -286,8 +286,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       if (accessFilter.hasFilter && accessFilter.sql) {
         // Check if this alumni record is within the user's access
         const accessCheck = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
-          WHERE alumniid = ${row.alumniid} 
+          SELECT a.alumniid FROM public.tbl_alumni a
+          WHERE a.alumniid = ${row.alumniid} 
           AND (${accessFilter.sql})
           LIMIT 1
         `;
@@ -385,8 +385,8 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     // SECURITY: Verify admin/viewer has access to this alumni record
     if (accessFilter.hasFilter && accessFilter.sql) {
       const accessCheck = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE alumniid = ${alumniId} 
+        SELECT a.alumniid FROM public.tbl_alumni a
+        WHERE a.alumniid = ${alumniId} 
         AND (${accessFilter.sql})
         LIMIT 1
       `;
@@ -555,8 +555,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     if (accessFilter.hasFilter && accessFilter.sql) {
       const accessCheck = await sql/* sql */`
-        SELECT alumniid FROM public.tbl_alumni 
-        WHERE alumniid = ${current.alumniid} 
+        SELECT a.alumniid FROM public.tbl_alumni a
+        WHERE a.alumniid = ${current.alumniid} 
         AND (${accessFilter.sql})
         LIMIT 1
       `;

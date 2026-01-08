@@ -13,7 +13,8 @@ import { redirect } from "next/navigation";
 import type { CardStatus } from "./status";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
-import { computeLoginBanner, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { computeLoginBanner, isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { canViewAlumni } from "@/lib/rbac";
 import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
@@ -43,14 +44,15 @@ async function getProfile(searchParams: { sapid?: string }) {
   const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
   try {
     const session = await auth();
+    const canView = canViewAlumni(session?.user); // Includes admins, superadmins, and viewers
     const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
     const sessionAlumniId =
       session?.user && (session.user as { userId?: number | null })?.userId
         ? Number((session.user as { userId?: number | null }).userId)
         : undefined;
     
-    if (sapid && isAdmin) {
-      // Admins can view any profile by SAP ID
+    if (sapid && canView) {
+      // Admins and viewers can view profiles by SAP ID (with RBAC restrictions applied in API)
       const rows = await sql/* sql */`
         SELECT 
           a.alumniname, 
@@ -75,8 +77,8 @@ async function getProfile(searchParams: { sapid?: string }) {
       return rows[0] as Profile | undefined;
     }
     
-    // If admin and no sapid provided, return undefined (admins need to specify sapid to view profiles)
-    if (isAdmin) {
+    // If admin/viewer and no sapid provided, return undefined (they need to specify sapid to view profiles)
+    if (canView) {
       return undefined;
     }
 
@@ -187,7 +189,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   } catch (e) {
     profileError = e instanceof Error ? e.message : "Failed to load profile";
   }
+  const canView = canViewAlumni(session?.user); // Includes admins, superadmins, and viewers
   const isAdmin = isAdminUser(session?.user) || isSuperAdminUser(session?.user);
+  const isViewer = isViewerUser(session?.user);
   const name = p?.alumniname ?? "";
   const googleImage = session?.user?.image && String(session.user.image).includes("googleusercontent") ? String(session.user.image) : undefined;
   
@@ -222,14 +226,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const contact = p?.contactno ?? "";
-  // Get SAP ID or registration number from session first, then (admin-only) from search params
+  // Get SAP ID or registration number from session first, then (admin/viewer-only) from search params
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
   const sessionAlumniId =
     session?.user && (session.user as { userId?: number | null })?.userId
       ? Number((session.user as { userId?: number | null }).userId)
       : undefined;
-  const requestedSapid = isAdmin && sp?.sapid ? String(sp.sapid).trim() : undefined;
+  const requestedSapid = canView && sp?.sapid ? String(sp.sapid).trim() : undefined;
   
   let sapRows: Array<{ alumniid: number; sapid: string }> = [];
   let sapError: string | null = null;
@@ -273,11 +277,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   
   // Use SAP ID if available, otherwise use registration number as identifier
   // The API endpoints support both SAP ID and registration number
-  // For admins viewing a specific profile, prioritize the requested sapid from query params
-  // If admin requested a specific profile but database query failed, still use requestedSapid
+  // For admins/viewers viewing a specific profile, prioritize the requested sapid from query params
+  // If admin/viewer requested a specific profile but database query failed, still use requestedSapid
   // (the API will handle validation and access control)
   const sapId = String(
-    (isAdmin && requestedSapid && requestedSapid.trim()) ? requestedSapid.trim() :
+    (canView && requestedSapid && requestedSapid.trim()) ? requestedSapid.trim() :
     sapRows[0]?.sapid ?? 
     sessionSapid ?? 
     sessionRegNo ?? 
@@ -393,13 +397,13 @@ let cardImageFile: string | null = null;
         SELECT verify FROM public.tbl_alumni WHERE alumniid = ${alumniId} LIMIT 1`;
       const verifyValue = verifyRows[0]?.verify;
       // Alumni is verified if verify is not null, not 'pending', and not empty string
-      // For admins, always show chapters if they exist (regardless of verification status)
-      isVerified = isAdmin || (verifyValue !== null && 
+      // For admins/viewers, always show chapters if they exist (regardless of verification status)
+      isVerified = canView || (verifyValue !== null && 
                    verifyValue !== undefined && 
                    String(verifyValue).trim().toLowerCase() !== 'pending' && 
                    String(verifyValue).trim() !== '');
       
-      if (isVerified || isAdmin) {
+      if (isVerified || canView) {
         // Join with tblchapters to get chapter names
         const chapterRows = await sql/* sql */`
           SELECT 
@@ -573,7 +577,7 @@ let cardImageFile: string | null = null;
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
                   <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} leadershipInfo={leadershipInfo} leadershipError={leadershipError} />
-                ) : isAdmin ? (
+                ) : canView ? (
                   <div className="w-full p-8 text-center">
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
                       <h3 className="text-lg font-semibold text-blue-900 mb-2">Select an Alumni Profile</h3>
@@ -827,12 +831,14 @@ let cardImageFile: string | null = null;
                               Capacity Full
                             </button>
                           ) : cardStatus === "none" ? (
+                            !isViewer && (
                             <Link
                               href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
                               className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               Apply now
                             </Link>
+                            )
                           ) : null}
                           </>
                         )}

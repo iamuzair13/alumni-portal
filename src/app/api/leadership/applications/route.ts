@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
-import { isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
+import { isSuperAdminUser, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 // Get all pending leadership applications
 export async function GET(req: NextRequest) {
@@ -18,12 +18,13 @@ export async function GET(req: NextRequest) {
     
     // Build access filter for admin/viewer users
     // For leadership applications, super admins and admins should see ALL applications
-    // Only apply access filter for viewers or admins with specific access assignments
+    // Viewers can view but with access filter applied
     const isSuperAdmin = isSuperAdminUser(session?.user);
     const isAdmin = isAdminUser(session?.user);
+    const isViewer = isViewerUser(session?.user);
     
     // Super admins and admins see all applications (no filter)
-    // Viewers and admins with access assignments get filtered
+    // Viewers get filtered by their access assignments
     const shouldApplyFilter = !isSuperAdmin && !isAdmin;
     const accessFilter = shouldApplyFilter 
       ? await buildAccessFilterSQL(session, "")

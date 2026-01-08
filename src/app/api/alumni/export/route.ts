@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { canViewAlumni } from "@/lib/rbac";
 
 // Increase timeout for large exports (max 10 minutes for Node.js runtime)
 export const maxDuration = 600;
@@ -15,8 +15,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only admins can export
-    if (!canModify(session.user)) {
+    // Admins, superadmins, and viewers can export (viewers have read-only access, export is a read operation)
+    if (!canViewAlumni(session.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -8,6 +8,8 @@ import { useProgress } from "@bprogress/react";
 import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
+import { useSession } from "next-auth/react";
+import { isViewerUser } from "@/lib/alumniProfile";
 
 type LeadershipInfo = {
   type: "chapter" | "association" | null;
@@ -27,6 +29,8 @@ type ProfileDetailsClientProps = {
 };
 
 export default function ProfileDetailsClient({ sapId, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: ProfileDetailsClientProps) {
+  const { data: session } = useSession();
+  const isViewer = isViewerUser(session?.user);
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
   const { data: fullDetails, isLoading: isLoadingFullDetails, isError: isFullDetailsError, error: fullDetailsError } = useAlumniFullDetails(sapId);
   
@@ -347,6 +351,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                     }}
                   />
                 </div>
+                {!isViewer && (
                 <button
                   type="button"
                   onClick={handleImageClick}
@@ -366,6 +371,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                     </svg>
                   )}
                 </button>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -577,6 +583,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                     {s.svg}
                   </a>
                 ))}
+                {!isViewer && (
                 <button
                   type="button"
                   onClick={() => setShowSocialForm(!showSocialForm)}
@@ -588,8 +595,9 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
+                )}
               </div>
-              {showSocialForm && (
+              {showSocialForm && !isViewer && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <SocialLinksForm
                     sapId={sapId}
@@ -631,6 +639,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </LoadingLink>
+              {!isViewer && (
               <LoadingLink
                 href={`/alumni-profile/view-applications?sapid=${encodeURIComponent(sapId)}`}
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -640,6 +649,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </LoadingLink>
+              )}
             </div>
           </div>
         </div>

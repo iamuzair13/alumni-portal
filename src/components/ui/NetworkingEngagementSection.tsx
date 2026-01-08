@@ -1,5 +1,7 @@
 "use client";
 import NetworkingEngagementCard from "./NetworkingEngagementCard";
+import { useSession } from "next-auth/react";
+import { isViewerUser } from "@/lib/alumniProfile";
 
 type NetworkingEngagementSectionProps = {
   sapId?: string;
@@ -12,6 +14,8 @@ export default function NetworkingEngagementSection({
   mentorshipStatus,
   mentorshipStatusError,
 }: NetworkingEngagementSectionProps) {
+  const { data: session } = useSession();
+  const isViewer = isViewerUser(session?.user);
   const cards = [
     {
       title: "Success Story",
@@ -129,8 +133,8 @@ export default function NetworkingEngagementSection({
               description={card.decription}
               action={card.action}
               href={card.href}
-              disabled={card.disabled}
-              disabledText={card.disabledText}
+              disabled={card.disabled || (isViewer && (card.action === "Apply" || card.action === "Apply now" || card.action === "Share"))}
+              disabledText={isViewer && (card.action === "Apply" || card.action === "Apply now" || card.action === "Share") ? "View Only" : card.disabledText}
             />
           </div>
         </div>

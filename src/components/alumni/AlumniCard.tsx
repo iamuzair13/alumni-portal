@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
-import { canModify } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
@@ -819,7 +819,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const [showConfirmModal, setShowConfirmModal] = React.useState(false);
     const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting"; reason?: string } | null>(null);
     const hasUpdatedRef = React.useRef(false);
-    const isAdmin = canModify(session?.user);
+    const isAdmin = isAdminUser(session?.user);
+    const isViewer = isViewerUser(session?.user);
+    const canEdit = isAdmin;
     
     // Map UI status (from items list) to DB status
     const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" => {
@@ -1270,7 +1272,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     // Get actual database status string for checking Active/Delivered/Process/Pending
     const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
     const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED" || dbStatusString === "PROCESS" || dbStatusString === "PENDING";
-    const isAdmin = canModify(session?.user);
+    const isAdmin = isAdminUser(session?.user);
+    const isViewer = isViewerUser(session?.user);
+    const canEdit = isAdmin;
     
     const handleView = React.useCallback(() => {
       router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
@@ -1670,7 +1674,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 )}
 
                 {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => {
-                  const isAdmin = canModify(session?.user);
+                  const isAdmin = isAdminUser(session?.user);
+                  const isViewer = isViewerUser(session?.user);
+                  // Viewers can view but not edit, admins can view and edit
+                  const canEdit = isAdmin;
                   return (
                     <React.Fragment key={`${alum.id}-fragment-${idx}`}>
                       <TableRow
@@ -1723,8 +1730,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!isAdmin} /></TableCell>
-                        <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
+                        <TableCell className="px-3 sm:px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!canEdit} /></TableCell>
+                        <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 min-w-[170px] ${
                           selectedRowId === alum.id 
                             ? "bg-blue-50/80 dark:bg-blue-900/30" 
                             : idx % 2 === 0 
@@ -1739,7 +1746,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                           <TableCell colSpan={9} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!isAdmin} />
+                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canEdit} />
                                 <ErpDataDetails sapId={alum.id} registrationNo={alum.registrationno ?? null} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>
