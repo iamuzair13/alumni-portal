@@ -11,7 +11,7 @@ import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { canModify, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { useAlumniListPaginated, getAlumniCounts, type AlumniListItem, type AlumniCounts } from "@/app/queries/fetch-alumni";
 import { useMaritalStatuses } from "@/app/queries/fetch-marital-statuses";
 import { useGenders, type GenderOption } from "@/app/queries/fetch-genders";
@@ -4956,7 +4956,7 @@ export const AlumniTabs: React.FC = () => {
                         <TableCell className="px-3 sm:px-6 py-5 text-start">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              {(isAdminUser(session?.user) || isViewerUser(session?.user)) && (
+                              {(isSuperAdminUser(session?.user) || isAdminUser(session?.user) || isViewerUser(session?.user)) && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -5125,12 +5125,12 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                      {expandedRowId === alum.id && (isAdminUser(session?.user) || isViewerUser(session?.user)) && (
+                      {expandedRowId === alum.id && (isSuperAdminUser(session?.user) || isAdminUser(session?.user) || isViewerUser(session?.user)) && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
                           <TableCell colSpan={9} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start ">
-                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!isAdminUser(session?.user)} />
+                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canModify(session?.user)} />
                                 <ErpDataDetails sapId={alum.sapId || undefined} registrationNo={alum.registrationNo || undefined} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>

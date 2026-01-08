@@ -821,7 +821,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const hasUpdatedRef = React.useRef(false);
     const isAdmin = isAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
-    const canEdit = isAdmin;
+    const canEdit = canModify(session?.user);
     
     // Map UI status (from items list) to DB status
     const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" => {
@@ -1274,7 +1274,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED" || dbStatusString === "PROCESS" || dbStatusString === "PENDING";
     const isAdmin = isAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
-    const canEdit = isAdmin;
+    const canEdit = canModify(session?.user);
     
     const handleView = React.useCallback(() => {
       router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
