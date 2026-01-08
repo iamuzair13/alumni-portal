@@ -208,6 +208,7 @@ export type AlumniCounts = {
 export async function getAlumniCounts(
   signal?: AbortSignal, 
   search?: string,
+  status?: string | string[],
   faculty?: string | string[],
   department?: string | string[],
   program?: string | string[],
@@ -237,6 +238,13 @@ export async function getAlumniCounts(
   const url = new URL("/api/alumni/counts", typeof window !== "undefined" ? window.location.origin : "");
   if (search) {
     url.searchParams.set("search", search);
+  }
+  if (status) {
+    if (Array.isArray(status)) {
+      status.forEach(s => url.searchParams.append("status", s));
+    } else {
+      url.searchParams.set("status", status);
+    }
   }
   if (faculty) {
     if (Array.isArray(faculty)) {

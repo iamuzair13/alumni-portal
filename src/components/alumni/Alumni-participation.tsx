@@ -608,10 +608,14 @@ export const AlumniParticipation: React.FC = () => {
                     <TableCell className="px-4 py-3 text-end">
                       <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
                             {(() => {
-                              // For viewers, only show View button
+                              // Only admin and superadmin can see View button
+                              if (!canPerformActions) {
+                                return null;
+                              }
+                              
                               const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> = [
-                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni/${alum.id}`), hover: "hover:text-blue-600" },
-                                ...(canPerformActions ? [{ label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" } as const] : []),
+                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni-profile?sapid=${encodeURIComponent(alum.id)}`), hover: "hover:text-blue-600" },
+                                { label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" },
                               ];
                               return actions.map(({ label, icon: Icon, onClick, hover }, i) => (
                                 <button

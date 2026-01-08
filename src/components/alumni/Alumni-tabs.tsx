@@ -1119,7 +1119,8 @@ export const AlumniTabs: React.FC = () => {
   } = useQuery<AlumniCounts, Error>({
     queryKey: [
       "alumnilist-counts", 
-      debouncedQuery, 
+      debouncedQuery,
+      statusFilter,
       selectedFaculties, 
       selectedDepartments, 
       selectedPrograms,
@@ -1148,6 +1149,7 @@ export const AlumniTabs: React.FC = () => {
     queryFn: ({ signal }) => getAlumniCounts(
       signal, 
       debouncedQuery || undefined,
+      statusFilter,
       selectedFaculties.length > 0 ? selectedFaculties : undefined,
       selectedDepartments.length > 0 ? selectedDepartments : undefined,
       selectedPrograms.length > 0 ? selectedPrograms : undefined,
@@ -1894,7 +1896,7 @@ export const AlumniTabs: React.FC = () => {
         { key: "Marital Status", label: "Marital Status", defaultSelected: false },
         { key: "CNIC/Passport", label: "CNIC/Passport", defaultSelected: true },
         { key: "Contact No", label: "Contact No", defaultSelected: true },
-        { key: "Contact No 1", label: "Contact No 1", defaultSelected: false },
+        { key: "Contact No 1", label: "Contact No 1", defaultSelected: true },
         { key: "Contact No 1 Show", label: "Contact No 1 Show", defaultSelected: false },
         { key: "Personal Email", label: "Personal Email", defaultSelected: true },
         { key: "Personal Email Show", label: "Personal Email Show", defaultSelected: false },
@@ -1982,13 +1984,15 @@ export const AlumniTabs: React.FC = () => {
       ];
 
     // Decide which columns to include based on export toggles
+    // Core columns that are ALWAYS exported by default
     const coreKeys = [
-      "Alumni ID",
       "SAP ID",
       "Registration No",
+      "Full Name", // Alumni Name
       "Alumni Email",
-      "Full Name",
-      "CNIC/Passport",
+      "Contact No",
+      "Contact No 1",
+      "Personal Email",
     ];
 
     const facultyKeys = ["Faculty"];
@@ -2050,7 +2054,19 @@ export const AlumniTabs: React.FC = () => {
       return false;
     });
 
-    if (filteredColumns.length === 0) {
+    // Ensure core columns are always included (they should already be in filteredColumns, but double-check)
+    const coreColumnKeys = new Set(coreKeys);
+    const finalFilteredColumns = columns.filter((col) => {
+      // Always include core columns
+      if (coreColumnKeys.has(col.key)) {
+        return true;
+      }
+      // Include other columns only if they're in filteredColumns
+      return filteredColumns.some(fc => fc.key === col.key);
+    });
+
+    // Check if we have at least core columns (which should always be present)
+    if (finalFilteredColumns.length === 0 || finalFilteredColumns.filter(col => coreColumnKeys.has(col.key)).length === 0) {
       toast.error("Please select at least one column group to export");
       return;
     }
@@ -2075,8 +2091,8 @@ export const AlumniTabs: React.FC = () => {
       if (loadingToast) toast.dismiss(loadingToast);
       processingToast = toast.loading(`Processing ${data.length} records for export...`);
       
-      // Get the list of selected column keys
-      const selectedColumnKeys = new Set(filteredColumns.map(col => col.key));
+      // Get the list of selected column keys from finalFilteredColumns (not filteredColumns)
+      const selectedColumnKeys = new Set(finalFilteredColumns.map(col => col.key));
       
       // Filter data to ONLY include selected columns
       const filteredData = data.map((row) => {
@@ -2093,7 +2109,7 @@ export const AlumniTabs: React.FC = () => {
       // Export to Excel with filtered data and columns
       await exportJsonToExcel({
         data: filteredData,
-        columns: filteredColumns,
+        columns: finalFilteredColumns,
         filename: filenameBase,
         sheetName: "Alumni List",
       });
@@ -5044,6 +5060,7 @@ export const AlumniTabs: React.FC = () => {
                               // For admins, show all actions based on status
                               // In "total" tab, show both verify and unverify options based on current status
                               // In other tabs, show context-appropriate actions
+                              // Always include View action for admins
                               let actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }>;
                               
                               if (selected === "total") {
@@ -5051,16 +5068,19 @@ export const AlumniTabs: React.FC = () => {
                                 if (alum.verifyStatus === "verified") {
                                   // Verified: can unverify
                                   actions = [
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   // Unverified: can verify
                                   actions = [
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                   ];
@@ -5069,15 +5089,18 @@ export const AlumniTabs: React.FC = () => {
                                 // Other tabs: show context-appropriate actions
                                 if (alum.verifyStatus === "verified") {
                                   actions = [
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   actions = [
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
+                                    { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
                                     { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
                                     { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
                                   ];

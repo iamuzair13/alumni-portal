@@ -8,6 +8,9 @@ export async function GET(req: Request) {
     const session = await auth();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    // Get status filter (can be array)
+    const statusParams = searchParams.getAll("status");
+    const status = statusParams.length > 0 ? statusParams : (searchParams.get("status") || "");
     // Get all values for multi-select filters
     const facultyParams = searchParams.getAll("faculty");
     const departmentParams = searchParams.getAll("department");
@@ -660,8 +663,73 @@ export async function GET(req: Request) {
       regNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
+    // Build WHERE clause for verify status filtering (handle arrays)
+    // Verify field is now VARCHAR(10) - handle as string only
+    let verifyFilter = sql``;
+    if (status && (Array.isArray(status) ? status.length > 0 : status)) {
+      if (Array.isArray(status) && status.length > 0) {
+        // Build OR conditions for multiple statuses
+        const statusConditions: ReturnType<typeof sql>[] = [];
+        
+        status.forEach(s => {
+          if (s === "verified") {
+            statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'true'`);
+          } else if (s === "unverified") {
+            statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'false'`);
+          } else if (s === "underApproval") {
+            statusConditions.push(sql`verify = 'pending'`);
+          } else if (s === "active") {
+            statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
+          } else if (s === "inactive") {
+            statusConditions.push(sql`((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`);
+          } else if (s === "category:aPlus") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`);
+          } else if (s === "category:a") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`);
+          } else if (s === "category:b") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`);
+          } else if (s === "category:c") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`);
+          } else if (s === "category:d") {
+            statusConditions.push(sql`(LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`);
+          }
+        });
+        
+        if (statusConditions.length > 0) {
+          const combinedCondition = combineOrConditions(statusConditions);
+          verifyFilter = sql`AND (${combinedCondition})`;
+        }
+      } else if (!Array.isArray(status)) {
+        // Single status filter (backward compatibility)
+        if (status === "verified") {
+          verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
+        } else if (status === "unverified") {
+          verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
+        } else if (status === "underApproval") {
+          verifyFilter = sql`AND verify = 'pending'`;
+        } else if (status === "active") {
+          verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
+        } else if (status === "inactive") {
+          verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
+        } else if (status === "category:aPlus") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`;
+        } else if (status === "category:a") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`;
+        } else if (status === "category:b") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`;
+        } else if (status === "category:c") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`;
+        } else if (status === "category:d") {
+          verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`;
+        }
+      }
+    }
+
     // Build base WHERE clause: allow NULL values when filters are active
-    const baseWhere = hasSapIdStateFilter || hasRegNoStateFilter
+    const hasUnderApproval = Array.isArray(status) 
+      ? status.includes("underApproval")
+      : status === "underApproval";
+    const baseWhere = hasUnderApproval || hasSapIdStateFilter || hasRegNoStateFilter
       ? sql`1=1`
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
 
@@ -752,6 +820,7 @@ export async function GET(req: Request) {
           ${mrNoFilter}
           ${sapIdStateFilter}
           ${regNoStateFilter}
+          ${verifyFilter}
           ${accessFilterCondition}
           AND (
             LOWER(COALESCE(sapid, '')) LIKE ${searchTerm}
@@ -848,6 +917,7 @@ export async function GET(req: Request) {
           ${mrNoFilter}
           ${sapIdStateFilter}
           ${regNoStateFilter}
+          ${verifyFilter}
           ${accessFilterCondition}
       `);
     }

@@ -9,7 +9,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '3', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
 
     // Validate limit
     if (limit < 1 || limit > 100) {

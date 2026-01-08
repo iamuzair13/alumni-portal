@@ -443,18 +443,18 @@ export async function GET(req: Request) {
         const facultyConditions = faculty.map((f) => {
           const normalized = String(f).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+            return sql`(f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
           }
-          return sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${f}))`;
+          return sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${f}))`;
         });
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(faculty) && faculty) {
         const normalized = String(faculty).trim();
         if (normalized === "NULL" || normalized === "null") {
-          facultyFilter = sql`AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+          facultyFilter = sql`AND (f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
         } else {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
         }
       }
       console.log("[API] Filtering for faculty:", faculty);
@@ -467,18 +467,18 @@ export async function GET(req: Request) {
         const departmentConditions = department.map((dept) => {
           const normalized = String(dept).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+            return sql`(d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
           }
-          return sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+          return sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
         });
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(department) && department) {
         const normalized = String(department).trim();
         if (normalized === "NULL" || normalized === "null") {
-          departmentFilter = sql`AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+          departmentFilter = sql`AND (d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
         } else {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${department}))`;
         }
       }
       console.log("[API] Filtering for department:", department);
@@ -493,16 +493,16 @@ export async function GET(req: Request) {
           if (normalized === "NULL" || normalized === "null") {
             return sql`(p.program_name IS NULL AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = ''))`;
           }
-          return sql`(LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
+          return sql`(LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
         });
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
         const normalized = String(program).trim();
         if (normalized === "NULL" || normalized === "null") {
-          programFilter = sql`AND (p.program_name IS NULL AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = ''))`;
+          programFilter = sql`AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
         } else {
-        programFilter = sql`AND (LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
+        programFilter = sql`AND (LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
         }
       }
       console.log("[API] Filtering for program:", program);
@@ -1049,8 +1049,11 @@ export async function GET(req: Request) {
       const countQuery = searchTermForCount
         ? sql/* sql */`
             SELECT COUNT(*) as total
-            FROM public.tbl_alumni
-            WHERE sapid IS NOT NULL AND sapid != ''
+            FROM public.tbl_alumni a
+            LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+            LEFT JOIN public.tbl_departments d ON d.id = a.department
+            LEFT JOIN public.tbl_programs p ON p.id = a.program
+            WHERE a.sapid IS NOT NULL AND a.sapid != ''
               ${facultyFilter}
               ${departmentFilter}
               ${programFilter}
@@ -1075,19 +1078,22 @@ export async function GET(req: Request) {
               ${mrNoFilter}
               ${accessFilterCondition}
               AND (
-                LOWER(sapid) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(registrationno, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(alumniname, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(personalemail, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(officialemail, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(facultyname, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(departmentname, '')) LIKE ${searchTermForCount}
-                OR LOWER(COALESCE(degreetitle, '')) LIKE ${searchTermForCount}
+                LOWER(a.sapid) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTermForCount}
+                OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTermForCount}
               )`
         : sql/* sql */`
             SELECT COUNT(*) as total
-            FROM public.tbl_alumni
-            WHERE sapid IS NOT NULL AND sapid != ''
+            FROM public.tbl_alumni a
+            LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+            LEFT JOIN public.tbl_departments d ON d.id = a.department
+            LEFT JOIN public.tbl_programs p ON p.id = a.program
+            WHERE a.sapid IS NOT NULL AND a.sapid != ''
               ${facultyFilter}
               ${departmentFilter}
               ${programFilter}
@@ -1219,10 +1225,10 @@ export async function GET(req: Request) {
         a.alumniname,
         a.gender,
         a.maritalstatus,
-        a.facultyname,
+        COALESCE(f.faculty_name, a.facultyname) as facultyname,
         a.campusname,
-        a.departmentname,
-        COALESCE(p.program_name, a.degreetitle) as degreetitle,
+        COALESCE(d.department_name, a.departmentname) as departmentname,
+        a.degreetitle,
         a.yearofstarting,
         a.yearofending,
         a.country,
@@ -1248,6 +1254,8 @@ export async function GET(req: Request) {
         a.logincount,
         a.category
         FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ${baseWhere}
           ${verifyFilter}
@@ -1282,9 +1290,9 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
           )
         ORDER BY a.alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
@@ -1297,10 +1305,10 @@ export async function GET(req: Request) {
         a.alumniname,
         a.gender,
         a.maritalstatus,
-        a.facultyname,
+        COALESCE(f.faculty_name, a.facultyname) as facultyname,
         a.campusname,
-        a.departmentname,
-        COALESCE(p.program_name, a.degreetitle) as degreetitle,
+        COALESCE(d.department_name, a.departmentname) as departmentname,
+        a.degreetitle,
         a.yearofstarting,
         a.yearofending,
         a.country,
@@ -1326,6 +1334,8 @@ export async function GET(req: Request) {
         a.logincount,
         a.category
       FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
       LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${baseWhere}
         ${verifyFilter}
@@ -1484,9 +1494,9 @@ export async function GET(req: Request) {
               OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTermForCount}
               OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTermForCount}
               OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(f.faculty_name, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(d.department_name, '')) LIKE ${searchTermForCount}
-              OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTermForCount}
+              OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTermForCount}
             )`
           : sql/* sql */`
               SELECT COUNT(*) as total

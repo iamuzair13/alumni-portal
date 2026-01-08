@@ -13,7 +13,7 @@ export async function GET(
   try {
     const { chapterId } = await params;
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '3', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
     const chapterIdNum = parseInt(chapterId, 10);
 
     if (isNaN(chapterIdNum) || chapterIdNum < 1) {

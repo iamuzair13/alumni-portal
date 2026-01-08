@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
@@ -1259,6 +1260,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
     const queryClient = useQueryClient();
+    const router = useRouter();
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [deleteError, setDeleteError] = React.useState<string | null>(null);
@@ -1269,6 +1271,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
     const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED" || dbStatusString === "PROCESS" || dbStatusString === "PENDING";
     const isAdmin = canModify(session?.user);
+    
+    const handleView = React.useCallback(() => {
+      router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
+    }, [router, sapId]);
 
     const handleDelete = async () => {
       if (!sapId || sapId.trim() === "") {
@@ -1308,6 +1314,20 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return (
       <>
         <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleView();
+              }}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              aria-label="View Profile"
+              title="View Profile"
+            >
+              <EyeIcon className="h-7 w-7" />
+            </button>
+          )}
           {canDownload && (
             <PrintCardButton sapId={sapId} studentName={studentName} />
           )}

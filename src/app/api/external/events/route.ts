@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '12', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
     const orderByParam = searchParams.get('orderBy') || 'fromdate';
     const orderParam = searchParams.get('order') || 'desc';
     const offset = (page - 1) * limit;

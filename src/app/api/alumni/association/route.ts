@@ -56,10 +56,12 @@ export async function GET(request: NextRequest) {
     };
     
     // Build faculty filter condition (case-insensitive with trim) - handle multiple
+    // Check both joined table value and fallback text column
     let facultyFilterCondition = sql``;
     if (selectedFaculties.length > 0) {
       const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
-      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      // Check both f.faculty_name (from joined table) and a.facultyname (fallback)
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = ${f}`);
       if (facultyConditions.length === 1) {
         facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
       } else if (facultyConditions.length > 1) {
@@ -69,10 +71,12 @@ export async function GET(request: NextRequest) {
     }
     
     // Build department filter condition (case-insensitive with trim) - handle multiple
+    // Check both joined table value and fallback text column
     let departmentFilterCondition = sql``;
     if (selectedDepartments.length > 0) {
       const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
-      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      // Check both d.department_name (from joined table) and a.departmentname (fallback)
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = ${d}`);
       if (departmentConditions.length === 1) {
         departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
       } else if (departmentConditions.length > 1) {
@@ -138,6 +142,8 @@ export async function GET(request: NextRequest) {
       countResult = await sql/* sql */`
         SELECT COUNT(*) as total
         ${baseQuery}
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
         WHERE 1=1
           ${accessFilterCondition}
           ${facultyFilterCondition}
@@ -162,8 +168,8 @@ export async function GET(request: NextRequest) {
           a.alumniid,
           a.sapid,
           a.alumniname,
-          a.departmentname,
-          a.facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
           a.degreetitle,
           a.personalemail,
           a.officialemail,
@@ -178,6 +184,8 @@ export async function GET(request: NextRequest) {
           assoc.address as association_address,
           assoc.created_at as association_created_at
         ${baseQuery}
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
         WHERE 1=1
           ${accessFilterCondition}
           ${facultyFilterCondition}
