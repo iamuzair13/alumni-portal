@@ -6,6 +6,7 @@ import Label from "@/components/form/Label";
 import AccessControlPicker, { type AccessAssignmentsValue } from "@/components/users/AccessControlPicker";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { USER_ROLES, type UserRole } from "@/lib/rbac-constants";
 
 type UserFormValues = {
   email: string;
@@ -47,6 +48,14 @@ function genToken(): string {
   return Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Validate if a role string is a valid UserRole
+ */
+function isValidRole(role: string): role is UserRole {
+  const normalized = role.toLowerCase().trim();
+  return Object.values(USER_ROLES).includes(normalized as UserRole);
+}
+
 export default function UserForm({ userId, initialData, onSuccess }: UserFormProps = {}) {
   const isEditMode = !!userId;
   const queryClient = useQueryClient();
@@ -56,7 +65,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
     firstname: "",
     lastname: "",
     department: "",
-    type: "admin",
+    type: USER_ROLES.ADMIN,
     blocked: false,
     csrf: "",
     accessAssignments: { faculties: [], departments: [], programs: [] },
@@ -104,7 +113,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
               firstname: user.firstname || "",
               lastname: user.lastname || "",
               department: user.department || "",
-              type: user.type || "admin",
+              type: user.type || USER_ROLES.ADMIN,
               blocked: user.blocked || false,
               csrf: values.csrf || "",
               accessAssignments: user.accessAssignments || { faculties: [], departments: [], programs: [] },
@@ -130,7 +139,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
         firstname: initialData.firstname || "",
         lastname: initialData.lastname || "",
         department: initialData.department || "",
-        type: initialData.type || "admin",
+        type: initialData.type || USER_ROLES.ADMIN,
         blocked: initialData.blocked || false,
         csrf: values.csrf || "",
         accessAssignments: initialData.accessAssignments || { faculties: [], departments: [], programs: [] },
@@ -154,7 +163,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
       firstname: "",
       lastname: "",
       department: "",
-      type: "admin",
+      type: USER_ROLES.ADMIN,
       blocked: false,
       csrf: values.csrf,
       accessAssignments: { faculties: [], departments: [], programs: [] },
@@ -188,8 +197,15 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
       return;
     }
 
-    const userType = values.type.toLowerCase();
-    const needsAccessControl = userType === "admin" || userType === "viewer";
+    // Validate role
+    if (!isValidRole(values.type)) {
+      setError(`Invalid role. Must be one of: ${Object.values(USER_ROLES).join(", ")}`);
+      toast.error("Invalid role selected");
+      return;
+    }
+
+    const userType = values.type.toLowerCase().trim() as UserRole;
+    const needsAccessControl = userType === USER_ROLES.ADMIN || userType === USER_ROLES.VIEWER;
 
     if (needsAccessControl && accessAssignmentsState.faculties.length === 0) {
       setError("Please select at least one Faculty for access control.");
@@ -214,7 +230,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
         : undefined;
 
       const accessAssignmentsPayload: { faculties: string[]; departments: string[]; programs: string[] } | null | undefined =
-        needsAccessControl ? accessAssignments ?? { faculties: [], departments: [], programs: [] } : (userType === "superadmin" ? null : undefined);
+        needsAccessControl ? accessAssignments ?? { faculties: [], departments: [], programs: [] } : (userType === USER_ROLES.SUPERADMIN ? null : undefined);
 
       if (isEditMode && userId) {
         // Update existing user
@@ -293,7 +309,8 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
     }
   }
 
-  const showAccessControl = values.type.toLowerCase() === "admin" || values.type.toLowerCase() === "viewer";
+  const userTypeNormalized = values.type.toLowerCase().trim() as UserRole;
+  const showAccessControl = userTypeNormalized === USER_ROLES.ADMIN || userTypeNormalized === USER_ROLES.VIEWER;
 
   if (loading) {
     return (
@@ -433,16 +450,23 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   id="type"
                   className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
                   value={values.type}
-                  onChange={(e) => setValues((v) => ({ ...v, type: e.target.value }))}
+                  onChange={(e) => {
+                    const newType = e.target.value.toLowerCase().trim() as UserRole;
+                    setValues((v) => ({ ...v, type: newType }));
+                    // Clear access assignments when switching to superadmin
+                    if (newType === USER_ROLES.SUPERADMIN) {
+                      setAccessAssignmentsState({ faculties: [], departments: [], programs: [] });
+                    }
+                  }}
                   required
                 >
-            <option value="superadmin">Super Admin</option>
-            <option value="admin">Admin</option>
-            <option value="viewer">Viewer</option>
+            <option value={USER_ROLES.SUPERADMIN}>Super Admin</option>
+            <option value={USER_ROLES.ADMIN}>Admin</option>
+            <option value={USER_ROLES.VIEWER}>Viewer</option>
           </select>
-          {values.type === "superadmin" && (
+          {userTypeNormalized === USER_ROLES.SUPERADMIN && (
                   <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                    ⚠️ Note: Only one Super Admin can exist. If one already exists, creation will fail.
+                    ⚠️ Note: Super Admin has full system access and does not require access control assignments.
                   </p>
                 )}
               </div>
@@ -474,7 +498,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   Access Control
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Limit user access to specific Faculties, Departments, and Programs. The user will only be able to access data for the assigned areas.
+                  Limit user access to specific Faculties, Departments, and Programs. The user will only be able to access data for the assigned areas. Access is enforced using ID-based filtering at the database level.
                 </p>
               </div>
 

@@ -12,18 +12,10 @@
 import type { Session } from "next-auth";
 import { sql } from "@/lib/dbconnect";
 import { isSuperAdminUser, isAdminUser, isViewerUser } from "./alumniProfile";
+import { USER_ROLES, type UserRole } from "./rbac-constants";
 
-/**
- * Role type definitions
- */
-export const USER_ROLES = {
-  SUPERADMIN: "superadmin",
-  ADMIN: "admin",
-  VIEWER: "viewer",
-  ALUMNI: "alumni",
-} as const;
-
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
+// Re-export constants for backward compatibility
+export { USER_ROLES, type UserRole };
 
 /**
  * Access assignment with IDs (primary) and names (for lookup)
