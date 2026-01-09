@@ -35,26 +35,29 @@ export type UserAccessAssignmentWithIds = {
  */
 export async function getUserAccessAssignmentsWithIds(userId: number): Promise<UserAccessAssignmentWithIds[]> {
   try {
-    // Join with reference tables to get IDs from names
+    // Use ID columns directly (preferred) with fallback to name-based JOIN if IDs are NULL
     const rows = await sql/* sql */`
       SELECT DISTINCT
-        f.id as faculty_id,
-        d.id as department_id,
-        p.id as program_id,
+        COALESCE(uaa.faculty_id, f.id) as faculty_id,
+        COALESCE(uaa.department_id, d.id) as department_id,
+        COALESCE(uaa.program_id, p.id) as program_id,
         uaa.faculty_name,
         uaa.department_name,
         uaa.program_name
       FROM public.user_access_assignments uaa
       LEFT JOIN public.tbl_faculties f ON 
-        LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(COALESCE(uaa.faculty_name, '')))
+        uaa.faculty_id IS NULL 
+        AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(COALESCE(uaa.faculty_name, '')))
       LEFT JOIN public.tbl_departments d ON 
-        LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(COALESCE(uaa.department_name, '')))
-        AND (uaa.faculty_name IS NULL OR d.faculty_id = f.id)
+        uaa.department_id IS NULL
+        AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(COALESCE(uaa.department_name, '')))
+        AND (uaa.faculty_name IS NULL OR uaa.faculty_id IS NULL OR d.faculty_id = COALESCE(uaa.faculty_id, f.id))
       LEFT JOIN public.tbl_programs p ON 
-        LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(COALESCE(uaa.program_name, '')))
-        AND (uaa.department_name IS NULL OR p.department_id = d.id)
+        uaa.program_id IS NULL
+        AND LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(COALESCE(uaa.program_name, '')))
+        AND (uaa.department_name IS NULL OR uaa.department_id IS NULL OR p.department_id = COALESCE(uaa.department_id, d.id))
       WHERE uaa.userid = ${userId}
-      ORDER BY f.id NULLS LAST, d.id NULLS LAST, p.id NULLS LAST
+      ORDER BY COALESCE(uaa.faculty_id, f.id) NULLS LAST, COALESCE(uaa.department_id, d.id) NULLS LAST, COALESCE(uaa.program_id, p.id) NULLS LAST
     ` as Array<UserAccessAssignmentWithIds>;
     
     return rows || [];

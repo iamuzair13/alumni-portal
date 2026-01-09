@@ -260,9 +260,12 @@ export async function PUT(req: Request) {
 
           for (const r of rows) {
             await sql/* sql */`
-              INSERT INTO public.user_access_assignments (userid, faculty_name, department_name, program_name)
-              VALUES (${id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
-              ON CONFLICT (userid, faculty_name, department_name, program_name) DO NOTHING
+              INSERT INTO public.user_access_assignments (userid, faculty_id, department_id, program_id, faculty_name, department_name, program_name)
+              VALUES (${id}, ${r.faculty_id}, ${r.department_id}, ${r.program_id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
+              ON CONFLICT (userid, faculty_name, department_name, program_name) DO UPDATE SET
+                faculty_id = EXCLUDED.faculty_id,
+                department_id = EXCLUDED.department_id,
+                program_id = EXCLUDED.program_id
             `;
           }
         } else {

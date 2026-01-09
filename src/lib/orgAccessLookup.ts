@@ -9,6 +9,9 @@ export type AccessAssignmentsInput = {
 };
 
 export type AccessAssignmentRow = {
+  faculty_id: number | null;
+  department_id: number | null;
+  program_id: number | null;
   faculty_name: string | null;
   department_name: string | null;
   program_name: string | null;
@@ -71,6 +74,9 @@ export async function buildAccessAssignmentRowsFromDb(input: AccessAssignmentsIn
   if (normalizedPrograms.length > 0) {
     const rows = await sql/* sql */`
       SELECT
+        f.id as faculty_id,
+        d.id as department_id,
+        p.id as program_id,
         f.faculty_name as faculty_name,
         d.department_name as department_name,
         p.program_name as program_name
@@ -90,6 +96,9 @@ export async function buildAccessAssignmentRowsFromDb(input: AccessAssignmentsIn
   if (normalizedDepartments.length > 0) {
     const rows = await sql/* sql */`
       SELECT
+        f.id as faculty_id,
+        d.id as department_id,
+        NULL::bigint as program_id,
         f.faculty_name as faculty_name,
         d.department_name as department_name,
         NULL::text as program_name
@@ -107,6 +116,9 @@ export async function buildAccessAssignmentRowsFromDb(input: AccessAssignmentsIn
   if (normalizedFaculties.length > 0) {
     const rows = await sql/* sql */`
       SELECT
+        id as faculty_id,
+        NULL::bigint as department_id,
+        NULL::bigint as program_id,
         faculty_name as faculty_name,
         NULL::text as department_name,
         NULL::text as program_name
@@ -125,14 +137,18 @@ function uniqRows(rows: AccessAssignmentRow[]): AccessAssignmentRow[] {
   const seen = new Set<string>();
   const out: AccessAssignmentRow[] = [];
   for (const r of rows ?? []) {
+    // Use IDs for uniqueness check (preferred) or fall back to names
     const k = [
-      norm(String(r.faculty_name ?? "")),
-      norm(String(r.department_name ?? "")),
-      norm(String(r.program_name ?? "")),
+      String(r.faculty_id ?? ""),
+      String(r.department_id ?? ""),
+      String(r.program_id ?? ""),
     ].join("|");
     if (seen.has(k)) continue;
     seen.add(k);
     out.push({
+      faculty_id: r.faculty_id ? Number(r.faculty_id) : null,
+      department_id: r.department_id ? Number(r.department_id) : null,
+      program_id: r.program_id ? Number(r.program_id) : null,
       faculty_name: r.faculty_name ? String(r.faculty_name).trim() : null,
       department_name: r.department_name ? String(r.department_name).trim() : null,
       program_name: r.program_name ? String(r.program_name).trim() : null,

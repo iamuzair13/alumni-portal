@@ -548,6 +548,36 @@ CREATE INDEX IF NOT EXISTS idx_user_access_userid
     (userid ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+
+-- Index: idx_user_access_faculty_id
+
+-- DROP INDEX IF EXISTS public.idx_user_access_faculty_id;
+
+CREATE INDEX IF NOT EXISTS idx_user_access_faculty_id
+    ON public.user_access_assignments USING btree
+    (faculty_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+-- Index: idx_user_access_department_id
+
+-- DROP INDEX IF EXISTS public.idx_user_access_department_id;
+
+CREATE INDEX IF NOT EXISTS idx_user_access_department_id
+    ON public.user_access_assignments USING btree
+    (department_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+-- Index: idx_user_access_program_id
+
+-- DROP INDEX IF EXISTS public.idx_user_access_program_id;
+
+CREATE INDEX IF NOT EXISTS idx_user_access_program_id
+    ON public.user_access_assignments USING btree
+    (program_id ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
 -- Table: public.distinguished_alumni
 
 -- DROP TABLE IF EXISTS public.distinguished_alumni;
