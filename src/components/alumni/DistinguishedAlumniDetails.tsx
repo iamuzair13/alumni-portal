@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
 
@@ -15,11 +15,36 @@ interface DistinguishedAlumni {
   quote?: string | null;
   quote_by?: string | null;
   tags?: any[] | null;
-  stats?: any[] | null;
+  stats?: any | null;
   achievements?: any[] | null;
   story?: any[] | null;
   created_at?: string;
   updated_at?: string;
+}
+
+// Sanitize HTML to remove script and style tags
+function sanitizeHtml(input: string): string {
+  return String(input || "")
+    .replace(/<script[^>]*?>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[^>]*?>[\s\S]*?<\/style>/gi, "");
+}
+
+// Normalize image path - if it's not a full URL, assume it's in /images/
+function normalizeImagePath(image: string | null | undefined): string {
+  if (!image) return "/images/placeholder-avatar.png";
+  
+  // If it's already a full URL (http/https), use it as-is
+  if (image.startsWith("http://") || image.startsWith("https://")) {
+    return image;
+  }
+  
+  // If it starts with /, use it as-is
+  if (image.startsWith("/")) {
+    return image;
+  }
+  
+  // Otherwise, assume it's a filename in /images/
+  return `/images/${image}`;
 }
 
 interface DistinguishedAlumniDetailsProps {
@@ -33,7 +58,13 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
   onClose,
   item
 }) => {
+  const [imageError, setImageError] = useState(false);
+  
   if (!item) return null;
+
+  const imagePath = normalizeImagePath(item.image);
+  const sanitizedRole = item.role ? sanitizeHtml(item.role) : "";
+  const sanitizedSummary = item.summary ? sanitizeHtml(item.summary) : "";
 
   return (
     <Modal
@@ -44,21 +75,21 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
     >
       <div className="p-6 lg:p-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-6 mb-6">
-          {item.image && (
-            <img
-              src={item.image}
-              alt={item.name}
-              className="w-32 h-32 object-cover rounded-lg border border-gray-300 dark:border-gray-600 flex-shrink-0"
-            />
-          )}
+          <img
+            src={imageError ? "/images/placeholder-avatar.png" : imagePath}
+            alt={item.name}
+            onError={() => setImageError(true)}
+            className="w-32 h-32 object-cover rounded-lg border border-gray-300 dark:border-gray-600 flex-shrink-0"
+          />
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {item.name}
             </h2>
             {item.role && (
-              <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">
-                {item.role}
-              </p>
+              <div 
+                className="text-lg text-gray-600 dark:text-gray-400 mb-2 prose prose-sm max-w-none dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: sanitizedRole }}
+              />
             )}
             {item.headline && (
               <p className="text-base font-semibold text-gray-700 dark:text-gray-300 italic mb-4">
@@ -78,9 +109,10 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Summary
             </h3>
-            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-              {item.summary}
-            </p>
+            <div 
+              className="prose prose-slate max-w-none text-gray-700 dark:text-gray-300 leading-relaxed dark:prose-invert"
+              dangerouslySetInnerHTML={{ __html: sanitizedSummary }}
+            />
           </div>
         )}
 
@@ -115,35 +147,53 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
           </div>
         )}
 
-        {item.stats && Array.isArray(item.stats) && item.stats.length > 0 && (
+        {item.stats && (
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Statistics
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {item.stats.map((stat, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                >
-                  {typeof stat === "object" && stat !== null ? (
-                    <div>
-                      {Object.entries(stat).map(([key, value]) => (
-                        <div key={key} className="mb-1">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {key}:
-                          </span>{" "}
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {String(value)}
-                          </span>
-                        </div>
-                      ))}
+              {Array.isArray(item.stats) && item.stats.length > 0 ? (
+                item.stats.map((stat, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    {typeof stat === "object" && stat !== null ? (
+                      <div>
+                        {Object.entries(stat).map(([key, value]) => (
+                          <div key={key} className="mb-1">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                              {key}:
+                            </span>{" "}
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {String(value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-700 dark:text-gray-300">{String(stat)}</p>
+                    )}
+                  </div>
+                ))
+              ) : typeof item.stats === "object" && item.stats !== null && !Array.isArray(item.stats) ? (
+                Object.entries(item.stats).map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    <div className="mb-1">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        {key}:
+                      </span>{" "}
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {String(value)}
+                      </span>
                     </div>
-                  ) : (
-                    <p className="text-gray-700 dark:text-gray-300">{String(stat)}</p>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))
+              ) : null}
             </div>
           </div>
         )}

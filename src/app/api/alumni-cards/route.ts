@@ -240,9 +240,9 @@ export async function POST(req: Request) {
     `;
     const isNewApplication = existingCard.length === 0;
 
-    // Set status to 'pending' for new applications
+    // Set status to 'UnderReview' for new applications (default status)
     // Validity date is calculated as 3 years from application date
-    const status = "pending";
+    const status = "UnderReview";
 
     const rows = await sql/* sql */`
       INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date)

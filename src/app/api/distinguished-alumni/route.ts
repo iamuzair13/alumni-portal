@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 // GET - List all distinguished alumni
 export async function GET(request: NextRequest) {
@@ -63,8 +66,45 @@ export async function GET(request: NextRequest) {
     const [rows, countResult] = await Promise.all([query, countQuery]);
     const total = Number(countResult[0]?.total || 0);
 
+    // Parse JSONB fields if they're strings (PostgreSQL sometimes returns JSONB as strings)
+    const parsedRows = rows.map((row: any) => {
+      const parsed: any = { ...row };
+      
+      // Parse JSONB fields if they're strings
+      if (typeof parsed.tags === 'string') {
+        try {
+          parsed.tags = JSON.parse(parsed.tags);
+        } catch (e) {
+          parsed.tags = [];
+        }
+      }
+      if (typeof parsed.stats === 'string') {
+        try {
+          parsed.stats = JSON.parse(parsed.stats);
+        } catch (e) {
+          parsed.stats = null;
+        }
+      }
+      if (typeof parsed.achievements === 'string') {
+        try {
+          parsed.achievements = JSON.parse(parsed.achievements);
+        } catch (e) {
+          parsed.achievements = [];
+        }
+      }
+      if (typeof parsed.story === 'string') {
+        try {
+          parsed.story = JSON.parse(parsed.story);
+        } catch (e) {
+          parsed.story = [];
+        }
+      }
+      
+      return parsed;
+    });
+
     return NextResponse.json({
-      items: rows,
+      items: parsedRows,
       total,
       page,
       limit,
@@ -92,21 +132,133 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const {
-      slug,
-      name,
-      image,
-      role,
-      summary,
-      headline,
-      quote,
-      quote_by,
-      tags,
-      stats,
-      achievements,
-      story
-    } = body;
+    // Check if request is FormData (for image upload) or JSON
+    const contentType = request.headers.get("content-type") || "";
+    let slug: string;
+    let name: string;
+    let image: string | null = null;
+    let role: string;
+    let summary: string;
+    let headline: string | null = null;
+    let quote: string | null = null;
+    let quote_by: string | null = null;
+    let tags: any[] = [];
+    let stats: any = null;
+    let achievements: any[] = [];
+    let story: any[] = [];
+
+    if (contentType.includes("multipart/form-data")) {
+      // Handle FormData with image upload
+      const formData = await request.formData();
+      
+      slug = String(formData.get("slug") || "").trim();
+      name = String(formData.get("name") || "").trim();
+      role = String(formData.get("role") || "").trim();
+      summary = String(formData.get("summary") || "").trim();
+      headline = formData.get("headline") ? String(formData.get("headline")).trim() : null;
+      quote = formData.get("quote") ? String(formData.get("quote")).trim() : null;
+      quote_by = formData.get("quote_by") ? String(formData.get("quote_by")).trim() : null;
+      
+      // Parse JSON fields
+      const tagsStr = formData.get("tags");
+      if (tagsStr) {
+        try {
+          tags = JSON.parse(String(tagsStr));
+        } catch (e) {
+          tags = [];
+        }
+      }
+      
+      const statsStr = formData.get("stats");
+      if (statsStr) {
+        try {
+          stats = JSON.parse(String(statsStr));
+        } catch (e) {
+          stats = null;
+        }
+      }
+      
+      const achievementsStr = formData.get("achievements");
+      if (achievementsStr) {
+        try {
+          achievements = JSON.parse(String(achievementsStr));
+        } catch (e) {
+          achievements = [];
+        }
+      }
+      
+      const storyStr = formData.get("story");
+      if (storyStr) {
+        try {
+          story = JSON.parse(String(storyStr));
+        } catch (e) {
+          story = [];
+        }
+      }
+
+      // Handle image upload
+      const imageFile = formData.get("image") as File | null;
+      if (imageFile && imageFile.size > 0) {
+        // Validate file type
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+        if (!allowedTypes.includes(imageFile.type)) {
+          return NextResponse.json({ 
+            error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." 
+          }, { status: 400 });
+        }
+        
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (imageFile.size > maxSize) {
+          return NextResponse.json({ 
+            error: "File size exceeds 5MB limit" 
+          }, { status: 400 });
+        }
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 9);
+        const extension = imageFile.name.split(".").pop() || "jpg";
+        const filename = `distinguished-${timestamp}-${randomSuffix}.${extension}`;
+        
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = join(process.cwd(), "public", "images");
+        if (!existsSync(uploadsDir)) {
+          await mkdir(uploadsDir, { recursive: true });
+        }
+        
+        // Save file
+        const filePath = join(uploadsDir, filename);
+        const bytes = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await writeFile(filePath, buffer);
+        
+        // Save just the filename to database
+        image = filename;
+        
+        console.log(`[API] Distinguished alumni image saved: ${filename}`);
+      } else {
+        return NextResponse.json(
+          { error: "Image is required" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Handle JSON (backward compatibility)
+      const body = await request.json();
+      slug = body.slug;
+      name = body.name;
+      image = body.image;
+      role = body.role;
+      summary = body.summary;
+      headline = body.headline || null;
+      quote = body.quote || null;
+      quote_by = body.quote_by || null;
+      tags = body.tags || [];
+      stats = body.stats || null;
+      achievements = body.achievements || [];
+      story = body.story || [];
+    }
 
     // Validation
     if (!slug || !name || !image || !role || !summary) {
@@ -154,7 +306,40 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `;
 
-    return NextResponse.json({ item: result[0] }, { status: 201 });
+    // Parse JSONB fields if they're strings
+    const row = result[0] as any;
+    const parsed: any = { ...row };
+    
+    if (typeof parsed.tags === 'string') {
+      try {
+        parsed.tags = JSON.parse(parsed.tags);
+      } catch (e) {
+        parsed.tags = [];
+      }
+    }
+    if (typeof parsed.stats === 'string') {
+      try {
+        parsed.stats = JSON.parse(parsed.stats);
+      } catch (e) {
+        parsed.stats = null;
+      }
+    }
+    if (typeof parsed.achievements === 'string') {
+      try {
+        parsed.achievements = JSON.parse(parsed.achievements);
+      } catch (e) {
+        parsed.achievements = [];
+      }
+    }
+    if (typeof parsed.story === 'string') {
+      try {
+        parsed.story = JSON.parse(parsed.story);
+      } catch (e) {
+        parsed.story = [];
+      }
+    }
+
+    return NextResponse.json({ item: parsed }, { status: 201 });
   } catch (error) {
     console.error("[API] Error creating distinguished alumni:", error);
     return NextResponse.json(

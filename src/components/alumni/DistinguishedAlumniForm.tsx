@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { Modal } from "@/components/ui/modal";
 import Label from "@/components/form/Label";
 import Input from "@/components/form/input/InputField";
@@ -9,6 +9,29 @@ import Button from "@/components/ui/button/Button";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { canModify } from "@/lib/alumniProfile";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import Underline from "@tiptap/extension-underline";
+import DOMPurify from "dompurify";
+
+// Normalize image path - if it's not a full URL, assume it's in /images/
+function normalizeImagePath(image: string | null | undefined): string {
+  if (!image) return "/images/placeholder-avatar.png";
+  
+  // If it's already a full URL (http/https), use it as-is
+  if (image.startsWith("http://") || image.startsWith("https://")) {
+    return image;
+  }
+  
+  // If it starts with /, use it as-is
+  if (image.startsWith("/")) {
+    return image;
+  }
+  
+  // Otherwise, assume it's a filename in /images/
+  return `/images/${image}`;
+}
 
 interface DistinguishedAlumni {
   id?: number;
@@ -21,7 +44,7 @@ interface DistinguishedAlumni {
   quote?: string | null;
   quote_by?: string | null;
   tags?: any[] | null;
-  stats?: any[] | null;
+  stats?: any[] | Record<string, string> | null;
   achievements?: any[] | null;
   story?: any[] | null;
   created_at?: string;
@@ -44,6 +67,9 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [stats, setStats] = useState<Array<{ key: string; value: string }>>([]);
 
   const {
     register,
@@ -51,12 +77,12 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
     reset,
     setValue,
     watch,
+    control,
     formState: { errors }
   } = useForm<DistinguishedAlumni>({
     defaultValues: {
       slug: "",
       name: "",
-      image: "",
       role: "",
       summary: "",
       headline: "",
@@ -69,31 +95,109 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
     }
   });
 
+  // TipTap editor for Role
+  const roleEditor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+    ],
+    content: "",
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      setValue("role", html, { shouldValidate: true });
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[200px] p-4",
+      },
+    },
+    editable: true,
+  });
+
+  // TipTap editor for Summary
+  const summaryEditor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+    ],
+    content: "",
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      setValue("summary", html, { shouldValidate: true });
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
+      },
+    },
+    editable: true,
+  });
+
   // Reset form when editingItem changes
   useEffect(() => {
     if (editingItem) {
+      const roleContent = editingItem.role || "";
+      const summaryContent = editingItem.summary || "";
+      const editingTags = Array.isArray(editingItem.tags) ? editingItem.tags : [];
+      const editingStats = editingItem.stats && typeof editingItem.stats === 'object' && !Array.isArray(editingItem.stats)
+        ? Object.entries(editingItem.stats).map(([key, value]) => ({ key, value: String(value) }))
+        : [];
+      
       reset({
         slug: editingItem.slug || "",
         name: editingItem.name || "",
-        image: editingItem.image || "",
-        role: editingItem.role || "",
-        summary: editingItem.summary || "",
+        role: roleContent,
+        summary: summaryContent,
         headline: editingItem.headline || "",
         quote: editingItem.quote || "",
         quote_by: editingItem.quote_by || "",
-        tags: editingItem.tags || [],
+        tags: editingTags,
         stats: editingItem.stats || [],
         achievements: editingItem.achievements || [],
         story: editingItem.story || []
       });
+      
+      setTags(editingTags);
+      setStats(editingStats);
+      
+      if (roleEditor && roleContent) {
+        roleEditor.commands.setContent(roleContent);
+      }
+      if (summaryEditor && summaryContent) {
+        summaryEditor.commands.setContent(summaryContent);
+      }
+      
       if (editingItem.image) {
-        setImagePreview(editingItem.image);
+        setImagePreview(normalizeImagePath(editingItem.image));
       }
     } else {
       reset({
         slug: "",
         name: "",
-        image: "",
         role: "",
         summary: "",
         headline: "",
@@ -104,10 +208,19 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
         achievements: [],
         story: []
       });
+      setTags([]);
+      setStats([]);
+      setTagInput("");
+      if (roleEditor) {
+        roleEditor.commands.clearContent();
+      }
+      if (summaryEditor) {
+        summaryEditor.commands.clearContent();
+      }
       setImagePreview(null);
     }
     setImageFile(null);
-  }, [editingItem, reset, isOpen]);
+  }, [editingItem, reset, isOpen, roleEditor, summaryEditor]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -124,15 +237,108 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
-        setValue("image", reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
+  // Tag management functions
+  const handleAddTag = () => {
+    const trimmed = tagInput.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      const newTags = [...tags, trimmed];
+      setTags(newTags);
+      setValue("tags", newTags);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const newTags = tags.filter(tag => tag !== tagToRemove);
+    setTags(newTags);
+    setValue("tags", newTags);
+  };
+
+  // Stats management functions
+  const handleAddStat = () => {
+    const newStats = [...stats, { key: "", value: "" }];
+    setStats(newStats);
+  };
+
+  const handleUpdateStat = (index: number, field: "key" | "value", value: string) => {
+    const newStats = [...stats];
+    newStats[index] = { ...newStats[index], [field]: value };
+    setStats(newStats);
+    const statsObj = newStats.reduce((acc, stat) => {
+      if (stat.key && stat.value) {
+        acc[stat.key] = stat.value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+    setValue("stats", statsObj);
+  };
+
+  const handleRemoveStat = (index: number) => {
+    const newStats = stats.filter((_, i) => i !== index);
+    setStats(newStats);
+    const statsObj = newStats.reduce((acc, stat) => {
+      if (stat.key && stat.value) {
+        acc[stat.key] = stat.value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+    setValue("stats", statsObj);
+  };
+
   const onSubmit = async (data: DistinguishedAlumni) => {
     setIsSubmitting(true);
     try {
+      // Get HTML from editors
+      const roleHtml = roleEditor?.getHTML() || data.role || "";
+      const summaryHtml = summaryEditor?.getHTML() || data.summary || "";
+
+      // Sanitize HTML
+      const sanitizedRole = DOMPurify.sanitize(roleHtml, {
+        ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
+        ALLOWED_ATTR: ["href", "target", "rel"],
+      });
+      const sanitizedSummary = DOMPurify.sanitize(summaryHtml, {
+        ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
+        ALLOWED_ATTR: ["href", "target", "rel"],
+      });
+
+      // Prepare stats object
+      const statsObj = stats.reduce((acc, stat) => {
+        if (stat.key && stat.value) {
+          acc[stat.key] = stat.value;
+        }
+        return acc;
+      }, {} as Record<string, string>);
+
+      // Use FormData to handle image upload
+      const formData = new FormData();
+      formData.append("slug", data.slug);
+      formData.append("name", data.name);
+      formData.append("role", sanitizedRole);
+      formData.append("summary", sanitizedSummary);
+      if (data.headline) formData.append("headline", data.headline);
+      if (data.quote) formData.append("quote", data.quote);
+      if (data.quote_by) formData.append("quote_by", data.quote_by);
+      formData.append("tags", JSON.stringify(tags));
+      formData.append("stats", JSON.stringify(statsObj));
+      formData.append("achievements", JSON.stringify(data.achievements || []));
+      formData.append("story", JSON.stringify(data.story || []));
+
+      // Only append image if it's a new file (not when editing with existing image)
+      if (imageFile) {
+        formData.append("image", imageFile);
+      } else if (!editingItem?.id && !data.image) {
+        // For new records, image is required
+        toast.error("Please upload an image");
+        setIsSubmitting(false);
+        return;
+      }
+
       const url = editingItem?.id
         ? `/api/distinguished-alumni/${editingItem.id}`
         : "/api/distinguished-alumni";
@@ -141,10 +347,7 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
 
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
+        body: formData
       });
 
       if (!response.ok) {
@@ -252,26 +455,15 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
               )}
             </div>
 
-            {/* Image */}
+            {/* Image Upload */}
             <div className="md:col-span-2">
               <Label htmlFor="image">
-                Image URL <span className="text-red-500">*</span>
+                Image {!editingItem?.id && <span className="text-red-500">*</span>}
+                {editingItem?.id && editingItem.image && (
+                  <span className="text-gray-500 text-sm font-normal ml-2">(Optional - current image will be kept if not changed)</span>
+                )}
               </Label>
               <div className="space-y-2">
-                <Input
-                  id="image"
-                  type="text"
-                  placeholder="https://example.com/image.jpg"
-                  {...register("image", {
-                    required: "Image URL is required",
-                    pattern: {
-                      value: /^https?:\/\/.+/,
-                      message: "Please enter a valid URL"
-                    }
-                  })}
-                  className={errors.image ? "border-red-500" : ""}
-                  disabled={isSubmitting}
-                />
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -286,63 +478,312 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isSubmitting}
                 >
-                  Upload Image
+                  {imageFile ? "Change Image" : "Upload Image"}
                 </Button>
-                {imagePreview && (
+                {(imagePreview || (editingItem?.image && !imageFile)) && (
                   <div className="mt-2">
                     <img
-                      src={imagePreview}
+                      src={imagePreview || (editingItem?.image ? normalizeImagePath(editingItem.image) : "")}
                       alt="Preview"
                       className="h-32 w-32 object-cover rounded-lg border border-gray-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/images/placeholder-avatar.png";
+                      }}
                     />
+                    {imageFile && (
+                      <p className="mt-1 text-xs text-gray-500">New image selected: {imageFile.name}</p>
+                    )}
+                    {editingItem?.image && !imageFile && (
+                      <p className="mt-1 text-xs text-gray-500">Current image: {editingItem.image}</p>
+                    )}
                   </div>
                 )}
               </div>
-              {errors.image && (
-                <p className="mt-1 text-sm text-red-600">{errors.image.message}</p>
+              {!editingItem?.id && !imageFile && (
+                <p className="mt-1 text-sm text-red-600">Image is required for new records</p>
               )}
             </div>
 
-            {/* Role */}
+            {/* Role - HTML Editor */}
             <div className="md:col-span-2">
               <Label htmlFor="role">
                 Role <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="role"
-                type="text"
-                placeholder="Current Position/Title"
-                {...register("role", {
-                  required: "Role is required"
-                })}
-                className={errors.role ? "border-red-500" : ""}
-                disabled={isSubmitting}
+              <Controller
+                name="role"
+                control={control}
+                rules={{ required: "Role is required" }}
+                render={({ field }) => (
+                  <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
+                    {roleEditor && (
+                      <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleHeading({ level: 1 }).run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            roleEditor.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
+                          }`}
+                          title="Heading 1"
+                        >
+                          H1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleHeading({ level: 2 }).run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            roleEditor.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
+                          }`}
+                          title="Heading 2"
+                        >
+                          H2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleHeading({ level: 3 }).run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            roleEditor.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
+                          }`}
+                          title="Heading 3"
+                        >
+                          H3
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleBold().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors ${
+                            roleEditor.isActive("bold") ? "bg-gray-300" : ""
+                          }`}
+                          title="Bold"
+                        >
+                          <strong>B</strong>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleItalic().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors ${
+                            roleEditor.isActive("italic") ? "bg-gray-300" : ""
+                          }`}
+                          title="Italic"
+                        >
+                          <em>I</em>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleUnderline().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors ${
+                            roleEditor.isActive("underline") ? "bg-gray-300" : ""
+                          }`}
+                          title="Underline"
+                        >
+                          <u>U</u>
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleBulletList().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            roleEditor.isActive("bulletList") ? "bg-gray-300" : ""
+                          }`}
+                          title="Bullet List"
+                        >
+                          •
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().toggleOrderedList().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            roleEditor.isActive("orderedList") ? "bg-gray-300" : ""
+                          }`}
+                          title="Numbered List"
+                        >
+                          1.
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = window.prompt("Enter URL:");
+                            if (url && url.trim()) {
+                              roleEditor.chain().focus().setLink({ href: url.trim() }).run();
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            roleEditor.isActive("link") ? "bg-gray-300" : ""
+                          }`}
+                          title="Insert Link"
+                        >
+                          🔗
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => roleEditor.chain().focus().unsetLink().run()}
+                          className="px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove Link"
+                          disabled={!roleEditor.isActive("link")}
+                        >
+                          Unlink
+                        </button>
+                      </div>
+                    )}
+                    <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
+                      {roleEditor ? (
+                        <EditorContent editor={roleEditor} />
+                      ) : (
+                        <div className="min-h-[200px] p-4 flex items-center justify-center text-gray-400">
+                          <p>Loading editor...</p>
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" {...field} value={field.value || ""} />
+                  </div>
+                )}
               />
               {errors.role && (
                 <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
               )}
+              <p className="mt-1 text-xs text-gray-500">You can format the role with headings, bold, italic, lists, and links.</p>
             </div>
 
-            {/* Summary */}
+            {/* Summary - HTML Editor */}
             <div className="md:col-span-2">
               <Label htmlFor="summary">
                 Summary <span className="text-red-500">*</span>
               </Label>
-              <textarea
-                id="summary"
-                rows={4}
-                placeholder="Brief summary of achievements..."
-                {...register("summary", {
-                  required: "Summary is required"
-                })}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  errors.summary ? "border-red-500" : "border-gray-300"
-                } bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                disabled={isSubmitting}
+              <Controller
+                name="summary"
+                control={control}
+                rules={{ required: "Summary is required" }}
+                render={({ field }) => (
+                  <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
+                    {summaryEditor && (
+                      <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleHeading({ level: 1 }).run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            summaryEditor.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
+                          }`}
+                          title="Heading 1"
+                        >
+                          H1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleHeading({ level: 2 }).run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            summaryEditor.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
+                          }`}
+                          title="Heading 2"
+                        >
+                          H2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleHeading({ level: 3 }).run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            summaryEditor.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
+                          }`}
+                          title="Heading 3"
+                        >
+                          H3
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleBold().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors ${
+                            summaryEditor.isActive("bold") ? "bg-gray-300" : ""
+                          }`}
+                          title="Bold"
+                        >
+                          <strong>B</strong>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleItalic().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors ${
+                            summaryEditor.isActive("italic") ? "bg-gray-300" : ""
+                          }`}
+                          title="Italic"
+                        >
+                          <em>I</em>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleUnderline().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors ${
+                            summaryEditor.isActive("underline") ? "bg-gray-300" : ""
+                          }`}
+                          title="Underline"
+                        >
+                          <u>U</u>
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleBulletList().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            summaryEditor.isActive("bulletList") ? "bg-gray-300" : ""
+                          }`}
+                          title="Bullet List"
+                        >
+                          •
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().toggleOrderedList().run()}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            summaryEditor.isActive("orderedList") ? "bg-gray-300" : ""
+                          }`}
+                          title="Numbered List"
+                        >
+                          1.
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = window.prompt("Enter URL:");
+                            if (url && url.trim()) {
+                              summaryEditor.chain().focus().setLink({ href: url.trim() }).run();
+                            }
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                            summaryEditor.isActive("link") ? "bg-gray-300" : ""
+                          }`}
+                          title="Insert Link"
+                        >
+                          🔗
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => summaryEditor.chain().focus().unsetLink().run()}
+                          className="px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove Link"
+                          disabled={!summaryEditor.isActive("link")}
+                        >
+                          Unlink
+                        </button>
+                      </div>
+                    )}
+                    <div className="min-h-[300px] max-h-[500px] overflow-y-auto">
+                      {summaryEditor ? (
+                        <EditorContent editor={summaryEditor} />
+                      ) : (
+                        <div className="min-h-[300px] p-4 flex items-center justify-center text-gray-400">
+                          <p>Loading editor...</p>
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" {...field} value={field.value || ""} />
+                  </div>
+                )}
               />
               {errors.summary && (
                 <p className="mt-1 text-sm text-red-600">{errors.summary.message}</p>
               )}
+              <p className="mt-1 text-xs text-gray-500">You can format the summary with headings, bold, italic, lists, and links.</p>
             </div>
 
             {/* Headline */}
@@ -380,6 +821,105 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 {...register("quote_by")}
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* Tags */}
+            <div className="md:col-span-2">
+              <Label htmlFor="tags">Tags (Optional)</Label>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="tag-input"
+                    type="text"
+                    placeholder="Enter a tag and press Enter or click Add"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAddTag}
+                    disabled={isSubmitting || !tagInput.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTag(tag)}
+                          className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                          disabled={isSubmitting}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Add tags to categorize this distinguished alumni (e.g., "Technology", "Leadership", "Innovation")</p>
+            </div>
+
+            {/* Stats */}
+            <div className="md:col-span-2">
+              <Label>Stats (Optional)</Label>
+              <div className="space-y-2">
+                {stats.map((stat, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Key (e.g., Years of Experience)"
+                      value={stat.key}
+                      onChange={(e) => handleUpdateStat(index, "key", e.target.value)}
+                      disabled={isSubmitting}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Value (e.g., 15)"
+                      value={stat.value}
+                      onChange={(e) => handleUpdateStat(index, "value", e.target.value)}
+                      disabled={isSubmitting}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRemoveStat(index)}
+                      disabled={isSubmitting}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddStat}
+                  disabled={isSubmitting}
+                >
+                  + Add Stat
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Add key-value pairs for statistics (e.g., "Awards": "5", "Publications": "20")</p>
             </div>
           </div>
 

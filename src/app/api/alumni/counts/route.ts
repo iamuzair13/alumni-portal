@@ -922,6 +922,13 @@ export async function GET(req: Request) {
       `);
     }
 
+    // Fetch distinguished alumni count from separate table
+    const distinguishedCountResult = await retryDbOperation(async () => await sql/* sql */`
+      SELECT COUNT(*) as count
+      FROM public.distinguished_alumni
+    `);
+    const distinguishedCount = distinguishedCountResult[0]?.count ? Number(distinguishedCountResult[0].count) : 0;
+
     const row = result[0] as {
       total: number | string | bigint;
       verified: number | string | bigint;
@@ -944,7 +951,7 @@ export async function GET(req: Request) {
         underApproval: 0,
         active: 0,
         inactive: 0,
-        category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0 },
+        category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 },
       }, { status: 200 });
     }
 
@@ -962,6 +969,7 @@ export async function GET(req: Request) {
         b: Number(row.category_b || 0),
         c: Number(row.category_c || 0),
         d: Number(row.category_d || 0),
+        distinguished: distinguishedCount,
       },
     };
 

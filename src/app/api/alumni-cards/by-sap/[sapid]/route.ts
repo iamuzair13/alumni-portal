@@ -87,13 +87,33 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     const newStatus = String(body?.status || "");
     const reasonOnhold = body?.reason_onhold ? String(body.reason_onhold).trim() : null;
     
-    // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-    if (!newStatus || !["Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"].includes(newStatus)) {
-      return NextResponse.json({ error: "Invalid status. Must be one of: Pending, Process, Active, Delivered, Onhold, UnderPrinting" }, { status: 400 });
+    // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
+    // Normalize and migrate legacy statuses
+    const normalizedStatus = newStatus.trim();
+    const upperStatus = normalizedStatus.toUpperCase();
+    
+    // Migrate legacy statuses
+    let finalStatus: string;
+    if (upperStatus === "PENDING") {
+      finalStatus = "UnderReview";
+    } else if (upperStatus === "PROCESS") {
+      finalStatus = "UnderPrinting";
+    } else if (["UNDERREVIEW", "UNDERPRINTING", "ACTIVE", "ONHOLD", "DELIVERED"].includes(upperStatus)) {
+      finalStatus = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1).replace(/^./, (c) => c.toUpperCase());
+      // Ensure proper casing
+      if (upperStatus === "UNDERREVIEW") finalStatus = "UnderReview";
+      else if (upperStatus === "UNDERPRINTING") finalStatus = "UnderPrinting";
+      else if (upperStatus === "ONHOLD") finalStatus = "Onhold";
+    } else {
+      return NextResponse.json({ error: "Invalid status. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" }, { status: 400 });
+    }
+    
+    if (!["UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"].includes(finalStatus)) {
+      return NextResponse.json({ error: "Invalid status. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" }, { status: 400 });
     }
     
     // If status is "Onhold", reason_onhold is required
-    if (newStatus === "Onhold" && (!reasonOnhold || reasonOnhold.length === 0)) {
+    if (finalStatus === "Onhold" && (!reasonOnhold || reasonOnhold.length === 0)) {
       return NextResponse.json({ error: "Reason is required when status is set to Onhold" }, { status: 400 });
     }
     
@@ -125,9 +145,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     // Update status and reason_onhold if provided
     // If status is not "Onhold", clear reason_onhold
-    const updateFields = newStatus === "Onhold" 
-      ? sql`status = ${newStatus}, reason_onhold = ${reasonOnhold}`
-      : sql`status = ${newStatus}, reason_onhold = NULL`;
+    const updateFields = finalStatus === "Onhold" 
+      ? sql`status = ${finalStatus}, reason_onhold = ${reasonOnhold}`
+      : sql`status = ${finalStatus}, reason_onhold = NULL`;
     
     const rows = await sql/* sql */`
       UPDATE public.tblcard c
@@ -147,19 +167,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       
       if (alumniEmail) {
         // Only send email if status actually changed
-        if (currentStatus !== newStatus) {
-          if (newStatus === "Onhold") {
+        if (currentStatus !== finalStatus) {
+          if (finalStatus === "Onhold") {
             // Send "on hold" email when status becomes Onhold
             sendAlumniCardOnHoldEmail(alumniEmail, alumniName).catch((err) => {
               console.error("[API] Failed to send alumni card on hold email:", err);
             });
-          } else if (newStatus === "Delivered") {
+          } else if (finalStatus === "Delivered") {
             // Send "activated" email when status becomes Delivered
             sendAlumniCardActivatedEmail(alumniEmail, alumniName).catch((err) => {
               console.error("[API] Failed to send alumni card activated email:", err);
             });
           }
-          // Note: No email for "Process" or "Active" status changes, as they're internal admin actions
+          // Note: No email for other status changes, as they're internal admin actions
         }
       }
     } catch (emailError) {

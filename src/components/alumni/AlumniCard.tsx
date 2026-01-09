@@ -10,9 +10,15 @@ import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import toast from "react-hot-toast";
-
-
-export type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting" | "all";
+import { 
+  type CardStatus, 
+  type DbCardStatus,
+  CARD_STATUS_CONFIG, 
+  mapDbStatusToUI, 
+  mapUIStatusToDb, 
+  getStatusLabel,
+  normalizeDbStatus 
+} from "@/lib/card-status-config";
 
 export type AlumniCardItem = {
   id: string;
@@ -47,40 +53,12 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-blue-500",
     pillBg: "bg-blue-100",
   },
-  pending: {
+  "under-review": {
     color: "text-amber-700",
     bgColor: "bg-amber-50",
     ringColor: "ring-amber-200",
     iconColor: "text-amber-600",
     pillBg: "bg-amber-100",
-  },
-  process: {
-    color: "text-blue-700",
-    bgColor: "bg-blue-50",
-    ringColor: "ring-blue-200",
-    iconColor: "text-blue-600",
-    pillBg: "bg-blue-100",
-  },
-  active: {
-    color: "text-emerald-700",
-    bgColor: "bg-emerald-50",
-    ringColor: "ring-emerald-200",
-    iconColor: "text-emerald-600",
-    pillBg: "bg-emerald-100",
-  },
-  delivered: {
-    color: "text-green-700",
-    bgColor: "bg-green-50",
-    ringColor: "ring-green-200",
-    iconColor: "text-green-600",
-    pillBg: "bg-green-100",
-  },
-  onhold: {
-    color: "text-rose-700",
-    bgColor: "bg-rose-50",
-    ringColor: "ring-rose-200",
-    iconColor: "text-rose-600",
-    pillBg: "bg-rose-100",
   },
   underprinting: {
     color: "text-purple-700",
@@ -89,16 +67,36 @@ const STATUS_CLASS_MAP: Record<
     iconColor: "text-purple-600",
     pillBg: "bg-purple-100",
   },
+  active: {
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
+    ringColor: "ring-emerald-200",
+    iconColor: "text-emerald-600",
+    pillBg: "bg-emerald-100",
+  },
+  onhold: {
+    color: "text-rose-700",
+    bgColor: "bg-rose-50",
+    ringColor: "ring-rose-200",
+    iconColor: "text-rose-600",
+    pillBg: "bg-rose-100",
+  },
+  delivered: {
+    color: "text-green-700",
+    bgColor: "bg-green-50",
+    ringColor: "ring-green-200",
+    iconColor: "text-green-600",
+    pillBg: "bg-green-100",
+  },
 };
 
 const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   all: GroupIcon,
-  pending: TimeIcon,
-  process: BoltIcon,
+  "under-review": TimeIcon,
   underprinting: FileIcon,
   active: CheckCircleIcon,
-  delivered: CheckCircleIcon,
   onhold: LockIcon,
+  delivered: CheckCircleIcon,
 };
 
 
@@ -219,14 +217,7 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
                     </div>
                   </div>
                   <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${theme.pillBg} ${theme.color}`}>
-                    {alum.status === "pending" ? "Pending" : 
-                     alum.status === "process" ? "In-Process" : 
-                     alum.status === "underprinting" ? "Under-Printing" :
-                     alum.status === "active" ? "Ready for Delivery" :
-                     alum.status === "delivered" ? "Delivered" : 
-                     alum.status === "onhold" ? "On Hold" :
-                     alum.status === "all" ? "All" :
-                     alum.status}
+                    {getStatusLabel(alum.status)}
                   </span>
                 </div>
 
@@ -361,25 +352,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     // Otherwise use fetched applicants
     if (applicants && applicants.length) {
       return applicants.map((r) => {
-        // Map database status to UI status
-        // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-        let uiStatus: CardStatus = "pending";
-        const dbStatus = r.status ? String(r.status).trim() : "";
-        const upperStatus = dbStatus.toUpperCase();
-        if (upperStatus === "DELIVERED") {
-          uiStatus = "delivered";
-        } else if (upperStatus === "PROCESS") {
-          uiStatus = "process";
-        } else if (upperStatus === "ACTIVE") {
-          uiStatus = "active";
-        } else if (upperStatus === "ONHOLD") {
-          uiStatus = "onhold";
-        } else if (upperStatus === "UNDERPRINTING") {
-          uiStatus = "underprinting";
-        } else {
-          // Default to pending (NULL, empty, or "Pending")
-          uiStatus = "pending";
-        }
+        // Map database status to UI status using centralized config
+        const uiStatus = mapDbStatusToUI(r.status);
         
         return {
           id: String(r.sapid ?? ""),
@@ -811,27 +785,23 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const { data: session } = useSession();
     const queryClient = useQueryClient();
     // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-    const [localStatus, setLocalStatus] = React.useState<"Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | null>(null);
+    const [localStatus, setLocalStatus] = React.useState<DbCardStatus | null>(null);
     const [reasonOnhold, setReasonOnhold] = React.useState<string>("");
     const [showReasonInput, setShowReasonInput] = React.useState<boolean>(false);
     const [isUpdating, setIsUpdating] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [showConfirmModal, setShowConfirmModal] = React.useState(false);
-    const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting"; reason?: string } | null>(null);
+    const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: DbCardStatus; reason?: string } | null>(null);
     const hasUpdatedRef = React.useRef(false);
     const isAdmin = isAdminUser(session?.user);
     const isSuperAdmin = isSuperAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
     const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
-    // Map UI status (from items list) to DB status
-    const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" => {
-      if (uiStatus === "delivered") return "Delivered";
-      if (uiStatus === "active") return "Active";
-      if (uiStatus === "process") return "Process";
-      if (uiStatus === "onhold") return "Onhold";
-      if (uiStatus === "underprinting") return "UnderPrinting";
-      return "Pending"; // Default to Pending
+    // Map UI status (from items list) to DB status using centralized config
+    const getDbStatusFromUI = (uiStatus?: CardStatus): DbCardStatus => {
+      const dbStatus = mapUIStatusToDb(uiStatus || "under-review");
+      return dbStatus || "UnderReview";
     };
     
     // Get initial DB status from item prop or fetch from API
@@ -844,32 +814,21 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     React.useEffect(() => {
       if (!hasUpdatedRef.current && data !== undefined) {
         if (data?.status) {
-          // Map database status to local state (always use fetched data for accuracy)
-          const dbStatus = String(data.status).trim();
-          if (dbStatus === "Delivered") {
-            setLocalStatus("Delivered");
-          } else if (dbStatus === "Active") {
-            setLocalStatus("Active");
-          } else if (dbStatus === "Process") {
-            setLocalStatus("Process");
-          } else if (dbStatus === "Onhold") {
-            setLocalStatus("Onhold");
-            // Always load reason from database when status is Onhold
-            if (data.reason_onhold) {
-              setReasonOnhold(data.reason_onhold || "");
-            }
+          // Normalize and migrate database status
+          const normalizedStatus = normalizeDbStatus(data.status);
+          setLocalStatus(normalizedStatus);
+          
+          // Always load reason from database when status is Onhold
+          if (normalizedStatus === "Onhold" && data.reason_onhold) {
+            setReasonOnhold(data.reason_onhold || "");
             setShowReasonInput(true);
-          } else if (dbStatus === "UnderPrinting") {
-            setLocalStatus("UnderPrinting");
-          } else {
-            setLocalStatus("Pending");
           }
         } else {
           // If no data from API but we have initial status, use that
           if (initialDbStatus && !data) {
             setLocalStatus(initialDbStatus);
           } else {
-            setLocalStatus("Pending");
+            setLocalStatus("UnderReview");
           }
         }
       } else if (initialDbStatus && !hasUpdatedRef.current && !data) {
@@ -885,7 +844,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     }, [initialDbStatus, localStatus]);
     
-    const current = localStatus ?? initialDbStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting";
+    const current = localStatus ?? initialDbStatus ?? (data?.status ? normalizeDbStatus(data.status) : "UnderReview");
     
     // Show reason input when Onhold is selected
     React.useEffect(() => {
@@ -898,7 +857,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     }, [current]);
     
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = e.target.value as "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting";
+      const next = normalizeDbStatus(e.target.value) as DbCardStatus;
       
       // Don't update if same status
       if (next === current) return;
@@ -946,30 +905,18 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       // Only revert if we're not in the middle of switching to Onhold
       if (pendingStatusChange?.status !== "Onhold") {
         if (data?.status) {
-          const dbStatus = String(data.status).trim();
-          if (dbStatus === "Delivered") {
-            setLocalStatus("Delivered");
-          } else if (dbStatus === "Active") {
-            setLocalStatus("Active");
-          } else if (dbStatus === "Process") {
-            setLocalStatus("Process");
-          } else if (dbStatus === "Onhold") {
-            setLocalStatus("Onhold");
-          } else if (dbStatus === "UnderPrinting") {
-            setLocalStatus("UnderPrinting");
-          } else {
-            setLocalStatus("Pending");
-          }
+          const normalizedStatus = normalizeDbStatus(data.status);
+          setLocalStatus(normalizedStatus);
         } else {
-          setLocalStatus("Pending");
+          setLocalStatus("UnderReview");
         }
       }
       setPendingStatusChange(null);
     };
     
-    const submitStatusChange = async (next: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting", reason: string) => {
+    const submitStatusChange = async (next: DbCardStatus, reason: string) => {
       // Optimistic update
-      const previousStatus = localStatus ?? (data?.status ? String(data.status).trim() : "Pending") as "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting";
+      const previousStatus = localStatus ?? (data?.status ? normalizeDbStatus(data.status) : "UnderReview");
       setLocalStatus(next);
       setIsUpdating(true);
       setError(null);
@@ -1019,7 +966,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         setLocalStatus(next);
         
         // Reorder items to move the updated item to the first position
-        const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold", "underprinting"];
+        const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
         for (const s of statuses) {
           const key = cardApplicantsKey(s);
           const current = queryClient.getQueryData<CardApplicantsResponse>(key);
@@ -1078,13 +1025,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     };
     
-    // Map status to display label
-    const statusLabel = current === "Delivered" ? "Delivered" 
-      : current === "Active" ? "Ready for Delivery"
-      : current === "Process" ? "In-Process"
-      : current === "UnderPrinting" ? "Under-Printing"
-      : current === "Onhold" ? "On Hold"
-      : "Pending";
+    // Map status to display label using centralized config
+    const uiStatus = current ? mapDbStatusToUI(current) : "under-review";
+    const statusLabel = getStatusLabel(uiStatus);
     
     if (readOnly) {
       return (
@@ -1109,12 +1052,13 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             disabled={isLoading || isUpdating || readOnly}
             onChange={handleStatusChange}
           >
-            <option value="Pending">Pending</option>
-            <option value="Process">In-Process</option>
-            <option value="UnderPrinting">Under-Printing</option>
-            <option value="Active">Ready for Delivery</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Onhold">On Hold</option>
+            {Object.entries(CARD_STATUS_CONFIG)
+              .filter(([key]) => key !== "all")
+              .map(([key, config]) => (
+                <option key={key} value={config.dbValue || ""}>
+                  {config.label}
+                </option>
+              ))}
           </select>
           {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
           {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
@@ -1218,12 +1162,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">New Status:</span>
                     <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                      {pendingStatusChange?.status === "Delivered" ? "Delivered" 
-                        : pendingStatusChange?.status === "Active" ? "Ready for Delivery"
-                        : pendingStatusChange?.status === "UnderPrinting" ? "Under-Printing"
-                        : pendingStatusChange?.status === "Process" ? "In-Process"
-                        : pendingStatusChange?.status === "Onhold" ? "On Hold"
-                        : "Pending"}
+                      {pendingStatusChange?.status ? getStatusLabel(mapDbStatusToUI(pendingStatusChange.status)) : "Under-Review"}
                     </span>
                   </div>
                   {pendingStatusChange?.status === "Onhold" && pendingStatusChange?.reason && (
@@ -1271,9 +1210,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     // Try to get status from cache first, then from item status, fallback to pending
     const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
-    // Get actual database status string for checking Active/Delivered/Process/Pending
-    const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
-    const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED" || dbStatusString === "PROCESS" || dbStatusString === "PENDING";
+    // Download button available for ALL statuses (fixed rendering issue - no conditional logic)
+    const canDownload = true;
     const isAdmin = isAdminUser(session?.user);
     const isSuperAdmin = isSuperAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
@@ -1443,12 +1381,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by status"
           >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="process">In-Process</option>
-            <option value="active">Ready for Delivery</option>
-            <option value="delivered">Delivered</option>
-            <option value="onhold">On Hold</option>
+            {Object.entries(CARD_STATUS_CONFIG).map(([key, config]) => (
+              <option key={key} value={key}>
+                {config.label}
+              </option>
+            ))}
           </select>
           <button
             type="button"

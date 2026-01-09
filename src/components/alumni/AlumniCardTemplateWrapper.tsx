@@ -12,7 +12,7 @@ type AlumniCardTemplateWrapperProps = {
   validity?: string;
   photoUrl?: string | null;
   cardImage?: string | null;
-  cardStatus?: string | null; // Card status from database: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
+  cardStatus?: string | null; // Card status from database: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
 };
 
 export default function AlumniCardTemplateWrapper({
@@ -27,9 +27,8 @@ export default function AlumniCardTemplateWrapper({
 }: AlumniCardTemplateWrapperProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Show download button for Active, Delivered, In-Process, or Pending status
-  const normalizedStatus = cardStatus ? String(cardStatus).trim().toUpperCase() : "";
-  const canDownload = normalizedStatus === "ACTIVE" || normalizedStatus === "DELIVERED" || normalizedStatus === "PROCESS" || normalizedStatus === "PENDING";
+  // Download button available for ALL statuses (fixed rendering issue)
+  const canDownload = true;
 
   return (
     <div>

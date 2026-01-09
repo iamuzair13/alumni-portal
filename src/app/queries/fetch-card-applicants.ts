@@ -14,18 +14,17 @@ export type CardApplicant = {
   createdat: string | null;
 };
 
-export type CardStatusFilter = "all" | "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting";
+export type CardStatusFilter = "all" | "under-review" | "underprinting" | "active" | "onhold" | "delivered";
 
 export type CardApplicantsResponse = {
   items: CardApplicant[];
   counts: {
     all: number;
-    pending: number;
-    process: number;
-    active: number;
-    delivered: number;
-    onhold: number;
+    "under-review": number;
     underprinting: number;
+    active: number;
+    onhold: number;
+    delivered: number;
   };
 };
 
@@ -47,7 +46,7 @@ export function useCardApplicants(status: CardStatusFilter = "all", options?: { 
       const j = await res.json();
       return {
         items: (j?.items ?? []) as CardApplicant[],
-        counts: j?.counts ?? { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0 },
+        counts: j?.counts ?? { all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 },
       } as CardApplicantsResponse;
     },
     enabled: options?.enabled !== false,
@@ -70,7 +69,7 @@ export function useCardCounts() {
         throw new Error(j?.error || `Failed (${res.status})`);
       }
       const j = await res.json();
-      return j ?? { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0 };
+      return j ?? { all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 };
     },
     staleTime: 0, // Always fetch fresh data
     gcTime: 10 * 60_000, // 10 minutes
@@ -82,8 +81,8 @@ export function useCardCounts() {
 
 export function useUpdateApplicantStatus() {
   const qc = useQueryClient();
-  // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-  return useMutation<unknown, Error, { sapId: string; status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting"; reason_onhold?: string }, { prev?: CardApplicant[] }>({
+  // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
+  return useMutation<unknown, Error, { sapId: string; status: "UnderReview" | "UnderPrinting" | "Active" | "Onhold" | "Delivered"; reason_onhold?: string }, { prev?: CardApplicant[] }>({
     mutationFn: async ({ sapId, status, reason_onhold }) => {
       const body: { status: string; reason_onhold?: string } = { status };
       if (status === "Onhold" && reason_onhold) {
@@ -105,7 +104,7 @@ export function useUpdateApplicantStatus() {
       await qc.cancelQueries({ queryKey: ["alumni", "card", "applicants"] });
       
       // Update all status-specific queries
-      const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold", "underprinting"];
+      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
       const prevData: Record<string, CardApplicantsResponse | undefined> = {};
       
       for (const s of statuses) {
@@ -147,7 +146,7 @@ export function useUpdateApplicantStatus() {
     },
     onSuccess: (_data, { sapId }) => {
       // After successful update, ensure the updated item is first in all relevant queries
-      const statuses: CardStatusFilter[] = ["all", "pending", "process", "active", "delivered", "onhold", "underprinting"];
+      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
       
       for (const s of statuses) {
         const key = cardApplicantsKey(s);
@@ -175,7 +174,7 @@ export function useUpdateApplicantStatus() {
       // Restore previous data on error
       if (ctx?.prev) {
         const key = cardApplicantsKey("all");
-        qc.setQueryData(key, { items: ctx.prev, counts: { all: ctx.prev.length, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0 } });
+        qc.setQueryData(key, { items: ctx.prev, counts: { all: ctx.prev.length, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 } });
       }
     },
     onSettled: () => {

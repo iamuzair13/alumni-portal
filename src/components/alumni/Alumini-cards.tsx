@@ -6,14 +6,19 @@ import { AlumniDataTable } from "./AlumniCard";
 import { useCardApplicants, type CardStatusFilter, type CardApplicant } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
 import toast from "react-hot-toast";
+import { 
+  type CardStatus,
+  type DbCardStatus,
+  CARD_STATUS_CONFIG, 
+  mapDbStatusToUI, 
+  getStatusLabel 
+} from "@/lib/card-status-config";
 
 /**
  * AlumniCards
- * Responsive card-based listing for alumni cards, organized by status (all, active, inprocess, onhold, received).
+ * Responsive card-based listing for alumni cards, organized by status.
  * Uses TanStack Query for data fetching with real-time counters.
  */
-
-type CardStatus = "pending" | "process" | "active" | "delivered" | "onhold" | "underprinting" | "all";
 
 type AlumniCardItem = {
   id: string;
@@ -41,18 +46,7 @@ type AlumniCardsProps = {
   pageSize?: number;
 };
 
-// Map database status to UI status
-// Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-function mapDbStatusToUI(dbStatus: string | null): CardStatus {
-  if (!dbStatus) return "pending";
-  const upper = dbStatus.trim().toUpperCase();
-  if (upper === "DELIVERED") return "delivered";
-  if (upper === "ACTIVE") return "active";
-  if (upper === "PROCESS") return "process";
-  if (upper === "ONHOLD") return "onhold";
-  if (upper === "UNDERPRINTING") return "underprinting";
-  return "pending"; // Default to pending for "Pending" or any other value
-}
+// Use centralized mapDbStatusToUI from card-status-config
 
 // Convert CardApplicant to AlumniCardItem
 function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { department: string } {
@@ -72,24 +66,10 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
 }
 
 export function getActionsForStatus(status: CardStatus): ActionDef[] {
-  switch (status) {
-    case "delivered":
-      return [
-        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
-      ];
-    case "process":
-      return [
-        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
-      ];
-    case "pending":
-      return [
-        { key: "verify", label: "Move to Process", icon: CheckLineIcon, hoverClass: "hover:text-emerald-600" },
-        { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
-      ];
-    case "all":
-    default:
-      return [{ key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" }];
-  }
+  // All statuses have view action
+  return [
+    { key: "view", label: "View", icon: EyeIcon, hoverClass: "hover:text-blue-600" },
+  ];
 }
 
 // Color mapping for status tabs
@@ -109,21 +89,13 @@ const STATUS_TAB_COLORS: Record<CardStatus, {
     badgeText: "text-blue-800 dark:text-blue-200",
     hoverBorder: "hover:border-blue-400",
   },
-  pending: {
+  "under-review": {
     border: "border-amber-500",
     bg: "bg-amber-50 dark:bg-amber-900/20",
     text: "text-amber-700 dark:text-amber-300",
     badgeBg: "bg-amber-200 dark:bg-amber-800",
     badgeText: "text-amber-800 dark:text-amber-200",
     hoverBorder: "hover:border-amber-400",
-  },
-  process: {
-    border: "border-blue-500",
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    text: "text-blue-700 dark:text-blue-300",
-    badgeBg: "bg-blue-200 dark:bg-blue-800",
-    badgeText: "text-blue-800 dark:text-blue-200",
-    hoverBorder: "hover:border-blue-400",
   },
   underprinting: {
     border: "border-purple-500",
@@ -160,13 +132,12 @@ const STATUS_TAB_COLORS: Record<CardStatus, {
 };
 
 const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { key: "all", label: "All", icon: GroupIcon },
-  { key: "pending", label: "Pending", icon: TimeIcon },
-  { key: "process", label: "In-Process", icon: BoltIcon },
-  { key: "underprinting", label: "Under-Printing", icon: FileIcon },
-  { key: "active", label: "Ready for Delivery", icon: CheckLineIcon },
-  { key: "delivered", label: "Delivered", icon: CheckLineIcon },
-  { key: "onhold", label: "On Hold", icon: LockIcon },
+  { key: "all", label: CARD_STATUS_CONFIG["all"].label, icon: GroupIcon },
+  { key: "under-review", label: CARD_STATUS_CONFIG["under-review"].label, icon: TimeIcon },
+  { key: "underprinting", label: CARD_STATUS_CONFIG["underprinting"].label, icon: FileIcon },
+  { key: "active", label: CARD_STATUS_CONFIG["active"].label, icon: CheckLineIcon },
+  { key: "onhold", label: CARD_STATUS_CONFIG["onhold"].label, icon: LockIcon },
+  { key: "delivered", label: CARD_STATUS_CONFIG["delivered"].label, icon: CheckLineIcon },
 ];
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
@@ -195,7 +166,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (countsFromData) {
       return countsFromData;
     }
-    return { all: 0, pending: 0, process: 0, active: 0, delivered: 0, onhold: 0, underprinting: 0 };
+    return { all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 };
   }, [countsData, data]);
   
   // Debug: Log counts to console (remove in production if needed)
@@ -239,16 +210,19 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
         return;
       }
 
-      // Handle status updates
-      // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
-      let newDbStatus: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" | null = null;
+      // Handle status updates using centralized status config
+      // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
+      let newDbStatus: DbCardStatus | null = null;
       
-      if (key === "verify" && alumni.status === "pending") {
-        newDbStatus = "Process";
-      } else if (key === "verify" && alumni.status === "process") {
-        newDbStatus = "Active";
-      } else if (key === "verify" && alumni.status === "active") {
-        newDbStatus = "Delivered";
+      if (key === "verify") {
+        // Map UI status to next status in workflow
+        if (alumni.status === "under-review") {
+          newDbStatus = "UnderPrinting";
+        } else if (alumni.status === "underprinting") {
+          newDbStatus = "Active";
+        } else if (alumni.status === "active") {
+          newDbStatus = "Delivered";
+        }
       }
 
       if (newDbStatus) {
@@ -279,18 +253,16 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
               let count = 0;
               if (tab.key === "all") {
                 count = counts.all || 0;
-              } else if (tab.key === "pending") {
-                count = counts.pending || 0;
-              } else if (tab.key === "process") {
-                count = counts.process || 0;
+              } else if (tab.key === "under-review") {
+                count = counts["under-review"] || 0;
+              } else if (tab.key === "underprinting") {
+                count = counts.underprinting || 0;
               } else if (tab.key === "active") {
                 count = counts.active || 0;
               } else if (tab.key === "delivered") {
                 count = counts.delivered || 0;
               } else if (tab.key === "onhold") {
                 count = counts.onhold || 0;
-              } else if (tab.key === "underprinting") {
-                count = counts.underprinting || 0;
               }
               const isSelected = selectedStatus === tab.key;
               const colors = STATUS_TAB_COLORS[tab.key];

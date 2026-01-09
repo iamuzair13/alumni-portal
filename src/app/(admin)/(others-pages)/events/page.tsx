@@ -9,7 +9,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import NextLink from "next/link";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
@@ -23,6 +23,12 @@ import { TrashBinIcon } from "@/icons";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import toast from "react-hot-toast";
+import { useSession } from "next-auth/react";
+import { canModify } from "@/lib/alumniProfile";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import TiptapLink from "@tiptap/extension-link";
+import Underline from "@tiptap/extension-underline";
 
 // TypeScript typings for Events
 type EventItem = {
@@ -77,10 +83,13 @@ type EventListProps = {
   loading?: boolean;
   emptyMessage?: string;
   onDelete?: (id: string) => Promise<void> | void;
+  onEdit?: (id: string) => void;
   deletingIds?: Set<string>;
 };
 
-const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, onDelete, deletingIds }) => {
+const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, onDelete, onEdit, deletingIds }) => {
+  const { data: session } = useSession();
+  const canEdit = canModify(session?.user);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const topScrollbarRef = React.useRef<HTMLDivElement>(null);
@@ -163,7 +172,7 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
 
   return (
     <div className="px-3  sm:px-1 pb-8">
-      <div className="overflow-hidden rounded-2xl border max-w-[1150px] border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
+      <div className="overflow-hidden rounded-2xl border max-w-[1400px] border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
         {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
         <div 
           ref={topScrollbarRef}
@@ -343,7 +352,7 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                       : "bg-white dark:bg-gray-800/30"
                   }`}>
                     <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2 justify-end">
-                      <Link
+                      <NextLink
                         href={`/events/${evt.id}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                         aria-label="View event"
@@ -354,24 +363,40 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                         <span className="hidden sm:inline">View</span>
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => onDelete?.(evt.id)}
-                        disabled={Boolean(deletingIds?.has(evt.id))}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                        aria-label="Delete event"
-                        title="Delete event"
-                      >
-                        {deletingIds?.has(evt.id) ? (
-                          <div className="h-4 w-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <TrashBinIcon className="h-4 w-4" />
-                            <span className="hidden sm:inline">Delete</span>
-                          </>
-                        )}
-                      </button>
+                      </NextLink>
+                      {canEdit && onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(evt.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 hover:text-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                          aria-label="Edit event"
+                          title="Edit event"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          <span className="hidden sm:inline">Edit</span>
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete?.(evt.id)}
+                          disabled={Boolean(deletingIds?.has(evt.id))}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label="Delete event"
+                          title="Delete event"
+                        >
+                          {deletingIds?.has(evt.id) ? (
+                            <div className="h-4 w-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <TrashBinIcon className="h-4 w-4" />
+                              <span className="hidden sm:inline">Delete</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -458,9 +483,9 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
 type EventFormValues = {
   title: string;
   category: string;
-  fromDate: string;
-  toDate: string;
-  eventTime: string;
+  fromDate: string | undefined;
+  toDate: string | undefined;
+  eventTime: string | undefined;
   shortDescription: string;
   description: string;
   chapterId?: string;
@@ -472,21 +497,35 @@ type EventFormValues = {
   image5?: File | null;
 };
 
-const eventFormSchema = z.object({
+const createEventFormSchema = (isEditing: boolean = false) => z.object({
   title: z.string().min(1, "Title is required").max(200, "Title must be 200 characters or less"),
   category: z.string().min(1, "Category is required"),
-  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "From date is required"),
-  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "To date is required"),
-  eventTime: z.string().regex(/^\d{2}:\d{2}$/u, "Event time is required (HH:MM format)"),
+  fromDate: isEditing 
+    ? z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Invalid date format (YYYY-MM-DD)").or(z.literal("")).optional()
+    : z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "From date is required"),
+  toDate: isEditing
+    ? z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Invalid date format (YYYY-MM-DD)").or(z.literal("")).optional()
+    : z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "To date is required"),
+  eventTime: isEditing
+    ? z.string().regex(/^\d{2}:\d{2}$/u, "Invalid time format (HH:MM)").or(z.literal("")).optional()
+    : z.string().regex(/^\d{2}:\d{2}$/u, "Event time is required (HH:MM format)"),
   shortDescription: z.string().min(1, "Short description is required").max(500, "Short description must be 500 characters or less"),
   description: z.string().min(1, "Description is required"),
   chapterId: z.string().optional(),
   associationId: z.string().optional(),
-  image1: z
-    .any()
-    .refine((f) => f instanceof File, { message: "Image 1 is required" })
-    .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
-    .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" }),
+  image1: isEditing
+    ? z
+        .any()
+        .refine((f) => !f || f instanceof File, { message: "Invalid file" })
+        .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+        .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" })
+        .nullable()
+        .optional()
+    : z
+        .any()
+        .refine((f) => f instanceof File, { message: "Image 1 is required" })
+        .refine((f) => !f || ["image/png", "image/jpeg", "image/jpg"].includes((f as File).type), { message: "Only PNG or JPG allowed" })
+        .refine((f) => !f || (f as File).size <= 5 * 1024 * 1024, { message: "Max size 5MB" }),
   image2: z
     .any()
     .refine((f) => !f || f instanceof File, { message: "Invalid file" })
@@ -523,7 +562,12 @@ const eventFormSchema = z.object({
 }, { message: "To date must be on or after from date", path: ["toDate"] });
 
 // Add Event Form Component
-const AddEventForm: React.FC = () => {
+type AddEventFormProps = {
+  eventId?: string | null;
+  onSuccess?: () => void;
+};
+
+const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
   const queryClient = useQueryClient();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -534,6 +578,38 @@ const AddEventForm: React.FC = () => {
   const [loadingChapters, setLoadingChapters] = useState(true);
   const [loadingAssociations, setLoadingAssociations] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingEvent, setLoadingEvent] = useState(false);
+
+  // Tiptap editor for description
+  const descriptionEditor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      TiptapLink.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+    ],
+    content: "",
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      setValue("description", html, { shouldValidate: true });
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
+      },
+    },
+    editable: true,
+  });
 
   const {
     register,
@@ -544,7 +620,7 @@ const AddEventForm: React.FC = () => {
     setValue,
     watch,
   } = useForm<EventFormValues>({
-    resolver: zodResolver(eventFormSchema),
+    resolver: zodResolver(createEventFormSchema(!!eventId)),
     defaultValues: {
       title: "",
       category: "",
@@ -563,6 +639,61 @@ const AddEventForm: React.FC = () => {
     },
     mode: "onChange",
   });
+
+  // Cleanup editor on unmount
+  useEffect(() => {
+    return () => {
+      if (descriptionEditor) {
+        descriptionEditor.destroy();
+      }
+    };
+  }, [descriptionEditor]);
+
+  // Fetch event data if editing
+  useEffect(() => {
+    if (eventId) {
+      setLoadingEvent(true);
+      fetch(`/api/events/${eventId}`)
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            // Populate form with existing data
+            setValue("title", data.title || "");
+            setValue("category", data.category || "");
+            setValue("fromDate", data.fromDate || "");
+            setValue("toDate", data.toDate || "");
+            setValue("eventTime", data.eventTime || "");
+            setValue("shortDescription", data.shortDescription || "");
+            setValue("description", data.description || "");
+            setValue("chapterId", data.chapterId || "");
+            setValue("associationId", data.associationId || "");
+            
+            // Set editor content if available
+            if (descriptionEditor && data.description) {
+              descriptionEditor.commands.setContent(data.description);
+            }
+            
+            // Set preview URLs for existing images
+            const existingPreviewUrls: Record<number, string> = {};
+            if (data.images && Array.isArray(data.images)) {
+              data.images.forEach((img: string, idx: number) => {
+                if (img) {
+                  existingPreviewUrls[idx + 1] = `/images/${img}`;
+                }
+              });
+            }
+            setPreviewUrls(existingPreviewUrls);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch event:", err);
+          toast.error("Failed to load event data");
+        })
+        .finally(() => {
+          setLoadingEvent(false);
+        });
+    }
+  }, [eventId, setValue, descriptionEditor]);
 
   // Fetch chapters, associations, and categories on mount
   useEffect(() => {
@@ -646,9 +777,25 @@ const AddEventForm: React.FC = () => {
       const formData = new FormData();
       formData.append("title", data.title);
       formData.append("category", data.category);
-      formData.append("fromDate", data.fromDate);
-      formData.append("toDate", data.toDate);
-      formData.append("eventTime", data.eventTime);
+      
+      // For editing, only append date/time if they have values (preserve existing if empty)
+      if (eventId) {
+        if (data.fromDate && data.fromDate.trim() !== "") {
+          formData.append("fromDate", data.fromDate);
+        }
+        if (data.toDate && data.toDate.trim() !== "") {
+          formData.append("toDate", data.toDate);
+        }
+        if (data.eventTime && data.eventTime.trim() !== "") {
+          formData.append("eventTime", data.eventTime);
+        }
+      } else {
+        // For new events, all fields are required
+        if (data.fromDate) formData.append("fromDate", data.fromDate);
+        if (data.toDate) formData.append("toDate", data.toDate);
+        if (data.eventTime) formData.append("eventTime", data.eventTime);
+      }
+      
       formData.append("shortDescription", data.shortDescription);
       formData.append("description", data.description);
       
@@ -661,8 +808,11 @@ const AddEventForm: React.FC = () => {
       if (data.image4) formData.append("image4", data.image4);
       if (data.image5) formData.append("image5", data.image5);
 
-      const res = await fetch("/api/events", {
-        method: "POST",
+      const url = eventId ? `/api/events/${eventId}` : "/api/events";
+      const method = eventId ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method,
         body: formData,
       });
 
@@ -672,14 +822,25 @@ const AddEventForm: React.FC = () => {
         throw new Error(responseData?.error || responseData?.message || `Failed (${res.status})`);
       }
 
-      setServerMsg("Event created successfully!");
-      toast.success("Event created successfully!");
+      const successMsg = eventId ? "Event updated successfully!" : "Event created successfully!";
+      setServerMsg(successMsg);
+      toast.success(successMsg);
       reset();
-      Object.keys(previewUrls).forEach(key => URL.revokeObjectURL(previewUrls[parseInt(key)]));
+      Object.keys(previewUrls).forEach(key => {
+        const url = previewUrls[parseInt(key)];
+        if (url && url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
       setPreviewUrls({});
       
       // Invalidate queries to refresh the list
       await queryClient.invalidateQueries({ queryKey: eventsKey });
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
       
       // Reset form after short delay
       setTimeout(() => {
@@ -753,7 +914,7 @@ const AddEventForm: React.FC = () => {
 
         {/* Event Time */}
         <div>
-          <Label htmlFor="eventTime">Event Time *</Label>
+          <Label htmlFor="eventTime">Event Time {!eventId ? "*" : ""}</Label>
           <input
             id="eventTime"
             type="time"
@@ -762,13 +923,13 @@ const AddEventForm: React.FC = () => {
             }`}
             {...register("eventTime")}
           />
-          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Format: HH:MM</p>
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Format: HH:MM {eventId && "(optional when editing)"}</p>
           {errors.eventTime && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.eventTime.message}</p>}
         </div>
 
         {/* From Date */}
         <div>
-          <Label htmlFor="fromDate">From Date *</Label>
+          <Label htmlFor="fromDate">From Date {!eventId ? "*" : ""}</Label>
           <input
             id="fromDate"
             type="date"
@@ -777,12 +938,13 @@ const AddEventForm: React.FC = () => {
             }`}
             {...register("fromDate")}
           />
+          {eventId && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Optional when editing</p>}
           {errors.fromDate && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.fromDate.message}</p>}
         </div>
 
         {/* To Date */}
         <div>
-          <Label htmlFor="toDate">To Date *</Label>
+          <Label htmlFor="toDate">To Date {!eventId ? "*" : ""}</Label>
           <input
             id="toDate"
             type="date"
@@ -791,6 +953,7 @@ const AddEventForm: React.FC = () => {
             }`}
             {...register("toDate")}
           />
+          {eventId && <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Optional when editing</p>}
           {errors.toDate && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.toDate.message}</p>}
         </div>
 
@@ -848,16 +1011,125 @@ const AddEventForm: React.FC = () => {
           {errors.shortDescription && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.shortDescription.message}</p>}
         </div>
 
-        {/* Description */}
+        {/* Description - HTML Editor */}
         <div className="sm:col-span-2">
           <Label htmlFor="description">Description *</Label>
-          <textarea
-            id="description"
-            rows={6}
-            className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 min-h-[150px]"
-            {...register("description")}
-            placeholder="Full event description"
-          />
+          <div className={`rounded-lg border ${
+            errors.description ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-700"
+          } bg-white dark:bg-gray-900 shadow-theme-xs focus-within:ring-3 focus-within:ring-brand-500/10 focus-within:border-brand-300 dark:focus-within:border-brand-800`}>
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("heading", { level: 1 }) ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Heading 1"
+              >
+                H1
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("heading", { level: 2 }) ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Heading 2"
+              >
+                H2
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleHeading({ level: 3 }).run()}
+                className={`px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("heading", { level: 3 }) ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Heading 3"
+              >
+                H3
+              </button>
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleBold().run()}
+                className={`px-2 py-1 text-xs font-bold rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("bold") ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Bold"
+              >
+                B
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleItalic().run()}
+                className={`px-2 py-1 text-xs italic rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("italic") ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Italic"
+              >
+                I
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleUnderline().run()}
+                className={`px-2 py-1 text-xs underline rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("underline") ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Underline"
+              >
+                U
+              </button>
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleBulletList().run()}
+                className={`px-2 py-1 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("bulletList") ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Bullet List"
+              >
+                •
+              </button>
+              <button
+                type="button"
+                onClick={() => descriptionEditor?.chain().focus().toggleOrderedList().run()}
+                className={`px-2 py-1 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("orderedList") ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Numbered List"
+              >
+                1.
+              </button>
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600" />
+              <button
+                type="button"
+                onClick={() => {
+                  const url = window.prompt("Enter URL:");
+                  if (url) {
+                    descriptionEditor?.chain().focus().setLink({ href: url }).run();
+                  }
+                }}
+                className={`px-2 py-1 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  descriptionEditor?.isActive("link") ? "bg-gray-200 dark:bg-gray-700" : ""
+                }`}
+                title="Add Link"
+              >
+                🔗
+              </button>
+            </div>
+            {/* Editor Content */}
+            <div className="min-h-[300px] max-h-[500px] overflow-y-auto">
+              {descriptionEditor ? (
+                <EditorContent editor={descriptionEditor} />
+              ) : (
+                <div className="min-h-[300px] p-4 flex items-center justify-center text-gray-400">
+                  <p>Loading editor...</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Use the toolbar above to format your description with headings, lists, links, and more.</p>
           {errors.description && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.description.message}</p>}
         </div>
 
@@ -866,16 +1138,18 @@ const AddEventForm: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Event Images</h3>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Upload images for the event. Image 1 is required. Additional images are optional.
+              {eventId 
+                ? "Upload new images to replace existing ones, or leave empty to keep current images. All images are optional when editing."
+                : "Upload images for the event. Image 1 is required. Additional images are optional."}
             </p>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Image 1 - Required */}
+            {/* Image 1 - Required for new, optional for edit */}
             {[1, 2, 3, 4, 5].map((num) => (
               <div key={num}>
                 <Label htmlFor={`image${num}`}>
-                  Image {num} {num === 1 ? "*" : ""}
+                  Image {num} {num === 1 && !eventId ? "*" : ""}
                 </Label>
                 <Controller
                   name={`image${num}` as keyof EventFormValues}
@@ -933,10 +1207,10 @@ const AddEventForm: React.FC = () => {
         </button>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || loadingEvent}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-brand-500 dark:hover:bg-brand-600"
         >
-          {isSubmitting ? "Creating..." : "Create Event"}
+          {loadingEvent ? "Loading..." : isSubmitting ? (eventId ? "Updating..." : "Creating...") : (eventId ? "Update Event" : "Create Event")}
         </button>
       </div>
     </form>
@@ -953,6 +1227,7 @@ export default function EventsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const deleteModal = useModal();
 
   useEffect(() => {
@@ -1004,6 +1279,16 @@ export default function EventsPage() {
     deleteModal.openModal();
   };
 
+  const handleEdit = (id: string) => {
+    setEditingEventId(id);
+    setSelected("addEvent");
+  };
+
+  const handleEditSuccess = () => {
+    setEditingEventId(null);
+    setSelected("viewEvents");
+  };
+
   const confirmDelete = async () => {
     if (!deletingEventId) return;
     
@@ -1045,7 +1330,12 @@ export default function EventsPage() {
                     ? "bg-white text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                     : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
                 }`}
-                onClick={() => setSelected(tab.key)}
+                onClick={() => {
+                  setSelected(tab.key);
+                  if (tab.key === "addEvent" && editingEventId) {
+                    setEditingEventId(null);
+                  }
+                }}
                 role="tab"
                 aria-selected={selected === tab.key}
                 tabIndex={0}
@@ -1117,13 +1407,14 @@ export default function EventsPage() {
                 emptyMessage={isError ? (error?.message ?? "Failed to load events") : "No events found"}
                 deletingIds={deletingIds}
                 onDelete={handleDelete}
+                onEdit={handleEdit}
               />
             </>
           )}
 
           {selected === "addEvent" && (
             <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-              <AddEventForm />
+              <AddEventForm eventId={editingEventId} onSuccess={handleEditSuccess} />
             </div>
           )}
         </div>

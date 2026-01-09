@@ -1304,7 +1304,7 @@ export const AlumniTabs: React.FC = () => {
   const counts = useMemo(() => {
     // Always use server counts if available (real-time data)
     if (countsData) {
-      const category = countsData.category || { aPlus: 0, a: 0, b: 0, c: 0, d: 0 };
+      const category = countsData.category || { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 };
       return {
         total: countsData.total || 0,
         verified: countsData.verified || 0,
@@ -1318,6 +1318,7 @@ export const AlumniTabs: React.FC = () => {
           b: category.b || 0,
           c: category.c || 0,
           d: category.d || 0,
+          distinguished: category.distinguished || 0,
         },
       };
     }
@@ -1329,7 +1330,7 @@ export const AlumniTabs: React.FC = () => {
       underApproval: 0,
       active: 0,
       inactive: 0,
-      category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0 },
+      category: { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 },
     };
   }, [countsData, totalRecords]);
 
@@ -2453,7 +2454,7 @@ export const AlumniTabs: React.FC = () => {
         case "d":
           return counts.category?.d || 0;
         case "distinguished":
-          return 0; // Distinguished alumni doesn't have counts in regular alumni list
+          return counts.category?.distinguished || 0;
         default:
           return 0;
       }
