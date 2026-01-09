@@ -78,9 +78,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    // SECURITY: Only admins can update card status
+    // SECURITY: Only admins and superadmins can update card status
     if (!canModify(session.user)) {
-      return NextResponse.json({ error: "Forbidden: Only admins can update card status" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden: Only admins and superadmins can update card status" }, { status: 403 });
     }
     
     const body = await req.json().catch(() => ({}));
@@ -184,9 +184,9 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
-    // SECURITY: Only admins can delete cards
+    // SECURITY: Only admins and superadmins can delete cards
     if (!canModify(session.user)) {
-      return NextResponse.json({ error: "Forbidden: Only admins can delete cards" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden: Only admins and superadmins can delete cards" }, { status: 403 });
     }
     
     const normalizedSapid = String(sapid || "").trim();

@@ -7,6 +7,7 @@ import Badge from "../ui/badge/Badge";
 import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
+import { DistinguishedAlumniTab } from "./DistinguishedAlumniTab";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useRouter } from "next/navigation";
@@ -51,7 +52,8 @@ type TabKey =
   | "a"
   | "b"
   | "c"
-  | "d";
+  | "d"
+  | "distinguished";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "total", label: "Total" },
@@ -66,6 +68,10 @@ const CATEGORY_TABS: { key: TabKey; label: string }[] = [
   { key: "b", label: "B Category" },
   { key: "c", label: "C Category" },
   { key: "d", label: "D Category" },
+];
+
+const DISTINGUISHED_TAB: { key: TabKey; label: string }[] = [
+  { key: "distinguished", label: "Distinguished Alumni" },
 ];
 
 // Counts are computed dynamically from fetched data
@@ -152,6 +158,14 @@ const STATUS_CLASS_MAP: Record<
     iconBg: "bg-gray-100 dark:bg-gray-800",
     iconColor: "text-gray-700 dark:text-gray-200",
     labelText: "text-gray-600 dark:text-gray-300",
+  },
+  distinguished: {
+    selectedContainer:
+      "border-rose-500 bg-rose-50 dark:border-rose-500 dark:bg-rose-900/20",
+    hoverBorder: "hover:border-rose-400",
+    iconBg: "bg-rose-100 dark:bg-rose-800",
+    iconColor: "text-rose-700 dark:text-rose-200",
+    labelText: "text-rose-600 dark:text-rose-300",
   },
 };
 
@@ -434,6 +448,8 @@ export const AlumniTabs: React.FC = () => {
           return "category:c";
         case "d":
           return "category:d";
+        case "distinguished":
+          return "distinguished";
         default:
           return tab; // "verified", "underApproval", "active" map directly
       }
@@ -2416,96 +2432,98 @@ export const AlumniTabs: React.FC = () => {
 
   // Helper function to render a tab button
   const renderTabButton = (tab: { key: TabKey; label: string }, idx: number, allTabs: { key: TabKey; label: string }[]) => {
-            const statCount = (() => {
-              switch (tab.key) {
-                case "total":
-                  return counts.total;
-                case "verified":
-                  return counts.verified;
-                case "underApproval":
-                  return counts.underApproval;
-                case "active":
-                  return counts.active;
-                case "aPlus":
-                  return counts.category?.aPlus || 0;
-                case "a":
-                  return counts.category?.a || 0;
-                case "b":
-                  return counts.category?.b || 0;
-                case "c":
-                  return counts.category?.c || 0;
-                case "d":
-                  return counts.category?.d || 0;
-                default:
-                  return 0;
-              }
-            })();
-            
-            const isSelected = selected === tab.key;
-            const statusStyles = STATUS_CLASS_MAP[tab.key];
-            const isDisabled = false; // All tabs are now functional
-           
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                disabled={isDisabled}
-                className={`
-                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
-                  ${isSelected 
-                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
-                    : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
-                  }
-                  ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-                  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
-                `}
-                onClick={() => {
-                  if (!isDisabled) {
-                  console.log("[AlumniTabs] Tab clicked:", tab.key);
-                  setSelected(tab.key);
-                    // Clear additional filter when switching tabs
-                    setAdditionalFilter([]);
-                  }
-                }}
-                role="tab"
-                aria-selected={isSelected}
-                aria-disabled={isDisabled}
-                aria-label={`${tab.label} (${statCount.toLocaleString()})`}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    e.preventDefault();
+    const statCount = (() => {
+      switch (tab.key) {
+        case "total":
+          return counts.total;
+        case "verified":
+          return counts.verified;
+        case "underApproval":
+          return counts.underApproval;
+        case "active":
+          return counts.active;
+        case "aPlus":
+          return counts.category?.aPlus || 0;
+        case "a":
+          return counts.category?.a || 0;
+        case "b":
+          return counts.category?.b || 0;
+        case "c":
+          return counts.category?.c || 0;
+        case "d":
+          return counts.category?.d || 0;
+        case "distinguished":
+          return 0; // Distinguished alumni doesn't have counts in regular alumni list
+        default:
+          return 0;
+      }
+    })();
+    
+    const isSelected = selected === tab.key;
+    const statusStyles = STATUS_CLASS_MAP[tab.key];
+    const isDisabled = false; // All tabs are now functional
+   
+    return (
+      <button
+        key={tab.key}
+        type="button"
+        disabled={isDisabled}
+        className={`
+          relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
+          ${isSelected 
+            ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
+            : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
+          }
+          ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
+        `}
+        onClick={() => {
+          if (!isDisabled) {
+            console.log("[AlumniTabs] Tab clicked:", tab.key);
+            setSelected(tab.key);
+            // Clear additional filter when switching tabs
+            setAdditionalFilter([]);
+          }
+        }}
+        role="tab"
+        aria-selected={isSelected}
+        aria-disabled={isDisabled}
+        aria-label={`${tab.label} (${statCount.toLocaleString()})`}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
             const nextIdx = (idx + 1) % allTabs.length;
             setSelected(allTabs[nextIdx].key);
-                  } else if (e.key === "ArrowLeft") {
-                    e.preventDefault();
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
             const prevIdx = (idx - 1 + allTabs.length) % allTabs.length;
             setSelected(allTabs[prevIdx].key);
-                  } else if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelected(tab.key);
-                  }
-                }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
-                    {tab.label}
-                  </h6>
-                  {isSelected && (
-                    <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
-                  )}
-                </div>
-                {isLoadingCounts && !countsData ? (
-                  <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
-                ) : (
-                  <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
-                    {statCount.toLocaleString()}
-                  </h3>
-                )}
-              </button>
-            );
+          } else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setSelected(tab.key);
+          }
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
+            {tab.label}
+          </h6>
+          {isSelected && (
+            <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
+          )}
+        </div>
+        {isLoadingCounts && !countsData ? (
+          <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
+        ) : (
+          <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
+            {statCount.toLocaleString()}
+          </h3>
+        )}
+      </button>
+    );
   };
-
+  
   return (
     <div className="p-0">
       <div className="flex flex-col gap-8">
@@ -2528,8 +2546,28 @@ export const AlumniTabs: React.FC = () => {
               {CATEGORY_TABS.map((tab, idx) => renderTabButton(tab, idx, CATEGORY_TABS))}
             </div>
           </div>
+
+          {/* Distinguished Alumni Tab */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2">
+                Special
+              </span>
+              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {DISTINGUISHED_TAB.map((tab, idx) => renderTabButton(tab, idx, DISTINGUISHED_TAB))}
+            </div>
+          </div>
         </div>
 
+        {/* Distinguished Alumni Tab Content */}
+        {selected === "distinguished" && <DistinguishedAlumniTab />}
+
+        {/* Regular Alumni Tab Content */}
+        {selected !== "distinguished" && (
+        <>
         {/* Search and Filters Section */}
         <div className="px-6">
           <div className="flex flex-col  gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
@@ -5240,7 +5278,8 @@ export const AlumniTabs: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
+        </>
+        )}
       
       {/* Confirmation Modal */}
       {confirmModal.isOpen && pendingAction && (
@@ -5375,6 +5414,7 @@ export const AlumniTabs: React.FC = () => {
         }
       `}</style>
       {/* Export modal removed for alumni list; export now uses filter checkboxes instead of a modal */}
+      </div>
     </div>
   );
 };

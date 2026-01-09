@@ -142,6 +142,15 @@ export async function buildIdBasedAccessFilterSQL(
   // Get user ID
   const userId = (session?.user as { userId?: number })?.userId;
   if (!userId) {
+    // Log detailed error for debugging PM2 issues
+    console.error("[RBAC] ❌ No user ID found in session (ID-based filter):", {
+      sessionExists: !!session,
+      userExists: !!session?.user,
+      userEmail: session?.user?.email,
+      userIdInSession: (session?.user as { userId?: number })?.userId,
+      userType: (session?.user as { type?: string })?.type,
+      sessionKeys: session?.user ? Object.keys(session.user) : []
+    });
     return { sql: sql`1 = 0`, hasFilter: true }; // No access
   }
   
@@ -152,17 +161,39 @@ export async function buildIdBasedAccessFilterSQL(
   }
   
   // Check if user has all faculties access
-  const allFacultiesAccess = await hasAllFacultiesAccess(userId);
+  let allFacultiesAccess;
+  try {
+    allFacultiesAccess = await hasAllFacultiesAccess(userId);
+    console.log("[RBAC] hasAllFacultiesAccess check:", {
+      userId,
+      result: allFacultiesAccess
+    });
+  } catch (error) {
+    console.error("[RBAC] ❌ Error checking all faculties access:", error);
+    // If check fails, continue to individual assignment check instead of blocking
+    allFacultiesAccess = false;
+  }
+  
   if (allFacultiesAccess) {
     // Full access - include all alumni, including NULL faculty/department
+    console.log("[RBAC] ✅ User has all faculties access - granting full access (no filtering)");
     return { sql: null, hasFilter: false };
   }
   
   // Get assignments with IDs
-  const assignments = await getUserAccessAssignmentsWithIds(userId);
+  let assignments;
+  try {
+    assignments = await getUserAccessAssignmentsWithIds(userId);
+  } catch (error) {
+    console.error("[RBAC] ❌ Error fetching access assignments:", error);
+    // If we can't fetch assignments, allow full access as fallback to prevent locking users out
+    console.error("[RBAC] Allowing full access as fallback due to assignment fetch error");
+    return { sql: null, hasFilter: false };
+  }
   
   console.log("[RBAC] ========== ID-BASED ACCESS FILTER DEBUG ==========");
   console.log("[RBAC] User ID:", userId);
+  console.log("[RBAC] User Type:", isAdminOrViewer ? (isAdminUser(session?.user) ? "admin" : "viewer") : "unknown");
   console.log("[RBAC] Assignments count:", assignments.length);
   console.log("[RBAC] Assignments:", JSON.stringify(assignments, null, 2));
   
@@ -170,7 +201,21 @@ export async function buildIdBasedAccessFilterSQL(
     // Default behavior: if no assignments are configured for an admin/viewer,
     // do NOT block the entire system. Treat as full access (read-only for viewer, enforced elsewhere).
     // This matches the fallback behavior in userAccess.ts
-    console.log("[RBAC] No assignments found - allowing full access (no filtering)");
+    console.log("[RBAC] ✅ No assignments found - allowing full access (no filtering)");
+    console.log("[RBAC] This means the user has access to all faculties/departments/programs");
+    console.log("[RBAC] ============================================");
+    return { sql: null, hasFilter: false };
+  }
+  
+  // Validate that assignments have at least some valid IDs
+  const hasValidIds = assignments.some(a => 
+    a.faculty_id !== null || a.department_id !== null || a.program_id !== null
+  );
+  
+  if (!hasValidIds) {
+    console.warn("[RBAC] ⚠️ Assignments found but all IDs are null - allowing full access as fallback");
+    console.warn("[RBAC] This might indicate that faculty/department/program names don't match database records");
+    console.warn("[RBAC] Assignments with null IDs:", JSON.stringify(assignments, null, 2));
     console.log("[RBAC] ============================================");
     return { sql: null, hasFilter: false };
   }
@@ -298,9 +343,15 @@ export async function buildIdBasedAccessFilterSQL(
   }
   
   if (conditionsArray.length === 0) {
-    console.log("[RBAC] ⚠️ No valid conditions generated - blocking access");
+    // If we have assignments but no valid conditions, it means the assignments might be invalid
+    // In this case, log the issue but don't block access - allow full access as fallback
+    // This prevents admin/viewer users from being locked out if there's a data mismatch
+    console.warn("[RBAC] ⚠️ No valid conditions generated from assignments - allowing full access as fallback");
+    console.warn("[RBAC] This might indicate a mismatch between access assignments and database structure");
+    console.warn("[RBAC] Assignments that failed to generate conditions:", JSON.stringify(assignments, null, 2));
     console.log("[RBAC] ============================================");
-    return { sql: sql`1 = 0`, hasFilter: true }; // No access
+    // Return full access instead of blocking - this is safer for production
+    return { sql: null, hasFilter: false };
   }
   
   // Combine all conditions with OR

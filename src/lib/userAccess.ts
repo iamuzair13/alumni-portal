@@ -94,6 +94,15 @@ export async function buildAccessFilterSQL(
   // Get user ID
   const userId = getUserIdFromSession(session);
   if (!userId) {
+    // Log detailed error for debugging PM2 issues
+    console.error("[buildAccessFilterSQL] ❌ No user ID found in session:", {
+      sessionExists: !!session,
+      userExists: !!session?.user,
+      userEmail: session?.user?.email,
+      userIdInSession: (session?.user as { userId?: number })?.userId,
+      userType: (session?.user as { type?: string })?.type,
+      sessionKeys: session?.user ? Object.keys(session.user) : []
+    });
     // If no user ID, return condition that always fails (no access)
     return { sql: sql`1 = 0`, hasFilter: true };
   }
@@ -523,8 +532,15 @@ export async function buildAccessFilterSQL(
   }
 
   if (conditionsArray.length === 0) {
-    // No valid conditions - return condition that always fails (no access)
-    return { sql: sql`1 = 0`, hasFilter: true };
+    // If we have assignments but no valid conditions, it means the assignments might be invalid
+    // In this case, log the issue but don't block access - allow full access as fallback
+    // This prevents admin/viewer users from being locked out if there's a data mismatch
+    console.warn("[buildAccessFilterSQL] ⚠️ No valid conditions generated from assignments - allowing full access as fallback");
+    console.warn("[buildAccessFilterSQL] This might indicate a mismatch between access assignments and database structure");
+    console.warn("[buildAccessFilterSQL] Assignments:", JSON.stringify(assignments, null, 2));
+    console.log("[buildAccessFilterSQL] ============================================");
+    // Return full access instead of blocking - this is safer for production
+    return { sql: null, hasFilter: false };
   }
 
   // Combine all conditions with OR

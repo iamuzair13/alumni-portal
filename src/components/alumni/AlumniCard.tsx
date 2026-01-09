@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
-import { canModify, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
@@ -820,8 +820,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting"; reason?: string } | null>(null);
     const hasUpdatedRef = React.useRef(false);
     const isAdmin = isAdminUser(session?.user);
+    const isSuperAdmin = isSuperAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
-    const canEdit = canModify(session?.user);
+    const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
     // Map UI status (from items list) to DB status
     const getDbStatusFromUI = (uiStatus?: CardStatus): "Pending" | "Process" | "Active" | "Delivered" | "Onhold" | "UnderPrinting" => {
@@ -913,12 +914,12 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         return;
       }
       
-      // For other statuses, show confirmation modal first (only for admins)
-      if (isAdmin) {
+      // For other statuses, show confirmation modal first (for admins and superadmins)
+      if (canEdit) {
         setPendingStatusChange({ status: next });
         setShowConfirmModal(true);
       } else {
-        // Non-admins can change status directly (shouldn't happen, but just in case)
+        // Non-admins/superadmins can change status directly (shouldn't happen, but just in case)
         await submitStatusChange(next, "");
       }
     };
@@ -1118,7 +1119,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
           {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
         </div>
-        {showReasonInput && current === "Onhold" && isAdmin && (
+        {showReasonInput && current === "Onhold" && canEdit && (
           <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-800/50 p-2.5">
             {/* Field 1: Display current reason from database (always visible) */}
             <div className="flex flex-col gap-1">
@@ -1177,7 +1178,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             )}
           </div>
         )}
-        {showReasonInput && current === "Onhold" && !isAdmin && data?.reason_onhold && (
+        {showReasonInput && current === "Onhold" && !canEdit && data?.reason_onhold && (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
             <span className="text-[10px] font-semibold text-gray-600">Reason for On Hold:</span>
             <p className="text-[11px] text-gray-800 mt-1">{data.reason_onhold}</p>
@@ -1185,7 +1186,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         )}
         
         {/* Confirmation Modal for Status Change */}
-        {isAdmin && (
+        {canEdit && (
           <Modal
             isOpen={showConfirmModal}
             onClose={handleCancelStatusChange}
@@ -1261,6 +1262,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   };
 
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
+    const { data: session } = useSession();
     const queryClient = useQueryClient();
     const router = useRouter();
     const [isDeleting, setIsDeleting] = React.useState(false);
@@ -1273,8 +1275,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const dbStatusString = cachedCardData?.status ? String(cachedCardData.status).trim().toUpperCase() : "";
     const canDownload = dbStatusString === "ACTIVE" || dbStatusString === "DELIVERED" || dbStatusString === "PROCESS" || dbStatusString === "PENDING";
     const isAdmin = isAdminUser(session?.user);
+    const isSuperAdmin = isSuperAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
-    const canEdit = canModify(session?.user);
+    const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
     const handleView = React.useCallback(() => {
       router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
@@ -1318,7 +1321,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return (
       <>
         <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
-          {isAdmin && (
+          {canEdit && (
             <button
               type="button"
               onClick={(e) => {
@@ -1335,7 +1338,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           {canDownload && (
             <PrintCardButton sapId={sapId} studentName={studentName} />
           )}
-          {isAdmin && (
+          {canEdit && (
             <button
               type="button"
               onClick={(e) => {
@@ -1675,9 +1678,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => {
                   const isAdmin = isAdminUser(session?.user);
+                  const isSuperAdmin = isSuperAdminUser(session?.user);
                   const isViewer = isViewerUser(session?.user);
-                  // Viewers can view but not edit, admins can view and edit
-                  const canEdit = isAdmin;
+                  // Viewers can view but not edit, admins and superadmins can view and edit
+                  const canEdit = canModify(session?.user); // Includes both admin and superadmin
                   return (
                     <React.Fragment key={`${alum.id}-fragment-${idx}`}>
                       <TableRow

@@ -405,14 +405,38 @@ export async function GET(req: Request) {
     const offset = (page - 1) * limit;
     
     // Build access filter for admin/viewer users
-    const accessFilter = await buildAccessFilterSQL(session, "");
+    let accessFilter;
+    try {
+      accessFilter = await buildAccessFilterSQL(session, "");
+    } catch (filterError) {
+      console.error("[alumni/route] ❌ Error building access filter:", filterError);
+      // In production, if access filter fails, log but don't block - return empty results instead
+      // This prevents the entire API from failing due to access filter issues
+      console.error("[alumni/route] ⚠️ Access filter error details:", {
+        error: filterError instanceof Error ? filterError.message : String(filterError),
+        stack: filterError instanceof Error ? filterError.stack : undefined,
+        sessionExists: !!session,
+        userId: (session?.user as { userId?: number })?.userId,
+        userType: (session?.user as { type?: string })?.type
+      });
+      // Return empty results instead of blocking everything
+      return NextResponse.json({ 
+        items: [], 
+        total: 0,
+        page,
+        limit,
+        totalPages: 0
+      }, { status: 200 });
+    }
     
     // Debug logging
     console.log("[alumni/route] Access filter:", {
       hasFilter: accessFilter.hasFilter,
       isSuperAdmin: !accessFilter.hasFilter,
       userId: (session?.user as { userId?: number })?.userId,
-      userType: (session?.user as { type?: string })?.type
+      userType: (session?.user as { type?: string })?.type,
+      sessionExists: !!session,
+      userEmail: session?.user?.email
     });
     
     // Log the actual SQL condition for debugging (if it's a program-level filter)
@@ -420,6 +444,8 @@ export async function GET(req: Request) {
       console.log("[alumni/route] Access filter SQL condition is active");
       // Try to log a sample of what the condition might look like
       console.log("[alumni/route] Filter will be applied in WHERE clause");
+    } else if (!accessFilter.hasFilter) {
+      console.log("[alumni/route] ✅ No access filter - full access granted");
     }
     
     // Build access filter condition for WHERE clause
