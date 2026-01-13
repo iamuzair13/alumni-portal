@@ -25,10 +25,17 @@ export async function GET(req: Request) {
       userType: (session?.user as { type?: string })?.type,
     });
     
-    // Only admins and superadmins can access this endpoint
-    if (!session?.user || !canModify(session.user)) {
-      console.warn(`[ERP Fetch ${requestId}] Unauthorized access attempt`);
+    // Check authentication first
+    if (!session?.user) {
+      console.warn(`[ERP Fetch ${requestId}] Unauthenticated access attempt`);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // Only admins and superadmins can access this endpoint
+    // Return 403 (Forbidden) instead of 401 to avoid triggering session expiration
+    if (!canModify(session.user)) {
+      console.warn(`[ERP Fetch ${requestId}] Forbidden access attempt - user type: ${(session.user as { type?: string })?.type}`);
+      return NextResponse.json({ error: "Forbidden: Only admins and superadmins can access ERP data" }, { status: 403 });
     }
 
     const url = new URL(req.url);

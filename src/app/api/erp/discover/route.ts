@@ -12,9 +12,15 @@ export async function GET(req: Request) {
   try {
     const session = await auth();
     
-    // Only admins and superadmins can access this endpoint
-    if (!session?.user || !canModify(session.user)) {
+    // Check authentication first
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // Only admins and superadmins can access this endpoint
+    // Return 403 (Forbidden) instead of 401 to avoid triggering session expiration
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden: Only admins and superadmins can access ERP data" }, { status: 403 });
     }
 
     const url = new URL(req.url);

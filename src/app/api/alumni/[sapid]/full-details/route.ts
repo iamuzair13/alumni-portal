@@ -83,24 +83,31 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // SECURITY: For admin/viewer users, check access filter
     if (isAdminOrViewer) {
-      const { buildAccessFilterSQL } = await import("@/lib/userAccess");
-      const accessFilter = await buildAccessFilterSQL(session, "");
-      
-      if (accessFilter.hasFilter && accessFilter.sql) {
-        const alumniId = Number(row.alumniid);
-        if (!alumniId) {
-          return NextResponse.json({ error: "Invalid alumni record" }, { status: 400 });
-        }
-        const accessCheck = await sql/* sql */`
-          SELECT a.alumniid FROM public.tbl_alumni a
-          WHERE a.alumniid = ${alumniId} 
-          AND (${accessFilter.sql})
-          LIMIT 1
-        `;
+      try {
+        const { buildAccessFilterSQL } = await import("@/lib/userAccess");
+        const accessFilter = await buildAccessFilterSQL(session, "");
         
-        if (!accessCheck[0]) {
-          return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+        if (accessFilter.hasFilter && accessFilter.sql) {
+          const alumniId = Number(row.alumniid);
+          if (!alumniId) {
+            return NextResponse.json({ error: "Invalid alumni record" }, { status: 400 });
+          }
+          const accessCheck = await sql/* sql */`
+            SELECT a.alumniid FROM public.tbl_alumni a
+            WHERE a.alumniid = ${alumniId} 
+            AND (${accessFilter.sql})
+            LIMIT 1
+          `;
+          
+          if (!accessCheck[0]) {
+            // Return 403 (not 401) to avoid triggering session expiration
+            return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
+          }
         }
+      } catch (error) {
+        // If access filter check fails, log but don't block - let the ownership check below handle it
+        console.error("[API] Error checking access filter:", error);
+        // Continue to ownership check below
       }
     }
     

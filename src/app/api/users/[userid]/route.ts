@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { getUserAccessAssignments } from "@/lib/userAccess";
+import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 import { createAccessAssignmentsInNewRBAC, deleteAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
 
@@ -102,33 +103,74 @@ export async function GET(req: Request) {
     }
     
     // Fetch access assignments if user is admin/viewer
+    // Try new RBAC system first, fallback to old system
     const userType = user.type?.toLowerCase().trim();
     let accessAssignments = undefined;
     if (userType === "admin" || userType === "viewer") {
-      const assignments = await getUserAccessAssignments(user.userid);
-      // Transform assignments to arrays
-      const faculties = new Set<string>();
-      const departments = new Set<string>();
-      const programs = new Set<string>();
-      
-      assignments.forEach(assign => {
-        if (assign.faculty_name && !assign.department_name && !assign.program_name) {
-          faculties.add(assign.faculty_name);
-        } else if (assign.department_name && !assign.program_name) {
-          departments.add(assign.department_name);
-          if (assign.faculty_name) faculties.add(assign.faculty_name);
-        } else if (assign.program_name) {
-          programs.add(assign.program_name);
-          if (assign.department_name) departments.add(assign.department_name);
-          if (assign.faculty_name) faculties.add(assign.faculty_name);
+      try {
+        // Try new RBAC system first (ID-based)
+        const assignmentsWithIds = await getUserAccessAssignmentsWithIds(user.userid);
+        
+        if (assignmentsWithIds && assignmentsWithIds.length > 0) {
+          // Transform ID-based assignments to arrays
+          const faculties = new Set<string>();
+          const departments = new Set<string>();
+          const programs = new Set<string>();
+          
+          assignmentsWithIds.forEach(assign => {
+            if (assign.faculty_name && !assign.department_name && !assign.program_name) {
+              faculties.add(assign.faculty_name);
+            } else if (assign.department_name && !assign.program_name) {
+              departments.add(assign.department_name);
+              if (assign.faculty_name) faculties.add(assign.faculty_name);
+            } else if (assign.program_name) {
+              programs.add(assign.program_name);
+              if (assign.department_name) departments.add(assign.department_name);
+              if (assign.faculty_name) faculties.add(assign.faculty_name);
+            }
+          });
+          
+          accessAssignments = {
+            faculties: Array.from(faculties),
+            departments: Array.from(departments),
+            programs: Array.from(programs),
+          };
+        } else {
+          // Fallback to old system (name-based)
+          const assignments = await getUserAccessAssignments(user.userid);
+          // Transform assignments to arrays
+          const faculties = new Set<string>();
+          const departments = new Set<string>();
+          const programs = new Set<string>();
+          
+          assignments.forEach(assign => {
+            if (assign.faculty_name && !assign.department_name && !assign.program_name) {
+              faculties.add(assign.faculty_name);
+            } else if (assign.department_name && !assign.program_name) {
+              departments.add(assign.department_name);
+              if (assign.faculty_name) faculties.add(assign.faculty_name);
+            } else if (assign.program_name) {
+              programs.add(assign.program_name);
+              if (assign.department_name) departments.add(assign.department_name);
+              if (assign.faculty_name) faculties.add(assign.faculty_name);
+            }
+          });
+          
+          accessAssignments = {
+            faculties: Array.from(faculties),
+            departments: Array.from(departments),
+            programs: Array.from(programs),
+          };
         }
-      });
-      
-      accessAssignments = {
-        faculties: Array.from(faculties),
-        departments: Array.from(departments),
-        programs: Array.from(programs),
-      };
+      } catch (error) {
+        console.error("[user GET] Error fetching access assignments:", error);
+        // Return empty assignments on error
+        accessAssignments = {
+          faculties: [],
+          departments: [],
+          programs: [],
+        };
+      }
     }
     
     // Build response with password based on permissions

@@ -461,6 +461,19 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
 
   try {
     const res = await fetch(`/api/erp/fetch?${params.toString()}`);
+
+    // Handle 403 (Forbidden) gracefully - viewers don't have access to ERP data, which is fine
+    if (res.status === 403) {
+      console.log("[AlumniExpandableDetails] ERP data access forbidden (viewer role) - skipping comparison");
+      return null;
+    }
+
+    // Handle 401 (Unauthorized) - should not happen if session is valid, but handle gracefully
+    if (res.status === 401) {
+      console.warn("[AlumniExpandableDetails] ERP data access unauthorized - session may be invalid");
+      return null;
+    }
+
     const responseData = await res.json();
 
     if (responseData.success === false && responseData.error === "NOT_FOUND") {
@@ -499,12 +512,20 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const deleteModal = useModal();
   
   // Fetch ERP data for comparison
+  // Note: Viewers will get 403, which is handled gracefully in fetchErpData
   const { data: erpData } = useQuery({
     queryKey: ["erp-data-comparison", currentSapId, data?.registrationno],
     queryFn: () => fetchErpData(currentSapId, data?.registrationno || null),
     enabled: !!currentSapId && !!data,
     staleTime: 1 * 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      // Don't retry on 403 (Forbidden) errors - viewers don't have access
+      if (error instanceof Error && error.message.includes('403')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
   
   // Helper function to get comparison status for a field
