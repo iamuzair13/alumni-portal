@@ -1,15 +1,33 @@
 import type { Session } from "next-auth";
 
+/**
+ * @deprecated This function uses the old RBAC system (tbl_users.type field).
+ * Use isSuperAdmin() from rbac-standard.ts for the new RBAC system.
+ * This function will be removed in a future version.
+ * 
+ * Migration: Replace with:
+ *   import { getUserIdFromSession, isSuperAdmin } from "@/lib/rbac-standard";
+ *   const userId = await getUserIdFromSession(session);
+ *   if (await isSuperAdmin(userId)) { ... }
+ */
 export function isSuperAdminUser(user: Session["user"] | null | undefined): boolean {
   const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   return t === "superadmin";
 }
 
+/**
+ * @deprecated This function uses the old RBAC system (tbl_users.type field).
+ * Use isAdmin() from rbac-standard.ts for the new RBAC system.
+ */
 export function isAdminUser(user: Session["user"] | null | undefined): boolean {
   const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   return t === "admin";
 }
 
+/**
+ * @deprecated This function uses the old RBAC system (tbl_users.type field).
+ * Use isViewer() from rbac-standard.ts for the new RBAC system.
+ */
 export function isViewerUser(user: Session["user"] | null | undefined): boolean {
   const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   // Viewer has view-only access
@@ -17,11 +35,29 @@ export function isViewerUser(user: Session["user"] | null | undefined): boolean 
   return t === "viewer" || t === "user";
 }
 
+/**
+ * @deprecated This function uses the old RBAC system.
+ * Use hasPermission() from rbac-standard.ts for the new RBAC system.
+ * 
+ * Migration: Replace with:
+ *   import { getUserIdFromSession, hasPermission } from "@/lib/rbac-standard";
+ *   const userId = await getUserIdFromSession(session);
+ *   if (await hasPermission(userId, 'write', 'alumni')) { ... }
+ */
 export function canModify(user: Session["user"] | null | undefined): boolean {
   // Only admins and super admins can modify data, viewers (including legacy "user") cannot
   return isAdminUser(user) || isSuperAdminUser(user);
 }
 
+/**
+ * @deprecated This function uses the old RBAC system.
+ * Use hasPermission() from rbac-standard.ts for the new RBAC system.
+ * 
+ * Migration: Replace with:
+ *   import { getUserIdFromSession, hasPermission } from "@/lib/rbac-standard";
+ *   const userId = await getUserIdFromSession(session);
+ *   if (await hasPermission(userId, 'manage_roles', 'users')) { ... }
+ */
 export function canManageUsers(user: Session["user"] | null | undefined): boolean {
   // Only super admins can manage users (add/edit/delete)
   return isSuperAdminUser(user);

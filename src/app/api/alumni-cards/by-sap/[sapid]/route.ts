@@ -73,60 +73,129 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     const { sapid } = await ctx.params;
     const session = await auth();
     
+    console.log("[API] PATCH /api/alumni-cards/by-sap/[sapid] - Request received:", {
+      sapid,
+      hasSession: !!session?.user,
+      userEmail: session?.user?.email,
+      userType: (session?.user as { type?: string })?.type
+    });
+    
     // SECURITY: Verify authentication
     if (!session?.user) {
+      console.error("[API] Unauthorized request - no session");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
     // SECURITY: Only admins and superadmins can update card status
     if (!canModify(session.user)) {
+      console.error("[API] Forbidden - user cannot modify:", {
+        email: session.user.email,
+        type: (session.user as { type?: string })?.type
+      });
       return NextResponse.json({ error: "Forbidden: Only admins and superadmins can update card status" }, { status: 403 });
     }
     
-    const body = await req.json().catch(() => ({}));
-    const newStatus = String(body?.status || "");
-    const reasonOnhold = body?.reason_onhold ? String(body.reason_onhold).trim() : null;
+    // Parse request body with better error handling
+    let body: { status?: string; reason_onhold?: string } = {};
+    try {
+      const rawBody = await req.text();
+      console.log("[API] Raw request body:", rawBody);
+      body = JSON.parse(rawBody);
+      console.log("[API] Parsed request body:", body);
+    } catch (jsonError) {
+      console.error("[API] Failed to parse request body:", jsonError);
+      return NextResponse.json({ 
+        error: "Invalid request body. Expected JSON with 'status' field." 
+      }, { status: 400 });
+    }
+    
+    // Validate status field exists
+    if (!body || typeof body !== 'object' || !('status' in body)) {
+      console.error("[API] Missing 'status' field in request body:", body);
+      return NextResponse.json({ 
+        error: "Missing required field: 'status'. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" 
+      }, { status: 400 });
+    }
+    
+    const newStatus = String(body.status || "").trim();
+    const reasonOnhold = body.reason_onhold ? String(body.reason_onhold).trim() : null;
+    
+    // Validate status is not empty
+    if (!newStatus || newStatus.length === 0) {
+      return NextResponse.json({ 
+        error: "Status cannot be empty. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" 
+      }, { status: 400 });
+    }
+    
+    const normalizedSapid = String(sapid || "").trim();
+    
+    console.log("[API] Status update request:", { 
+      sapid: normalizedSapid, 
+      newStatus, 
+      reasonOnhold,
+      hasReason: !!reasonOnhold 
+    });
+    
+    if (!normalizedSapid || normalizedSapid.length === 0) {
+      return NextResponse.json({ error: "Invalid SAP ID" }, { status: 400 });
+    }
     
     // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
     // Normalize and migrate legacy statuses
     const normalizedStatus = newStatus.trim();
     const upperStatus = normalizedStatus.toUpperCase();
     
-    // Migrate legacy statuses
+    // Map status to proper database format
     let finalStatus: string;
     if (upperStatus === "PENDING") {
       finalStatus = "UnderReview";
     } else if (upperStatus === "PROCESS") {
       finalStatus = "UnderPrinting";
-    } else if (["UNDERREVIEW", "UNDERPRINTING", "ACTIVE", "ONHOLD", "DELIVERED"].includes(upperStatus)) {
-      finalStatus = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1).replace(/^./, (c) => c.toUpperCase());
-      // Ensure proper casing
-      if (upperStatus === "UNDERREVIEW") finalStatus = "UnderReview";
-      else if (upperStatus === "UNDERPRINTING") finalStatus = "UnderPrinting";
-      else if (upperStatus === "ONHOLD") finalStatus = "Onhold";
+    } else if (upperStatus === "UNDERREVIEW") {
+      finalStatus = "UnderReview";
+    } else if (upperStatus === "UNDERPRINTING") {
+      finalStatus = "UnderPrinting";
+    } else if (upperStatus === "ACTIVE") {
+      finalStatus = "Active";
+    } else if (upperStatus === "ONHOLD" || upperStatus === "ON HOLD" || upperStatus === "ON_HOLD") {
+      finalStatus = "Onhold";
+    } else if (upperStatus === "DELIVERED") {
+      finalStatus = "Delivered";
     } else {
-      return NextResponse.json({ error: "Invalid status. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" }, { status: 400 });
+      console.error("[API] Invalid status value:", { 
+        original: newStatus, 
+        normalized: normalizedStatus, 
+        upper: upperStatus 
+      });
+      return NextResponse.json({ 
+        error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered` 
+      }, { status: 400 });
     }
     
-    if (!["UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"].includes(finalStatus)) {
-      return NextResponse.json({ error: "Invalid status. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" }, { status: 400 });
+    // Final validation
+    const validStatuses = ["UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"];
+    if (!validStatuses.includes(finalStatus)) {
+      console.error("[API] Status normalization failed:", { 
+        original: newStatus, 
+        final: finalStatus 
+      });
+      return NextResponse.json({ 
+        error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered` 
+      }, { status: 400 });
     }
+    
+    console.log("[API] Status normalized:", { 
+      original: newStatus, 
+      final: finalStatus 
+    });
     
     // If status is "Onhold", reason_onhold is required
     if (finalStatus === "Onhold" && (!reasonOnhold || reasonOnhold.length === 0)) {
       return NextResponse.json({ error: "Reason is required when status is set to Onhold" }, { status: 400 });
     }
     
-    const normalizedSapid = String(sapid || "").trim();
-    
     // Get current status before update
-    const currentCard = await sql/* sql */`
-      SELECT c.cardid, c.status, a.alumniid, a.alumniname, a.personalemail, a.officialemail, a.universityemail
-      FROM public.tblcard c
-      JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-      WHERE a.sapid = ${normalizedSapid}
-      LIMIT 1
-    ` as Array<{
+    let currentCard: Array<{
       cardid: number;
       status: string | null;
       alumniid: number;
@@ -136,8 +205,31 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       universityemail: string | null;
     }>;
     
+    try {
+      currentCard = await sql/* sql */`
+        SELECT c.cardid, c.status, a.alumniid, a.alumniname, a.personalemail, a.officialemail, a.universityemail
+        FROM public.tblcard c
+        JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
+        WHERE a.sapid = ${normalizedSapid}
+        LIMIT 1
+      ` as Array<{
+        cardid: number;
+        status: string | null;
+        alumniid: number;
+        alumniname: string | null;
+        personalemail: string | null;
+        officialemail: string | null;
+        universityemail: string | null;
+      }>;
+    } catch (dbError) {
+      console.error("[API] Database error fetching card:", dbError);
+      return NextResponse.json({ 
+        error: "Database error while fetching card information" 
+      }, { status: 500 });
+    }
+    
     if (!currentCard[0]) {
-      return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json({ message: "Card not found for this SAP ID" }, { status: 404 });
     }
     
     const currentStatus = currentCard[0].status;
@@ -145,19 +237,39 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     // Update status and reason_onhold if provided
     // If status is not "Onhold", clear reason_onhold
-    const updateFields = finalStatus === "Onhold" 
-      ? sql`status = ${finalStatus}, reason_onhold = ${reasonOnhold}`
-      : sql`status = ${finalStatus}, reason_onhold = NULL`;
-    
-    const rows = await sql/* sql */`
-      UPDATE public.tblcard c
-      SET ${updateFields}
-      FROM public.tbl_alumni a
-      WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
-      RETURNING c.cardid`;
+    let rows: Array<{ cardid: number }>;
+    try {
+      if (finalStatus === "Onhold") {
+        rows = await sql/* sql */`
+          UPDATE public.tblcard c
+          SET status = ${finalStatus}, reason_onhold = ${reasonOnhold}
+          FROM public.tbl_alumni a
+          WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
+          RETURNING c.cardid
+        ` as Array<{ cardid: number }>;
+      } else {
+        rows = await sql/* sql */`
+          UPDATE public.tblcard c
+          SET status = ${finalStatus}, reason_onhold = NULL
+          FROM public.tbl_alumni a
+          WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
+          RETURNING c.cardid
+        ` as Array<{ cardid: number }>;
+      }
+    } catch (updateError) {
+      console.error("[API] Database error updating card status:", updateError);
+      console.error("[API] Update details:", { 
+        sapid: normalizedSapid, 
+        finalStatus, 
+        reasonOnhold: finalStatus === "Onhold" ? reasonOnhold : null 
+      });
+      return NextResponse.json({ 
+        error: "Database error while updating card status" 
+      }, { status: 500 });
+    }
     
     if (!rows[0]) {
-      return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return NextResponse.json({ message: "Card not found or update failed" }, { status: 404 });
     }
     
     // Send email notifications based on status change

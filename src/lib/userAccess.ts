@@ -16,9 +16,19 @@ export type UserAccessAssignment = {
 
 /**
  * Fetch user access assignments from database
- * @deprecated Use getUserAccessAssignmentsWithIds from rbac.ts for ID-based access
+ * @deprecated This function uses the old RBAC system (user_access_assignments table).
+ * Use getUserResourceAccess() from rbac-standard.ts for the new RBAC system.
+ * This function will be removed in a future version.
+ * 
+ * Migration: Replace with:
+ *   import { getUserResourceAccess } from "@/lib/rbac-standard";
+ *   const access = await getUserResourceAccess(userId);
  */
 export async function getUserAccessAssignments(userId: number): Promise<UserAccessAssignment[]> {
+  console.warn(
+    "[DEPRECATED] getUserAccessAssignments() uses old RBAC system. " +
+    "Migrate to getUserResourceAccess() from rbac-standard.ts"
+  );
   try {
     const rows = await sql/* sql */`
       SELECT faculty_name, department_name, program_name
@@ -45,8 +55,14 @@ export function getUserIdFromSession(session: Session | null): number | null {
 /**
  * Build SQL WHERE clause fragment for filtering alumni data based on user access
  * 
- * This function now uses ID-based filtering (faculty/department IDs) as the primary method,
- * with name-based fallback for backward compatibility.
+ * @deprecated This function uses the old RBAC system (user_access_assignments table).
+ * Use buildResourceAccessFilterSQL() from rbac-standard.ts for the new RBAC system.
+ * This function will be removed in a future version.
+ * 
+ * Migration: Replace with:
+ *   import { getUserIdFromSession, buildResourceAccessFilterSQL } from "@/lib/rbac-standard";
+ *   const userId = await getUserIdFromSession(session);
+ *   const filter = await buildResourceAccessFilterSQL(userId);
  * 
  * Rules:
  * - superadmin: no filter (full access)
@@ -62,6 +78,10 @@ export async function buildAccessFilterSQL(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _tableAlias: string = ""
 ): Promise<{ sql: ReturnType<typeof sql> | null; hasFilter: boolean }> {
+  console.warn(
+    "[DEPRECATED] buildAccessFilterSQL() uses old RBAC system. " +
+    "Migrate to buildResourceAccessFilterSQL() from rbac-standard.ts"
+  );
   // Try ID-based filtering first (preferred method)
   try {
     const idBasedFilter = await buildIdBasedAccessFilterSQL(session);

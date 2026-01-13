@@ -123,9 +123,6 @@ CREATE TABLE public.staging_alumni_import (
 -- Table: public.tbl_alumni
 
 -- DROP TABLE IF EXISTS public.tbl_alumni;
--- Table: public.tbl_alumni
-
--- DROP TABLE IF EXISTS public.tbl_alumni;
 
 CREATE TABLE IF NOT EXISTS public.tbl_alumni
 (
@@ -218,6 +215,18 @@ CREATE TABLE IF NOT EXISTS public.tbl_alumni
     CONSTRAINT tbl_alumni_chapter_leadership_fkey FOREIGN KEY (chapter_leadership)
         REFERENCES public.chapter_leadership (id) MATCH SIMPLE
         ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT tbl_alumni_department_fkey FOREIGN KEY (department)
+        REFERENCES public.tbl_departments (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT tbl_alumni_faculty_fkey FOREIGN KEY (faculty)
+        REFERENCES public.tbl_faculties (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT tbl_alumni_program_fkey FOREIGN KEY (program)
+        REFERENCES public.tbl_programs (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
 
@@ -225,28 +234,6 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.tbl_alumni
     OWNER to postgres;
-CREATE TABLE public.tbl_associations (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  title text,
-  description text,
-  dean text,
-  dean_message text,
-  phone text,
-  email text,
-  address text,
-  image text,
-  CONSTRAINT tbl_associations_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.tbl_banner (
-  bannerid integer NOT NULL DEFAULT nextval('tbl_banner_bannerid_seq'::regclass),
-  bannertitle1 character varying,
-  bannertitle2 character varying,
-  bannertitle3 character varying,
-  bannerimage character varying,
-  orderby smallint,
-  CONSTRAINT tbl_banner_pkey PRIMARY KEY (bannerid)
-);
 -- Table: public.tbl_departments
 
 -- DROP TABLE IF EXISTS public.tbl_departments;
@@ -628,4 +615,166 @@ CREATE TABLE IF NOT EXISTS public.tbljobs
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.tbljobs
+    OWNER to postgres;
+
+
+    -- Table: public.users
+
+-- DROP TABLE IF EXISTS public.users;
+
+CREATE TABLE IF NOT EXISTS public.users
+(
+    id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+    email text COLLATE pg_catalog."default" NOT NULL,
+    password_hash text COLLATE pg_catalog."default" NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT users_pkey PRIMARY KEY (id),
+    CONSTRAINT users_email_key UNIQUE (email)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.users
+    OWNER to postgres;
+
+    -- Table: public.roles
+
+-- DROP TABLE IF EXISTS public.roles;
+
+CREATE TABLE IF NOT EXISTS public.roles
+(
+    id bigint NOT NULL DEFAULT nextval('roles_id_seq'::regclass),
+    name text COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT roles_pkey PRIMARY KEY (id),
+    CONSTRAINT roles_name_key UNIQUE (name)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.roles
+    OWNER to postgres;
+
+    -- Table: public.permissions
+
+-- DROP TABLE IF EXISTS public.permissions;
+
+CREATE TABLE IF NOT EXISTS public.permissions
+(
+    id bigint NOT NULL DEFAULT nextval('permissions_id_seq'::regclass),
+    action text COLLATE pg_catalog."default" NOT NULL,
+    resource text COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    CONSTRAINT permissions_pkey PRIMARY KEY (id),
+    CONSTRAINT unique_permission UNIQUE (action, resource)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.permissions
+    OWNER to postgres;
+
+
+    -- Table: public.user_roles
+
+-- DROP TABLE IF EXISTS public.user_roles;
+
+CREATE TABLE IF NOT EXISTS public.user_roles
+(
+    user_id bigint NOT NULL,
+    role_id bigint NOT NULL,
+    assigned_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT user_roles_pkey PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id)
+        REFERENCES public.roles (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id)
+        REFERENCES public.users (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.user_roles
+    OWNER to postgres;
+
+
+    -- Table: public.role_permissions
+
+-- DROP TABLE IF EXISTS public.role_permissions;
+
+CREATE TABLE IF NOT EXISTS public.role_permissions
+(
+    role_id bigint NOT NULL,
+    permission_id bigint NOT NULL,
+    CONSTRAINT role_permissions_pkey PRIMARY KEY (role_id, permission_id),
+    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_id)
+        REFERENCES public.permissions (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id)
+        REFERENCES public.roles (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.role_permissions
+    OWNER to postgres;
+
+    -- Table: public.resources
+
+-- DROP TABLE IF EXISTS public.resources;
+
+CREATE TABLE IF NOT EXISTS public.resources
+(
+    id bigint NOT NULL DEFAULT nextval('resources_id_seq'::regclass),
+    type text COLLATE pg_catalog."default" NOT NULL,
+    name text COLLATE pg_catalog."default" NOT NULL,
+    parent_id bigint,
+    CONSTRAINT resources_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_resources_parent FOREIGN KEY (parent_id)
+        REFERENCES public.resources (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.resources
+    OWNER to postgres;
+
+    -- Table: public.user_resource_access
+
+-- DROP TABLE IF EXISTS public.user_resource_access;
+
+CREATE TABLE IF NOT EXISTS public.user_resource_access
+(
+    id bigint NOT NULL DEFAULT nextval('user_resource_access_id_seq'::regclass),
+    user_id bigint NOT NULL,
+    resource_id bigint NOT NULL,
+    access_level text COLLATE pg_catalog."default" NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT user_resource_access_pkey PRIMARY KEY (id),
+    CONSTRAINT unique_user_resource UNIQUE (user_id, resource_id),
+    CONSTRAINT fk_ura_resource FOREIGN KEY (resource_id)
+        REFERENCES public.resources (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT fk_ura_user FOREIGN KEY (user_id)
+        REFERENCES public.users (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE CASCADE,
+    CONSTRAINT user_resource_access_access_level_check CHECK (access_level = ANY (ARRAY['read'::text, 'write'::text, 'admin'::text]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.user_resource_access
     OWNER to postgres;
