@@ -32,35 +32,146 @@ export type UserAccessAssignmentWithIds = {
 /**
  * Fetch user access assignments with IDs resolved from names
  * This ensures ID-based filtering while maintaining backward compatibility
+ * 
+ * NOW SUPPORTS BOTH OLD AND NEW RBAC SYSTEMS:
+ * - First tries old system (user_access_assignments)
+ * - Falls back to new system (user_resource_access) if old doesn't exist
+ * 
+ * @deprecated This function bridges old and new RBAC. Migrate to getUserResourceAccess() from rbac-standard.ts
  */
 export async function getUserAccessAssignmentsWithIds(userId: number): Promise<UserAccessAssignmentWithIds[]> {
   try {
-    // Use ID columns directly (preferred) with fallback to name-based JOIN if IDs are NULL
-    const rows = await sql/* sql */`
-      SELECT DISTINCT
-        COALESCE(uaa.faculty_id, f.id) as faculty_id,
-        COALESCE(uaa.department_id, d.id) as department_id,
-        COALESCE(uaa.program_id, p.id) as program_id,
-        uaa.faculty_name,
-        uaa.department_name,
-        uaa.program_name
-      FROM public.user_access_assignments uaa
-      LEFT JOIN public.tbl_faculties f ON 
-        uaa.faculty_id IS NULL 
-        AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(COALESCE(uaa.faculty_name, '')))
-      LEFT JOIN public.tbl_departments d ON 
-        uaa.department_id IS NULL
-        AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(COALESCE(uaa.department_name, '')))
-        AND (uaa.faculty_name IS NULL OR uaa.faculty_id IS NULL OR d.faculty_id = COALESCE(uaa.faculty_id, f.id))
-      LEFT JOIN public.tbl_programs p ON 
-        uaa.program_id IS NULL
-        AND LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(COALESCE(uaa.program_name, '')))
-        AND (uaa.department_name IS NULL OR uaa.department_id IS NULL OR p.department_id = COALESCE(uaa.department_id, d.id))
-      WHERE uaa.userid = ${userId}
-      ORDER BY COALESCE(uaa.faculty_id, f.id) NULLS LAST, COALESCE(uaa.department_id, d.id) NULLS LAST, COALESCE(uaa.program_id, p.id) NULLS LAST
-    ` as Array<UserAccessAssignmentWithIds>;
+    // Check if old table exists first
+    const tableExists = await sql/* sql */`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+      ) as exists
+    ` as Array<{ exists: boolean }>;
     
-    return rows || [];
+    if (tableExists[0]?.exists) {
+      // Use old system
+      const rows = await sql/* sql */`
+        SELECT DISTINCT
+          COALESCE(uaa.faculty_id, f.id) as faculty_id,
+          COALESCE(uaa.department_id, d.id) as department_id,
+          COALESCE(uaa.program_id, p.id) as program_id,
+          uaa.faculty_name,
+          uaa.department_name,
+          uaa.program_name
+        FROM public.user_access_assignments uaa
+        LEFT JOIN public.tbl_faculties f ON 
+          uaa.faculty_id IS NULL 
+          AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(COALESCE(uaa.faculty_name, '')))
+        LEFT JOIN public.tbl_departments d ON 
+          uaa.department_id IS NULL
+          AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(COALESCE(uaa.department_name, '')))
+          AND (uaa.faculty_name IS NULL OR uaa.faculty_id IS NULL OR d.faculty_id = COALESCE(uaa.faculty_id, f.id))
+        LEFT JOIN public.tbl_programs p ON 
+          uaa.program_id IS NULL
+          AND LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(COALESCE(uaa.program_name, '')))
+          AND (uaa.department_name IS NULL OR uaa.department_id IS NULL OR p.department_id = COALESCE(uaa.department_id, d.id))
+        WHERE uaa.userid = ${userId}
+        ORDER BY COALESCE(uaa.faculty_id, f.id) NULLS LAST, COALESCE(uaa.department_id, d.id) NULLS LAST, COALESCE(uaa.program_id, p.id) NULLS LAST
+      ` as Array<UserAccessAssignmentWithIds>;
+      
+      if (rows && rows.length > 0) {
+        return rows;
+      }
+    }
+    
+    // Fallback to new RBAC system
+    console.log("[RBAC] Old table doesn't exist or returned no results. Checking new RBAC system...");
+    
+    // Check if new RBAC tables exist
+    const newTablesExist = await sql/* sql */`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_resource_access'
+      ) as exists
+    ` as Array<{ exists: boolean }>;
+    
+    if (!newTablesExist[0]?.exists) {
+      console.warn("[RBAC] Neither old nor new RBAC tables exist. Returning empty array.");
+      return [];
+    }
+    
+    // Get user's new RBAC user ID (from users table, not tbl_users)
+    // userId could be either:
+    // 1. Old tbl_users.userid - need to find via legacy_userid
+    // 2. New users.id - use directly
+    const newUser = await sql/* sql */`
+      SELECT id, legacy_userid, email
+      FROM public.users 
+      WHERE legacy_userid = ${userId} OR id = ${userId}
+      LIMIT 1
+    ` as Array<{ id: number; legacy_userid: number | null; email: string | null }>;
+    
+    let newUserId: number;
+    
+    if (!newUser[0]?.id) {
+      console.warn(`[RBAC] User ${userId} not found in new RBAC system (users table). Checking if it's a new user ID...`);
+      
+      // If userId doesn't match, it might already be the new user ID
+      // Try one more time with direct lookup
+      const directUser = await sql/* sql */`
+        SELECT id, legacy_userid, email
+        FROM public.users 
+        WHERE id = ${userId}
+        LIMIT 1
+      ` as Array<{ id: number; legacy_userid: number | null; email: string | null }>;
+      
+      if (!directUser[0]?.id) {
+        console.warn(`[RBAC] User ${userId} not found in new RBAC system at all`);
+        return [];
+      }
+      
+      newUserId = directUser[0].id;
+    } else {
+      newUserId = newUser[0].id;
+    }
+    
+    console.log(`[RBAC] Mapped user ${userId} to new RBAC user ID ${newUserId}`);
+    
+    // Get access from new RBAC system and convert to old format
+    // The new system uses hierarchical resources, so we need to extract faculty/department/program IDs
+    const newAccess = await sql/* sql */`
+      SELECT DISTINCT
+        res.legacy_faculty_id as faculty_id,
+        CASE WHEN res.type = 'faculty' THEN res.name 
+             WHEN res.type = 'department' THEN parent_fac.name
+             WHEN res.type = 'program' THEN grandparent_fac.name
+             ELSE NULL END as faculty_name,
+        res.legacy_department_id as department_id,
+        CASE WHEN res.type = 'department' THEN res.name
+             WHEN res.type = 'program' THEN parent_dept.name
+             ELSE NULL END as department_name,
+        res.legacy_program_id as program_id,
+        CASE WHEN res.type = 'program' THEN res.name ELSE NULL END as program_name,
+        res.type as resource_type,
+        res.name as resource_name
+      FROM public.user_resource_access ura
+      INNER JOIN public.resources res ON ura.resource_id = res.id
+      LEFT JOIN public.resources parent_dept ON res.parent_id = parent_dept.id AND parent_dept.type = 'department'
+      LEFT JOIN public.resources parent_fac ON 
+        (res.type = 'department' AND res.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+        OR (res.type = 'program' AND parent_dept.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+      LEFT JOIN public.resources grandparent_fac ON 
+        res.type = 'program' AND parent_dept.parent_id = grandparent_fac.id AND grandparent_fac.type = 'faculty'
+      WHERE ura.user_id = ${newUserId}
+        AND res.type IN ('faculty', 'department', 'program')
+      ORDER BY resource_type, resource_name
+    ` as Array<UserAccessAssignmentWithIds & { resource_type?: string; resource_name?: string }>;
+    
+    if (newAccess && newAccess.length > 0) {
+      console.log(`[RBAC] ✅ Found ${newAccess.length} assignments in new RBAC system for user ${userId} (new ID: ${newUserId})`);
+      return newAccess;
+    }
+    
+    console.warn(`[RBAC] ⚠️ No assignments found in new RBAC system for user ${userId} (new ID: ${newUserId})`);
+    return [];
   } catch (error) {
     console.error("[RBAC] Failed to fetch user access assignments with IDs:", error);
     return [];
@@ -201,9 +312,29 @@ export async function buildIdBasedAccessFilterSQL(
   console.log("[RBAC] Assignments:", JSON.stringify(assignments, null, 2));
   
   if (assignments.length === 0) {
-    // Default behavior: if no assignments are configured for an admin/viewer,
-    // do NOT block the entire system. Treat as full access (read-only for viewer, enforced elsewhere).
+    // Check if old table exists to determine if this is a migration scenario
+    const tableExists = await sql/* sql */`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+      ) as exists
+    ` as Array<{ exists: boolean }>;
+    
+    if (!tableExists[0]?.exists) {
+      // Table doesn't exist - migration scenario
+      // User should have assignments in new RBAC system, but they don't
+      // Deny access for safety
+      console.log("[RBAC] ⚠️ No assignments found AND old table doesn't exist");
+      console.log("[RBAC] This indicates migration scenario - user needs assignments in new RBAC system");
+      console.log("[RBAC] Denying access until assignments are configured");
+      console.log("[RBAC] ============================================");
+      return { sql: sql`1 = 0`, hasFilter: true };
+    }
+    
+    // Table exists but no assignments - legacy behavior: allow full access
     // This matches the fallback behavior in userAccess.ts
+    // Note: This should be reviewed - ideally users should have explicit assignments
     console.log("[RBAC] ✅ No assignments found - allowing full access (no filtering)");
     console.log("[RBAC] This means the user has access to all faculties/departments/programs");
     console.log("[RBAC] ============================================");

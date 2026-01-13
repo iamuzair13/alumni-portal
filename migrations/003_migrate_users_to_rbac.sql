@@ -72,89 +72,165 @@ ON CONFLICT (user_id, role_id) DO NOTHING;
 -- 3. MIGRATE ACCESS ASSIGNMENTS: user_access_assignments → user_resource_access
 -- ================================================
 
+-- Check if old table exists before migrating
+DO $$
+DECLARE
+    table_exists boolean;
+BEGIN
+    SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+    ) INTO table_exists;
+    
+    IF NOT table_exists THEN
+        RAISE NOTICE '⚠️ Old user_access_assignments table does not exist';
+        RAISE NOTICE '   Skipping access assignment migration';
+        RAISE NOTICE '   Users will need to have access assigned manually in new RBAC system';
+        RAISE NOTICE '   Or restore the old table if you need to migrate existing assignments';
+    ELSE
+        RAISE NOTICE '✅ Old user_access_assignments table found - proceeding with migration';
+    END IF;
+END $$;
+
 -- Strategy:
 -- 1. Faculty-level access → resource with type='faculty', access_level based on user role
 -- 2. Department-level access → resource with type='department', access_level based on user role
 -- 3. Program-level access → resource with type='program', access_level based on user role
 
--- Faculty-level access assignments
-INSERT INTO public.user_resource_access (user_id, resource_id, access_level)
-SELECT DISTINCT
-    u.id as user_id,
-    res.id as resource_id,
-    CASE 
-        WHEN r.name = 'admin' THEN 'write'
-        WHEN r.name = 'viewer' THEN 'read'
-        ELSE 'read' -- Default to read for safety
-    END as access_level
-FROM public.users u
-INNER JOIN public.user_roles ur ON u.id = ur.user_id
-INNER JOIN public.roles r ON ur.role_id = r.id
-INNER JOIN public.user_access_assignments uaa ON u.legacy_userid = uaa.userid
-INNER JOIN public.resources res ON res.type = 'faculty' 
-    AND (
-        (uaa.faculty_id IS NOT NULL AND res.legacy_faculty_id = uaa.faculty_id)
-        OR (uaa.faculty_name IS NOT NULL AND LOWER(TRIM(res.name)) = LOWER(TRIM(uaa.faculty_name)))
-    )
-WHERE uaa.department_id IS NULL 
-  AND uaa.department_name IS NULL
-  AND uaa.program_id IS NULL
-  AND uaa.program_name IS NULL
-  AND (uaa.faculty_id IS NOT NULL OR uaa.faculty_name IS NOT NULL)
-ON CONFLICT (user_id, resource_id) DO UPDATE SET
-    access_level = EXCLUDED.access_level,
-    updated_at = now();
+-- Faculty-level access assignments (only if old table exists)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+    ) THEN
+        EXECUTE format('
+            INSERT INTO public.user_resource_access (user_id, resource_id, access_level)
+            SELECT DISTINCT
+                u.id as user_id,
+                res.id as resource_id,
+                CASE 
+                    WHEN r.name = %L THEN %L
+                    WHEN r.name = %L THEN %L
+                    ELSE %L
+                END as access_level
+            FROM public.users u
+            INNER JOIN public.user_roles ur ON u.id = ur.user_id
+            INNER JOIN public.roles r ON ur.role_id = r.id
+            INNER JOIN public.user_access_assignments uaa ON u.legacy_userid = uaa.userid
+            INNER JOIN public.resources res ON res.type = %L 
+                AND (
+                    (uaa.faculty_id IS NOT NULL AND res.legacy_faculty_id = uaa.faculty_id)
+                    OR (uaa.faculty_name IS NOT NULL AND LOWER(TRIM(res.name)) = LOWER(TRIM(uaa.faculty_name)))
+                )
+            WHERE uaa.department_id IS NULL 
+              AND uaa.department_name IS NULL
+              AND uaa.program_id IS NULL
+              AND uaa.program_name IS NULL
+              AND (uaa.faculty_id IS NOT NULL OR uaa.faculty_name IS NOT NULL)
+            ON CONFLICT (user_id, resource_id) DO UPDATE SET
+                access_level = EXCLUDED.access_level,
+                updated_at = now()',
+            'admin', 'write',
+            'viewer', 'read',
+            'read',
+            'faculty'
+        );
+        
+        RAISE NOTICE '✅ Migrated faculty-level access assignments';
+    ELSE
+        RAISE NOTICE '⏭️ Skipping faculty-level access migration (old table not found)';
+    END IF;
+END $$;
 
--- Department-level access assignments
-INSERT INTO public.user_resource_access (user_id, resource_id, access_level)
-SELECT DISTINCT
-    u.id as user_id,
-    res.id as resource_id,
-    CASE 
-        WHEN r.name = 'admin' THEN 'write'
-        WHEN r.name = 'viewer' THEN 'read'
-        ELSE 'read'
-    END as access_level
-FROM public.users u
-INNER JOIN public.user_roles ur ON u.id = ur.user_id
-INNER JOIN public.roles r ON ur.role_id = r.id
-INNER JOIN public.user_access_assignments uaa ON u.legacy_userid = uaa.userid
-INNER JOIN public.resources res ON res.type = 'department'
-    AND (
-        (uaa.department_id IS NOT NULL AND res.legacy_department_id = uaa.department_id)
-        OR (uaa.department_name IS NOT NULL AND LOWER(TRIM(res.name)) = LOWER(TRIM(uaa.department_name)))
-    )
-WHERE uaa.department_id IS NOT NULL 
-   OR uaa.department_name IS NOT NULL
-  AND (uaa.program_id IS NULL AND uaa.program_name IS NULL)
-ON CONFLICT (user_id, resource_id) DO UPDATE SET
-    access_level = EXCLUDED.access_level,
-    updated_at = now();
+-- Department-level access assignments (only if old table exists)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+    ) THEN
+        EXECUTE format('
+            INSERT INTO public.user_resource_access (user_id, resource_id, access_level)
+            SELECT DISTINCT
+                u.id as user_id,
+                res.id as resource_id,
+                CASE 
+                    WHEN r.name = %L THEN %L
+                    WHEN r.name = %L THEN %L
+                    ELSE %L
+                END as access_level
+            FROM public.users u
+            INNER JOIN public.user_roles ur ON u.id = ur.user_id
+            INNER JOIN public.roles r ON ur.role_id = r.id
+            INNER JOIN public.user_access_assignments uaa ON u.legacy_userid = uaa.userid
+            INNER JOIN public.resources res ON res.type = %L
+                AND (
+                    (uaa.department_id IS NOT NULL AND res.legacy_department_id = uaa.department_id)
+                    OR (uaa.department_name IS NOT NULL AND LOWER(TRIM(res.name)) = LOWER(TRIM(uaa.department_name)))
+                )
+            WHERE (uaa.department_id IS NOT NULL OR uaa.department_name IS NOT NULL)
+              AND (uaa.program_id IS NULL AND uaa.program_name IS NULL)
+            ON CONFLICT (user_id, resource_id) DO UPDATE SET
+                access_level = EXCLUDED.access_level,
+                updated_at = now()',
+            'admin', 'write',
+            'viewer', 'read',
+            'read',
+            'department'
+        );
+        
+        RAISE NOTICE '✅ Migrated department-level access assignments';
+    ELSE
+        RAISE NOTICE '⏭️ Skipping department-level access migration (old table not found)';
+    END IF;
+END $$;
 
--- Program-level access assignments
-INSERT INTO public.user_resource_access (user_id, resource_id, access_level)
-SELECT DISTINCT
-    u.id as user_id,
-    res.id as resource_id,
-    CASE 
-        WHEN r.name = 'admin' THEN 'write'
-        WHEN r.name = 'viewer' THEN 'read'
-        ELSE 'read'
-    END as access_level
-FROM public.users u
-INNER JOIN public.user_roles ur ON u.id = ur.user_id
-INNER JOIN public.roles r ON ur.role_id = r.id
-INNER JOIN public.user_access_assignments uaa ON u.legacy_userid = uaa.userid
-INNER JOIN public.resources res ON res.type = 'program'
-    AND (
-        (uaa.program_id IS NOT NULL AND res.legacy_program_id = uaa.program_id)
-        OR (uaa.program_name IS NOT NULL AND LOWER(TRIM(res.name)) = LOWER(TRIM(uaa.program_name)))
-    )
-WHERE uaa.program_id IS NOT NULL 
-   OR uaa.program_name IS NOT NULL
-ON CONFLICT (user_id, resource_id) DO UPDATE SET
-    access_level = EXCLUDED.access_level,
-    updated_at = now();
+-- Program-level access assignments (only if old table exists)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+    ) THEN
+        EXECUTE format('
+            INSERT INTO public.user_resource_access (user_id, resource_id, access_level)
+            SELECT DISTINCT
+                u.id as user_id,
+                res.id as resource_id,
+                CASE 
+                    WHEN r.name = %L THEN %L
+                    WHEN r.name = %L THEN %L
+                    ELSE %L
+                END as access_level
+            FROM public.users u
+            INNER JOIN public.user_roles ur ON u.id = ur.user_id
+            INNER JOIN public.roles r ON ur.role_id = r.id
+            INNER JOIN public.user_access_assignments uaa ON u.legacy_userid = uaa.userid
+            INNER JOIN public.resources res ON res.type = %L
+                AND (
+                    (uaa.program_id IS NOT NULL AND res.legacy_program_id = uaa.program_id)
+                    OR (uaa.program_name IS NOT NULL AND LOWER(TRIM(res.name)) = LOWER(TRIM(uaa.program_name)))
+                )
+            WHERE uaa.program_id IS NOT NULL OR uaa.program_name IS NOT NULL
+            ON CONFLICT (user_id, resource_id) DO UPDATE SET
+                access_level = EXCLUDED.access_level,
+                updated_at = now()',
+            'admin', 'write',
+            'viewer', 'read',
+            'read',
+            'program'
+        );
+        
+        RAISE NOTICE '✅ Migrated program-level access assignments';
+    ELSE
+        RAISE NOTICE '⏭️ Skipping program-level access migration (old table not found)';
+    END IF;
+END $$;
 
 -- ================================================
 -- 4. HANDLE "ALL FACULTIES" ACCESS
@@ -228,9 +304,17 @@ BEGIN
     SELECT COUNT(*) INTO new_user_count
     FROM public.users;
     
-    -- Count old assignments
-    SELECT COUNT(*) INTO old_assignment_count
-    FROM public.user_access_assignments;
+    -- Count old assignments (only if table exists)
+    IF EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+    ) THEN
+        SELECT COUNT(*) INTO old_assignment_count
+        FROM public.user_access_assignments;
+    ELSE
+        old_assignment_count := 0;
+    END IF;
     
     -- Count new assignments
     SELECT COUNT(*) INTO new_assignment_count

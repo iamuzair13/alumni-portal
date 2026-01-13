@@ -30,6 +30,20 @@ export async function getUserAccessAssignments(userId: number): Promise<UserAcce
     "Migrate to getUserResourceAccess() from rbac-standard.ts"
   );
   try {
+    // Check if table exists first (for migration safety)
+    const tableExists = await sql/* sql */`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'user_access_assignments'
+      ) as exists
+    ` as Array<{ exists: boolean }>;
+    
+    if (!tableExists[0]?.exists) {
+      console.warn("[getUserAccessAssignments] Table user_access_assignments does not exist. Returning empty array.");
+      return [];
+    }
+    
     const rows = await sql/* sql */`
       SELECT faculty_name, department_name, program_name
       FROM public.user_access_assignments
@@ -37,6 +51,11 @@ export async function getUserAccessAssignments(userId: number): Promise<UserAcce
     ` as Array<UserAccessAssignment>;
     return rows || [];
   } catch (error) {
+    // Check if error is "relation does not exist"
+    if (error instanceof Error && error.message.includes('does not exist')) {
+      console.warn("[getUserAccessAssignments] Table user_access_assignments does not exist. Returning empty array.");
+      return [];
+    }
     console.error("Failed to fetch user access assignments:", error);
     return [];
   }

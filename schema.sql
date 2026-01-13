@@ -618,7 +618,7 @@ ALTER TABLE IF EXISTS public.tbljobs
     OWNER to postgres;
 
 
-    -- Table: public.users
+-- Table: public.users
 
 -- DROP TABLE IF EXISTS public.users;
 

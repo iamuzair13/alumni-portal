@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { getUserAccessAssignments } from "@/lib/userAccess";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
+import { createAccessAssignmentsInNewRBAC, deleteAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
 
 type DbUser = {
   userid: number;
@@ -208,35 +209,65 @@ export async function PUT(req: Request) {
       // This is critical: when programs are removed, old assignments must be deleted
       console.log("[user update] Deleting existing access assignments for user", id);
       
-      // First, check what assignments exist before deletion (for logging)
-      const existingAssignments = await sql/* sql */`
-        SELECT faculty_name, department_name, program_name 
-        FROM public.user_access_assignments 
-        WHERE userid = ${id}
-      ` as Array<{ faculty_name: string | null; department_name: string | null; program_name: string | null }>;
+      // Check if old table exists before trying to use it
+      const tableExists = await sql/* sql */`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'user_access_assignments'
+        ) as exists
+      ` as Array<{ exists: boolean }>;
       
-      console.log("[user update] Found", existingAssignments.length, "existing assignments to delete");
-      if (existingAssignments.length > 0) {
-        console.log("[user update] Existing assignments:", existingAssignments.map(a => 
-          `${a.faculty_name || 'N/A'}/${a.department_name || 'N/A'}/${a.program_name || 'N/A'}`
-        ));
+      // Delete from old system if it exists
+      if (tableExists[0]?.exists) {
+        // First, check what assignments exist before deletion (for logging)
+        try {
+          const existingAssignments = await sql/* sql */`
+            SELECT faculty_name, department_name, program_name 
+            FROM public.user_access_assignments 
+            WHERE userid = ${id}
+          ` as Array<{ faculty_name: string | null; department_name: string | null; program_name: string | null }>;
+          
+          console.log("[user update] Found", existingAssignments.length, "existing assignments to delete (old system)");
+          if (existingAssignments.length > 0) {
+            console.log("[user update] Existing assignments:", existingAssignments.map(a => 
+              `${a.faculty_name || 'N/A'}/${a.department_name || 'N/A'}/${a.program_name || 'N/A'}`
+            ));
+          }
+          
+          // Delete all existing assignments
+          await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
+          
+          // Verify deletion
+          const remainingAssignments = await sql/* sql */`
+            SELECT COUNT(*) as count 
+            FROM public.user_access_assignments 
+            WHERE userid = ${id}
+          ` as Array<{ count: number | string }>;
+          
+          const remainingCount = Number(remainingAssignments[0]?.count || 0);
+          if (remainingCount > 0) {
+            console.error("[user update] WARNING: Failed to delete all assignments. Remaining:", remainingCount);
+          } else {
+            console.log("[user update] Successfully deleted all existing assignments (old system)");
+          }
+        } catch (error) {
+          console.warn("[user update] Error accessing old user_access_assignments table:", error);
+          // Continue - table might not exist during migration
+        }
+      } else {
+        console.log("[user update] Old user_access_assignments table does not exist - skipping deletion");
       }
       
-      // Delete all existing assignments
-      await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
-      
-      // Verify deletion
-      const remainingAssignments = await sql/* sql */`
-        SELECT COUNT(*) as count 
-        FROM public.user_access_assignments 
-        WHERE userid = ${id}
-      ` as Array<{ count: number | string }>;
-      
-      const remainingCount = Number(remainingAssignments[0]?.count || 0);
-      if (remainingCount > 0) {
-        console.error("[user update] WARNING: Failed to delete all assignments. Remaining:", remainingCount);
-      } else {
-        console.log("[user update] Successfully deleted all existing assignments");
+      // Always delete from new RBAC system
+      try {
+        const deleted = await deleteAccessAssignmentsInNewRBAC(id);
+        if (deleted > 0) {
+          console.log(`[user update] ✅ Deleted ${deleted} assignments from new RBAC system`);
+        }
+      } catch (error) {
+        console.error("[user update] Error deleting assignments from new RBAC system:", error);
+        // Continue - might be first time creating assignments
       }
       
       // Add new access assignments if provided and valid
@@ -258,15 +289,48 @@ export async function PUT(req: Request) {
           const rows = await buildAccessAssignmentRowsFromDb({ faculties, departments, programs });
           console.log("[user update] DB-canonicalized assignment rows:", rows.length);
 
-          for (const r of rows) {
-            await sql/* sql */`
-              INSERT INTO public.user_access_assignments (userid, faculty_id, department_id, program_id, faculty_name, department_name, program_name)
-              VALUES (${id}, ${r.faculty_id}, ${r.department_id}, ${r.program_id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
-              ON CONFLICT (userid, faculty_name, department_name, program_name) DO UPDATE SET
-                faculty_id = EXCLUDED.faculty_id,
-                department_id = EXCLUDED.department_id,
-                program_id = EXCLUDED.program_id
-            `;
+          // Check if old table exists before inserting
+          const tableExistsForInsert = await sql/* sql */`
+            SELECT EXISTS (
+              SELECT FROM information_schema.tables 
+              WHERE table_schema = 'public' 
+              AND table_name = 'user_access_assignments'
+            ) as exists
+          ` as Array<{ exists: boolean }>;
+          
+          // Insert into old system if it exists
+          if (tableExistsForInsert[0]?.exists) {
+            for (const r of rows) {
+              try {
+                await sql/* sql */`
+                  INSERT INTO public.user_access_assignments (userid, faculty_id, department_id, program_id, faculty_name, department_name, program_name)
+                  VALUES (${id}, ${r.faculty_id}, ${r.department_id}, ${r.program_id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
+                  ON CONFLICT (userid, faculty_name, department_name, program_name) DO UPDATE SET
+                    faculty_id = EXCLUDED.faculty_id,
+                    department_id = EXCLUDED.department_id,
+                    program_id = EXCLUDED.program_id
+                `;
+              } catch (error) {
+                console.error("[user update] Error inserting into user_access_assignments:", error);
+                // Continue with next row
+              }
+            }
+          } else {
+            console.log("[user update] Old user_access_assignments table does not exist - skipping old system insert");
+          }
+          
+          // Always try to create in new RBAC system
+          try {
+            const result = await createAccessAssignmentsInNewRBAC(id, normalizedType as 'admin' | 'viewer', rows);
+            if (result.created > 0) {
+              console.log(`[user update] ✅ Created ${result.created} assignments in new RBAC system`);
+            }
+            if (result.errors > 0) {
+              console.warn(`[user update] ⚠️ ${result.errors} assignments failed in new RBAC system`);
+            }
+          } catch (error) {
+            console.error("[user update] Error creating assignments in new RBAC system:", error);
+            // Don't fail the request - old system might still work
           }
         } else {
           // If accessAssignments is an empty object or has no faculties, no new assignments are created
@@ -283,7 +347,37 @@ export async function PUT(req: Request) {
     } else if (isSuperAdmin && body.accessAssignments === null && normalizedType) {
       // If accessAssignments is explicitly null, remove all assignments (e.g., when changing to superadmin)
       console.log("[user update] Removing all access assignments (user type change or explicit null)");
-      await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
+      try {
+        // Check if table exists first
+        const tableExists = await sql/* sql */`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'user_access_assignments'
+          ) as exists
+        ` as Array<{ exists: boolean }>;
+        
+        // Delete from old system if it exists
+        if (tableExists[0]?.exists) {
+          await sql/* sql */`DELETE FROM public.user_access_assignments WHERE userid = ${id}`;
+          console.log("[user update] Deleted assignments from old system");
+        } else {
+          console.log("[user update] Old user_access_assignments table does not exist - skipping deletion");
+        }
+        
+        // Always delete from new RBAC system
+        try {
+          const deleted = await deleteAccessAssignmentsInNewRBAC(id);
+          if (deleted > 0) {
+            console.log(`[user update] ✅ Deleted ${deleted} assignments from new RBAC system`);
+          }
+        } catch (error) {
+          console.error("[user update] Error deleting assignments from new RBAC system:", error);
+        }
+      } catch (error) {
+        console.warn("[user update] Error deleting from user_access_assignments:", error);
+        // Continue - table might not exist during migration
+      }
     }
     
     return NextResponse.json({ ok: true }, { status: 200 });

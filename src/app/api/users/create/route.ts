@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
+import { createAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
 
 type UserBody = {
   email: string;
@@ -89,6 +90,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
     }
     
+    // Also create user in new RBAC system if it doesn't exist
+    try {
+      const newUserExists = await sql/* sql */`
+        SELECT id FROM public.users 
+        WHERE email = ${String(body.email).trim()} OR legacy_userid = ${userId}
+        LIMIT 1
+      ` as Array<{ id: number }>;
+      
+      if (!newUserExists[0]?.id) {
+        // Create user in new RBAC system
+        const newUser = await sql/* sql */`
+          INSERT INTO public.users (email, password_hash, is_active, legacy_userid, legacy_type, created_at, updated_at)
+          VALUES (
+            ${String(body.email).trim()},
+            ${String(body.password)},
+            ${!Boolean(body.blocked ?? false)},
+            ${userId},
+            ${String(body.type || "viewer").trim()},
+            now(),
+            now()
+          )
+          ON CONFLICT (email) DO UPDATE SET
+            password_hash = EXCLUDED.password_hash,
+            is_active = EXCLUDED.is_active,
+            legacy_userid = EXCLUDED.legacy_userid,
+            legacy_type = EXCLUDED.legacy_type,
+            updated_at = now()
+          RETURNING id
+        ` as Array<{ id: number }>;
+        
+        const newUserId = newUser[0]?.id;
+        console.log(`[user create] ✅ Created user in new RBAC system: ${newUserId} (legacy: ${userId})`);
+        
+        // Assign role in new RBAC system
+        const roleName = userType === "user" ? "viewer" : userType;
+        const role = await sql/* sql */`
+          SELECT id FROM public.roles WHERE name = ${roleName} LIMIT 1
+        ` as Array<{ id: number }>;
+        
+        if (role[0]?.id && newUserId) {
+          await sql/* sql */`
+            INSERT INTO public.user_roles (user_id, role_id)
+            VALUES (${newUserId}, ${role[0].id})
+            ON CONFLICT (user_id, role_id) DO NOTHING
+          `;
+          console.log(`[user create] ✅ Assigned role '${roleName}' to user in new RBAC system`);
+        }
+      } else {
+        console.log(`[user create] User already exists in new RBAC system: ${newUserExists[0].id}`);
+      }
+    } catch (error) {
+      console.error("[user create] Error creating user in new RBAC system:", error);
+      // Don't fail the request - old system still works
+    }
+    
     // Save access assignments if provided (for admin/viewer roles)
     if ((userType === "admin" || userType === "viewer") && body.accessAssignments) {
       const { faculties, departments, programs } = body.accessAssignments;
@@ -100,16 +156,48 @@ export async function POST(req: Request) {
 
       if (hasAnything) {
         const rows = await buildAccessAssignmentRowsFromDb({ faculties, departments, programs });
+        
+        // Check if old table exists before trying to use it
+        const tableExists = await sql/* sql */`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'user_access_assignments'
+          ) as exists
+        ` as Array<{ exists: boolean }>;
+        
+        if (tableExists[0]?.exists) {
+          // Use old system
           for (const r of rows) {
-            await sql/* sql */`
-              INSERT INTO public.user_access_assignments (userid, faculty_id, department_id, program_id, faculty_name, department_name, program_name)
-              VALUES (${userId}, ${r.faculty_id}, ${r.department_id}, ${r.program_id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
-              ON CONFLICT (userid, faculty_name, department_name, program_name) DO UPDATE SET
-                faculty_id = EXCLUDED.faculty_id,
-                department_id = EXCLUDED.department_id,
-                program_id = EXCLUDED.program_id
-            `;
+            try {
+              await sql/* sql */`
+                INSERT INTO public.user_access_assignments (userid, faculty_id, department_id, program_id, faculty_name, department_name, program_name)
+                VALUES (${userId}, ${r.faculty_id}, ${r.department_id}, ${r.program_id}, ${r.faculty_name}, ${r.department_name}, ${r.program_name})
+                ON CONFLICT (userid, faculty_name, department_name, program_name) DO UPDATE SET
+                  faculty_id = EXCLUDED.faculty_id,
+                  department_id = EXCLUDED.department_id,
+                  program_id = EXCLUDED.program_id
+              `;
+            } catch (error) {
+              console.error("[user create] Error inserting into user_access_assignments:", error);
+              // Continue with next row
+            }
           }
+        }
+        
+        // Always try to create in new RBAC system (works even if old table exists)
+        try {
+          const result = await createAccessAssignmentsInNewRBAC(userId, userType as 'admin' | 'viewer', rows);
+          if (result.created > 0) {
+            console.log(`[user create] ✅ Created ${result.created} assignments in new RBAC system`);
+          }
+          if (result.errors > 0) {
+            console.warn(`[user create] ⚠️ ${result.errors} assignments failed in new RBAC system`);
+          }
+        } catch (error) {
+          console.error("[user create] Error creating assignments in new RBAC system:", error);
+          // Don't fail the request - old system might still work
+        }
       }
     }
     
