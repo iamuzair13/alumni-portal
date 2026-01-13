@@ -871,8 +871,38 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       // Build update payload - include all fields that are currently being edited
       const updatePayload: Record<string, unknown> = {};
       
-      // Add all fields that are currently in editing mode
+      // Handle "chapters" field specially - it maps to chapter1_id, chapter2_id, chapter3_id
+      if (editingFields.has("chapters")) {
+        // Extract chapter IDs from form values
+        // HTML select inputs return strings, but the type expects number | null
+        // We need to handle the conversion safely
+        const chapter1IdValue = allFormValues.chapter1_id;
+        const chapter2IdValue = allFormValues.chapter2_id;
+        const chapter3IdValue = allFormValues.chapter3_id;
+        
+        // Convert to number if value exists (handle both string and number types from form)
+        // Check for undefined, null, or empty string (for form values that might be strings)
+        const chapter1Id = chapter1IdValue !== undefined && chapter1IdValue !== null && String(chapter1IdValue).trim() !== ""
+          ? Number(chapter1IdValue)
+          : null;
+        const chapter2Id = chapter2IdValue !== undefined && chapter2IdValue !== null && String(chapter2IdValue).trim() !== ""
+          ? Number(chapter2IdValue)
+          : null;
+        const chapter3Id = chapter3IdValue !== undefined && chapter3IdValue !== null && String(chapter3IdValue).trim() !== ""
+          ? Number(chapter3IdValue)
+          : null;
+        
+        // Add chapter IDs to payload (even if null, to allow clearing)
+        updatePayload.chapter1_id = chapter1Id;
+        updatePayload.chapter2_id = chapter2Id;
+        updatePayload.chapter3_id = chapter3Id;
+      }
+      
+      // Add all other fields that are currently in editing mode
       editingFields.forEach((fieldName) => {
+        // Skip "chapters" as it's already handled above
+        if (fieldName === "chapters") return;
+        
         const value = allFormValues[fieldName as keyof AlumniFullData];
         // Include the value even if it's null or empty string (to allow clearing fields)
         if (value !== undefined) {
