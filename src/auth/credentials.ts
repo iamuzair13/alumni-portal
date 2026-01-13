@@ -112,17 +112,17 @@ export async function authenticateCredentials(identifier: string, password: stri
       const emailLower = identifier.trim().toLowerCase();
       rows = await sql/* sql */`
         SELECT 
-          userid, 
+          id as userid, 
           email, 
-          password, 
+          COALESCE(password, password_hash) as password, 
           firstname, 
           lastname, 
           department, 
-          LOWER(TRIM(COALESCE(type, ''))) as type_normalized,
-          type as type_original,
-          blocked, 
+          LOWER(TRIM(COALESCE(type, legacy_type, ''))) as type_normalized,
+          COALESCE(type, legacy_type) as type_original,
+          COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime 
-        FROM public.tbl_users 
+        FROM public.users 
         WHERE LOWER(TRIM(email)) = ${emailLower}
         LIMIT 1
       `;

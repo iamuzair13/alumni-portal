@@ -40,9 +40,18 @@ export async function GET() {
     if (isSuperAdmin) {
       // Super Admin can see all passwords
       const rows = await sql/* sql */`
-        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime, password
-        FROM public.tbl_users
-        ORDER BY userid DESC` as DbUser[];
+        SELECT 
+          id as userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
+          lastlogindatetime, 
+          COALESCE(password, password_hash) as password
+        FROM public.users
+        ORDER BY id DESC` as DbUser[];
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     } else if (isAdmin && currentUserId) {
       // Admins can only see their own password
@@ -50,29 +59,37 @@ export async function GET() {
       if (isNaN(userIdNum)) {
         // Invalid user ID, return without passwords
         const rows = await sql/* sql */`
-          SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
-          FROM public.tbl_users
-          ORDER BY userid DESC` as DbUser[];
+          SELECT 
+            id as userid, 
+            email, 
+            firstname, 
+            lastname, 
+            department, 
+            COALESCE(type, legacy_type) as type, 
+            COALESCE(blocked, NOT is_active) as blocked, 
+            lastlogindatetime
+          FROM public.users
+          ORDER BY id DESC` as DbUser[];
         return NextResponse.json({ items: rows ?? [] }, { status: 200 });
       }
       
       // Fetch all users, but only include password for the current admin user
       const rows = await sql/* sql */`
         SELECT 
-          userid, 
+          id as userid, 
           email, 
           firstname, 
           lastname, 
           department, 
-          type, 
-          blocked, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime,
           CASE 
-            WHEN userid = ${userIdNum} THEN password 
+            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN COALESCE(password, password_hash)
             ELSE NULL 
           END as password
-        FROM public.tbl_users
-        ORDER BY userid DESC` as DbUser[];
+        FROM public.users
+        ORDER BY id DESC` as DbUser[];
       
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     } else if (isViewer && currentUserId) {
@@ -81,37 +98,53 @@ export async function GET() {
       if (isNaN(userIdNum)) {
         // Invalid user ID, return without passwords
         const rows = await sql/* sql */`
-          SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
-          FROM public.tbl_users
-          ORDER BY userid DESC` as DbUser[];
+          SELECT 
+            id as userid, 
+            email, 
+            firstname, 
+            lastname, 
+            department, 
+            COALESCE(type, legacy_type) as type, 
+            COALESCE(blocked, NOT is_active) as blocked, 
+            lastlogindatetime
+          FROM public.users
+          ORDER BY id DESC` as DbUser[];
         return NextResponse.json({ items: rows ?? [] }, { status: 200 });
       }
       
       // Fetch all users, but only include password for the current viewer user
       const rows = await sql/* sql */`
         SELECT 
-          userid, 
+          id as userid, 
           email, 
           firstname, 
           lastname, 
           department, 
-          type, 
-          blocked, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime,
           CASE 
-            WHEN userid = ${userIdNum} THEN password 
+            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN COALESCE(password, password_hash)
             ELSE NULL 
           END as password
-        FROM public.tbl_users
-        ORDER BY userid DESC` as DbUser[];
+        FROM public.users
+        ORDER BY id DESC` as DbUser[];
       
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords
       const rows = await sql/* sql */`
-        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
-        FROM public.tbl_users
-        ORDER BY userid DESC` as DbUser[];
+        SELECT 
+          id as userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
+          lastlogindatetime
+        FROM public.users
+        ORDER BY id DESC` as DbUser[];
       return NextResponse.json({ items: rows ?? [] }, { status: 200 });
     }
   } catch (err: unknown) {
@@ -144,16 +177,19 @@ export async function PUT(req: Request) {
     const normalizedType = body.type ? String(body.type).toLowerCase().trim() : null;
     
     await sql/* sql */`
-      UPDATE public.tbl_users
+      UPDATE public.users
       SET
         email = ${body.email ?? null},
-        ${body.password ? sql`password = ${String(body.password)},` : sql``}
+        ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
         firstname = ${body.firstname ?? null},
         lastname = ${body.lastname ?? null},
         department = ${body.department ?? null},
         type = ${normalizedType},
-        blocked = ${body.blocked ?? null}
-      WHERE userid = ${userid}`;
+        legacy_type = ${normalizedType},
+        blocked = ${body.blocked ?? null},
+        is_active = ${body.blocked === null ? sql`is_active` : sql`NOT ${Boolean(body.blocked)}`},
+        updated_at = now()
+      WHERE id = ${userid} OR legacy_userid = ${userid}`;
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

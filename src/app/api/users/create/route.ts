@@ -72,77 +72,70 @@ export async function POST(req: Request) {
     // Note: Multiple superadmins are now allowed
     const userType = String(body.type || "viewer").trim().toLowerCase();
 
+    // Create user directly in new users table
     const rows = await sql/* sql */`
-      INSERT INTO public.tbl_users (email, password, firstname, lastname, department, type, blocked, lastlogindatetime)
+      INSERT INTO public.users (
+        email, 
+        password_hash, 
+        password, 
+        firstname, 
+        lastname, 
+        department, 
+        type, 
+        legacy_type,
+        blocked, 
+        is_active,
+        lastlogindatetime,
+        created_at,
+        updated_at
+      )
       VALUES (
         ${String(body.email).trim()},
+        ${String(body.password)},
         ${String(body.password)},
         ${body.firstname ?? null},
         ${body.lastname ?? null},
         ${body.department ?? null},
         ${String(body.type || "viewer").trim()},
+        ${String(body.type || "viewer").trim()},
         ${Boolean(body.blocked ?? false)},
-        ${new Date().toISOString()}
-      ) RETURNING userid` as { userid: number }[];
+        ${!Boolean(body.blocked ?? false)},
+        ${new Date().toISOString()},
+        now(),
+        now()
+      ) RETURNING id, id as userid` as Array<{ id: number; userid: number }>;
     
-    const userId = rows[0]?.userid;
+    const userId = rows[0]?.id;
+    const useridForResponse = rows[0]?.userid || userId;
     if (!userId) {
       return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
     }
     
-    // Also create user in new RBAC system if it doesn't exist
+    // Set legacy_userid to match the new id (for backward compatibility)
+    await sql/* sql */`
+      UPDATE public.users 
+      SET legacy_userid = ${userId}
+      WHERE id = ${userId} AND legacy_userid IS NULL
+    `;
+    
+    // Assign role in new RBAC system
     try {
-      const newUserExists = await sql/* sql */`
-        SELECT id FROM public.users 
-        WHERE email = ${String(body.email).trim()} OR legacy_userid = ${userId}
-        LIMIT 1
+      const roleName = userType === "user" ? "viewer" : userType;
+      const role = await sql/* sql */`
+        SELECT id FROM public.roles WHERE name = ${roleName} LIMIT 1
       ` as Array<{ id: number }>;
       
-      if (!newUserExists[0]?.id) {
-        // Create user in new RBAC system
-        const newUser = await sql/* sql */`
-          INSERT INTO public.users (email, password_hash, is_active, legacy_userid, legacy_type, created_at, updated_at)
-          VALUES (
-            ${String(body.email).trim()},
-            ${String(body.password)},
-            ${!Boolean(body.blocked ?? false)},
-            ${userId},
-            ${String(body.type || "viewer").trim()},
-            now(),
-            now()
-          )
-          ON CONFLICT (email) DO UPDATE SET
-            password_hash = EXCLUDED.password_hash,
-            is_active = EXCLUDED.is_active,
-            legacy_userid = EXCLUDED.legacy_userid,
-            legacy_type = EXCLUDED.legacy_type,
-            updated_at = now()
-          RETURNING id
-        ` as Array<{ id: number }>;
-        
-        const newUserId = newUser[0]?.id;
-        console.log(`[user create] ✅ Created user in new RBAC system: ${newUserId} (legacy: ${userId})`);
-        
-        // Assign role in new RBAC system
-        const roleName = userType === "user" ? "viewer" : userType;
-        const role = await sql/* sql */`
-          SELECT id FROM public.roles WHERE name = ${roleName} LIMIT 1
-        ` as Array<{ id: number }>;
-        
-        if (role[0]?.id && newUserId) {
-          await sql/* sql */`
-            INSERT INTO public.user_roles (user_id, role_id)
-            VALUES (${newUserId}, ${role[0].id})
-            ON CONFLICT (user_id, role_id) DO NOTHING
-          `;
-          console.log(`[user create] ✅ Assigned role '${roleName}' to user in new RBAC system`);
-        }
-      } else {
-        console.log(`[user create] User already exists in new RBAC system: ${newUserExists[0].id}`);
+      if (role[0]?.id) {
+        await sql/* sql */`
+          INSERT INTO public.user_roles (user_id, role_id)
+          VALUES (${userId}, ${role[0].id})
+          ON CONFLICT (user_id, role_id) DO NOTHING
+        `;
+        console.log(`[user create] ✅ Assigned role '${roleName}' to user in new RBAC system`);
       }
     } catch (error) {
-      console.error("[user create] Error creating user in new RBAC system:", error);
-      // Don't fail the request - old system still works
+      console.error("[user create] Error assigning role in new RBAC system:", error);
+      // Don't fail the request
     }
     
     // Save access assignments if provided (for admin/viewer roles)
@@ -201,7 +194,7 @@ export async function POST(req: Request) {
       }
     }
     
-    return NextResponse.json({ userid: userId }, { status: 201 });
+    return NextResponse.json({ userid: useridForResponse }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json({ error: message }, { status: 500 });

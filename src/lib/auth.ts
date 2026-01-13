@@ -110,7 +110,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = user?.email ?? "";
         if (!email) return "/signin?error=INVALID_EMAIL";
         const { sql } = await import("@/lib/dbconnect");
-        const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
+        const rows = await sql/* sql */`
+          SELECT 
+            id as userid, 
+            email, 
+            firstname, 
+            lastname, 
+            department, 
+            COALESCE(type, legacy_type) as type, 
+            COALESCE(blocked, NOT is_active) as blocked, 
+            lastlogindatetime 
+          FROM public.users 
+          WHERE email = ${email} 
+          LIMIT 1
+        `;
         const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
         if (!dbUser) return "/signin?error=USER_NOT_FOUND";
         if (dbUser.blocked) return "/signin?error=USER_BLOCKED";
@@ -118,7 +131,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         u.dbUser = dbUser;
         try {
           const { sql } = await import("@/lib/dbconnect");
-          await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
+          await sql/* sql */`
+            UPDATE public.users 
+            SET lastlogindatetime = ${new Date().toISOString()}, updated_at = now()
+            WHERE id = ${dbUser.userid} OR legacy_userid = ${dbUser.userid}
+          `;
         } catch {}
         return "/";
       }
@@ -247,7 +264,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               if (email) {
                 try {
                   const { sql } = await import("@/lib/dbconnect");
-                  const rows = await sql/* sql */`SELECT userid, email, firstname, lastname, department, type, blocked FROM public.tbl_users WHERE email = ${email} LIMIT 1`;
+                  const rows = await sql/* sql */`
+                    SELECT 
+                      id as userid, 
+                      email, 
+                      firstname, 
+                      lastname, 
+                      department, 
+                      COALESCE(type, legacy_type) as type, 
+                      COALESCE(blocked, NOT is_active) as blocked 
+                    FROM public.users 
+                    WHERE email = ${email} 
+                    LIMIT 1
+                  `;
                   const dbUser: DbUser | undefined = rows[0] as DbUser | undefined;
                   if (dbUser) {
                     const at: AugmentedToken = token as AugmentedToken;
@@ -377,9 +406,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Staff refresh
             if (at.userId) {
               const rows = await sql/* sql */`
-                SELECT userid, email, firstname, lastname, department, type, blocked
-                FROM public.tbl_users
-                WHERE userid = ${at.userId}
+                SELECT 
+                  id as userid, 
+                  email, 
+                  firstname, 
+                  lastname, 
+                  department, 
+                  COALESCE(type, legacy_type) as type, 
+                  COALESCE(blocked, NOT is_active) as blocked
+                FROM public.users
+                WHERE id = ${at.userId} OR legacy_userid = ${at.userId}
                 LIMIT 1
               `;
               const dbUser = rows[0] as DbUser | undefined;

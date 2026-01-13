@@ -10,7 +10,7 @@ import type { AccessAssignmentRow } from "@/lib/orgAccessLookup";
 
 /**
  * Create access assignments in the new RBAC system
- * @param userId - The old tbl_users.userid
+ * @param userId - The user ID (can be users.id or legacy_userid)
  * @param userType - 'admin' or 'viewer'
  * @param assignmentRows - Rows from buildAccessAssignmentRowsFromDb
  */
@@ -118,7 +118,7 @@ export async function createAccessAssignmentsInNewRBAC(
 
 /**
  * Delete all access assignments for a user in the new RBAC system
- * @param userId - The old tbl_users.userid
+ * @param userId - The user ID (can be users.id or legacy_userid)
  */
 export async function deleteAccessAssignmentsInNewRBAC(userId: number): Promise<number> {
   // Find the user in the new RBAC system

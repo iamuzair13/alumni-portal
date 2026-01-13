@@ -51,33 +51,42 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
     ` as Array<{ exists: boolean }>;
     
     if (tableExists[0]?.exists) {
-      // Use old system
-      const rows = await sql/* sql */`
-        SELECT DISTINCT
-          COALESCE(uaa.faculty_id, f.id) as faculty_id,
-          COALESCE(uaa.department_id, d.id) as department_id,
-          COALESCE(uaa.program_id, p.id) as program_id,
-          uaa.faculty_name,
-          uaa.department_name,
-          uaa.program_name
-        FROM public.user_access_assignments uaa
-        LEFT JOIN public.tbl_faculties f ON 
-          uaa.faculty_id IS NULL 
-          AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(COALESCE(uaa.faculty_name, '')))
-        LEFT JOIN public.tbl_departments d ON 
-          uaa.department_id IS NULL
-          AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(COALESCE(uaa.department_name, '')))
-          AND (uaa.faculty_name IS NULL OR uaa.faculty_id IS NULL OR d.faculty_id = COALESCE(uaa.faculty_id, f.id))
-        LEFT JOIN public.tbl_programs p ON 
-          uaa.program_id IS NULL
-          AND LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(COALESCE(uaa.program_name, '')))
-          AND (uaa.department_name IS NULL OR uaa.department_id IS NULL OR p.department_id = COALESCE(uaa.department_id, d.id))
-        WHERE uaa.userid = ${userId}
-        ORDER BY COALESCE(uaa.faculty_id, f.id) NULLS LAST, COALESCE(uaa.department_id, d.id) NULLS LAST, COALESCE(uaa.program_id, p.id) NULLS LAST
-      ` as Array<UserAccessAssignmentWithIds>;
-      
-      if (rows && rows.length > 0) {
-        return rows;
+      // Use old system - wrap in try-catch in case table was dropped between check and query
+      try {
+        const rows = await sql/* sql */`
+          SELECT DISTINCT
+            COALESCE(uaa.faculty_id, f.id) as faculty_id,
+            COALESCE(uaa.department_id, d.id) as department_id,
+            COALESCE(uaa.program_id, p.id) as program_id,
+            uaa.faculty_name,
+            uaa.department_name,
+            uaa.program_name
+          FROM public.user_access_assignments uaa
+          LEFT JOIN public.tbl_faculties f ON 
+            uaa.faculty_id IS NULL 
+            AND LOWER(TRIM(COALESCE(f.faculty_name, ''))) = LOWER(TRIM(COALESCE(uaa.faculty_name, '')))
+          LEFT JOIN public.tbl_departments d ON 
+            uaa.department_id IS NULL
+            AND LOWER(TRIM(COALESCE(d.department_name, ''))) = LOWER(TRIM(COALESCE(uaa.department_name, '')))
+            AND (uaa.faculty_name IS NULL OR uaa.faculty_id IS NULL OR d.faculty_id = COALESCE(uaa.faculty_id, f.id))
+          LEFT JOIN public.tbl_programs p ON 
+            uaa.program_id IS NULL
+            AND LOWER(TRIM(COALESCE(p.program_name, ''))) = LOWER(TRIM(COALESCE(uaa.program_name, '')))
+            AND (uaa.department_name IS NULL OR uaa.department_id IS NULL OR p.department_id = COALESCE(uaa.department_id, d.id))
+          WHERE uaa.userid = ${userId}
+          ORDER BY COALESCE(uaa.faculty_id, f.id) NULLS LAST, COALESCE(uaa.department_id, d.id) NULLS LAST, COALESCE(uaa.program_id, p.id) NULLS LAST
+        ` as Array<UserAccessAssignmentWithIds>;
+        
+        if (rows && rows.length > 0) {
+          return rows;
+        }
+      } catch (oldTableError: unknown) {
+        // Table might have been dropped between check and query
+        if (oldTableError instanceof Error && oldTableError.message.includes('does not exist')) {
+          console.log("[RBAC] Old table was dropped, falling back to new RBAC system...");
+        } else {
+          throw oldTableError; // Re-throw if it's a different error
+        }
       }
     }
     
@@ -98,10 +107,10 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
       return [];
     }
     
-    // Get user's new RBAC user ID (from users table, not tbl_users)
+    // Get user's RBAC user ID from users table
     // userId could be either:
-    // 1. Old tbl_users.userid - need to find via legacy_userid
-    // 2. New users.id - use directly
+    // 1. users.id - use directly
+    // 2. legacy_userid - find via legacy_userid column
     const newUser = await sql/* sql */`
       SELECT id, legacy_userid, email
       FROM public.users 
@@ -124,11 +133,78 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
       ` as Array<{ id: number; legacy_userid: number | null; email: string | null }>;
       
       if (!directUser[0]?.id) {
-        console.warn(`[RBAC] User ${userId} not found in new RBAC system at all`);
-        return [];
+        // User not in new system - check if they exist in old tbl_users and try to migrate
+        console.warn(`[RBAC] User ${userId} not found in new RBAC system. Checking tbl_users for migration...`);
+        
+        try {
+          const oldUser = await sql/* sql */`
+            SELECT userid, email, password, firstname, lastname, department, type, blocked, lastlogindatetime
+            FROM public.tbl_users
+            WHERE userid = ${userId}
+            LIMIT 1
+          ` as Array<{
+            userid: number;
+            email: string | null;
+            password: string | null;
+            firstname: string | null;
+            lastname: string | null;
+            department: string | null;
+            type: string | null;
+            blocked: boolean | null;
+            lastlogindatetime: string | null;
+          }>;
+          
+          if (oldUser[0]?.userid) {
+            console.log(`[RBAC] Found user ${userId} in tbl_users. Attempting to migrate to new users table...`);
+            
+            // Try to create user in new system
+            const migratedUser = await sql/* sql */`
+              INSERT INTO public.users (
+                email, password_hash, password, is_active, legacy_userid, legacy_type,
+                firstname, lastname, department, type, blocked, lastlogindatetime,
+                created_at, updated_at
+              )
+              VALUES (
+                ${oldUser[0].email || `user${userId}@migrated.local`},
+                ${oldUser[0].password || ''},
+                ${oldUser[0].password || ''},
+                ${!Boolean(oldUser[0].blocked ?? false)},
+                ${oldUser[0].userid},
+                ${oldUser[0].type || 'viewer'},
+                ${oldUser[0].firstname || null},
+                ${oldUser[0].lastname || null},
+                ${oldUser[0].department || null},
+                ${oldUser[0].type || 'viewer'},
+                ${Boolean(oldUser[0].blocked ?? false)},
+                ${oldUser[0].lastlogindatetime || null},
+                now(),
+                now()
+              )
+              ON CONFLICT (email) DO UPDATE SET
+                legacy_userid = EXCLUDED.legacy_userid,
+                legacy_type = EXCLUDED.legacy_type,
+                updated_at = now()
+              RETURNING id, legacy_userid, email
+            ` as Array<{ id: number; legacy_userid: number | null; email: string | null }>;
+            
+            if (migratedUser[0]?.id) {
+              newUserId = migratedUser[0].id;
+              console.log(`[RBAC] ✅ Successfully migrated user ${userId} to new RBAC system (new ID: ${newUserId})`);
+            } else {
+              console.warn(`[RBAC] Failed to migrate user ${userId} to new RBAC system`);
+              return [];
+            }
+          } else {
+            console.warn(`[RBAC] User ${userId} not found in tbl_users either`);
+            return [];
+          }
+        } catch (migrationError) {
+          console.error(`[RBAC] Error migrating user ${userId}:`, migrationError);
+          return [];
+        }
+      } else {
+        newUserId = directUser[0].id;
       }
-      
-      newUserId = directUser[0].id;
     } else {
       newUserId = newUser[0].id;
     }

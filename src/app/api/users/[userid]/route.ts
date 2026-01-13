@@ -46,25 +46,51 @@ export async function GET(req: Request) {
     if (isSuperAdmin) {
       // Superadmin can see all passwords
       rows = await sql/* sql */`
-        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime, password
-        FROM public.tbl_users 
-        WHERE userid = ${id} 
+        SELECT 
+          id as userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
+          lastlogindatetime, 
+          COALESCE(password, password_hash) as password
+        FROM public.users 
+        WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
       ` as Array<DbUser & { password?: string | null }>;
     } else if ((isAdmin || isViewer) && currentUserId && Number(currentUserId) === id) {
       // Admin/viewer can only see their own password
       rows = await sql/* sql */`
-        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime, password
-        FROM public.tbl_users 
-        WHERE userid = ${id} 
+        SELECT 
+          id as userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
+          lastlogindatetime, 
+          COALESCE(password, password_hash) as password
+        FROM public.users 
+        WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
       ` as Array<DbUser & { password?: string | null }>;
     } else {
       // Should not reach here due to earlier check, but just in case
       rows = await sql/* sql */`
-        SELECT userid, email, firstname, lastname, department, type, blocked, lastlogindatetime
-        FROM public.tbl_users 
-        WHERE userid = ${id} 
+        SELECT 
+          id as userid, 
+          email, 
+          firstname, 
+          lastname, 
+          department, 
+          COALESCE(type, legacy_type) as type, 
+          COALESCE(blocked, NOT is_active) as blocked, 
+          lastlogindatetime
+        FROM public.users 
+        WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
       ` as DbUser[];
     }
@@ -179,26 +205,30 @@ export async function PUT(req: Request) {
     if (isViewer && !isAdmin && !isSuperAdmin) {
       // Viewers can only update password, email, firstname, lastname
       await sql/* sql */`
-        UPDATE public.tbl_users
+        UPDATE public.users
         SET
           email = ${body.email ?? null},
-          ${body.password ? sql`password = ${String(body.password)},` : sql``}
+          ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
           firstname = ${body.firstname ?? null},
-          lastname = ${body.lastname ?? null}
-        WHERE userid = ${id}`;
+          lastname = ${body.lastname ?? null},
+          updated_at = now()
+        WHERE id = ${id} OR legacy_userid = ${id}`;
     } else {
       // Super Admin can update all fields
       await sql/* sql */`
-        UPDATE public.tbl_users
+        UPDATE public.users
         SET
           email = ${body.email ?? null},
-          ${body.password ? sql`password = ${String(body.password)},` : sql``}
+          ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
           firstname = ${body.firstname ?? null},
           lastname = ${body.lastname ?? null},
           department = ${body.department ?? null},
           type = ${normalizedType},
-          blocked = ${body.blocked ?? null}
-        WHERE userid = ${id}`;
+          legacy_type = ${normalizedType},
+          blocked = ${body.blocked ?? null},
+          is_active = ${body.blocked === null ? sql`is_active` : sql`NOT ${Boolean(body.blocked)}`},
+          updated_at = now()
+        WHERE id = ${id} OR legacy_userid = ${id}`;
     }
     
     // Update access assignments if provided and user is Super Admin
@@ -403,7 +433,9 @@ export async function DELETE(req: Request) {
     
     // Safety check: Prevent deleting the last Super Admin to ensure system always has at least one
     const userToDelete = await sql/* sql */`
-      SELECT type FROM public.tbl_users WHERE userid = ${id} LIMIT 1
+      SELECT COALESCE(type, legacy_type) as type FROM public.users 
+      WHERE id = ${id} OR legacy_userid = ${id} 
+      LIMIT 1
     ` as { type: string | null }[];
     
     if (userToDelete.length > 0) {
@@ -411,9 +443,11 @@ export async function DELETE(req: Request) {
       if (userType === "superadmin") {
         // Check if there's at least one other Super Admin
         const otherSuperAdmin = await sql/* sql */`
-          SELECT userid FROM public.tbl_users 
-          WHERE LOWER(TRIM(type)) = 'superadmin' AND userid != ${id}
-          LIMIT 1` as { userid: number }[];
+          SELECT id FROM public.users 
+          WHERE LOWER(TRIM(COALESCE(type, legacy_type, ''))) = 'superadmin' 
+            AND id != ${id} 
+            AND legacy_userid != ${id}
+          LIMIT 1` as { id: number }[];
         
         if (otherSuperAdmin.length === 0) {
           return NextResponse.json({ error: "CANNOT_DELETE_LAST_SUPER_ADMIN: Cannot delete the last Super Admin. Please ensure at least one Super Admin exists in the system." }, { status: 400 });
@@ -421,7 +455,37 @@ export async function DELETE(req: Request) {
       }
     }
     
-    await sql/* sql */`DELETE FROM public.tbl_users WHERE userid = ${id}`;
+    // Delete from new system (users table)
+    await sql/* sql */`DELETE FROM public.users WHERE id = ${id} OR legacy_userid = ${id}`;
+    
+    // Also delete from new RBAC system
+    try {
+      // Find user in new system by legacy_userid
+      const newUser = await sql/* sql */`
+        SELECT id FROM public.users WHERE legacy_userid = ${id} LIMIT 1
+      ` as Array<{ id: number }>;
+      
+      if (newUser[0]?.id) {
+        const newUserId = newUser[0].id;
+        
+        // Delete user roles first (foreign key constraint)
+        await sql/* sql */`DELETE FROM public.user_roles WHERE user_id = ${newUserId}`;
+        
+        // Delete user resource access
+        await sql/* sql */`DELETE FROM public.user_resource_access WHERE user_id = ${newUserId}`;
+        
+        // Finally delete the user
+        await sql/* sql */`DELETE FROM public.users WHERE id = ${newUserId}`;
+        
+        console.log(`[user delete] ✅ Deleted user from new RBAC system: ${newUserId} (legacy: ${id})`);
+      } else {
+        console.log(`[user delete] User ${id} not found in new RBAC system (may not have been migrated)`);
+      }
+    } catch (error) {
+      console.error("[user delete] Error deleting user from new RBAC system:", error);
+      // Don't fail the request - old system deletion succeeded
+    }
+    
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

@@ -91,7 +91,7 @@ CREATE TABLE public.leadership_form_settings (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_by integer,
   CONSTRAINT leadership_form_settings_pkey PRIMARY KEY (id),
-  CONSTRAINT leadership_form_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.tbl_users(userid)
+    CONSTRAINT leadership_form_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id)
 );
 CREATE TABLE public.newsletters (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -490,7 +490,7 @@ CREATE TABLE IF NOT EXISTS public.user_access_assignments
         ON UPDATE NO ACTION
         ON DELETE CASCADE,
     CONSTRAINT user_access_assignments_userid_fkey FOREIGN KEY (userid)
-        REFERENCES public.tbl_users (userid) MATCH SIMPLE
+        REFERENCES public.users (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE CASCADE
 )
@@ -622,22 +622,82 @@ ALTER TABLE IF EXISTS public.tbljobs
 
 -- DROP TABLE IF EXISTS public.users;
 
+-- Table: public.users
+
+-- DROP TABLE IF EXISTS public.users;
+
 CREATE TABLE IF NOT EXISTS public.users
 (
     id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
     email text COLLATE pg_catalog."default" NOT NULL,
     password_hash text COLLATE pg_catalog."default" NOT NULL,
+    password text COLLATE pg_catalog."default", -- Legacy: kept for compatibility during migration
     is_active boolean NOT NULL DEFAULT true,
+    firstname character varying,
+    lastname character varying,
+    department character varying,
+    type character varying, -- Legacy: role type (admin, superadmin, viewer) - use user_roles for new RBAC
+    blocked boolean DEFAULT false,
+    lastlogindatetime character varying,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    legacy_userid integer,
+    legacy_type text COLLATE pg_catalog."default",
     CONSTRAINT users_pkey PRIMARY KEY (id),
-    CONSTRAINT users_email_key UNIQUE (email)
+    CONSTRAINT users_email_key UNIQUE (email),
+    CONSTRAINT users_legacy_userid_unique UNIQUE (legacy_userid)
 )
 
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.users
     OWNER to postgres;
+
+COMMENT ON TABLE public.users
+    IS 'New RBAC user table - replaces tbl_users for RBAC system';
+
+COMMENT ON COLUMN public.users.legacy_userid
+    IS 'Temporary field to map to old tbl_users.userid during migration';
+
+COMMENT ON COLUMN public.users.legacy_type
+    IS 'Temporary field to store old role type during migration';
+-- Index: idx_users_email
+
+-- DROP INDEX IF EXISTS public.idx_users_email;
+
+CREATE INDEX IF NOT EXISTS idx_users_email
+    ON public.users USING btree
+    (email COLLATE pg_catalog."default" ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_users_is_active
+
+-- DROP INDEX IF EXISTS public.idx_users_is_active;
+
+CREATE INDEX IF NOT EXISTS idx_users_is_active
+    ON public.users USING btree
+    (is_active ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+-- Index: idx_users_legacy_userid
+
+-- DROP INDEX IF EXISTS public.idx_users_legacy_userid;
+
+CREATE INDEX IF NOT EXISTS idx_users_legacy_userid
+    ON public.users USING btree
+    (legacy_userid ASC NULLS LAST)
+    WITH (fillfactor=100, deduplicate_items=True)
+    TABLESPACE pg_default;
+
+-- Trigger: update_users_updated_at
+
+-- DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+
+CREATE OR REPLACE TRIGGER update_users_updated_at
+    BEFORE UPDATE 
+    ON public.users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
 
     -- Table: public.roles
 

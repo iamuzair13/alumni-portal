@@ -1,7 +1,7 @@
 import type { Session } from "next-auth";
 
 /**
- * @deprecated This function uses the old RBAC system (tbl_users.type field).
+ * @deprecated This function uses the legacy type field. Use user_roles table for new RBAC.
  * Use isSuperAdmin() from rbac-standard.ts for the new RBAC system.
  * This function will be removed in a future version.
  * 
@@ -16,7 +16,7 @@ export function isSuperAdminUser(user: Session["user"] | null | undefined): bool
 }
 
 /**
- * @deprecated This function uses the old RBAC system (tbl_users.type field).
+ * @deprecated This function uses the legacy type field. Use user_roles table for new RBAC.
  * Use isAdmin() from rbac-standard.ts for the new RBAC system.
  */
 export function isAdminUser(user: Session["user"] | null | undefined): boolean {
@@ -25,7 +25,7 @@ export function isAdminUser(user: Session["user"] | null | undefined): boolean {
 }
 
 /**
- * @deprecated This function uses the old RBAC system (tbl_users.type field).
+ * @deprecated This function uses the legacy type field. Use user_roles table for new RBAC.
  * Use isViewer() from rbac-standard.ts for the new RBAC system.
  */
 export function isViewerUser(user: Session["user"] | null | undefined): boolean {
