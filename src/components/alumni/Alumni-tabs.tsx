@@ -270,7 +270,6 @@ export const AlumniTabs: React.FC = () => {
   const [exportFaculty, setExportFaculty] = useState<boolean>(true);
   const [exportDepartment, setExportDepartment] = useState<boolean>(true);
   const [exportProgram, setExportProgram] = useState<boolean>(true);
-  const [exportStatus, setExportStatus] = useState<boolean>(true);
   const [exportMaster, setExportMaster] = useState<boolean>(false);
   // Master filter–specific export toggles
   const [exportGender, setExportGender] = useState<boolean>(true);
@@ -1885,13 +1884,22 @@ export const AlumniTabs: React.FC = () => {
         "LinkedIn": item.linkedin || "",
         
         // System Information
-        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : item.verify === "pending" || item.verify === null || item.verify === "" ? "Under Approval" : item.verify || "",
+        "Verification Status": (() => {
+          const verifyValue = item.verify;
+          if (verifyValue === "true") return "Verified";
+          if (verifyValue === "false") return "Unverified";
+          if (verifyValue === "pending" || verifyValue === null || verifyValue === "" || verifyValue === undefined) return "Under Approval";
+          return String(verifyValue || "");
+        })(),
         "Last Login": item.lasttimelogin || "",
         "Login Count": item.logincount || 0,
         "Email Send Count": item.emailsendcount || 0,
         "Email Send Status": item.emailsendstatus || "",
         "Data Source": item.datasource || "",
-        "Alumni Status": item.alumnistatus || "",
+        "Alumni Status": (() => {
+          const hasLogin = (item.lasttimelogin && String(item.lasttimelogin).trim() !== "") || (item.logincount && Number(item.logincount) > 0);
+          return hasLogin ? "Active" : "Inactive";
+        })(),
         "Photo Usage Consent": item.alumni_consent_pic === true ? "Allowed" : item.alumni_consent_pic === false ? "Not Allowed" : "Null",
         "Created Date Time": item.createddatetime || "",
         "Today Date": item.todaydate || "",
@@ -2015,7 +2023,8 @@ export const AlumniTabs: React.FC = () => {
     const facultyKeys = ["Faculty"];
     const departmentKeys = ["Department"];
     const programKeys = ["Academic Session", "Degree Title"];
-    const statusKeys = ["Verification Status", "Alumni Status"];
+    // Status columns - only include if at least one status is selected in the dropdown
+    const statusKeys = additionalFilter.length > 0 ? ["Verification Status", "Alumni Status"] : [];
 
     // Master filter column groups
     const genderKeys = ["Gender"];
@@ -2044,7 +2053,10 @@ export const AlumniTabs: React.FC = () => {
       if (facultyKeys.includes(key)) return exportFaculty;
       if (departmentKeys.includes(key)) return exportDepartment;
       if (programKeys.includes(key)) return exportProgram;
-      if (statusKeys.includes(key)) return exportStatus;
+      if (statusKeys.includes(key)) {
+        // Status columns are included if at least one status is selected in the dropdown
+        return additionalFilter.length > 0;
+      }
 
       if (genderKeys.includes(key)) return exportGender;
       if (maritalStatusKeys.includes(key)) return exportMaritalStatus;
@@ -2101,7 +2113,7 @@ export const AlumniTabs: React.FC = () => {
     try {
       loadingToast = toast.loading("Preparing export data...");
 
-      // Fetch data
+      // Fetch data (already filtered by statusFilter and other filters via API)
       const data = await fetchAndTransformData();
       
       // Dismiss loading toast and show processing toast
@@ -2174,7 +2186,7 @@ export const AlumniTabs: React.FC = () => {
     exportFaculty,
     exportDepartment,
     exportProgram,
-    exportStatus,
+    additionalFilter, // Status columns depend on selected statuses in dropdown
     exportMaster,
   ]);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -2876,16 +2888,9 @@ export const AlumniTabs: React.FC = () => {
               <div className="flex-1  sm:min-w-[160px]">
                 <label
                   htmlFor="status-filter"
-                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
+                  className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider"
                 >
-                  <span>Status</span>
-                  <input
-                    type="checkbox"
-                    checked={exportStatus}
-                    onChange={(e) => setExportStatus(e.target.checked)}
-                    className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                    title="Include status columns in Excel export"
-                  />
+                  Status
                 </label>
                 <div className="relative" ref={statusFilterRef}>
                   <button
@@ -2976,7 +2981,30 @@ export const AlumniTabs: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={exportMaster}
-                      onChange={(e) => setExportMaster(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setExportMaster(checked);
+                        // When master filter checkbox is toggled, toggle all master filter checkboxes
+                        setExportGender(checked);
+                        setExportMaritalStatus(checked);
+                        setExportHomeCountry(checked);
+                        setExportHomeCity(checked);
+                        setExportProvince(checked);
+                        setExportCampus(checked);
+                        setExportAdmissionYear(checked);
+                        setExportPassingYear(checked);
+                        setExportOccupationStatus(checked);
+                        setExportSector(checked);
+                        setExportWorkCity(checked);
+                        setExportWorkCountry(checked);
+                        setExportInstitutionName(checked);
+                        setExportProgramEnrolled(checked);
+                        setExportFundingSource(checked);
+                        setExportInstitutionCountry(checked);
+                        setExportInstitutionCity(checked);
+                        setExportMrNo(checked);
+                        setExportPhotoConsent(checked);
+                      }}
                       className="h-3 w-3 text-blue-600 border-gray-300 rounded"
                       title="Include all additional (master) columns in Excel export"
                       onClick={(e) => e.stopPropagation()}
