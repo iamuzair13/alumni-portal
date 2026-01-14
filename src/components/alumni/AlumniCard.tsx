@@ -352,11 +352,17 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     // Otherwise use fetched applicants
     if (applicants && applicants.length) {
       return applicants.map((r) => {
+        // Normalize identifiers: use SAP ID if valid, otherwise fallback to registration number
+        const rawSapid = r.sapid ? String(r.sapid).trim() : "";
+        const normalizedSapid = rawSapid.toLowerCase() === "null" ? "" : rawSapid;
+        const rawRegNo = r.registrationno ? String(r.registrationno).trim() : "";
+        const effectiveId = normalizedSapid || rawRegNo || "";
+
         // Map database status to UI status using centralized config
         const uiStatus = mapDbStatusToUI(r.status);
         
         return {
-          id: String(r.sapid ?? ""),
+          id: effectiveId,
           name: String(r.alumniname ?? ""),
           email: r.email ?? undefined,
           program: String(r.degreetitle ?? ""),
@@ -367,7 +373,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           status: uiStatus,
           createdAt: String(r.createdat ?? ""),
           department: String(r.departmentname ?? ""),
-          registrationno: r.registrationno ?? null,
+          registrationno: rawRegNo || null,
         };
       }) as AlumniListItem[];
     }
@@ -1245,8 +1251,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           throw new Error(errorData.error || `Failed to delete: ${res.status}`);
         }
 
-        // Invalidate queries to refresh the list
-        queryClient.invalidateQueries({ queryKey: ["alumni-cards", "applicants"] });
+        // Invalidate queries to refresh the list and card status
+        // Card applicants lists use the key prefix ["alumni", "card", "applicants", status]
+        queryClient.invalidateQueries({ queryKey: ["alumni", "card", "applicants"], exact: false });
         queryClient.invalidateQueries({ queryKey: ["alumni-cards", "status", sapId] });
         
         setShowDeleteModal(false);

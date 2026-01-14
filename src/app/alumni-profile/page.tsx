@@ -72,7 +72,8 @@ async function getProfile(searchParams: { sapid?: string }) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
-        WHERE a.sapid = ${sapid} 
+        WHERE TRIM(COALESCE(a.sapid, '')) = ${sapid}
+           OR TRIM(COALESCE(a.registrationno, '')) = ${sapid}
         LIMIT 1`;
       return rows[0] as Profile | undefined;
     }
@@ -133,7 +134,7 @@ async function getProfile(searchParams: { sapid?: string }) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
-        WHERE a.sapid = ${sessionSapid} 
+        WHERE TRIM(COALESCE(a.sapid, '')) = ${sessionSapid}
         LIMIT 1`;
       if (rows[0]) return rows[0] as Profile | undefined;
     }
@@ -304,11 +305,12 @@ let cardImageFile: string | null = null;
   } else {
     try {
       if (sapId) {
-        // Preload validation now uses sapid to check existing tblcard association
+        // Preload validation now uses sapid/registrationno to check existing tblcard association
         const cr = await sql/* sql */`
           SELECT c.status, c.cardpicture, c.card_image, c.reason_onhold, c.comment, c.validity_date FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-          WHERE a.sapid = ${sapId}
+          WHERE TRIM(COALESCE(a.sapid, '')) = ${sapId}
+             OR TRIM(COALESCE(a.registrationno, '')) = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
         const rawStatus = cr[0]?.status ? String(cr[0].status).trim() : "";
         const upperStatus = rawStatus.toUpperCase();
@@ -332,6 +334,9 @@ let cardImageFile: string | null = null;
           cardStatus = "under-review"; // Show as "Under Review"
         } else if (rawStatus === "full") {
           cardStatus = "full";
+        } else if (cr[0]) {
+          // Unknown status but card record exists - treat as under review
+          cardStatus = "under-review";
         } else {
           // No record found - no application
           cardStatus = "none";

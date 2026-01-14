@@ -31,6 +31,7 @@ type AlumniCardItem = {
   workCountry: string;
   status: CardStatus;
   createdAt: string;
+  registrationno?: string | null;
 };
 
 type ActionKey = "view" | "verify" | "decline" | "suspend" | "delete";
@@ -50,8 +51,14 @@ type AlumniCardsProps = {
 
 // Convert CardApplicant to AlumniCardItem
 function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { department: string } {
+  // Normalize identifiers: prefer SAP ID when present and valid, otherwise fall back to registration number
+  const rawSapid = applicant.sapid ? String(applicant.sapid).trim() : "";
+  const normalizedSapid = rawSapid.toLowerCase() === "null" ? "" : rawSapid;
+  const rawRegNo = applicant.registrationno ? String(applicant.registrationno).trim() : "";
+  const effectiveId = normalizedSapid || rawRegNo || "";
+
   return {
-    id: String(applicant.sapid),
+    id: effectiveId,
     name: applicant.alumniname || "Unknown",
     email: applicant.email || undefined,
     program: applicant.degreetitle || "N/A",
@@ -62,6 +69,7 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
     workCountry: "N/A", // Not available in API response
     status: mapDbStatusToUI(applicant.status),
     createdAt: applicant.createdat || new Date().toISOString(),
+    registrationno: rawRegNo || null,
   };
 }
 
@@ -205,8 +213,9 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
       }
 
       if (key === "delete") {
-        // Handle delete - you may want to add a delete API endpoint
-        toast.error("Delete functionality not yet implemented");
+        // RowActions in AlumniCard.tsx already performed the delete.
+        // Just show a success toast and let React Query refresh the list.
+        toast.success("Alumni card deleted successfully");
         return;
       }
 

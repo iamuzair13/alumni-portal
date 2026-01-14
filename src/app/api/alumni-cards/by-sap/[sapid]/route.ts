@@ -19,13 +19,14 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const normalizedSapid = String(sapid || "").trim();
     
-    // Fetch card data
+    // Fetch card data (by SAP ID or registration number)
     const rows = await sql/* sql */`
       SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold, c.validity_date,
              a.sapid, a.personalemail, a.officialemail, a.universityemail
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-      WHERE a.sapid = ${normalizedSapid}
+      WHERE TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
+         OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
       LIMIT 1`;
     
     const r = rows[0];
@@ -210,7 +211,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
         SELECT c.cardid, c.status, a.alumniid, a.alumniname, a.personalemail, a.officialemail, a.universityemail
         FROM public.tblcard c
         JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-        WHERE a.sapid = ${normalizedSapid}
+        WHERE TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
+           OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
         LIMIT 1
       ` as Array<{
         cardid: number;
@@ -251,7 +253,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
             reason_onhold = ${reasonOnhold},
             comment = ${defaultNote}
           FROM public.tbl_alumni a
-          WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
+          WHERE a.alumniid = c.alumniid 
+            AND (
+              TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
+              OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
+            )
           RETURNING c.cardid
         ` as Array<{ cardid: number }>;
       } else {
@@ -259,7 +265,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
           UPDATE public.tblcard c
           SET status = ${finalStatus}, reason_onhold = NULL
           FROM public.tbl_alumni a
-          WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
+          WHERE a.alumniid = c.alumniid
+            AND (
+              TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
+              OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
+            )
           RETURNING c.cardid
         ` as Array<{ cardid: number }>;
       }
@@ -335,7 +345,8 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       SELECT c.cardid, c.alumniid, c.cardpicture, c.card_image
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
-      WHERE a.sapid = ${normalizedSapid}
+      WHERE TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
+         OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
       LIMIT 1
     ` as Array<{
       cardid: number;
@@ -388,7 +399,11 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     const deleteRows = await sql/* sql */`
       DELETE FROM public.tblcard c
       USING public.tbl_alumni a
-      WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
+      WHERE a.alumniid = c.alumniid
+        AND (
+          TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
+          OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
+        )
       RETURNING c.cardid
     `;
     

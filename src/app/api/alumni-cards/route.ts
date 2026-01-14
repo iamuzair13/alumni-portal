@@ -101,7 +101,6 @@ export async function POST(req: Request) {
       }
       const cnicno = String(body?.cnicno || "");
       const cardaddress = String(body?.cardaddress || "");
-      const status = String(body?.status || "requested");
       const cardpicture = String(body?.cardpicture || "profile").slice(0, 50);
       const validityDateStr = body?.validity_date ? String(body.validity_date) : null;
       // Calculate validity date (3 years from application date) if not provided
@@ -112,14 +111,26 @@ export async function POST(req: Request) {
         validityDate = futureDate.toISOString().split("T")[0];
       }
       
+      // Check if this is a new application (no existing record)
+      const existingCard = await sql/* sql */`
+        SELECT cardid, status FROM public.tblcard WHERE alumniid = ${alumniId} LIMIT 1
+      `;
+      const isNewApplication = existingCard.length === 0;
+      
+      // For new applications, always set status to "UnderReview"
+      // For existing applications, use the status from body if provided, otherwise keep existing status
+      let status: string;
+      if (isNewApplication) {
+        status = "UnderReview";
+      } else {
+        // For updates, use status from body if provided, otherwise keep existing status
+        const existingStatus = existingCard[0]?.status ? String(existingCard[0].status) : "UnderReview";
+        status = body?.status ? String(body.status) : existingStatus;
+      }
+      
       if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
         return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
       }
-      // Check if this is a new application (no existing record)
-      const existingCard = await sql/* sql */`
-        SELECT cardid FROM public.tblcard WHERE alumniid = ${alumniId} LIMIT 1
-      `;
-      const isNewApplication = existingCard.length === 0;
 
       const rows = await sql/* sql */`
         INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat, validity_date)
@@ -130,7 +141,7 @@ export async function POST(req: Request) {
             status = EXCLUDED.status,
             cardpicture = EXCLUDED.cardpicture,
             card_image = EXCLUDED.card_image,
-            createdat = NOW(),
+            createdat = public.tblcard.createdat,
             validity_date = EXCLUDED.validity_date
         RETURNING cardid`;
       
