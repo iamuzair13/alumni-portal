@@ -55,7 +55,7 @@ export type UserResourceAccess = {
 
 /**
  * Get user ID from session (new RBAC system)
- * Returns the new users.id, not legacy tbl_users.userid
+ * Returns the users.id from the users table
  */
 export async function getUserIdFromSession(session: Session | null): Promise<number | null> {
   if (!session?.user) return null;

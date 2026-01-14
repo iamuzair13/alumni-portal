@@ -10,6 +10,34 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user is admin/viewer/superadmin
+    const userType = String((session.user as { type?: string })?.type || "").toLowerCase().trim();
+    const isAdminUser = userType === "admin" || userType === "viewer" || userType === "superadmin";
+    
+    if (isAdminUser) {
+      // Fetch from users table for admin users
+      const currentUserId = (session.user as { userId?: number })?.userId;
+      if (currentUserId) {
+        const userRows = await sql/* sql */`
+          SELECT user_image FROM public.users 
+          WHERE id = ${currentUserId} OR legacy_userid = ${currentUserId}
+          LIMIT 1`;
+        
+        if (userRows[0]?.user_image) {
+          const image = String(userRows[0].user_image).trim();
+          if (image) {
+            return NextResponse.json({ 
+              image,
+              timestamp: Date.now()
+            }, { status: 200 });
+          }
+        }
+      }
+      // No image found for admin user
+      return NextResponse.json({ image: null }, { status: 200 });
+    }
+
+    // For alumni users, use existing logic
     // First try to get SAP ID or registration number from session
     const sessionSapid = (session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined;
     const sessionRegNo = (session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined;

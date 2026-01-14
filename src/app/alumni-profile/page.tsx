@@ -293,6 +293,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
 let cardPicture: string | null = null;
 let cardImageFile: string | null = null;
   let reasonOnhold: string | null = null;
+  let cardComment: string | null = null;
   let validityDate: string | null = null;
   // Always check card status from database - don't auto-activate for admins or new users
   // New users should see "Apply" button until they actually apply for a card
@@ -305,7 +306,7 @@ let cardImageFile: string | null = null;
       if (sapId) {
         // Preload validation now uses sapid to check existing tblcard association
         const cr = await sql/* sql */`
-          SELECT c.status, c.cardpicture, c.card_image, c.reason_onhold, c.validity_date FROM public.tblcard c
+          SELECT c.status, c.cardpicture, c.card_image, c.reason_onhold, c.comment, c.validity_date FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE a.sapid = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
@@ -314,20 +315,21 @@ let cardImageFile: string | null = null;
         cardPicture = cr[0]?.cardpicture ?? null;
         cardImageFile = cr[0]?.card_image ?? null;
         reasonOnhold = cr[0]?.reason_onhold ?? null;
+        cardComment = cr[0]?.comment ?? null;
         validityDate = cr[0]?.validity_date ? String(cr[0].validity_date) : null;
         
         // Map database statuses to CardStatus
-        // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
+        // Database values: "UnderReview", "UnderPrinting", "Active", "Delivered", "Onhold", "Pending" (legacy)
         if (upperStatus === "DELIVERED") {
           cardStatus = "received"; // Show as "Received" in profile
         } else if (upperStatus === "ACTIVE") {
           cardStatus = "active"; // Show as "Active" only if not delivered
-        } else if (upperStatus === "PROCESS") {
+        } else if (upperStatus === "PROCESS" || upperStatus === "UNDERPRINTING") {
           cardStatus = "inprocess"; // Show as "In-Process"
         } else if (upperStatus === "ONHOLD") {
           cardStatus = "onhold"; // Show as "On Hold" with reason
-        } else if (upperStatus === "PENDING" || (!rawStatus && cr[0])) {
-          cardStatus = "pending"; // Show as "Pending"
+        } else if (upperStatus === "UNDERREVIEW" || upperStatus === "UNDER-REVIEW" || upperStatus === "PENDING" || (!rawStatus && cr[0])) {
+          cardStatus = "under-review"; // Show as "Under Review"
         } else if (rawStatus === "full") {
           cardStatus = "full";
         } else {
@@ -620,7 +622,7 @@ let cardImageFile: string | null = null;
                         ? "bg-green-100 border-gray-100" 
                         : cardStatus === "active" 
                         ? "bg-emerald-50 border-emerald-200" 
-                        : cardStatus === "pending" 
+                        : cardStatus === "under-review" 
                         ? "bg-amber-50 border-amber-200" 
                         : cardStatus === "inprocess"
                         ? "bg-blue-50 border-blue-200"
@@ -637,7 +639,7 @@ let cardImageFile: string | null = null;
                               ? "text-green-700" 
                               : cardStatus === "active" 
                               ? "text-emerald-700" 
-                              : cardStatus === "pending" 
+                              : cardStatus === "under-review" 
                               ? "text-amber-700" 
                               : cardStatus === "inprocess"
                               ? "text-blue-700"
@@ -673,10 +675,10 @@ let cardImageFile: string | null = null;
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
                                 <span className="text-xs">On Hold</span>
                               </div>
-                            ) : cardStatus === "pending" ? (
+                            ) : cardStatus === "under-review" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 border border-amber-200">
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-amber-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11H11V7h2v6zm0 4H11v-2h2v2z"/></svg>
-                                <span className="text-xs">Pending</span>
+                                <span className="text-xs">Under Review</span>
                               </div>
                             ) : cardStatus === "full" ? (
                               <div className="inline-flex items-center gap-1 rounded-md bg-sky-50 text-sky-700 px-2 py-0.5 border border-sky-200">
@@ -762,8 +764,8 @@ let cardImageFile: string | null = null;
                         ) : (
                           <>
                             <div className="mt-3 sm:mt-4">
-                              {cardStatus === "pending" ? (
-                                <p className="text-xs text-amber-700">Your application is pending review.</p>
+                              {cardStatus === "under-review" ? (
+                                <p className="text-xs text-amber-700">Your application is under review.</p>
                               ) : cardStatus === "inprocess" ? (
                                 <p className="text-xs text-blue-700">Your application is in process.</p>
                               ) : cardStatus === "onhold" ? (
@@ -774,7 +776,13 @@ let cardImageFile: string | null = null;
                                       Reason: {reasonOnhold}
                                     </p>
                                   )}
-                                  <p className="mt-1">Please contact us for more information.</p>
+                                  {cardComment && (
+                                    <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-md">
+                                      <p className="font-medium text-rose-800 mb-1">Note:</p>
+                                      <p className="text-rose-700">{cardComment}</p>
+                                    </div>
+                                  )}
+                                  {!cardComment && <p className="mt-1">Please contact us for more information.</p>}
                                 </div>
                               ) : cardStatus === "full" ? (
                                 <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
@@ -782,7 +790,7 @@ let cardImageFile: string | null = null;
                                 <p className="text-xs text-gray-700 mb-2 sm:mb-3">Start your application to get your alumni card.</p>
                               )}
                             </div>
-                            {cardStatus === "pending" ? (
+                            {cardStatus === "under-review" ? (
                             <button
                               type="button"
                               disabled

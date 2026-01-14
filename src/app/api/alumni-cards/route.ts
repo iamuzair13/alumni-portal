@@ -244,11 +244,15 @@ export async function POST(req: Request) {
     // Validity date is calculated as 3 years from application date
     const status = "UnderReview";
 
+    // When updating card image, if status is "Onhold", automatically change to "UnderReview"
     const rows = await sql/* sql */`
       INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date)
       VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate})
       ON CONFLICT (alumniid) DO UPDATE
-      SET status = EXCLUDED.status,
+      SET status = CASE 
+          WHEN public.tblcard.status = 'Onhold' THEN 'UnderReview'
+          ELSE EXCLUDED.status
+        END,
           cardpicture = EXCLUDED.cardpicture,
           card_image = EXCLUDED.card_image,
           createdat = NOW(),

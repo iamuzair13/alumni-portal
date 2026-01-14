@@ -219,14 +219,22 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "FORBIDDEN: Admins can only update their own account" }, { status: 403 });
       }
       // Admin can only update password, email, firstname, lastname for themselves
+      // Hash password if provided
+      let hashedPassword: string | undefined = undefined;
+      if (body.password) {
+        const { hashPassword } = await import("@/auth/credentials");
+        hashedPassword = await hashPassword(String(body.password));
+      }
+      
       await sql/* sql */`
-        UPDATE public.tbl_users
+        UPDATE public.users
         SET
           email = ${body.email ?? null},
-          ${body.password ? sql`password = ${String(body.password)},` : sql``}
+          ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
           firstname = ${body.firstname ?? null},
-          lastname = ${body.lastname ?? null}
-        WHERE userid = ${id}`;
+          lastname = ${body.lastname ?? null},
+          updated_at = now()
+        WHERE id = ${id} OR legacy_userid = ${id}`;
       return NextResponse.json({ ok: true }, { status: 200 });
     }
     

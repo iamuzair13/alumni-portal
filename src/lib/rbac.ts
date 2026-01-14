@@ -134,9 +134,24 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
       
       if (!directUser[0]?.id) {
         // User not in new system - check if they exist in old tbl_users and try to migrate
-        console.warn(`[RBAC] User ${userId} not found in new RBAC system. Checking tbl_users for migration...`);
+        // Note: tbl_users may not exist in production, so this is wrapped in try-catch
+        console.warn(`[RBAC] User ${userId} not found in new RBAC system. Checking legacy tables for migration...`);
         
         try {
+          // Check if tbl_users table exists first
+          const tableExists = await sql/* sql */`
+            SELECT EXISTS (
+              SELECT FROM information_schema.tables 
+              WHERE table_schema = 'public' 
+              AND table_name = 'tbl_users'
+            ) as exists
+          ` as Array<{ exists: boolean }>;
+          
+          if (!tableExists[0]?.exists) {
+            console.warn(`[RBAC] tbl_users table does not exist, skipping migration check`);
+            return [];
+          }
+          
           const oldUser = await sql/* sql */`
             SELECT userid, email, password, firstname, lastname, department, type, blocked, lastlogindatetime
             FROM public.tbl_users

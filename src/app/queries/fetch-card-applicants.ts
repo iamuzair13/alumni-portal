@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 export type CardApplicant = {
   alumniid: number;
   sapid: string;
+  registrationno: string | null;
   alumniname: string;
   email: string | null;
   yearofending: number | null;

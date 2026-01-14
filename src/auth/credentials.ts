@@ -114,7 +114,7 @@ export async function authenticateCredentials(identifier: string, password: stri
         SELECT 
           id as userid, 
           email, 
-          COALESCE(password, password_hash) as password, 
+          COALESCE(password_hash, password) as password, 
           firstname, 
           lastname, 
           department, 
@@ -132,7 +132,7 @@ export async function authenticateCredentials(identifier: string, password: stri
     }
     const dbUserRow = rows[0] as ((DbUser & { password: string | null; type_normalized: string | null; type_original: string | null }) | undefined);
     
-    // If user exists in tbl_users, handle them (regardless of type)
+    // If user exists in users table, handle them (regardless of type)
     if (dbUserRow) {
       // Reconstruct dbUser with normalized type
       const dbUser: DbUser & { password: string | null } = {
@@ -193,7 +193,7 @@ export async function authenticateCredentials(identifier: string, password: stri
       };
       log("OK", `${normalizedType} credentials verified (original type: ${dbUserRow.type_original})`);
       try {
-        await sql/* sql */`UPDATE public.tbl_users SET lastlogindatetime = ${new Date().toISOString()} WHERE userid = ${dbUser.userid}`;
+        await sql/* sql */`UPDATE public.users SET lastlogindatetime = ${new Date().toISOString()} WHERE id = ${dbUser.userid} OR legacy_userid = ${dbUser.userid}`;
       } catch {}
       return u;
     }

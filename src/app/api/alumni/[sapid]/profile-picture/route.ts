@@ -382,6 +382,28 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
         WHERE alumniid = ${alumni.alumniid}`;
     }
 
+    // Check if card status is "Onhold" and change it to "UnderReview" when profile data changes
+    try {
+      const cardStatus = await sql/* sql */`
+        SELECT status 
+        FROM public.tblcard 
+        WHERE alumniid = ${alumni.alumniid} 
+        LIMIT 1
+      ` as Array<{ status: string | null }>;
+      
+      if (cardStatus[0]?.status === "Onhold") {
+        await sql/* sql */`
+          UPDATE public.tblcard 
+          SET status = 'UnderReview'
+          WHERE alumniid = ${alumni.alumniid}
+        `;
+        console.log("[API] Card status changed from Onhold to UnderReview due to profile picture update");
+      }
+    } catch (cardError) {
+      // Don't fail the request if card status update fails
+      console.warn("[API] Could not update card status:", cardError);
+    }
+
     // Return the full path for immediate display
     const imagePath = `/images/${filename}`;
     const duration = Date.now() - startTime;

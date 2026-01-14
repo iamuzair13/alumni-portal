@@ -1,9 +1,11 @@
 import UserMetaCard from "@/components/user-profile/UserMetaCard";
+import AdminProfileForm from "@/components/forms/AdminProfileForm";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Metadata } from "next";
 import React from "react";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
+import { isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
 
 export const metadata: Metadata = {
   title: "Next.js Profile | TailAdmin - Next.js Dashboard Template",
@@ -16,11 +18,30 @@ type ProfilePageProps = {
 };
 
 export default async function Profile({ searchParams }: ProfilePageProps) {
+  const session = await auth();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const sapidParam = resolvedSearchParams?.sapid;
+  
+  // Check if user is admin/viewer/superadmin
+  const isAdmin = isAdminUser(session?.user);
+  const isViewer = isViewerUser(session?.user);
+  const isSuperAdmin = isSuperAdminUser(session?.user);
+  const isAdminUserType = isAdmin || isViewer || isSuperAdmin;
+  
+  // If user is admin/viewer/superadmin, show admin profile form
+  if (isAdminUserType) {
+    return (
+      <ComponentCard title="Edit Profile" className="">
+        <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
+          <AdminProfileForm />
+        </div>
+      </ComponentCard>
+    );
+  }
+  
+  // Otherwise, show alumni profile (existing logic)
   let sapid = Array.isArray(sapidParam) ? sapidParam[0] : sapidParam;
   if (!sapid) {
-    const session = await auth();
     const email = session?.user?.email ? String(session.user.email) : undefined;
     if (email) {
       const rows = await sql/* sql */`

@@ -10,6 +10,7 @@ import { AlumniChaptersTab } from "@/components/alumni/AlumniChaptersTab";
 import { AlumniAssociationTab } from "@/components/alumni/AlumniAssociationTab";
 import { AlumniScholarshipsTab } from "@/components/alumni/AlumniScholarshipsTab";
 import { AlumniMembershipsTab } from "@/components/alumni/AlumniMembershipsTab";
+import { JobsTab } from "@/components/alumni/JobsTab";
 
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
@@ -22,6 +23,7 @@ type MenuKey =
   | "AlumniAssociation"
   | "AlumniScholarships"
   | "AlumniMemberships"
+  | "Jobs"
   | "AadAlumni";
 
 const MENU_TABS: { key: MenuKey; label: string; urlTab: string }[] = [
@@ -32,6 +34,7 @@ const MENU_TABS: { key: MenuKey; label: string; urlTab: string }[] = [
   { key: "AlumniAssociation", label: "Alumni Association", urlTab: "alumni-association" },
   { key: "AlumniScholarships", label: "Alumni Scholarships", urlTab: "alumni-scholarships" },
   { key: "AlumniMemberships", label: "Alumni Memberships", urlTab: "alumni-memberships" },
+  { key: "Jobs", label: "Jobs", urlTab: "jobs" },
   { key: "AadAlumni", label: "Add Alumni", urlTab: "add-alumni" },
 ];
 
@@ -44,6 +47,7 @@ const urlTabToMenuKey: Record<string, MenuKey> = {
   "alumni-association": "AlumniAssociation",
   "alumni-scholarships": "AlumniScholarships",
   "alumni-memberships": "AlumniMemberships",
+  "jobs": "Jobs",
   "add-alumni": "AadAlumni",
 };
 
@@ -56,6 +60,7 @@ const menuKeyToUrlTab: Record<MenuKey, string> = {
   "AlumniAssociation": "alumni-association",
   "AlumniScholarships": "alumni-scholarships",
   "AlumniMemberships": "alumni-memberships",
+  "Jobs": "jobs",
   "AadAlumni": "add-alumni",
 };
 
@@ -136,6 +141,7 @@ export const AlumniTabbedMenu: FC = () => {
               {selected === "AlumniAssociation" && <AlumniAssociationTab />}
               {selected === "AlumniScholarships" && <AlumniScholarshipsTab />}
               {selected === "AlumniMemberships" && <AlumniMembershipsTab />}
+              {selected === "Jobs" && <JobsTab />}
               {selected === "AadAlumni" && <AlumniRegistrationFormComponent />}
             </div>
 

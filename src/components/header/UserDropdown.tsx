@@ -15,9 +15,10 @@ export default function UserDropdown() {
 
   const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
   const isAlumni = t === "alumni";
+  const isAdminUser = t === "admin" || t === "viewer" || t === "superadmin";
   
-  // Fetch current user's profile image from database for alumni users
-  const { data: userImageData } = useCurrentUserImage(isAlumni && status === "authenticated");
+  // Fetch current user's profile image from database for both alumni and admin users
+  const { data: userImageData } = useCurrentUserImage((isAlumni || isAdminUser) && status === "authenticated");
   
   // Reset image error when image data changes
   useEffect(() => {
@@ -26,12 +27,12 @@ export default function UserDropdown() {
     }
   }, [userImageData?.image]);
   
-  // Determine which image to use: database image for alumni, session image for others
+  // Determine which image to use: database image for alumni/admin, session image for others
   const profileImage = useMemo(() => {
     // If image error occurred, always use fallback
     if (imageError) return "/images/person.jpg";
     
-    if (isAlumni && userImageData?.image) {
+    if ((isAlumni || isAdminUser) && userImageData?.image) {
       let imagePath = userImageData.image.trim();
       
       // If empty after trim, fallback to default
@@ -66,7 +67,7 @@ export default function UserDropdown() {
       return sessionImage;
     }
     return "/images/person.jpg";
-  }, [isAlumni, userImageData, session?.user?.image, imageError]);
+  }, [isAlumni, isAdminUser, userImageData, session?.user?.image, imageError]);
 
 function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   e.stopPropagation();

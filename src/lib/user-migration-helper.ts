@@ -1,15 +1,15 @@
 /**
  * User Migration Helper
  * 
- * Provides helper functions to query the new users table with column aliases
- * that match the old tbl_users structure for easier migration
+ * Provides helper functions to query the users table with column aliases
+ * for backward compatibility
  */
 
 import { sql } from "@/lib/dbconnect";
 
 /**
- * Query users table with column aliases matching tbl_users structure
- * This allows existing code to work with minimal changes during migration
+ * Query users table with column aliases
+ * This allows existing code to work with minimal changes
  */
 export async function queryUsersAsTblUsers(whereClause?: string, orderBy?: string) {
   const where = whereClause || "1=1";

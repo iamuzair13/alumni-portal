@@ -367,6 +367,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           status: uiStatus,
           createdAt: String(r.createdat ?? ""),
           department: String(r.departmentname ?? ""),
+          registrationno: r.registrationno ?? null,
         };
       }) as AlumniListItem[];
     }
@@ -402,13 +403,17 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const q = debouncedQuery.toLowerCase();
     return filteredByStatus.filter((i) => {
       const contact = `${i.email ?? ""} ${i.mobile ?? ""}`.toLowerCase();
+      const sapId = i.id?.toLowerCase() ?? "";
+      const registrationNo = (i.registrationno ?? "").toLowerCase();
       return (
         i.name.toLowerCase().includes(q) ||
         String(i.passingYear).includes(q) ||
         i.program.toLowerCase().includes(q) ||
         (i.designation ?? "").toLowerCase().includes(q) ||
         (i.organization ?? "").toLowerCase().includes(q) ||
-        contact.includes(q)
+        contact.includes(q) ||
+        sapId.includes(q) ||
+        registrationNo.includes(q)
       );
     });
   }, [baseItems, debouncedQuery, statusFilter]);

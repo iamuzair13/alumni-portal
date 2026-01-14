@@ -237,12 +237,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     // Update status and reason_onhold if provided
     // If status is not "Onhold", clear reason_onhold
+    // If status is "Onhold", add a default note to the comment field
     let rows: Array<{ cardid: number }>;
     try {
       if (finalStatus === "Onhold") {
+        // Add default note about profile picture when status is set to Onhold
+        const defaultNote = "Please update your profile picture to proceed with the Alumni Card application. You can upload your photo from the profile section.";
+        
         rows = await sql/* sql */`
           UPDATE public.tblcard c
-          SET status = ${finalStatus}, reason_onhold = ${reasonOnhold}
+          SET 
+            status = ${finalStatus}, 
+            reason_onhold = ${reasonOnhold},
+            comment = ${defaultNote}
           FROM public.tbl_alumni a
           WHERE a.alumniid = c.alumniid AND a.sapid = ${normalizedSapid}
           RETURNING c.cardid

@@ -38,7 +38,7 @@ export async function GET() {
     const currentUserId = (session?.user as { userId?: number })?.userId;
     
     if (isSuperAdmin) {
-      // Super Admin can see all passwords
+      // Super Admin can see all passwords - get plain text from users.password
       const rows = await sql/* sql */`
         SELECT 
           id as userid, 
@@ -48,11 +48,18 @@ export async function GET() {
           department, 
           COALESCE(type, legacy_type) as type, 
           COALESCE(blocked, NOT is_active) as blocked, 
-          lastlogindatetime, 
-          COALESCE(password, password_hash) as password
+          lastlogindatetime,
+          password
         FROM public.users
-        ORDER BY id DESC` as DbUser[];
-      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+        ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
+      
+      // Return plain text passwords (exclude hashed ones)
+      const usersWithPlainPasswords = rows.map((user) => ({
+        ...user,
+        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
+      }));
+      
+      return NextResponse.json({ items: usersWithPlainPasswords ?? [] }, { status: 200 });
     } else if (isAdmin && currentUserId) {
       // Admins can only see their own password
       const userIdNum = Number(currentUserId);
@@ -85,13 +92,19 @@ export async function GET() {
           COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime,
           CASE 
-            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN COALESCE(password, password_hash)
+            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN password
             ELSE NULL 
           END as password
         FROM public.users
-        ORDER BY id DESC` as DbUser[];
+        ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
       
-      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+      // Return plain text passwords (exclude hashed ones)
+      const usersWithPlainPasswords = rows.map((user) => ({
+        ...user,
+        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
+      }));
+      
+      return NextResponse.json({ items: usersWithPlainPasswords ?? [] }, { status: 200 });
     } else if (isViewer && currentUserId) {
       // Viewer: can only see their own password
       const userIdNum = Number(currentUserId);
@@ -124,13 +137,19 @@ export async function GET() {
           COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime,
           CASE 
-            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN COALESCE(password, password_hash)
+            WHEN id = ${userIdNum} OR legacy_userid = ${userIdNum} THEN password
             ELSE NULL 
           END as password
         FROM public.users
-        ORDER BY id DESC` as DbUser[];
+        ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
       
-      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+      // Return plain text passwords (exclude hashed ones)
+      const usersWithPlainPasswords = rows.map((user) => ({
+        ...user,
+        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
+      }));
+      
+      return NextResponse.json({ items: usersWithPlainPasswords ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords
       const rows = await sql/* sql */`

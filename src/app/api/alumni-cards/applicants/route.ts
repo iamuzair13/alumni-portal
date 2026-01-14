@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       SELECT 
         a.alumniid,
         a.sapid,
+        a.registrationno,
         a.alumniname,
         COALESCE(a.personalemail, a.officialemail, a.universityemail) AS email,
         a.yearofending,
