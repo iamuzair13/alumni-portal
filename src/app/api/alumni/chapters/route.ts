@@ -157,15 +157,17 @@ export async function GET(request: NextRequest) {
     }
     
     // Build membership filter condition
+    // Members = alumni who have a row in alumni_chapter (ac.id IS NOT NULL)
+    // Non-members = alumni who do NOT have a row in alumni_chapter (ac.id IS NULL)
     const membershipJoinType: "JOIN" | "LEFT JOIN" = membershipFilter === "members" ? "JOIN" : "LEFT JOIN";
     let membershipWhereCondition = sql``;
     
     if (membershipFilter === "non-members") {
-      // For non-members: must not have any chapter assigned
-      membershipWhereCondition = sql` AND (ac.id IS NULL OR (ac."chapter1" IS NULL AND ac."chapter2" IS NULL AND ac."chapter3" IS NULL))`;
+      // For non-members: must NOT have a row in alumni_chapter table
+      membershipWhereCondition = sql` AND ac.id IS NULL`;
     } else if (membershipFilter === "members") {
-      // For members: must have at least one chapter
-      membershipWhereCondition = sql` AND ac.id IS NOT NULL AND (ac."chapter1" IS NOT NULL OR ac."chapter2" IS NOT NULL OR ac."chapter3" IS NOT NULL)`;
+      // For members: must have a row in alumni_chapter table
+      membershipWhereCondition = sql` AND ac.id IS NOT NULL`;
     }
     // For "all": no additional condition needed, just use LEFT JOIN
     
@@ -252,22 +254,65 @@ export async function GET(request: NextRequest) {
       sampleFaculties: rows.slice(0, 5).map((r: Record<string, unknown>) => r.facultyname),
     });
     
-    const items = rows.map((r: Record<string, unknown>) => {
-      const chapters: string[] = [];
-      if (r.chapter1_name) chapters.push(String(r.chapter1_name));
-      if (r.chapter2_name) chapters.push(String(r.chapter2_name));
-      if (r.chapter3_name) chapters.push(String(r.chapter3_name));
-      
-      return {
+    // Build items such that each chapter membership is treated as a separate row.
+    // If an alumni is member of 2 or 3 chapters, they will appear 2 or 3 times in the list.
+    const items: Array<{
+      sapid: string;
+      registrationNo: string | null;
+      name: string;
+      department: string | null;
+      faculty: string | null;
+      program: string | null;
+      email: string | null;
+      chapters: string[];
+    }> = [];
+
+    (rows as Record<string, unknown>[]).forEach((r) => {
+      const base = {
         sapid: String(r.sapid ?? ""),
         registrationNo: r.registrationno ? String(r.registrationno) : null,
         name: String(r.alumniname ?? ""),
         department: r.departmentname ? String(r.departmentname) : null,
         faculty: r.facultyname ? String(r.facultyname) : null,
         program: r.degreetitle ? String(r.degreetitle) : null,
-        email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null),
-        chapters,
+        email:
+          (r.personalemail ? String(r.personalemail) : null) ||
+          (r.officialemail ? String(r.officialemail) : null) ||
+          (r.universityemail ? String(r.universityemail) : null),
       };
+
+      const chapter1 = r.chapter1_name ? String(r.chapter1_name) : null;
+      const chapter2 = r.chapter2_name ? String(r.chapter2_name) : null;
+      const chapter3 = r.chapter3_name ? String(r.chapter3_name) : null;
+
+      // For each non-null chapter, push a separate item with a single-element chapters array
+      if (chapter1) {
+        items.push({
+          ...base,
+          chapters: [chapter1],
+        });
+      }
+      if (chapter2) {
+        items.push({
+          ...base,
+          chapters: [chapter2],
+        });
+      }
+      if (chapter3) {
+        items.push({
+          ...base,
+          chapters: [chapter3],
+        });
+      }
+
+      // For alumni with no chapters (e.g., non-members in "all" or explicit non-members view),
+      // ensure they still appear once with an empty chapters array.
+      if (!chapter1 && !chapter2 && !chapter3) {
+        items.push({
+          ...base,
+          chapters: [],
+        });
+      }
     });
     
     return NextResponse.json({ items }, { status: 200 });

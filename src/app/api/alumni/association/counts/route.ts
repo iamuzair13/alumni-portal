@@ -36,10 +36,12 @@ export async function GET(request: NextRequest) {
     };
     
     // Build faculty filter condition (case-insensitive with trim) - handle multiple
+    // Check both joined table value and fallback text column (matching list endpoint)
     let facultyFilterCondition = sql``;
     if (selectedFaculties.length > 0) {
       const normalizedFaculties = selectedFaculties.map(f => f.toLowerCase());
-      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = ${f}`);
+      // Check both f.faculty_name (from joined table) and a.facultyname (fallback)
+      const facultyConditions = normalizedFaculties.map(f => sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = ${f}`);
       if (facultyConditions.length === 1) {
         facultyFilterCondition = sql` AND ${facultyConditions[0]}`;
       } else if (facultyConditions.length > 1) {
@@ -49,10 +51,12 @@ export async function GET(request: NextRequest) {
     }
     
     // Build department filter condition (case-insensitive with trim) - handle multiple
+    // Check both joined table value and fallback text column (matching list endpoint)
     let departmentFilterCondition = sql``;
     if (selectedDepartments.length > 0) {
       const normalizedDepartments = selectedDepartments.map(d => d.toLowerCase());
-      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = ${d}`);
+      // Check both d.department_name (from joined table) and a.departmentname (fallback)
+      const departmentConditions = normalizedDepartments.map(d => sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = ${d}`);
       if (departmentConditions.length === 1) {
         departmentFilterCondition = sql` AND ${departmentConditions[0]}`;
       } else if (departmentConditions.length > 1) {
@@ -91,19 +95,24 @@ export async function GET(request: NextRequest) {
       membershipWhereCondition = sql` AND a.association_id IS NOT NULL`;
     }
     
-    // Base query structure (matching the main route structure)
-    const baseQuery = membershipJoinType === "JOIN"
-      ? sql`FROM public.tbl_alumni a
-      JOIN public.tbl_associations assoc ON assoc.id = a.association_id`
-      : sql`FROM public.tbl_alumni a
-      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id`;
+    // Base query: start from tbl_alumni and LEFT JOIN associations to include ALL alumni,
+    // including those without any association membership (assoc.* will be NULL for non-members).
+    // Also join faculties and departments for filtering.
+    const baseQueryFromAlumni = sql`FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department`;
     
-    // MATCH EXTERNAL API LOGIC: Always count only verified alumni by default
-    // Use CASE WHEN to count only verified alumni, matching external API pattern
-    // Get total count (with all filters except membership and verified)
+    // Helper conditions for membership:
+    // Members = alumni who have a non-null association_id (a.association_id IS NOT NULL)
+    // Non-members = alumni who have a null association_id (a.association_id IS NULL)
+    const membersCondition = sql` AND a.association_id IS NOT NULL`;
+    const nonMembersCondition = sql` AND a.association_id IS NULL`;
+    
+    // Total count: Count ALL alumni (with or without associations), under current filters
     const totalCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      ${baseQuery}
+      SELECT COUNT(DISTINCT a.alumniid) as count
+      ${baseQueryFromAlumni}
       WHERE 1=1
       ${accessFilterCondition}
       ${associationFilterCondition}
@@ -112,11 +121,10 @@ export async function GET(request: NextRequest) {
       ${verifiedFilterCondition}
     `;
     
-    // Get all count (membershipFilter = "all", with verified filter)
+    // Get all count: same as total (kept separate for backward compatibility)
     const allCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM public.tbl_alumni a
-      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+      SELECT COUNT(DISTINCT a.alumniid) as count
+      ${baseQueryFromAlumni}
       WHERE 1=1
       ${accessFilterCondition}
       ${associationFilterCondition}
@@ -125,58 +133,53 @@ export async function GET(request: NextRequest) {
       ${verifiedFilterCondition}
     `;
     
-    // Get members count (membershipFilter = "members", with verified filter)
+    // Get members count: alumni who have a non-null association_id
     const membersCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM public.tbl_alumni a
-      JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+      SELECT COUNT(DISTINCT a.alumniid) as count
+      ${baseQueryFromAlumni}
       WHERE 1=1
       ${accessFilterCondition}
       ${associationFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
-      AND a.association_id IS NOT NULL
+      ${membersCondition}
     `;
     
-    // Get non-members count (membershipFilter = "non-members", with verified filter)
+    // Get non-members count: alumni who have a null association_id
     const nonMembersCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      FROM public.tbl_alumni a
-      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+      SELECT COUNT(DISTINCT a.alumniid) as count
+      ${baseQueryFromAlumni}
       WHERE 1=1
       ${accessFilterCondition}
       ${associationFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
       ${verifiedFilterCondition}
-      AND a.association_id IS NULL
+      ${nonMembersCondition}
     `;
     
-    // Get verified count (verified = true, with all other filters)
+    // Get verified count: all verified alumni (regardless of association membership)
     const verifiedCountQuery = sql`
-      SELECT COUNT(DISTINCT CASE WHEN a.verify = ${'true'} THEN a.alumniid END) as count
-      ${baseQuery}
+      SELECT COUNT(DISTINCT a.alumniid) as count
+      ${baseQueryFromAlumni}
       WHERE 1=1
       ${accessFilterCondition}
       ${associationFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
-      ${membershipWhereCondition}
-      AND a.verify = 'true'
+      AND LOWER(TRIM(COALESCE(a.verify, ''))) = 'true'
     `;
     
-    // Get unverified count (verified = false, with all other filters)
-    // Note: This counts unverified alumni, so we don't use CASE WHEN verify = 'true'
+    // Get unverified count: all unverified alumni (regardless of association membership)
     const unverifiedCountQuery = sql`
       SELECT COUNT(DISTINCT a.alumniid) as count
-      ${baseQuery}
+      ${baseQueryFromAlumni}
       WHERE 1=1
       ${accessFilterCondition}
       ${associationFilterCondition}
       ${facultyFilterCondition}
       ${departmentFilterCondition}
-      ${membershipWhereCondition}
       AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')
     `;
     

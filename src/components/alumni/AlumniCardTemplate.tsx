@@ -140,14 +140,14 @@ export default function AlumniCardTemplate({
         <img
           src={frontTemplate}
           alt="Alumni card front template"
-          className="w-full h-full object-cover border border-red-600"
+          className="w-full h-full object-cover"
           style={{
             borderRadius: "8px",
           }}
         />
 
         {/* Student Name, Department, Faculty */}
-        <div className="absolute left-[6%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a]">
+        <div className="absolute left-[2%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a] flex flex-col justify-start items-start">
           <span className="text-[11px] font-semibold leading-tight tracking-tight">
             {studentName || "Alumni Name"}
           </span>
@@ -166,7 +166,7 @@ export default function AlumniCardTemplate({
         </div>
 
         {/* Photo */}
-        <div className="absolute right-[6%] top-[18%] flex h-[50%] w-[30%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+        <div className="absolute right-[5%] top-[18%] flex  w-[30%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={`${activeImageSrc}-${imageIndex}`}
