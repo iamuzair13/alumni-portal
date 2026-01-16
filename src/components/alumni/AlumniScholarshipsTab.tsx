@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import { ArrowUpIcon, ArrowDownIcon, CheckLineIcon, CloseLineIcon, PlusIcon } from "@/icons";
+import { ArrowUpIcon, ArrowDownIcon, CheckLineIcon, CloseLineIcon, PlusIcon, TrashBinIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
@@ -92,7 +92,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<StatusTabKey>("all");
   const [pendingAction, setPendingAction] = useState<{
-    type: "approve" | "unapprove";
+    type: "approve" | "unapprove" | "delete";
     alumniId: number;
     name: string;
     reason?: string;
@@ -229,12 +229,36 @@ export const AlumniScholarshipsTab: React.FC = () => {
     }
   }, [startMut, stopMut, queryClient]);
 
+  const handleDelete = useCallback(async (alumniId: number): Promise<void> => {
+    startMut(alumniId);
+    try {
+      const res = await fetch(`/api/alumni/scholarships/${alumniId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `Failed to delete: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to delete: ${res.status}`);
+      }
+      toast.success("Scholarship application deleted successfully.");
+      queryClient.invalidateQueries({ queryKey: ["alumni-scholarships"] });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to delete scholarship application.");
+      throw e;
+    } finally {
+      stopMut(alumniId);
+    }
+  }, [startMut, stopMut, queryClient]);
+
   const executePendingAction = useCallback(async () => {
     if (!pendingAction) return;
     const { type, alumniId } = pendingAction;
     try {
       if (type === "approve") {
         await handleApprove(alumniId);
+      } else if (type === "delete") {
+        await handleDelete(alumniId);
       } else {
         await handleUnapprove(alumniId, rejectionReason.trim() || undefined);
       }
@@ -242,10 +266,10 @@ export const AlumniScholarshipsTab: React.FC = () => {
       setRejectionReason("");
       confirmModal.closeModal();
     } catch (e) {
-      // Error already handled in handleApprove/handleUnapprove
+      // Error already handled in handleApprove/handleUnapprove/handleDelete
 
     }
-  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove]);
+  }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove, handleDelete]);
 
   const handleConfirmClick = useCallback(async () => {
     if (!pendingAction) return;
@@ -441,7 +465,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
                   Status
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 sticky right-0 z-10 bg-gray-100 dark:bg-gray-800">
                   Actions
                 </TableCell>
               </TableRow>
@@ -524,13 +548,13 @@ export const AlumniScholarshipsTab: React.FC = () => {
                       <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">
                         {item.name}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 min-w-[220px]">
                         {item.faculty || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 min-w-[220px]">
                         {item.department || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 min-w-[220px]">
                         {item.program || "-"}
                       </TableCell>
                       <TableCell className="px-6 py-4 text-sm text-slate-700">
@@ -581,7 +605,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700 min-w-[150px]">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700  min-w-[180px] sticky right-0 z-10 bg-gray-100 dark:bg-gray-800">
                         {isAdmin && (
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             {item.status !== "approved" && (
@@ -615,6 +639,19 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 <CloseLineIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingAction({ type: "delete", alumniId: item.alumniId, name: item.name });
+                                confirmModal.openModal();
+                              }}
+                              disabled={mutatingIds.has(item.alumniId)}
+                              className="p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label="Delete"
+                              title="Delete"
+                            >
+                              <TrashBinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </button>
                           </div>
                         )}
                       </TableCell>
@@ -695,16 +732,20 @@ export const AlumniScholarshipsTab: React.FC = () => {
             <div className="flex items-center gap-4 mb-4">
               {pendingAction.type === "approve" ? (
                 <CheckLineIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              ) : pendingAction.type === "delete" ? (
+                <TrashBinIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
               ) : (
                 <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {pendingAction.type === "approve" ? "Approve Application" : "Not Approve Application"}
+                {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : "Not Approve Application"}
               </h3>
             </div>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
               {pendingAction.type === "approve" ? (
                 <>Are you sure you want to approve the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>?</>
+              ) : pendingAction.type === "delete" ? (
+                <>Are you sure you want to delete the scholarship application for <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>? This action cannot be undone.</>
               ) : (
                 <>Are you sure you want to mark the scholarship application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>?</>
               )}
@@ -750,6 +791,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   pendingAction.type === "approve"
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+                    : pendingAction.type === "delete"
+                    ? "bg-red-600 hover:bg-red-700 focus:ring-red-500"
                     : "bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
                 }`}
               >
@@ -759,7 +802,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                     Processing...
                   </span>
                 ) : (
-                  pendingAction.type === "approve" ? "Approve" : "Not Approve"
+                  pendingAction.type === "approve" ? "Approve" : pendingAction.type === "delete" ? "Delete" : "Not Approve"
                 )}
               </button>
             </div>

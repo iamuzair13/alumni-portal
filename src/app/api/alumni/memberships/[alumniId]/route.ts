@@ -313,3 +313,49 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  ctx: { params: Promise<{ alumniId: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only admins can delete membership applications
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { alumniId } = await ctx.params;
+    const membershipId = parseInt(String(alumniId), 10);
+    
+    if (isNaN(membershipId) || membershipId <= 0) {
+      return NextResponse.json({ error: "Invalid membership ID" }, { status: 400 });
+    }
+
+    // Check if membership exists
+    const membershipRows = await sql/* sql */`
+      SELECT id
+      FROM public.alumni_memberships
+      WHERE id = ${membershipId}
+      LIMIT 1
+    `;
+
+    if (!membershipRows[0]) {
+      return NextResponse.json({ error: "Membership application not found" }, { status: 404 });
+    }
+
+    // Delete the membership application
+    await sql/* sql */`
+      DELETE FROM public.alumni_memberships
+      WHERE id = ${membershipId}
+    `;
+
+    return NextResponse.json({ success: true, message: "Membership application deleted successfully" }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to delete membership application";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

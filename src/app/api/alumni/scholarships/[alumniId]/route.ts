@@ -285,3 +285,49 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  ctx: { params: Promise<{ alumniId: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Only admins can delete scholarship applications
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { alumniId } = await ctx.params;
+    const scholarshipId = parseInt(String(alumniId), 10);
+    
+    if (isNaN(scholarshipId) || scholarshipId <= 0) {
+      return NextResponse.json({ error: "Invalid scholarship ID" }, { status: 400 });
+    }
+
+    // Check if scholarship application exists
+    const scholarshipRows = await sql/* sql */`
+      SELECT id
+      FROM public.alumni_scholarships
+      WHERE id = ${scholarshipId}
+      LIMIT 1
+    `;
+
+    if (!scholarshipRows[0]) {
+      return NextResponse.json({ error: "Scholarship application not found" }, { status: 404 });
+    }
+
+    // Delete the scholarship application
+    await sql/* sql */`
+      DELETE FROM public.alumni_scholarships
+      WHERE id = ${scholarshipId}
+    `;
+
+    return NextResponse.json({ success: true, message: "Scholarship application deleted successfully" }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to delete scholarship application";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
