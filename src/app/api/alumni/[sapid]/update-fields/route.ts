@@ -205,8 +205,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const nameoforganizationVal = "nameoforganization" in body ? cleanValue("nameoforganization", body.nameoforganization) : undefined;
     const designationVal = "designation" in body ? cleanValue("designation", body.designation) : undefined;
     const totalyearsofexpereinceVal = "totalyearsofexpereince" in body ? cleanValue("totalyearsofexpereince", body.totalyearsofexpereince) : undefined;
+    const startOfCareerVal = "startOfCareer" in body ? (body.startOfCareer !== null && body.startOfCareer !== undefined && body.startOfCareer !== "" ? Number(body.startOfCareer) : null) : undefined;
     const majorsubjectVal = "majorsubject" in body ? cleanValue("majorsubject", body.majorsubject) : undefined;
     const aboutmeVal = "aboutme" in body ? cleanValue("aboutme", body.aboutme) : undefined;
+    const aboutVal = "about" in body ? cleanValue("about", body.about) : undefined;
     const yearofstartingVal = "yearofstarting" in body ? (body.yearofstarting !== null && body.yearofstarting !== undefined && body.yearofstarting !== "" ? Number(body.yearofstarting) : null) : undefined;
     const yearofendingVal = "yearofending" in body ? (body.yearofending !== null && body.yearofending !== undefined && body.yearofending !== "" ? Number(body.yearofending) : null) : undefined;
     const facultynameVal = "facultyname" in body ? cleanValue("facultyname", body.facultyname) : undefined;
@@ -439,9 +441,21 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("industry", industryVal);
       addUpdate("nameoforganization", nameoforganizationVal);
       addUpdate("designation", designationVal);
-      addUpdate("totalyearsofexpereince", totalyearsofexpereinceVal);
+      // Handle totalyearsofexpereince: prioritize startOfCareer if provided
+      if (startOfCareerVal !== undefined && startOfCareerVal !== null) {
+        // If startOfCareer is provided, calculate totalyearsofexpereince from it
+        const currentYear = new Date().getFullYear();
+        const calculatedYears = currentYear - startOfCareerVal;
+        if (calculatedYears > 0) {
+          addUpdate("totalyearsofexpereince", String(calculatedYears));
+        }
+      } else if (totalyearsofexpereinceVal !== undefined) {
+        // Only add totalyearsofexpereince if startOfCareer is not provided
+        addUpdate("totalyearsofexpereince", totalyearsofexpereinceVal);
+      }
       addUpdate("majorsubject", majorsubjectVal);
       addUpdate("aboutme", aboutmeVal);
+      addUpdate("about", aboutVal);
       addUpdate("yearofstarting", yearofstartingVal);
       addUpdate("yearofending", yearofendingVal);
       addUpdate("facultyname", facultynameVal);

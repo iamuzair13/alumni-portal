@@ -22,6 +22,7 @@ function toUtcIso(date: unknown, time?: unknown): string | undefined {
 type EventRow = {
   id: number;
   category: string | null;
+  type: string | null;
   title: string | null;
   shortdescription: string | null;
   longdescription: string | null;
@@ -50,6 +51,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       SELECT 
         id, 
         category, 
+        type,
         title, 
         shortdescription, 
         longdescription, 
@@ -84,6 +86,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     const result = {
       id: String(r.id ?? ""),
       category: String(r.category ?? ""),
+      type: r.type ? String(r.type) : null,
       title: String(r.title ?? ""),
       shortDescription: String(r.shortdescription ?? ""),
       description: String(r.longdescription ?? ""),
@@ -144,6 +147,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     // Extract text fields
     const title = String(formData.get("title") || "").trim();
     const category = String(formData.get("category") || "").trim();
+    const type = formData.get("type") ? String(formData.get("type")).trim() : null;
     const fromDateInput = formData.get("fromDate") ? String(formData.get("fromDate")).trim() : null;
     const toDateInput = formData.get("toDate") ? String(formData.get("toDate")).trim() : null;
     const eventTimeInput = formData.get("eventTime") ? String(formData.get("eventTime")).trim() : null;
@@ -286,6 +290,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         UPDATE public.tbl_events 
         SET 
           category = ${category},
+          type = ${type},
           title = ${title},
           shortdescription = ${shortDescription.slice(0, 500)},
           longdescription = ${description || null},

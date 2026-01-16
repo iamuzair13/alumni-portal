@@ -2047,58 +2047,89 @@ export const AlumniTabs: React.FC = () => {
     const mrNoKeys = ["MR No"];
     const photoConsentKeys = ["Photo Usage Consent"];
 
-    const filteredColumns = columns.filter((col) => {
+    // Create a comprehensive mapping of all columns to their groups
+    // This ensures every column is properly categorized
+    const columnGroupMap = new Map<string, boolean>();
+    
+    // Map all columns to their groups
+    columns.forEach((col) => {
       const key = col.key;
-      if (coreKeys.includes(key)) return true;
-      if (facultyKeys.includes(key)) return exportFaculty;
-      if (departmentKeys.includes(key)) return exportDepartment;
-      if (programKeys.includes(key)) return exportProgram;
-      if (statusKeys.includes(key)) {
-        // Status columns are included if at least one status is selected in the dropdown
-        return additionalFilter.length > 0;
+      
+      // Core columns are always included
+      if (coreKeys.includes(key)) {
+        columnGroupMap.set(key, true);
+        return;
       }
-
-      if (genderKeys.includes(key)) return exportGender;
-      if (maritalStatusKeys.includes(key)) return exportMaritalStatus;
-      if (homeCountryKeys.includes(key)) return exportHomeCountry;
-      if (homeCityKeys.includes(key)) return exportHomeCity;
-      if (provinceKeys.includes(key)) return exportProvince;
-      if (campusKeys.includes(key)) return exportCampus;
-      if (admissionYearKeys.includes(key)) return exportAdmissionYear;
-      if (passingYearKeys.includes(key)) return exportPassingYear;
-      if (occupationStatusKeys.includes(key)) return exportOccupationStatus;
-      if (sectorKeys.includes(key)) return exportSector;
-      if (workCityKeys.includes(key)) return exportWorkCity;
-      if (workCountryKeys.includes(key)) return exportWorkCountry;
-      if (institutionNameKeys.includes(key)) return exportInstitutionName;
-      if (programEnrolledKeys.includes(key)) return exportProgramEnrolled;
-      if (fundingSourceKeys.includes(key)) return exportFundingSource;
-      if (institutionCountryKeys.includes(key)) return exportInstitutionCountry;
-      if (institutionCityKeys.includes(key)) return exportInstitutionCity;
-      if (mrNoKeys.includes(key)) return exportMrNo;
-      if (photoConsentKeys.includes(key)) return exportPhotoConsent;
-
-      // Any column that doesn't belong to a specific checkbox group is not exported
-      // so that ONLY explicitly checked groups control what is exported.
-      return false;
+      
+      // Map to checkbox groups
+      if (facultyKeys.includes(key)) {
+        columnGroupMap.set(key, exportFaculty);
+      } else if (departmentKeys.includes(key)) {
+        columnGroupMap.set(key, exportDepartment);
+      } else if (programKeys.includes(key)) {
+        columnGroupMap.set(key, exportProgram);
+      } else if (statusKeys.includes(key)) {
+        columnGroupMap.set(key, additionalFilter.length > 0);
+      } else if (genderKeys.includes(key)) {
+        columnGroupMap.set(key, exportGender);
+      } else if (maritalStatusKeys.includes(key)) {
+        columnGroupMap.set(key, exportMaritalStatus);
+      } else if (homeCountryKeys.includes(key)) {
+        columnGroupMap.set(key, exportHomeCountry);
+      } else if (homeCityKeys.includes(key)) {
+        columnGroupMap.set(key, exportHomeCity);
+      } else if (provinceKeys.includes(key)) {
+        columnGroupMap.set(key, exportProvince);
+      } else if (campusKeys.includes(key)) {
+        columnGroupMap.set(key, exportCampus);
+      } else if (admissionYearKeys.includes(key)) {
+        columnGroupMap.set(key, exportAdmissionYear);
+      } else if (passingYearKeys.includes(key)) {
+        columnGroupMap.set(key, exportPassingYear);
+      } else if (occupationStatusKeys.includes(key)) {
+        columnGroupMap.set(key, exportOccupationStatus);
+      } else if (sectorKeys.includes(key)) {
+        columnGroupMap.set(key, exportSector);
+      } else if (workCityKeys.includes(key)) {
+        columnGroupMap.set(key, exportWorkCity);
+      } else if (workCountryKeys.includes(key)) {
+        columnGroupMap.set(key, exportWorkCountry);
+      } else if (institutionNameKeys.includes(key)) {
+        columnGroupMap.set(key, exportInstitutionName);
+      } else if (programEnrolledKeys.includes(key)) {
+        columnGroupMap.set(key, exportProgramEnrolled);
+      } else if (fundingSourceKeys.includes(key)) {
+        columnGroupMap.set(key, exportFundingSource);
+      } else if (institutionCountryKeys.includes(key)) {
+        columnGroupMap.set(key, exportInstitutionCountry);
+      } else if (institutionCityKeys.includes(key)) {
+        columnGroupMap.set(key, exportInstitutionCity);
+      } else if (mrNoKeys.includes(key)) {
+        columnGroupMap.set(key, exportMrNo);
+      } else if (photoConsentKeys.includes(key)) {
+        columnGroupMap.set(key, exportPhotoConsent);
+      } else {
+        // Columns not in any group are NOT exported (explicit exclusion)
+        columnGroupMap.set(key, false);
+      }
     });
 
-    // Ensure core columns are always included (they should already be in filteredColumns, but double-check)
+    // Filter columns based on the mapping - ONLY include columns that are marked as true
+    const filteredColumns = columns.filter((col) => {
+      return columnGroupMap.get(col.key) === true;
+    });
+
+    // Verify we have at least core columns (which should always be present)
     const coreColumnKeys = new Set(coreKeys);
-    const finalFilteredColumns = columns.filter((col) => {
-      // Always include core columns
-      if (coreColumnKeys.has(col.key)) {
-        return true;
-      }
-      // Include other columns only if they're in filteredColumns
-      return filteredColumns.some(fc => fc.key === col.key);
-    });
-
-    // Check if we have at least core columns (which should always be present)
-    if (finalFilteredColumns.length === 0 || finalFilteredColumns.filter(col => coreColumnKeys.has(col.key)).length === 0) {
+    const hasCoreColumns = filteredColumns.some(col => coreColumnKeys.has(col.key));
+    
+    if (filteredColumns.length === 0 || !hasCoreColumns) {
       toast.error("Please select at least one column group to export");
       return;
     }
+    
+    // Use filteredColumns directly - no need for double filtering
+    const finalFilteredColumns = filteredColumns;
 
     const dateStr = new Date().toISOString().split("T")[0];
     const statusStr = statusFilter ? `_${statusFilter}` : "";

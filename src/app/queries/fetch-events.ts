@@ -8,6 +8,7 @@ export type EventListItem = {
   shortDescription: string;
   imageUrl?: string;
   category?: string;
+  type?: string | null;
   startTimeUTC?: string;
   endTimeUTC?: string;
   chapterName?: string | null;

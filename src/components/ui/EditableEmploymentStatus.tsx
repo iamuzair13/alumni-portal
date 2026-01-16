@@ -55,6 +55,13 @@ type EditableEmploymentStatusProps = {
   designationValue: unknown;
   totalyearsofexpereinceValue: unknown;
   organizationAddressValue?: unknown;
+  // Work location fields
+  workCountryValue?: unknown;
+  workCityValue?: unknown;
+  workPhoneValue?: unknown;
+  workEmailValue?: unknown;
+  // About Me field
+  aboutMeValue?: unknown;
   // Higher Education fields
   degreeTitleValue?: unknown;
   instituteNameValue?: unknown;
@@ -67,7 +74,15 @@ type EditableEmploymentStatusProps = {
   onOrganizationChange: (key: string, value: unknown) => void;
   onDesignationChange: (key: string, value: unknown) => void;
   onExperienceChange: (key: string, value: unknown) => void;
+  onStartOfCareerChange?: (key: string, value: unknown) => void;
   onOrganizationAddressChange?: (key: string, value: unknown) => void;
+  // Work location handlers
+  onWorkCountryChange?: (key: string, value: unknown) => void;
+  onWorkCityChange?: (key: string, value: unknown) => void;
+  onWorkPhoneChange?: (key: string, value: unknown) => void;
+  onWorkEmailChange?: (key: string, value: unknown) => void;
+  // About Me handler
+  onAboutMeChange?: (key: string, value: unknown) => void;
   // Higher Education handlers
   onDegreeTitleChange?: (key: string, value: unknown) => void;
   onInstituteNameChange?: (key: string, value: unknown) => void;
@@ -85,6 +100,11 @@ export default function EditableEmploymentStatus({
   designationValue,
   totalyearsofexpereinceValue,
   organizationAddressValue,
+  workCountryValue,
+  workCityValue,
+  workPhoneValue,
+  workEmailValue,
+  aboutMeValue,
   degreeTitleValue,
   instituteNameValue,
   programValue,
@@ -96,7 +116,13 @@ export default function EditableEmploymentStatus({
   onOrganizationChange,
   onDesignationChange,
   onExperienceChange,
+  onStartOfCareerChange,
   onOrganizationAddressChange,
+  onWorkCountryChange,
+  onWorkCityChange,
+  onWorkPhoneChange,
+  onWorkEmailChange,
+  onAboutMeChange,
   onDegreeTitleChange,
   onInstituteNameChange,
   onProgramChange,
@@ -123,6 +149,10 @@ export default function EditableEmploymentStatus({
   const isPursuingHigherEd = employeedStatus === "pursuing higher education" || employeedStatus === "highered";
   // Show employment fields for both "Employed" and "Self-employed"
   const showEmploymentFields = isEmployed || isSelfEmployed;
+  // Show work location fields only for "Employed/Business" (not Self-employed)
+  const showWorkLocationFields = isEmployed;
+  // Show self-employed specific fields only for "Self-employed"
+  const showSelfEmployedFields = isSelfEmployed;
 
   return (
     <>
@@ -138,51 +168,283 @@ export default function EditableEmploymentStatus({
       />
       {showEmploymentFields && (
         <>
+          {/* Sector field - shown for both, but required for self-employed */}
+          {showSelfEmployedFields ? (
+            <>
+              <EditableField
+                label="Sector *"
+                value={industryValue}
+                fieldKey="industry"
+                onValueChange={onIndustryChange}
+                type="text"
+                batchMode={true}
+                disabled={disabled}
+                placeholder="Select from list or type your sector"
+                datalistId="sector-options"
+              />
+              <datalist id="sector-options">
+                <option value="NA">NA</option>
+                <option value="IT & Software Development">IT & Software Development</option>
+                <option value="Engineering & Manufacturing">Engineering & Manufacturing</option>
+                <option value="Finance & Banking">Finance & Banking</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Education & Research">Education & Research</option>
+                <option value="Media & Communication">Media & Communication</option>
+                <option value="Retail & E-commerce">Retail & E-commerce</option>
+                <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
+                <option value="Textile & Fashion">Textile & Fashion</option>
+                <option value="Architecture & Planning">Architecture & Planning</option>
+                <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                <option value="NGO & Social Services">NGO & Social Services</option>
+                <option value="Government Sector">Government Sector</option>
+                <option value="Construction & Real Estate">Construction & Real Estate</option>
+              </datalist>
+            </>
+          ) : (
+            <EditableField
+              label="Industry *"
+              value={industryValue}
+              fieldKey="industry"
+              onValueChange={onIndustryChange}
+              type="text"
+              batchMode={true}
+              disabled={disabled}
+            />
+          )}
           <EditableField
-            label="Industry *"
-            value={industryValue}
-            fieldKey="industry"
-            onValueChange={onIndustryChange}
-            type="text"
-            batchMode={true}
-            disabled={disabled}
-          />
-          <EditableField
-            label="Company Name *"
+            label={showSelfEmployedFields ? "Business Name *" : "Company Name *"}
             value={nameoforganizationValue}
             fieldKey="nameoforganization"
             onValueChange={onOrganizationChange}
             type="text"
             batchMode={true}
             disabled={disabled}
+            placeholder={showSelfEmployedFields ? "Enter your business name" : "Enter organization name"}
           />
           <EditableField
-            label="Designation *"
+            label="Current Designation *"
             value={designationValue}
             fieldKey="designation"
             onValueChange={onDesignationChange}
             type="text"
             batchMode={true}
             disabled={disabled}
+            placeholder="Enter your designation"
           />
-          <EditableField
-            label="Total Years of Experience *"
-            value={totalyearsofexpereinceValue}
-            fieldKey="totalyearsofexpereince"
-            onValueChange={onExperienceChange}
-            type="text"
-            batchMode={true}
-          />
+          {/* Start of Career - date picker for self-employed, number for employed */}
+          {showSelfEmployedFields ? (
+            <EditableField
+              label="Start of Career *"
+              value={totalyearsofexpereinceValue ? (() => {
+                // Convert years of experience to a date (approximate - use January 1st of the start year)
+                const years = Number(totalyearsofexpereinceValue);
+                if (!isNaN(years) && years > 0) {
+                  const startYear = new Date().getFullYear() - years;
+                  // Return as YYYY-MM-DD format for date input
+                  return `${startYear}-01-01`;
+                }
+                return null;
+              })() : null}
+              fieldKey="startOfCareer"
+              onValueChange={(key, value) => {
+                // Convert date string to years of experience
+                if (value && typeof value === "string" && value.trim() !== "") {
+                  try {
+                    const date = new Date(value);
+                    if (!isNaN(date.getTime())) {
+                      const currentYear = new Date().getFullYear();
+                      const startYear = date.getFullYear();
+                      const totalYears = currentYear - startYear;
+                      // Store startOfCareer if handler is provided
+                      if (onStartOfCareerChange) {
+                        onStartOfCareerChange("startOfCareer", startYear);
+                      }
+                      // Also store as totalyearsofexpereince for database
+                      onExperienceChange("totalyearsofexpereince", totalYears > 0 ? String(totalYears) : null);
+                    } else {
+                      if (onStartOfCareerChange) {
+                        onStartOfCareerChange("startOfCareer", null);
+                      }
+                      onExperienceChange("totalyearsofexpereince", null);
+                    }
+                  } catch {
+                    if (onStartOfCareerChange) {
+                      onStartOfCareerChange("startOfCareer", null);
+                    }
+                    onExperienceChange("totalyearsofexpereince", null);
+                  }
+                } else {
+                  if (onStartOfCareerChange) {
+                    onStartOfCareerChange("startOfCareer", null);
+                  }
+                  onExperienceChange("totalyearsofexpereince", null);
+                }
+              }}
+              type="date"
+              batchMode={true}
+              disabled={disabled}
+            />
+          ) : (
+            <EditableField
+              label="Start of Career *"
+              value={totalyearsofexpereinceValue ? (() => {
+                // Calculate start year from total years of experience
+                const years = Number(totalyearsofexpereinceValue);
+                if (!isNaN(years) && years > 0) {
+                  return new Date().getFullYear() - years;
+                }
+                return null;
+              })() : null}
+              fieldKey="startOfCareer"
+              onValueChange={(key, value) => {
+                // Store startOfCareer directly for validation
+                // Also convert to total years of experience for backward compatibility with database
+                if (value && typeof value === "number") {
+                  const currentYear = new Date().getFullYear();
+                  const totalYears = currentYear - value;
+                  // Store startOfCareer if handler is provided
+                  if (onStartOfCareerChange) {
+                    onStartOfCareerChange("startOfCareer", value);
+                  }
+                  // Also store as totalyearsofexpereince for database
+                  onExperienceChange("totalyearsofexpereince", totalYears > 0 ? String(totalYears) : null);
+                } else {
+                  if (onStartOfCareerChange) {
+                    onStartOfCareerChange("startOfCareer", null);
+                  }
+                  onExperienceChange("totalyearsofexpereince", null);
+                }
+              }}
+              type="number"
+              batchMode={true}
+              disabled={disabled}
+            />
+          )}
           {onOrganizationAddressChange && (
             <EditableField
-              label="Company Address *"
+              label={showSelfEmployedFields ? "Business Address *" : "Company Address *"}
               value={organizationAddressValue}
               fieldKey="organization_address"
               onValueChange={onOrganizationAddressChange}
               type="textarea"
               batchMode={true}
               disabled={disabled}
+              placeholder={showSelfEmployedFields ? "Enter your business address" : "Enter company address"}
             />
+          )}
+          {/* Self-employed specific fields */}
+          {showSelfEmployedFields && (
+            <>
+              {onWorkEmailChange && (
+                <EditableField
+                  label="Business Email *"
+                  value={workEmailValue}
+                  fieldKey="officialemail"
+                  onValueChange={onWorkEmailChange}
+                  type="email"
+                  batchMode={true}
+                  disabled={disabled}
+                  placeholder="Enter your business email"
+                />
+              )}
+              {onWorkPhoneChange && (
+                <EditableField
+                  label="Business Phone *"
+                  value={workPhoneValue}
+                  fieldKey="officialnumber"
+                  onValueChange={onWorkPhoneChange}
+                  type="tel"
+                  batchMode={true}
+                  disabled={disabled}
+                  placeholder="Enter your business phone"
+                />
+              )}
+              {onWorkCityChange && (
+                <EditableField
+                  label="Business City *"
+                  value={workCityValue}
+                  fieldKey="work_city"
+                  onValueChange={onWorkCityChange}
+                  type="text"
+                  batchMode={true}
+                  disabled={disabled}
+                  placeholder="Enter your business city"
+                />
+              )}
+              {onWorkCountryChange && (
+                <EditableField
+                  label="Business Country *"
+                  value={workCountryValue}
+                  fieldKey="work_country"
+                  onValueChange={onWorkCountryChange}
+                  type="text"
+                  batchMode={true}
+                  disabled={disabled}
+                  placeholder="Select from list or type your country"
+                />
+              )}
+              {onAboutMeChange && (
+                <EditableField
+                  label="About Me (Optional)"
+                  value={aboutMeValue}
+                  fieldKey="about"
+                  onValueChange={onAboutMeChange}
+                  type="textarea"
+                  batchMode={true}
+                  disabled={disabled}
+                  placeholder="Tell us about yourself"
+                />
+              )}
+            </>
+          )}
+          {/* Work location fields - only shown for Employed/Business */}
+          {showWorkLocationFields && (
+            <>
+              {onWorkCountryChange && (
+                <EditableField
+                  label="Work Country"
+                  value={workCountryValue}
+                  fieldKey="work_country"
+                  onValueChange={onWorkCountryChange}
+                  type="text"
+                  batchMode={true}
+                  disabled={disabled}
+                />
+              )}
+              {onWorkCityChange && (
+                <EditableField
+                  label="Work City"
+                  value={workCityValue}
+                  fieldKey="work_city"
+                  onValueChange={onWorkCityChange}
+                  type="text"
+                  batchMode={true}
+                  disabled={disabled}
+                />
+              )}
+              {onWorkPhoneChange && (
+                <EditableField
+                  label="Work Phone"
+                  value={workPhoneValue}
+                  fieldKey="officialnumber"
+                  onValueChange={onWorkPhoneChange}
+                  type="tel"
+                  batchMode={true}
+                  disabled={disabled}
+                />
+              )}
+              {onWorkEmailChange && (
+                <EditableField
+                  label="Work Email"
+                  value={workEmailValue}
+                  fieldKey="officialemail"
+                  onValueChange={onWorkEmailChange}
+                  type="email"
+                  batchMode={true}
+                  disabled={disabled}
+                />
+              )}
+            </>
           )}
         </>
       )}

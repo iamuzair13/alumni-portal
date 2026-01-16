@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import ComponentCard from "@/components/common/ComponentCard";
-import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIcon } from "@/icons";
+import { LockIcon, EyeIcon, CheckLineIcon, BoltIcon, TimeIcon, GroupIcon, FileIcon, AlertIcon } from "@/icons";
 import { AlumniDataTable } from "./AlumniCard";
-import { useCardApplicants, type CardStatusFilter, type CardApplicant } from "@/app/queries/fetch-card-applicants";
+import { useCardApplicants, type CardStatusFilter, type CardApplicant, type OverdueType } from "@/app/queries/fetch-card-applicants";
 import { useUpdateApplicantStatus } from "@/app/queries/fetch-card-applicants";
 import toast from "react-hot-toast";
 import { 
@@ -81,7 +81,7 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
 }
 
 // Color mapping for status tabs
-const STATUS_TAB_COLORS: Record<CardStatus, {
+const STATUS_TAB_COLORS: Record<CardStatus | "overdue", {
   border: string;
   bg: string;
   text: string;
@@ -137,22 +137,35 @@ const STATUS_TAB_COLORS: Record<CardStatus, {
     badgeText: "text-rose-800 dark:text-rose-200",
     hoverBorder: "hover:border-rose-400",
   },
+  overdue: {
+    border: "border-red-500",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    text: "text-red-700 dark:text-red-300",
+    badgeBg: "bg-red-200 dark:bg-red-800",
+    badgeText: "text-red-800 dark:text-red-200",
+    hoverBorder: "hover:border-red-400",
+  },
 };
 
-const STATUS_TABS: { key: CardStatus; label: string; icon: React.FC<{ className?: string }> }[] = [
+const STATUS_TABS: { key: CardStatus | "overdue"; label: string; icon: React.FC<{ className?: string }> }[] = [
   { key: "all", label: CARD_STATUS_CONFIG["all"].label, icon: GroupIcon },
   { key: "under-review", label: CARD_STATUS_CONFIG["under-review"].label, icon: TimeIcon },
   { key: "underprinting", label: CARD_STATUS_CONFIG["underprinting"].label, icon: FileIcon },
   { key: "active", label: CARD_STATUS_CONFIG["active"].label, icon: CheckLineIcon },
   { key: "onhold", label: CARD_STATUS_CONFIG["onhold"].label, icon: LockIcon },
   { key: "delivered", label: CARD_STATUS_CONFIG["delivered"].label, icon: CheckLineIcon },
+  { key: "overdue", label: "Over Due", icon: AlertIcon },
 ];
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
   const [selectedStatus, setSelectedStatus] = useState<CardStatusFilter>(initialStatus as CardStatusFilter);
+  const [selectedOverdueType, setSelectedOverdueType] = useState<OverdueType>("under-review");
   
   // Fetch cards for selected status - this also returns counts
-  const { data, isLoading, isError, error } = useCardApplicants(selectedStatus);
+  const { data, isLoading, isError, error } = useCardApplicants(
+    selectedStatus,
+    selectedStatus === "overdue" ? { overdueType: selectedOverdueType } : undefined
+  );
   
   // Fetch counts separately to ensure we always have them (even when switching tabs)
   const { data: countsData, isLoading: countsLoading } = useCardApplicants("all");
@@ -174,7 +187,16 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     if (countsFromData) {
       return countsFromData;
     }
-    return { all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 };
+    return { 
+      all: 0, 
+      "under-review": 0, 
+      underprinting: 0, 
+      active: 0, 
+      onhold: 0, 
+      delivered: 0,
+      "overdue-under-review": 0,
+      "overdue-under-printing": 0,
+    };
   }, [countsData, data]);
   
   // Debug: Log counts to console (remove in production if needed)
@@ -272,9 +294,12 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 count = counts.delivered || 0;
               } else if (tab.key === "onhold") {
                 count = counts.onhold || 0;
+              } else if (tab.key === "overdue") {
+                // For overdue tab, show total of both overdue types
+                count = (counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0);
               }
               const isSelected = selectedStatus === tab.key;
-              const colors = STATUS_TAB_COLORS[tab.key];
+              const colors = tab.key === "overdue" ? STATUS_TAB_COLORS.overdue : STATUS_TAB_COLORS[tab.key as CardStatus];
               
               return (
                 <button
@@ -284,7 +309,15 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                       ? `${colors.border} ${colors.bg} ${colors.text} shadow-md`
                       : `border-gray-300 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:opacity-100 ${colors.hoverBorder}`
                   }`}
-                  onClick={() => setSelectedStatus(tab.key as CardStatusFilter)}
+                  onClick={() => {
+                    if (tab.key === "overdue") {
+                      setSelectedStatus("overdue");
+                      // Reset to "under-review" when switching to overdue tab
+                      setSelectedOverdueType("under-review");
+                    } else {
+                      setSelectedStatus(tab.key as CardStatusFilter);
+                    }
+                  }}
                   role="tab"
                   aria-selected={isSelected}
                   tabIndex={0}
@@ -303,6 +336,54 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
             })}
           </div>
         </div>
+
+        {/* Overdue Sub-tabs */}
+        {selectedStatus === "overdue" && (
+          <div className="px-6">
+            <div className="flex flex-wrap gap-3 lg:gap-4" role="tablist" aria-label="Overdue type tabs">
+              <button
+                className={`rounded-xl border px-4 py-2.5 cursor-pointer transform scale-100 transform-gpu transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm flex items-center gap-2 ${
+                  selectedOverdueType === "under-review"
+                    ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 shadow-md"
+                    : "border-gray-300 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:border-amber-400"
+                }`}
+                onClick={() => setSelectedOverdueType("under-review")}
+                role="tab"
+                aria-selected={selectedOverdueType === "under-review"}
+              >
+                <TimeIcon className="w-4 h-4" />
+                <span className="font-medium">Under Review</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  selectedOverdueType === "under-review"
+                    ? "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                }`}>
+                  {countsLoading || isLoading ? "..." : (counts["overdue-under-review"] || 0).toLocaleString()}
+                </span>
+              </button>
+              <button
+                className={`rounded-xl border px-4 py-2.5 cursor-pointer transform scale-100 transform-gpu transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm flex items-center gap-2 ${
+                  selectedOverdueType === "under-printing"
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 shadow-md"
+                    : "border-gray-300 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:border-purple-400"
+                }`}
+                onClick={() => setSelectedOverdueType("under-printing")}
+                role="tab"
+                aria-selected={selectedOverdueType === "under-printing"}
+              >
+                <FileIcon className="w-4 h-4" />
+                <span className="font-medium">Under Printing</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  selectedOverdueType === "under-printing"
+                    ? "bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                }`}>
+                  {countsLoading || isLoading ? "..." : (counts["overdue-under-printing"] || 0).toLocaleString()}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="px-6 pb-8">

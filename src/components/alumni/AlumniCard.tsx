@@ -557,6 +557,21 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     return v.includes("@") ? v : "-";
   }
 
+  function formatApplicationDate(dateStr: string | null | undefined): string {
+    if (!dateStr) return "-";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "-";
+      return date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "-";
+    }
+  }
+
   // Export to Excel function with column selection
   const handleExportToExcel = React.useCallback(() => {
     // Helper function to format chapter names
@@ -1509,6 +1524,13 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   </TableCell>
                   <TableCell 
                     isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden lg:table-cell"
+                  >
+                    <span>Application Date</span>
+                  </TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Card Status</TableCell>
+                  <TableCell 
+                    isHeader 
                     className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
                     onClick={() => toggleSort("faculty")} 
                     aria-sort={sortKey === "faculty" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
@@ -1549,7 +1571,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Card Status</TableCell>
                   <TableCell isHeader className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
                 </TableRow>
               </TableHeader>
@@ -1569,6 +1590,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </TableCell>
                       <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
                         <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
                       <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
                         <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
@@ -1591,7 +1615,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={9}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={10}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1609,7 +1633,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={9}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={10}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1680,11 +1704,14 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                             {formatEmail(alum.email)}
                           </a>
                         </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          {formatApplicationDate(alum.createdAt)}
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!canEdit} /></TableCell>
-                        <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 min-w-[170px] ${
+                        <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 min-w-[250px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
+                        <TableCell className={`px-3 sm:px-6 py-5 text-end bg-gray-100 sticky right-0 z-10 min-w-[170px] ${
                           selectedRowId === alum.id 
                             ? "bg-blue-50/80 dark:bg-blue-900/30" 
                             : idx % 2 === 0 
@@ -1696,9 +1723,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </TableRow>
                       {expandedRowId === alum.id && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={9} className="px-0 py-6">
+                          <TableCell colSpan={10} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
-                              <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="w-full max-w-full overflow-x-hidden flex ">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canEdit} />
                                 <ErpDataDetails sapId={alum.id} registrationNo={alum.registrationno ?? null} onClose={() => setExpandedRowId(null)} />
                               </div>

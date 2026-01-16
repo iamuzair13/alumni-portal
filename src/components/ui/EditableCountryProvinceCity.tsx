@@ -346,7 +346,7 @@ export default function EditableCountryProvinceCity({
   }, [selectedProvince, selectedCountry, cityValue, onCityChange]);
 
   return (
-    <>
+    <div>
       <EditableField
         label="Country"
         value={countryValue}
@@ -392,9 +392,10 @@ export default function EditableCountryProvinceCity({
           batchMode={true}
           datalistId={selectedCountry === "Pakistan" && selectedProvince ? "city-datalist" : undefined}
           placeholder={selectedCountry === "Pakistan" ? "Select from list or type your city" : "Enter city name"}
+          disabled={disabled}
         />
       )}
-      {/* Datalist for Pakistan cities */}
+      {/* Datalist for Pakistan cities - rendered at component level so it's always accessible */}
       {selectedCountry === "Pakistan" && selectedProvince && provinceCities.length > 0 && (
         <datalist id="city-datalist">
           {provinceCities.map((city) => (
@@ -402,7 +403,7 @@ export default function EditableCountryProvinceCity({
           ))}
         </datalist>
       )}
-    </>
+    </div>
   );
 }
 

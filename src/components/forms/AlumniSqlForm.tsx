@@ -985,6 +985,23 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         }
       }
       
+      // Convert startOfCareer date to totalyearsofexpereince if provided
+      if (payload.startOfCareer && String(payload.startOfCareer).trim() !== "") {
+        try {
+          const startDate = new Date(payload.startOfCareer);
+          if (!isNaN(startDate.getTime())) {
+            const currentYear = new Date().getFullYear();
+            const startYear = startDate.getFullYear();
+            const yearsOfExperience = currentYear - startYear;
+            if (yearsOfExperience > 0) {
+              payload.totalyearsofexpereince = String(yearsOfExperience);
+            }
+          }
+        } catch (err) {
+          console.error("Error converting startOfCareer to totalyearsofexpereince:", err);
+        }
+      }
+      
       // Map work city/country to database city/country if provided, otherwise use home city/country
       // The database only has one city and country field, so we prioritize work location when provided
       if (payload.workCity && String(payload.workCity).trim() !== "") {

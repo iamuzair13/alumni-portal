@@ -233,6 +233,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         image2: row.image2 ?? null,
         cv: row.cv ?? null,
         aboutme: row.aboutme ?? null,
+        about: row.about ?? null,
         lasttimelogin: row.lasttimelogin ?? null,
         logincount: row.logincount ?? null,
         verify: row.verify ?? null,

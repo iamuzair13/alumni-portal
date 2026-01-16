@@ -256,27 +256,38 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.tbl_departments
     OWNER to postgres;
-CREATE TABLE public.tbl_events (
-  id integer NOT NULL DEFAULT nextval('tbl_events_id_seq'::regclass),
-  category character varying,
-  title character varying,
-  shortdescription character varying,
-  longdescription text,
-  fromdate date,
-  todate date,
-  eventtime character varying,
-  image1 character varying NOT NULL,
-  image2 character varying,
-  image3 character varying,
-  image4 character varying,
-  image5 character varying,
-  parent_type text CHECK (parent_type = ANY (ARRAY['chapter'::text, 'association'::text])),
-  parent_id bigint,
-  chapter_id bigint,
-  association_id bigint,
-  type text,
-  CONSTRAINT tbl_events_pkey PRIMARY KEY (id)
-);
+-- Table: public.tbl_events
+
+-- DROP TABLE IF EXISTS public.tbl_events;
+
+CREATE TABLE IF NOT EXISTS public.tbl_events
+(
+    id integer NOT NULL DEFAULT nextval('tbl_events_id_seq'::regclass),
+    category character varying(100) COLLATE pg_catalog."default",
+    title character varying(200) COLLATE pg_catalog."default",
+    shortdescription character varying(500) COLLATE pg_catalog."default",
+    longdescription text COLLATE pg_catalog."default",
+    fromdate date,
+    todate date,
+    eventtime character varying(50) COLLATE pg_catalog."default",
+    image1 character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    image2 character varying(50) COLLATE pg_catalog."default",
+    image3 character varying(50) COLLATE pg_catalog."default",
+    image4 character varying(50) COLLATE pg_catalog."default",
+    image5 character varying(50) COLLATE pg_catalog."default",
+    parent_type text COLLATE pg_catalog."default",
+    parent_id bigint,
+    chapter_id bigint,
+    association_id bigint,
+    type text COLLATE pg_catalog."default",
+    CONSTRAINT tbl_events_pkey PRIMARY KEY (id),
+    CONSTRAINT tbl_events_parent_type_check CHECK (parent_type = ANY (ARRAY['chapter'::text, 'association'::text]))
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.tbl_events
+    OWNER to postgres;
 
 -- Table: public.tbl_courses
 

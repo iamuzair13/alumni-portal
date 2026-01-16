@@ -108,11 +108,19 @@ function MoreDetailsContent() {
       // Get the original value from data
       const originalValue = (data as Record<string, unknown>)?.[key];
       
+      // Normalize both values for comparison
+      const normalizedNewValue = normalizeValue(value);
+      const normalizedOriginalValue = normalizeValue(originalValue);
+      
       // Only add to pending changes if the value is actually different from the original
-      if (!valuesAreEqual(value, originalValue)) {
+      // Store the actual value (not normalized) so we preserve what the user entered
+      // For textarea fields, even if both normalize to null, if user entered something, store it
+      const isDifferent = normalizedNewValue !== normalizedOriginalValue;
+      
+      if (isDifferent) {
         setPendingChanges((prev) => ({
           ...prev,
-          [key]: value,
+          [key]: value, // Store the actual value entered by user
         }));
       } else {
         // If the value matches the original, remove it from pending changes (in case it was there before)
@@ -123,7 +131,7 @@ function MoreDetailsContent() {
         });
       }
     }
-  }, [data, isInitialized]);
+  }, [data, isInitialized, normalizeValue]);
 
   const handleSaveAll = async () => {
     if (!sapId || Object.keys(pendingChanges).length === 0 || isSavingAll) return;
@@ -189,8 +197,45 @@ function MoreDetailsContent() {
     
     // Get current values (use pending changes if available, otherwise use data)
     const getValue = (key: string) => {
-      if (pendingChanges[key] !== undefined) return pendingChanges[key];
-      return (data as Record<string, unknown>)?.[key] ?? null;
+      // Special handling for startOfCareer - it's stored as totalyearsofexpereince
+      if (key === "startOfCareer") {
+        // Check if startOfCareer is explicitly in pendingChanges
+        if ("startOfCareer" in pendingChanges) {
+          return pendingChanges.startOfCareer;
+        }
+        // Otherwise, calculate from totalyearsofexpereince
+        const totalYears = pendingChanges.totalyearsofexpereince !== undefined 
+          ? pendingChanges.totalyearsofexpereince 
+          : (data?.totalyearsofexpereince ?? null);
+        if (totalYears) {
+          const years = Number(totalYears);
+          if (!isNaN(years) && years > 0) {
+            return new Date().getFullYear() - years;
+          }
+        }
+        // Check if startOfCareer exists in data
+        const startOfCareer = (data as Record<string, unknown>).startOfCareer;
+        if (startOfCareer) {
+          if (typeof startOfCareer === "number") return startOfCareer;
+          if (typeof startOfCareer === "string") {
+            const year = new Date(startOfCareer).getFullYear();
+            return isNaN(year) ? null : year;
+          }
+        }
+        return null;
+      }
+      
+      // Check pendingChanges first (user's current edits)
+      // Use 'in' operator to check if key exists, even if value is empty string
+      if (key in pendingChanges) {
+        const pendingValue = pendingChanges[key];
+        // Return the actual value as-is (including empty strings)
+        // We'll validate empty strings in the validation check below
+        return pendingValue;
+      }
+      // Fall back to data from API
+      const dataValue = (data as Record<string, unknown>)?.[key];
+      return dataValue ?? null;
     };
     
     // Check employment status (handle both DB values and display values)
@@ -202,10 +247,10 @@ function MoreDetailsContent() {
     // Both "Employed/Business" and "Self-employed" require the same fields
     if (isEmployedOrBusiness || isSelfEmployed) {
       const requiredFields = [
-        { key: "industry", label: "Industry" },
+        { key: "industry", label: "Sector" },
         { key: "nameoforganization", label: "Company Name" },
         { key: "designation", label: "Designation" },
-        { key: "totalyearsofexpereince", label: "Total Years of Experience" },
+        { key: "startOfCareer", label: "Start of Career" },
         { key: "organization_address", label: "Company Address" },
       ];
 
@@ -213,7 +258,17 @@ function MoreDetailsContent() {
       
       for (const field of requiredFields) {
         const value = getValue(field.key);
-        if (!value || String(value).trim() === "") {
+        // Check if value is null, undefined, or empty string (after trimming)
+        // For startOfCareer (number), also check if it's 0 or NaN
+        let isEmpty = value === null || 
+                      value === undefined || 
+                      (typeof value === "string" && value.trim() === "");
+        if (field.key === "startOfCareer") {
+          // For start of career, check if it's a valid year
+          const year = typeof value === "number" ? value : (typeof value === "string" ? Number(value) : null);
+          isEmpty = year === null || isNaN(year) || year <= 1900 || year > new Date().getFullYear();
+        }
+        if (isEmpty) {
           missingFields.push(field.label);
         }
       }
@@ -241,12 +296,11 @@ function MoreDetailsContent() {
     // Validate: If employment status is "Pursuing Higher Education", all higher education fields are required
     if (isPursuingHigherEd) {
       const requiredFields = [
-        { key: "degree_title", label: "Degree Title" },
         { key: "higher_education_institute_name", label: "Institute Name" },
         { key: "higher_education_program", label: "Program" },
         { key: "higher_education_institute_country", label: "Country" },
         { key: "higher_education_institute_city", label: "City" },
-        { key: "is_scholarship", label: "Scholarship" },
+        { key: "is_scholarship", label: "Funding Source" },
       ];
 
       const missingFields: string[] = [];
@@ -482,7 +536,7 @@ function MoreDetailsContent() {
         { label: "Primary Contact", value: data.contactno, key: "contactno", editable: true, type: "tel" as const },
         { label: "Secondary Contact", value: data.contactno1, key: "contactno1", editable: true, type: "tel" as const },
         { label: "Personal Email", value: data.personalemail, key: "personalemail", editable: true, type: "email" as const },
-        { label: "Alumni Email", value: data.universityemail, key: "universityemail", editable: true, type: "email" as const },
+        { label: "Alumni Email", value: data.universityemail, key: "universityemail", editable: false, type: "email" as const },
       ],
     },
     {
@@ -500,10 +554,8 @@ function MoreDetailsContent() {
         { label: "Campus", value: data.campusname, key: "campusname", editable: false },
         { label: "Faculty", value: data.facultyname, key: "facultyname", editable: false },
         { label: "Department", value: data.departmentname, key: "departmentname", editable: false },
-        { label: "Degree Title", value: data.degreetitle, key: "degreetitle", editable: false },
-        { label: "Major Subject", value: data.majorsubject, key: "majorsubject", editable: false },
+        { label: "Program", value: data.degreetitle, key: "degreetitle", editable: false },
         { label: "CGPA", value: data.cgpa, key: "cgpa", editable: true, type: "number" as const },
-        { label: "Academic Session", value: data.academicsession, key: "academicsession", editable: false },
         { label: "Year of Starting", value: data.yearofstarting, key: "yearofstarting", editable: false },
         { label: "Year of Ending", value: data.yearofending, key: "yearofending", editable: false },
       ],
@@ -515,9 +567,27 @@ function MoreDetailsContent() {
         { label: "Industry", value: data.industry, key: "industry", editable: true, isSpecial: true },
         { label: "Company Name", value: data.nameoforganization, key: "nameoforganization", editable: true, isSpecial: true },
         { label: "Designation", value: data.designation, key: "designation", editable: true, isSpecial: true },
-        { label: "Total Years of Experience", value: data.totalyearsofexpereince, key: "totalyearsofexpereince", editable: true, isSpecial: true },
-        { label: "Work Country", value: (data as Record<string, unknown>).work_country, key: "work_country", editable: true },
-        { label: "Work City", value: (data as Record<string, unknown>).work_city, key: "work_city", editable: true },
+        { label: "Start of Career", value: (() => {
+          // Try to get startOfCareer from data, or calculate from total years of experience
+          const startOfCareer = (data as Record<string, unknown>).startOfCareer;
+          if (startOfCareer) {
+            if (typeof startOfCareer === "string") {
+              const year = new Date(startOfCareer).getFullYear();
+              return isNaN(year) ? null : year;
+            }
+            return typeof startOfCareer === "number" ? startOfCareer : null;
+          }
+          // Calculate from total years of experience if available
+          if (data.totalyearsofexpereince) {
+            const years = Number(data.totalyearsofexpereince);
+            if (!isNaN(years) && years > 0) {
+              return new Date().getFullYear() - years;
+            }
+          }
+          return null;
+        })(), key: "startOfCareer", editable: true, type: "number" as const, isSpecial: true },
+        // Work location fields are now handled by EditableEmploymentStatus component
+        // They are shown conditionally based on employment status
       ],
     },
     {
@@ -660,7 +730,29 @@ function MoreDetailsContent() {
                         industryValue={pendingChanges.industry !== undefined ? pendingChanges.industry : data.industry}
                         nameoforganizationValue={pendingChanges.nameoforganization !== undefined ? pendingChanges.nameoforganization : data.nameoforganization}
                         designationValue={pendingChanges.designation !== undefined ? pendingChanges.designation : data.designation}
-                        totalyearsofexpereinceValue={pendingChanges.totalyearsofexpereince !== undefined ? pendingChanges.totalyearsofexpereince : data.totalyearsofexpereince}
+                        totalyearsofexpereinceValue={(() => {
+                          // Check if startOfCareer is in pending changes
+                          if (pendingChanges.startOfCareer !== undefined) {
+                            const startYear = typeof pendingChanges.startOfCareer === "number" ? pendingChanges.startOfCareer : Number(pendingChanges.startOfCareer);
+                            if (!isNaN(startYear) && startYear > 1900) {
+                              const currentYear = new Date().getFullYear();
+                              const calculatedYears = currentYear - startYear;
+                              return calculatedYears > 0 ? String(calculatedYears) : null;
+                            }
+                          }
+                          // Check if startOfCareer is in data
+                          const startOfCareer = (data as Record<string, unknown>).startOfCareer;
+                          if (startOfCareer) {
+                            const startYear = typeof startOfCareer === "number" ? startOfCareer : (typeof startOfCareer === "string" ? new Date(startOfCareer).getFullYear() : Number(startOfCareer));
+                            if (!isNaN(startYear) && startYear > 1900) {
+                              const currentYear = new Date().getFullYear();
+                              const calculatedYears = currentYear - startYear;
+                              return calculatedYears > 0 ? String(calculatedYears) : null;
+                            }
+                          }
+                          // Fall back to totalyearsofexpereince
+                          return pendingChanges.totalyearsofexpereince !== undefined ? pendingChanges.totalyearsofexpereince : data.totalyearsofexpereince;
+                        })()}
                         organizationAddressValue={pendingChanges.organization_address !== undefined ? pendingChanges.organization_address : data.organization_address}
                         disabled={isViewer}
                         degreeTitleValue={pendingChanges.degree_title !== undefined ? pendingChanges.degree_title : (data as Record<string, unknown>).degree_title ?? null}
@@ -674,7 +766,18 @@ function MoreDetailsContent() {
                         onOrganizationChange={handleFieldValueChange}
                         onDesignationChange={handleFieldValueChange}
                         onExperienceChange={handleFieldValueChange}
+                        onStartOfCareerChange={handleFieldValueChange}
                         onOrganizationAddressChange={handleFieldValueChange}
+                        workCountryValue={pendingChanges.work_country !== undefined ? pendingChanges.work_country : (data as Record<string, unknown>).work_country}
+                        workCityValue={pendingChanges.work_city !== undefined ? pendingChanges.work_city : (data as Record<string, unknown>).work_city}
+                        workPhoneValue={pendingChanges.officialnumber !== undefined ? pendingChanges.officialnumber : data.officialnumber}
+                        workEmailValue={pendingChanges.officialemail !== undefined ? pendingChanges.officialemail : data.officialemail}
+                        aboutMeValue={pendingChanges.about !== undefined ? pendingChanges.about : (data as Record<string, unknown>).about}
+                        onWorkCountryChange={handleFieldValueChange}
+                        onWorkCityChange={handleFieldValueChange}
+                        onWorkPhoneChange={handleFieldValueChange}
+                        onWorkEmailChange={handleFieldValueChange}
+                        onAboutMeChange={handleFieldValueChange}
                         onDegreeTitleChange={handleFieldValueChange}
                         onInstituteNameChange={handleFieldValueChange}
                         onProgramChange={handleFieldValueChange}

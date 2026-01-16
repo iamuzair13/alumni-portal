@@ -35,6 +35,7 @@ type EventItem = {
   id: string;
   title: string;
   category: string;
+  type?: string | null;
   fromDate: string | null;
   toDate: string | null;
   eventTime: string | null;
@@ -206,6 +207,9 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                 <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
                   Category
                 </TableCell>
+                <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px]">
+                  Type
+                </TableCell>
                 <TableCell className="px-3  sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[110px]">
                   From Date
                 </TableCell>
@@ -244,6 +248,9 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                       <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                     </TableCell>
                     <TableCell className="px-3  sm:px-6 py-5">
+                      <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                    </TableCell>
+                    <TableCell className="px-3  sm:px-6 py-5">
                       <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                     </TableCell>
                     <TableCell className="px-3  sm:px-6 py-5">
@@ -269,7 +276,7 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
               )}
               {!loading && paged.length === 0 && (
                 <TableRow>
-                  <TableCell className="px-6 py-16 text-center" colSpan={10}>
+                  <TableCell className="px-6 py-16 text-center" colSpan={11}>
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,6 +307,11 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
                   <TableCell className="px-3  sm:px-6 py-5 text-start">
                     <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 capitalize">
                       {evt.category || "-"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="px-3  sm:px-6 py-5 text-start">
+                    <span className="text-gray-700 text-sm dark:text-gray-300">
+                      {evt.type === "past" ? "Past" : evt.type === "upcoming" ? "Up-Coming" : "-"}
                     </span>
                   </TableCell>
                   <TableCell className="px-3  sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300">
@@ -483,6 +495,7 @@ const EventTable: React.FC<EventListProps> = ({ items, loading, emptyMessage, on
 type EventFormValues = {
   title: string;
   category: string;
+  type?: "" | "past" | "upcoming";
   fromDate: string | undefined;
   toDate: string | undefined;
   eventTime: string | undefined;
@@ -500,6 +513,7 @@ type EventFormValues = {
 const createEventFormSchema = (isEditing: boolean = false) => z.object({
   title: z.string().min(1, "Title is required").max(200, "Title must be 200 characters or less"),
   category: z.string().min(1, "Category is required"),
+  type: z.enum(["past", "upcoming"]).optional().or(z.literal("")),
   fromDate: isEditing 
     ? z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Invalid date format (YYYY-MM-DD)").or(z.literal("")).optional()
     : z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "From date is required"),
@@ -624,6 +638,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
     defaultValues: {
       title: "",
       category: "",
+      type: "",
       fromDate: "",
       toDate: "",
       eventTime: "",
@@ -660,6 +675,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
             // Populate form with existing data
             setValue("title", data.title || "");
             setValue("category", data.category || "");
+            setValue("type", data.type || "");
             setValue("fromDate", data.fromDate || "");
             setValue("toDate", data.toDate || "");
             setValue("eventTime", data.eventTime || "");
@@ -799,6 +815,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
       formData.append("shortDescription", data.shortDescription);
       formData.append("description", data.description);
       
+      if (data.type) formData.append("type", data.type);
       if (data.chapterId) formData.append("chapterId", data.chapterId);
       if (data.associationId) formData.append("associationId", data.associationId);
       
@@ -910,6 +927,23 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
             ))}
           </select>
           {errors.category && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.category.message}</p>}
+        </div>
+
+        {/* Event Type */}
+        <div>
+          <Label htmlFor="type">Event Type (Optional)</Label>
+          <select
+            id="type"
+            className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs text-gray-800 placeholder:text-gray-400 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 focus:border-brand-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800 ${
+              errors.type ? "border-red-500 dark:border-red-500" : "border-gray-300"
+            }`}
+            {...register("type")}
+          >
+            <option value="">Select event type (optional)</option>
+            <option value="past">Past</option>
+            <option value="upcoming">Up-Coming</option>
+          </select>
+          {errors.type && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{errors.type.message}</p>}
         </div>
 
         {/* Event Time */}
@@ -1241,6 +1275,7 @@ export default function EventsPage() {
       id: e.id,
       title: e.title || "",
       category: e.category || "",
+      type: e.type || null,
       fromDate: e.startTimeUTC ? new Date(e.startTimeUTC).toISOString().split('T')[0] : null,
       toDate: e.endTimeUTC ? new Date(e.endTimeUTC).toISOString().split('T')[0] : null,
       eventTime: e.startTimeUTC ? new Date(e.startTimeUTC).toTimeString().slice(0, 5) : null,

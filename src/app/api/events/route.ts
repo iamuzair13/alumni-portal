@@ -12,6 +12,7 @@ type EventListItem = {
   shortDescription: string;
   imageUrl?: string;
   category?: string;
+  type?: string;
   startTimeUTC?: string;
   endTimeUTC?: string;
   chapterName?: string | null;
@@ -36,6 +37,7 @@ function toUtcIso(date: unknown, time?: unknown): string | undefined {
 type EventRow = {
   id: number;
   category: string | null;
+  type: string | null;
   title: string | null;
   shortdescription: string | null;
   longdescription: string | null;
@@ -60,6 +62,7 @@ export async function GET() {
       SELECT 
         e.id, 
         e.category, 
+        e.type,
         e.title, 
         e.shortdescription, 
         e.longdescription, 
@@ -96,6 +99,7 @@ export async function GET() {
       const shortDescription = String(r.shortdescription ?? "");
       const imageUrl = String(r.image1 ?? "");
       const category = String(r.category ?? "");
+      const type = r.type ? String(r.type) : undefined;
       const startTimeUTC = toUtcIso(r.fromdate, r.eventtime);
       const endTimeUTC = toUtcIso(r.todate, r.eventtime) ?? startTimeUTC;
       const chapterName = r.chapter_name ? String(r.chapter_name) : null;
@@ -107,7 +111,8 @@ export async function GET() {
         venue, 
         shortDescription, 
         imageUrl, 
-        category, 
+        category,
+        type,
         startTimeUTC, 
         endTimeUTC,
         chapterName,
@@ -143,6 +148,7 @@ export async function POST(req: Request) {
     // Extract text fields
     const title = String(formData.get("title") || "").trim();
     const category = String(formData.get("category") || "").trim();
+    const type = formData.get("type") ? String(formData.get("type")).trim() : null;
     const fromDate = String(formData.get("fromDate") || "").trim();
     const toDate = String(formData.get("toDate") || "").trim();
     const eventTime = String(formData.get("eventTime") || "").trim();
@@ -260,8 +266,8 @@ export async function POST(req: Request) {
 
       // Insert event record with image filenames
       const result = await sql/* sql */`
-        INSERT INTO public.tbl_events (category, title, shortdescription, longdescription, fromdate, todate, eventtime, image1, image2, image3, image4, image5, chapter_id, association_id)
-        VALUES (${category}, ${title}, ${shortDescription.slice(0, 500)}, ${description || null}, ${fromDate}, ${toDate}, ${eventTime}, ${savedImages[1]}, ${savedImages[2] || null}, ${savedImages[3] || null}, ${savedImages[4] || null}, ${savedImages[5] || null}, ${chapterId}, ${associationId})
+        INSERT INTO public.tbl_events (category, type, title, shortdescription, longdescription, fromdate, todate, eventtime, image1, image2, image3, image4, image5, chapter_id, association_id)
+        VALUES (${category}, ${type}, ${title}, ${shortDescription.slice(0, 500)}, ${description || null}, ${fromDate}, ${toDate}, ${eventTime}, ${savedImages[1]}, ${savedImages[2] || null}, ${savedImages[3] || null}, ${savedImages[4] || null}, ${savedImages[5] || null}, ${chapterId}, ${associationId})
         RETURNING id
       ` as Array<{ id: number }>;
 

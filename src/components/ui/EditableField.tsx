@@ -55,7 +55,10 @@ export default function EditableField({
     } else if (type === "number") {
       return val === "" ? null : parseFloat(val);
     } else if (type === "text" || type === "textarea" || type === "email" || type === "tel" || type === "select" || type === "password" || type === "date") {
-      return val === "" ? null : val.trim();
+      // For textarea, preserve the value as-is (trimmed) even if it's empty string
+      // This allows the validation to properly check if a required field is filled
+      const trimmed = val.trim();
+      return trimmed === "" ? null : trimmed;
     }
     return val.trim();
   };

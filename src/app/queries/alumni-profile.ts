@@ -46,6 +46,7 @@ export type AlumniFullDetails = {
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
+  startOfCareer: number | null; // Year when career started
   officialemail: string | null;
   officialnumber: string | null;
   work_city: string | null;
@@ -55,6 +56,7 @@ export type AlumniFullDetails = {
   image2: string | null;
   cv: string | null;
   aboutme: string | null;
+  about: string | null;
   lasttimelogin: string | null;
   logincount: number | null;
   verify: string | null;

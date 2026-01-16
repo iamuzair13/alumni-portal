@@ -15,7 +15,8 @@ export type CardApplicant = {
   createdat: string | null;
 };
 
-export type CardStatusFilter = "all" | "under-review" | "underprinting" | "active" | "onhold" | "delivered";
+export type CardStatusFilter = "all" | "under-review" | "underprinting" | "active" | "onhold" | "delivered" | "overdue";
+export type OverdueType = "under-review" | "under-printing";
 
 export type CardApplicantsResponse = {
   items: CardApplicant[];
@@ -26,18 +27,33 @@ export type CardApplicantsResponse = {
     active: number;
     onhold: number;
     delivered: number;
+    "overdue-under-review": number;
+    "overdue-under-printing": number;
   };
 };
 
-export const cardApplicantsKey = (status?: CardStatusFilter) => ["alumni", "card", "applicants", status ?? "all"] as const;
+export const cardApplicantsKey = (status?: CardStatusFilter, overdueType?: OverdueType) => {
+  if (status === "overdue" && overdueType) {
+    return ["alumni", "card", "applicants", status, overdueType] as const;
+  }
+  return ["alumni", "card", "applicants", status ?? "all"] as const;
+};
 
-export function useCardApplicants(status: CardStatusFilter = "all", options?: { enabled?: boolean }) {
+export function useCardApplicants(status: CardStatusFilter = "all", options?: { enabled?: boolean; overdueType?: OverdueType }) {
+  const overdueType = status === "overdue" ? options?.overdueType : undefined;
   return useQuery<CardApplicantsResponse>({
-    queryKey: cardApplicantsKey(status),
+    queryKey: cardApplicantsKey(status, overdueType),
     queryFn: async () => {
       const url = new URL("/api/alumni-cards/applicants", window.location.origin);
       if (status && status !== "all") {
-        url.searchParams.set("status", status);
+        if (status === "overdue") {
+          url.searchParams.set("status", "overdue");
+          if (options?.overdueType) {
+            url.searchParams.set("overdueType", options.overdueType);
+          }
+        } else {
+          url.searchParams.set("status", status);
+        }
       }
       const res = await fetch(url.toString(), { cache: "no-store" });
       if (!res.ok) {
@@ -47,7 +63,16 @@ export function useCardApplicants(status: CardStatusFilter = "all", options?: { 
       const j = await res.json();
       return {
         items: (j?.items ?? []) as CardApplicant[],
-        counts: j?.counts ?? { all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 },
+        counts: j?.counts ?? { 
+          all: 0, 
+          "under-review": 0, 
+          underprinting: 0, 
+          active: 0, 
+          onhold: 0, 
+          delivered: 0,
+          "overdue-under-review": 0,
+          "overdue-under-printing": 0,
+        },
       } as CardApplicantsResponse;
     },
     enabled: options?.enabled !== false,
@@ -70,7 +95,16 @@ export function useCardCounts() {
         throw new Error(j?.error || `Failed (${res.status})`);
       }
       const j = await res.json();
-      return j ?? { all: 0, "under-review": 0, underprinting: 0, active: 0, onhold: 0, delivered: 0 };
+      return j ?? { 
+        all: 0, 
+        "under-review": 0, 
+        underprinting: 0, 
+        active: 0, 
+        onhold: 0, 
+        delivered: 0,
+        "overdue-under-review": 0,
+        "overdue-under-printing": 0,
+      };
     },
     staleTime: 0, // Always fetch fresh data
     gcTime: 10 * 60_000, // 10 minutes
@@ -105,7 +139,8 @@ export function useUpdateApplicantStatus() {
       await qc.cancelQueries({ queryKey: ["alumni", "card", "applicants"] });
       
       // Update all status-specific queries
-      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
+      const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered", "overdue"];
+      const overdueTypes: OverdueType[] = ["under-review", "under-printing"];
       const prevData: Record<string, CardApplicantsResponse | undefined> = {};
       
       for (const s of statuses) {
@@ -143,11 +178,35 @@ export function useUpdateApplicantStatus() {
         }
       }
       
+      // Also handle overdue queries in onMutate
+      for (const ot of overdueTypes) {
+        const key = cardApplicantsKey("overdue", ot);
+        const prev = qc.getQueryData<CardApplicantsResponse>(key);
+        prevData[`overdue-${ot}`] = prev;
+        
+        if (prev) {
+          const itemIndex = prev.items.findIndex((r) => String(r.sapid) === String(sapId));
+          if (itemIndex !== -1) {
+            const updatedItem = { ...prev.items[itemIndex], status };
+            const reorderedItems = [
+              updatedItem,
+              ...prev.items.slice(0, itemIndex),
+              ...prev.items.slice(itemIndex + 1)
+            ];
+            qc.setQueryData(key, {
+              ...prev,
+              items: reorderedItems,
+            });
+          }
+        }
+      }
+      
       return { prev: prevData["all"]?.items };
     },
     onSuccess: (_data, { sapId }) => {
       // After successful update, ensure the updated item is first in all relevant queries
       const statuses: CardStatusFilter[] = ["all", "under-review", "underprinting", "active", "onhold", "delivered"];
+      const overdueTypes: OverdueType[] = ["under-review", "under-printing"];
       
       for (const s of statuses) {
         const key = cardApplicantsKey(s);
@@ -157,6 +216,28 @@ export function useUpdateApplicantStatus() {
           const itemIndex = current.items.findIndex((r) => String(r.sapid) === String(sapId));
           if (itemIndex !== -1 && itemIndex !== 0) {
             // Move the updated item to the first position
+            const updatedItem = current.items[itemIndex];
+            const reorderedItems = [
+              updatedItem,
+              ...current.items.slice(0, itemIndex),
+              ...current.items.slice(itemIndex + 1)
+            ];
+            qc.setQueryData(key, {
+              ...current,
+              items: reorderedItems,
+            });
+          }
+        }
+      }
+      
+      // Also update overdue queries
+      for (const ot of overdueTypes) {
+        const key = cardApplicantsKey("overdue", ot);
+        const current = qc.getQueryData<CardApplicantsResponse>(key);
+        
+        if (current) {
+          const itemIndex = current.items.findIndex((r) => String(r.sapid) === String(sapId));
+          if (itemIndex !== -1 && itemIndex !== 0) {
             const updatedItem = current.items[itemIndex];
             const reorderedItems = [
               updatedItem,

@@ -7,7 +7,8 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // "all" | "active" | "pending" | "onhold" | null
+    const status = searchParams.get("status"); // "all" | "active" | "pending" | "onhold" | "overdue-under-review" | "overdue-under-printing" | null
+    const overdueType = searchParams.get("overdueType"); // "under-review" | "under-printing" for overdue filtering
     
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
@@ -18,8 +19,23 @@ export async function GET(request: Request) {
     // Legacy: "Pending" → "UnderReview", "Process" → "UnderPrinting"
     // NULL or empty status should be treated as "UnderReview" (default status)
     let statusCondition = sql``;
+    let overdueCondition = sql``;
+    
     if (status && status !== "all") {
-      if (status === "under-review") {
+      if (status === "overdue") {
+        // Overdue tab - filter based on overdueType
+        if (overdueType === "under-review") {
+          // Overdue Under Review: status is UnderReview AND createdat > 7 days ago
+          statusCondition = sql` AND (c.status IS NULL OR TRIM(c.status) = '' OR UPPER(TRIM(c.status)) = 'PENDING' OR UPPER(TRIM(c.status)) = 'UNDERREVIEW')`;
+          overdueCondition = sql` AND c.createdat < NOW() - INTERVAL '7 days'`;
+        } else if (overdueType === "under-printing") {
+          // Overdue Under Printing: status is UnderPrinting AND createdat > 7 days ago
+          // Note: This uses createdat as a proxy since we don't have status_changed_at field
+          // In a production system, you'd want to add a status_changed_at field to track when status changed
+          statusCondition = sql` AND c.status IS NOT NULL AND (UPPER(TRIM(c.status)) = 'PROCESS' OR UPPER(TRIM(c.status)) = 'UNDERPRINTING')`;
+          overdueCondition = sql` AND c.createdat < NOW() - INTERVAL '7 days'`;
+        }
+      } else if (status === "under-review") {
         // UnderReview: NULL, empty, legacy "Pending", or "UnderReview" (camelCase)
         // Match case-insensitively to handle "UnderReview", "underreview", "UNDERREVIEW", etc.
         statusCondition = sql` AND (c.status IS NULL OR TRIM(c.status) = '' OR UPPER(TRIM(c.status)) = 'PENDING' OR UPPER(TRIM(c.status)) = 'UNDERREVIEW')`;
@@ -60,6 +76,7 @@ export async function GET(request: Request) {
       WHERE 1=1
         ${accessFilterCondition}
         ${statusCondition}
+        ${overdueCondition}
       ORDER BY c.createdat DESC`;
     
     // Fetch counts for all statuses
@@ -73,6 +90,8 @@ export async function GET(request: Request) {
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ACTIVE') as active_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'ONHOLD') as onhold_count,
         COUNT(*) FILTER (WHERE c.status IS NOT NULL AND UPPER(TRIM(c.status)) = 'DELIVERED') as delivered_count,
+        COUNT(*) FILTER (WHERE (c.status IS NULL OR TRIM(c.status) = '' OR UPPER(TRIM(c.status)) = 'PENDING' OR UPPER(TRIM(c.status)) = 'UNDERREVIEW') AND c.createdat < NOW() - INTERVAL '7 days') as overdue_under_review_count,
+        COUNT(*) FILTER (WHERE c.status IS NOT NULL AND (UPPER(TRIM(c.status)) = 'PROCESS' OR UPPER(TRIM(c.status)) = 'UNDERPRINTING') AND c.createdat < NOW() - INTERVAL '7 days') as overdue_under_printing_count,
         COUNT(*) as all_count
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
@@ -85,6 +104,8 @@ export async function GET(request: Request) {
       active_count: bigint | number;
       onhold_count: bigint | number;
       delivered_count: bigint | number;
+      overdue_under_review_count: bigint | number;
+      overdue_under_printing_count: bigint | number;
       all_count: bigint | number;
     } | undefined;
     
@@ -95,6 +116,8 @@ export async function GET(request: Request) {
     const activeCount = countRow?.active_count ? Number(countRow.active_count) : 0;
     const onholdCount = countRow?.onhold_count ? Number(countRow.onhold_count) : 0;
     const deliveredCount = countRow?.delivered_count ? Number(countRow.delivered_count) : 0;
+    const overdueUnderReviewCount = countRow?.overdue_under_review_count ? Number(countRow.overdue_under_review_count) : 0;
+    const overdueUnderPrintingCount = countRow?.overdue_under_printing_count ? Number(countRow.overdue_under_printing_count) : 0;
     
     return NextResponse.json({ 
       items: rows,
@@ -105,6 +128,8 @@ export async function GET(request: Request) {
         active: activeCount,
         onhold: onholdCount,
         delivered: deliveredCount,
+        "overdue-under-review": overdueUnderReviewCount,
+        "overdue-under-printing": overdueUnderPrintingCount,
       }
     }, { status: 200 });
   } catch (err) {
