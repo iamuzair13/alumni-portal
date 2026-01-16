@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({ data: result, error: null });
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/events/home-past:', error);
     const response = NextResponse.json(
       {
         data: null,

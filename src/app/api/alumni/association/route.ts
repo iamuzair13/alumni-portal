@@ -5,14 +5,13 @@ import { sendAssociationApplicationEmail } from "@/lib/email";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 
 export async function GET(request: NextRequest) {
-  console.log("[API] Alumni Association GET request received");
+
   try {
-    console.log("[API] Getting session...");
+
     const session = await auth();
-    console.log("[API] Session obtained:", session?.user?.email || "no user");
+
     const { searchParams } = new URL(request.url);
-    console.log("[API] URL search params:", Object.fromEntries(searchParams.entries()));
-    
+
     // Get filter parameters (arrays for multi-select)
     const facultiesParam = searchParams.get("faculties");
     const departmentsParam = searchParams.get("departments");
@@ -30,15 +29,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     
     // Debug logging
-    console.log("[API] Alumni Association Filters:", {
-      faculties: selectedFaculties.length > 0 ? selectedFaculties : "none",
-      departments: selectedDepartments.length > 0 ? selectedDepartments : "none",
-      associations: selectedAssociations.length > 0 ? selectedAssociations : "none",
-      membershipFilter,
-      page,
-      limit,
-    });
-    
+
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
@@ -125,17 +116,7 @@ export async function GET(request: NextRequest) {
       JOIN public.tbl_associations assoc ON assoc.id = a.association_id`
       : sql`FROM public.tbl_alumni a
       LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id`;
-    
-    console.log("[API] Executing query with filters:", {
-      hasFacultyFilter: selectedFaculties.length > 0,
-      hasDepartmentFilter: selectedDepartments.length > 0,
-      hasAssociationFilter: selectedAssociations.length > 0,
-      membershipFilter,
-      page,
-      limit,
-      offset,
-    });
-    
+
     // First, get the total count
     let countResult;
     try {
@@ -153,7 +134,7 @@ export async function GET(request: NextRequest) {
           ${membershipWhereCondition}
       `;
     } catch (countError) {
-      console.error("[API] Count Query Error:", countError);
+
       throw countError;
     }
     
@@ -196,17 +177,10 @@ export async function GET(request: NextRequest) {
         ORDER BY a.alumniid DESC
         LIMIT ${limit} OFFSET ${offset}`;
     } catch (queryError) {
-      console.error("[API] SQL Query Error:", queryError);
+
       throw queryError;
     }
-    
-    console.log("[API] Alumni Association Query Result:", {
-      rowCount: rows.length,
-      total,
-      totalPages,
-      page,
-    });
-    
+
     const items = rows.map((r: Record<string, unknown>) => ({
       sapid: String(r.sapid ?? ""),
       registrationNo: r.registrationno ? String(r.registrationno) : null,
@@ -219,8 +193,7 @@ export async function GET(request: NextRequest) {
       associationId: r.association_id ? Number(r.association_id) : null,
       createdAt: r.association_created_at || null,
     }));
-    
-    console.log("[API] Returning items:", items.length);
+
     return NextResponse.json({ 
       items,
       total,
@@ -229,10 +202,10 @@ export async function GET(request: NextRequest) {
       totalPages,
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching alumni association:", err);
+
     const msg = err instanceof Error ? err.message : "Failed to fetch association";
     const errorDetails = err instanceof Error ? err.stack : String(err);
-    console.error("[API] Error details:", errorDetails);
+
     return NextResponse.json({ error: msg, details: process.env.NODE_ENV === "development" ? errorDetails : undefined }, { status: 500 });
   }
 }
@@ -317,11 +290,10 @@ export async function POST(request: NextRequest) {
     }
     
     const createdRecord = insertResult[0] as { id: number; status: string };
-    console.log(`[Association Leadership] Application created - ID: ${createdRecord.id}, Status: ${createdRecord.status}, Alumni ID: ${alumniIdNum}`);
-    
+
     // Verify the record was created with 'pending' status
     if (createdRecord.status !== 'pending') {
-      console.error(`[Association Leadership] WARNING: Application was created with status '${createdRecord.status}' instead of 'pending'!`);
+
     }
 
     // Send confirmation email
@@ -346,13 +318,13 @@ export async function POST(request: NextRequest) {
         if (alumniEmail) {
           // Send email asynchronously (don't wait for it to complete)
           sendAssociationApplicationEmail(alumniEmail, alumniName, roleDisplayName).catch((err) => {
-            console.error("[API] Failed to send association application email:", err);
+
           });
         }
       }
     } catch (emailError) {
       // Don't fail the request if email fails
-      console.error("[API] Error sending association application email:", emailError);
+
     }
 
     return NextResponse.json({ 
@@ -360,7 +332,7 @@ export async function POST(request: NextRequest) {
       message: "Application submitted successfully. It is now pending admin approval." 
     });
   } catch (error) {
-    console.error("Error submitting alumni association application:", error);
+
     const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
     return NextResponse.json(
       { error: errorMessage },

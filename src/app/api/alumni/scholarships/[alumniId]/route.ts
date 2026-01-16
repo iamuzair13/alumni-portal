@@ -165,14 +165,14 @@ export async function PATCH(
         const transporter = getTransporter();
 
         if (!transporter) {
-          console.warn("[Scholarship Status API] SMTP not configured");
+
           emailError = "SMTP not configured";
         } else {
           // Verify transporter connection
           try {
             await transporter.verify();
           } catch (verifyError) {
-            console.error("[Scholarship Status API] SMTP verification failed:", verifyError);
+
             emailError = `SMTP verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`;
           }
 
@@ -216,7 +216,7 @@ export async function PATCH(
                   kinshipName: hasKinship ? `${kinshipFirstName} ${kinshipLastName}` : null,
                 });
               } catch (pdfError) {
-                console.error("[Scholarship Status API] Failed to generate PDF:", pdfError);
+
                 emailError = `PDF generation failed: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`;
               }
             } else {
@@ -260,11 +260,11 @@ export async function PATCH(
 
             await transporter.sendMail(mailOptions);
             emailSent = true;
-            console.log(`[Scholarship Status API] Email sent successfully to ${alumniEmail} for status: ${status}`);
+
           }
         }
       } catch (emailErr) {
-        console.error("[Scholarship Status API] Failed to send email:", emailErr);
+
         emailError = emailErr instanceof Error ? emailErr.message : String(emailErr);
       }
     }
@@ -279,7 +279,7 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (err) {
-    console.error("[API] Error updating scholarship status:", err);
+
     const msg = err instanceof Error ? err.message : "Failed to update scholarship status";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

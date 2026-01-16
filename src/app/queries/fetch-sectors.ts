@@ -25,7 +25,6 @@ async function getSectors(signal?: AbortSignal, filters?: MasterFilters): Promis
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-sectors] API error:", res.status, err);
     throw new Error(err || "Failed to fetch sectors");
   }
   

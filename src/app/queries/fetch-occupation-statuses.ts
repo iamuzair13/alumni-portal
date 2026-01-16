@@ -28,12 +28,12 @@ async function getOccupationStatuses(
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-occupation-statuses] API error:", res.status, err);
+
     throw new Error(err || "Failed to fetch occupation statuses");
   }
   
   const data = (await res.json()) as OccupationStatusesResponse;
-  console.log("[fetch-occupation-statuses] Received data:", data);
+
   return data;
 }
 

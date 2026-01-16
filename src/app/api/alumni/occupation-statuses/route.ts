@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for occupation statuses:", filterError);
+
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -53,9 +53,8 @@ export async function GET(req: Request) {
         END ASC
     `);
 
-    console.log("[API] Occupation statuses query returned", rows.length, "rows");
     if (rows.length === 0) {
-      console.warn("[API] No occupation status values found in database");
+
     }
 
     const occupationStatuses = (rows as unknown as Array<{ occupation_status: string; count: number | string | bigint }>).map((row) => {
@@ -68,15 +67,12 @@ export async function GET(req: Request) {
       };
     });
 
-    console.log("[API] Processed occupation statuses:", JSON.stringify(occupationStatuses, null, 2));
-
     return NextResponse.json({
       success: true,
       occupationStatuses
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching occupation statuses:", err);
-    
+
     // Check for connection timeout errors
     const isConnectionError = err instanceof Error && (
       err.message.includes('CONNECT_TIMEOUT') ||

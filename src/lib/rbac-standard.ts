@@ -70,7 +70,6 @@ export async function getUserIdFromSession(session: Session | null): Promise<num
     
     return result[0]?.id ?? null;
   } catch (error) {
-    console.error("[RBAC-Standard] Failed to get user ID from session:", error);
     return null;
   }
 }
@@ -89,7 +88,6 @@ export async function hasRole(userId: number, roleName: string): Promise<boolean
     
     return parseInt(result[0]?.count ?? '0') > 0;
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to check role ${roleName} for user ${userId}:`, error);
     return false; // Fail closed - deny access on error
   }
 }
@@ -112,7 +110,6 @@ export async function getUserRoles(userId: number): Promise<UserRole[]> {
     
     return result || [];
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to get roles for user ${userId}:`, error);
     return [];
   }
 }
@@ -171,7 +168,6 @@ export async function hasPermission(
     
     return parseInt(result[0]?.count ?? '0') > 0;
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to check permission ${action}:${resource} for user ${userId}:`, error);
     return false; // Fail closed
   }
 }
@@ -206,7 +202,6 @@ export async function getUserPermissions(userId: number): Promise<Permission[]> 
     
     return result || [];
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to get permissions for user ${userId}:`, error);
     return [];
   }
 }
@@ -248,7 +243,6 @@ export async function getUserResourceAccess(userId: number): Promise<UserResourc
     
     return result || [];
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to get resource access for user ${userId}:`, error);
     return [];
   }
 }
@@ -286,7 +280,6 @@ export async function hasResourceAccess(
     
     return userLevelValue >= requiredLevelValue;
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to check resource access for user ${userId}, resource ${resourceId}:`, error);
     return false; // Fail closed
   }
 }
@@ -327,7 +320,6 @@ export async function hasResourceAccessByName(
     
     return userLevelValue >= requiredLevelValue;
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to check resource access by name for user ${userId}:`, error);
     return false;
   }
 }
@@ -424,7 +416,6 @@ export async function buildResourceAccessFilterSQL(
     
     return { sql: combinedFilter, hasFilter: true };
   } catch (error) {
-    console.error(`[RBAC-Standard] Failed to build resource access filter for user ${userId}:`, error);
     // Fail closed - deny access on error
     return { sql: sql`1 = 0`, hasFilter: true };
   }

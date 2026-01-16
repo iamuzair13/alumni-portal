@@ -73,7 +73,7 @@ export async function retryDbOperation<T>(
       
       // Exponential backoff: 1s, 2s, 4s
       const delay = initialDelay * Math.pow(2, attempt);
-      console.log(`[DB] Connection timeout, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }

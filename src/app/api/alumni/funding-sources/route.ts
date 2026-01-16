@@ -20,7 +20,6 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for funding sources:", filterError);
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -66,8 +65,6 @@ export async function GET(req: Request) {
       fundingSources
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching funding sources:", err);
-    
     // Check for connection timeout errors
     const isConnectionError = err instanceof Error && (
       err.message.includes('CONNECT_TIMEOUT') ||

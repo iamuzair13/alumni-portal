@@ -92,7 +92,6 @@ export async function GET(request: NextRequest) {
     });
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/events:', error);
     const response = NextResponse.json(
       {
         data: null,

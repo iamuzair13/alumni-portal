@@ -123,7 +123,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ items: allItems }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export leadership data";
-    console.error("[API] Export error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

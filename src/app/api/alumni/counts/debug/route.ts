@@ -40,7 +40,7 @@ export async function GET() {
       testCounts: testCounts[0],
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error in debug:", err);
+
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 500 });
   }
 }

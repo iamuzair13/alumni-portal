@@ -71,7 +71,7 @@ export async function GET(
 
     return NextResponse.json({ item: parsed }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error fetching distinguished alumni:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch distinguished alumni" },
       { status: 500 }
@@ -218,8 +218,7 @@ export async function PUT(
         
         // Save just the filename to database
         image = filename;
-        
-        console.log(`[API] Distinguished alumni image saved: ${filename}`);
+
       }
       // If no new image uploaded, image remains as existingImage (already set above)
     } else {
@@ -311,7 +310,7 @@ export async function PUT(
 
     return NextResponse.json({ item: parsed }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error updating distinguished alumni:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update distinguished alumni" },
       { status: 500 }
@@ -364,7 +363,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("[API] Error deleting distinguished alumni:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to delete distinguished alumni" },
       { status: 500 }

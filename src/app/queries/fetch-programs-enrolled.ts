@@ -21,7 +21,6 @@ async function getProgramsEnrolled(signal?: AbortSignal): Promise<ProgramsEnroll
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-programs-enrolled] API error:", res.status, err);
     throw new Error(err || "Failed to fetch programs enrolled");
   }
   

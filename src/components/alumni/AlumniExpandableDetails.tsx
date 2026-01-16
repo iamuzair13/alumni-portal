@@ -464,13 +464,13 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
 
     // Handle 403 (Forbidden) gracefully - viewers don't have access to ERP data, which is fine
     if (res.status === 403) {
-      console.log("[AlumniExpandableDetails] ERP data access forbidden (viewer role) - skipping comparison");
+
       return null;
     }
 
     // Handle 401 (Unauthorized) - should not happen if session is valid, but handle gracefully
     if (res.status === 401) {
-      console.warn("[AlumniExpandableDetails] ERP data access unauthorized - session may be invalid");
+
       return null;
     }
 
@@ -612,7 +612,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           setAllFaculties(data.faculties || []);
         }
       } catch (error) {
-        console.error("Error fetching faculties:", error);
+
       } finally {
         setFacultiesLoading(false);
       }
@@ -632,7 +632,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             setAllDepartments(result.departments || []);
           }
         } catch (error) {
-          console.error("Error fetching initial departments:", error);
+
         } finally {
           setDepartmentsLoading(false);
         }
@@ -657,7 +657,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           setAllDepartments(data.departments || []);
         }
       } catch (error) {
-        console.error("Error fetching departments:", error);
+
       }
     };
     fetchDepartments();
@@ -678,7 +678,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           setAllPrograms(data.programs || []);
         }
       } catch (error) {
-        console.error("Error fetching programs:", error);
+
       } finally {
         setProgramsLoading(false);
       }
@@ -698,7 +698,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             setAllPrograms(result.programs || []);
           }
         } catch (error) {
-          console.error("Error fetching initial programs:", error);
+
         } finally {
           setProgramsLoading(false);
         }
@@ -737,53 +737,39 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   // Computed faculty and department names from IDs
   const displayFacultyName = useMemo(() => {
     if (!data) return null;
-    
-    console.log('[AlumniExpandableDetails] Faculty lookup:', {
-      facultyId: data.faculty,
-      facultyIdType: typeof data.faculty,
-      allFacultiesCount: allFaculties.length,
-      facultyname: data.facultyname
-    });
-    
+
     // If we have a faculty ID, try to look it up
     if (data.faculty && allFaculties.length > 0) {
       // Convert to number for comparison (API might return string)
       const facultyIdNum = typeof data.faculty === 'string' ? parseInt(data.faculty, 10) : data.faculty;
       const found = allFaculties.find(f => f.id === facultyIdNum);
-      console.log('[AlumniExpandableDetails] Faculty found:', found);
+
       if (found) {
         return found.faculty_name;
       }
     }
     
     // Fallback to text name
-    console.log('[AlumniExpandableDetails] Using fallback facultyname:', data.facultyname);
+
     return data.facultyname;
   }, [data, allFaculties]);
 
   const displayDepartmentName = useMemo(() => {
     if (!data) return null;
-    
-    console.log('[AlumniExpandableDetails] Department lookup:', {
-      departmentId: data.department,
-      departmentIdType: typeof data.department,
-      allDepartmentsCount: allDepartments.length,
-      departmentname: data.departmentname
-    });
-    
+
     // If we have a department ID, try to look it up
     if (data.department && allDepartments.length > 0) {
       // Convert to number for comparison (API might return string)
       const departmentIdNum = typeof data.department === 'string' ? parseInt(data.department, 10) : data.department;
       const found = allDepartments.find(d => d.id === departmentIdNum);
-      console.log('[AlumniExpandableDetails] Department found:', found);
+
       if (found) {
         return found.department_name;
       }
     }
     
     // Fallback to text name
-    console.log('[AlumniExpandableDetails] Using fallback departmentname:', data.departmentname);
+
     return data.departmentname;
   }, [data, allDepartments]);
 
@@ -957,9 +943,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           updatePayload.degreetitle = allFormValues.degreetitle;
         }
       }
-      
-      console.log("[AlumniExpandableDetails] Sending update payload:", updatePayload);
-      
+
       const res = await fetch(`/api/alumni/${encodeURIComponent(currentSapId)}/update-fields`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -1047,7 +1031,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(msg || "Failed to delete alumni.");
-      console.error("[AlumniExpandableDetails] Delete error:", msg, e);
+
     } finally {
       setIsDeleting(false);
     }

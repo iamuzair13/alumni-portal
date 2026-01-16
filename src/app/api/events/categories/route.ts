@@ -20,7 +20,6 @@ export async function GET() {
       categories
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching event categories:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch event categories";
     return NextResponse.json({ error: message }, { status: 500 });
   }

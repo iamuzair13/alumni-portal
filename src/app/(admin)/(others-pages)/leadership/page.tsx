@@ -354,7 +354,7 @@ export default function LeadershipPage() {
 
       XLSX.writeFile(wb, finalFilename);
     } catch (error) {
-      console.error("Export error:", error);
+
       toast.error("Failed to export data. Please try again.");
     }
   };

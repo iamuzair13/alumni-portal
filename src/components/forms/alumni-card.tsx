@@ -87,7 +87,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           }
         }
       } catch (error) {
-        console.error("[AlumniCardForm] Failed to fetch alumni data:", error);
+
         // Don't show error to user, just use the props that were passed
       }
     };
@@ -114,7 +114,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
             }
           } catch (error) {
             // Silently fail, user can enter address manually
-            console.error("[AlumniCardForm] Failed to fetch address:", error);
+
           }
         }
       }

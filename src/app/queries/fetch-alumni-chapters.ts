@@ -15,20 +15,12 @@ async function getAlumniNationalChapters(
 ): Promise<AlumniChaptersResponse> {
   const url = new URL("/api/alumni/chapters/national-chapters", typeof window !== "undefined" ? window.location.origin : "");
   addFilterParamsToUrl(url, filters);
-  
-  console.log("[fetch-alumni-chapters] Fetching national chapters:", url.toString());
   const res = await fetch(url.toString(), { signal, headers: { accept: "application/json" } });
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-alumni-chapters] Error fetching national chapters:", err);
     throw new Error(err || "Failed to fetch national chapters");
   }
   const data = await res.json() as AlumniChaptersResponse;
-  console.log("[fetch-alumni-chapters] National chapters response:", { 
-    success: data.success, 
-    chaptersCount: data.chapters?.length || 0,
-    sample: data.chapters?.slice(0, 3)
-  });
   return data;
 }
 
@@ -38,20 +30,12 @@ async function getAlumniInternationalChapters(
 ): Promise<AlumniChaptersResponse> {
   const url = new URL("/api/alumni/chapters/international-chapters", typeof window !== "undefined" ? window.location.origin : "");
   addFilterParamsToUrl(url, filters);
-  
-  console.log("[fetch-alumni-chapters] Fetching international chapters:", url.toString());
   const res = await fetch(url.toString(), { signal, headers: { accept: "application/json" } });
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-alumni-chapters] Error fetching international chapters:", err);
     throw new Error(err || "Failed to fetch international chapters");
   }
   const data = await res.json() as AlumniChaptersResponse;
-  console.log("[fetch-alumni-chapters] International chapters response:", { 
-    success: data.success, 
-    chaptersCount: data.chapters?.length || 0,
-    sample: data.chapters?.slice(0, 3)
-  });
   return data;
 }
 

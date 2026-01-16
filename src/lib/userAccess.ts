@@ -25,10 +25,7 @@ export type UserAccessAssignment = {
  *   const access = await getUserResourceAccess(userId);
  */
 export async function getUserAccessAssignments(userId: number): Promise<UserAccessAssignment[]> {
-  console.warn(
-    "[DEPRECATED] getUserAccessAssignments() uses old RBAC system. " +
-    "Migrate to getUserResourceAccess() from rbac-standard.ts"
-  );
+
   try {
     // Check if table exists first (for migration safety)
     const tableExists = await sql/* sql */`
@@ -40,7 +37,7 @@ export async function getUserAccessAssignments(userId: number): Promise<UserAcce
     ` as Array<{ exists: boolean }>;
     
     if (!tableExists[0]?.exists) {
-      console.warn("[getUserAccessAssignments] Table user_access_assignments does not exist. Returning empty array.");
+
       return [];
     }
     
@@ -53,10 +50,10 @@ export async function getUserAccessAssignments(userId: number): Promise<UserAcce
   } catch (error) {
     // Check if error is "relation does not exist"
     if (error instanceof Error && error.message.includes('does not exist')) {
-      console.warn("[getUserAccessAssignments] Table user_access_assignments does not exist. Returning empty array.");
+
       return [];
     }
-    console.error("Failed to fetch user access assignments:", error);
+
     return [];
   }
 }
@@ -97,10 +94,7 @@ export async function buildAccessFilterSQL(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _tableAlias: string = ""
 ): Promise<{ sql: ReturnType<typeof sql> | null; hasFilter: boolean }> {
-  console.warn(
-    "[DEPRECATED] buildAccessFilterSQL() uses old RBAC system. " +
-    "Migrate to buildResourceAccessFilterSQL() from rbac-standard.ts"
-  );
+
   // Try ID-based filtering first (preferred method)
   try {
     const idBasedFilter = await buildIdBasedAccessFilterSQL(session);
@@ -112,7 +106,7 @@ export async function buildAccessFilterSQL(
       return idBasedFilter;
     }
   } catch (error) {
-    console.warn("[buildAccessFilterSQL] ID-based filtering failed, falling back to name-based:", error);
+
     // Fall through to name-based filtering for backward compatibility
   }
   
@@ -134,21 +128,14 @@ export async function buildAccessFilterSQL(
   const userId = getUserIdFromSession(session);
   if (!userId) {
     // Log detailed error for debugging PM2 issues
-    console.error("[buildAccessFilterSQL] ❌ No user ID found in session:", {
-      sessionExists: !!session,
-      userExists: !!session?.user,
-      userEmail: session?.user?.email,
-      userIdInSession: (session?.user as { userId?: number })?.userId,
-      userType: (session?.user as { type?: string })?.type,
-      sessionKeys: session?.user ? Object.keys(session.user) : []
-    });
+
     // If no user ID, return condition that always fails (no access)
     return { sql: sql`1 = 0`, hasFilter: true };
   }
   
   // For non-admin/viewer users (shouldn't happen, but handle gracefully)
   if (!isAdminOrViewer) {
-    console.log("[buildAccessFilterSQL] ⚠️ User is not admin/viewer/superadmin - blocking access");
+
     return { sql: sql`1 = 0`, hasFilter: true };
   }
 
@@ -156,22 +143,12 @@ export async function buildAccessFilterSQL(
   const assignments = await getUserAccessAssignments(userId);
   
   // Debug logging - detailed
-  console.log("[buildAccessFilterSQL] ========== ACCESS FILTER DEBUG ==========");
-  console.log("[buildAccessFilterSQL] User ID:", userId);
-  console.log("[buildAccessFilterSQL] Session user:", session?.user ? {
-    email: session.user.email,
-    userId: (session.user as { userId?: number })?.userId,
-    type: (session.user as { type?: string })?.type
-  } : "No session");
-  console.log("[buildAccessFilterSQL] Assignments count:", assignments.length);
-  console.log("[buildAccessFilterSQL] Assignments:", JSON.stringify(assignments, null, 2));
-  
+
   // If no assignments, user has no access
   if (assignments.length === 0) {
     // Default behavior: if no assignments are configured for an admin/viewer,
     // do NOT block the entire system. Treat as full access (read-only for viewer, enforced elsewhere).
-    console.log("[buildAccessFilterSQL] ℹ️ No assignments found - allowing full access (no filtering)");
-    console.log("[buildAccessFilterSQL] ============================================");
+
     return { sql: null, hasFilter: false };
   }
 
@@ -205,16 +182,13 @@ export async function buildAccessFilterSQL(
       
       if (hasAllFaculties) {
         // All faculties are selected → full access (like superadmin, except user management)
-        console.log("[buildAccessFilterSQL] ✅ All faculties selected - granting full data access (no filtering)");
-        console.log("[buildAccessFilterSQL] System faculties:", allSystemFaculties.length);
-        console.log("[buildAccessFilterSQL] Assigned faculties:", assignedFaculties.length);
-        console.log("[buildAccessFilterSQL] ============================================");
+
         return { sql: null, hasFilter: false };
       }
     }
   } else {
     // Department or program level assignments exist - apply specific filtering
-    console.log("[buildAccessFilterSQL] 📋 Specific faculty/department/program assignments found - applying filtering");
+
   }
 
   // Build filter conditions
@@ -251,7 +225,7 @@ export async function buildAccessFilterSQL(
   const departmentsWithProgramAssignments = new Set<string>();
   
   if (programLevel.length > 0) {
-    console.log("[buildAccessFilterSQL] 🔍 Processing program-level assignments:", programLevel.length);
+
     for (const item of programLevel) {
       const normalizedFaculty = (item.faculty || "").trim();
       const normalizedDept = (item.department || "").trim();
@@ -262,15 +236,9 @@ export async function buildAccessFilterSQL(
       if (normalizedDept) {
         departmentsWithProgramAssignments.add(`${normalizedFaculty.toLowerCase()}|${normalizedDept.toLowerCase()}`);
       }
-      
-      console.log("[buildAccessFilterSQL]   Program assignment:", {
-        faculty: normalizedFaculty || "(none)",
-        department: normalizedDept || "(none)",
-        program: normalizedProgram || "(none)"
-      });
-      
+
       if (!normalizedProgram) {
-        console.log("[buildAccessFilterSQL]   ⚠️ Skipping - program name is empty");
+
         continue; // Skip if program is empty
       }
       
@@ -283,10 +251,9 @@ export async function buildAccessFilterSQL(
         normalizedDept || null,
         0.4 // Lower threshold to catch more variations
       );
-      
-      console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "matching programs in database structure");
+
       if (matchingPrograms.length > 0) {
-        console.log("[buildAccessFilterSQL]     Top matches:", matchingPrograms.slice(0, 5).map(m => `"${m.program}" (${(m.similarity * 100).toFixed(0)}%)`));
+
       }
       
       // Build SQL condition that matches the assigned program OR any similar programs found in database
@@ -363,13 +330,12 @@ export async function buildAccessFilterSQL(
       
       // Also add the original pattern-based matching as a final fallback
       const finalProgramCondition = sql`(${programCondition} OR LOWER(degreetitle) LIKE LOWER(${normalizedPattern}))`;
-      
-      console.log("[buildAccessFilterSQL]   ✅ Program matching summary:");
-      console.log("[buildAccessFilterSQL]     Assigned program:", normalizedProgram);
-      console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database structure");
-      console.log("[buildAccessFilterSQL]     Using", programNamesToMatch.length, "program names for matching");
+
+
+
+
       if (matchingPrograms.length > 0) {
-        console.log("[buildAccessFilterSQL]     Top matches:", matchingPrograms.slice(0, 5).map(m => `"${m.program}" (${(m.similarity * 100).toFixed(0)}%)`));
+
       }
       
       const facultyMatch =
@@ -434,31 +400,25 @@ export async function buildAccessFilterSQL(
       if (normalizedFaculty && normalizedDept) {
         // All three specified: faculty + department + program
         // Improved matching using program matching utility
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + department + program (improved matching)");
+
         conditionsArray.push(
           sql`(${facultyMatch} AND ${departmentMatch} AND ${programMatch})`
         );
       } else if (normalizedFaculty) {
         // Faculty + program (no department)
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: faculty + program (improved matching)");
-        console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
+
         conditionsArray.push(
           sql`(${facultyMatch} AND ${programMatch})`
         );
       } else if (normalizedDept) {
         // Department + program (no faculty)
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: department + program (improved matching)");
-        console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
+
         conditionsArray.push(
           sql`(${departmentMatch} AND ${programMatch})`
         );
       } else {
         // Program only (no faculty or department)
-        console.log("[buildAccessFilterSQL]   ✅ Adding condition: program only (improved matching)");
-        console.log("[buildAccessFilterSQL]     Program:", normalizedProgram);
-        console.log("[buildAccessFilterSQL]     Found", matchingPrograms.length, "similar programs in database");
+
         conditionsArray.push(
           sql`(${programMatch})`
         );
@@ -468,7 +428,7 @@ export async function buildAccessFilterSQL(
   
   // Department-level access (case-insensitive comparison with TRIM to handle whitespace)
   if (departmentLevel.length > 0) {
-    console.log("[buildAccessFilterSQL] 🔍 Processing department-level assignments:", departmentLevel.length);
+
     for (const item of departmentLevel) {
       const itemFaculty = (item.faculty || "").trim().toLowerCase();
       const itemDept = (item.department || "").trim().toLowerCase();
@@ -483,10 +443,7 @@ export async function buildAccessFilterSQL(
         const normalizedFaculty = (item.faculty || "").trim();
         const normalizedDept = (item.department || "").trim();
         if (normalizedFaculty && normalizedDept) {
-          console.log("[buildAccessFilterSQL]   ✅ Adding condition: department-level", {
-            faculty: normalizedFaculty,
-            department: normalizedDept
-          });
+
           const facultyMatch = sql`(
             (
               facultyname IS NOT NULL
@@ -524,7 +481,7 @@ export async function buildAccessFilterSQL(
           );
         }
       } else {
-        console.log("[buildAccessFilterSQL]   ⚠️ Department assignment skipped - program-level assignments exist for this department");
+
     }
   }
   }
@@ -574,10 +531,7 @@ export async function buildAccessFilterSQL(
     // If we have assignments but no valid conditions, it means the assignments might be invalid
     // In this case, log the issue but don't block access - allow full access as fallback
     // This prevents admin/viewer users from being locked out if there's a data mismatch
-    console.warn("[buildAccessFilterSQL] ⚠️ No valid conditions generated from assignments - allowing full access as fallback");
-    console.warn("[buildAccessFilterSQL] This might indicate a mismatch between access assignments and database structure");
-    console.warn("[buildAccessFilterSQL] Assignments:", JSON.stringify(assignments, null, 2));
-    console.log("[buildAccessFilterSQL] ============================================");
+
     // Return full access instead of blocking - this is safer for production
     return { sql: null, hasFilter: false };
   }
@@ -600,32 +554,6 @@ export async function buildAccessFilterSQL(
   };
   
   const combinedCondition = combineOrConditions(conditionsArray);
-
-  console.log("[buildAccessFilterSQL] Generated filter conditions:", {
-    facultyOnly: facultyOnly.length,
-    departmentLevel: departmentLevel.length,
-    programLevel: programLevel.length,
-    totalConditions: conditionsArray.length
-  });
-  
-  if (facultyOnly.length > 0) {
-    console.log("[buildAccessFilterSQL] 📋 Faculty names:", facultyOnly.slice(0, 3).map(f => `"${f}"`));
-  }
-  if (departmentLevel.length > 0) {
-    console.log("[buildAccessFilterSQL] 📋 Sample departments:", departmentLevel.slice(0, 2).map(d => `${d.faculty || "(no faculty)"} - ${d.department}`));
-  }
-  if (programLevel.length > 0) {
-    console.log("[buildAccessFilterSQL] 📋 Sample programs:", programLevel.slice(0, 5).map(p => {
-      const parts = [];
-      if (p.faculty) parts.push(`Faculty: "${p.faculty}"`);
-      if (p.department) parts.push(`Dept: "${p.department}"`);
-      parts.push(`Program: "${p.program}"`);
-      return parts.join(", ");
-    }));
-  }
-  
-  console.log("[buildAccessFilterSQL] ✅ Returning filter with", conditionsArray.length, "condition(s)");
-  console.log("[buildAccessFilterSQL] ============================================");
 
   return { sql: combinedCondition, hasFilter: true };
 }

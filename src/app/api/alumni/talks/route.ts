@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     try {
       accessFilter = await buildAccessFilterSQL(session, "");
     } catch (filterError) {
-      console.error("[API] Error building access filter:", filterError);
+
       return NextResponse.json({ 
         error: "Failed to build access filter", 
         details: filterError instanceof Error ? filterError.message : String(filterError) 
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
         ORDER BY t.alumniid DESC
       `;
     } catch (queryError) {
-      console.error("[API] Error executing talks query:", queryError);
+
       return NextResponse.json({ 
         error: "Failed to fetch talks", 
         details: queryError instanceof Error ? queryError.message : String(queryError) 
@@ -135,11 +135,7 @@ export async function GET(req: Request) {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     const errorStack = err instanceof Error ? err.stack : undefined;
-    console.error("[API] Error in GET /api/alumni/talks:", {
-      message: errorMessage,
-      stack: errorStack,
-      error: err
-    });
+
     return NextResponse.json({ 
       error: "Failed to fetch talks",
       message: errorMessage 
@@ -194,7 +190,7 @@ export async function POST(req: Request) {
     
     const alum = alumRows[0] as { alumniid: number; facultyname: string | null; degreetitle: string | null; departmentname: string | null; linkedin?: string | null } | undefined;
     if (!alum?.alumniid) {
-      console.error("[API] Alumni not found. Email:", email, "SAP ID:", userSapid);
+
       return NextResponse.json({ error: "ALUMNI_NOT_FOUND", message: "Your alumni record was not found. Please ensure you are logged in with the correct account." }, { status: 404 });
     }
 
@@ -263,13 +259,13 @@ export async function POST(req: Request) {
             modeStr,
             availabilityText
           ).catch((err) => {
-            console.error("[API] Failed to send mentorship application email:", err);
+
           });
         }
       }
     } catch (emailError) {
       // Don't fail the request if email fails
-      console.error("[API] Error sending mentorship application email:", emailError);
+
     }
 
     return NextResponse.json({ ok: true }, { status: 201 });

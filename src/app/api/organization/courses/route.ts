@@ -24,7 +24,6 @@ export async function GET() {
     return NextResponse.json({ success: true, courses }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch courses";
-    console.error("[API] Error fetching courses:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -63,7 +62,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, course }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create course";
-    console.error("[API] Error creating course:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -107,7 +105,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, course }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update course";
-    console.error("[API] Error updating course:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -134,7 +131,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete course";
-    console.error("[API] Error deleting course:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

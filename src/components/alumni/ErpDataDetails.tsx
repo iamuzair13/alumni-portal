@@ -218,7 +218,7 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
   
   // If erpData is a string (XML that wasn't parsed), return null
   if (typeof erpData === "string") {
-    console.warn("[ErpDataDetails] Received string data instead of object, XML parsing may have failed");
+
     return null;
   }
   
@@ -227,7 +227,7 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
     const keys = Object.keys(erpData);
     // Check if it looks like a string was converted to an object (numeric keys)
     if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
-      console.warn("[ErpDataDetails] Data appears to be a string converted to object, XML parsing may have failed");
+
       return null;
     }
   }

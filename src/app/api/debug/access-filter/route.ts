@@ -149,7 +149,7 @@ export async function GET() {
     }, { status: 200 });
 
   } catch (err) {
-    console.error("[API] Error in debug/access-filter:", err);
+
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

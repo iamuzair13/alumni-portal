@@ -336,18 +336,15 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     if (!canModify(session.user)) {
       return NextResponse.json({ error: "Forbidden: Only admins can delete alumni records" }, { status: 403 });
     }
-    
-    console.log("[API] DELETE request received for identifier:", sapid);
-    
+
     // Validate identifier (could be SAP ID or registration number)
     if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      console.error("[API] Invalid identifier provided:", sapid);
+
       return NextResponse.json({ error: "Invalid identifier" }, { status: 400 });
     }
     
     const normalizedIdentifier = String(sapid).trim();
-    console.log("[API] Attempting to delete alumni with identifier:", normalizedIdentifier);
-    
+
     // SECURITY: Check access filter for admin/viewer users
     const { buildAccessFilterSQL } = await import("@/lib/userAccess");
     const accessFilter = await buildAccessFilterSQL(session, "");
@@ -362,7 +359,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     
     // If not found by SAP ID, try registration number
     if (!lookupResult[0]) {
-      console.log("[API] Not found by SAP ID, trying registration number:", normalizedIdentifier);
+
       lookupResult = await retryDbOperation(async () => await sql/* sql */`
         SELECT alumniid, sapid, registrationno, alumniname 
         FROM public.tbl_alumni 
@@ -371,7 +368,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     }
     
     if (!lookupResult[0]) {
-      console.warn("[API] No alumni found with SAP ID or Registration Number:", normalizedIdentifier);
+
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     
@@ -379,9 +376,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     const foundSapid = lookupResult[0].sapid as string | null;
     const foundRegNo = lookupResult[0].registrationno as string | null;
     const foundName = lookupResult[0].alumniname as string | null;
-    
-    console.log("[API] Found alumni - ID:", alumniId, "SAP ID:", foundSapid, "Registration No:", foundRegNo, "Name:", foundName);
-    
+
     // SECURITY: Verify admin/viewer has access to this alumni record
     if (accessFilter.hasFilter && accessFilter.sql) {
       const accessCheck = await sql/* sql */`
@@ -405,19 +400,19 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       try {
         await tx/* sql */`
           DELETE FROM public.alumni_memberships WHERE id = ${alumniId}`;
-        console.log("[API] Deleted alumni_memberships records for alumni ID:", alumniId);
+
       } catch {
         // Ignore if no records exist or table doesn't exist
-        console.log("[API] No alumni_memberships records to delete or table doesn't exist");
+
       }
       
       try {
         await tx/* sql */`
           DELETE FROM public.alumni_scholarships WHERE id = ${alumniId}`;
-        console.log("[API] Deleted alumni_scholarships records for alumni ID:", alumniId);
+
       } catch {
         // Ignore if no records exist or table doesn't exist
-        console.log("[API] No alumni_scholarships records to delete or table doesn't exist");
+
       }
       
       // Delete the alumni record by alumniid
@@ -434,8 +429,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       
       return deleteResult[0];
     }));
-    
-    console.log("[API] Successfully deleted alumni - ID:", result.alumniid, "SAP ID:", result.sapid, "Registration No:", foundRegNo, "Name:", result.alumniname);
+
     return NextResponse.json({ 
       ok: true, 
       deletedId: result.alumniid,
@@ -445,8 +439,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete alumni";
-    console.error("[API] Error deleting alumni:", message, err);
-    
+
     // Check for specific error types
     if (err instanceof Error) {
       // Check for connection timeout errors
@@ -500,9 +493,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     // Determine the target value: true -> 'true', false -> 'false'
     // Handle both boolean and string inputs
     const shouldVerify = verify === true || verify === "true" || String(verify).toLowerCase() === "true" || String(verify).toLowerCase() === "yes";
-    
-    console.log("[API] Updating verify for identifier:", sapid, "shouldVerify:", shouldVerify, "original value:", verify, "type:", typeof verify);
-    
+
     // First, get the current alumni record to check if password exists and get email
     // The identifier might be sapid, registrationno, or alumniid (as string)
     // Try to find by sapid first, then by registrationno, then by alumniid
@@ -582,11 +573,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       const { default: generateEasyPassword } = await import("@/lib/passwordUtils");
       generatedPassword = generateEasyPassword();
       passwordToStore = generatedPassword; // Store as plain text (same as create route)
-      console.log("[API] Generated password for alumni (moving from under approval):", sapid);
+
     } else {
       // Keep existing password if alumni was already verified/unverified (admin is just changing status)
       passwordToStore = current.password;
-      console.log("[API] Keeping existing password (alumni was already verified/unverified):", sapid);
+
     }
     
     // Verify field is now VARCHAR(10) - update with string value
@@ -595,8 +586,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     // Get the actual alumniid for the WHERE clause (more reliable than sapid which might be null)
     const actualAlumniId = current.alumniid;
-    console.log("[API] Updating verify to:", verifyValue, "for identifier:", sapid, "actual alumni ID:", actualAlumniId);
-    
+
     // Update verify field and password if needed
     // Use alumniid for the WHERE clause since it's the primary key and always exists
     let res;
@@ -625,14 +615,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     if (verifyString !== "true" && verifyString !== "false") {
       verifyString = shouldVerify ? "true" : "false";
     }
-    
-    console.log("[API] Updated verify - raw:", updatedVerify, "normalized:", verifyString, "should be:", shouldVerify ? "true" : "false");
-    
+
     // Verify the update was successful
     if (shouldVerify && verifyString !== "true") {
-      console.error("[API] ERROR: Verify should be true but got:", verifyString);
+
     } else if (!shouldVerify && verifyString !== "false") {
-      console.error("[API] ERROR: Verify should be false but got:", verifyString);
+
     }
     
     // Send welcome email ONLY when admin verifies/unverifies for the first time (moving from NULL to verified/unverified)
@@ -644,8 +632,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
         const alumniName = current.alumniname || "Alumni";
         
         if (alumniEmail) {
-          console.log("[API] Sending welcome email to:", alumniEmail, "for first-time verification/unverification");
-          console.log("[API] Generated password:", generatedPassword);
+
+
           try {
             const emailSent = await sendWelcomeEmail(
               alumniEmail,
@@ -655,33 +643,33 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
             );
             
             if (emailSent) {
-              console.log("[API] Welcome email sent successfully to:", alumniEmail);
+
             } else {
-              console.warn("[API] Welcome email was not sent (SMTP may not be configured)");
+
             }
           } catch (emailError) {
             const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-            console.error("[API] Failed to send welcome email:", errorMessage);
-            console.error("[API] Email error details:", emailError);
+
+
             // Don't fail the request if email fails - verification is already updated
           }
         } else {
-          console.warn("[API] No email address found for alumni, cannot send welcome email");
-          console.warn("[API] Available emails - personal:", current.personalemail, "official:", current.officialemail, "university:", current.universityemail);
+
+
         }
       } catch (emailError) {
         const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-        console.error("[API] Error preparing welcome email:", errorMessage);
-        console.error("[API] Email error details:", emailError);
+
+
         // Don't fail the request if email fails
       }
     } else if (wasUnderApproval && !generatedPassword) {
-      console.error("[API] ERROR: Alumni was under approval but password was not generated!");
+
     }
     
     return NextResponse.json({ ok: true, verify: verifyString }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error updating verify:", err);
+
     const message = err instanceof Error ? err.message : "Failed to update verification status";
     return NextResponse.json({ error: message }, { status: 500 });
   }

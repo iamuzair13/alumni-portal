@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for campuses:", filterError);
+
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -53,9 +53,8 @@ export async function GET(req: Request) {
         END ASC
     `;
 
-    console.log("[API] Campuses query returned", rows.length, "rows");
     if (rows.length === 0) {
-      console.warn("[API] No campus values found in database");
+
     }
 
     const campuses = (rows as unknown as Array<{ campus_value: string; count: number | string | bigint }>).map((row) => {
@@ -68,14 +67,12 @@ export async function GET(req: Request) {
       };
     });
 
-    console.log("[API] Processed campuses:", JSON.stringify(campuses, null, 2));
-
     return NextResponse.json({
       success: true,
       campuses
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching campuses:", err);
+
     const message = err instanceof Error ? err.message : "Failed to fetch campuses";
     return NextResponse.json({ error: message }, { status: 500 });
   }

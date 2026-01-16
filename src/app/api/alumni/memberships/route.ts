@@ -152,7 +152,6 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("[API] Error fetching alumni memberships:", err);
     const msg = err instanceof Error ? err.message : "Failed to fetch memberships";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

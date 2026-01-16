@@ -73,26 +73,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
   try {
     const { sapid } = await ctx.params;
     const session = await auth();
-    
-    console.log("[API] PATCH /api/alumni-cards/by-sap/[sapid] - Request received:", {
-      sapid,
-      hasSession: !!session?.user,
-      userEmail: session?.user?.email,
-      userType: (session?.user as { type?: string })?.type
-    });
-    
+
     // SECURITY: Verify authentication
     if (!session?.user) {
-      console.error("[API] Unauthorized request - no session");
+
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
     // SECURITY: Only admins and superadmins can update card status
     if (!canModify(session.user)) {
-      console.error("[API] Forbidden - user cannot modify:", {
-        email: session.user.email,
-        type: (session.user as { type?: string })?.type
-      });
+
       return NextResponse.json({ error: "Forbidden: Only admins and superadmins can update card status" }, { status: 403 });
     }
     
@@ -100,11 +90,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     let body: { status?: string; reason_onhold?: string } = {};
     try {
       const rawBody = await req.text();
-      console.log("[API] Raw request body:", rawBody);
+
       body = JSON.parse(rawBody);
-      console.log("[API] Parsed request body:", body);
+
     } catch (jsonError) {
-      console.error("[API] Failed to parse request body:", jsonError);
+
       return NextResponse.json({ 
         error: "Invalid request body. Expected JSON with 'status' field." 
       }, { status: 400 });
@@ -112,7 +102,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     // Validate status field exists
     if (!body || typeof body !== 'object' || !('status' in body)) {
-      console.error("[API] Missing 'status' field in request body:", body);
+
       return NextResponse.json({ 
         error: "Missing required field: 'status'. Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered" 
       }, { status: 400 });
@@ -129,14 +119,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     }
     
     const normalizedSapid = String(sapid || "").trim();
-    
-    console.log("[API] Status update request:", { 
-      sapid: normalizedSapid, 
-      newStatus, 
-      reasonOnhold,
-      hasReason: !!reasonOnhold 
-    });
-    
+
     if (!normalizedSapid || normalizedSapid.length === 0) {
       return NextResponse.json({ error: "Invalid SAP ID" }, { status: 400 });
     }
@@ -163,11 +146,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     } else if (upperStatus === "DELIVERED") {
       finalStatus = "Delivered";
     } else {
-      console.error("[API] Invalid status value:", { 
-        original: newStatus, 
-        normalized: normalizedStatus, 
-        upper: upperStatus 
-      });
+
       return NextResponse.json({ 
         error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered` 
       }, { status: 400 });
@@ -176,20 +155,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     // Final validation
     const validStatuses = ["UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"];
     if (!validStatuses.includes(finalStatus)) {
-      console.error("[API] Status normalization failed:", { 
-        original: newStatus, 
-        final: finalStatus 
-      });
+
       return NextResponse.json({ 
         error: `Invalid status "${newStatus}". Must be one of: UnderReview, UnderPrinting, Active, Onhold, Delivered` 
       }, { status: 400 });
     }
-    
-    console.log("[API] Status normalized:", { 
-      original: newStatus, 
-      final: finalStatus 
-    });
-    
+
     // If status is "Onhold", reason_onhold is required
     if (finalStatus === "Onhold" && (!reasonOnhold || reasonOnhold.length === 0)) {
       return NextResponse.json({ error: "Reason is required when status is set to Onhold" }, { status: 400 });
@@ -224,7 +195,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
         universityemail: string | null;
       }>;
     } catch (dbError) {
-      console.error("[API] Database error fetching card:", dbError);
+
       return NextResponse.json({ 
         error: "Database error while fetching card information" 
       }, { status: 500 });
@@ -274,12 +245,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
         ` as Array<{ cardid: number }>;
       }
     } catch (updateError) {
-      console.error("[API] Database error updating card status:", updateError);
-      console.error("[API] Update details:", { 
-        sapid: normalizedSapid, 
-        finalStatus, 
-        reasonOnhold: finalStatus === "Onhold" ? reasonOnhold : null 
-      });
+
+
       return NextResponse.json({ 
         error: "Database error while updating card status" 
       }, { status: 500 });
@@ -300,12 +267,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
           if (finalStatus === "Onhold") {
             // Send "on hold" email when status becomes Onhold
             sendAlumniCardOnHoldEmail(alumniEmail, alumniName).catch((err) => {
-              console.error("[API] Failed to send alumni card on hold email:", err);
+
             });
           } else if (finalStatus === "Delivered") {
             // Send "activated" email when status becomes Delivered
             sendAlumniCardActivatedEmail(alumniEmail, alumniName).catch((err) => {
-              console.error("[API] Failed to send alumni card activated email:", err);
+
             });
           }
           // Note: No email for other status changes, as they're internal admin actions
@@ -313,7 +280,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       }
     } catch (emailError) {
       // Don't fail the request if email fails
-      console.error("[API] Error sending alumni card status email:", emailError);
+
     }
     
     return NextResponse.json({ cardid: rows[0].cardid }, { status: 200 });
@@ -368,7 +335,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         const cardPicturePath = join(CARD_UPLOAD_DIR, cardData.cardpicture);
         if (existsSync(cardPicturePath)) {
           await unlink(cardPicturePath).catch((err) => {
-            console.error("[API] Failed to delete cardpicture:", err);
+
           });
         }
       }
@@ -386,13 +353,13 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         }
         if (existsSync(cardImagePath)) {
           await unlink(cardImagePath).catch((err) => {
-            console.error("[API] Failed to delete card_image:", err);
+
           });
         }
       }
     } catch (fileError) {
       // Log but don't fail the request if file deletion fails
-      console.error("[API] Error deleting card images:", fileError);
+
     }
     
     // Delete the card record from database

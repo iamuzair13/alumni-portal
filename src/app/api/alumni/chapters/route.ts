@@ -25,15 +25,7 @@ export async function GET(request: NextRequest) {
     const selectedDepartments = departmentsParam ? departmentsParam.split(',').map(s => s.trim()).filter(Boolean) : [];
     
     // Debug logging
-    console.log("[API] Alumni Chapters Filters:", {
-      nationalChapters: selectedNationalChapters.length > 0 ? selectedNationalChapters : "none",
-      internationalChapters: selectedInternationalChapters.length > 0 ? selectedInternationalChapters : "none",
-      faculties: selectedFaculties.length > 0 ? selectedFaculties : "none",
-      departments: selectedDepartments.length > 0 ? selectedDepartments : "none",
-      verified: verified || "none",
-      membershipFilter,
-    });
-    
+
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
@@ -89,13 +81,7 @@ export async function GET(request: NextRequest) {
         OR ac."chapter3" = ANY(${allChapterIds})
       )`;
     }
-    
-    console.log("[API] Chapter filter IDs:", {
-      nationalChapterIds,
-      internationalChapterIds,
-      allChapterIds,
-    });
-    
+
     // Build faculty filter condition (case-insensitive with trim) - handle multiple
     // Check both joined table value and fallback text column
     let facultyFilterCondition = sql``;
@@ -120,7 +106,7 @@ export async function GET(request: NextRequest) {
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilterCondition = sql` AND (${combinedCondition})`;
       }
-      console.log("[API] Filtering for faculties:", selectedFaculties);
+
     }
     
     // Build department filter condition (case-insensitive with trim) - handle multiple
@@ -147,7 +133,7 @@ export async function GET(request: NextRequest) {
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilterCondition = sql` AND (${combinedCondition})`;
       }
-      console.log("[API] Filtering for departments:", selectedDepartments);
+
     }
     
     // Build verified filter condition
@@ -193,16 +179,7 @@ export async function GET(request: NextRequest) {
       JOIN public.alumni_chapter ac ON ac.id = a.alumniid`
       : sql`FROM public.tbl_alumni a
       LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid`;
-    
-    console.log("[API] Executing query with filters:", {
-      hasChapterFilter: allChapterIds.length > 0,
-      hasFacultyFilter: selectedFaculties.length > 0,
-      hasDepartmentFilter: selectedDepartments.length > 0,
-      hasVerifiedFilter: verified === "true",
-      membershipFilter,
-      chapterCount: chapterCount !== undefined ? chapterCount : "none",
-    });
-    
+
     let rows;
     try {
       rows = await sql/* sql */`
@@ -245,15 +222,10 @@ export async function GET(request: NextRequest) {
           ${chapterCountCondition}
         ORDER BY a.alumniid DESC`;
     } catch (queryError) {
-      console.error("[API] SQL Query Error:", queryError);
+
       throw queryError;
     }
-    
-    console.log("[API] Alumni Chapters Query Result:", {
-      rowCount: rows.length,
-      sampleFaculties: rows.slice(0, 5).map((r: Record<string, unknown>) => r.facultyname),
-    });
-    
+
     // Build items such that each chapter membership is treated as a separate row.
     // If an alumni is member of 2 or 3 chapters, they will appear 2 or 3 times in the list.
     const items: Array<{
@@ -317,10 +289,10 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching alumni chapters:", err);
+
     const msg = err instanceof Error ? err.message : "Failed to fetch chapters";
     const errorDetails = err instanceof Error ? err.stack : String(err);
-    console.error("[API] Error details:", errorDetails);
+
     return NextResponse.json({ error: msg, details: process.env.NODE_ENV === "development" ? errorDetails : undefined }, { status: 500 });
   }
 }
@@ -535,14 +507,14 @@ export async function POST(request: NextRequest) {
                   chapterNames.push(chapter.chapter_name);
                 }
               } catch (err) {
-                console.error(`[API] Failed to fetch chapter name for ID ${chapterId}:`, err);
+
               }
             }
             
             // Send email asynchronously (don't wait for it to complete)
             if (chapterNames.length > 0) {
               sendChaptersApplicationEmail(alumniEmail, alumniName, chapterNames).catch((err) => {
-                console.error("[API] Failed to send chapters application email:", err);
+
               });
             }
           }
@@ -550,7 +522,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (emailError) {
       // Don't fail the request if email fails
-      console.error("[API] Error sending chapters application email:", emailError);
+
     }
 
     return NextResponse.json({ 
@@ -558,7 +530,7 @@ export async function POST(request: NextRequest) {
       message: "Application submitted successfully" 
     });
   } catch (error) {
-    console.error("Error submitting alumni chapters application:", error);
+
     const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
     return NextResponse.json(
       { error: errorMessage },

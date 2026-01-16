@@ -25,7 +25,6 @@ async function getInstitutionCountries(signal?: AbortSignal, filters?: MasterFil
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-institution-countries] API error:", res.status, err);
     throw new Error(err || "Failed to fetch institution countries");
   }
   

@@ -156,7 +156,6 @@ export async function GET(req: Request) {
     }, { status: 200 });
 
   } catch (err) {
-    console.error("[API] Error checking program matching:", err);
     const message = err instanceof Error ? err.message : "Internal Server Error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

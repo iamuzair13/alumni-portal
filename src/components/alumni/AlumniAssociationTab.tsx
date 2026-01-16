@@ -154,15 +154,7 @@ async function getAlumniAssociation(
   }
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
-  
-  console.log("[AlumniAssociationTab] Fetching with filters:", {
-    faculties: faculties && faculties.length > 0 ? faculties : "none",
-    departments: departments && departments.length > 0 ? departments : "none",
-    associations: associations && associations.length > 0 ? associations : "none",
-    membershipFilter: membershipFilter || "none",
-    url: url.toString(),
-  });
-  
+
   try {
     // Create AbortController for timeout
     const controller = new AbortController();
@@ -178,24 +170,19 @@ async function getAlumniAssociation(
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       const errorMessage = (errorData as { error?: string })?.error || `Failed to fetch alumni association (${res.status})`;
-      console.error("[AlumniAssociationTab] API Error:", errorMessage, errorData);
+
       throw new Error(errorMessage);
     }
     
     const data = (await res.json()) as AlumniAssociationResponse;
-    console.log("[AlumniAssociationTab] Received response:", {
-      itemsCount: data.items?.length || 0,
-      total: data.total || 0,
-      page: data.page || 1,
-      totalPages: data.totalPages || 1,
-    });
+
     return data;
   } catch (fetchError) {
     if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-      console.error("[AlumniAssociationTab] Request timeout");
+
       throw new Error("Request timed out. Please try again.");
     }
-    console.error("[AlumniAssociationTab] Fetch error:", fetchError);
+
     throw fetchError;
   }
 }
@@ -588,7 +575,7 @@ export const AlumniAssociationTab: React.FC = () => {
       XLSX.writeFile(wb, filename);
       setIsExporting(false);
     } catch (error) {
-      console.error("Export error:", error);
+
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }
@@ -669,7 +656,7 @@ export const AlumniAssociationTab: React.FC = () => {
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
                 `}
                 onClick={() => {
-                  console.log("[AlumniAssociationTab] Tab clicked:", tab.key);
+
                   setMembershipFilter(tab.key);
                 }}
                 role="tab"

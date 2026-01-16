@@ -113,7 +113,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           WHERE alumniid = ${alumniId}
         `;
       } catch (updateError) {
-        console.error("[API] Failed to update father_cnic:", updateError);
+
         // Continue with application even if father_cnic update fails
       }
     }
@@ -154,7 +154,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           created_at = NOW()
       `;
     } catch (insertError) {
-      console.error("[API] Failed to save to alumni_scholarships:", insertError);
+
       // Continue with email sending even if database save fails
     }
 
@@ -206,10 +206,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       
       // Check SMTP configuration
       if (!transporter) {
-        console.warn("[Scholarship API] SMTP not configured. Missing SMTP_USER or SMTP_PASS");
-        console.warn("[Scholarship API] SMTP_USER:", config.SMTP_USER ? "SET" : "NOT SET");
-        console.warn("[Scholarship API] SMTP_PASS:", config.SMTP_PASS ? "SET" : "NOT SET");
-        console.warn("[Scholarship API] Email would be sent to:", alumniEmail);
+
+
+
+
         return NextResponse.json({ 
           ok: true, 
           message: "Application received. Email service not configured. Please contact the Alumni Office.",
@@ -222,9 +222,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       // Verify transporter connection
       try {
         await transporter.verify();
-        console.log("[Scholarship API] SMTP connection verified successfully");
+
       } catch (verifyError) {
-        console.error("[Scholarship API] SMTP connection verification failed:", verifyError);
+
         const errorMessage = verifyError instanceof Error ? verifyError.message : String(verifyError);
         return NextResponse.json({
           ok: true,
@@ -249,15 +249,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
         ],
       };
 
-      console.log("[Scholarship API] Attempting to send email to:", alumniEmail);
-      console.log("[Scholarship API] From:", config.FROM_EMAIL);
-      console.log("[Scholarship API] SMTP Host:", config.SMTP_HOST);
-      console.log("[Scholarship API] SMTP Port:", config.SMTP_PORT);
+
+
 
       const emailInfo = await transporter.sendMail(mailOptions);
-      console.log("[Scholarship API] Email sent successfully!");
-      console.log("[Scholarship API] Message ID:", emailInfo.messageId);
-      console.log("[Scholarship API] Response:", emailInfo.response);
+
+
 
       return NextResponse.json({
         ok: true,
@@ -268,20 +265,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     } catch (emailError) {
       const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
       const errorStack = emailError instanceof Error ? emailError.stack : undefined;
-      
-      console.error("[Scholarship API] Failed to send email:");
-      console.error("[Scholarship API] Error message:", errorMessage);
+
+
       if (errorStack) {
-        console.error("[Scholarship API] Error stack:", errorStack);
+
       }
       
       // Check for specific error types
       if (errorMessage.includes("Invalid login")) {
-        console.error("[Scholarship API] SMTP authentication failed. Check SMTP_USER and SMTP_PASS.");
+
       } else if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("ETIMEDOUT")) {
-        console.error("[Scholarship API] SMTP connection failed. Check SMTP_HOST and SMTP_PORT.");
+
       } else if (errorMessage.includes("ENOTFOUND")) {
-        console.error("[Scholarship API] SMTP host not found. Check SMTP_HOST configuration.");
+
       }
 
       // Return error details to help with debugging
@@ -295,7 +291,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to process scholarship application";
-    console.error("[API] Scholarship application error:", message, err);
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

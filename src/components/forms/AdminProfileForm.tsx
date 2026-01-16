@@ -69,7 +69,7 @@ export default function AdminProfileForm() {
         setImagePreview(`/images/${user.user_image}`);
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+
       toast.error("Failed to load profile data");
     } finally {
       setLoading(false);
@@ -145,9 +145,9 @@ export default function AdminProfileForm() {
       // Only send new password if provided and not empty
       if (formData.newPassword && formData.newPassword.trim().length > 0) {
         formDataToSend.append("newPassword", formData.newPassword.trim());
-        console.log("[Form] Sending new password to API");
+
       } else {
-        console.log("[Form] No new password provided, skipping");
+
       }
       formDataToSend.append("firstname", formData.firstname);
       formDataToSend.append("lastname", formData.lastname);
@@ -215,7 +215,7 @@ export default function AdminProfileForm() {
       
       setImageFile(null);
     } catch (error) {
-      console.error("Error updating profile:", error);
+
       toast.error(error instanceof Error ? error.message : "Failed to update profile");
     } finally {
       setSaving(false);

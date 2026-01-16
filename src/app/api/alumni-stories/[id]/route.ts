@@ -78,8 +78,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     return NextResponse.json(result, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch story";
-    console.error("[API] Error fetching alumni story:", msg, err);
-    
+
     // Check for connection timeout errors
     const isConnectionError = err instanceof Error && (
       err.message.includes('CONNECT_TIMEOUT') ||
@@ -216,8 +215,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         const bytes = await imageFile.arrayBuffer();
         const buffer = Buffer.from(bytes);
         await writeFile(filePath, buffer);
-        
-        console.log(`[API] Story image saved: ${storyImageFilename}`);
+
       }
       
       // Build payload object for validation
@@ -300,7 +298,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update story";
-    console.error("[API] Error updating alumni story:", msg, err);
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -327,8 +325,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> 
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete";
-    console.error("[API] Error deleting alumni story:", msg, err);
-    
+
     // Check for connection timeout errors
     const isConnectionError = err instanceof Error && (
       err.message.includes('CONNECT_TIMEOUT') ||

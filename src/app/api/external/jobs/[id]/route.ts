@@ -149,7 +149,6 @@ export async function GET(
 
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/jobs/[id]:', error);
     const response = NextResponse.json(
       {
         data: null,

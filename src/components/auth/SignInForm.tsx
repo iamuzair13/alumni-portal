@@ -217,7 +217,6 @@ export default function SignInForm() {
       }
     } catch (err) {
       setForgotPasswordError("An error occurred. Please try again later.");
-      console.error("Forgot password error:", err);
     } finally {
       setForgotPasswordLoading(false);
     }

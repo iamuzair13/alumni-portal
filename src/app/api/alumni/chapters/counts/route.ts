@@ -212,14 +212,7 @@ export async function GET(request: NextRequest) {
     ]);
     
     // Debug: Log verified count query details
-    console.log('[API] Verified count query executed. Filters:', {
-      hasChapterFilter: allChapterIds.length > 0,
-      chapterIds: allChapterIds,
-      hasAccessFilter: accessFilter.hasFilter,
-      hasFacultyFilter: selectedFaculties.length > 0,
-      hasDeptFilter: selectedDepartments.length > 0,
-    });
-    
+
     const total = Number((totalResult as unknown as Array<{ count: bigint }>)[0]?.count || 0);
     const all = Number((allResult as unknown as Array<{ count: bigint }>)[0]?.count || 0);
     const members = Number((membersResult as unknown as Array<{ count: bigint }>)[0]?.count || 0);
@@ -236,7 +229,7 @@ export async function GET(request: NextRequest) {
       unverified: unverifiedCount,
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching alumni chapters counts:", err);
+
     const msg = err instanceof Error ? err.message : "Failed to fetch counts";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ association }, { status: 200 });
   } catch (err) {
-    console.error("Error fetching association membership:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch association membership";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -110,7 +109,6 @@ export async function POST(request: NextRequest) {
       associationTitle: associationRows[0].title
     }, { status: 200 });
   } catch (err) {
-    console.error("Error joining association:", err);
     const message = err instanceof Error ? err.message : "Failed to join association";
     return NextResponse.json({ error: message }, { status: 500 });
   }

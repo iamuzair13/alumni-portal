@@ -55,7 +55,6 @@ function UpskillApplicationContent() {
           setFaculties(data.faculties || []);
         }
       } catch (error) {
-        console.error("Error fetching faculties:", error);
       } finally {
         setFacultiesLoading(false);
       }
@@ -78,7 +77,6 @@ function UpskillApplicationContent() {
           setDepartments(data.departments || []);
         }
       } catch (error) {
-        console.error("Error fetching departments:", error);
       } finally {
         setDepartmentsLoading(false);
       }

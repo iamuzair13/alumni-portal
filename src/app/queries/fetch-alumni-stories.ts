@@ -33,7 +33,7 @@ export async function getAlumniStories(signal?: AbortSignal): Promise<AlumniStor
     
     // Only throw error if status is not ok AND we don't have items
     // But log a warning instead of throwing for better UX
-    console.warn("[Alumni Stories] API returned error but we'll show empty state:", data.error);
+
     return []; // Return empty array so UI shows "no stories" message instead of error
   } catch (err) {
     // If it's an abort error, re-throw it (for React Query cancellation)
@@ -43,7 +43,7 @@ export async function getAlumniStories(signal?: AbortSignal): Promise<AlumniStor
     
     // For network errors or other issues, log but return empty array
     // This allows the UI to show "no stories" instead of a scary error
-    console.warn("[Alumni Stories] Error fetching stories, showing empty state:", err);
+
     return []; // Return empty array so UI shows friendly "no stories" message
   }
 }

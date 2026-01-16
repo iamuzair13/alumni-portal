@@ -202,7 +202,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.name = `${db.firstname ?? ""} ${db.lastname ?? ""}`.trim();
           token.sub = `u:${String(db.userid)}`;
           try {
-            console.info(`[auth] jwt set userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
+
           } catch {}
         } else {
           const au = (user as unknown as { sapid?: string | null; registrationno?: string | null; alumniDb?: {
@@ -242,11 +242,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.name = fullName || token.name;
             token.sub = `a:${String(au.alumniid)}`;
             try {
-              console.info(
-                `[auth] jwt set alumniId=${String(at.userId)} sapid=${String(at.sapid || "")} registrationno=${String(at.registrationno || "")} email=${String(
-                  token.email || ""
-                )}`
-              );
+
             } catch {}
           } else {
             // Check if user has sapid or registrationno at top level (from credentials)
@@ -399,7 +395,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               token.name = fullName || token.name;
               token.sub = `a:${String(alumni.alumniid)}`;
               try {
-                console.info(`[auth] jwt refreshed alumniId=${String(at.userId)} sapid=${String(at.sapid || "")}`);
+
               } catch {}
             }
           } else {
@@ -431,14 +427,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 token.name = `${dbUser.firstname ?? ""} ${dbUser.lastname ?? ""}`.trim();
                 token.sub = `u:${String(dbUser.userid)}`;
                 try {
-                  console.info(`[auth] jwt refreshed userId=${String(at.userId)} email=${String(token.email)} type=${String(at.type)}`);
+
                 } catch {}
               }
             }
           }
         } catch {
           try {
-            console.warn(`[auth] jwt refresh failed; keeping existing token data (type=${String((token as AugmentedToken).type || "")})`);
+
           } catch {}
         }
       }
@@ -462,11 +458,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         s.user.registrationno = at.registrationno ?? null; // Store registration number in session
         s.user.name = `${at.firstName ?? ""} ${at.lastName ?? ""}`.trim();
         try {
-          console.info(`[auth] session set userId=${String(s.user.userId)} email=${String(s.user.email)} sapid=${String(s.user.sapid || '')} registrationno=${String(s.user.registrationno || '')}`);
+
         } catch {}
       } else {
         try {
-          console.warn(`[auth] session without user`);
+
         } catch {}
       }
       return session;

@@ -70,11 +70,7 @@ export async function GET(req: Request) {
     const accessFilter = await buildAccessFilterSQL(session, "");
     
     // Debug logging
-    console.log("[alumni/counts] Access filter:", {
-      hasFilter: accessFilter.hasFilter,
-      isSuperAdmin: !accessFilter.hasFilter
-    });
-    
+
     // Build access filter condition for WHERE clause
     // Wrap the entire OR chain in parentheses since AND has higher precedence than OR
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
@@ -101,7 +97,7 @@ export async function GET(req: Request) {
       } else if (!Array.isArray(faculty) && faculty) {
         facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
       }
-      console.log("[alumni/counts] Filtering for faculty:", faculty);
+
     }
     
     let departmentFilter = sql``;
@@ -113,7 +109,7 @@ export async function GET(req: Request) {
       } else if (!Array.isArray(department) && department) {
         departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
       }
-      console.log("[alumni/counts] Filtering for department:", department);
+
     }
     
     let programFilter = sql``;
@@ -125,7 +121,7 @@ export async function GET(req: Request) {
       } else if (!Array.isArray(program) && program) {
         programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
       }
-      console.log("[alumni/counts] Filtering for program:", program);
+
     }
     
     // Build additional master filters (same pattern as main route)
@@ -975,8 +971,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(response, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching counts:", err);
-    
+
     // Check for connection timeout errors
     const isConnectionError = err instanceof Error && (
       err.message.includes('CONNECT_TIMEOUT') ||

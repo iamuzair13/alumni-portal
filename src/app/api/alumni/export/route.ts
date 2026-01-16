@@ -627,7 +627,6 @@ export async function GET(req: Request) {
       ORDER BY a.alumniid DESC
     `;
 
-    console.log("[API] Starting export query with filters applied");
     const startTime = Date.now();
     
     // Execute the main query
@@ -635,12 +634,10 @@ export async function GET(req: Request) {
     
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    
-    console.log(`[API] Export query completed in ${duration}s, returning ${rows.length} rows`);
-    
+
     // Log large exports for monitoring but return all data
     if (rows.length > 50000) {
-      console.log(`[API] Large export completed: ${rows.length} rows exported successfully.`);
+
     }
     
     // Return response with headers to help with long-running requests
@@ -657,7 +654,7 @@ export async function GET(req: Request) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export alumni data";
-    console.error("[API] Export error:", message, err);
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

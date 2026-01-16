@@ -28,12 +28,10 @@ async function getPhotoConsent(
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-photo-consent] API error:", res.status, err);
     throw new Error(err || "Failed to fetch photo consent");
   }
   
   const data = (await res.json()) as PhotoConsentResponse;
-  console.log("[fetch-photo-consent] Received data:", data);
   return data;
 }
 

@@ -80,7 +80,6 @@ export async function POST(req: NextRequest) {
     );
 
     if (!emailSent) {
-      console.warn("[Forgot Password] Email sending failed for:", alumniEmail);
       return NextResponse.json(
         {
           success: false,
@@ -89,9 +88,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log("[Forgot Password] Password reset successful for alumni ID:", alumniId);
-
     return NextResponse.json(
       {
         success: true,
@@ -101,7 +97,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to reset password";
-    console.error("[Forgot Password] Error:", message, err);
     return NextResponse.json(
       { success: false, error: "An error occurred. Please try again later." },
       { status: 500 }

@@ -86,7 +86,6 @@ export async function GET() {
     }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
-    console.error("[API] /api/users/current/access-assignments error:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

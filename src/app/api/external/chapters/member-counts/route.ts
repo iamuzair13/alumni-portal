@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       const duration = Date.now() - startTime;
-      console.log(`[API] Member counts (cached) took ${duration}ms for ${chapterIds.length} chapters`);
       const response = NextResponse.json({ data: cached.data, error: null });
       return addCorsHeaders(response, request);
     }
@@ -101,13 +100,10 @@ export async function GET(request: NextRequest) {
     cache.set(cacheKey, { data: counts, timestamp: Date.now() });
 
     const duration = Date.now() - startTime;
-    console.log(`[API] Member counts query took ${duration}ms for ${chapterIds.length} chapters`);
-
     const response = NextResponse.json({ data: counts, error: null });
     return addCorsHeaders(response, request);
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`[API] Error in /api/external/chapters/member-counts (${duration}ms):`, error);
     const response = NextResponse.json(
       {
         data: {},

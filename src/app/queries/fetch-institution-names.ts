@@ -25,7 +25,6 @@ async function getInstitutionNames(signal?: AbortSignal, filters?: MasterFilters
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-institution-names] API error:", res.status, err);
     throw new Error(err || "Failed to fetch institution names");
   }
   

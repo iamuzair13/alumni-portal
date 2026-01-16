@@ -26,7 +26,6 @@ export async function GET() {
       programs
     }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching programs:", error);
     const message = error instanceof Error ? error.message : "Failed to fetch programs";
     return NextResponse.json({ error: message }, { status: 500 });
   }

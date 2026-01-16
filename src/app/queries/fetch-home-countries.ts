@@ -25,7 +25,6 @@ async function getHomeCountries(signal?: AbortSignal, filters?: MasterFilters): 
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-home-countries] API error:", res.status, err);
     throw new Error(err || "Failed to fetch home countries");
   }
   

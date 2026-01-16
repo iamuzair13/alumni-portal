@@ -17,19 +17,8 @@ async function autoAssignChapter1FromHomeLocation(args: {
   const lookupType = isPakistan ? "city" : "country";
   const lookupValueRaw = isPakistan ? homeCityRaw : homeCountryRaw;
 
-  console.log("[AUTO-CHAPTER] start", {
-    alumniId: args.alumniId,
-    homeCountry: homeCountryRaw || null,
-    homeCity: homeCityRaw || null,
-    lookupType,
-    lookupValue: lookupValueRaw || null,
-  });
-
   if (!lookupValueRaw) {
-    console.log("[AUTO-CHAPTER] skip", {
-      alumniId: args.alumniId,
-      reason: isPakistan ? "Pakistan selected but home city missing" : "Home country missing",
-    });
+
     return;
   }
 
@@ -71,13 +60,6 @@ async function autoAssignChapter1FromHomeLocation(args: {
     });
 
     const chosen = matches[0];
-    console.log("[AUTO-CHAPTER] matched", {
-      alumniId: args.alumniId,
-      lookupType,
-      lookupValue: lookupValueRaw,
-      matchedCount: matches.length,
-      chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
-    });
 
     if (!chosen) return;
 
@@ -90,12 +72,7 @@ async function autoAssignChapter1FromHomeLocation(args: {
 
     const currentChapter1 = existing[0]?.chapter1 ?? null;
     if (currentChapter1) {
-      console.log("[AUTO-CHAPTER] skip", {
-        alumniId: args.alumniId,
-        reason: "chapter1 already set",
-        currentChapter1,
-        attemptedChapter1: chosen.id,
-      });
+
       return;
     }
 
@@ -105,16 +82,16 @@ async function autoAssignChapter1FromHomeLocation(args: {
         SET "chapter1" = ${chosen.id}
         WHERE id = ${args.alumniId}
       `;
-      console.log("[AUTO-CHAPTER] update", { alumniId: args.alumniId, chapter1: chosen.id });
+
     } else {
       await sql/* sql */`
         INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
         VALUES (${args.alumniId}, ${chosen.id}, NULL, NULL)
       `;
-      console.log("[AUTO-CHAPTER] insert", { alumniId: args.alumniId, chapter1: chosen.id });
+
     }
   } catch (err) {
-    console.error("[AUTO-CHAPTER] error", { alumniId: args.alumniId, err });
+
   }
 }
 
@@ -129,19 +106,8 @@ async function autoAssignChapter2FromWorkLocation(args: {
   const lookupType = isPakistan ? "city" : "country";
   const lookupValueRaw = isPakistan ? workCityRaw : workCountryRaw;
 
-  console.log("[AUTO-CHAPTER2] start", {
-    alumniId: args.alumniId,
-    workCountry: workCountryRaw || null,
-    workCity: workCityRaw || null,
-    lookupType,
-    lookupValue: lookupValueRaw || null,
-  });
-
   if (!lookupValueRaw) {
-    console.log("[AUTO-CHAPTER2] skip", {
-      alumniId: args.alumniId,
-      reason: isPakistan ? "Pakistan selected but work city missing" : "Work country missing",
-    });
+
     return;
   }
 
@@ -183,13 +149,6 @@ async function autoAssignChapter2FromWorkLocation(args: {
     });
 
     const chosen = matches[0];
-    console.log("[AUTO-CHAPTER2] matched", {
-      alumniId: args.alumniId,
-      lookupType,
-      lookupValue: lookupValueRaw,
-      matchedCount: matches.length,
-      chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
-    });
 
     if (!chosen) return;
 
@@ -202,12 +161,7 @@ async function autoAssignChapter2FromWorkLocation(args: {
 
     const currentChapter2 = existing[0]?.chapter2 ?? null;
     if (currentChapter2) {
-      console.log("[AUTO-CHAPTER2] skip", {
-        alumniId: args.alumniId,
-        reason: "chapter2 already set",
-        currentChapter2,
-        attemptedChapter2: chosen.id,
-      });
+
       return;
     }
 
@@ -217,23 +171,23 @@ async function autoAssignChapter2FromWorkLocation(args: {
         SET "chapter2" = ${chosen.id}
         WHERE id = ${args.alumniId}
       `;
-      console.log("[AUTO-CHAPTER2] update", { alumniId: args.alumniId, chapter2: chosen.id });
+
     } else {
       await sql/* sql */`
         INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
         VALUES (${args.alumniId}, NULL, ${chosen.id}, NULL)
       `;
-      console.log("[AUTO-CHAPTER2] insert", { alumniId: args.alumniId, chapter2: chosen.id });
+
     }
   } catch (err) {
-    console.error("[AUTO-CHAPTER2] error", { alumniId: args.alumniId, err });
+
   }
 }
 
 async function autoAssignAssociationFromFaculty(args: { alumniId: number; facultyName: string | null | undefined }) {
   const facultyName = args.facultyName ? String(args.facultyName).trim() : "";
   if (!facultyName) {
-    console.log("[AUTO-ASSOCIATION] skip", { alumniId: args.alumniId, reason: "facultyName missing" });
+
     return;
   }
 
@@ -245,15 +199,9 @@ async function autoAssignAssociationFromFaculty(args: { alumniId: number; facult
       LIMIT 1
     `;
     const existingAssociationId = currentAssoc[0]?.association_id ?? null;
-    console.log("[AUTO-ASSOCIATION] start", { alumniId: args.alumniId, facultyName, existingAssociationId });
 
     if (existingAssociationId) {
-      console.log("[AUTO-ASSOCIATION] skip", {
-        alumniId: args.alumniId,
-        facultyName,
-        reason: "association_id already set",
-        existingAssociationId,
-      });
+
       return;
     }
 
@@ -277,12 +225,6 @@ async function autoAssignAssociationFromFaculty(args: { alumniId: number; facult
     `;
     const chosen = assocRows[0];
 
-    console.log("[AUTO-ASSOCIATION] matched", {
-      alumniId: args.alumniId,
-      facultyName,
-      chosen: chosen ? { associationId: chosen.id, title: chosen.title } : null,
-    });
-
     if (!chosen?.id) return;
 
     await sql/* sql */`
@@ -290,9 +232,9 @@ async function autoAssignAssociationFromFaculty(args: { alumniId: number; facult
       SET association_id = ${chosen.id}
       WHERE alumniid = ${args.alumniId}
     `;
-    console.log("[AUTO-ASSOCIATION] update", { alumniId: args.alumniId, associationId: chosen.id });
+
   } catch (err) {
-    console.error("[AUTO-ASSOCIATION] error", { alumniId: args.alumniId, facultyName, err });
+
   }
 }
 
@@ -409,16 +351,10 @@ export async function GET(req: Request) {
     try {
       accessFilter = await buildAccessFilterSQL(session, "");
     } catch (filterError) {
-      console.error("[alumni/route] ❌ Error building access filter:", filterError);
+
       // In production, if access filter fails, log but don't block - return empty results instead
       // This prevents the entire API from failing due to access filter issues
-      console.error("[alumni/route] ⚠️ Access filter error details:", {
-        error: filterError instanceof Error ? filterError.message : String(filterError),
-        stack: filterError instanceof Error ? filterError.stack : undefined,
-        sessionExists: !!session,
-        userId: (session?.user as { userId?: number })?.userId,
-        userType: (session?.user as { type?: string })?.type
-      });
+
       // Return empty results instead of blocking everything
       return NextResponse.json({ 
         items: [], 
@@ -430,22 +366,14 @@ export async function GET(req: Request) {
     }
     
     // Debug logging
-    console.log("[alumni/route] Access filter:", {
-      hasFilter: accessFilter.hasFilter,
-      isSuperAdmin: !accessFilter.hasFilter,
-      userId: (session?.user as { userId?: number })?.userId,
-      userType: (session?.user as { type?: string })?.type,
-      sessionExists: !!session,
-      userEmail: session?.user?.email
-    });
-    
+
     // Log the actual SQL condition for debugging (if it's a program-level filter)
     if (accessFilter.hasFilter && accessFilter.sql) {
-      console.log("[alumni/route] Access filter SQL condition is active");
+
       // Try to log a sample of what the condition might look like
-      console.log("[alumni/route] Filter will be applied in WHERE clause");
+
     } else if (!accessFilter.hasFilter) {
-      console.log("[alumni/route] ✅ No access filter - full access granted");
+
     }
     
     // Build access filter condition for WHERE clause
@@ -487,7 +415,7 @@ export async function GET(req: Request) {
         facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
         }
       }
-      console.log("[API] Filtering for faculty:", faculty);
+
     }
     
     let departmentFilter = sql``;
@@ -511,7 +439,7 @@ export async function GET(req: Request) {
         departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${department}))`;
         }
       }
-      console.log("[API] Filtering for department:", department);
+
     }
     
     let programFilter = sql``;
@@ -535,7 +463,7 @@ export async function GET(req: Request) {
         programFilter = sql`AND (LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
         }
       }
-      console.log("[API] Filtering for program:", program);
+
     }
     
     // Build individual filters for each field (following existing pattern)
@@ -1196,43 +1124,43 @@ export async function GET(req: Request) {
           const combinedCondition = combineOrConditions(statusConditions);
           verifyFilter = sql`AND (${combinedCondition})`;
         }
-        console.log("[API] Filtering for multiple statuses:", status);
+
       } else if (!Array.isArray(status)) {
         // Single status filter (backward compatibility)
         if (status === "verified") {
           verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
-          console.log("[API] Filtering for verified alumni");
+
         } else if (status === "unverified") {
           verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
-          console.log("[API] Filtering for unverified alumni");
+
         } else if (status === "underApproval") {
           verifyFilter = sql`AND verify = 'pending'`;
-          console.log("[API] Filtering for under approval alumni (verify = 'pending', including null sapid/registrationno)");
+
         } else if (status === "active") {
           verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
-          console.log("[API] Filtering for active alumni (has logged in)");
+
         } else if (status === "inactive") {
           verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
-          console.log("[API] Filtering for inactive alumni (never logged in)");
+
         } else if (status === "category:aPlus") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'a+%')`;
-          console.log("[API] Filtering for A+ category");
+
         } else if (status === "category:a") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(category, ''))) NOT LIKE 'a+%'))`;
-          console.log("[API] Filtering for A category");
+
         } else if (status === "category:b") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'b' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'b%')`;
-          console.log("[API] Filtering for B category");
+
         } else if (status === "category:c") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'c' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'c%')`;
-          console.log("[API] Filtering for C category");
+
         } else if (status === "category:d") {
           verifyFilter = sql`AND (LOWER(TRIM(COALESCE(category, ''))) = 'd' OR LOWER(TRIM(COALESCE(category, ''))) LIKE 'd%')`;
-          console.log("[API] Filtering for D category");
+
         }
       }
     } else {
-      console.log("[API] No status filter applied, status:", status);
+
     }
     
     // Build query with optional search and status filter
@@ -1401,18 +1329,17 @@ export async function GET(req: Request) {
     const rows = await query;
     
     // Debug logging
-    console.log("[API] Query executed with status:", status || "none", "Returned rows:", rows.length);
+
     if (status === "underApproval" && rows.length > 0) {
-      console.log("[API] Under approval items - verify values:", rows.map((r: Record<string, unknown>) => ({ sapid: String(r.sapid ?? ""), verify: r.verify, verifyType: typeof r.verify })));
+
     } else if (status === "underApproval" && rows.length === 0) {
-      console.log("[API] WARNING: No under approval items found! Checking database...");
+
       // Quick check to see if there are any 'pending' verify records
       const checkPending = await sql/* sql */`
         SELECT COUNT(*) as count FROM public.tbl_alumni 
         WHERE sapid IS NOT NULL AND sapid != '' AND verify = 'pending'
       `;
-      console.log("[API] Total records with verify = 'pending' (exact match):", checkPending[0]?.count || 0);
-      
+
       // Get sample records to see what's actually there
       const samplePendingRecords = await sql/* sql */`
         SELECT alumniid, sapid, registrationno, verify, LENGTH(verify) as verify_length
@@ -1422,8 +1349,7 @@ export async function GET(req: Request) {
         ORDER BY alumniid DESC
         LIMIT 5
       `;
-      console.log("[API] Sample records with verify = 'pending':", samplePendingRecords);
-      
+
       // Check specifically for the recently registered alumni (ID 30714, SAP ID 123432)
       const checkSpecificAlumni = await sql/* sql */`
         SELECT alumniid, sapid, verify, LENGTH(verify) as verify_length, createddatetime
@@ -1431,8 +1357,7 @@ export async function GET(req: Request) {
         WHERE alumniid = 30714 OR sapid = '123432'
         LIMIT 5
       `;
-      console.log("[API] Check for alumni ID 30714 or SAP ID 123432:", checkSpecificAlumni);
-      
+
       // Get sample records with 'pending' to see what's actually stored
       const samplePending = await sql/* sql */`
         SELECT sapid, verify, LENGTH(verify) as verify_length, 
@@ -1443,8 +1368,7 @@ export async function GET(req: Request) {
         AND (verify = 'pending' OR LOWER(TRIM(COALESCE(verify, ''))) = 'pending')
         LIMIT 5
       `;
-      console.log("[API] Sample records with 'pending':", samplePending);
-      
+
       // Check the most recently registered alumni (last 10 by alumniid DESC)
       const recentAlumni = await sql/* sql */`
         SELECT alumniid, sapid, verify, LENGTH(verify) as verify_length,
@@ -1456,8 +1380,7 @@ export async function GET(req: Request) {
         ORDER BY alumniid DESC
         LIMIT 10
       `;
-      console.log("[API] Most recently registered alumni (last 10):", recentAlumni);
-      
+
       // Check for case variations
       const checkCaseVariations = await sql/* sql */`
         SELECT verify, LENGTH(verify) as verify_length, COUNT(*) as count
@@ -1468,8 +1391,7 @@ export async function GET(req: Request) {
         ORDER BY count DESC
         LIMIT 10
       `;
-      console.log("[API] Records containing 'pending' (any case):", checkCaseVariations);
-      
+
       // Also check what verify values actually exist
       const verifySamples = await sql/* sql */`
         SELECT verify, pg_typeof(verify) as verify_type, COUNT(*) as count
@@ -1479,7 +1401,7 @@ export async function GET(req: Request) {
         ORDER BY count DESC
         LIMIT 10
       `;
-      console.log("[API] Sample verify values in database:", verifySamples);
+
     }
     
     // Get total count for pagination (only if needed)
@@ -1716,26 +1638,7 @@ export async function POST(req: Request) {
             String(existingRecord.officialemail).trim().toLowerCase() === officialEmail) {
           matchedBy.push('officialemail');
         }
-        
-        console.log("[API] /api/alumni POST - Found existing record:", {
-          alumniid: existingRecord.alumniid,
-          verify: existingRecord.verify,
-          registrationno: existingRecord.registrationno,
-          sapid: existingRecord.sapid,
-          cnicpassport: existingRecord.cnicpassport,
-          contactno: existingRecord.contactno,
-          personalemail: existingRecord.personalemail,
-          officialemail: existingRecord.officialemail,
-          matchedBy: matchedBy.length > 0 ? matchedBy.join(', ') : 'unknown',
-          incomingIdentifiers: {
-            regNo: regNo || null,
-            sapId: sapId || null,
-            cnic: cnic || null,
-            phone: phone || null,
-            personalEmail: personalEmail || null,
-            officialEmail: officialEmail || null
-          }
-        });
+
       }
     }
     
@@ -1751,16 +1654,9 @@ export async function POST(req: Request) {
           verifyStatus = verifyStr.toLowerCase();
         }
       }
-      
-      console.log("[API] /api/alumni POST - Verify status check:", {
-        rawVerify,
-        verifyStatus,
-        isTrue: verifyStatus === "true",
-        willBlock: verifyStatus === "true"
-      });
-      
+
       if (verifyStatus === "true") {
-        console.log("[API] /api/alumni POST - BLOCKING: Alumni is verified (verify='true'), cannot re-register");
+
         return NextResponse.json({ 
           error: "This alumni is already verified and cannot register again.",
           existingRecord: {
@@ -1775,13 +1671,7 @@ export async function POST(req: Request) {
       // Update the existing record with new data, keeping the same alumniid
       // IMPORTANT: Always set verify = 'pending' when re-registering (regardless of payload)
       // IMPORTANT: Preserve identifier fields - if incoming value is missing, keep the existing value
-      console.log("[API] /api/alumni POST - ALLOWING: Alumni exists but verify is not 'true', allowing re-registration:", {
-        verify: rawVerify,
-        verifyStatus,
-        willUpdate: true,
-        willSetVerifyToPending: true
-      });
-      
+
       const alumniId = existingRecord.alumniid;
       
       // Preserve identifier fields: if incoming value is missing, keep the existing value
@@ -1792,34 +1682,7 @@ export async function POST(req: Request) {
       const preservedPhone = d.contactno ?? existingRecord.contactno;
       const preservedPersonalEmail = d.personalemail ?? existingRecord.personalemail;
       const preservedOfficialEmail = d.officialemail ?? existingRecord.officialemail;
-      
-      console.log("[API] /api/alumni POST - Preserving identifier fields:", {
-        existing: {
-          regNo: existingRecord.registrationno,
-          sapId: existingRecord.sapid,
-          cnic: existingRecord.cnicpassport,
-          phone: existingRecord.contactno,
-          personalEmail: existingRecord.personalemail,
-          officialEmail: existingRecord.officialemail
-        },
-        incoming: {
-          regNo: d.registrationno,
-          sapId: d.sapid,
-          cnic: d.cnicpassport,
-          phone: d.contactno,
-          personalEmail: d.personalemail,
-          officialEmail: d.officialemail
-        },
-        preserved: {
-          regNo: preservedRegNo,
-          sapId: preservedSapId,
-          cnic: preservedCnic,
-          phone: preservedPhone,
-          personalEmail: preservedPersonalEmail,
-          officialEmail: preservedOfficialEmail
-        }
-      });
-      
+
       const updateResult = await sql/* sql */`
         UPDATE public.tbl_alumni SET
           registrationno = ${preservedRegNo},
@@ -1861,11 +1724,6 @@ export async function POST(req: Request) {
       `;
       
       const updated = updateResult[0];
-      console.log("[API] /api/alumni POST - Updated existing record:", {
-        alumniid: updated.alumniid,
-        verify: updated.verify,
-        previousVerify: existingRecord.verify
-      });
 
       // Auto-assign chapter1 based on home location (Pakistan=>city, otherwise=>country)
       await autoAssignChapter1FromHomeLocation({
@@ -1941,7 +1799,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, created }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create alumni";
-    console.error("[API] Registration error:", message, err);
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

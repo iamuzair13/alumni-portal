@@ -25,7 +25,6 @@ async function getFundingSources(signal?: AbortSignal, filters?: MasterFilters):
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-funding-sources] API error:", res.status, err);
     throw new Error(err || "Failed to fetch funding sources");
   }
   

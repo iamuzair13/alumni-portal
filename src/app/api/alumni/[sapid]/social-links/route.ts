@@ -53,7 +53,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update social media links";
-    console.error("[API] Social links update error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

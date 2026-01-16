@@ -28,12 +28,12 @@ async function getGenders(
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-genders] API error:", res.status, err);
+
     throw new Error(err || "Failed to fetch genders");
   }
   
   const data = (await res.json()) as GendersResponse;
-  console.log("[fetch-genders] Received data:", data);
+
   return data;
 }
 

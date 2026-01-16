@@ -25,7 +25,6 @@ async function getDegreeTitles(signal?: AbortSignal, filters?: MasterFilters): P
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-degree-titles] API error:", res.status, err);
     throw new Error(err || "Failed to fetch degree titles");
   }
   

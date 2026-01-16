@@ -9,7 +9,6 @@ function getLogoBase64(): string {
     const logoBuffer = readFileSync(logoPath);
     return `data:image/png;base64,${logoBuffer.toString("base64")}`;
   } catch (error) {
-    console.error("Failed to load logo:", error);
     return "";
   }
 }
@@ -46,7 +45,6 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
           yPosition = logoY + logoHeight + 15;
         } catch (logoError) {
-          console.error("Failed to add logo to PDF:", logoError);
           yPosition = margin + 10;
         }
       } else {
@@ -191,7 +189,6 @@ export function generateUpskillPDF(data: UpskillApplicationData): Promise<Buffer
           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
           yPosition = logoY + logoHeight + 15;
         } catch (logoError) {
-          console.error("Failed to add logo to PDF:", logoError);
           yPosition = margin + 10;
         }
       } else {

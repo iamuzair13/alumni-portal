@@ -81,7 +81,6 @@ export async function GET(request: NextRequest) {
       totalPages,
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching jobs:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch jobs";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -153,7 +152,6 @@ export async function POST(request: NextRequest) {
       createdAt: rows[0].created_at || null,
     }, { status: 201 });
   } catch (err) {
-    console.error("[API] Error creating job:", err);
     const message = err instanceof Error ? err.message : "Failed to create job";
     return NextResponse.json({ error: message }, { status: 500 });
   }

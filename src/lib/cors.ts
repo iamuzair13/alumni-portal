@@ -59,9 +59,6 @@ export function handleCorsPreflight(request: NextRequest) {
   const headers = getCorsHeaders(origin);
   
   // Log for debugging
-  console.log('[CORS] Preflight request from origin:', origin);
-  console.log('[CORS] Headers:', headers);
-  
   return new NextResponse(null, {
     status: 204,
     headers,
@@ -85,7 +82,6 @@ export function addCorsHeaders(
   
   // Log for debugging (only in development)
   if (process.env.NODE_ENV === 'development') {
-    console.log('[CORS] Added headers for origin:', origin);
   }
   
   return response;

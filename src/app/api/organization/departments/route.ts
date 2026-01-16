@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, departments }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch departments";
-    console.error("[API] Error fetching departments:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -103,7 +102,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, department }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create department";
-    console.error("[API] Error creating department:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -153,7 +151,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, department }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update department";
-    console.error("[API] Error updating department:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -202,7 +199,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete department";
-    console.error("[API] Error deleting department:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

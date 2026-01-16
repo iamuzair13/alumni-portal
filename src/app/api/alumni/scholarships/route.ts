@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("[API] Error fetching alumni scholarships:", err);
+
     const msg = err instanceof Error ? err.message : "Failed to fetch scholarships";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

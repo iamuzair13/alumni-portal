@@ -44,7 +44,6 @@ export async function createAccessAssignmentsInNewRBAC(
   }
 
   if (!newUser[0]?.id) {
-    console.warn(`[RBAC-Assignments] User ${userId} not found in new RBAC system (users table). User may need to be migrated first.`);
     return { created: 0, errors: assignmentRows.length };
   }
 
@@ -84,14 +83,6 @@ export async function createAccessAssignmentsInNewRBAC(
       }
 
       if (!resourceId) {
-        console.warn(`[RBAC-Assignments] Resource not found for:`, {
-          faculty_id: row.faculty_id,
-          department_id: row.department_id,
-          program_id: row.program_id,
-          faculty_name: row.faculty_name,
-          department_name: row.department_name,
-          program_name: row.program_name
-        });
         errors++;
         continue;
       }
@@ -107,12 +98,9 @@ export async function createAccessAssignmentsInNewRBAC(
 
       created++;
     } catch (error) {
-      console.error(`[RBAC-Assignments] Error creating assignment:`, error, row);
       errors++;
     }
   }
-
-  console.log(`[RBAC-Assignments] Created ${created} assignments, ${errors} errors for user ${userId} (new ID: ${newUserId})`);
   return { created, errors };
 }
 
@@ -129,7 +117,6 @@ export async function deleteAccessAssignmentsInNewRBAC(userId: number): Promise<
   ` as Array<{ id: number }>;
 
   if (!newUser[0]?.id) {
-    console.warn(`[RBAC-Assignments] User ${userId} not found in new RBAC system (users table)`);
     return 0;
   }
 
@@ -142,6 +129,5 @@ export async function deleteAccessAssignmentsInNewRBAC(userId: number): Promise<
   ` as Array<{ id: number }>;
 
   const deleted = result.length;
-  console.log(`[RBAC-Assignments] Deleted ${deleted} assignments for user ${userId} (new ID: ${newUserId})`);
   return deleted;
 }

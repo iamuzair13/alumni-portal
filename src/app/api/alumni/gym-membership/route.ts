@@ -75,12 +75,10 @@ export async function POST(req: Request) {
       if (alumniEmail) {
         // Send email asynchronously (don't wait for it to complete)
         sendGymMembershipEmail(alumniEmail, alumniName, month.trim()).catch((err) => {
-          console.error("[API] Failed to send gym membership email:", err);
         });
       }
     } catch (emailError) {
       // Don't fail the request if email fails
-      console.error("[API] Error sending gym membership email:", emailError);
     }
 
     return NextResponse.json({ 
@@ -88,7 +86,6 @@ export async function POST(req: Request) {
       message: "Gym membership application submitted successfully" 
     });
   } catch (error) {
-    console.error("Error submitting gym membership application:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
     return NextResponse.json(
       { error: errorMessage },

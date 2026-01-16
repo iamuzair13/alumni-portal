@@ -93,7 +93,7 @@ export async function GET() {
       }
     }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error fetching test data:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch test data" },
       { status: 500 }

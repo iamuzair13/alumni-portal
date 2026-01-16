@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         }
       } catch {
         // Column doesn't exist yet - will use fallback below
-        console.log("[Leadership Actions] alumniid column not found, using fallback method");
+
       }
       
       // Fallback: Find alumni by checking which alumni has this chapter_leadership linked
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
         }
       } catch {
         // Column doesn't exist yet - will use fallback below
-        console.log("[Leadership Actions] alumni_id column not found, using fallback method");
+
       }
       
       // Fallback: Find alumni by checking which alumni has this association_job linked
@@ -255,7 +255,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid action or type" }, { status: 400 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to perform action";
-    console.error("[API] Error performing leadership action:", msg, err);
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

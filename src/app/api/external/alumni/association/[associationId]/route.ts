@@ -64,7 +64,6 @@ export async function GET(
     });
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/alumni/association/[associationId]:', error);
     const response = NextResponse.json(
       {
         data: null,

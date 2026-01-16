@@ -37,13 +37,13 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   // Show error if API calls fail
   useEffect(() => {
     if (isError && error) {
-      console.error("[ProfileDetailsClient] Error fetching profile:", error);
+
       toast.error(`Failed to load profile: ${error instanceof Error ? error.message : String(error)}`, {
         duration: 5000,
       });
     }
     if (isFullDetailsError && fullDetailsError) {
-      console.error("[ProfileDetailsClient] Error fetching full details:", fullDetailsError);
+
       toast.error(`Failed to load full details: ${fullDetailsError instanceof Error ? fullDetailsError.message : String(fullDetailsError)}`, {
         duration: 5000,
       });
@@ -139,20 +139,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
   // Debug: Log data to console for troubleshooting
   useEffect(() => {
-    console.log("[ProfileDetailsClient] State:", {
-      sapId,
-      fullDetails,
-      data,
-      isLoading,
-      isLoadingFullDetails,
-      isError,
-      error,
-      name,
-      faculty,
-      dept,
-      program,
-      contact
-    });
+
   }, [sapId, fullDetails, data, isLoading, isLoadingFullDetails, isError, error, name, faculty, dept, program, contact]);
 
   const handleImageClick = () => {

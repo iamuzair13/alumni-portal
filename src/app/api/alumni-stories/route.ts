@@ -60,7 +60,7 @@ export async function GET() {
         if (sapRows[0]) {
           const alumniId = Number((sapRows[0] as { alumniid: number }).alumniid);
           alumniIdFilter = sql` AND s.alumniid = ${alumniId}`;
-          console.log(`[API GET] User is alumni - filtering by own alumni ID: ${alumniId}`);
+
         }
       }
       
@@ -75,12 +75,12 @@ export async function GET() {
         if (emailRows[0]) {
           const alumniId = Number((emailRows[0] as { alumniid: number }).alumniid);
           alumniIdFilter = sql` AND s.alumniid = ${alumniId}`;
-          console.log(`[API GET] User is alumni - filtering by own alumni ID (from email): ${alumniId}`);
+
         }
       }
       
       if (!alumniIdFilter) {
-        console.log(`[API GET] User is alumni but alumni ID not found - returning empty results`);
+
         // Return empty array if alumni ID not found
         return NextResponse.json({ items: [] }, { status: 200 });
       }
@@ -133,8 +133,7 @@ export async function GET() {
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch stories";
-    console.error("[API] Error fetching alumni stories:", msg, err);
-    
+
     // Check for connection timeout errors
     const isConnectionError = err instanceof Error && (
       err.message.includes('CONNECT_TIMEOUT') ||
@@ -147,7 +146,7 @@ export async function GET() {
     // For any error, return empty array so UI can handle it gracefully
     // This prevents the "Failed to fetch" error from breaking the page
     if (isConnectionError) {
-      console.warn("[API] Database connection timeout, returning empty stories list");
+
       return NextResponse.json({ 
         items: [], // Return empty array so UI shows "no stories" instead of error
         error: "Database connection timeout. Please try again in a moment.",
@@ -157,7 +156,7 @@ export async function GET() {
     
     // For other errors, also return empty array with 200 status
     // The client can check if items.length === 0 to show appropriate message
-    console.warn("[API] Error fetching stories, returning empty list:", msg);
+
     return NextResponse.json({ 
       items: [], // Return empty array so UI shows "no stories" instead of error
       error: msg 
@@ -231,8 +230,7 @@ export async function POST(req: Request) {
         const bytes = await imageFile.arrayBuffer();
         const buffer = Buffer.from(bytes);
         await writeFile(filePath, buffer);
-        
-        console.log(`[API] Story image saved: ${storyImageFilename}`);
+
       }
       
       // Build payload object for validation
@@ -250,7 +248,7 @@ export async function POST(req: Request) {
       
       const parsed = storyServerSchema.safeParse(payload);
       if (!parsed.success) {
-        console.error("[API] Story validation failed:", JSON.stringify(parsed.error.format(), null, 2));
+
         return NextResponse.json({ 
           message: "Validation failed", 
           issues: parsed.error.format()
@@ -262,8 +260,8 @@ export async function POST(req: Request) {
       const body = await req.json();
       const parsed = storyServerSchema.safeParse(body);
       if (!parsed.success) {
-        console.error("[API] Story validation failed:", JSON.stringify(parsed.error.format(), null, 2));
-        console.error("[API] Received body:", JSON.stringify(body, null, 2));
+
+
         return NextResponse.json({ 
           message: "Validation failed", 
           issues: parsed.error.format(),
@@ -347,19 +345,16 @@ export async function POST(req: Request) {
     try {
       // Insert new story - allow multiple stories per alumni
       // Schema columns: id (PK, auto-increment), alumniid (FK), alumnistories (TEXT), story_image (VARCHAR(50)), status (VARCHAR(20)), createdat (TIMESTAMP), storytitle (TEXT)
-      console.log(`[API] Attempting to save new story for alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
-      console.log(`[API] Story content length: ${cleanHtml.length} characters`);
-      console.log(`[API] Story image: ${storyImageFilename || 'none'}`);
-      
+
+
+
       const result = await sql/* sql */`
         INSERT INTO public.tblalumnistories (alumniid, alumnistories, story_image, status, createdat, storytitle)
         VALUES (${alumniId}, ${cleanHtml}, ${storyImageFilename}, NULL, NOW(), ${v.storyTitle})
         RETURNING id`;
       
       const newStoryId = result[0] ? Number((result[0] as { id: number }).id) : null;
-      console.log(`[API] Story saved successfully - Story ID: ${newStoryId}, Alumni ID: ${alumniId}, SAP ID: ${v.sapId}`);
-      console.log(`[API] Database operation completed. Rows affected:`, Array.isArray(result) ? result.length : 'N/A');
-      
+
       // Verify the story was saved by querying it back
       if (newStoryId) {
         const verifyQuery = await sql/* sql */`
@@ -369,27 +364,15 @@ export async function POST(req: Request) {
           WHERE s.id = ${newStoryId}
           LIMIT 1
         `;
-        console.log(`[API] Verification query result:`, verifyQuery.length > 0 ? 'Story found in database' : 'Story NOT found in database');
+
         if (verifyQuery.length > 0) {
           const story = verifyQuery[0] as { id: number; alumniid: number; alumnistories: string | null; alumniname: string | null };
-          console.log(`[API] Story details:`, {
-            storyId: story.id,
-            alumniid: story.alumniid,
-            contentLength: story.alumnistories?.length || 0,
-            hasContent: story.alumnistories ? story.alumnistories.length > 0 : false,
-            alumniname: story.alumniname || 'NULL'
-          });
+
         }
       }
     } catch (dbError) {
-      console.error("[API] Database error saving story:", dbError);
-      console.error("[API] Error details:", {
-        message: dbError instanceof Error ? dbError.message : "Unknown error",
-        stack: dbError instanceof Error ? dbError.stack : undefined,
-        alumniId,
-        sapId: v.sapId,
-        contentLength: cleanHtml.length
-      });
+
+
       return NextResponse.json({ 
         message: "Failed to save story to database",
         error: dbError instanceof Error ? dbError.message : "Unknown database error",
@@ -419,18 +402,18 @@ export async function POST(req: Request) {
         if (alumniEmail) {
           // Send email asynchronously (don't wait for it to complete)
           sendSuccessStoryEmail(alumniEmail, alumniName).catch((err) => {
-            console.error("[API] Failed to send success story email:", err);
+
           });
         }
       }
     } catch (emailError) {
       // Don't fail the request if email fails
-      console.error("[API] Error sending success story email:", emailError);
+
     }
     
     return NextResponse.json({ ok: true, alumniid: alumniId, message: "Story saved successfully" }, { status: 201 });
   } catch (err) {
-    console.error("[API] Error in POST /api/alumni-stories:", err);
+
     const msg = err instanceof Error ? err.message : "Invalid JSON";
     const statusCode = err instanceof Error && msg.includes("Unauthorized") ? 401 :
                       err instanceof Error && msg.includes("Forbidden") ? 403 :

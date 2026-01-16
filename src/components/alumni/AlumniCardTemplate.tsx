@@ -81,15 +81,7 @@ export default function AlumniCardTemplate({
     
     // Debug logging (remove in production if needed)
     if (typeof window !== "undefined") {
-      console.log("[AlumniCardTemplate] Image candidates:", {
-        cardImage,
-        photoUrl,
-        cardImageStr,
-        photoUrlStr,
-        candidates,
-        cardImageNormalized: cardImageStr ? normalizeImagePath(cardImageStr) : null,
-        photoUrlNormalized: photoUrlStr ? normalizeImagePath(photoUrlStr) : null,
-      });
+
     }
     
     return candidates;
@@ -99,26 +91,21 @@ export default function AlumniCardTemplate({
     setImageIndex(0);
     // Debug logging
     if (typeof window !== "undefined") {
-      console.log("[AlumniCardTemplate] Image props changed:", { cardImage, photoUrl });
+
     }
   }, [photoUrl, cardImage]);
 
   const activeImageSrc = imageCandidates[imageIndex] || "/images/person.jpg";
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const target = e.currentTarget;
-    console.warn("[AlumniCardTemplate] Image failed to load:", {
-      src: target.src,
-      index: imageIndex,
-      totalCandidates: imageCandidates.length,
-      candidates: imageCandidates,
-    });
+
     setImageIndex((prev) => {
       const next = prev + 1;
       if (next < imageCandidates.length) {
-        console.log("[AlumniCardTemplate] Trying next image candidate:", imageCandidates[next]);
+
         return next;
       }
-      console.warn("[AlumniCardTemplate] All image candidates failed, using fallback");
+
       return prev; // Stay on last candidate (fallback)
     });
   };
@@ -176,7 +163,7 @@ export default function AlumniCardTemplate({
             onError={handleImageError}
             onLoad={() => {
               if (typeof window !== "undefined") {
-                console.log("[AlumniCardTemplate] Image loaded successfully:", activeImageSrc);
+
               }
             }}
             style={{ display: "block" }}

@@ -23,7 +23,6 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for degree titles:", filterError);
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -69,7 +68,6 @@ export async function GET(req: Request) {
       degreeTitles
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching degree titles:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch degree titles";
     return NextResponse.json({ error: message }, { status: 500 });
   }

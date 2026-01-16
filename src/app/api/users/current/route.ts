@@ -75,7 +75,7 @@ export async function GET() {
       } 
     }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error fetching current user:", error);
+
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -165,9 +165,9 @@ export async function PUT(req: Request) {
       // Store plain text in password field and hash in password_hash field
       plainTextPassword = newPasswordStr;
       hashedPassword = await hashPassword(newPasswordStr);
-      console.log("[API] Updating password for user", currentUserId, "- storing plain text in password, hash in password_hash");
+
     } else {
-      console.log("[API] No new password provided, skipping password update");
+
     }
     
     // Build update query - only include fields that are provided
@@ -186,7 +186,7 @@ export async function PUT(req: Request) {
     `;
     
     if (plainTextPassword !== undefined) {
-      console.log("[API] Successfully updated password for user", currentUserId);
+
     }
     
     // Fetch updated user data with password
@@ -217,7 +217,7 @@ export async function PUT(req: Request) {
       } 
     }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error updating current user:", error);
+
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

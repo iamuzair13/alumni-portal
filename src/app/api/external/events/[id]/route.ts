@@ -40,7 +40,6 @@ export async function GET(
     const response = NextResponse.json({ data: result[0], error: null });
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/events/[id]:', error);
     const response = NextResponse.json(
       {
         data: null,

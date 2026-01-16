@@ -26,13 +26,9 @@ export async function GET() {
       email: r.email ? String(r.email) : null,
       address: r.address ? String(r.address) : null,
     }));
-    
-    console.log(`[API] Associations list: ${associations.length} total`);
-    
     return NextResponse.json({ associations }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch associations";
-    console.error("[API] Error fetching associations:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

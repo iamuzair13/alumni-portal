@@ -83,7 +83,6 @@ export async function authenticateCredentials(identifier: string, password: stri
   
   const log = (status: string, msg: string) => {
     const ts = new Date().toISOString();
-    try { console.info(`[auth] ${ts} ${status} identifier=${identifier} (${isEmail ? 'email' : 'sapid/registrationno'}) ip=${ip} ${msg}`); } catch {}
   };
   
   if (!identifier || !identifier.trim()) {

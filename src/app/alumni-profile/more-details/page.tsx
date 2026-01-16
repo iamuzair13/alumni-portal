@@ -334,16 +334,11 @@ function MoreDetailsContent() {
     const changesCount = Object.keys(pendingChanges).length;
     setIsSavingAll(true);
     try {
-      console.log("[Frontend] Saving changes:", Object.keys(pendingChanges));
-      if (pendingChanges.password) {
-        console.log("[Frontend] Password being saved (first 20 chars):", String(pendingChanges.password).substring(0, 20));
-      }
       await updateMutation.mutateAsync(pendingChanges as Partial<NonNullable<typeof data>>);
       // Clear pending changes after successful save
       setPendingChanges({});
       // Force refetch to ensure we have the latest from the database
       await refetch();
-      console.log("[Frontend] Data refetched after save");
       toast.success(`Successfully saved ${changesCount} field${changesCount > 1 ? 's' : ''}`, {
         duration: 3000,
         style: {

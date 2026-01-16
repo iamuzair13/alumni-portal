@@ -349,7 +349,7 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
                   btn.textContent = 'Download PDF';
                   alert('PDF generated successfully!');
                 } catch (error) {
-                  console.error('Error generating PDF:', error);
+
                   alert('Failed to generate PDF. Please try again.');
                 } finally {
                   isExporting = false;
@@ -374,7 +374,7 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
         },
       });
     } catch (error) {
-      console.error("Error opening export view:", error);
+
       toast.error("Failed to open export view. Please try again.", {
         duration: 4000,
         style: {

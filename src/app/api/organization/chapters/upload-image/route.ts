@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
       filename: filename
     }, { status: 200 });
   } catch (error) {
-    console.error("Error uploading chapter image:", error);
     const message = error instanceof Error ? error.message : "Failed to upload image";
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -20,7 +20,6 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for international chapters:", filterError);
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -81,14 +80,8 @@ export async function GET(req: Request) {
       label: chapterName,
       count,
     }));
-
-    console.log("[API] International chapters response:", { 
-      count: internationalChapters.length, 
-      sample: internationalChapters.slice(0, 3) 
-    });
     return NextResponse.json({ success: true, chapters: internationalChapters }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching international chapters:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch international chapters";
     return NextResponse.json({ error: message }, { status: 500 });
   }

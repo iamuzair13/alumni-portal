@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit)
     }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error fetching distinguished alumni:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch distinguished alumni" },
       { status: 500 }
@@ -235,8 +235,7 @@ export async function POST(request: NextRequest) {
         
         // Save just the filename to database
         image = filename;
-        
-        console.log(`[API] Distinguished alumni image saved: ${filename}`);
+
       } else {
         return NextResponse.json(
           { error: "Image is required" },
@@ -341,7 +340,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ item: parsed }, { status: 201 });
   } catch (error) {
-    console.error("[API] Error creating distinguished alumni:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create distinguished alumni" },
       { status: 500 }

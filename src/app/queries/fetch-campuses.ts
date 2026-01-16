@@ -28,12 +28,12 @@ async function getCampuses(
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-campuses] API error:", res.status, err);
+
     throw new Error(err || "Failed to fetch campuses");
   }
   
   const data = (await res.json()) as CampusesResponse;
-  console.log("[fetch-campuses] Received data:", data);
+
   return data;
 }
 

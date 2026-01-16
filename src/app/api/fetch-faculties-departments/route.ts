@@ -80,7 +80,6 @@ export async function GET() {
       standalonePrograms: standalone
     }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching faculties and departments:", error);
     const message = error instanceof Error ? error.message : "Failed to fetch data";
     return NextResponse.json({ error: message }, { status: 500 });
   }

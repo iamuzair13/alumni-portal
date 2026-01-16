@@ -370,7 +370,7 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       setImageFile(null);
       setImagePreview(null);
     } catch (error) {
-      console.error("Error saving distinguished alumni:", error);
+
       toast.error(
         error instanceof Error
           ? error.message

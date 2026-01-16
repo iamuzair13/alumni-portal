@@ -243,7 +243,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
       confirmModal.closeModal();
     } catch (e) {
       // Error already handled in handleApprove/handleUnapprove
-      console.error("[AlumniScholarshipsTab] Error executing action:", e);
+
     }
   }, [pendingAction, rejectionReason, confirmModal, handleApprove, handleUnapprove]);
 

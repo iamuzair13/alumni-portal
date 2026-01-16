@@ -83,7 +83,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
       } catch (oldTableError: unknown) {
         // Table might have been dropped between check and query
         if (oldTableError instanceof Error && oldTableError.message.includes('does not exist')) {
-          console.log("[RBAC] Old table was dropped, falling back to new RBAC system...");
         } else {
           throw oldTableError; // Re-throw if it's a different error
         }
@@ -91,8 +90,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
     }
     
     // Fallback to new RBAC system
-    console.log("[RBAC] Old table doesn't exist or returned no results. Checking new RBAC system...");
-    
     // Check if new RBAC tables exist
     const newTablesExist = await sql/* sql */`
       SELECT EXISTS (
@@ -103,7 +100,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
     ` as Array<{ exists: boolean }>;
     
     if (!newTablesExist[0]?.exists) {
-      console.warn("[RBAC] Neither old nor new RBAC tables exist. Returning empty array.");
       return [];
     }
     
@@ -121,8 +117,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
     let newUserId: number;
     
     if (!newUser[0]?.id) {
-      console.warn(`[RBAC] User ${userId} not found in new RBAC system (users table). Checking if it's a new user ID...`);
-      
       // If userId doesn't match, it might already be the new user ID
       // Try one more time with direct lookup
       const directUser = await sql/* sql */`
@@ -135,8 +129,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
       if (!directUser[0]?.id) {
         // User not in new system - check if they exist in old tbl_users and try to migrate
         // Note: tbl_users may not exist in production, so this is wrapped in try-catch
-        console.warn(`[RBAC] User ${userId} not found in new RBAC system. Checking legacy tables for migration...`);
-        
         try {
           // Check if tbl_users table exists first
           const tableExists = await sql/* sql */`
@@ -148,7 +140,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
           ` as Array<{ exists: boolean }>;
           
           if (!tableExists[0]?.exists) {
-            console.warn(`[RBAC] tbl_users table does not exist, skipping migration check`);
             return [];
           }
           
@@ -170,8 +161,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
           }>;
           
           if (oldUser[0]?.userid) {
-            console.log(`[RBAC] Found user ${userId} in tbl_users. Attempting to migrate to new users table...`);
-            
             // Try to create user in new system
             const migratedUser = await sql/* sql */`
               INSERT INTO public.users (
@@ -204,17 +193,13 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
             
             if (migratedUser[0]?.id) {
               newUserId = migratedUser[0].id;
-              console.log(`[RBAC] ✅ Successfully migrated user ${userId} to new RBAC system (new ID: ${newUserId})`);
             } else {
-              console.warn(`[RBAC] Failed to migrate user ${userId} to new RBAC system`);
               return [];
             }
           } else {
-            console.warn(`[RBAC] User ${userId} not found in tbl_users either`);
             return [];
           }
         } catch (migrationError) {
-          console.error(`[RBAC] Error migrating user ${userId}:`, migrationError);
           return [];
         }
       } else {
@@ -223,9 +208,6 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
     } else {
       newUserId = newUser[0].id;
     }
-    
-    console.log(`[RBAC] Mapped user ${userId} to new RBAC user ID ${newUserId}`);
-    
     // Get access from new RBAC system and convert to old format
     // The new system uses hierarchical resources, so we need to extract faculty/department/program IDs
     const newAccess = await sql/* sql */`
@@ -257,14 +239,10 @@ export async function getUserAccessAssignmentsWithIds(userId: number): Promise<U
     ` as Array<UserAccessAssignmentWithIds & { resource_type?: string; resource_name?: string }>;
     
     if (newAccess && newAccess.length > 0) {
-      console.log(`[RBAC] ✅ Found ${newAccess.length} assignments in new RBAC system for user ${userId} (new ID: ${newUserId})`);
       return newAccess;
     }
-    
-    console.warn(`[RBAC] ⚠️ No assignments found in new RBAC system for user ${userId} (new ID: ${newUserId})`);
     return [];
   } catch (error) {
-    console.error("[RBAC] Failed to fetch user access assignments with IDs:", error);
     return [];
   }
 }
@@ -318,7 +296,6 @@ export async function hasAllFacultiesAccess(userId: number): Promise<boolean> {
       Array.from(systemFacultyIds).every(id => assignedFacultyIds.has(id))
     );
   } catch (error) {
-    console.error("[RBAC] Failed to check all faculties access:", error);
     return false;
   }
 }
@@ -348,14 +325,6 @@ export async function buildIdBasedAccessFilterSQL(
   const userId = (session?.user as { userId?: number })?.userId;
   if (!userId) {
     // Log detailed error for debugging PM2 issues
-    console.error("[RBAC] ❌ No user ID found in session (ID-based filter):", {
-      sessionExists: !!session,
-      userExists: !!session?.user,
-      userEmail: session?.user?.email,
-      userIdInSession: (session?.user as { userId?: number })?.userId,
-      userType: (session?.user as { type?: string })?.type,
-      sessionKeys: session?.user ? Object.keys(session.user) : []
-    });
     return { sql: sql`1 = 0`, hasFilter: true }; // No access
   }
   
@@ -369,19 +338,13 @@ export async function buildIdBasedAccessFilterSQL(
   let allFacultiesAccess;
   try {
     allFacultiesAccess = await hasAllFacultiesAccess(userId);
-    console.log("[RBAC] hasAllFacultiesAccess check:", {
-      userId,
-      result: allFacultiesAccess
-    });
   } catch (error) {
-    console.error("[RBAC] ❌ Error checking all faculties access:", error);
     // If check fails, continue to individual assignment check instead of blocking
     allFacultiesAccess = false;
   }
   
   if (allFacultiesAccess) {
     // Full access - include all alumni, including NULL faculty/department
-    console.log("[RBAC] ✅ User has all faculties access - granting full access (no filtering)");
     return { sql: null, hasFilter: false };
   }
   
@@ -390,18 +353,9 @@ export async function buildIdBasedAccessFilterSQL(
   try {
     assignments = await getUserAccessAssignmentsWithIds(userId);
   } catch (error) {
-    console.error("[RBAC] ❌ Error fetching access assignments:", error);
     // If we can't fetch assignments, allow full access as fallback to prevent locking users out
-    console.error("[RBAC] Allowing full access as fallback due to assignment fetch error");
     return { sql: null, hasFilter: false };
   }
-  
-  console.log("[RBAC] ========== ID-BASED ACCESS FILTER DEBUG ==========");
-  console.log("[RBAC] User ID:", userId);
-  console.log("[RBAC] User Type:", isAdminOrViewer ? (isAdminUser(session?.user) ? "admin" : "viewer") : "unknown");
-  console.log("[RBAC] Assignments count:", assignments.length);
-  console.log("[RBAC] Assignments:", JSON.stringify(assignments, null, 2));
-  
   if (assignments.length === 0) {
     // Check if old table exists to determine if this is a migration scenario
     const tableExists = await sql/* sql */`
@@ -416,19 +370,12 @@ export async function buildIdBasedAccessFilterSQL(
       // Table doesn't exist - migration scenario
       // User should have assignments in new RBAC system, but they don't
       // Deny access for safety
-      console.log("[RBAC] ⚠️ No assignments found AND old table doesn't exist");
-      console.log("[RBAC] This indicates migration scenario - user needs assignments in new RBAC system");
-      console.log("[RBAC] Denying access until assignments are configured");
-      console.log("[RBAC] ============================================");
       return { sql: sql`1 = 0`, hasFilter: true };
     }
     
     // Table exists but no assignments - legacy behavior: allow full access
     // This matches the fallback behavior in userAccess.ts
     // Note: This should be reviewed - ideally users should have explicit assignments
-    console.log("[RBAC] ✅ No assignments found - allowing full access (no filtering)");
-    console.log("[RBAC] This means the user has access to all faculties/departments/programs");
-    console.log("[RBAC] ============================================");
     return { sql: null, hasFilter: false };
   }
   
@@ -438,10 +385,6 @@ export async function buildIdBasedAccessFilterSQL(
   );
   
   if (!hasValidIds) {
-    console.warn("[RBAC] ⚠️ Assignments found but all IDs are null - allowing full access as fallback");
-    console.warn("[RBAC] This might indicate that faculty/department/program names don't match database records");
-    console.warn("[RBAC] Assignments with null IDs:", JSON.stringify(assignments, null, 2));
-    console.log("[RBAC] ============================================");
     return { sql: null, hasFilter: false };
   }
   
@@ -482,13 +425,6 @@ export async function buildIdBasedAccessFilterSQL(
       facultyIds.add(facultyId);
     }
   }
-  
-  console.log("[RBAC] Collected IDs:", {
-    facultyIds: Array.from(facultyIds),
-    departmentIds: Array.from(departmentIds),
-    programIds: Array.from(programIds)
-  });
-  
   // Build conditions: program > department > faculty (most specific first)
   // Note: We build conditions without table alias prefix since most queries use "a" as alias
   // If a different alias is needed, it should be applied when using the condition
@@ -571,26 +507,12 @@ export async function buildIdBasedAccessFilterSQL(
     // If we have assignments but no valid conditions, it means the assignments might be invalid
     // In this case, log the issue but don't block access - allow full access as fallback
     // This prevents admin/viewer users from being locked out if there's a data mismatch
-    console.warn("[RBAC] ⚠️ No valid conditions generated from assignments - allowing full access as fallback");
-    console.warn("[RBAC] This might indicate a mismatch between access assignments and database structure");
-    console.warn("[RBAC] Assignments that failed to generate conditions:", JSON.stringify(assignments, null, 2));
-    console.log("[RBAC] ============================================");
     // Return full access instead of blocking - this is safer for production
     return { sql: null, hasFilter: false };
   }
   
   // Combine all conditions with OR
   const combinedCondition = combineOrConditions(conditionsArray);
-  
-  console.log("[RBAC] ✅ Generated filter with", conditionsArray.length, "condition(s)");
-  console.log("[RBAC] Condition summary:", {
-    facultyLevel: facultyIds.size,
-    departmentLevel: departmentIds.size,
-    programLevel: programIds.size,
-    totalConditions: conditionsArray.length
-  });
-  console.log("[RBAC] ============================================");
-  
   return { sql: combinedCondition, hasFilter: true };
 }
 

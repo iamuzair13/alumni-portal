@@ -702,7 +702,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
           }
         })
         .catch((err) => {
-          console.error("Failed to fetch event:", err);
+
           toast.error("Failed to load event data");
         })
         .finally(() => {
@@ -721,7 +721,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
           setChapters(data.chapters || []);
         }
       } catch (err) {
-        console.error("Failed to fetch chapters:", err);
+
       } finally {
         setLoadingChapters(false);
       }
@@ -735,7 +735,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
           setAssociations(data.associations || []);
         }
       } catch (err) {
-        console.error("Failed to fetch associations:", err);
+
       } finally {
         setLoadingAssociations(false);
       }
@@ -749,7 +749,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
           setCategories(data.categories || []);
         }
       } catch (err) {
-        console.error("Failed to fetch categories:", err);
+
       } finally {
         setLoadingCategories(false);
       }
@@ -1336,7 +1336,7 @@ export default function EventsPage() {
       deleteModal.closeModal();
       setDeletingEventId(null);
     } catch (err) {
-      console.error("Failed to delete event:", err);
+
       toast.error("Failed to delete event. Please try again.");
     } finally {
       setDeletingIds((prev) => {

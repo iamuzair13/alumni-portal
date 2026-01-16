@@ -25,7 +25,6 @@ async function getHomeCities(signal?: AbortSignal, filters?: MasterFilters): Pro
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-home-cities] API error:", res.status, err);
     throw new Error(err || "Failed to fetch home cities");
   }
   

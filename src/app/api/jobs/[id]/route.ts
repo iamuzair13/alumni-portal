@@ -60,7 +60,6 @@ export async function GET(
       createdAt: rows[0].created_at || null,
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching job:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch job";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -141,7 +140,6 @@ export async function PUT(
       createdAt: rows[0].created_at || null,
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error updating job:", err);
     const message = err instanceof Error ? err.message : "Failed to update job";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -182,7 +180,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error deleting job:", err);
     const message = err instanceof Error ? err.message : "Failed to delete job";
     return NextResponse.json({ error: message }, { status: 500 });
   }

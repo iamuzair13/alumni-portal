@@ -138,14 +138,12 @@ export async function PATCH(
         const transporter = getTransporter();
 
         if (!transporter) {
-          console.warn("[Membership Status API] SMTP not configured");
           emailError = "SMTP not configured";
         } else {
           // Verify transporter connection
           try {
             await transporter.verify();
           } catch (verifyError) {
-            console.error("[Membership Status API] SMTP verification failed:", verifyError);
             emailError = `SMTP verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`;
           }
 
@@ -293,11 +291,9 @@ export async function PATCH(
 
             await transporter.sendMail(mailOptions);
             emailSent = true;
-            console.log(`[Membership Status API] Email sent successfully to ${alumniEmail} for status: ${status}`);
           }
         }
       } catch (emailErr) {
-        console.error("[Membership Status API] Failed to send email:", emailErr);
         emailError = emailErr instanceof Error ? emailErr.message : String(emailErr);
       }
     }
@@ -312,7 +308,6 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (err) {
-    console.error("[API] Error updating membership status:", err);
     const msg = err instanceof Error ? err.message : "Failed to update membership status";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

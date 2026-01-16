@@ -25,7 +25,6 @@ async function getWorkCountries(signal?: AbortSignal, filters?: MasterFilters): 
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-work-countries] API error:", res.status, err);
     throw new Error(err || "Failed to fetch work countries");
   }
   

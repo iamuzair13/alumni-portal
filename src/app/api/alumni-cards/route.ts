@@ -168,13 +168,13 @@ export async function POST(req: Request) {
             if (alumniEmail) {
               // Send email asynchronously (don't wait for it to complete)
               sendAlumniCardApplicationReceivedEmail(alumniEmail, alumniName).catch((err) => {
-                console.error("[API] Failed to send alumni card application received email:", err);
+
               });
             }
           }
         } catch (emailError) {
           // Don't fail the request if email fails
-          console.error("[API] Error sending alumni card application received email:", emailError);
+
         }
       }
       
@@ -295,13 +295,13 @@ export async function POST(req: Request) {
           if (alumniEmail) {
             // Send email asynchronously (don't wait for it to complete)
             sendAlumniCardApplicationReceivedEmail(alumniEmail, alumniName).catch((err) => {
-              console.error("[API] Failed to send alumni card application received email:", err);
+
             });
           }
         }
       } catch (emailError) {
         // Don't fail the request if email fails
-        console.error("[API] Error sending alumni card application received email:", emailError);
+
       }
     }
     

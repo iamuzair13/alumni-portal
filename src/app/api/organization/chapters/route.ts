@@ -52,7 +52,6 @@ export async function GET() {
       }>
     }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching chapters:", error);
     const message = error instanceof Error ? error.message : "Failed to fetch chapters";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -146,7 +145,6 @@ export async function POST(req: NextRequest) {
       }
     }, { status: 201 });
   } catch (error) {
-    console.error("Error creating chapter:", error);
     const message = error instanceof Error ? error.message : "Failed to create chapter";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -242,7 +240,6 @@ export async function PUT(req: NextRequest) {
       }
     }, { status: 200 });
   } catch (error) {
-    console.error("Error updating chapter:", error);
     const message = error instanceof Error ? error.message : "Failed to update chapter";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -299,7 +296,6 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Error deleting chapter:", error);
     const message = error instanceof Error ? error.message : "Failed to delete chapter";
     return NextResponse.json({ error: message }, { status: 500 });
   }

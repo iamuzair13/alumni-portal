@@ -100,7 +100,7 @@ function CardPrintPageContent() {
           cardImage: cardImage,
         });
       } catch (err) {
-        console.error("Error fetching alumni data:", err);
+
         setError(err instanceof Error ? err.message : "Failed to load card data");
       } finally {
         setIsLoading(false);

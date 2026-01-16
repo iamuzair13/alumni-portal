@@ -35,11 +35,11 @@ class ErpApiClient {
       if (!this.config.apiUrl) missing.push("ERP_API_URL");
       if (!this.config.username) missing.push("ERP_USERNAME");
       if (!this.config.password) missing.push("ERP_PASSWORD");
-      console.error(`[ERP Client] Missing ERP configuration: ${missing.join(", ")}`);
+
       // Don't throw in constructor - let methods handle it gracefully
-      console.warn("[ERP Client] ERP client initialized but configuration is incomplete. API calls will fail.");
+
     } else {
-      console.log("[ERP Client] Initialized with API URL:", this.config.apiUrl.replace(/\/studentSet\(\)$/, ""));
+
     }
   }
 
@@ -88,7 +88,7 @@ class ErpApiClient {
 
       return this.authToken;
     } catch (error) {
-      console.error("[ERP Client] Authentication error:", error);
+
       throw new Error(`Failed to authenticate with ERP system: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
@@ -109,7 +109,7 @@ class ErpApiClient {
       if (!this.config.apiUrl) missing.push("ERP_API_URL");
       if (!this.config.username) missing.push("ERP_USERNAME");
       if (!this.config.password) missing.push("ERP_PASSWORD");
-      console.error(`[ERP Client ${requestId}] Missing configuration:`, missing);
+
       return {
         success: false,
         error: `Missing ERP configuration: ${missing.join(", ")}`,
@@ -141,12 +141,12 @@ class ErpApiClient {
           // Key-based lookup format: studentSet('1234567') or studentSet("1234567")
           // Append to base URL: baseUrl/studentSet('identifier')
           url = `${normalizedBaseUrl}${endpoint}`;
-          console.log(`[ERP Client ${requestId}] Constructed URL (key-based): ${url}`);
+
         } else if (endpoint.startsWith("studentSet()")) {
           // OData query format: studentSet()?$filter=...
           // Append to base URL: baseUrl/studentSet()?$filter=...
           url = `${normalizedBaseUrl}${endpoint}`;
-          console.log(`[ERP Client ${requestId}] Constructed URL ($filter query): ${url}`);
+
         } else if (endpoint.startsWith("/")) {
           url = `${normalizedBaseUrl}${endpoint.slice(1)}`; // Remove leading / to avoid double slashes
         } else {
@@ -314,7 +314,7 @@ class ErpApiClient {
             try {
               propertiesElement = xmlDoc.querySelector(selector);
               if (propertiesElement) {
-                console.log(`[ERP Client] Found properties element using selector: ${selector}`);
+
                 break;
               }
             } catch {
@@ -330,7 +330,7 @@ class ErpApiClient {
               const elem = allElements[i];
               if (elem.localName === "properties" || elem.tagName.endsWith(":properties")) {
                 propertiesElement = elem;
-                console.log(`[ERP Client] Found properties element by iterating: ${elem.tagName}`);
+
                 break;
               }
             }
@@ -342,9 +342,7 @@ class ErpApiClient {
             
             // Get all child elements (properties)
             const children = Array.from(propertiesElement.children);
-            
-            console.log(`[ERP Client] Found ${children.length} property elements`);
-            
+
             for (const child of children) {
               // Remove namespace prefix from tag name
               const tagName = child.localName || child.tagName.replace(/^[^:]+:/, "");
@@ -360,22 +358,15 @@ class ErpApiClient {
               } else {
                 dataObj[tagName] = textContent;
               }
-              
-              console.log(`[ERP Client] Extracted field: ${tagName} = ${textContent.substring(0, 50)}`);
+
             }
             
             resultData = dataObj as T;
             const fieldCount = Object.keys(dataObj).length;
-            console.log(`[ERP Client ${requestId}] Successfully parsed OData Atom XML response:`, {
-              fieldCount,
-              fields: Object.keys(dataObj).slice(0, 20), // Log first 20 fields
-              sampleValues: Object.entries(dataObj).slice(0, 5).map(([k, v]) => ({ [k]: String(v).substring(0, 50) })),
-            });
+
           } else {
             // If no properties found, log the XML structure for debugging
-            console.warn("[ERP Client] XML response but no properties element found");
-            console.warn("[ERP Client] XML structure:", responseText.substring(0, 1000));
-            
+
             // Try to extract any data from the XML as fallback
             const allElements = xmlDoc.getElementsByTagName("*");
             const dataObj: Record<string, unknown> = {};
@@ -398,55 +389,39 @@ class ErpApiClient {
             
             if (Object.keys(dataObj).length > 0) {
               resultData = dataObj as T;
-              console.log("[ERP Client] Extracted data from XML structure:", Object.keys(dataObj));
+
             } else {
               resultData = responseText as T;
             }
           }
         } catch (parseError) {
           // If XML parsing fails, return as text
-          console.error("[ERP Client] Failed to parse XML response:", parseError);
+
           resultData = responseText as T;
         }
       } else if (contentType.includes("application/json") || contentType.includes("text/json")) {
         // JSON response
-        console.log(`[ERP Client ${requestId}] Detected JSON response, parsing...`);
+
         try {
           const parseJsonStart = Date.now();
           const data = JSON.parse(responseText);
           const parseJsonDuration = Date.now() - parseJsonStart;
-          
-          console.log(`[ERP Client ${requestId}] JSON parsed in ${parseJsonDuration}ms:`, {
-            hasD: !!data.d,
-            hasResults: !!(data.d?.results),
-            hasData: !!data.data,
-            topLevelKeys: Object.keys(data).slice(0, 10),
-          });
-          
+
           // Handle OData response format
           // OData typically returns: { "d": { "results": [...] } } or { "d": { ... } }
           let extractedData: unknown = data;
           if (data.d) {
             // OData format - extract the data
             extractedData = data.d.results || data.d;
-            console.log(`[ERP Client ${requestId}] Extracted OData format:`, {
-              isArray: Array.isArray(extractedData),
-              isObject: typeof extractedData === "object",
-              keys: extractedData && typeof extractedData === "object" && !Array.isArray(extractedData) 
-                ? Object.keys(extractedData).slice(0, 10) 
-                : null,
-            });
+
           } else if (data.data) {
             // Alternative format
             extractedData = data.data;
-            console.log(`[ERP Client ${requestId}] Extracted alternative format`);
+
           }
           resultData = extractedData as T;
         } catch (parseError) {
-          console.error(`[ERP Client ${requestId}] JSON parse error:`, {
-            error: parseError instanceof Error ? parseError.message : String(parseError),
-            textPreview: responseText.substring(0, 500),
-          });
+
           resultData = responseText as T;
         }
       } else {
@@ -468,34 +443,19 @@ class ErpApiClient {
       const finalDataSize = resultData && typeof resultData === "object" 
         ? JSON.stringify(resultData).length 
         : String(resultData).length;
-      
-      console.log(`[ERP Client ${requestId}] Request completed successfully in ${totalRequestDuration}ms:`, {
-        dataSize: finalDataSize,
-        dataType: typeof resultData,
-        isArray: Array.isArray(resultData),
-        keys: resultData && typeof resultData === "object" && !Array.isArray(resultData)
-          ? Object.keys(resultData).slice(0, 10)
-          : null,
-      });
-      
+
       return {
         success: true,
         data: resultData,
       };
     } catch (error) {
       const totalRequestDuration = Date.now() - requestStartTime;
-      console.error(`[ERP Client ${requestId}] Request error after ${totalRequestDuration}ms:`, error);
+
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const errorStack = error instanceof Error ? error.stack : undefined;
       
       // Log detailed error for debugging
-      console.error(`[ERP Client ${requestId}] Request error details:`, {
-        message: errorMessage,
-        stack: errorStack,
-        endpoint,
-        duration: totalRequestDuration,
-      });
-      
+
       return {
         success: false,
         error: errorMessage,
@@ -517,28 +477,22 @@ class ErpApiClient {
 
     const trimmedIdentifier = identifier.trim();
     const fetchStartTime = Date.now();
-    console.log(`[ERP Client] fetchStudentData started for ${isSapId ? 'SAP ID' : 'Registration No'}: ${trimmedIdentifier.substring(0, 10)}...`);
-    
+
     // Try key-based lookup first (only for SAP ID as it's the primary key)
     if (isSapId) {
-      console.log(`[ERP Client] Attempting key-based lookup: studentSet('${trimmedIdentifier}')`);
+
       const keyBasedResponse = await this.request(`studentSet('${trimmedIdentifier}')`);
       
       const keyBasedDuration = Date.now() - fetchStartTime;
-      console.log(`[ERP Client] Key-based lookup completed in ${keyBasedDuration}ms:`, {
-        success: keyBasedResponse.success,
-        error: keyBasedResponse.error,
-        hasData: !!keyBasedResponse.data,
-      });
-      
+
       if (keyBasedResponse.success) {
-        console.log(`[ERP Client] Successfully fetched data using key-based lookup`);
+
         return keyBasedResponse;
       }
       
       // If NOT_FOUND, try $filter as fallback (in case key lookup doesn't work)
       if (keyBasedResponse.error === "NOT_FOUND") {
-        console.log(`[ERP Client] Key-based lookup returned NOT_FOUND, trying $filter query as fallback...`);
+
       } else if (!keyBasedResponse.error?.includes("Malformed URI") && !keyBasedResponse.error?.includes("Invalid key predicate")) {
         // If it's a real NOT_FOUND or other non-format error, return it
         return keyBasedResponse;
@@ -556,50 +510,37 @@ class ErpApiClient {
     for (let i = 0; i < fieldNameVariations.length; i++) {
       const fieldName = fieldNameVariations[i];
       const filterQuery = `studentSet()?$filter=${fieldName} eq '${trimmedIdentifier}'`;
-      console.log(`[ERP Client] Attempting $filter query (${i + 1}/${fieldNameVariations.length}) with field: ${fieldName}`);
+
       const filterResponse = await this.request(filterQuery);
       
       const filterDuration = Date.now() - fetchStartTime;
-      console.log(`[ERP Client] $filter query (${i + 1}/${fieldNameVariations.length}) completed in ${filterDuration}ms:`, {
-        success: filterResponse.success,
-        error: filterResponse.error,
-        hasData: !!filterResponse.data,
-        fieldName,
-      });
-      
+
       if (filterResponse.success) {
-        console.log(`[ERP Client] Successfully fetched data using field: ${fieldName}`);
+
         return filterResponse;
       }
       
       // If NOT_FOUND, continue to try other field names
       if (filterResponse.error === "NOT_FOUND") {
-        console.log(`[ERP Client] Field ${fieldName} returned NOT_FOUND, trying next field name...`);
+
         continue;
       }
       
       // If it's a property error, try next field name
       if (filterResponse.error && filterResponse.error.includes("Property")) {
-        console.log(`[ERP Client] Field ${fieldName} not found in entity, trying next field name...`);
+
         continue;
       }
       
       // For other errors (network, timeout, etc.), return immediately
       const totalDuration = Date.now() - fetchStartTime;
-      console.error(`[ERP Client] Failed to fetch data after ${totalDuration}ms (tried ${i + 1} field names):`, {
-        error: filterResponse.error,
-        message: filterResponse.message,
-        lastFieldName: fieldName,
-      });
+
       return filterResponse;
     }
     
     // If all field name variations failed, return the last response (which should be NOT_FOUND)
     const totalDuration = Date.now() - fetchStartTime;
-    console.error(`[ERP Client] Failed to fetch data after ${totalDuration}ms (tried all ${fieldNameVariations.length} field name variations):`, {
-      error: "NOT_FOUND",
-      message: "No matching field found or record does not exist",
-    });
+
     return {
       success: false,
       error: "NOT_FOUND",
@@ -657,7 +598,7 @@ class ErpApiClient {
         data: metadataXml,
       };
     } catch (error) {
-      console.error("[ERP Client] Metadata fetch error:", error);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to fetch metadata",
@@ -721,7 +662,7 @@ class ErpApiClient {
         data: resultData,
       };
     } catch (error) {
-      console.error("[ERP Client] Sample record fetch error:", error);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : "Failed to fetch sample record",

@@ -72,7 +72,6 @@ export async function GET(req: Request) {
     }
 
   } catch (error) {
-    console.error("[ERP Discover] Error:", error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Failed to discover ERP structure",
     }, { status: 500 });

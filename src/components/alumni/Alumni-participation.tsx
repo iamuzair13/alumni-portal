@@ -378,7 +378,7 @@ export const AlumniParticipation: React.FC = () => {
       XLSX.writeFile(wb, finalFilename);
       setIsExporting(false);
     } catch (error) {
-      console.error("Export error:", error);
+
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }

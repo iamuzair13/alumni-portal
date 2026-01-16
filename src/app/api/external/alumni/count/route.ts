@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
     });
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/alumni/count:', error);
     const response = NextResponse.json(
       {
         count: 0,

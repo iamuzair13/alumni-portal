@@ -25,7 +25,6 @@ async function getProvinces(signal?: AbortSignal, filters?: MasterFilters): Prom
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-provinces] API error:", res.status, err);
     throw new Error(err || "Failed to fetch provinces");
   }
   

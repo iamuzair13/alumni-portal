@@ -602,28 +602,28 @@ export const AlumniTabs: React.FC = () => {
   // Debug logging
   React.useEffect(() => {
     if (maritalStatusesError) {
-      console.error("[AlumniTabs] Error fetching marital statuses:", maritalStatusesError);
+
     }
     if (maritalStatusesData) {
-      console.log("[AlumniTabs] Marital statuses data:", maritalStatusesData);
+
     }
     if (gendersError) {
-      console.error("[AlumniTabs] Error fetching genders:", gendersError);
+
     }
     if (gendersData) {
-      console.log("[AlumniTabs] Genders data:", gendersData);
+
     }
     if (campusesError) {
-      console.error("[AlumniTabs] Error fetching campuses:", campusesError);
+
     }
     if (campusesData) {
-      console.log("[AlumniTabs] Campuses data:", campusesData);
+
     }
     if (occupationStatusesError) {
-      console.error("[AlumniTabs] Error fetching occupation statuses:", occupationStatusesError);
+
     }
     if (occupationStatusesData) {
-      console.log("[AlumniTabs] Occupation statuses data:", occupationStatusesData);
+
     }
   }, [maritalStatusesData, maritalStatusesError, gendersData, gendersError, campusesData, campusesError, occupationStatusesData, occupationStatusesError]);
 
@@ -1069,7 +1069,7 @@ export const AlumniTabs: React.FC = () => {
 
   // Reset page to 1 when tab changes or filter changes (but not when statusFilter recalculates with same value)
   useEffect(() => {
-    console.log("[AlumniTabs] Tab changed to:", selected, "Additional filter:", additionalFilter, "Status filter:", statusFilter);
+
     setCurrentPage(1);
   }, [selected, additionalFilter]); // Removed statusFilter since it's derived from selected and additionalFilter
 
@@ -1114,16 +1114,12 @@ export const AlumniTabs: React.FC = () => {
   
   // Debug logging - commented out to fix build issue
   // useEffect(() => {
-  //   console.log("[AlumniTabs] Selected tab:", selected, "Status filter:", statusFilter);
-  //   console.log("[AlumniTabs] Paginated data:", paginatedData);
   //   if (paginatedData?.items) {
-  //     console.log("[AlumniTabs] Items count:", paginatedData.items.length);
   //     const underApprovalItems = paginatedData.items.filter((item: any) => {
   //       const verifyVal = item.verify;
   //       return verifyVal === null || verifyVal === undefined || verifyVal === "" || 
   //              String(verifyVal).toLowerCase().trim() === 'pending';
   //     });
-  //     console.log("[AlumniTabs] Items with verify = 'pending' or null:", underApprovalItems.length);
   //   }
   // }, [selected, statusFilter, paginatedData]);
   
@@ -1258,7 +1254,7 @@ export const AlumniTabs: React.FC = () => {
       
       // Debug logging for new registrations (verify = 'pending' or null)
       if (verifyRaw === null || verifyRaw === undefined || String(verifyRaw).toLowerCase().trim() === 'pending') {
-        console.log("[AlumniTabs] Found alumni under approval:", r.sapid || r.registrationno || r.alumniid, "verify:", verifyRaw, "status:", verifyStatus);
+
       }
       
       // Optimize employment status check (single lowercase conversion)
@@ -1761,7 +1757,7 @@ export const AlumniTabs: React.FC = () => {
       
       // Show warning if dataset is large
       if (data.warning) {
-        console.warn(data.warning);
+
       }
       
       if (!allItems || allItems.length === 0) {
@@ -2298,9 +2294,9 @@ export const AlumniTabs: React.FC = () => {
         throw new Error(errorData.error || `Failed to verify: ${res.status}`);
       }
       const responseData = await res.json();
-      console.log("[AlumniTabs] Verify response:", responseData);
+
       if (responseData.verify === false || responseData.verify === "false") {
-        console.error("[AlumniTabs] Verify returned false when it should be true!");
+
         throw new Error("Verification failed - server returned false");
       }
       setActionMessage("Alumni verified successfully.");
@@ -2349,7 +2345,7 @@ export const AlumniTabs: React.FC = () => {
         throw new Error(errorData.error || `Failed to unverify: ${res.status}`);
       }
       const responseData = await res.json();
-      console.log("[AlumniTabs] Unverify response:", responseData);
+
       setActionMessage("Alumni marked as unverified.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
       queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
@@ -2410,7 +2406,7 @@ export const AlumniTabs: React.FC = () => {
       if (prev) queryClient.setQueryData(["alumnilist"], prev);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to delete alumni.");
-      console.error("[AlumniTabs] Delete error:", msg, e);
+
     } finally {
       stopMut(sapid);
     }
@@ -2419,13 +2415,12 @@ export const AlumniTabs: React.FC = () => {
   // Execute pending action after confirmation
   const executePendingAction = useCallback(async () => {
     if (!pendingAction) {
-      console.warn("[AlumniTabs] No pending action to execute");
+
       return;
     }
     
     const { type, sapid } = pendingAction;
-    console.log("[AlumniTabs] Executing action:", type, "for SAP ID:", sapid);
-    
+
     // Store the action locally before async operations
     const actionType = type;
     const actionSapid = sapid;
@@ -2440,13 +2435,13 @@ export const AlumniTabs: React.FC = () => {
       }
       
       // Close modal and clear pending action after successful execution
-      console.log("[AlumniTabs] Action completed successfully, closing modal");
+
       confirmModal.closeModal();
       setPendingAction(null);
     } catch (error) {
       // Error is already handled in the individual handlers (setActionError)
       // Keep modal open if there's an error so user can see the error message
-      console.error("[AlumniTabs] Error executing action:", error);
+
       // Don't close modal on error - let user see the error and try again or cancel
     }
   }, [pendingAction, confirmModal, handleVerify, handleUnverify, handleDelete]);
@@ -2457,16 +2452,15 @@ export const AlumniTabs: React.FC = () => {
     e.stopPropagation();
     
     if (!pendingAction) {
-      console.warn("[AlumniTabs] No pending action in confirm click");
+
       return;
     }
     
     if (mutatingIds.has(pendingAction.sapid)) {
-      console.log("[AlumniTabs] Action already in progress, ignoring click");
+
       return;
     }
-    
-    console.log("[AlumniTabs] Confirm button clicked, executing action:", pendingAction.type, "for", pendingAction.sapid);
+
     await executePendingAction();
   }, [pendingAction, mutatingIds, executePendingAction]);
 
@@ -2523,7 +2517,7 @@ export const AlumniTabs: React.FC = () => {
         `}
         onClick={() => {
           if (!isDisabled) {
-            console.log("[AlumniTabs] Tab clicked:", tab.key);
+
             setSelected(tab.key);
             // Clear additional filter when switching tabs
             setAdditionalFilter([]);

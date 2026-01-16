@@ -25,7 +25,6 @@ async function getWorkCities(signal?: AbortSignal, filters?: MasterFilters): Pro
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-work-cities] API error:", res.status, err);
     throw new Error(err || "Failed to fetch work cities");
   }
   

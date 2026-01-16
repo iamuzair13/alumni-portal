@@ -202,11 +202,7 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
   // Debug: Log counts to console (remove in production if needed)
   useEffect(() => {
     if (countsData || data) {
-      console.log("[AlumniCards] Counts:", {
-        countsFromAll: countsData?.counts,
-        countsFromData: data?.counts,
-        finalCounts: counts,
-      });
+
     }
   }, [countsData, data, counts]);
   

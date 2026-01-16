@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, programs }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch programs";
-    console.error("[API] Error fetching programs:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -116,7 +115,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, program }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create program";
-    console.error("[API] Error creating program:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -171,7 +169,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, program }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update program";
-    console.error("[API] Error updating program:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -209,7 +206,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete program";
-    console.error("[API] Error deleting program:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

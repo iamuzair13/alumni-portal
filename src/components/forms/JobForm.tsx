@@ -79,7 +79,6 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
           setValue("jobLink", data.jobLink || "");
         })
         .catch((err) => {
-          console.error("Error loading job:", err);
           toast.error("Failed to load job data");
         })
         .finally(() => {
@@ -120,7 +119,6 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
         onSuccess();
       }
     } catch (error) {
-      console.error("Error saving job:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save job");
     } finally {
       setIsSubmitting(false);

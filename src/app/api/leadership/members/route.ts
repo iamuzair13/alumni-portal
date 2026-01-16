@@ -171,7 +171,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items: members }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch members";
-    console.error("[API] Error fetching leadership members:", msg, err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

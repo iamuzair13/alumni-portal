@@ -113,10 +113,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       
       // Check SMTP configuration
       if (!transporter) {
-        console.warn("[Upskill API] SMTP not configured. Missing SMTP_USER or SMTP_PASS");
-        console.warn("[Upskill API] SMTP_USER:", config.SMTP_USER ? "SET" : "NOT SET");
-        console.warn("[Upskill API] SMTP_PASS:", config.SMTP_PASS ? "SET" : "NOT SET");
-        console.warn("[Upskill API] Email would be sent to:", alumniEmail);
         return NextResponse.json({ 
           ok: true, 
           message: "Application received. Email service not configured. Please contact the Alumni Office.",
@@ -129,9 +125,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       // Verify transporter connection
       try {
         await transporter.verify();
-        console.log("[Upskill API] SMTP connection verified successfully");
       } catch (verifyError) {
-        console.error("[Upskill API] SMTP connection verification failed:", verifyError);
         const errorMessage = verifyError instanceof Error ? verifyError.message : String(verifyError);
         return NextResponse.json({
           ok: true,
@@ -155,17 +149,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           },
         ],
       };
-
-      console.log("[Upskill API] Attempting to send email to:", alumniEmail);
-      console.log("[Upskill API] From:", config.FROM_EMAIL);
-      console.log("[Upskill API] SMTP Host:", config.SMTP_HOST);
-      console.log("[Upskill API] SMTP Port:", config.SMTP_PORT);
-
       const emailInfo = await transporter.sendMail(mailOptions);
-      console.log("[Upskill API] Email sent successfully!");
-      console.log("[Upskill API] Message ID:", emailInfo.messageId);
-      console.log("[Upskill API] Response:", emailInfo.response);
-
       return NextResponse.json({
         ok: true,
         message: "Application submitted successfully. Please check your email for the confirmation document.",
@@ -175,20 +159,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     } catch (emailError) {
       const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
       const errorStack = emailError instanceof Error ? emailError.stack : undefined;
-      
-      console.error("[Upskill API] Failed to send email:");
-      console.error("[Upskill API] Error message:", errorMessage);
       if (errorStack) {
-        console.error("[Upskill API] Error stack:", errorStack);
       }
       
       // Check for specific error types
       if (errorMessage.includes("Invalid login")) {
-        console.error("[Upskill API] SMTP authentication failed. Check SMTP_USER and SMTP_PASS.");
       } else if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("ETIMEDOUT")) {
-        console.error("[Upskill API] SMTP connection failed. Check SMTP_HOST and SMTP_PORT.");
       } else if (errorMessage.includes("ENOTFOUND")) {
-        console.error("[Upskill API] SMTP host not found. Check SMTP_HOST configuration.");
       }
 
       // Return error details to help with debugging
@@ -202,7 +179,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to process upskill application";
-    console.error("[API] Upskill application error:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

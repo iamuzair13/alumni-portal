@@ -39,7 +39,6 @@ export async function GET() {
       });
     }
     const msg = err instanceof Error ? err.message : "Failed to fetch settings";
-    console.error("[API] Error fetching leadership settings:", msg, err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -87,7 +86,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update settings";
-    console.error("[API] Error updating leadership settings:", msg, err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -130,7 +130,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items: rows }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to export alumni association data";
-    console.error("[API] Export error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

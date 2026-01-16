@@ -103,27 +103,16 @@ async function getAlumniChapters(
   if (chapterCount !== undefined && chapterCount > 0) {
     url.searchParams.set("chapterCount", String(chapterCount));
   }
-  
-  console.log("[AlumniChaptersTab] Fetching with filters:", {
-    nationalChapters: nationalChapters && nationalChapters.length > 0 ? nationalChapters : "none",
-    internationalChapters: internationalChapters && internationalChapters.length > 0 ? internationalChapters : "none",
-    faculties: faculties && faculties.length > 0 ? faculties : "none",
-    departments: departments && departments.length > 0 ? departments : "none",
-    verified: verified !== undefined ? (verified ? "true" : "false") : "none",
-    membershipFilter: membershipFilter || "none",
-    chapterCount: chapterCount !== undefined ? chapterCount : "none",
-    url: url.toString(),
-  });
-  
+
   const res = await fetch(url.toString(), { headers: { "accept": "application/json" } });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     const errorMessage = (errorData as { error?: string })?.error || `Failed to fetch alumni chapters (${res.status})`;
-    console.error("[AlumniChaptersTab] API Error:", errorMessage, errorData);
+
     throw new Error(errorMessage);
   }
   const data = (await res.json()) as { items: ChapterItem[] };
-  console.log("[AlumniChaptersTab] Received items:", data.items?.length || 0);
+
   return data.items ?? [];
 }
 
@@ -252,23 +241,13 @@ export const AlumniChaptersTab: React.FC = () => {
 
   const nationalChapters = useMemo(() => {
     const chapters = alumniNationalChaptersData?.chapters || [];
-    console.log("[AlumniChaptersTab] National chapters data:", { 
-      data: alumniNationalChaptersData, 
-      chapters, 
-      count: chapters.length,
-      error: nationalChaptersError 
-    });
+
     return chapters;
   }, [alumniNationalChaptersData, nationalChaptersError]);
 
   const internationalChapters = useMemo(() => {
     const chapters = alumniInternationalChaptersData?.chapters || [];
-    console.log("[AlumniChaptersTab] International chapters data:", { 
-      data: alumniInternationalChaptersData, 
-      chapters, 
-      count: chapters.length,
-      error: internationalChaptersError 
-    });
+
     return chapters;
   }, [alumniInternationalChaptersData, internationalChaptersError]);
 
@@ -696,7 +675,7 @@ export const AlumniChaptersTab: React.FC = () => {
       XLSX.writeFile(wb, filename);
       setIsExporting(false);
     } catch (error) {
-      console.error("Export error:", error);
+
       setIsExporting(false);
       alert("Failed to export data. Please try again.");
     }
@@ -776,7 +755,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
                 `}
                 onClick={() => {
-                  console.log("[AlumniChaptersTab] Tab clicked:", tab.key);
+
                   setMembershipFilter(tab.key);
                 }}
                 role="tab"

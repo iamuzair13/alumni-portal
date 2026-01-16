@@ -131,10 +131,10 @@ export async function POST(req: Request) {
           VALUES (${userId}, ${role[0].id})
           ON CONFLICT (user_id, role_id) DO NOTHING
         `;
-        console.log(`[user create] ✅ Assigned role '${roleName}' to user in new RBAC system`);
+
       }
     } catch (error) {
-      console.error("[user create] Error assigning role in new RBAC system:", error);
+
       // Don't fail the request
     }
     
@@ -172,7 +172,7 @@ export async function POST(req: Request) {
                   program_id = EXCLUDED.program_id
               `;
             } catch (error) {
-              console.error("[user create] Error inserting into user_access_assignments:", error);
+
               // Continue with next row
             }
           }
@@ -182,13 +182,13 @@ export async function POST(req: Request) {
         try {
           const result = await createAccessAssignmentsInNewRBAC(userId, userType as 'admin' | 'viewer', rows);
           if (result.created > 0) {
-            console.log(`[user create] ✅ Created ${result.created} assignments in new RBAC system`);
+
           }
           if (result.errors > 0) {
-            console.warn(`[user create] ⚠️ ${result.errors} assignments failed in new RBAC system`);
+
           }
         } catch (error) {
-          console.error("[user create] Error creating assignments in new RBAC system:", error);
+
           // Don't fail the request - old system might still work
         }
       }

@@ -9,7 +9,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const session = await auth();
     
     const normalizedIdentifier = String(sapid || "").trim();
-    console.log("[API] Update fields request for identifier:", normalizedIdentifier);
     
     // Verify the user is authenticated (by email, SAP ID, or registration number)
     const userEmail = session?.user?.email ? String(session.user.email) : null;
@@ -37,7 +36,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }
     
     if (!rows[0]) {
-      console.log("[API] Alumni not found for identifier:", normalizedIdentifier);
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
     }
 
@@ -67,11 +65,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     
     const isAdmin = canModify(session?.user);
     
-    console.log("[API] Found alumni with ID:", alumniId, "SAP ID:", row.sapid, "Registration No:", row.registrationno);
-
     const body = await req.json();
-    console.log("[API] Update fields body keys:", Object.keys(body));
-    console.log("[API] Current password in DB:", currentPassword ? (currentPassword.startsWith("scrypt:") ? "HASHED" : "PLAIN") : "NULL");
     
     // Validate email format if email fields are being updated
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -253,33 +247,24 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     let passwordVal: string | undefined = undefined;
     if ("password" in body && body.password !== undefined && body.password !== null && body.password !== "") {
       const passwordStr = String(body.password).trim();
-      console.log("[API] Password provided:", `PLAIN (${passwordStr.length} chars)`);
       
       // Check if it's the same as current password
       const isSameAsCurrent = currentPassword && passwordStr === currentPassword;
       
-      console.log("[API] Password comparison - isSameAsCurrent:", isSameAsCurrent);
-      
       if (isSameAsCurrent) {
-        console.log("[API] Password is same as current, skipping update");
+        // Password is same, skip update
       } else {
         // Password is different, validate minimum length (4 characters)
         if (passwordStr.length < 4) {
-          console.log("[API] Password is too short (" + passwordStr.length + " chars), returning error");
           return NextResponse.json({ 
             error: "Password must be at least 4 characters long",
             field: "password",
             reason: "MIN_LENGTH"
           }, { status: 400 });
         }
-        console.log("[API] Password is different, will update as plain text");
         passwordVal = passwordStr;
       }
-    } else {
-      console.log("[API] No password in body or password is empty");
     }
-    
-    console.log("[API] passwordVal after processing:", passwordVal ? "SET" : "UNDEFINED");
 
     // Check if at least one field is being updated
     const updateFields = {
@@ -351,10 +336,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     };
     
     const fieldsToUpdate = Object.entries(updateFields).filter(([, val]) => val !== undefined);
-    console.log("[API] Fields to update:", fieldsToUpdate.map(([key]) => key).join(", "));
-    
     if (fieldsToUpdate.length === 0) {
-      console.log("[API] No valid fields to update - all fields are unchanged");
       // Return success if no fields need updating (all values are the same as current)
       return NextResponse.json({ 
         ok: true, 
@@ -384,7 +366,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
             addUpdate("facultyname", facultyRow[0].faculty_name);
           }
         } catch (err) {
-          console.error("[API] Error fetching faculty name:", err);
         }
       }
       
@@ -396,7 +377,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
             addUpdate("departmentname", deptRow[0].department_name);
           }
         } catch (err) {
-          console.error("[API] Error fetching department name:", err);
         }
       }
       
@@ -408,7 +388,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
             addUpdate("degreetitle", programRow[0].program_name);
           }
         } catch (err) {
-          console.error("[API] Error fetching program name:", err);
         }
       }
       
@@ -500,11 +479,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       
       // Handle password update separately (if needed) - keep separate for security/logging
       if (passwordVal !== undefined) {
-        console.log("[API] Updating password in database (first 20 chars):", passwordVal.substring(0, 20));
         await tx`UPDATE public.tbl_alumni SET password = ${passwordVal as string} WHERE alumniid = ${alumniId}`;
         // Verify the update
         const verify = await tx`SELECT password FROM public.tbl_alumni WHERE alumniid = ${alumniId} LIMIT 1`;
-        console.log("[API] Password after update (first 20 chars):", verify[0]?.password ? String(verify[0].password).substring(0, 20) : "NULL");
       }
       
       // Update chapters in alumni_chapter table
@@ -560,11 +537,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
               SET status = 'UnderReview'
               WHERE alumniid = ${alumniId}
             `;
-            console.log("[API] Card status changed from Onhold to UnderReview due to profile data update");
           }
         } catch (cardError) {
           // Don't fail the request if card status update fails
-          console.warn("[API] Could not update card status:", cardError);
         }
       }
       
@@ -586,7 +561,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update profile";
-    console.error("[API] Update fields error:", message, err);
     return NextResponse.json({ 
       error: message,
       details: err instanceof Error ? err.stack : String(err)

@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for genders:", filterError);
+
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -53,9 +53,8 @@ export async function GET(req: Request) {
         END ASC
     `;
 
-    console.log("[API] Genders query returned", rows.length, "rows");
     if (rows.length === 0) {
-      console.warn("[API] No gender values found in database");
+
     }
 
     const genders = (rows as unknown as Array<{ gender_value: string; count: number | string | bigint }>).map((row) => {
@@ -68,14 +67,12 @@ export async function GET(req: Request) {
       };
     });
 
-    console.log("[API] Processed genders:", JSON.stringify(genders, null, 2));
-
     return NextResponse.json({
       success: true,
       genders
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching genders:", err);
+
     const message = err instanceof Error ? err.message : "Failed to fetch genders";
     return NextResponse.json({ error: message }, { status: 500 });
   }

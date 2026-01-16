@@ -25,7 +25,6 @@ async function getAdmissionYears(signal?: AbortSignal, filters?: MasterFilters):
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-admission-years] API error:", res.status, err);
     throw new Error(err || "Failed to fetch admission years");
   }
   

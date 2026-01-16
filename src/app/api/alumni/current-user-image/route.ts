@@ -82,7 +82,7 @@ export async function GET() {
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch profile image";
-    console.error("[API] Current user image error:", message);
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

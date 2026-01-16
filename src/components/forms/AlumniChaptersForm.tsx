@@ -63,12 +63,8 @@ export default function AlumniChaptersForm({
         const response = await fetch("/api/chapters/list");
         const result = await response.json();
         if (response.ok && result.chapters) {
-          console.log("[AlumniChaptersForm] Fetched chapters:", result.chapters.length);
-          console.log("[AlumniChaptersForm] National chapters:", result.chapters.filter((ch: Chapter) => ch.type === "national").length);
-          console.log("[AlumniChaptersForm] International chapters:", result.chapters.filter((ch: Chapter) => ch.type === "international").length);
           setChapters(result.chapters);
         } else {
-          console.error("[AlumniChaptersForm] API error:", result);
           toast.error("Failed to load chapters. Please refresh the page.", {
             duration: 5000,
             style: {
@@ -80,7 +76,6 @@ export default function AlumniChaptersForm({
           });
         }
       } catch (error) {
-        console.error("Error fetching chapters:", error);
         toast.error("Failed to load chapters. Please refresh the page.", {
           duration: 5000,
           style: {
@@ -109,14 +104,11 @@ export default function AlumniChaptersForm({
         const response = await fetch(`/api/alumni/chapters/current?alumniId=${encodeURIComponent(alumniId)}`);
         const result = await response.json();
         if (response.ok && Array.isArray(result.chapters)) {
-          console.log("[AlumniChaptersForm] Current chapters:", result.chapters);
           // Pre-populate selected chapters
           setSelectedChapters(result.chapters);
         } else {
-          console.error("[AlumniChaptersForm] Failed to fetch current chapters:", result);
         }
       } catch (error) {
-        console.error("[AlumniChaptersForm] Error fetching current chapters:", error);
       } finally {
         setIsLoadingCurrentChapters(false);
       }
@@ -167,10 +159,6 @@ export default function AlumniChaptersForm({
     if (chapters.length > 0) {
       const national = chapters.filter(ch => ch.type === "national");
       const international = chapters.filter(ch => ch.type === "international");
-      console.log("[AlumniChaptersForm] Total chapters:", chapters.length);
-      console.log("[AlumniChaptersForm] National chapters count:", national.length);
-      console.log("[AlumniChaptersForm] National chapters:", national.map(ch => ch.name));
-      console.log("[AlumniChaptersForm] International chapters count:", international.length);
     }
   }, [chapters]);
 

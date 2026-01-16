@@ -19,7 +19,7 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for programs:", filterError);
+
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, programs }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching programs:", err);
+
     const message = err instanceof Error ? err.message : "Failed to fetch programs";
     return NextResponse.json({ error: message }, { status: 500 });
   }

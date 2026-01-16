@@ -49,7 +49,7 @@ export default function FixAccessAssignmentsPage() {
       }
     } catch (error) {
       toast.error("Failed to preview assignments");
-      console.error(error);
+
     } finally {
       setLoading(false);
     }
@@ -85,7 +85,7 @@ export default function FixAccessAssignmentsPage() {
       }
     } catch (error) {
       toast.error("Failed to update assignments");
-      console.error(error);
+
     } finally {
       setLoading(false);
     }

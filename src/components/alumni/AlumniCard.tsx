@@ -1045,7 +1045,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         hasUpdatedRef.current = false; // Reset flag on error
         const errorMsg = err instanceof Error ? err.message : "Failed to update status";
         setError(errorMsg);
-        console.error("[StatusSelect] Update error:", err);
+
       } finally {
         setIsUpdating(false);
       }
@@ -1277,7 +1277,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to delete card";
         setDeleteError(msg);
-        console.error("[AlumniCard] Delete error:", err);
+
       } finally {
         setIsDeleting(false);
       }

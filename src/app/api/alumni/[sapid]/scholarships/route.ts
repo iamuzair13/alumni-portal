@@ -127,7 +127,6 @@ export async function GET(
 
     return NextResponse.json({ items: allItems }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching alumni applications:", err);
     const msg = err instanceof Error ? err.message : "Failed to fetch applications";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

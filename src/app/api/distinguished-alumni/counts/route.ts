@@ -22,7 +22,7 @@ export async function GET() {
       total
     }, { status: 200 });
   } catch (error) {
-    console.error("[API] Error fetching distinguished alumni counts:", error);
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch counts" },
       { status: 500 }

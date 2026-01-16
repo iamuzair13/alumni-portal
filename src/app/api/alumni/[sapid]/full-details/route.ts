@@ -106,27 +106,13 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         }
       } catch (error) {
         // If access filter check fails, log but don't block - let the ownership check below handle it
-        console.error("[API] Error checking access filter:", error);
         // Continue to ownership check below
       }
     }
     
     const canView = isOwner || canAccess || isViewer; // Allow owners, admins, and viewers
 
-    // Debug logging
-    console.log("[API] Full details auth check:", {
-      requestedIdentifier: normalizedIdentifier,
-      userSapid,
-      dbSapid,
-      userEmail,
-      isOwnerBySapid,
-      isOwnerByEmail,
-      isOwner,
-      canAccess,
-      isViewer,
-      canView,
-      userType: (session.user as { type?: string })?.type
-    });
+    // Auth check
 
     if (!canView) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -271,7 +257,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni details";
-    console.error("[API] Full details error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

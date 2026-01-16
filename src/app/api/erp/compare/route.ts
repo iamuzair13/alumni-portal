@@ -38,8 +38,6 @@ export async function GET(req: Request) {
     }
 
     // Fetch data from ERP
-    console.log("[ERP Compare] Fetching data from ERP system...", { sapId, registrationNo });
-    
     let erpResponse;
     if (sapId) {
       erpResponse = await erpClient.fetchBySapId(sapId);
@@ -104,8 +102,6 @@ export async function GET(req: Request) {
     }
 
     // Fetch corresponding data from local database
-    console.log("[ERP Compare] Fetching data from local database...");
-    
     let localRecord;
     if (sapId) {
       const rows = await sql/* sql */`
@@ -132,8 +128,6 @@ export async function GET(req: Request) {
     }
 
     // Compare the data
-    console.log("[ERP Compare] Comparing data...");
-    
     if (!localRecord) {
       // Record exists in ERP but not in local database
       return NextResponse.json({
@@ -163,7 +157,6 @@ export async function GET(req: Request) {
     }, { status: 200 });
 
   } catch (error) {
-    console.error("[ERP Compare] Error:", error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Failed to compare data",
     }, { status: 500 });

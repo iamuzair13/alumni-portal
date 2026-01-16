@@ -209,7 +209,6 @@ export async function GET(request: NextRequest) {
       unverified: unverifiedCount,
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching alumni association counts:", err);
     const msg = err instanceof Error ? err.message : "Failed to fetch counts";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

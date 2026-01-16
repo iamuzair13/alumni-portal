@@ -208,7 +208,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
         setPage(page - 1);
       }
     } catch (error) {
-      console.error("Error deleting distinguished alumni:", error);
+
       toast.error(
         error instanceof Error
           ? error.message

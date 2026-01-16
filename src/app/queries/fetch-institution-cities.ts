@@ -25,7 +25,6 @@ async function getInstitutionCities(signal?: AbortSignal, filters?: MasterFilter
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-institution-cities] API error:", res.status, err);
     throw new Error(err || "Failed to fetch institution cities");
   }
   

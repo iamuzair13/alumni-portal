@@ -20,7 +20,6 @@ export async function GET(req: Request) {
       const accessFilter = await buildAccessFilterSQL(session, "");
       accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     } catch (filterError) {
-      console.error("[API] Error building access filter for photo consent:", filterError);
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
@@ -63,10 +62,7 @@ export async function GET(req: Request) {
           ELSE 'Null'
         END ASC
     `;
-
-    console.log("[API] Photo consent query returned", rows.length, "rows");
     if (rows.length === 0) {
-      console.warn("[API] No photo consent values found in database");
     }
 
     const photoConsents = (rows as unknown as Array<{ consent_value: string; count: number | string | bigint }>).map((row) => {
@@ -78,15 +74,11 @@ export async function GET(req: Request) {
         count: Number(row.count || 0)
       };
     });
-
-    console.log("[API] Processed photo consents:", JSON.stringify(photoConsents, null, 2));
-
     return NextResponse.json({
       success: true,
       photoConsents
     }, { status: 200 });
   } catch (err) {
-    console.error("[API] Error fetching photo consent:", err);
     const message = err instanceof Error ? err.message : "Failed to fetch photo consent";
     return NextResponse.json({ error: message }, { status: 500 });
   }

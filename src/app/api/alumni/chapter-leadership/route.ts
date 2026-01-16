@@ -134,11 +134,10 @@ export async function POST(request: NextRequest) {
     }
     
     const createdRecord = newChapterLeadership[0] as { id: number; status: string };
-    console.log(`[Chapter Leadership] Application created - ID: ${createdRecord.id}, Status: ${createdRecord.status}, Alumni ID: ${alumniIdNum}`);
-    
+
     // Verify the record was created with 'pending' status
     if (createdRecord.status !== 'pending') {
-      console.error(`[Chapter Leadership] WARNING: Application was created with status '${createdRecord.status}' instead of 'pending'!`);
+
     }
 
     return NextResponse.json({ 
@@ -146,7 +145,7 @@ export async function POST(request: NextRequest) {
       message: "Application submitted successfully. It is now pending admin approval." 
     });
   } catch (error) {
-    console.error("Error submitting chapter leadership application:", error);
+
     const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
     return NextResponse.json(
       { error: errorMessage },

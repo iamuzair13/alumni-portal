@@ -8,28 +8,21 @@ import { canModify, isViewerUser } from "@/lib/alumniProfile";
 
 export async function POST(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   const startTime = Date.now();
-  console.log("[API] ========== Profile Picture Upload Started ==========");
-  
+
   try {
     const { sapid } = await ctx.params;
-    console.log("[API] Received SAP ID from params:", sapid);
-    
+
     const session = await auth();
-    console.log("[API] Session check - user exists:", !!session?.user);
-    
+
     // SECURITY: Require authentication
     if (!session?.user) {
-      console.error("[API] Unauthorized: No session user");
+
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
     // Normalize identifier (trim whitespace, handle encoding)
     const normalizedIdentifier = String(sapid || "").trim();
-    
-    console.log("[API] Profile picture upload request for identifier:", normalizedIdentifier);
-    console.log("[API] Session user email:", session.user.email);
-    console.log("[API] Session user SAP ID:", (session.user as { sapid?: string | null })?.sapid);
-    
+
     // Try to find alumni by SAP ID first, then by registration number (like other routes)
     // Use TRIM() and case-insensitive comparison for better matching
     let alumniRows = await sql/* sql */`
@@ -61,7 +54,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     }
     
     if (!alumniRows[0]) {
-      console.log("[API] Alumni not found for identifier:", normalizedIdentifier);
+
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
     }
     
@@ -109,11 +102,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail || identifierMatchesRow;
     const canUpdate = isOwner || canAccess || isViewer;
-    
-    console.log("[API] Ownership check - isOwner:", isOwner, "canAccess:", canAccess, "isViewer:", isViewer, "canUpdate:", canUpdate);
-    
+
     if (!canUpdate) {
-      console.log("[API] Access denied for identifier:", normalizedIdentifier);
+
       return NextResponse.json({ error: "Forbidden: You don't have permission to update this profile" }, { status: 403 });
     }
     
@@ -207,7 +198,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       if (existsSync(join(currentPath, "package.json")) || existsSync(join(currentPath, "next.config.mjs"))) {
         projectRoot = currentPath;
         foundProjectRoot = true;
-        console.log("[API] Found project root at:", projectRoot);
+
         break;
       }
       const parentPath = join(currentPath, "..");
@@ -216,7 +207,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     }
     
     if (!foundProjectRoot) {
-      console.warn("[API] Could not find project root, using cwd:", cwd);
+
       projectRoot = cwd;
     }
     
@@ -228,7 +219,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       uploadsDir = customUploadPath.startsWith("/") 
         ? customUploadPath 
         : join(projectRoot, customUploadPath);
-      console.log("[API] Using custom upload path from environment:", uploadsDir);
+
     } else {
       // Standard Next.js path - use project root
       uploadsDir = join(projectRoot, "public", "images");
@@ -236,37 +227,29 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       // Verify that public directory exists (Next.js requirement)
       const publicDir = join(projectRoot, "public");
       if (!existsSync(publicDir)) {
-        console.warn("[API] WARNING: public directory not found at:", publicDir);
-        console.warn("[API] Attempting to use projectRoot/public/images anyway:", uploadsDir);
+
+
       } else {
-        console.log("[API] Public directory found at:", publicDir);
+
       }
     }
-    
-    console.log("[API] ========== Path Information ==========");
-    console.log("[API] Current working directory (cwd):", cwd);
-    console.log("[API] Project root:", projectRoot);
-    console.log("[API] NODE_ENV:", process.env.NODE_ENV);
-    console.log("[API] Upload directory path:", uploadsDir);
-    console.log("[API] Custom upload path env:", customUploadPath || "not set");
-    console.log("[API] Expected URL path: /images/" + filename);
-    
+
     // Check if directory exists
     const dirExists = existsSync(uploadsDir);
     
     if (!dirExists) {
-      console.log("[API] Upload directory not found, will attempt to create:", uploadsDir);
+
     } else {
-      console.log("[API] Upload directory exists:", uploadsDir);
+
     }
     
     try {
       if (!existsSync(uploadsDir)) {
-        console.log("[API] Creating upload directory:", uploadsDir);
+
         await mkdir(uploadsDir, { recursive: true, mode: 0o755 });
-        console.log("[API] Directory created successfully");
+
       } else {
-        console.log("[API] Upload directory exists:", uploadsDir);
+
       }
       
       // Verify directory is writable
@@ -274,24 +257,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       try {
         await writeFile(testFile, Buffer.from("test"));
         await unlink(testFile);
-        console.log("[API] Directory is writable");
+
       } catch (testError) {
-        console.error("[API] Directory is not writable:", testError);
+
         return NextResponse.json({ 
           error: "Upload directory is not writable. Please contact administrator." 
         }, { status: 500 });
       }
     } catch (dirError) {
       const error = dirError as NodeJS.ErrnoException;
-      console.error("[API] Failed to create/access directory:", dirError);
-      console.error("[API] Error details:", {
-        message: error?.message,
-        code: error?.code,
-        path: uploadsDir,
-        cwd: process.cwd(),
-        errno: error?.errno,
-        syscall: error?.syscall
-      });
+
       return NextResponse.json({ 
         error: `Failed to create upload directory: ${error?.message || 'Unknown error'}. Please contact administrator.` 
       }, { status: 500 });
@@ -299,60 +274,48 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
 
     // Save file
     const filePath = join(uploadsDir, filename);
-    console.log("[API] Saving file to:", filePath);
-    console.log("[API] File size:", buffer.length, "bytes");
-    
+
+
     try {
       await writeFile(filePath, buffer, { mode: 0o644 });
-      console.log("[API] File saved successfully:", filename);
-      
+
       // Verify file was written
       if (!existsSync(filePath)) {
-        console.error("[API] File was not created after write operation");
+
         return NextResponse.json({ 
           error: "File was not saved. Please try again." 
         }, { status: 500 });
       }
       
       const stats = await stat(filePath);
-      console.log("[API] File verification - Size:", stats.size, "bytes");
-      console.log("[API] File exists at:", filePath);
-      console.log("[API] File is readable:", stats.isFile());
-      console.log("[API] File permissions:", stats.mode.toString(8));
-      
+
+
       // Verify the file is in the public directory structure
       const relativePathFromCwd = filePath.replace(cwd, "").replace(/\\/g, "/");
       const relativePathFromRoot = filePath.replace(projectRoot, "").replace(/\\/g, "/");
-      console.log("[API] File relative path from cwd:", relativePathFromCwd);
-      console.log("[API] File relative path from project root:", relativePathFromRoot);
-      
+
+
       // Check if file is accessible (try to read first few bytes)
       try {
         const testRead = await readFile(filePath);
-        console.log("[API] File is readable - first 10 bytes:", Array.from(testRead.slice(0, 10)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' '));
+
       } catch (readError) {
-        console.error("[API] ERROR: File cannot be read:", readError);
+
       }
       
       if (!relativePathFromRoot.includes("/public/images/") && !relativePathFromRoot.includes("\\public\\images\\")) {
-        console.error("[API] WARNING: File is not in public/images directory structure!");
-        console.error("[API] Expected path pattern: .../public/images/filename");
-        console.error("[API] Actual relative path from project root:", relativePathFromRoot);
-        console.error("[API] This may cause Next.js to not serve the file correctly.");
+
+
+
+
       } else {
-        console.log("[API] ✓ File is in correct public/images directory structure");
-        console.log("[API] File should be accessible at: /images/" + filename);
+
+
       }
     } catch (writeError) {
       const error = writeError as NodeJS.ErrnoException;
-      console.error("[API] Failed to write file:", writeError);
-      console.error("[API] Write error details:", {
-        message: error?.message,
-        code: error?.code,
-        path: filePath,
-        errno: error?.errno,
-        syscall: error?.syscall
-      });
+
+
       return NextResponse.json({ 
         error: `Failed to save image file: ${error?.message || 'Unknown error'}. Please try again.` 
       }, { status: 500 });
@@ -397,22 +360,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           SET status = 'UnderReview'
           WHERE alumniid = ${alumni.alumniid}
         `;
-        console.log("[API] Card status changed from Onhold to UnderReview due to profile picture update");
+
       }
     } catch (cardError) {
       // Don't fail the request if card status update fails
-      console.warn("[API] Could not update card status:", cardError);
+
     }
 
     // Return the full path for immediate display
     const imagePath = `/images/${filename}`;
     const duration = Date.now() - startTime;
-    
-    console.log("[API] ========== Profile Picture Upload Success ==========");
-    console.log("[API] Upload completed in:", `${duration}ms`);
-    console.log("[API] Image path:", imagePath);
-    console.log("[API] Filename:", filename);
-    
+
+
+
+
     return NextResponse.json({ 
       ok: true, 
       imagePath,
@@ -427,11 +388,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       name: error.name,
       duration: `${duration}ms`
     };
-    
-    console.error("[API] ========== Profile Picture Upload Error ==========");
-    console.error("[API] Error details:", JSON.stringify(errorDetails, null, 2));
-    console.error("[API] Full error object:", err);
-    
+
     // Return detailed error in development, generic in production
     const isDevelopment = process.env.NODE_ENV === 'development';
     const errorMessage = isDevelopment 

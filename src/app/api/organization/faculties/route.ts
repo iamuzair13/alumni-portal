@@ -24,7 +24,6 @@ export async function GET() {
     return NextResponse.json({ success: true, faculties }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch faculties";
-    console.error("[API] Error fetching faculties:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -59,7 +58,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, faculty }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create faculty";
-    console.error("[API] Error creating faculty:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -99,7 +97,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, faculty }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update faculty";
-    console.error("[API] Error updating faculty:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
@@ -148,7 +145,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete faculty";
-    console.error("[API] Error deleting faculty:", msg, err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

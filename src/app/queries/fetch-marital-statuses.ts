@@ -28,12 +28,12 @@ async function getMaritalStatuses(
   
   if (!res.ok) {
     const err = await res.text();
-    console.error("[fetch-marital-statuses] API error:", res.status, err);
+
     throw new Error(err || "Failed to fetch marital statuses");
   }
   
   const data = (await res.json()) as MaritalStatusesResponse;
-  console.log("[fetch-marital-statuses] Received data:", data);
+
   return data;
 }
 

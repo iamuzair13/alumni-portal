@@ -31,14 +31,7 @@ export async function GET(req: NextRequest) {
       : { sql: null, hasFilter: false };
     
     // Debug logging
-    console.log("[Leadership Applications] Access filter:", {
-      hasFilter: accessFilter.hasFilter,
-      isSuperAdmin,
-      isAdmin,
-      shouldApplyFilter,
-      userType: session?.user ? (session.user as { type?: string })?.type : "none"
-    });
-    
+
     const applications: Array<{
       id: number;
       alumniId: number;
@@ -88,9 +81,7 @@ export async function GET(req: NextRequest) {
             : sql``}
         ORDER BY cl.created_at DESC NULLS LAST
       `;
-      
-      console.log(`[Leadership Applications] Found ${chapterRows.length} chapter applications with status='pending'`);
-      
+
       chapterRows.forEach((r: Record<string, unknown>) => {
         applications.push({
           id: Number(r.leadership_id),
@@ -142,9 +133,7 @@ export async function GET(req: NextRequest) {
             : sql``}
         ORDER BY ass.createddatetime DESC NULLS LAST
       `;
-      
-      console.log(`[Leadership Applications] Found ${associationRows.length} association applications with status='pending'`);
-      
+
       associationRows.forEach((r: Record<string, unknown>) => {
         applications.push({
           id: Number(r.leadership_id),
@@ -164,13 +153,11 @@ export async function GET(req: NextRequest) {
 
     // Sort by created date (newest first)
     applications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    
-    console.log(`[Leadership Applications] Returning ${applications.length} total applications`);
-    
+
     return NextResponse.json({ items: applications }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch applications";
-    console.error("[API] Error fetching leadership applications:", msg, err);
+
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

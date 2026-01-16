@@ -102,17 +102,7 @@ export async function POST(req: Request) {
     const isAdmin = session?.user ? isAdminUser(session.user) : false;
     const isSuperAdmin = session?.user ? isSuperAdminUser(session.user) : false;
     const canAddAlumni = session?.user ? canModify(session.user) : false; // Admins and superadmins can add
-    
-    console.log("[API] Access assignment check:", {
-      hasSession: !!session,
-      isAlumni,
-      isAdmin,
-      isSuperAdmin,
-      canAddAlumni,
-      hasFacultyDeptProgram: !!(body.faculty && body.department && body.degreetitle),
-      willCheckAccess: !!(body.faculty && body.department && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin)
-    });
-    
+
     // Check access assignments for admins (superadmins have full access, so skip check)
     if (body.faculty && body.department && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin) {
       // Fetch faculty, department, and program names from IDs for access check
@@ -126,20 +116,15 @@ export async function POST(req: Request) {
       const faculty = facultyRow.length > 0 ? String(facultyRow[0].faculty_name).trim() : "";
       const department = departmentRow.length > 0 ? String(departmentRow[0].department_name).trim() : "";
       const program = String(body.degreetitle).trim();
-      
-      console.log("[API] Checking access assignment for admin:", { faculty, department, program });
-      
+
       // Admins can only add alumni within their assigned access
       // Super admins can add to any faculty/department/program (they skip this check)
       const userId = getUserIdFromSession(session);
       if (userId) {
         const assignments = await getUserAccessAssignments(userId);
-        
-        console.log("[API] Admin access assignments:", JSON.stringify(assignments, null, 2));
-        console.log("[API] Trying to add alumni to:", { faculty, department, program });
-        
+
         if (assignments.length === 0) {
-          console.log("[API] No access assignments found for admin");
+
           return NextResponse.json({ 
             error: "You do not have permission to add alumni. Please contact an administrator." 
           }, { status: 403 });
@@ -155,19 +140,10 @@ export async function POST(req: Request) {
           (!a.department_name || a.department_name.toLowerCase().trim() === department.toLowerCase().trim()) &&
           (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
         );
-        
-        console.log("[API] Program-level access check:", {
-          found: !!programAccess,
-          programAccess: programAccess ? {
-            program: programAccess.program_name,
-            department: programAccess.department_name,
-            faculty: programAccess.faculty_name
-          } : null
-        });
-        
+
         if (programAccess) {
           hasAccess = true;
-          console.log("[API] ✅ Access granted via program-level assignment");
+
         } else {
           // Check department-level access
           const deptAccess = assignments.find(a => 
@@ -176,20 +152,12 @@ export async function POST(req: Request) {
             a.department_name.toLowerCase().trim() === department.toLowerCase().trim() &&
             (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
           );
-          
-          console.log("[API] Department-level access check:", {
-            found: !!deptAccess,
-            deptAccess: deptAccess ? {
-              department: deptAccess.department_name,
-              faculty: deptAccess.faculty_name
-            } : null
-          });
-          
+
           if (deptAccess) {
             // Department-level access: admin can add any program within this department
             // No need to validate program - if they have department access, they can add any program
             hasAccess = true;
-            console.log("[API] ✅ Access granted via department-level assignment");
+
           } else {
             // Check faculty-level access
             const facultyAccess = assignments.find(a => 
@@ -198,43 +166,29 @@ export async function POST(req: Request) {
               !a.program_name &&
               a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim()
             );
-            
-            console.log("[API] Faculty-level access check:", {
-              found: !!facultyAccess,
-              facultyAccess: facultyAccess ? {
-                faculty: facultyAccess.faculty_name
-              } : null
-            });
-            
+
             if (facultyAccess) {
               // Faculty-level access: verify the department belongs to this faculty
               // No need to validate program - if they have faculty access, they can add any program
               const deptFaculty = getFacultyByDepartment(department);
-              console.log("[API] Department faculty check:", {
-                department,
-                expectedFaculty: faculty,
-                actualFaculty: deptFaculty
-              });
-              
+
               if (deptFaculty && deptFaculty.toLowerCase().trim() === faculty.toLowerCase().trim()) {
                 hasAccess = true;
-                console.log("[API] ✅ Access granted via faculty-level assignment");
+
               } else {
-                console.log("[API] ❌ Department does not belong to faculty:", { department, expectedFaculty: faculty, actualFaculty: deptFaculty });
+
               }
             }
           }
         }
         
         if (!hasAccess) {
-          console.log("[API] ❌ Access denied. Admin assignments:", JSON.stringify(assignments, null, 2));
-          console.log("[API] ❌ Requested combination:", { faculty, department, program });
+
           return NextResponse.json({ 
             error: `You do not have permission to add alumni to ${faculty} > ${department} > ${program}. Please select a faculty, department, and program you have access to.` 
           }, { status: 403 });
         }
-        
-        console.log("[API] ✅ Access granted - admin has permission to add alumni to:", { faculty, department, program });
+
       } else {
         // If no userId but user is logged in as admin (shouldn't happen), deny access
         return NextResponse.json({ 
@@ -448,31 +402,7 @@ export async function POST(req: Request) {
             String(existingRecord.alumniemail).trim().toLowerCase() === alumniEmail) {
           matchedBy.push('alumniemail');
         }
-        
-        console.log("[API] Found existing record:", {
-          alumniid: existingRecord.alumniid,
-          verify: existingRecord.verify,
-          verifyType: typeof existingRecord.verify,
-          registrationno: existingRecord.registrationno,
-          sapid: existingRecord.sapid,
-          cnicpassport: existingRecord.cnicpassport,
-          contactno: existingRecord.contactno,
-          personalemail: existingRecord.personalemail,
-          universityemail: existingRecord.universityemail,
-          officialemail: existingRecord.officialemail,
-          alumniemail: existingRecord.alumniemail,
-          matchedBy: matchedBy.length > 0 ? matchedBy.join(', ') : 'unknown',
-          incomingIdentifiers: {
-            regNo: regNo || null,
-            sapId: sapId || null,
-            cnic: cnic || null,
-            phone: phone || null,
-            personalEmail: personalEmail || null,
-            universityEmail: universityEmail || null,
-            officialEmail: officialEmail || null,
-            alumniEmail: alumniEmail || null
-          }
-        });
+
       }
     }
     
@@ -488,17 +418,10 @@ export async function POST(req: Request) {
           verifyStatus = verifyStr.toLowerCase();
         }
       }
-      
-      console.log("[API] Verify status check:", {
-        rawVerify,
-        verifyStatus,
-        isTrue: verifyStatus === "true",
-        willBlock: verifyStatus === "true"
-      });
-      
+
       // Block only if verify is exactly 'true' (case-insensitive)
       if (verifyStatus === "true") {
-        console.log("[API] BLOCKING: Alumni is verified (verify='true'), cannot re-register");
+
         return NextResponse.json({ 
           error: "This alumni is already verified and cannot register again.",
           existingRecord: {
@@ -510,16 +433,11 @@ export async function POST(req: Request) {
       }
       
       // RULE 2: If alumni exists and verify = 'pending'/'false'/null, allow registration and overwrite
-      console.log("[API] ALLOWING: Alumni exists but verify is not 'true', allowing re-registration:", {
-        verify: rawVerify,
-        verifyStatus,
-        willUpdate: true
-      });
-      
+
       // Continue to update logic below (will be handled in the transaction)
       // We'll modify the INSERT to be an UPDATE when existingRecord is found
     } else {
-      console.log("[API] No existing record found, will create new record");
+
     }
 
     // Track whether this is an update or insert for proper response status
@@ -550,40 +468,7 @@ export async function POST(req: Request) {
         const preservedUniversityEmail = incomingUniversityEmail ?? existingRecord.universityemail;
         const preservedOfficialEmail = incomingOfficialEmail ?? existingRecord.officialemail;
         const preservedAlumniEmail = incomingAlumniEmail ?? existingRecord.alumniemail;
-        
-        console.log("[API] Preserving identifier fields:", {
-          existing: {
-            regNo: existingRecord.registrationno,
-            sapId: existingRecord.sapid,
-            cnic: existingRecord.cnicpassport,
-            phone: existingRecord.contactno,
-            personalEmail: existingRecord.personalemail,
-            universityEmail: existingRecord.universityemail,
-            officialEmail: existingRecord.officialemail,
-            alumniEmail: existingRecord.alumniemail
-          },
-          incoming: {
-            regNo: incomingRegNo,
-            sapId: incomingSapId,
-            cnic: incomingCnic,
-            phone: incomingPhone,
-            personalEmail: incomingPersonalEmail,
-            universityEmail: incomingUniversityEmail,
-            officialEmail: incomingOfficialEmail,
-            alumniEmail: incomingAlumniEmail
-          },
-          preserved: {
-            regNo: preservedRegNo,
-            sapId: preservedSapId,
-            cnic: preservedCnic,
-            phone: preservedPhone,
-            personalEmail: preservedPersonalEmail,
-            universityEmail: preservedUniversityEmail,
-            officialEmail: preservedOfficialEmail,
-            alumniEmail: preservedAlumniEmail
-          }
-        });
-        
+
         // Update existing record with new data, set verify = 'pending'
         const updateResult = await tx/* sql */`
           UPDATE public.tbl_alumni SET
@@ -645,12 +530,7 @@ export async function POST(req: Request) {
         `;
         
         const updated = updateResult[0];
-        console.log("[API] Updated existing alumni record:", {
-          alumniid: updated.alumniid,
-          verify: updated.verify,
-          previousVerify: existingRecord.verify
-        });
-        
+
         return updated.alumniid;
       }
       
@@ -674,7 +554,7 @@ export async function POST(req: Request) {
         }
       } catch (seqError) {
         // If sequence reset fails, continue anyway - PostgreSQL will handle it
-        console.warn("[API] Could not reset sequence, continuing with insert:", seqError);
+
       }
       
       // Build the INSERT query - handle verify field separately to ensure NULL is inserted correctly
@@ -820,19 +700,19 @@ export async function POST(req: Request) {
             WHERE alumniid = ${alumniId}
             LIMIT 1
           `;
-          console.log("[API] Immediate verify check after INSERT (within transaction):", immediateCheck[0]);
+
           if (immediateCheck[0]?.verify !== 'pending') {
-            console.error("[API] CRITICAL: verify is NOT 'pending' immediately after INSERT! Value:", immediateCheck[0]?.verify);
+
             // Try to fix it within the same transaction
             await tx/* sql */`
               UPDATE public.tbl_alumni 
               SET verify = 'pending'
               WHERE alumniid = ${alumniId}
             `;
-            console.log("[API] Attempted to fix verify to 'pending' within transaction");
+
           }
         } catch (checkErr) {
-          console.error("[API] Error checking verify immediately after INSERT:", checkErr);
+
         }
       }
       
@@ -885,13 +765,7 @@ export async function POST(req: Request) {
                   VALUES (${id}, ${chapter1}, ${chapter2}, ${chapter3})
                 `;
               }
-              console.log("[API] Saved selected chapters:", { 
-                alumniId: id, 
-                chapterIds: validChapterIds,
-                chapter1,
-                chapter2,
-                chapter3
-              });
+
             }
           }
         }
@@ -908,15 +782,6 @@ export async function POST(req: Request) {
           const isPakistan = countryLower === "pakistan";
           const lookupValueRaw = isPakistan ? homeCityRaw : homeCountryRaw;
           const lookupType = isPakistan ? "city" : "country";
-
-          console.log("[AUTO-CHAPTER] start", {
-            alumniId: id,
-            homeCountry: homeCountryRaw || null,
-            homeCity: homeCityRaw || null,
-            lookupType,
-            lookupValue: lookupValueRaw || null,
-            hasExplicitChapters,
-          });
 
           if (lookupValueRaw) {
             try {
@@ -960,14 +825,6 @@ export async function POST(req: Request) {
 
               const chosen = matches[0];
 
-              console.log("[AUTO-CHAPTER] matched", {
-                alumniId: id,
-                lookupType,
-                lookupValue: lookupValueRaw,
-                matchedCount: matches.length,
-                chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
-              });
-
               if (chosen) {
                 const existing = await sql<{ id: number; chapter1: number | null }[]>/* sql */`
                   SELECT id, "chapter1"
@@ -978,35 +835,27 @@ export async function POST(req: Request) {
 
                 const currentChapter1 = existing[0]?.chapter1 ?? null;
                 if (currentChapter1) {
-                  console.log("[AUTO-CHAPTER] skip", {
-                    alumniId: id,
-                    reason: "chapter1 already set",
-                    currentChapter1,
-                    attemptedChapter1: chosen.id,
-                  });
+
                 } else if (existing.length > 0) {
                   await sql/* sql */`
                     UPDATE public.alumni_chapter
                     SET "chapter1" = ${chosen.id}
                     WHERE id = ${id}
                   `;
-                  console.log("[AUTO-CHAPTER] update", { alumniId: id, chapter1: chosen.id });
+
                 } else {
                   await sql/* sql */`
                     INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
                     VALUES (${id}, ${chosen.id}, NULL, NULL)
                   `;
-                  console.log("[AUTO-CHAPTER] insert", { alumniId: id, chapter1: chosen.id });
+
                 }
               }
             } catch (err) {
-              console.error("[AUTO-CHAPTER] error", { alumniId: id, err });
+
             }
           } else {
-            console.log("[AUTO-CHAPTER] skip", {
-              alumniId: id,
-              reason: isPakistan ? "Pakistan selected but home city missing" : "Home country missing",
-            });
+
           }
         }
 
@@ -1027,16 +876,6 @@ export async function POST(req: Request) {
           const isWorkPakistan = workCountryRaw.toLowerCase().trim() === "pakistan";
           const workLookupType = isWorkPakistan ? "city" : "country";
           const workLookupValueRaw = isWorkPakistan ? workCityRaw : workCountryRaw;
-
-          console.log("[AUTO-CHAPTER2] start", {
-            alumniId: id,
-            context: isHigherEducation ? "higher_education" : "work",
-            workCountry: workCountryRaw || null,
-            workCity: workCityRaw || null,
-            lookupType: workLookupType,
-            lookupValue: workLookupValueRaw || null,
-            hasExplicitChapters,
-          });
 
           if (workLookupValueRaw) {
             try {
@@ -1077,13 +916,6 @@ export async function POST(req: Request) {
               });
 
               const chosen = matches[0];
-              console.log("[AUTO-CHAPTER2] matched", {
-                alumniId: id,
-                lookupType: workLookupType,
-                lookupValue: workLookupValueRaw,
-                matchedCount: matches.length,
-                chosen: chosen ? { chapterId: chosen.id, chapterName: chosen.name, chapterType: chosen.type } : null,
-              });
 
               if (chosen) {
                 const existing = await sql<{ id: number; chapter2: number | null }[]>/* sql */`
@@ -1095,37 +927,30 @@ export async function POST(req: Request) {
 
                 const currentChapter2 = existing[0]?.chapter2 ?? null;
                 if (currentChapter2) {
-                  console.log("[AUTO-CHAPTER2] skip", {
-                    alumniId: id,
-                    reason: "chapter2 already set",
-                    currentChapter2,
-                    attemptedChapter2: chosen.id,
-                  });
+
                 } else if (existing.length > 0) {
                   await sql/* sql */`
                     UPDATE public.alumni_chapter
                     SET "chapter2" = ${chosen.id}
                     WHERE id = ${id}
                   `;
-                  console.log("[AUTO-CHAPTER2] update", { alumniId: id, chapter2: chosen.id });
+
                 } else {
                   await sql/* sql */`
                     INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
                     VALUES (${id}, NULL, ${chosen.id}, NULL)
                   `;
-                  console.log("[AUTO-CHAPTER2] insert", { alumniId: id, chapter2: chosen.id });
+
                 }
               }
             } catch (err) {
-              console.error("[AUTO-CHAPTER2] error", { alumniId: id, err });
+
             }
           } else {
-            console.log("[AUTO-CHAPTER2] skip", {
-              alumniId: id,
-              reason: isWorkPakistan
-                ? (isHigherEducation ? "Pakistan selected but institution city missing" : "Pakistan selected but work city missing")
-                : (isHigherEducation ? "Institution country missing" : "Work country missing"),
-            });
+            return NextResponse.json(
+              { error: isHigherEducation ? "Institution country missing" : "Work country missing" },
+              { status: 400 }
+            );
           }
         }
 
@@ -1148,15 +973,9 @@ export async function POST(req: Request) {
             `;
 
             const existingAssociationId = currentAssoc[0]?.association_id ?? null;
-            console.log("[AUTO-ASSOCIATION] start", { alumniId: id, facultyName, existingAssociationId });
 
             if (existingAssociationId) {
-              console.log("[AUTO-ASSOCIATION] skip", {
-                alumniId: id,
-                facultyName,
-                reason: "association_id already set",
-                existingAssociationId,
-              });
+
             } else {
               const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
                 SELECT id, title
@@ -1178,11 +997,6 @@ export async function POST(req: Request) {
               `;
 
               const chosen = assocRows[0];
-              console.log("[AUTO-ASSOCIATION] matched", {
-                alumniId: id,
-                facultyName,
-                chosen: chosen ? { associationId: chosen.id, title: chosen.title } : null,
-              });
 
               if (chosen?.id) {
                 await sql/* sql */`
@@ -1190,26 +1004,25 @@ export async function POST(req: Request) {
                   SET association_id = ${chosen.id}
                   WHERE alumniid = ${id}
                 `;
-                console.log("[AUTO-ASSOCIATION] update", { alumniId: id, associationId: chosen.id });
+
               }
             }
           } catch (err) {
-            console.error("[AUTO-ASSOCIATION] error", { alumniId: id, facultyName, err });
+
           }
         }
       } catch (assignmentError) {
         // Don't fail the registration if chapter/association assignment fails
-        console.error("[API] Error assigning chapters/association:", assignmentError);
+
       }
     }
 
     // DO NOT send welcome email on registration
     // Email will be sent when admin verifies or unverifies the alumni
-    console.log("[API] ========================================");
-    console.log("[API] Alumni registered successfully. Email will be sent when admin verifies/unverifies.");
-    console.log("[API] New alumni ID:", id, "SAP ID:", body.sapid || body.registrationno);
-    console.log("[API] ========================================");
-    
+
+
+
+
     // Verify that verify field was set to 'pending'
     if (id) {
       try {
@@ -1222,16 +1035,16 @@ export async function POST(req: Request) {
           WHERE alumniid = ${id} 
           LIMIT 1
         `;
-        console.log("[API] Verify field after insert:", verifyCheck[0]);
+
         const verifyValue = verifyCheck[0]?.verify;
         if (verifyValue === 'pending' || String(verifyValue).toLowerCase().trim() === 'pending') {
-          console.log("[API] SUCCESS: verify field is 'pending' as expected");
+
         } else {
-          console.error("[API] ERROR: verify field is not 'pending'! Value:", verifyValue, "Type:", verifyCheck[0]?.verify_type, "Length:", verifyCheck[0]?.verify_length);
-          console.error("[API] Trimmed:", verifyCheck[0]?.verify_trimmed, "Lower trimmed:", verifyCheck[0]?.verify_lower_trimmed);
+
+
         }
       } catch (checkErr) {
-        console.error("[API] Error checking verify field:", checkErr);
+
       }
     }
 
@@ -1259,7 +1072,7 @@ export async function POST(req: Request) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[API] /api/alumni/create error:", { message, stack });
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

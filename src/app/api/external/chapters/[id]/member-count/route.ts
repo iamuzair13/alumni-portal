@@ -38,7 +38,6 @@ export async function GET(
     });
     return addCorsHeaders(response, request);
   } catch (error) {
-    console.error('Error in /api/external/chapters/[id]/member-count:', error);
     const response = NextResponse.json(
       {
         count: 0,

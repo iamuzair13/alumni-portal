@@ -509,7 +509,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           setDbFaculties(mappedFaculties);
         }
       } catch (err) {
-        console.error("Failed to fetch faculties:", err);
+
       } finally {
         setLoadingDbData(false);
       }
@@ -539,7 +539,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           setDbDepartments(mappedDepartments);
         }
       } catch (err) {
-        console.error("Failed to fetch departments:", err);
+
       }
     };
     fetchDepartments();
@@ -567,7 +567,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           setDbPrograms(mappedPrograms);
         }
       } catch (err) {
-        console.error("Failed to fetch programs:", err);
+
       }
     };
     fetchPrograms();
@@ -589,7 +589,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
         }
       } catch (err) {
-        console.error("Failed to fetch user access:", err);
+
         // On error, assume no restrictions
         setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
       }
@@ -606,10 +606,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         if (response.ok && result.chapters) {
           setChapters(result.chapters);
         } else {
-          console.error("[AlumniSqlForm] Failed to fetch chapters:", result);
+
         }
       } catch (error) {
-        console.error("[AlumniSqlForm] Error fetching chapters:", error);
+
       } finally {
         setIsLoadingChapters(false);
       }
@@ -998,7 +998,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             }
           }
         } catch (err) {
-          console.error("Error converting startOfCareer to totalyearsofexpereince:", err);
+
         }
       }
       

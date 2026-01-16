@@ -88,7 +88,6 @@ export function mapDbStatusToUI(dbStatus: string | null | undefined): CardStatus
   if (upper === "DELIVERED") return "delivered";
   
   // Default to under-review for unknown statuses
-  console.warn(`[CardStatus] Unknown status "${dbStatus}", defaulting to "under-review"`);
   return "under-review";
 }
 
@@ -153,6 +152,5 @@ export function normalizeDbStatus(status: string | null | undefined): DbCardStat
   if (matched) return matched;
   
   // Default to UnderReview for unknown statuses
-  console.warn(`[CardStatus] Unknown status "${status}", defaulting to "UnderReview"`);
   return DEFAULT_CARD_STATUS;
 }
