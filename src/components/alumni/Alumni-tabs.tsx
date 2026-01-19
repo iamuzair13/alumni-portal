@@ -267,7 +267,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedFundingSources, setSelectedFundingSources] = useState<string[]>([]);
   const [selectedInstitutionCountries, setSelectedInstitutionCountries] = useState<string[]>([]);
   const [selectedInstitutionCities, setSelectedInstitutionCities] = useState<string[]>([]);
-
+  
   // Export column toggles – control which groups of columns are exported
   const [exportFaculty, setExportFaculty] = useState<boolean>(true);
   const [exportDepartment, setExportDepartment] = useState<boolean>(true);
@@ -293,6 +293,7 @@ export const AlumniTabs: React.FC = () => {
   const [exportInstitutionCity, setExportInstitutionCity] = useState<boolean>(true);
   const [exportMrNo, setExportMrNo] = useState<boolean>(true);
   const [exportPhotoConsent, setExportPhotoConsent] = useState<boolean>(true);
+  const [exportCategory, setExportCategory] = useState<boolean>(true);
   const [selectedMrNos, setSelectedMrNos] = useState<string[]>([]);
   const [selectedSapIdStates, setSelectedSapIdStates] = useState<string[]>([]);
   const [selectedRegNoStates, setSelectedRegNoStates] = useState<string[]>([]);
@@ -1143,7 +1144,8 @@ export const AlumniTabs: React.FC = () => {
       selectedMrNos.length > 0 ? selectedMrNos : undefined,
       selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
       selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
-      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined
+      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
+      selectedCategories.length > 0 ? selectedCategories : undefined
   );
   
   // Debug logging - commented out to fix build issue
@@ -1189,7 +1191,8 @@ export const AlumniTabs: React.FC = () => {
       selectedMrNos,
       selectedPhotoConsents,
       selectedSapIdStates,
-      selectedRegNoStates
+      selectedRegNoStates,
+      selectedCategories
     ],
     queryFn: ({ signal }) => getAlumniCounts(
       signal, 
@@ -1218,7 +1221,8 @@ export const AlumniTabs: React.FC = () => {
       selectedMrNos.length > 0 ? selectedMrNos : undefined,
       selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
       selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
-      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined
+      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
+      selectedCategories.length > 0 ? selectedCategories : undefined
     ),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
@@ -1744,6 +1748,11 @@ export const AlumniTabs: React.FC = () => {
           url.searchParams.append("regNoState", state);
         });
       }
+      if (selectedCategories.length > 0) {
+        selectedCategories.forEach(category => {
+          url.searchParams.append("category", category);
+        });
+      }
       
       // Add timeout and abort controller for large exports
       const controller = new AbortController();
@@ -2078,6 +2087,7 @@ export const AlumniTabs: React.FC = () => {
     const institutionCityKeys = ["Higher Education Institute City"];
     const mrNoKeys = ["MR No"];
     const photoConsentKeys = ["Photo Usage Consent"];
+    const categoryKeys = ["Category"];
 
     // Create a comprehensive mapping of all columns to their groups
     // This ensures every column is properly categorized
@@ -2140,6 +2150,8 @@ export const AlumniTabs: React.FC = () => {
         columnGroupMap.set(key, exportMrNo);
       } else if (photoConsentKeys.includes(key)) {
         columnGroupMap.set(key, exportPhotoConsent);
+      } else if (categoryKeys.includes(key)) {
+        columnGroupMap.set(key, exportCategory);
       } else {
         // Columns not in any group are NOT exported (explicit exclusion)
         columnGroupMap.set(key, false);
@@ -4723,8 +4735,15 @@ export const AlumniTabs: React.FC = () => {
 
                       {/* Category Filter */}
                       <div className="relative" ref={categoryFilterRef}>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                          Category
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                          <span>Category</span>
+                          <input
+                            type="checkbox"
+                            checked={exportCategory}
+                            onChange={(e) => setExportCategory(e.target.checked)}
+                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
+                            title="Include Category column in Excel export"
+                          />
                         </label>
                         <button
                           type="button"

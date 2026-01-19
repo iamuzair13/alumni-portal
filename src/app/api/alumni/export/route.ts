@@ -49,6 +49,7 @@ export async function GET(req: Request) {
     const photoConsentParams = searchParams.getAll("photoConsent");
     const sapIdStateParams = searchParams.getAll("sapIdState");
     const regNoStateParams = searchParams.getAll("regNoState");
+    const categoryParams = searchParams.getAll("category");
     
     const faculty = facultyParams.length > 0 ? facultyParams : (searchParams.get("faculty") || "");
     const department = departmentParams.length > 0 ? departmentParams : (searchParams.get("department") || "");
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
     const photoConsent = photoConsentParams.length > 0 ? photoConsentParams : (searchParams.get("photoConsent") || "");
     const sapIdState = sapIdStateParams.length > 0 ? sapIdStateParams : (searchParams.get("sapIdState") || "");
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
+    const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
 
     // Build access filter for admin/viewer users
     const accessFilter = await buildAccessFilterSQL(session, "");
@@ -91,7 +93,7 @@ export async function GET(req: Request) {
       return sql`${left} OR ${right}`;
     };
 
-    // Build WHERE clause for verify status filtering
+    // Build WHERE clause for verify status filtering (including category-based tabs)
     let verifyFilter = sql``;
     if (status === "verified") {
       verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'true'`;
@@ -103,8 +105,16 @@ export async function GET(req: Request) {
       verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
     } else if (status === "inactive") {
       verifyFilter = sql`AND ((lasttimelogin IS NULL OR lasttimelogin = '') AND (logincount IS NULL OR logincount = 0))`;
-    } else if (status === "category") {
-      verifyFilter = sql`AND 1 = 0`;
+    } else if (status === "category:aPlus") {
+      verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`;
+    } else if (status === "category:a") {
+      verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`;
+    } else if (status === "category:b") {
+      verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`;
+    } else if (status === "category:c") {
+      verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
+    } else if (status === "category:d") {
+      verifyFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
     }
 
     const hasSapIdStateFilter = sapIdState && (Array.isArray(sapIdState) ? sapIdState.length > 0 : sapIdState);
@@ -112,6 +122,73 @@ export async function GET(req: Request) {
     const baseWhere = status === "underApproval" || hasSapIdStateFilter || hasRegNoStateFilter
       ? sql`1=1` 
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
+
+    // Category filter (independent of status)
+    // Supports both "category:aPlus"/"category:a" style and raw "a+","a","b","c","d","NULL"
+    let categoryFilter = sql``;
+    if (category && (Array.isArray(category) ? category.length > 0 : category)) {
+      const buildSingleCategoryCondition = (raw: string): ReturnType<typeof sql> | null => {
+        const value = String(raw).trim();
+        const lower = value.toLowerCase();
+
+        const isNull = lower === "null" || value === "NULL";
+        const isAPlus =
+          lower === "category:aplus" ||
+          lower === "aplus" ||
+          lower === "a+";
+        const isA =
+          lower === "category:a" ||
+          lower === "a";
+        const isB =
+          lower === "category:b" ||
+          lower === "b";
+        const isC =
+          lower === "category:c" ||
+          lower === "c";
+        const isD =
+          lower === "category:d" ||
+          lower === "d";
+
+        if (isNull) {
+          return sql`(a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`;
+        }
+        if (isAPlus) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`;
+        }
+        if (isA) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`;
+        }
+        if (isB) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`;
+        }
+        if (isC) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
+        }
+        if (isD) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
+        }
+        return null;
+      };
+
+      if (Array.isArray(category) && category.length > 0) {
+        const categoryConditions: ReturnType<typeof sql>[] = [];
+        category.forEach(c => {
+          const cond = buildSingleCategoryCondition(c);
+          if (cond) {
+            categoryConditions.push(cond);
+          }
+        });
+        if (categoryConditions.length > 0) {
+          const combinedCondition = combineOrConditions(categoryConditions);
+          categoryFilter = sql`AND (${combinedCondition})`;
+        }
+      } else if (!Array.isArray(category) && category) {
+        const cond = buildSingleCategoryCondition(category);
+        if (cond) {
+          categoryFilter = sql`AND ${cond}`;
+        }
+      }
+    }
 
     let searchCondition = sql``;
     if (search && search.trim()) {
@@ -598,6 +675,7 @@ export async function GET(req: Request) {
       LEFT JOIN public.alumni_scholarships asch ON asch.id = a.alumniid
       WHERE ${baseWhere}
         ${verifyFilter}
+        ${categoryFilter}
         ${facultyFilter}
         ${departmentFilter}
         ${programFilter}

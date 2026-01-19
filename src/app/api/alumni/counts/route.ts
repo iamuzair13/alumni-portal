@@ -662,24 +662,63 @@ export async function GET(req: Request) {
     }
 
     // Category filter
+    // NOTE: This must support both the "category:a" style values used by the UI
+    // and the raw "a" / "a+" / "b" values (for backward compatibility).
     let categoryFilter = sql``;
     if (category && (Array.isArray(category) ? category.length > 0 : category)) {
+      const buildSingleCategoryCondition = (raw: string): ReturnType<typeof sql> | null => {
+        const value = String(raw).trim();
+        const lower = value.toLowerCase();
+
+        // Normalize possible input formats:
+        // - "category:aPlus" / "category:a" / "category:b" ...
+        // - "aPlus" / "a+" / "a" / "b" / "c" / "d"
+        // - "NULL"
+        const isNull = lower === "null" || value === "NULL";
+        const isAPlus =
+          lower === "category:aplus" ||
+          lower === "aplus" ||
+          lower === "a+";
+        const isA =
+          lower === "category:a" ||
+          lower === "a";
+        const isB =
+          lower === "category:b" ||
+          lower === "b";
+        const isC =
+          lower === "category:c" ||
+          lower === "c";
+        const isD =
+          lower === "category:d" ||
+          lower === "d";
+
+        if (isNull) {
+          return sql`(a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`;
+        }
+        if (isAPlus) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`;
+        }
+        if (isA) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`;
+        }
+        if (isB) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`;
+        }
+        if (isC) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
+        }
+        if (isD) {
+          return sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
+        }
+        return null;
+      };
+
       if (Array.isArray(category) && category.length > 0) {
         const categoryConditions: ReturnType<typeof sql>[] = [];
         category.forEach(c => {
-          const normalized = String(c).trim().toLowerCase();
-          if (normalized === "null") {
-            categoryConditions.push(sql`(a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`);
-          } else if (normalized === "a+") {
-            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`);
-          } else if (normalized === "a") {
-            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`);
-          } else if (normalized === "b") {
-            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`);
-          } else if (normalized === "c") {
-            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`);
-          } else if (normalized === "d") {
-            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`);
+          const cond = buildSingleCategoryCondition(c);
+          if (cond) {
+            categoryConditions.push(cond);
           }
         });
         if (categoryConditions.length > 0) {
@@ -687,19 +726,9 @@ export async function GET(req: Request) {
           categoryFilter = sql`AND (${combinedCondition})`;
         }
       } else if (!Array.isArray(category) && category) {
-        const normalized = String(category).trim().toLowerCase();
-        if (normalized === "null") {
-          categoryFilter = sql`AND (a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`;
-        } else if (normalized === "a+") {
-          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`;
-        } else if (normalized === "a") {
-          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`;
-        } else if (normalized === "b") {
-          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`;
-        } else if (normalized === "c") {
-          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
-        } else if (normalized === "d") {
-          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
+        const cond = buildSingleCategoryCondition(category);
+        if (cond) {
+          categoryFilter = sql`AND ${cond}`;
         }
       }
     }
