@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { mapUIStatusToDb, type CardStatus } from "@/lib/card-status-config";
 
 export async function GET(req: Request) {
   try {
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") || "all";
+    const statusParam = (searchParams.get("status") || "all") as CardStatus | "overdue";
     const search = searchParams.get("search") || "";
 
     // Build access filter
@@ -26,14 +27,51 @@ export async function GET(req: Request) {
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
 
     // Build status filter
+    // Align this logic with /api/alumni-cards/applicants so that
+    // the rows exported for a given status exactly match the UI list.
+    //
+    // Database values: "UnderReview", "UnderPrinting", "Active", "Onhold", "Delivered"
+    // Legacy: "Pending" → "UnderReview", "Process" → "UnderPrinting"
+    // NULL or empty status should be treated as "UnderReview" (default status)
     let statusCondition = sql``;
-    if (status && status !== "all") {
-      if (status === "active") {
-        statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'delivered'`;
-      } else if (status === "pending") {
-        statusCondition = sql` AND NOT (c.status IS NOT NULL AND TRIM(c.status) != '' AND LOWER(TRIM(c.status)) IN ('delivered', 'rejected'))`;
-      } else if (status === "onhold") {
-        statusCondition = sql` AND c.status IS NOT NULL AND LOWER(TRIM(c.status)) = 'rejected'`;
+    if (statusParam && statusParam !== "all" && statusParam !== "overdue") {
+      const dbStatus = mapUIStatusToDb(statusParam as CardStatus);
+
+      if (dbStatus === "UnderReview") {
+        // UnderReview: NULL, empty, legacy "Pending", or "UnderReview" (case-insensitive)
+        statusCondition = sql`
+          AND (
+            c.status IS NULL
+            OR TRIM(c.status) = ''
+            OR UPPER(TRIM(c.status)) = 'PENDING'
+            OR UPPER(TRIM(c.status)) = 'UNDERREVIEW'
+          )
+        `;
+      } else if (dbStatus === "UnderPrinting") {
+        // UnderPrinting: legacy "Process" or "UnderPrinting"
+        statusCondition = sql`
+          AND c.status IS NOT NULL
+          AND (
+            UPPER(TRIM(c.status)) = 'PROCESS'
+            OR UPPER(TRIM(c.status)) = 'UNDERPRINTING'
+          )
+        `;
+      } else if (dbStatus === "Active") {
+        // Ready for Delivery
+        statusCondition = sql`
+          AND c.status IS NOT NULL
+          AND UPPER(TRIM(c.status)) = 'ACTIVE'
+        `;
+      } else if (dbStatus === "Onhold") {
+        statusCondition = sql`
+          AND c.status IS NOT NULL
+          AND UPPER(TRIM(c.status)) = 'ONHOLD'
+        `;
+      } else if (dbStatus === "Delivered") {
+        statusCondition = sql`
+          AND c.status IS NOT NULL
+          AND UPPER(TRIM(c.status)) = 'DELIVERED'
+        `;
       }
     }
 
