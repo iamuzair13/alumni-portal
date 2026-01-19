@@ -319,6 +319,7 @@ export async function GET(req: Request) {
     const photoConsentParams = searchParams.getAll("photoConsent");
     const sapIdStateParams = searchParams.getAll("sapIdState");
     const regNoStateParams = searchParams.getAll("regNoState");
+    const categoryParams = searchParams.getAll("category");
     
     // Convert to arrays (support multi-select)
     const gender = genderParams.length > 0 ? genderParams : (searchParams.get("gender") || "");
@@ -342,6 +343,7 @@ export async function GET(req: Request) {
     const photoConsent = photoConsentParams.length > 0 ? photoConsentParams : (searchParams.get("photoConsent") || "");
     const sapIdState = sapIdStateParams.length > 0 ? sapIdStateParams : (searchParams.get("sapIdState") || "");
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
+    const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
     
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
@@ -1000,6 +1002,50 @@ export async function GET(req: Request) {
       const combinedCondition = combineOrConditions(conditions);
       regNoStateFilter = sql`AND (${combinedCondition})`;
     }
+
+    // Build category filter (separate from status filter) - moved before getCountsOnly
+    let categoryFilter = sql``;
+    if (category && (Array.isArray(category) ? category.length > 0 : category)) {
+      if (Array.isArray(category) && category.length > 0) {
+        const categoryConditions: ReturnType<typeof sql>[] = [];
+        
+        category.forEach(c => {
+          if (c === "category:aPlus") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`);
+          } else if (c === "category:a") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`);
+          } else if (c === "category:b") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`);
+          } else if (c === "category:c") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`);
+          } else if (c === "category:d") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`);
+          } else if (c === "NULL" || c === "null") {
+            categoryConditions.push(sql`(a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`);
+          }
+        });
+        
+        if (categoryConditions.length > 0) {
+          const combinedCondition = combineOrConditions(categoryConditions);
+          categoryFilter = sql`AND (${combinedCondition})`;
+        }
+      } else if (!Array.isArray(category)) {
+        // Single category filter (backward compatibility)
+        if (category === "category:aPlus") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`;
+        } else if (category === "category:a") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`;
+        } else if (category === "category:b") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`;
+        } else if (category === "category:c") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
+        } else if (category === "category:d") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
+        } else if (category === "NULL" || category === "null") {
+          categoryFilter = sql`AND (a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`;
+        }
+      }
+    }
     
     // If only counts are needed, return early with just counts
     if (getCountsOnly) {
@@ -1012,6 +1058,7 @@ export async function GET(req: Request) {
             LEFT JOIN public.tbl_departments d ON d.id = a.department
             LEFT JOIN public.tbl_programs p ON p.id = a.program
             WHERE a.sapid IS NOT NULL AND a.sapid != ''
+              ${categoryFilter}
               ${facultyFilter}
               ${departmentFilter}
               ${programFilter}
@@ -1052,6 +1099,7 @@ export async function GET(req: Request) {
             LEFT JOIN public.tbl_departments d ON d.id = a.department
             LEFT JOIN public.tbl_programs p ON p.id = a.program
             WHERE a.sapid IS NOT NULL AND a.sapid != ''
+              ${categoryFilter}
               ${facultyFilter}
               ${departmentFilter}
               ${programFilter}
@@ -1217,6 +1265,7 @@ export async function GET(req: Request) {
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ${baseWhere}
           ${verifyFilter}
+          ${categoryFilter}
           ${facultyFilter}
           ${departmentFilter}
           ${programFilter}
@@ -1297,6 +1346,7 @@ export async function GET(req: Request) {
       LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE ${baseWhere}
         ${verifyFilter}
+        ${categoryFilter}
         ${facultyFilter}
         ${departmentFilter}
         ${programFilter}
@@ -1416,6 +1466,7 @@ export async function GET(req: Request) {
           LEFT JOIN public.tbl_programs p ON p.id = a.program
           WHERE ${baseWhere}
             ${verifyFilter}
+            ${categoryFilter}
             ${facultyFilter}
             ${departmentFilter}
             ${programFilter}
@@ -1458,6 +1509,7 @@ export async function GET(req: Request) {
               LEFT JOIN public.tbl_programs p ON p.id = a.program
               WHERE ${baseWhere}
                 ${verifyFilter}
+                ${categoryFilter}
                 ${facultyFilter}
                 ${departmentFilter}
                 ${programFilter}
@@ -1478,7 +1530,10 @@ export async function GET(req: Request) {
                 ${fundingSourceFilter}
                 ${institutionCountryFilter}
                 ${institutionCityFilter}
+                ${photoConsentFilter}
                 ${mrNoFilter}
+                ${sapIdStateFilter}
+                ${regNoStateFilter}
                 ${accessFilterCondition}`;
     
     const countResult = await countQuery;

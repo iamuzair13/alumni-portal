@@ -28,6 +28,7 @@ export type MasterFilters = {
   photoConsent?: string | string[];
   sapIdState?: string | string[];
   regNoState?: string | string[];
+  category?: string | string[];
 };
 
 /**
@@ -71,6 +72,7 @@ export function addFilterParamsToUrl(url: URL, filters?: MasterFilters): void {
   addFilterParam("photoConsent", filters.photoConsent);
   addFilterParam("sapIdState", filters.sapIdState);
   addFilterParam("regNoState", filters.regNoState);
+  addFilterParam("category", filters.category);
 }
 
 

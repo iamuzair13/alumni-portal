@@ -333,50 +333,33 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
           </div>
         </div>
 
-        {/* Overdue Sub-tabs */}
+        {/* Overdue Dropdown */}
         {selectedStatus === "overdue" && (
           <div className="px-6">
-            <div className="flex flex-wrap gap-3 lg:gap-4" role="tablist" aria-label="Overdue type tabs">
-              <button
-                className={`rounded-xl border px-4 py-2.5 cursor-pointer transform scale-100 transform-gpu transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm flex items-center gap-2 ${
-                  selectedOverdueType === "under-review"
-                    ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 shadow-md"
-                    : "border-gray-300 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:border-amber-400"
-                }`}
-                onClick={() => setSelectedOverdueType("under-review")}
-                role="tab"
-                aria-selected={selectedOverdueType === "under-review"}
-              >
-                <TimeIcon className="w-4 h-4" />
-                <span className="font-medium">Under Review</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  selectedOverdueType === "under-review"
-                    ? "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                }`}>
-                  {countsLoading || isLoading ? "..." : (counts["overdue-under-review"] || 0).toLocaleString()}
-                </span>
-              </button>
-              <button
-                className={`rounded-xl border px-4 py-2.5 cursor-pointer transform scale-100 transform-gpu transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm flex items-center gap-2 ${
-                  selectedOverdueType === "under-printing"
-                    ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 shadow-md"
-                    : "border-gray-300 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 hover:border-purple-400"
-                }`}
-                onClick={() => setSelectedOverdueType("under-printing")}
-                role="tab"
-                aria-selected={selectedOverdueType === "under-printing"}
-              >
-                <FileIcon className="w-4 h-4" />
-                <span className="font-medium">Under Printing</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  selectedOverdueType === "under-printing"
-                    ? "bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                }`}>
-                  {countsLoading || isLoading ? "..." : (counts["overdue-under-printing"] || 0).toLocaleString()}
-                </span>
-              </button>
+            <div className="relative inline-block w-full sm:w-auto">
+              <label htmlFor="overdue-type-select" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                Over Due Type
+              </label>
+              <div className="relative">
+                <select
+                  id="overdue-type-select"
+                  value={selectedOverdueType}
+                  onChange={(e) => setSelectedOverdueType(e.target.value as OverdueType)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer min-w-[200px] pr-10"
+                >
+                  <option value="under-review">
+                    Under Review ({(countsLoading || isLoading ? "..." : (counts["overdue-under-review"] || 0).toLocaleString())})
+                  </option>
+                  <option value="under-printing">
+                    Under Printing ({(countsLoading || isLoading ? "..." : (counts["overdue-under-printing"] || 0).toLocaleString())})
+                  </option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         )}

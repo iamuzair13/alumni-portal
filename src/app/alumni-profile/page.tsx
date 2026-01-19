@@ -19,7 +19,7 @@ import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
 import PageBanner from "@/components/ui/PageBanner";
-import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
+import AlumniCardClient from "@/components/alumni/AlumniCardClient";
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
 import BenefitCard from "@/components/ui/BenefitCard";
 import RenewCardButton from "@/components/alumni/RenewCardButton";
@@ -701,14 +701,15 @@ let cardImageFile: string | null = null;
                         {cardStatus === "received" || cardStatus === "active" ? (
                           <>
                             <div className="mt-3 sm:mt-4">
-                              <AlumniCardTemplate
+                              <AlumniCardClient
                                 studentName={name}
                                 department={dept}
                                 faculty={faculty}
                                 alumniId={sapId || "UOL-AL-0000"}
+                                sapId={sapId || ""}
                                 validity={validity}
                                 photoUrl={profileImageFilename}
-                                cardImage={cardTemplateImageFilename}
+                                initialCardImage={cardTemplateImageFilename}
                               />
                             </div>
                             {(() => {

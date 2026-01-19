@@ -41,6 +41,7 @@ export async function GET(req: Request) {
     const photoConsentParams = searchParams.getAll("photoConsent");
     const sapIdStateParams = searchParams.getAll("sapIdState");
     const regNoStateParams = searchParams.getAll("regNoState");
+    const categoryParams = searchParams.getAll("category");
     
     const gender = genderParams.length > 0 ? genderParams : (searchParams.get("gender") || "");
     const maritalStatus = maritalStatusParams.length > 0 ? maritalStatusParams : (searchParams.get("maritalStatus") || "");
@@ -63,6 +64,7 @@ export async function GET(req: Request) {
     const photoConsent = photoConsentParams.length > 0 ? photoConsentParams : (searchParams.get("photoConsent") || "");
     const sapIdState = sapIdStateParams.length > 0 ? sapIdStateParams : (searchParams.get("sapIdState") || "");
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
+    const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
     
     const searchTerm = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
 
@@ -659,6 +661,49 @@ export async function GET(req: Request) {
       regNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
+    // Category filter
+    let categoryFilter = sql``;
+    if (category && (Array.isArray(category) ? category.length > 0 : category)) {
+      if (Array.isArray(category) && category.length > 0) {
+        const categoryConditions: ReturnType<typeof sql>[] = [];
+        category.forEach(c => {
+          const normalized = String(c).trim().toLowerCase();
+          if (normalized === "null") {
+            categoryConditions.push(sql`(a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`);
+          } else if (normalized === "a+") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`);
+          } else if (normalized === "a") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`);
+          } else if (normalized === "b") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`);
+          } else if (normalized === "c") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`);
+          } else if (normalized === "d") {
+            categoryConditions.push(sql`(LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`);
+          }
+        });
+        if (categoryConditions.length > 0) {
+          const combinedCondition = combineOrConditions(categoryConditions);
+          categoryFilter = sql`AND (${combinedCondition})`;
+        }
+      } else if (!Array.isArray(category) && category) {
+        const normalized = String(category).trim().toLowerCase();
+        if (normalized === "null") {
+          categoryFilter = sql`AND (a.category IS NULL OR TRIM(COALESCE(a.category, '')) = '')`;
+        } else if (normalized === "a+") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%')`;
+        } else if (normalized === "a") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))`;
+        } else if (normalized === "b") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'b' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%')`;
+        } else if (normalized === "c") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'c' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%')`;
+        } else if (normalized === "d") {
+          categoryFilter = sql`AND (LOWER(TRIM(COALESCE(a.category, ''))) = 'd' OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%')`;
+        }
+      }
+    }
+
     // Build WHERE clause for verify status filtering (handle arrays)
     // Verify field is now VARCHAR(10) - handle as string only
     let verifyFilter = sql``;
@@ -790,8 +835,10 @@ export async function GET(req: Request) {
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
             THEN 1 
           END) as category_d
-        FROM public.tbl_alumni a a
+        FROM public.tbl_alumni a
         WHERE ${baseWhere}
+          ${verifyFilter}
+          ${categoryFilter}
           ${facultyFilter}
           ${departmentFilter}
           ${programFilter}
@@ -816,7 +863,6 @@ export async function GET(req: Request) {
           ${mrNoFilter}
           ${sapIdStateFilter}
           ${regNoStateFilter}
-          ${verifyFilter}
           ${accessFilterCondition}
           AND (
             LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
@@ -889,6 +935,8 @@ export async function GET(req: Request) {
           END) as category_d
         FROM public.tbl_alumni a
         WHERE ${baseWhere}
+          ${verifyFilter}
+          ${categoryFilter}
           ${facultyFilter}
           ${departmentFilter}
           ${programFilter}
@@ -913,7 +961,6 @@ export async function GET(req: Request) {
           ${mrNoFilter}
           ${sapIdStateFilter}
           ${regNoStateFilter}
-          ${verifyFilter}
           ${accessFilterCondition}
       `);
     }

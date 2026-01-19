@@ -1301,7 +1301,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </button>
           )}
           {canDownload && (
-            <PrintCardButton sapId={sapId} studentName={studentName} />
+            <PrintCardButton sapId={sapId} studentName={studentName} registrationNo={alumItem.registrationno} />
           )}
           {canEdit && (
             <button

@@ -321,31 +321,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       }, { status: 500 });
     }
 
-    // Check if image1 already has a value
-    // If image1 is empty/null, save to image1; otherwise save to image2
-    // image1 is used in AlumniCardTemplate, so we preserve it
-    const currentData = await sql/* sql */`
-      SELECT image1, image2 FROM public.tbl_alumni 
-      WHERE alumniid = ${alumni.alumniid} 
-      LIMIT 1` as Array<{ image1: string | null; image2: string | null }>;
-    
-    const currentImage1 = currentData[0]?.image1;
-    
-    if (!currentImage1 || currentImage1.trim() === "") {
-      // image1 is empty, save to image1
-      await sql/* sql */`
-        UPDATE public.tbl_alumni 
-        SET image1 = ${filename}, alumni_consent_pic = ${consentPicValue}
-        WHERE alumniid = ${alumni.alumniid}`;
-    } else {
-      // image1 has value, save to image2
-      await sql/* sql */`
-        UPDATE public.tbl_alumni 
-        SET image2 = ${filename}, alumni_consent_pic = ${consentPicValue}
-        WHERE alumniid = ${alumni.alumniid}`;
-    }
+    // Update both image1 and image2 in tbl_alumni with the new image filename
+    // IMPORTANT: Profile picture updates should ONLY affect tbl_alumni, NOT tblcard
+    // Image path will be "/images" as per requirement, but we store just the filename
+    await sql/* sql */`
+      UPDATE public.tbl_alumni 
+      SET image1 = ${filename}, image2 = ${filename}, alumni_consent_pic = ${consentPicValue}
+      WHERE alumniid = ${alumni.alumniid}`;
 
     // Check if card status is "Onhold" and change it to "UnderReview" when profile data changes
+    // NOTE: We update card status but NOT the card image - card images are managed separately
     try {
       const cardStatus = await sql/* sql */`
         SELECT status 
@@ -360,11 +345,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           SET status = 'UnderReview'
           WHERE alumniid = ${alumni.alumniid}
         `;
-
       }
     } catch (cardError) {
       // Don't fail the request if card status update fails
-
     }
 
     // Return the full path for immediate display

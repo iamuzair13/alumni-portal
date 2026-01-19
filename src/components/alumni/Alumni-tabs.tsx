@@ -37,6 +37,7 @@ import { useInstitutionCountries } from "@/app/queries/fetch-institution-countri
 import { useInstitutionCities } from "@/app/queries/fetch-institution-cities";
 import { useVerifyStatuses } from "@/app/queries/fetch-verify-statuses";
 import { usePhotoConsent } from "@/app/queries/fetch-photo-consent";
+import { useCategories } from "@/app/queries/fetch-categories";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { exportJsonToExcel, type ColumnOption } from "@/lib/excel-export";
@@ -203,6 +204,7 @@ export const AlumniTabs: React.FC = () => {
   const maritalStatusFilterRef = React.useRef<HTMLDivElement>(null);
   const occupationStatusFilterRef = React.useRef<HTMLDivElement>(null);
   const photoConsentFilterRef = React.useRef<HTMLDivElement>(null);
+  const categoryFilterRef = React.useRef<HTMLDivElement>(null);
 
   // Unified item type mapped from server response
   type AlumniItem = {
@@ -295,6 +297,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedSapIdStates, setSelectedSapIdStates] = useState<string[]>([]);
   const [selectedRegNoStates, setSelectedRegNoStates] = useState<string[]>([]);
   const [selectedPhotoConsents, setSelectedPhotoConsents] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   
   // Sorting state
@@ -326,6 +329,7 @@ export const AlumniTabs: React.FC = () => {
     maritalStatus: boolean;
     occupationStatus: boolean;
     photoConsent: boolean;
+    category: boolean;
   }>({
     faculty: false,
     department: false,
@@ -350,6 +354,7 @@ export const AlumniTabs: React.FC = () => {
     maritalStatus: false,
     occupationStatus: false,
     photoConsent: false,
+    category: false,
   });
   
   // Countries are now fetched from database via useHomeCountries() and useWorkCountries()
@@ -540,6 +545,9 @@ export const AlumniTabs: React.FC = () => {
     if (selectedPhotoConsents.length > 0) {
       filters.photoConsent = selectedPhotoConsents;
     }
+    if (selectedCategories.length > 0) {
+      filters.category = selectedCategories;
+    }
     return Object.keys(filters).length > 0 ? filters : undefined;
   }, [
     statusFilter,
@@ -567,6 +575,7 @@ export const AlumniTabs: React.FC = () => {
     selectedPhotoConsents,
     selectedSapIdStates,
     selectedRegNoStates,
+    selectedCategories,
   ]);
   
   // Faculty / Department / Program options - fetched dynamically from database (tbl_alumni)
@@ -598,6 +607,7 @@ export const AlumniTabs: React.FC = () => {
   const { data: institutionCountriesData } = useInstitutionCountries(masterFilters);
   const { data: institutionCitiesData } = useInstitutionCities(masterFilters);
   const { data: photoConsentData } = usePhotoConsent(masterFilters);
+  const { data: categoriesData } = useCategories(masterFilters);
 
   // Debug logging
   React.useEffect(() => {
@@ -726,6 +736,9 @@ export const AlumniTabs: React.FC = () => {
       if (photoConsentFilterRef.current && !photoConsentFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, photoConsent: false }));
       }
+      if (categoryFilterRef.current && !categoryFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, category: false }));
+      }
     };
     
     document.addEventListener('mousedown', handleClickOutside);
@@ -812,6 +825,9 @@ export const AlumniTabs: React.FC = () => {
     setSelectedInstitutionCities([]);
     setSelectedMrNos([]);
     setSelectedPhotoConsents([]);
+    setSelectedCategories([]);
+    setSelectedSapIdStates([]);
+    setSelectedRegNoStates([]);
     setCurrentPage(1);
   }, []);
 
@@ -842,10 +858,11 @@ export const AlumniTabs: React.FC = () => {
       selectedInstitutionCities.length > 0 ||
       selectedMrNos.length > 0 ||
       selectedPhotoConsents.length > 0 ||
+      selectedCategories.length > 0 ||
       selectedSapIdStates.length > 0 ||
       selectedRegNoStates.length > 0
     );
-  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos, selectedPhotoConsents, selectedSapIdStates, selectedRegNoStates]);
+  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos, selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates]);
   
   const handleStatusToggle = (status: string) => {
     setAdditionalFilter(prev => 
@@ -982,6 +999,23 @@ export const AlumniTabs: React.FC = () => {
     }
   };
 
+  // Category filter handlers
+  const handleCategoryToggle = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+  
+  const handleCategorySelectAll = () => {
+    if (categoriesData?.categories && selectedCategories.length === categoriesData.categories.length && categoriesData.categories.length > 0) {
+      setSelectedCategories([]);
+    } else {
+      setSelectedCategories(categoriesData?.categories?.map(c => c.value) || []);
+    }
+  };
+
   // SAP ID / Registration No state filter handlers (NULL / EMPTY only)
   const handleSapIdStateToggle = (value: string) => {
     setSelectedSapIdStates(prev =>
@@ -1105,7 +1139,7 @@ export const AlumniTabs: React.FC = () => {
     selectedProgramsEnrolled.length > 0 ? selectedProgramsEnrolled : undefined,
     selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
     selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
-      selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
+    selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
       selectedMrNos.length > 0 ? selectedMrNos : undefined,
       selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
       selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
@@ -1130,7 +1164,7 @@ export const AlumniTabs: React.FC = () => {
   } = useQuery<AlumniCounts, Error>({
     queryKey: [
       "alumnilist-counts", 
-      debouncedQuery,
+      debouncedQuery, 
       statusFilter,
       selectedFaculties, 
       selectedDepartments, 
@@ -1897,6 +1931,7 @@ export const AlumniTabs: React.FC = () => {
           return hasLogin ? "Active" : "Inactive";
         })(),
         "Photo Usage Consent": item.alumni_consent_pic === true ? "Allowed" : item.alumni_consent_pic === false ? "Not Allowed" : "Null",
+        "Category": item.category || "",
         "Created Date Time": item.createddatetime || "",
         "Today Date": item.todaydate || "",
       }));
@@ -2000,6 +2035,7 @@ export const AlumniTabs: React.FC = () => {
         { key: "Data Source", label: "Data Source", defaultSelected: false },
         { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
         { key: "Photo Usage Consent", label: "Photo Usage Consent", defaultSelected: false },
+        { key: "Category", label: "Category", defaultSelected: false },
         { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
         { key: "Today Date", label: "Today Date", defaultSelected: false },
       ];
@@ -2127,9 +2163,9 @@ export const AlumniTabs: React.FC = () => {
     // Use filteredColumns directly - no need for double filtering
     const finalFilteredColumns = filteredColumns;
 
-    const dateStr = new Date().toISOString().split("T")[0];
-    const statusStr = statusFilter ? `_${statusFilter}` : "";
-    const searchStr = debouncedQuery ? `_search` : "";
+      const dateStr = new Date().toISOString().split("T")[0];
+      const statusStr = statusFilter ? `_${statusFilter}` : "";
+      const searchStr = debouncedQuery ? `_search` : "";
     const filenameBase = `alumni_export${statusStr}${searchStr}`;
 
     // Set loading state and show toast
@@ -2420,7 +2456,7 @@ export const AlumniTabs: React.FC = () => {
     }
     
     const { type, sapid } = pendingAction;
-
+    
     // Store the action locally before async operations
     const actionType = type;
     const actionSapid = sapid;
@@ -2460,7 +2496,7 @@ export const AlumniTabs: React.FC = () => {
 
       return;
     }
-
+    
     await executePendingAction();
   }, [pendingAction, mutatingIds, executePendingAction]);
 
@@ -2470,98 +2506,98 @@ export const AlumniTabs: React.FC = () => {
 
   // Helper function to render a tab button
   const renderTabButton = (tab: { key: TabKey; label: string }, idx: number, allTabs: { key: TabKey; label: string }[]) => {
-    const statCount = (() => {
-      switch (tab.key) {
-        case "total":
-          return counts.total;
-        case "verified":
-          return counts.verified;
-        case "underApproval":
-          return counts.underApproval;
-        case "active":
-          return counts.active;
-        case "aPlus":
-          return counts.category?.aPlus || 0;
-        case "a":
-          return counts.category?.a || 0;
-        case "b":
-          return counts.category?.b || 0;
-        case "c":
-          return counts.category?.c || 0;
-        case "d":
-          return counts.category?.d || 0;
+            const statCount = (() => {
+              switch (tab.key) {
+                case "total":
+                  return counts.total;
+                case "verified":
+                  return counts.verified;
+                case "underApproval":
+                  return counts.underApproval;
+                case "active":
+                  return counts.active;
+                case "aPlus":
+                  return counts.category?.aPlus || 0;
+                case "a":
+                  return counts.category?.a || 0;
+                case "b":
+                  return counts.category?.b || 0;
+                case "c":
+                  return counts.category?.c || 0;
+                case "d":
+                  return counts.category?.d || 0;
         case "distinguished":
           return counts.category?.distinguished || 0;
-        default:
-          return 0;
-      }
-    })();
-    
-    const isSelected = selected === tab.key;
-    const statusStyles = STATUS_CLASS_MAP[tab.key];
-    const isDisabled = false; // All tabs are now functional
-   
-    return (
-      <button
-        key={tab.key}
-        type="button"
-        disabled={isDisabled}
-        className={`
-          relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
-          ${isSelected 
-            ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
-            : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
-          }
-          ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
-        `}
-        onClick={() => {
-          if (!isDisabled) {
+                default:
+                  return 0;
+              }
+            })();
+            
+            const isSelected = selected === tab.key;
+            const statusStyles = STATUS_CLASS_MAP[tab.key];
+            const isDisabled = false; // All tabs are now functional
+           
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                disabled={isDisabled}
+                className={`
+                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
+                  ${isSelected 
+                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
+                    : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
+                  }
+                  ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+                  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
+                `}
+                onClick={() => {
+                  if (!isDisabled) {
 
-            setSelected(tab.key);
-            // Clear additional filter when switching tabs
-            setAdditionalFilter([]);
-          }
-        }}
-        role="tab"
-        aria-selected={isSelected}
-        aria-disabled={isDisabled}
-        aria-label={`${tab.label} (${statCount.toLocaleString()})`}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowRight") {
-            e.preventDefault();
+                  setSelected(tab.key);
+                    // Clear additional filter when switching tabs
+                    setAdditionalFilter([]);
+                  }
+                }}
+                role="tab"
+                aria-selected={isSelected}
+                aria-disabled={isDisabled}
+                aria-label={`${tab.label} (${statCount.toLocaleString()})`}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
             const nextIdx = (idx + 1) % allTabs.length;
             setSelected(allTabs[nextIdx].key);
-          } else if (e.key === "ArrowLeft") {
-            e.preventDefault();
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
             const prevIdx = (idx - 1 + allTabs.length) % allTabs.length;
             setSelected(allTabs[prevIdx].key);
-          } else if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setSelected(tab.key);
-          }
-        }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
-            {tab.label}
-          </h6>
-          {isSelected && (
-            <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
-          )}
-        </div>
-        {isLoadingCounts && !countsData ? (
-          <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
-        ) : (
-          <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
-            {statCount.toLocaleString()}
-          </h3>
-        )}
-      </button>
-    );
+                  } else if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(tab.key);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
+                    {tab.label}
+                  </h6>
+                  {isSelected && (
+                    <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
+                  )}
+                </div>
+                {isLoadingCounts && !countsData ? (
+                  <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
+                ) : (
+                  <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
+                    {statCount.toLocaleString()}
+                  </h3>
+                )}
+              </button>
+            );
   };
-  
+
   return (
     <div className="p-0">
       <div className="flex flex-col gap-8">
@@ -2570,6 +2606,8 @@ export const AlumniTabs: React.FC = () => {
           {/* Regular Tabs */}
           <div className="flex flex-wrap gap-4 mb-6">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
+            {DISTINGUISHED_TAB.map((tab, idx) => renderTabButton(tab, idx, DISTINGUISHED_TAB))}
+
           </div>
           
           {/* Category Tabs with Label */}
@@ -2582,22 +2620,12 @@ export const AlumniTabs: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-4">
               {CATEGORY_TABS.map((tab, idx) => renderTabButton(tab, idx, CATEGORY_TABS))}
+              {/* Distinguished Alumni Tab */}
+         
             </div>
           </div>
 
-          {/* Distinguished Alumni Tab */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2">
-                Special
-              </span>
-              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {DISTINGUISHED_TAB.map((tab, idx) => renderTabButton(tab, idx, DISTINGUISHED_TAB))}
-            </div>
-          </div>
+          
         </div>
 
         {/* Distinguished Alumni Tab Content */}
@@ -4685,11 +4713,94 @@ export const AlumniTabs: React.FC = () => {
                                   <div className="p-2 text-sm text-gray-500">No photo consent options available</div>
                                 )}
                               </div>
-                            </div>
-                          </div>
+                    </div>
+                  </div>
                         )}
                         {selectedPhotoConsents.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedPhotoConsents.length} selected</p>
+                        )}
+                      </div>
+
+                      {/* Category Filter */}
+                      <div className="relative" ref={categoryFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Category
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, category: !prev.category }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedCategories.length === 0
+                              ? "Select categories..."
+                              : selectedCategories.length === 1
+                              ? (() => {
+                                  const category = categoriesData?.categories?.find(c => c.value === selectedCategories[0]);
+                                  return category ? category.label : selectedCategories[0];
+                                })()
+                              : `${selectedCategories.length} categories selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.category ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.category && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCategorySelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={categoriesData?.categories && selectedCategories.length === categoriesData.categories.length && categoriesData.categories.length > 0}
+                                    onChange={handleCategorySelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Categories</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {categoriesData?.categories && categoriesData.categories.length > 0 ? (
+                                  categoriesData.categories.map((category) => {
+                                    const isChecked = selectedCategories.includes(category.value);
+                                    return (
+                                      <label
+                                        key={category.value}
+                                        className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => handleCategoryToggle(category.value)}
+                                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                          {category.label} ({category.count.toLocaleString()})
+                                        </span>
+                                      </label>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="p-2 text-sm text-gray-500">No category options available</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedCategories.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedCategories.length} selected</p>
                         )}
                       </div>
 
