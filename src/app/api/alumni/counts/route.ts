@@ -90,14 +90,27 @@ export async function GET(req: Request) {
     };
     
     // Build filters for faculty, department, and program (handle arrays)
+    // Faculty and department are now text-based from tbl_alumni columns
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        const facultyConditions = faculty.map(f => sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`);
+        // Build OR conditions for multiple faculties
+        const facultyConditions = faculty.map((f) => {
+          const normalized = String(f).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
+          }
+          return sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${f}))`;
+        });
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(faculty) && faculty) {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        const normalized = String(faculty).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          facultyFilter = sql`AND (f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
+        } else {
+        facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+        }
       }
 
     }
@@ -105,11 +118,23 @@ export async function GET(req: Request) {
     let departmentFilter = sql``;
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        const departmentConditions = department.map(d => sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`);
+        // Build OR conditions for multiple departments
+        const departmentConditions = department.map((dept) => {
+          const normalized = String(dept).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
+          }
+          return sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+        });
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(department) && department) {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`;
+        const normalized = String(department).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          departmentFilter = sql`AND (d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
+        } else {
+        departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+        }
       }
 
     }
@@ -117,11 +142,23 @@ export async function GET(req: Request) {
     let programFilter = sql``;
     if (program && (Array.isArray(program) ? program.length > 0 : program)) {
       if (Array.isArray(program) && program.length > 0) {
-        const programConditions = program.map(p => sql`LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${p}))`);
+        // Build OR conditions for multiple programs
+        const programConditions = program.map((prog) => {
+          const normalized = String(prog).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+          }
+          return sql`(LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
+        });
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
-        programFilter = sql`AND LOWER(TRIM(COALESCE(degreetitle, ''))) = LOWER(TRIM(${program}))`;
+        const normalized = String(program).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          programFilter = sql`AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+        } else {
+        programFilter = sql`AND (LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
+        }
       }
 
     }
@@ -865,6 +902,9 @@ export async function GET(req: Request) {
             THEN 1 
           END) as category_d
         FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ${baseWhere}
           ${verifyFilter}
           ${categoryFilter}
@@ -899,8 +939,8 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(a.facultyname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(a.departmentname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
           )
       `);
@@ -963,6 +1003,9 @@ export async function GET(req: Request) {
             THEN 1 
           END) as category_d
         FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ${baseWhere}
           ${verifyFilter}
           ${categoryFilter}

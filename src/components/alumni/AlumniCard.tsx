@@ -1236,8 +1236,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     // Try to get status from cache first, then from item status, fallback to pending
     const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
-    // Download button available for ALL statuses (fixed rendering issue - no conditional logic)
-    const canDownload = true;
+    // Preview button available for ALL statuses (fixed rendering issue - no conditional logic)
+    const canPreview = true;
     const isAdmin = isAdminUser(session?.user);
     const isSuperAdmin = isSuperAdminUser(session?.user);
     const isViewer = isViewerUser(session?.user);
@@ -1300,7 +1300,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               <EyeIcon className="h-7 w-7" />
             </button>
           )}
-          {canDownload && (
+          {canPreview && (
             <PrintCardButton sapId={sapId} studentName={studentName} registrationNo={alumItem.registrationno} />
           )}
           {canEdit && (
