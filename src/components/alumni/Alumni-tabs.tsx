@@ -1261,38 +1261,24 @@ export const AlumniTabs: React.FC = () => {
       }
       
       // Optimize verification status check (handle string, boolean, or null)
-      // Handle 'pending', null, undefined, empty string, or any non-true/false value as "underApproval"
+      // Handle verify='underApproval' as "underApproval"
       const verifyRaw = r.verify;
       let verifyStatus: "verified" | "unverified" | "underApproval";
       let verified: boolean;
       
-      // Check if verify is null, undefined, empty, or 'pending'
-      if (verifyRaw === null || verifyRaw === undefined || verifyRaw === "") {
+      const verifyStr = String(verifyRaw ?? "").toLowerCase().trim();
+      if (verifyStr === "true") {
+        verifyStatus = "verified";
+        verified = true;
+      } else if (verifyStr === "false") {
+        verifyStatus = "unverified";
+        verified = false;
+      } else if (verifyStr === "underapproval") {
         verifyStatus = "underApproval";
         verified = false;
       } else {
-        // Convert to string and check value
-        const verifyStr = String(verifyRaw).toLowerCase().trim();
-        if (verifyStr === "true") {
-          verifyStatus = "verified";
-          verified = true;
-        } else if (verifyStr === "false") {
-          verifyStatus = "unverified";
-          verified = false;
-        } else if (verifyStr === "pending") {
-          // Explicitly handle 'pending' status
-          verifyStatus = "underApproval";
-          verified = false;
-        } else {
-          // Any other value (empty string after trim, or unexpected value) = under approval
-          verifyStatus = "underApproval";
-          verified = false;
-        }
-      }
-      
-      // Debug logging for new registrations (verify = 'pending' or null)
-      if (verifyRaw === null || verifyRaw === undefined || String(verifyRaw).toLowerCase().trim() === 'pending') {
-
+        verifyStatus = "unverified";
+        verified = false;
       }
       
       // Optimize employment status check (single lowercase conversion)
@@ -1927,7 +1913,7 @@ export const AlumniTabs: React.FC = () => {
           const verifyValue = item.verify;
           if (verifyValue === "true") return "Verified";
           if (verifyValue === "false") return "Unverified";
-          if (verifyValue === "pending" || verifyValue === null || verifyValue === "" || verifyValue === undefined) return "Under Approval";
+          if (String(verifyValue || "").trim().toLowerCase() === "underapproval") return "Under Approval";
           return String(verifyValue || "");
         })(),
         "Last Login": item.lasttimelogin || "",

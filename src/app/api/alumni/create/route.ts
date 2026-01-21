@@ -290,8 +290,8 @@ export async function POST(req: Request) {
 
     // REGISTRATION RULES: Validation depends ONLY on verify_status
     // 1. If alumni exists and verify = 'true' → Block registration
-    // 2. If alumni exists and verify = 'pending'/'false'/null → Allow registration, overwrite, set verify = 'pending'
-    // 3. If no alumni record exists → Create new record, set verify = 'pending'
+    // 2. If alumni exists and verify = 'underApproval'/'false'/null → Allow registration, overwrite, set verify = 'underApproval'
+    // 3. If no alumni record exists → Create new record, set verify = 'underApproval'
     
     // Check if alumni record already exists by ANY identifier:
     // - SAP ID, Registration Number, CNIC/Passport, Phone Number, or Email (personal/university/official/alumni)
@@ -432,7 +432,7 @@ export async function POST(req: Request) {
         }, { status: 403 });
       }
       
-      // RULE 2: If alumni exists and verify = 'pending'/'false'/null, allow registration and overwrite
+      // RULE 2: If alumni exists and verify = 'underApproval'/'false'/null, allow registration and overwrite
 
       // Continue to update logic below (will be handled in the transaction)
       // We'll modify the INSERT to be an UPDATE when existingRecord is found
@@ -444,7 +444,7 @@ export async function POST(req: Request) {
     let isUpdate = false;
 
     const id = await sql.begin(async (tx) => {
-      // RULE 2: If existing record found (verify = 'pending'/'false'/null), UPDATE it
+      // RULE 2: If existing record found (verify = 'underApproval'/'false'/null), UPDATE it
       if (existingRecord) {
         isUpdate = true;
         const existingAlumniId = existingRecord.alumniid;
@@ -469,7 +469,7 @@ export async function POST(req: Request) {
         const preservedOfficialEmail = incomingOfficialEmail ?? existingRecord.officialemail;
         const preservedAlumniEmail = incomingAlumniEmail ?? existingRecord.alumniemail;
 
-        // Update existing record with new data, set verify = 'pending'
+        // Update existing record with new data, set verify = 'underApproval'
         const updateResult = await tx/* sql */`
           UPDATE public.tbl_alumni SET
             alumniemail = ${preservedAlumniEmail},
@@ -515,7 +515,7 @@ export async function POST(req: Request) {
             image1 = ${clean(body.image1)},
             cv = ${clean(body.cv)},
             aboutme = ${clean(body.aboutme)},
-            verify = ${'pending'}, /* Set verify = 'pending' for re-registration (Under Approval) */
+            verify = ${'underApproval'}, /* Set verify = 'underApproval' for re-registration (Under Approval) */
             datasource = ${clean(body.datasource)},
             alumnistatus = ${clean(body.alumnistatus)},
             degree_title = ${clean(body.highereducationdegreetitle)},
@@ -557,7 +557,7 @@ export async function POST(req: Request) {
 
       }
       
-      // Build the INSERT query - handle verify field separately to ensure NULL is inserted correctly
+      // Build the INSERT query
       const rows = await tx<{ alumniid: number }[]>`
         INSERT INTO public.tbl_alumni (
           alumniemail,
@@ -670,7 +670,7 @@ export async function POST(req: Request) {
           ${clean(body.aboutme)},
           ${clean(body.lasttimelogin)},
           ${body.logincount ?? null},
-          ${'pending'}, /* verify = 'pending' for new registrations (Under Approval) */
+          ${'underApproval'}, /* verify = 'underApproval' for new registrations (Under Approval) */
           ${body.emailsendcount ?? null},
           ${clean(body.emailsendstatus)},
           ${clean(body.createddatetime)},
@@ -691,7 +691,7 @@ export async function POST(req: Request) {
       `;
       const alumniId = rows[0]?.alumniid;
       
-      // Immediately verify that 'pending' was inserted correctly
+      // Immediately verify that 'underApproval' was inserted correctly
       if (alumniId) {
         try {
           const immediateCheck = await tx/* sql */`
@@ -701,12 +701,12 @@ export async function POST(req: Request) {
             LIMIT 1
           `;
 
-          if (immediateCheck[0]?.verify !== 'pending') {
+          if (String(immediateCheck[0]?.verify ?? '').trim().toLowerCase() !== 'underapproval') {
 
             // Try to fix it within the same transaction
             await tx/* sql */`
               UPDATE public.tbl_alumni 
-              SET verify = 'pending'
+              SET verify = 'underApproval'
               WHERE alumniid = ${alumniId}
             `;
 
@@ -1023,7 +1023,7 @@ export async function POST(req: Request) {
 
 
 
-    // Verify that verify field was set to 'pending'
+    // Verify that verify field was set to 'underApproval'
     if (id) {
       try {
         const verifyCheck = await sql/* sql */`
@@ -1032,19 +1032,13 @@ export async function POST(req: Request) {
                  TRIM(verify) as verify_trimmed,
                  LOWER(TRIM(verify)) as verify_lower_trimmed
           FROM public.tbl_alumni 
-          WHERE alumniid = ${id} 
+          WHERE alumniid = ${id}
           LIMIT 1
         `;
 
-        const verifyValue = verifyCheck[0]?.verify;
-        if (verifyValue === 'pending' || String(verifyValue).toLowerCase().trim() === 'pending') {
-
-        } else {
-
-
-        }
-      } catch (checkErr) {
-
+        void verifyCheck;
+      } catch {
+        // Ignore verification check errors
       }
     }
 

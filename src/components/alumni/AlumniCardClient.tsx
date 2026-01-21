@@ -14,6 +14,8 @@ type AlumniCardClientProps = {
   initialCardImage?: string | null; // Initial card image from server (for SSR)
 };
 
+import { computeValidityISOFromAppliedAt, formatCardValidityMonthYear } from "@/lib/cardValidity";
+
 export default function AlumniCardClient({
   studentName,
   department,
@@ -26,9 +28,19 @@ export default function AlumniCardClient({
 }: AlumniCardClientProps) {
   // Fetch card data client-side so it can be invalidated when admin downloads
   const { data: cardData, isLoading } = useCardStatus(sapId);
-  
+
   // Use card_image from tblcard if available, otherwise fall back to initialCardImage or photoUrl
   const cardImage = cardData?.card_image ?? cardData?.cardpicture ?? initialCardImage ?? null;
+
+  // Compute validity: if delivered, show 3 years after createdat; else fallback to provided validity
+  let computedValidity = validity;
+  if (cardData?.status?.toLowerCase() === "delivered") {
+    if (cardData.validity_date) {
+      computedValidity = formatCardValidityMonthYear(cardData.validity_date);
+    } else if (cardData.createdat) {
+      computedValidity = computeValidityISOFromAppliedAt(cardData.createdat, 3) ?? computedValidity;
+    }
+  }
 
   return (
     <AlumniCardTemplate
@@ -36,7 +48,7 @@ export default function AlumniCardClient({
       department={department}
       faculty={faculty}
       alumniId={alumniId}
-      validity={validity}
+      validity={computedValidity}
       photoUrl={photoUrl}
       cardImage={cardImage}
     />

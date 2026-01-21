@@ -122,9 +122,11 @@ export default function PrintCardButton({ sapId, registrationNo }: Props) {
       const blobUrl = window.URL.createObjectURL(blob);
 
       // Use filename from API (which already uses registration number or SAP ID)
-      const filename = data.filename || ((registrationNo && String(registrationNo).trim() !== "") 
+      const filename = data.filename || ((sapId && String(sapId).trim() !== "")
+        ? `${String(sapId).trim()}.jpg`
+        : (registrationNo && String(registrationNo).trim() !== "")
         ? `${String(registrationNo).trim()}.jpg`
-        : `${sapId}.jpg`);
+        : "alumni-image.jpg");
 
       setImageData({ url: blobUrl, filename });
       setShowPreview(true);

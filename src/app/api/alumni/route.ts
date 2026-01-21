@@ -272,7 +272,7 @@ function mapToDb(payload: z.infer<typeof alumniRegistrationComprehensiveSchema>)
     work_city: payload.workCity ?? null,
     work_country: payload.workCountry ?? null,
     datasource: payload.source ?? null,
-    verify: payload.verified === true ? "true" : payload.verified === false ? "false" : "pending", // 'pending' for new registrations
+    verify: payload.verified === true ? "true" : payload.verified === false ? "false" : "underApproval", // 'underApproval' for new registrations
     alumnistatus: payload.category ?? null,
     todaydate: new Date(),
   };
@@ -399,22 +399,28 @@ export async function GET(req: Request) {
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        // Build OR conditions for multiple faculties
+        // Faculty is now ID-based (tbl_alumni.faculty)
         const facultyConditions = faculty.map((f) => {
           const normalized = String(f).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
+            return sql`(a.faculty IS NULL)`;
           }
-          return sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${f}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(a.faculty = ${id})`;
         });
-        const combinedCondition = combineOrConditions(facultyConditions);
-        facultyFilter = sql`AND (${combinedCondition})`;
+        facultyFilter = sql`AND (${combineOrConditions(facultyConditions)})`;
       } else if (!Array.isArray(faculty) && faculty) {
         const normalized = String(faculty).trim();
         if (normalized === "NULL" || normalized === "null") {
-          facultyFilter = sql`AND (f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
+          facultyFilter = sql`AND (a.faculty IS NULL)`;
         } else {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            facultyFilter = sql`AND (a.faculty = ${id})`;
+          } else {
+            facultyFilter = sql`AND 1 = 0`;
+          }
         }
       }
 
@@ -423,22 +429,28 @@ export async function GET(req: Request) {
     let departmentFilter = sql``;
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        // Build OR conditions for multiple departments
+        // Department is now ID-based (tbl_alumni.department)
         const departmentConditions = department.map((dept) => {
           const normalized = String(dept).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
+            return sql`(a.department IS NULL)`;
           }
-          return sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(a.department = ${id})`;
         });
-        const combinedCondition = combineOrConditions(departmentConditions);
-        departmentFilter = sql`AND (${combinedCondition})`;
+        departmentFilter = sql`AND (${combineOrConditions(departmentConditions)})`;
       } else if (!Array.isArray(department) && department) {
         const normalized = String(department).trim();
         if (normalized === "NULL" || normalized === "null") {
-          departmentFilter = sql`AND (d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
+          departmentFilter = sql`AND (a.department IS NULL)`;
         } else {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            departmentFilter = sql`AND (a.department = ${id})`;
+          } else {
+            departmentFilter = sql`AND 1 = 0`;
+          }
         }
       }
 
@@ -1150,7 +1162,7 @@ export async function GET(req: Request) {
           } else if (s === "unverified") {
             statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'false'`);
           } else if (s === "underApproval") {
-            statusConditions.push(sql`verify = 'pending'`);
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'`);
           } else if (s === "active") {
             statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
           } else if (s === "inactive") {
@@ -1182,7 +1194,7 @@ export async function GET(req: Request) {
           verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
 
         } else if (status === "underApproval") {
-          verifyFilter = sql`AND verify = 'pending'`;
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'`;
 
         } else if (status === "active") {
           verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
@@ -1384,10 +1396,10 @@ export async function GET(req: Request) {
 
     } else if (status === "underApproval" && rows.length === 0) {
 
-      // Quick check to see if there are any 'pending' verify records
+      // Quick check to see if there are any 'underApproval' verify records
       const checkPending = await sql/* sql */`
         SELECT COUNT(*) as count FROM public.tbl_alumni 
-        WHERE sapid IS NOT NULL AND sapid != '' AND verify = 'pending'
+        WHERE sapid IS NOT NULL AND sapid != '' AND LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'
       `;
 
       // Get sample records to see what's actually there
@@ -1395,7 +1407,7 @@ export async function GET(req: Request) {
         SELECT alumniid, sapid, registrationno, verify, LENGTH(verify) as verify_length
         FROM public.tbl_alumni 
         WHERE (sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')
-        AND verify = 'pending'
+        AND LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'
         ORDER BY alumniid DESC
         LIMIT 5
       `;
@@ -1408,14 +1420,15 @@ export async function GET(req: Request) {
         LIMIT 5
       `;
 
-      // Get sample records with 'pending' to see what's actually stored
+      // Get sample records with 'underApproval' to see what's actually stored
       const samplePending = await sql/* sql */`
-        SELECT sapid, verify, LENGTH(verify) as verify_length, 
+        SELECT alumniid, sapid, registrationno, verify,
+               LENGTH(verify) as verify_length,
                TRIM(verify) as verify_trimmed,
                LOWER(TRIM(verify)) as verify_lower_trimmed
         FROM public.tbl_alumni 
         WHERE sapid IS NOT NULL AND sapid != '' 
-        AND (verify = 'pending' OR LOWER(TRIM(COALESCE(verify, ''))) = 'pending')
+        AND (verify = 'underApproval' OR LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval')
         LIMIT 5
       `;
 
@@ -1436,7 +1449,7 @@ export async function GET(req: Request) {
         SELECT verify, LENGTH(verify) as verify_length, COUNT(*) as count
         FROM public.tbl_alumni 
         WHERE sapid IS NOT NULL AND sapid != '' 
-        AND (LOWER(verify) LIKE '%pending%' OR verify LIKE '%pending%')
+        AND (LOWER(verify) LIKE '%underapproval%' OR verify LIKE '%underApproval%')
         GROUP BY verify, LENGTH(verify)
         ORDER BY count DESC
         LIMIT 10
@@ -1724,7 +1737,7 @@ export async function POST(req: Request) {
       
       // RULE 2: If alumni exists and verify = 'false'/'pending'/null, allow registration and overwrite
       // Update the existing record with new data, keeping the same alumniid
-      // IMPORTANT: Always set verify = 'pending' when re-registering (regardless of payload)
+      // IMPORTANT: Always set verify = 'underApproval' when re-registering (regardless of payload)
       // IMPORTANT: Preserve identifier fields - if incoming value is missing, keep the existing value
 
       const alumniId = existingRecord.alumniid;
@@ -1771,7 +1784,7 @@ export async function POST(req: Request) {
           officialemail = ${d.officialemail},
           officialnumber = ${d.officialnumber},
           datasource = ${d.datasource},
-          verify = ${'pending'}, /* Always set verify = 'pending' for re-registration (Under Approval) */
+          verify = ${'underApproval'}, /* Always set verify = 'underApproval' for re-registration (Under Approval) */
           alumnistatus = ${d.alumnistatus},
           todaydate = ${d.todaydate}
         WHERE alumniid = ${alumniId}

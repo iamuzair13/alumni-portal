@@ -8,6 +8,7 @@ const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
   .filter(Boolean);
 
 const nextConfig = {
+  outputFileTracing: false,
   // Remove output: 'standalone' - we're using custom server
   eslint: {
     // Warning: This allows production builds to successfully complete even if

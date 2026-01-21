@@ -553,7 +553,7 @@ export const AlumniAssociationTab: React.FC = () => {
         "Official Phone": item.officialnumber || "",
         "Work City": item.work_city || "",
         "Work Country": item.work_country || "",
-        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : item.verify === "pending" || item.verify === null || item.verify === "" ? "Under Approval" : item.verify || "",
+        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : String(item.verify || "").trim().toLowerCase() === "underapproval" ? "Under Approval" : item.verify || "",
         "Last Login": item.lasttimelogin || "",
         "Login Count": item.logincount || 0,
         "Email Send Count": item.emailsendcount || 0,

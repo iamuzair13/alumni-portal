@@ -557,10 +557,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       }
     }
     
-    // Check if this is a status change from 'pending' (under approval) to verified/unverified
-    const wasUnderApproval = current.verify === null || current.verify === undefined || 
-                              String(current.verify).trim().toLowerCase() === 'pending' || 
-                              String(current.verify).trim() === "";
+    // Check if this is a status change from 'underApproval' to verified/unverified
+    const wasUnderApproval =
+      current.verify !== null &&
+      current.verify !== undefined &&
+      String(current.verify).trim().toLowerCase() === "underapproval";
     
     // Always generate password and send email when admin verifies/unverifies an alumni that was under approval
     // This happens only once when status changes from NULL to verified/unverified

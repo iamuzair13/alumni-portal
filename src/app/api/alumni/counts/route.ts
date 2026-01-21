@@ -94,22 +94,28 @@ export async function GET(req: Request) {
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        // Build OR conditions for multiple faculties
+        // Faculty is now ID-based (tbl_alumni.faculty)
         const facultyConditions = faculty.map((f) => {
           const normalized = String(f).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
+            return sql`(a.faculty IS NULL)`;
           }
-          return sql`LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${f}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(a.faculty = ${id})`;
         });
-        const combinedCondition = combineOrConditions(facultyConditions);
-        facultyFilter = sql`AND (${combinedCondition})`;
+        facultyFilter = sql`AND (${combineOrConditions(facultyConditions)})`;
       } else if (!Array.isArray(faculty) && faculty) {
         const normalized = String(faculty).trim();
         if (normalized === "NULL" || normalized === "null") {
-          facultyFilter = sql`AND (f.faculty_name IS NULL AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = ''))`;
+          facultyFilter = sql`AND (a.faculty IS NULL)`;
         } else {
-        facultyFilter = sql`AND LOWER(TRIM(COALESCE(f.faculty_name, a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            facultyFilter = sql`AND (a.faculty = ${id})`;
+          } else {
+            facultyFilter = sql`AND 1 = 0`;
+          }
         }
       }
 
@@ -118,22 +124,28 @@ export async function GET(req: Request) {
     let departmentFilter = sql``;
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        // Build OR conditions for multiple departments
+        // Department is now ID-based (tbl_alumni.department)
         const departmentConditions = department.map((dept) => {
           const normalized = String(dept).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
+            return sql`(a.department IS NULL)`;
           }
-          return sql`LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(a.department = ${id})`;
         });
-        const combinedCondition = combineOrConditions(departmentConditions);
-        departmentFilter = sql`AND (${combinedCondition})`;
+        departmentFilter = sql`AND (${combineOrConditions(departmentConditions)})`;
       } else if (!Array.isArray(department) && department) {
         const normalized = String(department).trim();
         if (normalized === "NULL" || normalized === "null") {
-          departmentFilter = sql`AND (d.department_name IS NULL AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = ''))`;
+          departmentFilter = sql`AND (a.department IS NULL)`;
         } else {
-        departmentFilter = sql`AND LOWER(TRIM(COALESCE(d.department_name, a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            departmentFilter = sql`AND (a.department = ${id})`;
+          } else {
+            departmentFilter = sql`AND 1 = 0`;
+          }
         }
       }
 
@@ -784,7 +796,7 @@ export async function GET(req: Request) {
           } else if (s === "unverified") {
             statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'false'`);
           } else if (s === "underApproval") {
-            statusConditions.push(sql`verify = 'pending'`);
+            statusConditions.push(sql`LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'`);
           } else if (s === "active") {
             statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
           } else if (s === "inactive") {
@@ -813,7 +825,7 @@ export async function GET(req: Request) {
         } else if (status === "unverified") {
           verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
         } else if (status === "underApproval") {
-          verifyFilter = sql`AND verify = 'pending'`;
+          verifyFilter = sql`AND LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'`;
         } else if (status === "active") {
           verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
         } else if (status === "inactive") {
@@ -857,9 +869,9 @@ export async function GET(req: Request) {
             WHEN LOWER(COALESCE(a.verify, '')) = 'false' 
             THEN 1 
           END) as unverified,
-          -- Under Approval: verify = 'pending' (new registrations awaiting admin approval)
+          -- Under Approval: verify = 'underApproval' (new registrations awaiting admin approval)
           COUNT(CASE 
-            WHEN a.verify = 'pending'
+            WHEN LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval'
             THEN 1 
           END) as under_approval,
           -- Active: has logged in
@@ -958,9 +970,9 @@ export async function GET(req: Request) {
             WHEN LOWER(COALESCE(a.verify, '')) = 'false' 
             THEN 1 
           END) as unverified,
-          -- Under Approval: verify = 'pending' (new registrations awaiting admin approval)
+          -- Under Approval: verify = 'underApproval' (new registrations awaiting admin approval)
           COUNT(CASE 
-            WHEN a.verify = 'pending'
+            WHEN LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval'
             THEN 1 
           END) as under_approval,
           -- Active: has logged in

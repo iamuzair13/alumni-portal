@@ -45,7 +45,7 @@ export function buildMasterFilterConditions(
       } else if (s === "unverified") {
         statusConditions.push(sql`LOWER(COALESCE(verify, '')) = 'false'`);
       } else if (s === "underApproval") {
-        statusConditions.push(sql`verify = 'pending'`);
+        statusConditions.push(sql`LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'`);
       } else if (s === "active") {
         statusConditions.push(sql`((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`);
       } else if (s === "inactive") {
@@ -71,10 +71,28 @@ export function buildMasterFilterConditions(
     const faculty = getFilterValue("faculty");
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        const conditions = faculty.map(f => sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${f}))`);
+        const conditions = faculty.map((f) => {
+          const normalized = String(f).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(faculty IS NULL)`;
+          }
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(faculty = ${id})`;
+        });
         filterConditions.push(sql`(${combineOrConditions(conditions)})`);
       } else if (!Array.isArray(faculty) && faculty) {
-        filterConditions.push(sql`LOWER(TRIM(COALESCE(facultyname, ''))) = LOWER(TRIM(${faculty}))`);
+        const normalized = String(faculty).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          filterConditions.push(sql`(faculty IS NULL)`);
+        } else {
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            filterConditions.push(sql`(faculty = ${id})`);
+          } else {
+            filterConditions.push(sql`1 = 0`);
+          }
+        }
       }
     }
   }
@@ -84,10 +102,28 @@ export function buildMasterFilterConditions(
     const department = getFilterValue("department");
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        const conditions = department.map(d => sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${d}))`);
+        const conditions = department.map((d) => {
+          const normalized = String(d).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(department IS NULL)`;
+          }
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(department = ${id})`;
+        });
         filterConditions.push(sql`(${combineOrConditions(conditions)})`);
       } else if (!Array.isArray(department) && department) {
-        filterConditions.push(sql`LOWER(TRIM(COALESCE(departmentname, ''))) = LOWER(TRIM(${department}))`);
+        const normalized = String(department).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          filterConditions.push(sql`(department IS NULL)`);
+        } else {
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            filterConditions.push(sql`(department = ${id})`);
+          } else {
+            filterConditions.push(sql`1 = 0`);
+          }
+        }
       }
     }
   }

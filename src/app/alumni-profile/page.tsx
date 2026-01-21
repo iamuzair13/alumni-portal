@@ -723,9 +723,19 @@ let cardImageFile: string | null = null;
                                 expiryDate.setHours(0, 0, 0, 0);
                               } else if (validity) {
                                 // Fallback to computed validity (format: "YYYY-12")
-                              const [year] = validity.split("-").map(Number);
-                                expiryDate = new Date(year, 11, 31); // December 31st
-                                expiryDate.setHours(0, 0, 0, 0);
+                                if (validity.includes("/")) {
+                                  const [mmRaw, yyyyRaw] = validity.split("/");
+                                  const month = Number(mmRaw);
+                                  const year = Number(yyyyRaw);
+                                  if (!Number.isNaN(month) && !Number.isNaN(year) && month >= 1 && month <= 12) {
+                                    expiryDate = new Date(year, month, 0);
+                                    expiryDate.setHours(0, 0, 0, 0);
+                                  }
+                                } else {
+                                  const [year] = validity.split("-").map(Number);
+                                  expiryDate = new Date(year, 11, 31); // December 31st
+                                  expiryDate.setHours(0, 0, 0, 0);
+                                }
                               }
                               
                               if (expiryDate) {
@@ -733,12 +743,16 @@ let cardImageFile: string | null = null;
                               today.setHours(0, 0, 0, 0);
                                 isExpired = today > expiryDate;
                               }
-                              
-                              const formattedExpiry = expiryDate ? expiryDate.toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric' 
-                              }) : "Not set";
+
+                              const formattedExpiry = validityDate
+                                ? (() => {
+                                    const d = new Date(validityDate);
+                                    if (Number.isNaN(d.getTime())) return "Not set";
+                                    const month = String(d.getMonth() + 1).padStart(2, "0");
+                                    const year = d.getFullYear();
+                                    return `${month}/${year}`;
+                                  })()
+                                : validity ?? "Not set";
                               
                               return (
                                 <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">

@@ -100,7 +100,7 @@ export async function GET(req: Request) {
     } else if (status === "unverified") {
       verifyFilter = sql`AND LOWER(COALESCE(verify, '')) = 'false'`;
     } else if (status === "underApproval") {
-      verifyFilter = sql`AND verify = 'pending'`;
+      verifyFilter = sql`AND LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'`;
     } else if (status === "active") {
       verifyFilter = sql`AND ((lasttimelogin IS NOT NULL AND lasttimelogin != '') OR (logincount IS NOT NULL AND logincount > 0))`;
     } else if (status === "inactive") {

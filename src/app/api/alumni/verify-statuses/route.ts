@@ -21,7 +21,7 @@ function mapVerifyToStatus(raw: string): VerifyStatus | null {
   if (v === "false") {
     return { key: "unverified", label: "Unverified" };
   }
-  if (v === "pending") {
+  if (v === "underapproval") {
     return { key: "underApproval", label: "Under Approval" };
   }
 

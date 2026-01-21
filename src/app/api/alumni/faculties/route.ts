@@ -25,36 +25,24 @@ export async function GET(req: Request) {
 
     const rows = await sql/* sql */`
       SELECT 
-        CASE 
-          WHEN a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '' 
-          THEN 'Null'
-          ELSE TRIM(a.facultyname)
-        END as faculty_value,
+        a.faculty as faculty_id,
+        COALESCE(NULLIF(TRIM(COALESCE(f.faculty_name, '')), ''), 'Null') as faculty_label,
         COUNT(*) as count
       FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
         ${accessFilterCondition}
         ${masterFilterConditions}
-      GROUP BY 
-        CASE 
-          WHEN a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '' 
-          THEN 'Null'
-          ELSE TRIM(a.facultyname)
-        END
-      ORDER BY 
-        CASE 
-          WHEN a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '' 
-          THEN 'Null'
-          ELSE TRIM(a.facultyname)
-        END ASC
+      GROUP BY a.faculty, COALESCE(NULLIF(TRIM(COALESCE(f.faculty_name, '')), ''), 'Null')
+      ORDER BY faculty_label ASC
     `;
 
-    const faculties = (rows as unknown as Array<{ faculty_value: string; count: number | string | bigint }>).map((row) => {
-      const facultyValue = row.faculty_value || "Null";
-      const isNull = facultyValue === "Null";
+    const faculties = (rows as unknown as Array<{ faculty_id: number | null; faculty_label: string; count: number | string | bigint }>).map((row) => {
+      const id = row.faculty_id;
+      const label = row.faculty_label || "Null";
       return {
-        value: isNull ? "NULL" : facultyValue,
-        label: facultyValue,
+        value: id === null ? "NULL" : String(id),
+        label,
         count: Number(row.count || 0),
       };
     });

@@ -69,12 +69,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       return NextResponse.json({ error: "Image not found in alumni profile" }, { status: 404 });
     }
     
-    // Determine download filename: use registration number if exists, otherwise use SAP ID
+    // Determine download filename: use SAP ID if exists, otherwise use registration number
     // This is only for the downloaded file name, NOT for storing in tblcard
-    const downloadFilename = (data.registrationno && String(data.registrationno).trim() !== "") 
-      ? `${String(data.registrationno).trim()}.jpg`
-      : (data.sapid && String(data.sapid).trim() !== "")
+    const downloadFilename = (data.sapid && String(data.sapid).trim() !== "")
       ? `${String(data.sapid).trim()}.jpg`
+      : (data.registrationno && String(data.registrationno).trim() !== "") 
+      ? `${String(data.registrationno).trim()}.jpg`
       : "alumni-image.jpg";
     
     // Save the image filename from tbl_alumni to tblcard (keep original filename, don't rename)

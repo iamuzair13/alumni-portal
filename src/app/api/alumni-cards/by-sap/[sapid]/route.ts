@@ -207,6 +207,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     
     const currentStatus = currentCard[0].status;
     const cardData = currentCard[0];
+
+    const shouldSetDeliveredValidity =
+      finalStatus === "Delivered" && String(currentStatus ?? "").trim() !== "Delivered";
     
     // Update status and reason_onhold if provided
     // If status is not "Onhold", clear reason_onhold
@@ -234,7 +237,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       } else {
         rows = await sql/* sql */`
           UPDATE public.tblcard c
-          SET status = ${finalStatus}, reason_onhold = NULL
+          SET 
+            status = ${finalStatus},
+            reason_onhold = NULL,
+            validity_date = CASE
+              WHEN ${shouldSetDeliveredValidity} THEN (CURRENT_DATE + INTERVAL '3 years')::date
+              ELSE c.validity_date
+            END
           FROM public.tbl_alumni a
           WHERE a.alumniid = c.alumniid
             AND (
