@@ -11,6 +11,11 @@ export type AdminUser = {
   blocked: boolean | null;
   lastlogindatetime: string | null;
   password?: string | null;
+  accessAssignments?: {
+    faculties: string[];
+    departments: string[];
+    programs: string[];
+  };
 };
 
 export async function getUsersList(signal?: AbortSignal): Promise<AdminUser[]> {

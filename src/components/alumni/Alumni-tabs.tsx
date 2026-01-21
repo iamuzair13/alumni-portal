@@ -874,12 +874,18 @@ export const AlumniTabs: React.FC = () => {
   };
   
   const handleStatusSelectAll = () => {
-    const allStatuses = ["verified", "unverified", "underApproval", "active", "inactive"];
-    if (additionalFilter.length === allStatuses.length) {
+    const allStatusValues = statusOptions.map(s => s.value);
+    const isAllSelected =
+      allStatusValues.length > 0 &&
+      allStatusValues.every(v => additionalFilter.includes(v)) &&
+      additionalFilter.length === allStatusValues.length;
+
+    if (isAllSelected) {
       setAdditionalFilter([]);
-    } else {
-      setAdditionalFilter(allStatuses);
+      return;
     }
+
+    setAdditionalFilter(allStatusValues);
   };
   
   // Handlers for home country, province, and city filters
@@ -1388,6 +1394,15 @@ export const AlumniTabs: React.FC = () => {
 
     return opts;
   }, [counts, verifyStatusesData]);
+
+  const allStatusesSelected = useMemo(() => {
+    const allValues = statusOptions.map(s => s.value);
+    return (
+      allValues.length > 0 &&
+      allValues.every(v => additionalFilter.includes(v)) &&
+      additionalFilter.length === allValues.length
+    );
+  }, [statusOptions, additionalFilter]);
 
   // Handle sorting
   const handleSort = useCallback((field: string) => {
@@ -2953,7 +2968,7 @@ export const AlumniTabs: React.FC = () => {
                     <span>
                       {additionalFilter.length === 0 
                         ? `All Status (${counts.total.toLocaleString()})` 
-                        : additionalFilter.length === statusOptions.length
+                        : allStatusesSelected
                         ? `All Status (${counts.total.toLocaleString()})`
                         : `${additionalFilter.length} Selected`}
                     </span>
@@ -2979,7 +2994,7 @@ export const AlumniTabs: React.FC = () => {
                           <div className="flex items-center space-x-2">
                             <input
                               type="checkbox"
-                              checked={additionalFilter.length === statusOptions.length}
+                              checked={allStatusesSelected}
                               onChange={handleStatusSelectAll}
                               className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                             />

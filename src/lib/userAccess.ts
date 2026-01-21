@@ -42,9 +42,15 @@ export async function getUserAccessAssignments(userId: number): Promise<UserAcce
     }
     
     const rows = await sql/* sql */`
-      SELECT faculty_name, department_name, program_name
-      FROM public.user_access_assignments
-      WHERE userid = ${userId}
+      SELECT
+        COALESCE(u.faculty_name, f.faculty_name) as faculty_name,
+        COALESCE(u.department_name, d.department_name) as department_name,
+        COALESCE(u.program_name, p.program_name) as program_name
+      FROM public.user_access_assignments u
+      LEFT JOIN public.tbl_faculties f ON u.faculty_id = f.id
+      LEFT JOIN public.tbl_departments d ON u.department_id = d.id
+      LEFT JOIN public.tbl_programs p ON u.program_id = p.id
+      WHERE u.userid = ${userId}
     ` as Array<UserAccessAssignment>;
     return rows || [];
   } catch (error) {

@@ -145,9 +145,25 @@ export async function PUT(req: Request) {
     } else {
       body = await req.json();
     }
+
+    const isRestrictedStaff = (isAdmin || isViewer) && !isSuperAdmin;
+    const nonEmptyKeys = Object.keys(body || {}).filter((k) => {
+      if (k === "newPassword") return false;
+      if (k === "user_image") return false;
+      const v = (body as Record<string, unknown>)[k];
+      if (v === undefined || v === null) return false;
+      if (typeof v === "string") return v.trim().length > 0;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "object") return true;
+      return true;
+    });
+
+    if (isRestrictedStaff && nonEmptyKeys.length > 0) {
+      return NextResponse.json({ error: "FORBIDDEN: You can only update your password and image" }, { status: 403 });
+    }
     
     // Validate email if provided
-    if (body.email) {
+    if (body.email && !isRestrictedStaff) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(String(body.email))) {
         return NextResponse.json({ error: "INVALID_EMAIL_FORMAT" }, { status: 400 });
@@ -175,10 +191,10 @@ export async function PUT(req: Request) {
     await sql/* sql */`
       UPDATE public.users
       SET
-        ${body.email !== undefined ? sql`email = ${body.email},` : sql``}
+        ${body.email !== undefined && !isRestrictedStaff ? sql`email = ${body.email},` : sql``}
         ${plainTextPassword !== undefined && hashedPassword !== undefined ? sql`password = ${plainTextPassword}, password_hash = ${hashedPassword},` : sql``}
-        ${body.firstname !== undefined ? sql`firstname = ${body.firstname},` : sql``}
-        ${body.lastname !== undefined ? sql`lastname = ${body.lastname},` : sql``}
+        ${body.firstname !== undefined && !isRestrictedStaff ? sql`firstname = ${body.firstname},` : sql``}
+        ${body.lastname !== undefined && !isRestrictedStaff ? sql`lastname = ${body.lastname},` : sql``}
         ${body.department !== undefined && isSuperAdmin ? sql`department = ${body.department},` : sql``}
         ${body.user_image !== undefined ? sql`user_image = ${body.user_image},` : sql``}
         updated_at = now()

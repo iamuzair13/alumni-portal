@@ -9,6 +9,8 @@ type Props = {
    * This is the "fixed width" baseline that prevents column overlap on smaller screens.
    */
   minWidth?: number | string;
+  /** Optional max width for the outer container, e.g. 1200 or "90vw". */
+  maxWidth?: number | string;
   /**
    * Optional max height for the scroll area, e.g. "750px" or "70vh".
    * When provided, vertical scrolling happens inside the table container.
@@ -24,12 +26,13 @@ function toCssSize(v: number | string | undefined, fallbackPx: number): string {
   return v;
 }
 
-export default function SyncedTableScroll({ children, minWidth = 800, maxHeight, className }: Props) {
+export default function SyncedTableScroll({ children, minWidth = 800, maxWidth, maxHeight, className }: Props) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const topScrollbarRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
 
   const minWidthCss = useMemo(() => toCssSize(minWidth, 800), [minWidth]);
+  const maxWidthCss = useMemo(() => (maxWidth === undefined ? null : toCssSize(maxWidth, 1200)), [maxWidth]);
   const maxHeightCss = useMemo(() => (maxHeight === undefined ? null : toCssSize(maxHeight, 700)), [maxHeight]);
 
   useEffect(() => {
@@ -89,7 +92,10 @@ export default function SyncedTableScroll({ children, minWidth = 800, maxHeight,
   }, []);
 
   return (
-    <div className={`min-w-0 max-w-full ${className ?? ""}`}>
+    <div
+      className={`min-w-0 max-w-full ${className ?? ""}`}
+      style={maxWidthCss ? { maxWidth: maxWidthCss } : undefined}
+    >
       {/* Top Horizontal Scrollbar */}
       <div
         ref={topScrollbarRef}

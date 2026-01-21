@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { currentUserImageKey } from "@/app/queries/alumni-profile";
+import Badge from "@/components/ui/badge/Badge";
 
 type UserData = {
   userid: number;
@@ -20,6 +21,14 @@ type UserData = {
   lastlogindatetime: string | null;
   user_image: string | null;
   password?: string | null;
+};
+
+type AccessAssignmentsResponse = {
+  isSuperAdmin: boolean;
+  isAlumni: boolean;
+  faculties: string[];
+  departments: string[];
+  programs: string[];
 };
 
 export default function AdminProfileForm() {
@@ -43,6 +52,18 @@ export default function AdminProfileForm() {
   useEffect(() => {
     fetchUserData();
   }, []);
+
+  const accessAssignmentsQuery = useQuery({
+    queryKey: ["users", "current", "access-assignments"],
+    enabled: !!userData,
+    queryFn: async () => {
+      const res = await fetch("/api/users/current/access-assignments");
+      if (!res.ok) {
+        throw new Error("Failed to fetch access assignments");
+      }
+      return (await res.json()) as AccessAssignmentsResponse;
+    },
+  });
 
   const fetchUserData = async () => {
     try {
@@ -124,8 +145,10 @@ export default function AdminProfileForm() {
     
     // Validate
     const newErrors: Record<string, string> = {};
-    if (!formData.email || !formData.email.includes("@")) {
-      newErrors.email = "Valid email is required";
+    if (!isRestrictedStaff) {
+      if (!formData.email || !formData.email.includes("@")) {
+        newErrors.email = "Valid email is required";
+      }
     }
     if (formData.newPassword && formData.newPassword.length < 8) {
       newErrors.newPassword = "New password must be at least 8 characters";
@@ -141,18 +164,20 @@ export default function AdminProfileForm() {
       
       // Create FormData for file upload
       const formDataToSend = new FormData();
-      formDataToSend.append("email", formData.email);
+      if (!isRestrictedStaff) {
+        formDataToSend.append("email", formData.email);
+        formDataToSend.append("firstname", formData.firstname);
+        formDataToSend.append("lastname", formData.lastname);
+        if (formData.department) {
+          formDataToSend.append("department", formData.department);
+        }
+      }
       // Only send new password if provided and not empty
       if (formData.newPassword && formData.newPassword.trim().length > 0) {
         formDataToSend.append("newPassword", formData.newPassword.trim());
 
       } else {
 
-      }
-      formDataToSend.append("firstname", formData.firstname);
-      formDataToSend.append("lastname", formData.lastname);
-      if (formData.department) {
-        formDataToSend.append("department", formData.department);
       }
       if (imageFile) {
         formDataToSend.append("image", imageFile);
@@ -241,173 +266,264 @@ export default function AdminProfileForm() {
     );
   }
 
-  const isSuperAdmin = userData.type?.toLowerCase() === "superadmin";
+  const normalizedType = userData.type ? String(userData.type).toLowerCase().trim() : "";
+  const isSuperAdmin = normalizedType === "superadmin";
+  const isRestrictedStaff = !isSuperAdmin;
+
+  const roleLabel = userData.type || "N/A";
+  const statusLabel = userData.blocked ? "Blocked" : "Active";
+
+  const displayName = `${userData.firstname ?? ""} ${userData.lastname ?? ""}`.trim() || userData.email || "User";
+  const lastLoginLabel = userData.lastlogindatetime
+    ? new Date(userData.lastlogindatetime).toLocaleString()
+    : "-";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Profile Image */}
-      <div>
-        <Label>Profile Image</Label>
-        <div className="mt-2 flex items-center gap-4">
-          <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-            {imagePreview ? (
-              <Image
-                src={imagePreview}
-                alt="Profile preview"
-                width={96}
-                height={96}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                <span className="text-2xl text-gray-500 dark:text-gray-400">
-                  {userData.firstname?.[0]?.toUpperCase() || userData.email?.[0]?.toUpperCase() || "U"}
-                </span>
+      <section className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-brand-50/50 via-transparent to-blue-50/50 dark:from-brand-500/10 dark:to-blue-500/10" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              {imagePreview ? (
+                <Image src={imagePreview} alt="Profile preview" width={96} height={96} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
+                  <span className="text-2xl font-semibold text-gray-500 dark:text-gray-300">
+                    {userData.firstname?.[0]?.toUpperCase() || userData.email?.[0]?.toUpperCase() || "U"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white/90">{displayName}</h3>
+                <Badge variant={isSuperAdmin ? "solid" : "light"} color={isSuperAdmin ? "primary" : "light"} size="sm">
+                  {roleLabel}
+                </Badge>
+                <Badge variant="light" color={userData.blocked ? "error" : "success"} size="sm">
+                  {statusLabel}
+                </Badge>
               </div>
-            )}
+              <p className="mt-1 text-sm text-slate-600 dark:text-gray-400">{userData.email || "-"}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-gray-500">Last login: {lastLoginLabel}</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 dark:text-gray-400
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100
-                dark:file:bg-blue-900/20 dark:file:text-blue-300"
-            />
-            {errors.image && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.image}</p>
-            )}
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Optional. Max 5MB. JPG, PNG, or GIF.
-            </p>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex-1">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-full file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-brand-50 file:text-brand-600
+                  hover:file:bg-brand-100
+                  dark:file:bg-brand-500/15 dark:file:text-brand-300"
+              />
+              {errors.image && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.image}</p>}
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional. Max 5MB. JPG, PNG, or GIF.</p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Email */}
-      <div>
-        <Label htmlFor="email">Email Address *</Label>
-        <Input
-          id="email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => handleInputChange("email", e.target.value)}
-          required
-          className={errors.email ? "border-red-500" : ""}
-        />
-        {errors.email && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email}</p>
-        )}
-      </div>
-
-      {/* Current Password */}
-      <div>
-        <Label htmlFor="currentPassword">Current Password</Label>
-        <Input
-          id="currentPassword"
-          type="text"
-          value={!formData.currentPassword || formData.currentPassword.startsWith("scrypt:") 
-            ? "Password is hashed (cannot display)" 
-            : formData.currentPassword}
-          readOnly
-          className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
-        />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {!formData.currentPassword || formData.currentPassword.startsWith("scrypt:") 
-            ? "Password is hashed. Plain text password not available. Enter a new password to change it."
-            : "Your current password from the database (plain text)."}
-        </p>
-      </div>
-
-      {/* New Password */}
-      <div>
-        <Label htmlFor="newPassword">New Password</Label>
-        <Input
-          id="newPassword"
-          type="password"
-          value={formData.newPassword}
-          onChange={(e) => handleInputChange("newPassword", e.target.value)}
-          placeholder="Enter new password to change"
-          className={errors.newPassword ? "border-red-500" : ""}
-        />
-        {errors.newPassword && (
-          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.newPassword}</p>
-        )}
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Leave blank to keep your current password. Minimum 8 characters. Password will be hashed before saving.
-        </p>
-      </div>
-
-      {/* First Name */}
-      <div>
-        <Label htmlFor="firstname">First Name</Label>
-        <Input
-          id="firstname"
-          type="text"
-          value={formData.firstname}
-          onChange={(e) => handleInputChange("firstname", e.target.value)}
-        />
-      </div>
-
-      {/* Last Name */}
-      <div>
-        <Label htmlFor="lastname">Last Name</Label>
-        <Input
-          id="lastname"
-          type="text"
-          value={formData.lastname}
-          onChange={(e) => handleInputChange("lastname", e.target.value)}
-        />
-      </div>
-
-      {/* Department (only for superadmin) */}
-      {isSuperAdmin && (
-        <div>
-          <Label htmlFor="department">Department</Label>
-          <Input
-            id="department"
-            type="text"
-            value={formData.department}
-            onChange={(e) => handleInputChange("department", e.target.value)}
-          />
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-slate-900 dark:text-white/90">Access Assignments</h4>
+          {accessAssignmentsQuery.data?.isSuperAdmin ? (
+            <Badge variant="light" color="primary" size="sm">Full access</Badge>
+          ) : null}
         </div>
-      )}
 
-      {/* Read-only fields */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div>
-          <Label>User Type</Label>
-          <Input
-            type="text"
-            value={userData.type || "N/A"}
-            readOnly
-            className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
-          />
-        </div>
-        <div>
-          <Label>Status</Label>
-          <Input
-            type="text"
-            value={userData.blocked ? "Blocked" : "Active"}
-            readOnly
-            className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
-          />
-        </div>
-      </div>
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gradient-to-r from-brand-50/70 via-white to-blue-50/70 p-4 dark:border-gray-800 dark:from-brand-500/10 dark:via-white/[0.03] dark:to-blue-500/10">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-gray-100 dark:bg-gray-900/30 dark:ring-white/5">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white/90">Faculties</p>
+                <Badge variant="light" color="info" size="sm">
+                  {accessAssignmentsQuery.isLoading
+                    ? "…"
+                    : (accessAssignmentsQuery.data?.isSuperAdmin ? "All" : (accessAssignmentsQuery.data?.faculties?.length ?? 0))}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!accessAssignmentsQuery.isLoading && accessAssignmentsQuery.data?.isSuperAdmin ? (
+                  <Badge variant="light" color="light" size="sm">All</Badge>
+                ) : null}
+                {(accessAssignmentsQuery.data?.faculties ?? []).map((f) => (
+                  <Badge key={f} variant="light" color="primary" size="sm">{f}</Badge>
+                ))}
+                {!accessAssignmentsQuery.isLoading && !accessAssignmentsQuery.data?.isSuperAdmin && (accessAssignmentsQuery.data?.faculties?.length ?? 0) === 0 ? (
+                  <span className="text-xs text-slate-500 dark:text-gray-500">No assigned faculties</span>
+                ) : null}
+              </div>
+            </div>
 
-      {/* Submit Button */}
-      <div className="flex items-center justify-end gap-3 pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => fetchUserData()}
-          disabled={saving}
-        >
+            <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-gray-100 dark:bg-gray-900/30 dark:ring-white/5">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white/90">Departments</p>
+                <Badge variant="light" color="info" size="sm">
+                  {accessAssignmentsQuery.isLoading
+                    ? "…"
+                    : (accessAssignmentsQuery.data?.isSuperAdmin ? "All" : (accessAssignmentsQuery.data?.departments?.length ?? 0))}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!accessAssignmentsQuery.isLoading && accessAssignmentsQuery.data?.isSuperAdmin ? (
+                  <Badge variant="light" color="light" size="sm">All</Badge>
+                ) : null}
+                {(accessAssignmentsQuery.data?.departments ?? []).map((d) => (
+                  <Badge key={d} variant="light" color="primary" size="sm">{d}</Badge>
+                ))}
+                {!accessAssignmentsQuery.isLoading && !accessAssignmentsQuery.data?.isSuperAdmin && (accessAssignmentsQuery.data?.departments?.length ?? 0) === 0 ? (
+                  <span className="text-xs text-slate-500 dark:text-gray-500">No assigned departments</span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-white/80 p-4 shadow-sm ring-1 ring-gray-100 dark:bg-gray-900/30 dark:ring-white/5">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white/90">Programs</p>
+                <Badge variant="light" color="info" size="sm">
+                  {accessAssignmentsQuery.isLoading
+                    ? "…"
+                    : (accessAssignmentsQuery.data?.isSuperAdmin ? "All" : (accessAssignmentsQuery.data?.programs?.length ?? 0))}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!accessAssignmentsQuery.isLoading && accessAssignmentsQuery.data?.isSuperAdmin ? (
+                  <Badge variant="light" color="light" size="sm">All</Badge>
+                ) : null}
+                {(accessAssignmentsQuery.data?.programs ?? []).map((p) => (
+                  <Badge key={p} variant="light" color="primary" size="sm">{p}</Badge>
+                ))}
+                {!accessAssignmentsQuery.isLoading && !accessAssignmentsQuery.data?.isSuperAdmin && (accessAssignmentsQuery.data?.programs?.length ?? 0) === 0 ? (
+                  <span className="text-xs text-slate-500 dark:text-gray-500">No assigned programs</span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <h4 className="text-lg font-semibold text-slate-900 dark:text-white/90">Account</h4>
+          <div className="mt-5 grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="email">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                required
+                readOnly={isRestrictedStaff}
+                className={`${errors.email ? "border-red-500" : ""} ${isRestrictedStaff ? "bg-gray-50 dark:bg-gray-800 cursor-not-allowed" : ""}`}
+              />
+              {errors.email && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="firstname">First Name</Label>
+                <Input
+                  id="firstname"
+                  type="text"
+                  value={formData.firstname}
+                  onChange={(e) => handleInputChange("firstname", e.target.value)}
+                  readOnly={isRestrictedStaff}
+                  className={isRestrictedStaff ? "bg-gray-50 dark:bg-gray-800 cursor-not-allowed" : ""}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="lastname">Last Name</Label>
+                <Input
+                  id="lastname"
+                  type="text"
+                  value={formData.lastname}
+                  onChange={(e) => handleInputChange("lastname", e.target.value)}
+                  readOnly={isRestrictedStaff}
+                  className={isRestrictedStaff ? "bg-gray-50 dark:bg-gray-800 cursor-not-allowed" : ""}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="department">Department</Label>
+              <Input
+                id="department"
+                type="text"
+                value={formData.department}
+                onChange={(e) => handleInputChange("department", e.target.value)}
+                readOnly={!isSuperAdmin}
+                className={!isSuperAdmin ? "bg-gray-50 dark:bg-gray-800 cursor-not-allowed" : ""}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+          <h4 className="text-lg font-semibold text-slate-900 dark:text-white/90">Security</h4>
+          <div className="mt-5 grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="text"
+                value={!formData.currentPassword || formData.currentPassword.startsWith("scrypt:")
+                  ? "Password is hashed (cannot display)"
+                  : formData.currentPassword}
+                readOnly
+                className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {!formData.currentPassword || formData.currentPassword.startsWith("scrypt:")
+                  ? "Password is hashed. Plain text password not available. Enter a new password to change it."
+                  : "Your current password from the database (plain text)."}
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={formData.newPassword}
+                onChange={(e) => handleInputChange("newPassword", e.target.value)}
+                placeholder="Enter new password to change"
+                className={errors.newPassword ? "border-red-500" : ""}
+              />
+              {errors.newPassword && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.newPassword}</p>}
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Leave blank to keep your current password. Minimum 8 characters. Password will be hashed before saving.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label>User Type</Label>
+            <Input type="text" value={userData.type || "N/A"} readOnly className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed" />
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Input type="text" value={userData.blocked ? "Blocked" : "Active"} readOnly className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed" />
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <Button type="button" variant="outline" onClick={() => fetchUserData()} disabled={saving}>
           Cancel
         </Button>
         <Button type="submit" disabled={saving}>

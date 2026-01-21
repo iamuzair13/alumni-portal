@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getUserAccessAssignments, getUserIdFromSession } from "@/lib/userAccess";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { sql } from "@/lib/dbconnect";
+import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 
 /**
  * GET /api/users/current/access-assignments
@@ -47,13 +49,36 @@ export async function GET() {
     }
     
     // For admin/viewer users, get access assignments
-    const userId = getUserIdFromSession(session);
-    if (!userId) {
+    const sessionUserId = getUserIdFromSession(session);
+    if (!sessionUserId) {
       // If no user ID and not alumni, this is an error
       return NextResponse.json({ error: "User ID not found" }, { status: 400 });
     }
+
+    // Resolve canonical users.id (supports sessions that store legacy_userid)
+    const resolved = await sql/* sql */`
+      SELECT id
+      FROM public.users
+      WHERE id = ${sessionUserId} OR legacy_userid = ${sessionUserId}
+      LIMIT 1
+    ` as Array<{ id: number }>;
+
+    const userId = resolved[0]?.id ?? sessionUserId;
     
-    const assignments = await getUserAccessAssignments(userId);
+    // Try new RBAC system (ID-based) first, then fallback to old system
+    let assignments = [] as Array<{ faculty_name: string | null; department_name: string | null; program_name: string | null }>;
+    try {
+      const a2 = await getUserAccessAssignmentsWithIds(userId);
+      if (a2 && a2.length > 0) {
+        assignments = a2;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (assignments.length === 0) {
+      assignments = await getUserAccessAssignments(userId);
+    }
     
     // Transform assignments to arrays
     const faculties = new Set<string>();

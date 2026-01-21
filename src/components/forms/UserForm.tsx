@@ -66,6 +66,13 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
   const isAdmin = isAdminUser(session?.user);
   const isViewer = isViewerUser(session?.user);
   const currentUserId = (session?.user as { userId?: number })?.userId;
+  const canOnlyEditPasswordAndImage =
+    !isSuperAdmin &&
+    (isAdmin || isViewer) &&
+    isEditMode &&
+    !!userId &&
+    !!currentUserId &&
+    Number(currentUserId) === Number(userId);
   
   // Check if user can view/edit password
   const canViewPassword = isSuperAdmin || (userId && currentUserId && Number(currentUserId) === Number(userId));
@@ -86,6 +93,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
   const [loading, setLoading] = useState(isEditMode);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   // Access control state (DB-backed via organization APIs)
   const [accessAssignmentsState, setAccessAssignmentsState] = useState<AccessAssignmentsValue>({
@@ -211,6 +219,48 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
     if (isEditMode && values.password && !passwordValid) {
       setError("Password must be at least 8 characters if changing");
       toast.error("Password must be at least 8 characters if changing");
+      return;
+    }
+
+    if (canOnlyEditPasswordAndImage) {
+      try {
+        setSubmitting(true);
+
+        const fd = new FormData();
+        if (values.password && values.password.trim().length > 0) {
+          fd.append("newPassword", values.password.trim());
+        }
+        if (imageFile) {
+          fd.append("image", imageFile);
+        }
+
+        const res = await fetch("/api/users/current", {
+          method: "PUT",
+          body: fd,
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || "Failed to update profile");
+
+        setMessage(`User updated successfully!`);
+        toast.success(`User updated successfully!`);
+        setValues((v) => ({ ...v, password: "" }));
+        setImageFile(null);
+
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        try {
+          await queryClient.invalidateQueries({ queryKey: ["users", "list"] });
+        } catch {}
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -389,6 +439,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   error={!!(values.email && !emailValid)}
                   placeholder="user@example.com"
                   className="w-full"
+                  disabled={canOnlyEditPasswordAndImage}
                 />
                 {values.email && !emailValid && (
                   <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">Please enter a valid email address</p>
@@ -432,6 +483,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   onChange={(e) => setValues((v) => ({ ...v, firstname: e.target.value }))}
                   placeholder="Enter first name"
                   className="w-full"
+                  disabled={canOnlyEditPasswordAndImage}
                 />
         </div>
 
@@ -445,8 +497,25 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   onChange={(e) => setValues((v) => ({ ...v, lastname: e.target.value }))}
                   placeholder="Enter last name"
                   className="w-full"
+                  disabled={canOnlyEditPasswordAndImage}
                 />
         </div>
+
+              {canOnlyEditPasswordAndImage && (
+                <div className="lg:col-span-2">
+                  <Label htmlFor="image">Profile Image</Label>
+                  <input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setImageFile(f);
+                    }}
+                    className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-300"
+                  />
+                </div>
+              )}
 
               {/* Department - Only superadmin can edit */}
               {isSuperAdmin && (

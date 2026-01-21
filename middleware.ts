@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
 
 export async function middleware(request: NextRequest) {
   try {
@@ -12,6 +13,16 @@ export async function middleware(request: NextRequest) {
     // Preserve the original URL as a redirect parameter
     signInUrl.searchParams.set("callbackUrl", request.url);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // Restrict Setup to Super Admin only
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/setup" || pathname.startsWith("/setup/")) {
+    if (!isSuperAdminUser(session.user)) {
+      const redirectUrl = new URL("/dashboard", request.url);
+      redirectUrl.searchParams.set("error", "FORBIDDEN");
+      return NextResponse.redirect(redirectUrl);
+    }
   }
   
   // If session exists, allow the request to proceed

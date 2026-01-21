@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import { useSession } from "next-auth/react";
+import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import {
   CalenderIcon,
   ChevronDownIcon,
@@ -76,6 +78,12 @@ const AppSidebarContent: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const { data: session } = useSession();
+  const isSuperAdmin = isSuperAdminUser(session?.user);
+  const isAdmin = isAdminUser(session?.user);
+  const isViewer = isViewerUser(session?.user);
+  const canSeeSetup = isSuperAdmin && !isAdmin && !isViewer;
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -268,7 +276,7 @@ const AppSidebarContent: React.FC = () => {
 
   useEffect(() => {
     let submenuMatched = false;
-    const items = navItems;
+    const items = canSeeSetup ? navItems : navItems.filter((i) => i.name !== "Setup");
     items.forEach((nav, index) => {
       if (nav.subItems) {
         nav.subItems.forEach((subItem) => {
@@ -370,7 +378,7 @@ const AppSidebarContent: React.FC = () => {
                   <HorizontaLDots />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(canSeeSetup ? navItems : navItems.filter((i) => i.name !== "Setup"), "main")}
             </div>
             
           </div>

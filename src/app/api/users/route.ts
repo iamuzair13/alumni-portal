@@ -3,6 +3,8 @@ import { sql } from "@/lib/dbconnect";
 
 import { auth } from "@/lib/auth";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { getUserAccessAssignments } from "@/lib/userAccess";
+import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 
 type DbUser = {
   userid: number;
@@ -15,6 +17,68 @@ type DbUser = {
   lastlogindatetime: string | null;
   password?: string | null;
 };
+
+type AccessAssignments = {
+  faculties: string[];
+  departments: string[];
+  programs: string[];
+};
+
+async function getAccessAssignmentsForUser(userId: number): Promise<AccessAssignments> {
+  try {
+    const assignmentsWithIds = await getUserAccessAssignmentsWithIds(userId);
+    if (assignmentsWithIds && assignmentsWithIds.length > 0) {
+      const faculties = new Set<string>();
+      const departments = new Set<string>();
+      const programs = new Set<string>();
+
+      assignmentsWithIds.forEach((assign) => {
+        if (assign.faculty_name && !assign.department_name && !assign.program_name) {
+          faculties.add(assign.faculty_name);
+        } else if (assign.department_name && !assign.program_name) {
+          departments.add(assign.department_name);
+          if (assign.faculty_name) faculties.add(assign.faculty_name);
+        } else if (assign.program_name) {
+          programs.add(assign.program_name);
+          if (assign.department_name) departments.add(assign.department_name);
+          if (assign.faculty_name) faculties.add(assign.faculty_name);
+        }
+      });
+
+      return {
+        faculties: Array.from(faculties),
+        departments: Array.from(departments),
+        programs: Array.from(programs),
+      };
+    }
+
+    const assignments = await getUserAccessAssignments(userId);
+    const faculties = new Set<string>();
+    const departments = new Set<string>();
+    const programs = new Set<string>();
+
+    assignments.forEach((assign) => {
+      if (assign.faculty_name && !assign.department_name && !assign.program_name) {
+        faculties.add(assign.faculty_name);
+      } else if (assign.department_name && !assign.program_name) {
+        departments.add(assign.department_name);
+        if (assign.faculty_name) faculties.add(assign.faculty_name);
+      } else if (assign.program_name) {
+        programs.add(assign.program_name);
+        if (assign.department_name) departments.add(assign.department_name);
+        if (assign.faculty_name) faculties.add(assign.faculty_name);
+      }
+    });
+
+    return {
+      faculties: Array.from(faculties),
+      departments: Array.from(departments),
+      programs: Array.from(programs),
+    };
+  } catch {
+    return { faculties: [], departments: [], programs: [] };
+  }
+}
 
 export async function GET() {
   try {
@@ -36,6 +100,20 @@ export async function GET() {
     
     // Get current user's ID from session
     const currentUserId = (session?.user as { userId?: number })?.userId;
+
+    const attachAssignments = async (rows: DbUser[]) => {
+      const enriched = await Promise.all(
+        (rows ?? []).map(async (u) => {
+          const userType = String(u.type ?? "").toLowerCase().trim();
+          if (userType !== "admin" && userType !== "viewer") {
+            return { ...u, accessAssignments: undefined as AccessAssignments | undefined };
+          }
+          const accessAssignments = await getAccessAssignmentsForUser(Number(u.userid));
+          return { ...u, accessAssignments };
+        })
+      );
+      return enriched;
+    };
     
     if (isSuperAdmin) {
       // Super Admin can see all passwords - get plain text from users.password
@@ -58,8 +136,9 @@ export async function GET() {
         ...user,
         password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
       }));
-      
-      return NextResponse.json({ items: usersWithPlainPasswords ?? [] }, { status: 200 });
+
+      const usersWithAccess = await attachAssignments(usersWithPlainPasswords);
+      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     } else if (isAdmin && currentUserId) {
       // Admins can only see their own password
       const userIdNum = Number(currentUserId);
@@ -77,7 +156,8 @@ export async function GET() {
             lastlogindatetime
           FROM public.users
           ORDER BY id DESC` as DbUser[];
-        return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+        const usersWithAccess = await attachAssignments(rows ?? []);
+        return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
       }
       
       // Fetch all users, but only include password for the current admin user
@@ -103,8 +183,9 @@ export async function GET() {
         ...user,
         password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
       }));
-      
-      return NextResponse.json({ items: usersWithPlainPasswords ?? [] }, { status: 200 });
+
+      const usersWithAccess = await attachAssignments(usersWithPlainPasswords);
+      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     } else if (isViewer && currentUserId) {
       // Viewer: can only see their own password
       const userIdNum = Number(currentUserId);
@@ -122,7 +203,8 @@ export async function GET() {
             lastlogindatetime
           FROM public.users
           ORDER BY id DESC` as DbUser[];
-        return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+        const usersWithAccess = await attachAssignments(rows ?? []);
+        return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
       }
       
       // Fetch all users, but only include password for the current viewer user
@@ -148,8 +230,9 @@ export async function GET() {
         ...user,
         password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
       }));
-      
-      return NextResponse.json({ items: usersWithPlainPasswords ?? [] }, { status: 200 });
+
+      const usersWithAccess = await attachAssignments(usersWithPlainPasswords);
+      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords
       const rows = await sql/* sql */`
@@ -164,7 +247,8 @@ export async function GET() {
           lastlogindatetime
         FROM public.users
         ORDER BY id DESC` as DbUser[];
-      return NextResponse.json({ items: rows ?? [] }, { status: 200 });
+      const usersWithAccess = await attachAssignments(rows ?? []);
+      return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

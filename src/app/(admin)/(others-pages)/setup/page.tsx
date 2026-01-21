@@ -631,6 +631,67 @@ function RealTimeUsers() {
   const queryClient = useQueryClient();
   const [editUserId, setEditUserId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const AssignedItemsCell: React.FC<{ items: string[]; allowDropdown: boolean }> = ({ items, allowDropdown }) => {
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+      if (!open) return;
+      const onDocClick = () => setOpen(false);
+      document.addEventListener("click", onDocClick);
+      return () => document.removeEventListener("click", onDocClick);
+    }, [open]);
+
+    const count = items.length;
+    if (!count) {
+      return <span className="text-gray-400">-</span>;
+    }
+
+    const label = `${count} assigned`;
+
+    if (!allowDropdown) {
+      return (
+        <span className="inline-flex max-w-[180px] truncate" title={items.join(", ")}>
+          {label}
+        </span>
+      );
+    }
+
+    return (
+      <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-slate-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200 dark:hover:bg-gray-900"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          title={items.join(", ")}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className="max-w-[140px] truncate">{label}</span>
+          <span className="text-[10px] leading-none">▼</span>
+        </button>
+
+        {open && (
+          <div
+            role="menu"
+            className="absolute left-0 z-50 mt-2 w-64 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          >
+            <div className="max-h-56 overflow-auto py-1">
+              {items.map((it) => (
+                <div
+                  key={it}
+                  role="menuitem"
+                  className="px-3 py-2 text-[12px] text-slate-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  {it}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
   if (isLoading) {
     return (
       <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
@@ -672,8 +733,8 @@ function RealTimeUsers() {
   }
 
   return (
-    <div className="mt-6 overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <SyncedTableScroll minWidth={1100} maxHeight={700}>
+    <div className="mt-6 overflow-hidden border border-gray-200  bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <SyncedTableScroll minWidth={1200} maxHeight={700} className="mx-auto">
         <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
           <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
@@ -682,6 +743,9 @@ function RealTimeUsers() {
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Password</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Department</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Type</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Faculties</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Departments</th>
+              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Programs</th>
               <th scope="col" className="px-4 py-3 text-center text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
@@ -719,6 +783,15 @@ function RealTimeUsers() {
                 </td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.department ?? "-"}</td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.type ?? "-"}</td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                  <AssignedItemsCell items={u.accessAssignments?.faculties ?? []} allowDropdown={isSuperAdmin} />
+                </td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                  <AssignedItemsCell items={u.accessAssignments?.departments ?? []} allowDropdown={isSuperAdmin} />
+                </td>
+                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                  <AssignedItemsCell items={u.accessAssignments?.programs ?? []} allowDropdown={isSuperAdmin} />
+                </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex gap-2 justify-center">
                     {(() => {

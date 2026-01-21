@@ -198,6 +198,16 @@ export async function PUT(req: Request) {
     const idStr = url.pathname.split("/").pop() || "";
     const id = Number(idStr);
     const body = await req.json();
+
+    const nonEmptyKeys = Object.keys(body || {}).filter((k) => {
+      if (k === "password") return false;
+      const v = (body as Record<string, unknown>)[k];
+      if (v === undefined || v === null) return false;
+      if (typeof v === "string") return v.trim().length > 0;
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "object") return true;
+      return true;
+    });
     
     // Check authorization
     const isAdmin = isAdminUser(session?.user);
@@ -210,6 +220,9 @@ export async function PUT(req: Request) {
       if (!currentUserId || Number(currentUserId) !== id) {
         return NextResponse.json({ error: "FORBIDDEN: You can only update your own account" }, { status: 403 });
       }
+      if (nonEmptyKeys.length > 0) {
+        return NextResponse.json({ error: "FORBIDDEN: You can only update your password" }, { status: 403 });
+      }
     }
     
     // Admins can only update their own password, email, firstname, lastname
@@ -218,7 +231,10 @@ export async function PUT(req: Request) {
       if (!currentUserId || Number(currentUserId) !== id) {
         return NextResponse.json({ error: "FORBIDDEN: Admins can only update their own account" }, { status: 403 });
       }
-      // Admin can only update password, email, firstname, lastname for themselves
+      if (nonEmptyKeys.length > 0) {
+        return NextResponse.json({ error: "FORBIDDEN: You can only update your password" }, { status: 403 });
+      }
+      // Admin can only update password for themselves
       // Hash password if provided
       let hashedPassword: string | undefined = undefined;
       if (body.password) {
@@ -229,10 +245,7 @@ export async function PUT(req: Request) {
       await sql/* sql */`
         UPDATE public.users
         SET
-          email = ${body.email ?? null},
           ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
-          firstname = ${body.firstname ?? null},
-          lastname = ${body.lastname ?? null},
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
       return NextResponse.json({ ok: true }, { status: 200 });
@@ -250,17 +263,14 @@ export async function PUT(req: Request) {
     
     // Note: Multiple superadmins are now allowed
     
-    // For viewers updating their own account, only allow password, email, firstname, lastname
+    // For viewers updating their own account, only allow password
     // Super Admin can update all fields
     if (isViewer && !isAdmin && !isSuperAdmin) {
-      // Viewers can only update password, email, firstname, lastname
+      // Viewers can only update password
       await sql/* sql */`
         UPDATE public.users
         SET
-          email = ${body.email ?? null},
           ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
-          firstname = ${body.firstname ?? null},
-          lastname = ${body.lastname ?? null},
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
     } else {
