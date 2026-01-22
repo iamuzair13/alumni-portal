@@ -14,6 +14,8 @@ import { canModify } from "@/lib/alumniProfile";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import Button from "@/components/ui/button/Button";
+import type { MasterFilters } from "@/app/queries/master-filter-types";
+import { addFilterParamsToUrl } from "@/app/queries/master-filter-types";
 
 interface DistinguishedAlumni {
   id?: number;
@@ -22,6 +24,9 @@ interface DistinguishedAlumni {
   image: string;
   role: string;
   summary: string;
+  faculty_name?: string | null;
+  department_name?: string | null;
+  program_name?: string | null;
   headline?: string | null;
   quote?: string | null;
   quote_by?: string | null;
@@ -77,32 +82,39 @@ interface DistinguishedAlumniListResponse {
 const fetchDistinguishedAlumni = async (
   page: number = 1,
   limit: number = 10,
-  search: string = ""
+  search: string = "",
+  masterFilters?: MasterFilters
 ): Promise<DistinguishedAlumniListResponse> => {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString()
-  });
-  if (search) {
-    params.append("search", search);
-  }
+  const url = new URL("/api/distinguished-alumni", window.location.origin);
+  url.searchParams.set("page", page.toString());
+  url.searchParams.set("limit", limit.toString());
+  if (search) url.searchParams.set("search", search);
+  addFilterParamsToUrl(url, masterFilters);
 
-  const response = await fetch(`/api/distinguished-alumni?${params.toString()}`);
+  const response = await fetch(url.toString());
   if (!response.ok) {
     throw new Error("Failed to fetch distinguished alumni");
   }
   return response.json();
 };
 
-const fetchDistinguishedAlumniCounts = async (): Promise<{ total: number }> => {
-  const response = await fetch("/api/distinguished-alumni/counts");
+const fetchDistinguishedAlumniCounts = async (search: string = "", masterFilters?: MasterFilters): Promise<{ total: number }> => {
+  const url = new URL("/api/distinguished-alumni/counts", window.location.origin);
+  if (search) url.searchParams.set("search", search);
+  addFilterParamsToUrl(url, masterFilters);
+
+  const response = await fetch(url.toString());
   if (!response.ok) {
     throw new Error("Failed to fetch distinguished alumni counts");
   }
   return response.json();
 };
 
-export const DistinguishedAlumniTab: React.FC = () => {
+type DistinguishedAlumniTabProps = {
+  masterFilters?: MasterFilters;
+};
+
+export const DistinguishedAlumniTab: React.FC<DistinguishedAlumniTabProps> = ({ masterFilters }) => {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -127,16 +139,16 @@ export const DistinguishedAlumniTab: React.FC = () => {
     error,
     refetch
   } = useQuery<DistinguishedAlumniListResponse>({
-    queryKey: ["distinguished-alumni", page, limit, search],
-    queryFn: () => fetchDistinguishedAlumni(page, limit, search)
+    queryKey: ["distinguished-alumni", page, limit, search, masterFilters],
+    queryFn: () => fetchDistinguishedAlumni(page, limit, search, masterFilters)
   });
 
   const {
     data: countsData,
     isLoading: countsLoading
   } = useQuery<{ total: number }>({
-    queryKey: ["distinguished-alumni-counts"],
-    queryFn: fetchDistinguishedAlumniCounts
+    queryKey: ["distinguished-alumni-counts", search, masterFilters],
+    queryFn: () => fetchDistinguishedAlumniCounts(search, masterFilters)
   });
 
   // Sync horizontal scroll between top scrollbar and table container
@@ -258,40 +270,6 @@ export const DistinguishedAlumniTab: React.FC = () => {
           )}
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Distinguished Alumni</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
-                  {countsLoading || isLoading ? "..." : totalCount.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Current Page</p>
-                <p className="text-2xl font-bold text-purple-700 dark:text-purple-300 mt-1">
-                  {isLoading ? "..." : currentPageCount.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Pages</p>
-                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
-                  {isLoading ? "..." : (data?.totalPages || 0).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Search */}
         <div>
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -322,7 +300,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
               scrollbarColor: '#3b82f6 #e5e7eb',
             }}
           >
-            <div className="table-scrollbar-content h-full" style={{ minWidth: '900px' }}></div>
+            <div className="table-scrollbar-content h-full" style={{ minWidth: '1350px' }}></div>
           </div>
           <div 
             ref={tableContainerRef}
@@ -333,7 +311,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
             }}
             aria-live="polite"
           >
-            <div className="table-content-wrapper" style={{ minWidth: '900px' }}>
+            <div className="table-content-wrapper" style={{ minWidth: '1350px' }}>
               <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
@@ -343,17 +321,18 @@ export const DistinguishedAlumniTab: React.FC = () => {
                     <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px]">
                       Name
                     </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
-                      Slug
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px]">
+                      Faculty
                     </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px]">
+                      Department
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px]">
+                      Program
+                    </TableCell>
+                  
                     <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px]">
                       Role
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[260px]">
-                      Summary
-                    </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px]">
-                      Tags
                     </TableCell>
                     <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">
                       Actions
@@ -377,10 +356,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
                       <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                     </TableCell>
                     <TableCell>
-                      <div className="h-5 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                      <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                     </TableCell>
                     <TableCell>
                       <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" />
@@ -391,7 +367,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
 
               {isError && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <p className="text-red-600 dark:text-red-400">
                         {error instanceof Error ? error.message : "Failed to load data"}
@@ -406,7 +382,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
 
               {!isLoading && !isError && data && data.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <TableCell colSpan={10} className="text-center py-8 text-gray-500 dark:text-gray-400">
                     No distinguished alumni found{search ? ` for "${search}"` : ""}
                   </TableCell>
                 </TableRow>
@@ -418,7 +394,7 @@ export const DistinguishedAlumniTab: React.FC = () => {
                 const summaryText = stripHtml(item.summary);
                 
                 return (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} className="px-2">
                     <TableCell>
                       <img
                         src={imagePath}
@@ -429,43 +405,22 @@ export const DistinguishedAlumniTab: React.FC = () => {
                         }}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
-                      <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                        {item.slug}
-                      </span>
+                    <TableCell className="font-medium max-w-[160px]">{item.name}</TableCell>
+                    <TableCell className="text-sm text-gray-700 dark:text-gray-300 max-w-[160px]">
+                      {item.faculty_name || <span className="text-xs text-gray-400 dark:text-gray-500">—</span>}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700 dark:text-gray-300 max-w-[160px]">
+                      {item.department_name || <span className="text-xs text-gray-400 dark:text-gray-500">—</span>}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-700 dark:text-gray-300 max-w-[160px]">
+                      {item.program_name || <span className="text-xs text-gray-400 dark:text-gray-500">—</span>}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 max-w-xs" title={roleText}>
                         {roleText}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 max-w-md" title={summaryText}>
-                        {summaryText}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      {item.tags && Array.isArray(item.tags) && item.tags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {item.tags.slice(0, 3).map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full text-xs"
-                            >
-                              {typeof tag === "string" ? tag : JSON.stringify(tag)}
-                            </span>
-                          ))}
-                          {item.tags.length > 3 && (
-                            <span className="px-2 py-0.5 text-gray-500 dark:text-gray-400 text-xs">
-                              +{item.tags.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
-                      )}
-                    </TableCell>
+                   
                     <TableCell className="px-3 sm:px-6 py-4 text-right min-w-[140px]">
                       <div className="flex items-center gap-2 justify-end">
                         <button

@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { getUserAccessAssignments } from "@/lib/userAccess";
 import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type DbUser = {
   userid: number;
@@ -263,6 +264,16 @@ export async function PUT(req: Request) {
     
     // Only Super Admin can manage users
     if (!isSuperAdmin) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "users.update",
+          entityType: "users",
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "FORBIDDEN: Only Super Admin can manage users" }, { status: 403 });
     }
     
@@ -298,6 +309,27 @@ export async function PUT(req: Request) {
         is_active = ${body.blocked === null ? sql`is_active` : sql`NOT ${Boolean(body.blocked)}`},
         updated_at = now()
       WHERE id = ${userid} OR legacy_userid = ${userid}`;
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "users.update",
+        entityType: "users",
+        entityId: userid,
+        metadata: {
+          updatedFields: {
+            email: body.email ?? null,
+            firstname: body.firstname ?? null,
+            lastname: body.lastname ?? null,
+            department: body.department ?? null,
+            type: normalizedType,
+            blocked: body.blocked ?? null,
+          },
+        },
+      },
+    });
+
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

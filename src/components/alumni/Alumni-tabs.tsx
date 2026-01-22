@@ -2661,8 +2661,7 @@ export const AlumniTabs: React.FC = () => {
                 `}
                 onClick={() => {
                   if (!isDisabled) {
-
-                  setSelected(tab.key);
+                    setSelected(tab.key);
                     // Clear additional filter when switching tabs
                     setAdditionalFilter([]);
                   }
@@ -2675,12 +2674,12 @@ export const AlumniTabs: React.FC = () => {
                 onKeyDown={(e) => {
                   if (e.key === "ArrowRight") {
                     e.preventDefault();
-            const nextIdx = (idx + 1) % allTabs.length;
-            setSelected(allTabs[nextIdx].key);
+                    const nextIdx = (idx + 1) % allTabs.length;
+                    setSelected(allTabs[nextIdx].key);
                   } else if (e.key === "ArrowLeft") {
                     e.preventDefault();
-            const prevIdx = (idx - 1 + allTabs.length) % allTabs.length;
-            setSelected(allTabs[prevIdx].key);
+                    const prevIdx = (idx - 1 + allTabs.length) % allTabs.length;
+                    setSelected(allTabs[prevIdx].key);
                   } else if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setSelected(tab.key);
@@ -2737,10 +2736,12 @@ export const AlumniTabs: React.FC = () => {
         </div>
 
         {/* Distinguished Alumni Tab Content */}
-        {selected === "distinguished" && <DistinguishedAlumniTab />}
+        <div style={{ display: selected === "distinguished" ? "block" : "none" }}>
+          <DistinguishedAlumniTab masterFilters={masterFilters} />
+        </div>
 
         {/* Regular Alumni Tab Content */}
-        {selected !== "distinguished" && (
+        <div style={{ display: selected !== "distinguished" ? "block" : "none" }}>
         <>
         {/* Search and Filters Section */}
         <div className="px-6">
@@ -5656,7 +5657,7 @@ export const AlumniTabs: React.FC = () => {
           </div>
         </div>
         </>
-        )}
+        </div>
       
       {/* Confirmation Modal */}
       {confirmModal.isOpen && pendingAction && (

@@ -6,6 +6,7 @@ import { getUserAccessAssignments } from "@/lib/userAccess";
 import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 import { createAccessAssignmentsInNewRBAC, deleteAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type DbUser = {
   userid: number;
@@ -218,9 +219,31 @@ export async function PUT(req: Request) {
     // Viewers can only update their own record
     if (isViewer && !isAdmin && !isSuperAdmin) {
       if (!currentUserId || Number(currentUserId) !== id) {
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "users.self_update",
+            entityType: "users",
+            entityId: id,
+            success: false,
+            errorMessage: "FORBIDDEN",
+          },
+        });
         return NextResponse.json({ error: "FORBIDDEN: You can only update your own account" }, { status: 403 });
       }
       if (nonEmptyKeys.length > 0) {
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "users.self_update",
+            entityType: "users",
+            entityId: id,
+            success: false,
+            errorMessage: "FORBIDDEN",
+          },
+        });
         return NextResponse.json({ error: "FORBIDDEN: You can only update your password" }, { status: 403 });
       }
     }
@@ -229,9 +252,31 @@ export async function PUT(req: Request) {
     // They cannot manage other users (change type, department, blocked status)
     if (isAdmin && !isSuperAdmin) {
       if (!currentUserId || Number(currentUserId) !== id) {
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "users.self_update",
+            entityType: "users",
+            entityId: id,
+            success: false,
+            errorMessage: "FORBIDDEN",
+          },
+        });
         return NextResponse.json({ error: "FORBIDDEN: Admins can only update their own account" }, { status: 403 });
       }
       if (nonEmptyKeys.length > 0) {
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "users.self_update",
+            entityType: "users",
+            entityId: id,
+            success: false,
+            errorMessage: "FORBIDDEN",
+          },
+        });
         return NextResponse.json({ error: "FORBIDDEN: You can only update your password" }, { status: 403 });
       }
       // Admin can only update password for themselves
@@ -248,6 +293,21 @@ export async function PUT(req: Request) {
           ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
+
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "users.self_update",
+          entityType: "users",
+          entityId: id,
+          metadata: {
+            updatedFields: {
+              passwordChanged: Boolean(body.password),
+            },
+          },
+        },
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
     
@@ -278,6 +338,21 @@ export async function PUT(req: Request) {
           ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
+
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "users.self_update",
+          entityType: "users",
+          entityId: id,
+          metadata: {
+            updatedFields: {
+              passwordChanged: Boolean(body.password),
+            },
+          },
+        },
+      });
     } else {
       // Super Admin can update all fields
       let hashedPassword: string | undefined = undefined;
@@ -299,6 +374,27 @@ export async function PUT(req: Request) {
           is_active = ${body.blocked === null ? sql`is_active` : sql`NOT ${Boolean(body.blocked)}`},
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
+
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "users.update",
+          entityType: "users",
+          entityId: id,
+          metadata: {
+            updatedFields: {
+              email: body.email ?? null,
+              firstname: body.firstname ?? null,
+              lastname: body.lastname ?? null,
+              department: body.department ?? null,
+              type: normalizedType,
+              blocked: body.blocked ?? null,
+              passwordChanged: Boolean(body.password),
+            },
+          },
+        },
+      });
     }
     
     // Update access assignments if provided and user is Super Admin
@@ -482,6 +578,20 @@ export async function DELETE(req: Request) {
     
     // Only Super Admin can delete users
     if (!isSuperAdmin) {
+      const url = new URL(req.url);
+      const idStr = url.pathname.split("/").pop() || "";
+      const id = Number(idStr);
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "users.delete",
+          entityType: "users",
+          entityId: Number.isFinite(id) ? id : null,
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "FORBIDDEN: Only Super Admin can delete users" }, { status: 403 });
     }
     
@@ -515,6 +625,16 @@ export async function DELETE(req: Request) {
     
     // Delete from new system (users table)
     await sql/* sql */`DELETE FROM public.users WHERE id = ${id} OR legacy_userid = ${id}`;
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "users.delete",
+        entityType: "users",
+        entityId: id,
+      },
+    });
     
     // Also delete from new RBAC system
     try {

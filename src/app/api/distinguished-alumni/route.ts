@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { buildIdBasedAccessFilterSQL } from "@/lib/rbac";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -21,45 +22,141 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const search = searchParams.get("search") || "";
 
+    const faculty = searchParams.getAll("faculty");
+    const department = searchParams.getAll("department");
+    const program = searchParams.getAll("program");
+
+    const combineOrConditions = (conditions: any[]): any => {
+      if (conditions.length === 0) return sql`1 = 0`;
+      if (conditions.length === 1) return conditions[0];
+      if (conditions.length === 2) return sql`${conditions[0]} OR ${conditions[1]}`;
+      const mid = Math.ceil(conditions.length / 2);
+      const left = combineOrConditions(conditions.slice(0, mid));
+      const right = combineOrConditions(conditions.slice(mid));
+      return sql`${left} OR ${right}`;
+    };
+
+    // RBAC filter (new). Superadmin => no filter (includes NULL). Admin/viewer =>
+    // - if all faculties assigned => no filter (includes NULL)
+    // - else restricted to assigned faculty/department/program (excludes NULL)
+    const access = await buildIdBasedAccessFilterSQL(session, {
+      alias: "d",
+      facultyColumn: "faculty_id",
+      departmentColumn: "department_id",
+      programColumn: "program_id",
+    });
+    const accessFilter = access.sql ? sql`AND (${access.sql})` : sql``;
+
+    // Faculty/Department/Program master filters (ID-based)
+    let facultyFilter = sql``;
+    if (faculty && faculty.length > 0) {
+      const conditions = faculty.map((f) => {
+        const normalized = String(f).trim();
+        if (normalized === "NULL" || normalized === "null") return sql`(d.faculty_id IS NULL)`;
+        const id = Number.parseInt(normalized, 10);
+        if (Number.isNaN(id)) return sql`1 = 0`;
+        return sql`(d.faculty_id = ${id})`;
+      });
+      facultyFilter = sql`AND (${combineOrConditions(conditions)})`;
+    }
+
+    let departmentFilter = sql``;
+    if (department && department.length > 0) {
+      const conditions = department.map((dept) => {
+        const normalized = String(dept).trim();
+        if (normalized === "NULL" || normalized === "null") return sql`(d.department_id IS NULL)`;
+        const id = Number.parseInt(normalized, 10);
+        if (Number.isNaN(id)) return sql`1 = 0`;
+        return sql`(d.department_id = ${id})`;
+      });
+      departmentFilter = sql`AND (${combineOrConditions(conditions)})`;
+    }
+
+    let programFilter = sql``;
+    if (program && program.length > 0) {
+      const conditions = program.map((prog) => {
+        const normalized = String(prog).trim();
+        if (normalized === "NULL" || normalized === "null") return sql`(d.program_id IS NULL)`;
+        const id = Number.parseInt(normalized, 10);
+        if (Number.isNaN(id)) return sql`1 = 0`;
+        return sql`(d.program_id = ${id})`;
+      });
+      programFilter = sql`AND (${combineOrConditions(conditions)})`;
+    }
+
     let query;
     let countQuery;
 
     if (search.trim()) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
       query = sql/* sql */`
-        SELECT *
-        FROM public.distinguished_alumni
-        WHERE 
+        SELECT 
+          d.*,
+          f.faculty_name as faculty_name,
+          dept.department_name as department_name,
+          prog.program_name as program_name
+        FROM public.distinguished_alumni d
+        LEFT JOIN public.tbl_faculties f ON d.faculty_id = f.id
+        LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+        LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+        WHERE (
           LOWER(name) LIKE ${searchTerm}
           OR LOWER(slug) LIKE ${searchTerm}
           OR LOWER(role) LIKE ${searchTerm}
           OR LOWER(summary) LIKE ${searchTerm}
           OR LOWER(headline) LIKE ${searchTerm}
+        )
+        ${accessFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
         ORDER BY created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
       
       countQuery = sql/* sql */`
         SELECT COUNT(*) as total
-        FROM public.distinguished_alumni
-        WHERE 
+        FROM public.distinguished_alumni d
+        WHERE (
           LOWER(name) LIKE ${searchTerm}
           OR LOWER(slug) LIKE ${searchTerm}
           OR LOWER(role) LIKE ${searchTerm}
           OR LOWER(summary) LIKE ${searchTerm}
           OR LOWER(headline) LIKE ${searchTerm}
+        )
+        ${accessFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
       `;
     } else {
       query = sql/* sql */`
-        SELECT *
-        FROM public.distinguished_alumni
+        SELECT 
+          d.*,
+          f.faculty_name as faculty_name,
+          dept.department_name as department_name,
+          prog.program_name as program_name
+        FROM public.distinguished_alumni d
+        LEFT JOIN public.tbl_faculties f ON d.faculty_id = f.id
+        LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+        LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+        WHERE 1=1
+        ${accessFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
         ORDER BY created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
       
       countQuery = sql/* sql */`
         SELECT COUNT(*) as total
-        FROM public.distinguished_alumni
+        FROM public.distinguished_alumni d
+        WHERE 1=1
+        ${accessFilter}
+        ${facultyFilter}
+        ${departmentFilter}
+        ${programFilter}
       `;
     }
 

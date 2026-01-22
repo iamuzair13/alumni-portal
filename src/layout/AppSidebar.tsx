@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
       { name: "Users", path: "/setup?tab=users" },
       { name: "Organizations", path: "/setup?tab=organizations" },
       { name: "Chapters", path: "/setup?tab=chapters" },
+      { name: "Activity Logs", path: "/activity-logs" },
     ],
   },
 ];

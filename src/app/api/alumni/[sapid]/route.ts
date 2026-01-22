@@ -4,9 +4,11 @@ import { alumniRegistrationComprehensiveSchema } from "@/lib/alumniRegistration"
 import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // Map DB row -> form values (partial; missing columns set undefined)
 interface DbAlumniRow {
+  alumniid?: number;
   registrationno?: string | null;
   sapid?: string | null;
   alumniname?: string | null;
@@ -138,6 +140,17 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         `;
         
         if (!accessCheck[0]) {
+          await logAdminAction({
+            session,
+            req: _,
+            input: {
+              action: "alumni.update",
+              entityType: "tbl_alumni",
+              entityId: alumniId,
+              success: false,
+              errorMessage: "FORBIDDEN",
+            },
+          });
           return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
         }
       }
@@ -223,6 +236,17 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const isAlumni = userType === "alumni";
     
     if (!isAdmin && !isAlumni) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "alumni.update",
+          entityType: "tbl_alumni",
+          entityId: String(sapid || "").trim() || null,
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "Forbidden: Only admins or alumni can update records" }, { status: 403 });
     }
     
@@ -258,6 +282,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       universityemail: string | null;
       officialemail: string | null;
     };
+
+    const alumniId = row.alumniid;
     
     // SECURITY: If alumni user, verify they own this record
     if (isAlumni && !isAdmin) {
@@ -274,6 +300,17 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       );
       
       if (!isOwnerBySapid && !isOwnerByRegNo && !isOwnerByEmail) {
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "alumni.update",
+            entityType: "tbl_alumni",
+            entityId: alumniId,
+            success: false,
+            errorMessage: "FORBIDDEN",
+          },
+        });
         return NextResponse.json({ error: "Forbidden: You can only update your own record" }, { status: 403 });
       }
     }
@@ -287,7 +324,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         // Check if this alumni record is within the user's access
         const accessCheck = await sql/* sql */`
           SELECT a.alumniid FROM public.tbl_alumni a
-          WHERE a.alumniid = ${row.alumniid} 
+          WHERE a.alumniid = ${alumniId} 
           AND (${accessFilter.sql})
           LIMIT 1
         `;
@@ -297,8 +334,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         }
       }
     }
-    
-    const alumniId = row.alumniid;
     
     // Update using alumniid (primary key) for reliability
     const res = await sql/* sql */`
@@ -314,6 +349,21 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       WHERE alumniid = ${alumniId}
       RETURNING alumniid, sapid, registrationno`;
     if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.update",
+        entityType: "tbl_alumni",
+        entityId: res[0].alumniid,
+        metadata: {
+          sapid: res[0].sapid,
+          registrationno: res[0].registrationno,
+          actorMode: isAdmin ? "admin" : "alumni",
+        },
+      },
+    });
     return NextResponse.json({ ok: true, updated: res[0] }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to update alumni";
@@ -334,6 +384,17 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     // SECURITY: Only admins/superadmins can delete alumni records (viewers and alumni cannot)
     const { canModify } = await import("@/lib/alumniProfile");
     if (!canModify(session.user)) {
+      await logAdminAction({
+        session,
+        req: _,
+        input: {
+          action: "alumni.delete",
+          entityType: "tbl_alumni",
+          entityId: String(sapid || "").trim() || null,
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "Forbidden: Only admins can delete alumni records" }, { status: 403 });
     }
 
@@ -387,6 +448,17 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       `;
       
       if (!accessCheck[0]) {
+        await logAdminAction({
+          session,
+          req: _,
+          input: {
+            action: "alumni.delete",
+            entityType: "tbl_alumni",
+            entityId: alumniId,
+            success: false,
+            errorMessage: "FORBIDDEN",
+          },
+        });
         return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
       }
     }
@@ -429,6 +501,21 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       
       return deleteResult[0];
     }));
+
+    await logAdminAction({
+      session,
+      req: _,
+      input: {
+        action: "alumni.delete",
+        entityType: "tbl_alumni",
+        entityId: result.alumniid,
+        metadata: {
+          sapid: result.sapid,
+          registrationno: foundRegNo,
+          name: result.alumniname,
+        },
+      },
+    });
 
     return NextResponse.json({ 
       ok: true, 

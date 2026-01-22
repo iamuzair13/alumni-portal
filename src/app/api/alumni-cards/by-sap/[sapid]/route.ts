@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { sendAlumniCardOnHoldEmail, sendAlumniCardActivatedEmail } from "@/lib/email";
+import { logAdminAction } from "@/lib/adminActivityLog";
 import { unlink } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -311,6 +312,17 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     
     // SECURITY: Only admins and superadmins can delete cards
     if (!canModify(session.user)) {
+      await logAdminAction({
+        session,
+        req: _,
+        input: {
+          action: "alumni_cards.delete",
+          entityType: "tblcard",
+          entityId: String(sapid || "").trim() || null,
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "Forbidden: Only admins and superadmins can delete cards" }, { status: 403 });
     }
     
@@ -318,7 +330,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     
     // Get card data including image paths before deletion
     const cardRows = await sql/* sql */`
-      SELECT c.cardid, c.alumniid, c.cardpicture, c.card_image
+      SELECT c.cardid, c.alumniid, c.cardpicture, c.card_image, a.registrationno
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
       WHERE TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
@@ -329,6 +341,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       alumniid: number;
       cardpicture: string | null;
       card_image: string | null;
+      registrationno: string | null;
     }>;
     
     if (!cardRows[0]) {
@@ -386,6 +399,21 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
     if (!deleteRows[0]) {
       return NextResponse.json({ message: "Card not found" }, { status: 404 });
     }
+
+    await logAdminAction({
+      session,
+      req: _,
+      input: {
+        action: "alumni_cards.delete",
+        entityType: "tblcard",
+        entityId: deleteRows[0].cardid,
+        metadata: {
+          sapid: normalizedSapid,
+          registrationno: cardData.registrationno,
+          alumniId: cardData.alumniid,
+        },
+      },
+    });
     
     return NextResponse.json({ 
       message: "Card deleted successfully",

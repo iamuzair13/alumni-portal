@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 import { createAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 type UserBody = {
   email: string;
@@ -40,6 +41,16 @@ export async function POST(req: Request) {
     
     // Only Super Admin can create users
     if (!isSuperAdmin) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "users.create",
+          entityType: "users",
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "FORBIDDEN: Only Super Admin can create users" }, { status: 403 });
     }
     
@@ -193,6 +204,27 @@ export async function POST(req: Request) {
         }
       }
     }
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "users.create",
+        entityType: "users",
+        entityId: userId,
+        metadata: {
+          createdUser: {
+            id: userId,
+            email: String(body.email || "").trim(),
+            firstname: body.firstname ?? null,
+            lastname: body.lastname ?? null,
+            department: body.department ?? null,
+            type: String(body.type || "viewer").trim(),
+            blocked: Boolean(body.blocked ?? false),
+          },
+        },
+      },
+    });
     
     return NextResponse.json({ userid: useridForResponse }, { status: 201 });
   } catch (err: unknown) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 // Approve, reject, or delete leadership applications
 export async function POST(req: NextRequest) {
@@ -14,6 +15,16 @@ export async function POST(req: NextRequest) {
 
     // Only admin and superadmin can perform actions
     if (!canModify(session.user)) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "leadership.action",
+          entityType: "leadership",
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "Forbidden: Only admins can perform this action" }, { status: 403 });
     }
 
@@ -22,6 +33,18 @@ export async function POST(req: NextRequest) {
     // rejectionReason is accessed from body.rejectionReason when needed
 
     if (!action || !applicationId || !type) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "leadership.action",
+          entityType: "leadership",
+          entityId: applicationId ?? null,
+          success: false,
+          errorMessage: "MISSING_REQUIRED_FIELDS",
+          metadata: { action, type },
+        },
+      });
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -61,6 +84,17 @@ export async function POST(req: NextRequest) {
           DELETE FROM public.chapter_leadership
           WHERE id = ${Number(applicationId)}
         `;
+
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.delete",
+            entityType: "chapter_leadership",
+            entityId: Number(applicationId),
+            metadata: { type: "chapter" },
+          },
+        });
 
         return NextResponse.json({ success: true, message: "Application deleted successfully" });
       }
@@ -124,6 +158,17 @@ export async function POST(req: NextRequest) {
             AND (chapter_leadership IS NULL OR chapter_leadership != ${Number(applicationId)})
         `;
 
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.approve",
+            entityType: "chapter_leadership",
+            entityId: Number(applicationId),
+            metadata: { type: "chapter", alumniId },
+          },
+        });
+
         return NextResponse.json({ success: true, message: "Application approved successfully" });
       } else if (action === "reject") {
         // Get rejection reason from body if provided (body was already parsed above)
@@ -137,6 +182,17 @@ export async function POST(req: NextRequest) {
               updated_at = NOW()
           WHERE id = ${Number(applicationId)}
         `;
+
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.reject",
+            entityType: "chapter_leadership",
+            entityId: Number(applicationId),
+            metadata: { type: "chapter", alumniId, rejectionReason },
+          },
+        });
 
         return NextResponse.json({ success: true, message: "Application rejected successfully" });
       }
@@ -176,6 +232,17 @@ export async function POST(req: NextRequest) {
           DELETE FROM public.tblalumniassociation
           WHERE id = ${Number(applicationId)}
         `;
+
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.delete",
+            entityType: "tblalumniassociation",
+            entityId: Number(applicationId),
+            metadata: { type: "association" },
+          },
+        });
 
         return NextResponse.json({ success: true, message: "Application deleted successfully" });
       }
@@ -238,6 +305,17 @@ export async function POST(req: NextRequest) {
             AND (association_job IS NULL OR association_job != ${Number(applicationId)})
         `;
 
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.approve",
+            entityType: "tblalumniassociation",
+            entityId: Number(applicationId),
+            metadata: { type: "association", alumniId },
+          },
+        });
+
         return NextResponse.json({ success: true, message: "Application approved successfully" });
       } else if (action === "reject") {
         // Update status to 'rejected' (do NOT link to tbl_alumni)
@@ -247,6 +325,17 @@ export async function POST(req: NextRequest) {
           SET status = 'rejected'
           WHERE id = ${Number(applicationId)}
         `;
+
+        await logAdminAction({
+          session,
+          req,
+          input: {
+            action: "leadership.reject",
+            entityType: "tblalumniassociation",
+            entityId: Number(applicationId),
+            metadata: { type: "association", alumniId },
+          },
+        });
 
         return NextResponse.json({ success: true, message: "Application rejected successfully" });
       }

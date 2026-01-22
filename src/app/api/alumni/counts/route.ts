@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { buildIdBasedAccessFilterSQL } from "@/lib/rbac";
 
 export async function GET(req: Request) {
   try {
@@ -1134,10 +1135,58 @@ export async function GET(req: Request) {
       `);
     }
 
-    // Fetch distinguished alumni count from separate table
+    const accessForDistinguished = await buildIdBasedAccessFilterSQL(session, {
+      alias: "d",
+      facultyColumn: "faculty_id",
+      departmentColumn: "department_id",
+      programColumn: "program_id",
+    });
+    const distinguishedAccessFilter = accessForDistinguished.sql ? sql`AND (${accessForDistinguished.sql})` : sql``;
+
+    let distinguishedFacultyFilter = sql``;
+    if (facultyParams && facultyParams.length > 0) {
+      const facultyConditions = facultyParams.map((f) => {
+        const normalized = String(f).trim();
+        if (normalized === "NULL" || normalized === "null") return sql`(d.faculty_id IS NULL)`;
+        const id = Number.parseInt(normalized, 10);
+        if (Number.isNaN(id)) return sql`1 = 0`;
+        return sql`(d.faculty_id = ${id})`;
+      });
+      distinguishedFacultyFilter = sql`AND (${combineOrConditions(facultyConditions)})`;
+    }
+
+    let distinguishedDepartmentFilter = sql``;
+    if (departmentParams && departmentParams.length > 0) {
+      const departmentConditions = departmentParams.map((dept) => {
+        const normalized = String(dept).trim();
+        if (normalized === "NULL" || normalized === "null") return sql`(d.department_id IS NULL)`;
+        const id = Number.parseInt(normalized, 10);
+        if (Number.isNaN(id)) return sql`1 = 0`;
+        return sql`(d.department_id = ${id})`;
+      });
+      distinguishedDepartmentFilter = sql`AND (${combineOrConditions(departmentConditions)})`;
+    }
+
+    let distinguishedProgramFilter = sql``;
+    if (programParams && programParams.length > 0) {
+      const programConditions = programParams.map((prog) => {
+        const normalized = String(prog).trim();
+        if (normalized === "NULL" || normalized === "null") return sql`(d.program_id IS NULL)`;
+        const id = Number.parseInt(normalized, 10);
+        if (Number.isNaN(id)) return sql`1 = 0`;
+        return sql`(d.program_id = ${id})`;
+      });
+      distinguishedProgramFilter = sql`AND (${combineOrConditions(programConditions)})`;
+    }
+
     const distinguishedCountResult = await retryDbOperation(async () => await sql/* sql */`
       SELECT COUNT(*) as count
-      FROM public.distinguished_alumni
+      FROM public.distinguished_alumni d
+      WHERE 1=1
+        ${distinguishedAccessFilter}
+        ${distinguishedFacultyFilter}
+        ${distinguishedDepartmentFilter}
+        ${distinguishedProgramFilter}
     `);
     const distinguishedCount = distinguishedCountResult[0]?.count ? Number(distinguishedCountResult[0].count) : 0;
 

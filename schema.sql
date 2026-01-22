@@ -577,7 +577,7 @@ CREATE INDEX IF NOT EXISTS idx_user_access_program_id
     (program_id ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
-    
+
 -- Table: public.distinguished_alumni
 
 -- DROP TABLE IF EXISTS public.distinguished_alumni;
@@ -599,8 +599,27 @@ CREATE TABLE IF NOT EXISTS public.distinguished_alumni
     story jsonb NOT NULL DEFAULT '[]'::jsonb,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    faculty_id bigint,
+    department_id bigint,
+    program_id bigint,
     CONSTRAINT distinguished_alumni_pkey PRIMARY KEY (id),
-    CONSTRAINT distinguished_alumni_slug_key UNIQUE (slug)
+    CONSTRAINT distinguished_alumni_slug_key UNIQUE (slug),
+    CONSTRAINT fk_distinguished_department FOREIGN KEY (department_id)
+        REFERENCES public.tbl_departments (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT fk_distinguished_department_program FOREIGN KEY (program_id, department_id)
+        REFERENCES public.tbl_programs (id, department_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT fk_distinguished_faculty FOREIGN KEY (faculty_id)
+        REFERENCES public.tbl_faculties (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT fk_distinguished_program FOREIGN KEY (program_id)
+        REFERENCES public.tbl_programs (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
 )
 
 TABLESPACE pg_default;

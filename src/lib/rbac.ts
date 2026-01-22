@@ -314,8 +314,27 @@ export async function hasAllFacultiesAccess(userId: number): Promise<boolean> {
  * @returns SQL condition and hasFilter flag
  */
 export async function buildIdBasedAccessFilterSQL(
-  session: Session | null
+  session: Session | null,
+  options?: {
+    alias?: string;
+    facultyColumn?: string;
+    departmentColumn?: string;
+    programColumn?: string;
+  }
 ): Promise<{ sql: ReturnType<typeof sql> | null; hasFilter: boolean }> {
+  const alias = options?.alias ?? "a";
+  const facultyColumn = options?.facultyColumn ?? "faculty";
+  const departmentColumn = options?.departmentColumn ?? "department";
+  const programColumn = options?.programColumn ?? "program";
+
+  // The postgres `sql` tag supports `sql.unsafe` for identifiers.
+  // Validate alias/column names to prevent injection.
+  const IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+  if (!IDENT.test(alias) || !IDENT.test(facultyColumn) || !IDENT.test(departmentColumn) || !IDENT.test(programColumn)) {
+    return { sql: sql`1 = 0`, hasFilter: true };
+  }
+  const col = (name: string) => sql.unsafe(`${alias}.${name}`);
+
   // Superadmin always has full access - no filtering
   if (isSuperAdminUser(session?.user)) {
     return { sql: null, hasFilter: false };
@@ -426,8 +445,7 @@ export async function buildIdBasedAccessFilterSQL(
     }
   }
   // Build conditions: program > department > faculty (most specific first)
-  // Note: We build conditions without table alias prefix since most queries use "a" as alias
-  // If a different alias is needed, it should be applied when using the condition
+  // Note: We build conditions with a configurable alias and column names
   
   // Program-level access (most specific)
   if (programIds.size > 0) {
@@ -437,11 +455,11 @@ export async function buildIdBasedAccessFilterSQL(
       const deptId = programToDepartment.get(programId);
       if (deptId !== undefined) {
         programConditions.push(
-          sql`(a.department = ${deptId} AND a.program = ${programId})`
+          sql`(${col(departmentColumn)} = ${deptId} AND ${col(programColumn)} = ${programId})`
         );
       } else {
         programConditions.push(
-          sql`a.program = ${programId}`
+          sql`${col(programColumn)} = ${programId}`
         );
       }
     }
@@ -465,11 +483,11 @@ export async function buildIdBasedAccessFilterSQL(
         const facultyId = departmentToFaculty.get(deptId);
         if (facultyId !== undefined) {
           deptConditions.push(
-            sql`(a.faculty = ${facultyId} AND a.department = ${deptId})`
+            sql`(${col(facultyColumn)} = ${facultyId} AND ${col(departmentColumn)} = ${deptId})`
           );
         } else {
           deptConditions.push(
-            sql`a.department = ${deptId}`
+            sql`${col(departmentColumn)} = ${deptId}`
           );
         }
       }
@@ -497,7 +515,7 @@ export async function buildIdBasedAccessFilterSQL(
       const facultyIdArray = uncoveredFacultyIds.map(id => Number(id)).filter(id => !isNaN(id));
       if (facultyIdArray.length > 0) {
         conditionsArray.push(
-          sql`a.faculty = ANY(${facultyIdArray})`
+          sql`${col(facultyColumn)} = ANY(${facultyIdArray})`
         );
       }
     }

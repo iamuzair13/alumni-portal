@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { logAdminAction } from "@/lib/adminActivityLog";
 
 export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -60,6 +61,17 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
 
     if (!isOwner && !canModify(session?.user)) {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "alumni.update_fields",
+          entityType: "tbl_alumni",
+          entityId: alumniId,
+          success: false,
+          errorMessage: "FORBIDDEN",
+        },
+      });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     
@@ -556,6 +568,22 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     if (!result) {
       return NextResponse.json({ error: "Failed to update" }, { status: 500 });
     }
+
+    await logAdminAction({
+      session,
+      req,
+      input: {
+        action: "alumni.update_fields",
+        entityType: "tbl_alumni",
+        entityId: (result as any).alumniid,
+        metadata: {
+          sapid: (result as any).sapid,
+          registrationno: (result as any).registrationno,
+          passwordChanged: body.password !== undefined,
+          actorMode: isAdmin ? "admin" : "alumni",
+        },
+      },
+    });
 
     return NextResponse.json({ 
       ok: true, 
