@@ -310,7 +310,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         departmentname = ${v.department}, degreetitle = ${v.program}, yearofending = ${v.passingYear}, employeed = ${v.employmentStatus},
         industry = ${v.sector ?? null}, nameoforganization = ${v.organization ?? null}, designation = ${v.designation ?? null},
         totalyearsofexpereince = ${v.totalExperienceYears ?? null}, officialemail = ${v.officialEmail ?? null}, officialnumber = ${v.officialPhone ?? null},
-        datasource = ${v.source ?? null}, verify = ${v.verified === true ? "true" : v.verified === false ? "false" : null}, alumnistatus = ${v.category ?? null}
+        datasource = ${v.source ?? null}, verify = ${v.verified === true ? "true" : v.verified === false ? "false" : null}, alumnistatus = ${v.category ?? null}, updated_at = CURRENT_DATE
       WHERE alumniid = ${alumniId}
       RETURNING alumniid, sapid, registrationno`;
     if (!res[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });

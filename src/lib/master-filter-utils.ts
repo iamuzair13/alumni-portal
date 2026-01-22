@@ -362,6 +362,24 @@ export function buildMasterFilterConditions(
     }
   }
 
+  // Employer filter (exclude if querying employers)
+  if (excludeField !== "employer") {
+    const employer = getFilterValue("employer");
+    if (employer && (Array.isArray(employer) ? employer.length > 0 : employer)) {
+      const employers = Array.isArray(employer) ? employer : [employer];
+      const conditions = employers.map(e => {
+        const normalized = String(e).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          return sql`(nameoforganization IS NULL OR TRIM(COALESCE(nameoforganization, '')) = '')`;
+        }
+        return sql`LOWER(TRIM(COALESCE(nameoforganization, ''))) = LOWER(TRIM(${e}))`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
   // Institution Name filter (exclude if querying institution names)
   if (excludeField !== "institutionName") {
     const institutionName = getFilterValue("institutionName");
@@ -501,7 +519,11 @@ export function buildMasterFilterConditions(
       const conditions = states.map(s => {
         const normalized = String(s).trim().toUpperCase();
         if (normalized === "NULL") {
-          return sql`(sapid IS NULL)`;
+          return sql`(
+            sapid IS NULL
+            OR TRIM(COALESCE(sapid, '')) = ''
+            OR LOWER(TRIM(COALESCE(sapid, ''))) = 'null'
+          )`;
         }
         // Unknown value – do not match anything
         return sql`1 = 0`;
@@ -520,7 +542,57 @@ export function buildMasterFilterConditions(
       const conditions = states.map(s => {
         const normalized = String(s).trim().toUpperCase();
         if (normalized === "NULL") {
-          return sql`(registrationno IS NULL)`;
+          return sql`(
+            registrationno IS NULL
+            OR TRIM(COALESCE(registrationno, '')) = ''
+            OR LOWER(TRIM(COALESCE(registrationno, ''))) = 'null'
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
+  // Personal Email state filter (NULL only)
+  if (excludeField !== "personalEmailState") {
+    const personalEmailState = getFilterValue("personalEmailState");
+    if (personalEmailState && (Array.isArray(personalEmailState) ? personalEmailState.length > 0 : personalEmailState)) {
+      const states = Array.isArray(personalEmailState) ? personalEmailState : [personalEmailState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            personalemail IS NULL
+            OR TRIM(COALESCE(personalemail, '')) = ''
+            OR LOWER(TRIM(COALESCE(personalemail, ''))) = 'null'
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
+  // Contact No state filter (NULL only)
+  if (excludeField !== "contactNoState") {
+    const contactNoState = getFilterValue("contactNoState");
+    if (contactNoState && (Array.isArray(contactNoState) ? contactNoState.length > 0 : contactNoState)) {
+      const states = Array.isArray(contactNoState) ? contactNoState : [contactNoState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            (
+              contactno IS NULL
+              OR TRIM(COALESCE(contactno, '')) = ''
+              OR LOWER(TRIM(COALESCE(contactno, ''))) = 'null'
+            )
+          )`;
         }
         return sql`1 = 0`;
       });

@@ -93,6 +93,18 @@ function MoreDetailsContent() {
     return normalized1 === normalized2;
   };
 
+  const formatDateDisplay = (value: unknown): string => {
+    if (value === null || value === undefined || value === "") return "-";
+    const str = String(value).trim();
+    const d = new Date(str.length === 10 ? `${str}T00:00:00` : str);
+    if (Number.isNaN(d.getTime())) return str;
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(d);
+  };
+
   const handleFieldValueChange = useCallback((key: string, value: unknown) => {
     // Don't track changes until component is fully initialized
     if (!data || !isInitialized) return;
@@ -591,6 +603,7 @@ function MoreDetailsContent() {
         { label: "About Me", value: data.aboutme, key: "aboutme", editable: true, type: "textarea" as const },
         { label: "Last Login", value: data.lasttimelogin, key: "lasttimelogin", editable: false },
         { label: "Login Count", value: data.logincount, key: "logincount", editable: false },
+        { label: "Last Updated", value: formatDateDisplay((data as Record<string, unknown>).updated_at as unknown), key: "updated_at", editable: false },
         { label: "Created Date", value: data.createddatetime, key: "createddatetime", editable: false },
       ],
     },

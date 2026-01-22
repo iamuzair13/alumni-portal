@@ -267,19 +267,29 @@ export async function PUT(req: Request) {
     // Super Admin can update all fields
     if (isViewer && !isAdmin && !isSuperAdmin) {
       // Viewers can only update password
+      let hashedPassword: string | undefined = undefined;
+      if (body.password) {
+        const { hashPassword } = await import("@/auth/credentials");
+        hashedPassword = await hashPassword(String(body.password));
+      }
       await sql/* sql */`
         UPDATE public.users
         SET
-          ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
+          ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
     } else {
       // Super Admin can update all fields
+      let hashedPassword: string | undefined = undefined;
+      if (body.password) {
+        const { hashPassword } = await import("@/auth/credentials");
+        hashedPassword = await hashPassword(String(body.password));
+      }
       await sql/* sql */`
         UPDATE public.users
         SET
           email = ${body.email ?? null},
-          ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
+          ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
           firstname = ${body.firstname ?? null},
           lastname = ${body.lastname ?? null},
           department = ${body.department ?? null},

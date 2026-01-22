@@ -31,6 +31,7 @@ import { useWorkCities } from "@/app/queries/fetch-work-cities";
 import { useHomeCities } from "@/app/queries/fetch-home-cities";
 import { useProvinces } from "@/app/queries/fetch-provinces";
 import { useInstitutionNames } from "@/app/queries/fetch-institution-names";
+import { useEmployers, type EmployerOption } from "@/app/queries/fetch-employers";
 import { useDegreeTitles } from "@/app/queries/fetch-degree-titles";
 import { useFundingSources } from "@/app/queries/fetch-funding-sources";
 import { useInstitutionCountries } from "@/app/queries/fetch-institution-countries";
@@ -195,6 +196,7 @@ export const AlumniTabs: React.FC = () => {
   const workCountryFilterRef = React.useRef<HTMLDivElement>(null);
   const workCityFilterRef = React.useRef<HTMLDivElement>(null);
   const sectorFilterRef = React.useRef<HTMLDivElement>(null);
+  const employerFilterRef = React.useRef<HTMLDivElement>(null);
   const institutionNameFilterRef = React.useRef<HTMLDivElement>(null);
   const programEnrolledFilterRef = React.useRef<HTMLDivElement>(null);
   const fundingSourceFilterRef = React.useRef<HTMLDivElement>(null);
@@ -262,6 +264,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [selectedWorkCities, setSelectedWorkCities] = useState<string[]>([]);
   const [selectedWorkCountries, setSelectedWorkCountries] = useState<string[]>([]);
+  const [selectedEmployers, setSelectedEmployers] = useState<string[]>([]);
   const [selectedInstitutionNames, setSelectedInstitutionNames] = useState<string[]>([]);
   const [selectedProgramsEnrolled, setSelectedProgramsEnrolled] = useState<string[]>([]);
   const [selectedFundingSources, setSelectedFundingSources] = useState<string[]>([]);
@@ -272,6 +275,7 @@ export const AlumniTabs: React.FC = () => {
   const [exportFaculty, setExportFaculty] = useState<boolean>(true);
   const [exportDepartment, setExportDepartment] = useState<boolean>(true);
   const [exportProgram, setExportProgram] = useState<boolean>(true);
+  const [exportStatus, setExportStatus] = useState<boolean>(true);
   const [exportMaster, setExportMaster] = useState<boolean>(false);
   // Master filter–specific export toggles
   const [exportGender, setExportGender] = useState<boolean>(true);
@@ -286,17 +290,18 @@ export const AlumniTabs: React.FC = () => {
   const [exportSector, setExportSector] = useState<boolean>(true);
   const [exportWorkCity, setExportWorkCity] = useState<boolean>(true);
   const [exportWorkCountry, setExportWorkCountry] = useState<boolean>(true);
+  const [exportEmployer, setExportEmployer] = useState<boolean>(true);
   const [exportInstitutionName, setExportInstitutionName] = useState<boolean>(true);
   const [exportProgramEnrolled, setExportProgramEnrolled] = useState<boolean>(true);
   const [exportFundingSource, setExportFundingSource] = useState<boolean>(true);
   const [exportInstitutionCountry, setExportInstitutionCountry] = useState<boolean>(true);
   const [exportInstitutionCity, setExportInstitutionCity] = useState<boolean>(true);
-  const [exportMrNo, setExportMrNo] = useState<boolean>(true);
   const [exportPhotoConsent, setExportPhotoConsent] = useState<boolean>(true);
   const [exportCategory, setExportCategory] = useState<boolean>(true);
-  const [selectedMrNos, setSelectedMrNos] = useState<string[]>([]);
   const [selectedSapIdStates, setSelectedSapIdStates] = useState<string[]>([]);
   const [selectedRegNoStates, setSelectedRegNoStates] = useState<string[]>([]);
+  const [selectedPersonalEmailStates, setSelectedPersonalEmailStates] = useState<string[]>([]);
+  const [selectedContactNoStates, setSelectedContactNoStates] = useState<string[]>([]);
   const [selectedPhotoConsents, setSelectedPhotoConsents] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -321,6 +326,7 @@ export const AlumniTabs: React.FC = () => {
     workCountry: boolean;
     workCity: boolean;
     sector: boolean;
+    employer: boolean;
     institutionName: boolean;
     programEnrolled: boolean;
     fundingSource: boolean;
@@ -346,6 +352,7 @@ export const AlumniTabs: React.FC = () => {
     workCountry: false,
     workCity: false,
     sector: false,
+    employer: false,
     institutionName: false,
     programEnrolled: false,
     fundingSource: false,
@@ -519,6 +526,9 @@ export const AlumniTabs: React.FC = () => {
     if (selectedWorkCountries.length > 0) {
       filters.workCountry = selectedWorkCountries;
     }
+    if (selectedEmployers.length > 0) {
+      filters.employer = selectedEmployers;
+    }
     if (selectedInstitutionNames.length > 0) {
       filters.institutionName = selectedInstitutionNames;
     }
@@ -534,14 +544,17 @@ export const AlumniTabs: React.FC = () => {
     if (selectedInstitutionCities.length > 0) {
       filters.institutionCity = selectedInstitutionCities;
     }
-    if (selectedMrNos.length > 0) {
-      filters.mrNo = selectedMrNos;
-    }
     if (selectedSapIdStates.length > 0) {
       filters.sapIdState = selectedSapIdStates;
     }
     if (selectedRegNoStates.length > 0) {
       filters.regNoState = selectedRegNoStates;
+    }
+    if (selectedPersonalEmailStates.length > 0) {
+      filters.personalEmailState = selectedPersonalEmailStates;
+    }
+    if (selectedContactNoStates.length > 0) {
+      filters.contactNoState = selectedContactNoStates;
     }
     if (selectedPhotoConsents.length > 0) {
       filters.photoConsent = selectedPhotoConsents;
@@ -567,15 +580,17 @@ export const AlumniTabs: React.FC = () => {
     selectedSectors,
     selectedWorkCities,
     selectedWorkCountries,
+    selectedEmployers,
     selectedInstitutionNames,
     selectedProgramsEnrolled,
     selectedFundingSources,
     selectedInstitutionCountries,
     selectedInstitutionCities,
-    selectedMrNos,
     selectedPhotoConsents,
     selectedSapIdStates,
     selectedRegNoStates,
+    selectedPersonalEmailStates,
+    selectedContactNoStates,
     selectedCategories,
   ]);
   
@@ -600,6 +615,7 @@ export const AlumniTabs: React.FC = () => {
   const { data: workCitiesData } = useWorkCities(masterFilters);
   const { data: homeCitiesData } = useHomeCities(masterFilters);
   const { data: provincesData } = useProvinces(masterFilters);
+  const { data: employersData } = useEmployers(masterFilters);
   
   // Institution-related master filter hooks - pass masterFilters to get dynamic counts
   const { data: institutionNamesData } = useInstitutionNames(masterFilters);
@@ -710,6 +726,9 @@ export const AlumniTabs: React.FC = () => {
       if (sectorFilterRef.current && !sectorFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, sector: false }));
       }
+      if (employerFilterRef.current && !employerFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, employer: false }));
+      }
       if (institutionNameFilterRef.current && !institutionNameFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, institutionName: false }));
       }
@@ -819,16 +838,18 @@ export const AlumniTabs: React.FC = () => {
     setSelectedSectors([]);
     setSelectedWorkCities([]);
     setSelectedWorkCountries([]);
+    setSelectedEmployers([]);
     setSelectedInstitutionNames([]);
     setSelectedProgramsEnrolled([]);
     setSelectedFundingSources([]);
     setSelectedInstitutionCountries([]);
     setSelectedInstitutionCities([]);
-    setSelectedMrNos([]);
     setSelectedPhotoConsents([]);
     setSelectedCategories([]);
     setSelectedSapIdStates([]);
     setSelectedRegNoStates([]);
+    setSelectedPersonalEmailStates([]);
+    setSelectedContactNoStates([]);
     setCurrentPage(1);
   }, []);
 
@@ -852,18 +873,20 @@ export const AlumniTabs: React.FC = () => {
       selectedSectors.length > 0 ||
       selectedWorkCities.length > 0 ||
       selectedWorkCountries.length > 0 ||
+      selectedEmployers.length > 0 ||
       selectedInstitutionNames.length > 0 ||
       selectedProgramsEnrolled.length > 0 ||
       selectedFundingSources.length > 0 ||
       selectedInstitutionCountries.length > 0 ||
       selectedInstitutionCities.length > 0 ||
-      selectedMrNos.length > 0 ||
       selectedPhotoConsents.length > 0 ||
       selectedCategories.length > 0 ||
       selectedSapIdStates.length > 0 ||
-      selectedRegNoStates.length > 0
+      selectedRegNoStates.length > 0 ||
+      selectedPersonalEmailStates.length > 0 ||
+      selectedContactNoStates.length > 0
     );
-  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities, selectedMrNos, selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates]);
+  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities,  selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates, selectedPersonalEmailStates, selectedContactNoStates]);
   
   const handleStatusToggle = (status: string) => {
     setAdditionalFilter(prev => 
@@ -1040,6 +1063,22 @@ export const AlumniTabs: React.FC = () => {
     );
   };
 
+  const handlePersonalEmailStateToggle = (value: string) => {
+    setSelectedPersonalEmailStates(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
+  const handleContactNoStateToggle = (value: string) => {
+    setSelectedContactNoStates(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
   // Occupation Status filter handlers
   const handleOccupationStatusToggle = (status: string) => {
     setSelectedOccupationStatuses(prev => 
@@ -1108,11 +1147,28 @@ export const AlumniTabs: React.FC = () => {
     }
   };
 
+  const handleEmployerToggle = (employer: string) => {
+    setSelectedEmployers(prev =>
+      prev.includes(employer)
+        ? prev.filter(e => e !== employer)
+        : [...prev, employer]
+    );
+  };
+
+  const handleEmployerSelectAll = () => {
+    const allValues = employersData?.employers?.map(e => e.value) || [];
+    if (selectedEmployers.length === allValues.length && allValues.length > 0) {
+      setSelectedEmployers([]);
+    } else {
+      setSelectedEmployers(allValues);
+    }
+  };
+
   // Reset page to 1 when tab changes or filter changes (but not when statusFilter recalculates with same value)
   useEffect(() => {
 
     setCurrentPage(1);
-  }, [selected, additionalFilter]); // Removed statusFilter since it's derived from selected and additionalFilter
+  }, [selected, additionalFilter, masterFilters]); // Removed statusFilter since it's derived from selected and additionalFilter
 
   // React Query: fetch paginated list for table display with status filter and filters
   const {
@@ -1142,16 +1198,19 @@ export const AlumniTabs: React.FC = () => {
     selectedSectors.length > 0 ? selectedSectors : undefined,
     selectedWorkCities.length > 0 ? selectedWorkCities : undefined,
     selectedWorkCountries.length > 0 ? selectedWorkCountries : undefined,
+    selectedEmployers.length > 0 ? selectedEmployers : undefined,
     selectedInstitutionNames.length > 0 ? selectedInstitutionNames : undefined,
     selectedProgramsEnrolled.length > 0 ? selectedProgramsEnrolled : undefined,
     selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
     selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
     selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
-      selectedMrNos.length > 0 ? selectedMrNos : undefined,
-      selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
-      selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
-      selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
-      selectedCategories.length > 0 ? selectedCategories : undefined
+    undefined,
+    selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
+    selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
+    selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
+    selectedPersonalEmailStates.length > 0 ? selectedPersonalEmailStates : undefined,
+    selectedContactNoStates.length > 0 ? selectedContactNoStates : undefined,
+    selectedCategories.length > 0 ? selectedCategories : undefined
   );
   
   // Debug logging - commented out to fix build issue
@@ -1189,15 +1248,17 @@ export const AlumniTabs: React.FC = () => {
       selectedSectors,
       selectedWorkCities,
       selectedWorkCountries,
+      selectedEmployers,
       selectedInstitutionNames,
       selectedProgramsEnrolled,
       selectedFundingSources,
       selectedInstitutionCountries,
       selectedInstitutionCities,
-      selectedMrNos,
       selectedPhotoConsents,
       selectedSapIdStates,
       selectedRegNoStates,
+      selectedPersonalEmailStates,
+      selectedContactNoStates,
       selectedCategories
     ],
     queryFn: ({ signal }) => getAlumniCounts(
@@ -1219,15 +1280,18 @@ export const AlumniTabs: React.FC = () => {
       selectedSectors.length > 0 ? selectedSectors : undefined,
       selectedWorkCities.length > 0 ? selectedWorkCities : undefined,
       selectedWorkCountries.length > 0 ? selectedWorkCountries : undefined,
+      selectedEmployers.length > 0 ? selectedEmployers : undefined,
       selectedInstitutionNames.length > 0 ? selectedInstitutionNames : undefined,
       selectedProgramsEnrolled.length > 0 ? selectedProgramsEnrolled : undefined,
       selectedFundingSources.length > 0 ? selectedFundingSources : undefined,
       selectedInstitutionCountries.length > 0 ? selectedInstitutionCountries : undefined,
       selectedInstitutionCities.length > 0 ? selectedInstitutionCities : undefined,
-      selectedMrNos.length > 0 ? selectedMrNos : undefined,
+      undefined,
       selectedPhotoConsents.length > 0 ? selectedPhotoConsents : undefined,
       selectedSapIdStates.length > 0 ? selectedSapIdStates : undefined,
       selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
+      selectedPersonalEmailStates.length > 0 ? selectedPersonalEmailStates : undefined,
+      selectedContactNoStates.length > 0 ? selectedContactNoStates : undefined,
       selectedCategories.length > 0 ? selectedCategories : undefined
     ),
     staleTime: 0, // Always consider stale - refetch when invalidated to get real-time updates
@@ -1704,6 +1768,11 @@ export const AlumniTabs: React.FC = () => {
           url.searchParams.append("workCountry", country);
         });
       }
+      if (selectedEmployers.length > 0) {
+        selectedEmployers.forEach((employer) => {
+          url.searchParams.append("employer", employer);
+        });
+      }
       if (selectedInstitutionNames.length > 0) {
         selectedInstitutionNames.forEach(name => {
           url.searchParams.append("institutionName", name);
@@ -1729,11 +1798,6 @@ export const AlumniTabs: React.FC = () => {
           url.searchParams.append("institutionCity", city);
         });
       }
-      if (selectedMrNos.length > 0) {
-        selectedMrNos.forEach(mrNo => {
-          url.searchParams.append("mrNo", mrNo);
-        });
-      }
       if (selectedPhotoConsents.length > 0) {
         selectedPhotoConsents.forEach(consent => {
           url.searchParams.append("photoConsent", consent);
@@ -1747,6 +1811,16 @@ export const AlumniTabs: React.FC = () => {
       if (selectedRegNoStates.length > 0) {
         selectedRegNoStates.forEach(state => {
           url.searchParams.append("regNoState", state);
+        });
+      }
+      if (selectedPersonalEmailStates.length > 0) {
+        selectedPersonalEmailStates.forEach(state => {
+          url.searchParams.append("personalEmailState", state);
+        });
+      }
+      if (selectedContactNoStates.length > 0) {
+        selectedContactNoStates.forEach(state => {
+          url.searchParams.append("contactNoState", state);
         });
       }
       if (selectedCategories.length > 0) {
@@ -1814,7 +1888,6 @@ export const AlumniTabs: React.FC = () => {
         "Alumni ID": item.alumniid || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
-        "MR No": item.registrationno || "",
         "Alumni Email": item.alumniemail || "",
         "Full Name": item.alumniname || "",
         "Gender": item.gender || "",
@@ -1952,7 +2025,6 @@ export const AlumniTabs: React.FC = () => {
         { key: "Alumni ID", label: "Alumni ID", defaultSelected: true },
         { key: "SAP ID", label: "SAP ID", defaultSelected: true },
         { key: "Registration No", label: "Registration No", defaultSelected: true },
-        { key: "MR No", label: "MR No", defaultSelected: false },
         { key: "Alumni Email", label: "Alumni Email", defaultSelected: true },
         { key: "Full Name", label: "Full Name", defaultSelected: true },
         { key: "Gender", label: "Gender", defaultSelected: true },
@@ -2066,7 +2138,7 @@ export const AlumniTabs: React.FC = () => {
     const departmentKeys = ["Department"];
     const programKeys = ["Academic Session", "Degree Title"];
     // Status columns - only include if at least one status is selected in the dropdown
-    const statusKeys = additionalFilter.length > 0 ? ["Verification Status", "Alumni Status"] : [];
+    const selectedStatusKeys = additionalFilter.length > 0 ? ["Verification Status", "Alumni Status"] : [];
 
     // Master filter column groups
     const genderKeys = ["Gender"];
@@ -2081,12 +2153,13 @@ export const AlumniTabs: React.FC = () => {
     const sectorKeys = ["Industry"];
     const workCityKeys = ["Work City"];
     const workCountryKeys = ["Work Country"];
+    const employerKeys = ["Organization"];
+    const statusKeys = ["Verification Status", "Alumni Status"];
     const institutionNameKeys = ["Higher Education Institute Name"];
     const programEnrolledKeys = ["Higher Education Program"];
     const fundingSourceKeys = ["Is Scholarship"];
     const institutionCountryKeys = ["Higher Education Institute Country"];
     const institutionCityKeys = ["Higher Education Institute City"];
-    const mrNoKeys = ["MR No"];
     const photoConsentKeys = ["Photo Usage Consent"];
     const categoryKeys = ["Category"];
 
@@ -2111,8 +2184,9 @@ export const AlumniTabs: React.FC = () => {
         columnGroupMap.set(key, exportDepartment);
       } else if (programKeys.includes(key)) {
         columnGroupMap.set(key, exportProgram);
-      } else if (statusKeys.includes(key)) {
-        columnGroupMap.set(key, additionalFilter.length > 0);
+      } else if (selectedStatusKeys.includes(key)) {
+        // Use exportStatus toggle for status columns
+        columnGroupMap.set(key, exportStatus);
       } else if (genderKeys.includes(key)) {
         columnGroupMap.set(key, exportGender);
       } else if (maritalStatusKeys.includes(key)) {
@@ -2137,6 +2211,10 @@ export const AlumniTabs: React.FC = () => {
         columnGroupMap.set(key, exportWorkCity);
       } else if (workCountryKeys.includes(key)) {
         columnGroupMap.set(key, exportWorkCountry);
+      } else if (employerKeys.includes(key)) {
+        columnGroupMap.set(key, exportEmployer);
+      } else if (statusKeys.includes(key)) {
+        columnGroupMap.set(key, exportStatus);
       } else if (institutionNameKeys.includes(key)) {
         columnGroupMap.set(key, exportInstitutionName);
       } else if (programEnrolledKeys.includes(key)) {
@@ -2147,8 +2225,6 @@ export const AlumniTabs: React.FC = () => {
         columnGroupMap.set(key, exportInstitutionCountry);
       } else if (institutionCityKeys.includes(key)) {
         columnGroupMap.set(key, exportInstitutionCity);
-      } else if (mrNoKeys.includes(key)) {
-        columnGroupMap.set(key, exportMrNo);
       } else if (photoConsentKeys.includes(key)) {
         columnGroupMap.set(key, exportPhotoConsent);
       } else if (categoryKeys.includes(key)) {
@@ -2255,7 +2331,6 @@ export const AlumniTabs: React.FC = () => {
     selectedFundingSources,
     selectedInstitutionCountries,
     selectedInstitutionCities,
-    selectedMrNos,
     selectedPhotoConsents,
     selectedSapIdStates,
     selectedRegNoStates,
@@ -2263,6 +2338,26 @@ export const AlumniTabs: React.FC = () => {
     exportDepartment,
     exportProgram,
     additionalFilter, // Status columns depend on selected statuses in dropdown
+    exportGender,
+    exportMaritalStatus,
+    exportHomeCountry,
+    exportHomeCity,
+    exportProvince,
+    exportCampus,
+    exportAdmissionYear,
+    exportPassingYear,
+    exportOccupationStatus,
+    exportSector,
+    exportWorkCity,
+    exportWorkCountry,
+    exportEmployer,
+    exportInstitutionName,
+    exportProgramEnrolled,
+    exportFundingSource,
+    exportInstitutionCountry,
+    exportInstitutionCity,
+    exportPhotoConsent,
+    exportCategory,
     exportMaster,
   ]);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -3063,12 +3158,12 @@ export const AlumniTabs: React.FC = () => {
                         setExportSector(checked);
                         setExportWorkCity(checked);
                         setExportWorkCountry(checked);
+                        setExportEmployer(checked);
                         setExportInstitutionName(checked);
                         setExportProgramEnrolled(checked);
                         setExportFundingSource(checked);
                         setExportInstitutionCountry(checked);
                         setExportInstitutionCity(checked);
-                        setExportMrNo(checked);
                         setExportPhotoConsent(checked);
                       }}
                       className="h-3 w-3 text-blue-600 border-gray-300 rounded"
@@ -4071,6 +4166,87 @@ export const AlumniTabs: React.FC = () => {
                         )}
                       </div>
 
+                      {/* Employer Filter */}
+                      <div className="relative" ref={employerFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                          <span>Employer</span>
+                          <input
+                            type="checkbox"
+                            checked={exportEmployer}
+                            onChange={(e) => setExportEmployer(e.target.checked)}
+                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
+                            title="Include Organization column in Excel export"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFilters(prev => ({ ...prev, employer: !prev.employer }))}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                        >
+                          <span className="truncate">
+                            {selectedEmployers.length === 0
+                              ? "Select employers..."
+                              : selectedEmployers.length === 1
+                              ? employersData?.employers?.find((e: EmployerOption) => e.value === selectedEmployers[0])?.label || selectedEmployers[0]
+                              : `${selectedEmployers.length} employers selected`}
+                          </span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandedFilters.employer ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedFilters.employer && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                            <div className="p-2">
+                              <label
+                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEmployerSelectAll();
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={employersData?.employers && selectedEmployers.length === employersData.employers.length && employersData.employers.length > 0}
+                                    onChange={handleEmployerSelectAll}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                  />
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All Employers</span>
+                                </div>
+                              </label>
+                              <div className="max-h-48 overflow-y-auto">
+                                {employersData?.employers?.map((employer: EmployerOption) => {
+                                  const isChecked = selectedEmployers.includes(employer.value);
+                                  return (
+                                    <label
+                                      key={employer.value}
+                                      className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => handleEmployerToggle(employer.value)}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{employer.label} ({employer.count})</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedEmployers.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedEmployers.length} selected</p>
+                        )}
+                      </div>
+
                       {/* Work City Filter */}
                       <div className="relative" ref={workCityFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
@@ -4623,30 +4799,6 @@ export const AlumniTabs: React.FC = () => {
                         )}
                       </div>
                       
-                      {/* MR No Filter */}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
-                          <span>Alumni MR No.</span>
-                          <input
-                            type="checkbox"
-                            checked={exportMrNo}
-                            onChange={(e) => setExportMrNo(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include MR No column in Excel export"
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Type registration numbers..."
-                          value={selectedMrNos.join(", ")}
-                          onChange={(e) => {
-                            const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                            setSelectedMrNos(values);
-                          }}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      
                       {/* Photo Consent Filter */}
                       <div className="relative" ref={photoConsentFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
@@ -4856,6 +5008,46 @@ export const AlumniTabs: React.FC = () => {
                                 type="checkbox"
                                 checked={selectedRegNoStates.includes("NULL")}
                                 onChange={() => handleRegNoStateToggle("NULL")}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span>NULL</span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Personal Email State Filter (NULL only) */}
+                      <div className="relative">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Personal Email (Missing)
+                        </label>
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedPersonalEmailStates.includes("NULL")}
+                                onChange={() => handlePersonalEmailStateToggle("NULL")}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                              />
+                              <span>NULL</span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Contact No State Filter (NULL only) */}
+                      <div className="relative">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                          Contact No (Missing)
+                        </label>
+                        <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedContactNoStates.includes("NULL")}
+                                onChange={() => handleContactNoStateToggle("NULL")}
                                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                               />
                               <span>NULL</span>

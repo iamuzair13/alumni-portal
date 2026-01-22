@@ -19,6 +19,7 @@ export type MasterFilters = {
   sector?: string | string[];
   workCity?: string | string[];
   workCountry?: string | string[];
+  employer?: string | string[];
   institutionName?: string | string[];
   programEnrolled?: string | string[];
   fundingSource?: string | string[];
@@ -28,6 +29,8 @@ export type MasterFilters = {
   photoConsent?: string | string[];
   sapIdState?: string | string[];
   regNoState?: string | string[];
+  personalEmailState?: string | string[];
+  contactNoState?: string | string[];
   category?: string | string[];
 };
 
@@ -63,6 +66,7 @@ export function addFilterParamsToUrl(url: URL, filters?: MasterFilters): void {
   addFilterParam("sector", filters.sector);
   addFilterParam("workCity", filters.workCity);
   addFilterParam("workCountry", filters.workCountry);
+  addFilterParam("employer", filters.employer);
   addFilterParam("institutionName", filters.institutionName);
   addFilterParam("programEnrolled", filters.programEnrolled);
   addFilterParam("fundingSource", filters.fundingSource);
@@ -72,6 +76,8 @@ export function addFilterParamsToUrl(url: URL, filters?: MasterFilters): void {
   addFilterParam("photoConsent", filters.photoConsent);
   addFilterParam("sapIdState", filters.sapIdState);
   addFilterParam("regNoState", filters.regNoState);
+  addFilterParam("personalEmailState", filters.personalEmailState);
+  addFilterParam("contactNoState", filters.contactNoState);
   addFilterParam("category", filters.category);
 }
 

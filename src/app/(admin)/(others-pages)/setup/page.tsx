@@ -733,7 +733,7 @@ function RealTimeUsers() {
   }
 
   return (
-    <div className="mt-6 overflow-hidden border border-gray-200  bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="mt-6 overflow-hidden border border-gray-200 max  bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <SyncedTableScroll minWidth={1200} maxHeight={700} className="mx-auto">
         <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
           <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">

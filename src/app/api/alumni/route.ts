@@ -310,6 +310,7 @@ export async function GET(req: Request) {
     const sectorParams = searchParams.getAll("sector");
     const workCityParams = searchParams.getAll("workCity");
     const workCountryParams = searchParams.getAll("workCountry");
+    const employerParams = searchParams.getAll("employer");
     const institutionNameParams = searchParams.getAll("institutionName");
     const programEnrolledParams = searchParams.getAll("programEnrolled");
     const fundingSourceParams = searchParams.getAll("fundingSource");
@@ -319,6 +320,8 @@ export async function GET(req: Request) {
     const photoConsentParams = searchParams.getAll("photoConsent");
     const sapIdStateParams = searchParams.getAll("sapIdState");
     const regNoStateParams = searchParams.getAll("regNoState");
+    const personalEmailStateParams = searchParams.getAll("personalEmailState");
+    const contactNoStateParams = searchParams.getAll("contactNoState");
     const categoryParams = searchParams.getAll("category");
     
     // Convert to arrays (support multi-select)
@@ -334,6 +337,7 @@ export async function GET(req: Request) {
     const sector = sectorParams.length > 0 ? sectorParams : (searchParams.get("sector") || "");
     const workCity = workCityParams.length > 0 ? workCityParams : (searchParams.get("workCity") || "");
     const workCountry = workCountryParams.length > 0 ? workCountryParams : (searchParams.get("workCountry") || "");
+    const employer = employerParams.length > 0 ? employerParams : (searchParams.get("employer") || "");
     const institutionName = institutionNameParams.length > 0 ? institutionNameParams : (searchParams.get("institutionName") || "");
     const programEnrolled = programEnrolledParams.length > 0 ? programEnrolledParams : (searchParams.get("programEnrolled") || "");
     const fundingSource = fundingSourceParams.length > 0 ? fundingSourceParams : (searchParams.get("fundingSource") || "");
@@ -343,6 +347,8 @@ export async function GET(req: Request) {
     const photoConsent = photoConsentParams.length > 0 ? photoConsentParams : (searchParams.get("photoConsent") || "");
     const sapIdState = sapIdStateParams.length > 0 ? sapIdStateParams : (searchParams.get("sapIdState") || "");
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
+    const personalEmailState = personalEmailStateParams.length > 0 ? personalEmailStateParams : (searchParams.get("personalEmailState") || "");
+    const contactNoState = contactNoStateParams.length > 0 ? contactNoStateParams : (searchParams.get("contactNoState") || "");
     const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
     
     const getCountsOnly = searchParams.get("countsOnly") === "true";
@@ -500,6 +506,30 @@ export async function GET(req: Request) {
           genderFilter = sql`AND (gender IS NULL OR TRIM(COALESCE(gender, '')) = '')`;
         } else {
           genderFilter = sql`AND LOWER(TRIM(COALESCE(gender, ''))) = LOWER(TRIM(${gender}))`;
+        }
+      }
+    }
+
+    // Employer filter
+    // Handle any unique value from the database, including NULL
+    let employerFilter = sql``;
+    if (employer && (Array.isArray(employer) ? employer.length > 0 : employer)) {
+      if (Array.isArray(employer) && employer.length > 0) {
+        const conditions = employer.map((e) => {
+          const normalized = String(e).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(nameoforganization IS NULL OR TRIM(COALESCE(nameoforganization, '')) = '')`;
+          }
+          return sql`LOWER(TRIM(COALESCE(nameoforganization, ''))) = LOWER(TRIM(${e}))`;
+        });
+        const combinedCondition = combineOrConditions(conditions);
+        employerFilter = sql`AND (${combinedCondition})`;
+      } else if (!Array.isArray(employer) && employer) {
+        const normalized = String(employer).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          employerFilter = sql`AND (nameoforganization IS NULL OR TRIM(COALESCE(nameoforganization, '')) = '')`;
+        } else {
+          employerFilter = sql`AND LOWER(TRIM(COALESCE(nameoforganization, ''))) = LOWER(TRIM(${employer}))`;
         }
       }
     }
@@ -991,7 +1021,11 @@ export async function GET(req: Request) {
       const conditions = states.map(s => {
         const normalized = String(s).trim().toUpperCase();
         if (normalized === "NULL") {
-          return sql`(a.sapid IS NULL)`;
+          return sql`(
+            a.sapid IS NULL
+            OR TRIM(COALESCE(a.sapid, '')) = ''
+            OR LOWER(TRIM(COALESCE(a.sapid, ''))) = 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -1007,12 +1041,58 @@ export async function GET(req: Request) {
       const conditions = states.map(s => {
         const normalized = String(s).trim().toUpperCase();
         if (normalized === "NULL") {
-          return sql`(a.registrationno IS NULL)`;
+          return sql`(
+            a.registrationno IS NULL
+            OR TRIM(COALESCE(a.registrationno, '')) = ''
+            OR LOWER(TRIM(COALESCE(a.registrationno, ''))) = 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
       const combinedCondition = combineOrConditions(conditions);
       regNoStateFilter = sql`AND (${combinedCondition})`;
+    }
+
+    // Personal Email state filter (NULL only)
+    let personalEmailStateFilter = sql``;
+    const hasPersonalEmailStateFilter = personalEmailState && (Array.isArray(personalEmailState) ? personalEmailState.length > 0 : personalEmailState);
+    if (hasPersonalEmailStateFilter) {
+      const states = Array.isArray(personalEmailState) ? personalEmailState : [personalEmailState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            a.personalemail IS NULL
+            OR TRIM(COALESCE(a.personalemail, '')) = ''
+            OR LOWER(TRIM(COALESCE(a.personalemail, ''))) = 'null'
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      personalEmailStateFilter = sql`AND (${combinedCondition})`;
+    }
+
+    // Contact No state filter (NULL only)
+    let contactNoStateFilter = sql``;
+    const hasContactNoStateFilter = contactNoState && (Array.isArray(contactNoState) ? contactNoState.length > 0 : contactNoState);
+    if (hasContactNoStateFilter) {
+      const states = Array.isArray(contactNoState) ? contactNoState : [contactNoState];
+      const conditions = states.map(s => {
+        const normalized = String(s).trim().toUpperCase();
+        if (normalized === "NULL") {
+          return sql`(
+            (
+              a.contactno IS NULL
+              OR TRIM(COALESCE(a.contactno, '')) = ''
+              OR LOWER(TRIM(COALESCE(a.contactno, ''))) = 'null'
+            )
+          )`;
+        }
+        return sql`1 = 0`;
+      });
+      const combinedCondition = combineOrConditions(conditions);
+      contactNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
     // Build category filter (separate from status filter) - moved before getCountsOnly
@@ -1086,6 +1166,7 @@ export async function GET(req: Request) {
               ${sectorFilter}
               ${workCityFilter}
               ${workCountryFilter}
+              ${employerFilter}
               ${institutionNameFilter}
               ${programEnrolledFilter}
               ${fundingSourceFilter}
@@ -1293,6 +1374,7 @@ export async function GET(req: Request) {
           ${sectorFilter}
           ${workCityFilter}
           ${workCountryFilter}
+          ${employerFilter}
           ${institutionNameFilter}
           ${programEnrolledFilter}
           ${fundingSourceFilter}
@@ -1302,6 +1384,8 @@ export async function GET(req: Request) {
           ${mrNoFilter}
           ${sapIdStateFilter}
           ${regNoStateFilter}
+          ${personalEmailStateFilter}
+          ${contactNoStateFilter}
           ${accessFilterCondition}
           AND (
             LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
@@ -1374,6 +1458,7 @@ export async function GET(req: Request) {
         ${sectorFilter}
         ${workCityFilter}
         ${workCountryFilter}
+        ${employerFilter}
         ${institutionNameFilter}
         ${programEnrolledFilter}
         ${fundingSourceFilter}
@@ -1383,6 +1468,8 @@ export async function GET(req: Request) {
           ${mrNoFilter}
           ${sapIdStateFilter}
           ${regNoStateFilter}
+          ${personalEmailStateFilter}
+          ${contactNoStateFilter}
           ${accessFilterCondition}
       ORDER BY a.alumniid DESC
       LIMIT ${limit} OFFSET ${offset}`;

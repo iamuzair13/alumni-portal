@@ -272,6 +272,11 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "INVALID_EMAIL_FORMAT" }, { status: 400 });
     }
     if (body.password && String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
+    let hashedPassword: string | undefined = undefined;
+    if (body.password) {
+      const { hashPassword } = await import("@/auth/credentials");
+      hashedPassword = await hashPassword(String(body.password));
+    }
     const userid = Number(body.userid);
     if (!userid || Number.isNaN(userid)) return NextResponse.json({ error: "INVALID_USERID" }, { status: 400 });
     
@@ -283,7 +288,7 @@ export async function PUT(req: Request) {
       UPDATE public.users
       SET
         email = ${body.email ?? null},
-        ${body.password ? sql`password_hash = ${String(body.password)}, password = ${String(body.password)},` : sql``}
+        ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
         firstname = ${body.firstname ?? null},
         lastname = ${body.lastname ?? null},
         department = ${body.department ?? null},

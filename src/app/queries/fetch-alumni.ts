@@ -56,6 +56,7 @@ export async function getAlumniList(
   sector?: string | string[],
   workCity?: string | string[],
   workCountry?: string | string[],
+  employer?: string | string[],
   institutionName?: string | string[],
   programEnrolled?: string | string[],
   fundingSource?: string | string[],
@@ -65,6 +66,8 @@ export async function getAlumniList(
   photoConsent?: string | string[],
   sapIdState?: string | string[],
   regNoState?: string | string[],
+  personalEmailState?: string | string[],
+  contactNoState?: string | string[],
   category?: string | string[]
 ): Promise<AlumniListResponse> {
   const url = new URL("/api/alumni", typeof window !== "undefined" ? window.location.origin : "");
@@ -123,6 +126,7 @@ export async function getAlumniList(
   addFilterParam("sector", sector);
   addFilterParam("workCity", workCity);
   addFilterParam("workCountry", workCountry);
+  addFilterParam("employer", employer);
   addFilterParam("institutionName", institutionName);
   addFilterParam("programEnrolled", programEnrolled);
   addFilterParam("fundingSource", fundingSource);
@@ -132,6 +136,8 @@ export async function getAlumniList(
   addFilterParam("photoConsent", photoConsent);
   addFilterParam("sapIdState", sapIdState);
   addFilterParam("regNoState", regNoState);
+  addFilterParam("personalEmailState", personalEmailState);
+  addFilterParam("contactNoState", contactNoState);
   addFilterParam("category", category);
   
   url.searchParams.set("page", String(page));
@@ -167,6 +173,7 @@ export function useAlumniListPaginated(
   sector?: string | string[],
   workCity?: string | string[],
   workCountry?: string | string[],
+  employer?: string | string[],
   institutionName?: string | string[],
   programEnrolled?: string | string[],
   fundingSource?: string | string[],
@@ -176,10 +183,12 @@ export function useAlumniListPaginated(
   photoConsent?: string | string[],
   sapIdState?: string | string[],
   regNoState?: string | string[],
+  personalEmailState?: string | string[],
+  contactNoState?: string | string[],
   category?: string | string[]
 ) {
   return useQuery<AlumniListResponse, Error>({
-    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, category],
+    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, category],
     queryFn: ({ signal }) => {
       return getAlumniList(
         signal,
@@ -202,6 +211,7 @@ export function useAlumniListPaginated(
         sector,
         workCity,
         workCountry,
+        employer,
         institutionName,
         programEnrolled,
         fundingSource,
@@ -211,6 +221,8 @@ export function useAlumniListPaginated(
         photoConsent,
         sapIdState,
         regNoState,
+        personalEmailState,
+        contactNoState,
         category
       );
     },
@@ -259,6 +271,7 @@ export async function getAlumniCounts(
   sector?: string | string[],
   workCity?: string | string[],
   workCountry?: string | string[],
+  employer?: string | string[],
   institutionName?: string | string[],
   programEnrolled?: string | string[],
   fundingSource?: string | string[],
@@ -268,6 +281,8 @@ export async function getAlumniCounts(
   photoConsent?: string | string[],
   sapIdState?: string | string[],
   regNoState?: string | string[],
+  personalEmailState?: string | string[],
+  contactNoState?: string | string[],
   category?: string | string[]
 ): Promise<AlumniCounts> {
   const url = new URL("/api/alumni/counts", typeof window !== "undefined" ? window.location.origin : "");
@@ -326,6 +341,7 @@ export async function getAlumniCounts(
   addFilterParam("sector", sector);
   addFilterParam("workCity", workCity);
   addFilterParam("workCountry", workCountry);
+  addFilterParam("employer", employer);
   addFilterParam("institutionName", institutionName);
   addFilterParam("programEnrolled", programEnrolled);
   addFilterParam("fundingSource", fundingSource);
@@ -335,6 +351,8 @@ export async function getAlumniCounts(
   addFilterParam("photoConsent", photoConsent);
   addFilterParam("sapIdState", sapIdState);
   addFilterParam("regNoState", regNoState);
+  addFilterParam("personalEmailState", personalEmailState);
+  addFilterParam("contactNoState", contactNoState);
   addFilterParam("category", category);
   
   const res = await fetch(url.toString(), { signal, headers: { "accept": "application/json" } });

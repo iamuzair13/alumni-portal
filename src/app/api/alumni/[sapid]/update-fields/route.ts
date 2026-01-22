@@ -345,6 +345,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       }, { status: 200 });
     }
 
+    const updatedAt = new Date().toISOString().split("T")[0];
+
     // Build a single optimized UPDATE query instead of multiple individual updates
     // Use alumniid (primary key) for WHERE clause to ensure we update the correct record
     const result = await sql.begin(async (tx) => {
@@ -465,6 +467,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("faculty", facultyIdVal);
       addUpdate("department", departmentIdVal);
       addUpdate("program", programIdVal);
+      addUpdate("updated_at", updatedAt);
       
       // Execute single UPDATE query if there are fields to update
       if (updates.length > 0) {

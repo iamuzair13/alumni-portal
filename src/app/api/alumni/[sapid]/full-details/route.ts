@@ -226,6 +226,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         emailsendcount: row.emailsendcount ?? null,
         emailsendstatus: row.emailsendstatus ?? null,
         createddatetime: row.createddatetime ?? null,
+        updated_at: row.updated_at ?? null,
         facebook: row.facebook ?? null,
         instagram: row.instagram ?? null,
         youtube: row.youtube ?? null,

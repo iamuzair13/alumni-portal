@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS public.tbl_alumni
     personalemailshow text COLLATE pg_catalog."default",
     alumni_consent_info boolean,
     alumni_consent_pic boolean,
+    updated_at date,
     CONSTRAINT tbl_alumni_pkey PRIMARY KEY (alumniid),
     CONSTRAINT tbl_alumni_association_id_fkey FOREIGN KEY (association_id)
         REFERENCES public.tbl_associations (id) MATCH SIMPLE
@@ -576,6 +577,7 @@ CREATE INDEX IF NOT EXISTS idx_user_access_program_id
     (program_id ASC NULLS LAST)
     WITH (fillfactor=100, deduplicate_items=True)
     TABLESPACE pg_default;
+    
 -- Table: public.distinguished_alumni
 
 -- DROP TABLE IF EXISTS public.distinguished_alumni;

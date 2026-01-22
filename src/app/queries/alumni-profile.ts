@@ -63,6 +63,7 @@ export type AlumniFullDetails = {
   emailsendcount: number | null;
   emailsendstatus: string | null;
   createddatetime: string | null;
+  updated_at: string | null;
   facebook: string | null;
   instagram: string | null;
   youtube: string | null;

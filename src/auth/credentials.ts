@@ -22,6 +22,29 @@ export async function hashPassword(plain: string): Promise<string> {
 
 export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   if (!stored) return false;
+  // Support scrypt-hash format used by hashPassword():
+  //   scrypt:<saltHex>:<derivedKeyHex>
+  if (stored.startsWith("scrypt:")) {
+    try {
+      const parts = stored.split(":");
+      if (parts.length !== 3) return false;
+      const saltHex = parts[1] || "";
+      const hashHex = parts[2] || "";
+      const salt = Buffer.from(saltHex, "hex");
+      const expected = Buffer.from(hashHex, "hex");
+
+      const { scrypt, timingSafeEqual } = await import("crypto");
+      const derived: Buffer = await new Promise((resolve, reject) => {
+        scrypt(plain, salt, expected.length, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
+      });
+
+      if (derived.length !== expected.length) return false;
+      return timingSafeEqual(derived, expected);
+    } catch {
+      return false;
+    }
+  }
+
   // Compare as plain text (trim both to handle whitespace issues)
   // Also normalize line endings and handle potential encoding differences
   const normalizedStored = stored.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");

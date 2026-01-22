@@ -37,6 +37,18 @@ const normalizeValue = (value: unknown): string => {
   return String(value).trim().toLowerCase();
 };
 
+const formatDateDisplay = (value: unknown): string => {
+  if (value === null || value === undefined || value === "") return "-";
+  const str = String(value).trim();
+  const d = new Date(str.length === 10 ? `${str}T00:00:00` : str);
+  if (Number.isNaN(d.getTime())) return str;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(d);
+};
+
 // Compare two values and return comparison result
 const compareValues = (alumniValue: unknown, erpValue: unknown): ComparisonResult => {
   const alumniNorm = normalizeValue(alumniValue);
@@ -182,6 +194,7 @@ type AlumniFullData = {
   emailsendcount: number | null;
   emailsendstatus: string | null;
   createddatetime: string | null;
+  updated_at: string | null;
   facebook: string | null;
   instagram: string | null;
   youtube: string | null;
@@ -1640,6 +1653,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             isEditing={false} 
             readOnly={true}
           />
+          <CompactField label="Last Updated" value={formatDateDisplay(data.updated_at)} isEditing={isFieldEditing("updated_at")} readOnly={true} register={register} name="updated_at" />
           <CompactField label="Created Date" value={data.createddatetime} isEditing={isFieldEditing("createddatetime")} readOnly={readOnly} register={register} name="createddatetime" onEdit={() => startEditingField("createddatetime")} />
           <CompactField 
             label="Photo Usage Consent" 

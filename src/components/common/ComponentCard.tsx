@@ -16,7 +16,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
   const hasNoPadding = className.includes("p-0");
   return (
     <div
-      className={`bg-slate-50 dark:bg-gray-900/50 min-h-screen ${className}`}
+      className={`bg-gray-100 dark:bg-gray-900/50 min-h-screen pt-2 ${className}`}
     >
       {(title || desc) && (
         <div className={hasNoPadding ? "" : "px-6 pt-8 pb-6"}>
