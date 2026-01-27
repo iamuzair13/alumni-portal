@@ -8,6 +8,7 @@ type RawRow = {
   sapid: string | null;
   registrationno: string | null;
   alumniname: string | null;
+  contactno: string | null;
   facultyname: string | null;
   departmentname: string | null;
   degreetitle: string | null;
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
         a.sapid,
         a.registrationno,
         a.alumniname,
+        a.contactno,
         a.facultyname,
         a.departmentname,
         a.degreetitle,
@@ -113,6 +115,7 @@ export async function GET(request: NextRequest) {
       sapid: r.sapid ?? "",
       registrationNo: r.registrationno ?? null,
       name: r.alumniname ?? "",
+      contactno: r.contactno ?? null,
       faculty: r.facultyname ?? null,
       department: r.departmentname ?? null,
       program: r.degreetitle ?? null,

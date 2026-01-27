@@ -516,7 +516,7 @@ function MoreDetailsContent() {
   // Employment status options matching AlumniSqlForm.tsx
   const employmentStatusOptions = [
     { value: "Employed/Business", label: "Employed/Business" },
-    { value: "Self-employed", label: "Self-employed" },
+    { value: "Self-employed", label: "Self-Employed" },
     { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
     { value: "Unemployed By choice", label: "Unemployed By choice" },
     { value: "Unemployed, searching for job", label: "Unemployed, searching for job" },

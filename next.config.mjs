@@ -9,24 +9,31 @@ const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
 
 const nextConfig = {
   outputFileTracing: false,
-  // Remove output: 'standalone' - we're using custom server
+
+  devIndicators: {
+    buildActivity: process.env.NODE_ENV === "development",
+  },
+
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+
   typescript: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has type errors.
     ignoreBuildErrors: false,
   },
+
   images: {
     domains: ["lh3.googleusercontent.com", "readymadeui.com", ...extraDomains],
-    remotePatterns: extraDomains.map((d) => ({ protocol: "https", hostname: d, port: "", pathname: "**" })),
+    remotePatterns: extraDomains.map((d) => ({
+      protocol: "https",
+      hostname: d,
+      port: "",
+      pathname: "**"
+    })),
   },
-  // Handle ES module compatibility issues with jsdom/parse5
-  // Mark these packages as external to avoid bundling issues
+
   serverExternalPackages: ['jsdom', 'parse5'],
+
   webpack(config, { isServer }) {
     config.module.rules.push({
       test: /\.svg$/i,
@@ -37,11 +44,9 @@ const nextConfig = {
         },
       ],
     });
-    
-    // Handle parse5 ES module issue by making it external
+
     if (isServer) {
       config.externals = config.externals || [];
-      // Ensure parse5 is treated as external to avoid require() issues
       if (Array.isArray(config.externals)) {
         config.externals.push('parse5');
       } else if (typeof config.externals === 'function') {
@@ -54,7 +59,7 @@ const nextConfig = {
         };
       }
     }
-    
+
     return config;
   },
 };

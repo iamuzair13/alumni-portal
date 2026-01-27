@@ -31,14 +31,9 @@ export function mapDisplayValueToDb(displayValue: unknown): string {
   if (!displayValue || typeof displayValue !== "string") return "";
   const normalized = displayValue.trim();
   
-  // Map display values to database values (as per AlumniSqlForm.tsx onSubmit logic)
-  if (normalized === "Employed/Business") return "Employed";
-  if (normalized === "Self-employed") return "Self-Emplo";
-  if (normalized === "Pursuing Higher Education") return "Pursuing Higher Education";
-  if (normalized === "Unemployed By choice") return "Unemployed By choice";
-  if (normalized === "Unemployed, searching for job") return "Unemployed, searching for job";
-  
-  // Return as-is if no mapping needed
+  if (normalized === "Employed") return "Employed/Business";
+  if (normalized === "Self-Emplo") return "Self-employed";
+  if (normalized.toLowerCase() === "highered") return "Pursuing Higher Education";
   return normalized;
 }
 

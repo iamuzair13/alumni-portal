@@ -211,11 +211,11 @@ export async function POST(req: Request) {
     const personalEmail = body.personalemail ? String(body.personalemail).trim().toLowerCase() : "";
     const universityEmail = body.universityemail ? String(body.universityemail).trim().toLowerCase() : "";
     const officialEmail = body.officialemail ? String(body.officialemail).trim().toLowerCase() : "";
-    const alumniEmail = body.alumniemail ? String(body.alumniemail).trim().toLowerCase() : "";
     
     // Check that at least one identifier is provided
-    // Identifiers: SAP ID, Registration No, CNIC, Phone, or Email (any of: personal, university, official, alumni)
-    const hasIdentifier = regNo || sapId || cnic || phone || personalEmail || universityEmail || officialEmail || alumniEmail;
+    // Identifiers: SAP ID, Registration No, CNIC, Phone, or Email (any of: personal, university, official)
+    // alumniemail is admin-assigned and is not used for public/alumni registration matching.
+    const hasIdentifier = regNo || sapId || cnic || phone || personalEmail || universityEmail || officialEmail;
     if (!hasIdentifier) {
       return NextResponse.json({ 
         error: "At least one identifier is required: Registration #, SAP ID, CNIC/Passport, Phone Number, or Email" 
@@ -265,15 +265,16 @@ export async function POST(req: Request) {
       return s.length ? s : null;
     };
     
-    // Map employeed values to fit VARCHAR(10) constraint
     const mapEmployeed = (value: string | null): string | null => {
       if (!value) return null;
       const val = String(value).trim();
-      if (val === "Pursuing Higher Education") return "HigherEd";
-      if (val === "Unemployed") return "Unemployed"; // 10 chars, at limit
-      if (val === "Employed") return "Employed"; // 8 chars
-      // Truncate to 10 characters if longer
-      return val.length > 10 ? val.substring(0, 10) : val;
+
+      if (val === "Employed") return "Employed/Business";
+      if (val === "Employed/Business") return "Employed/Business";
+      if (val === "Self-Emplo") return "Self-employed";
+      if (val === "Self-employed") return "Self-employed";
+      if (val.toLowerCase() === "highered" || val === "HigherEd") return "Pursuing Higher Education";
+      return val;
     };
     
     // Truncate totalyearsofexpereince to fit VARCHAR(10) constraint
@@ -284,9 +285,7 @@ export async function POST(req: Request) {
     };
 
     const todayDateValue = body.todaydate ? new Date(String(body.todaydate)) : null;
-    const normalizedAlumniEmail = (body.alumniemail && String(body.alumniemail).trim().length)
-      ? body.alumniemail
-      : body.personalemail;
+    // alumniemail is admin-assigned and should not be populated from public/alumni registration.
 
     // REGISTRATION RULES: Validation depends ONLY on verify_status
     // 1. If alumni exists and verify = 'true' → Block registration
@@ -306,7 +305,6 @@ export async function POST(req: Request) {
       personalemail: string | null;
       universityemail: string | null;
       officialemail: string | null;
-      alumniemail: string | null;
     } | null = null;
     
     // Build query conditions for all identifiers using sql fragments
@@ -333,9 +331,6 @@ export async function POST(req: Request) {
     if (officialEmail) {
       conditions.push(sql`(LOWER(officialemail) = ${officialEmail} AND officialemail IS NOT NULL AND officialemail != '')`);
     }
-    if (alumniEmail) {
-      conditions.push(sql`(LOWER(alumniemail) = ${alumniEmail} AND alumniemail IS NOT NULL AND alumniemail != '')`);
-    }
     
     // Check for existing record if we have at least one identifier
     if (conditions.length > 0) {
@@ -347,7 +342,7 @@ export async function POST(req: Request) {
       
       const checkQuery = sql/* sql */`
         SELECT alumniid, verify, registrationno, sapid, cnicpassport, contactno, 
-               personalemail, universityemail, officialemail, alumniemail
+               personalemail, universityemail, officialemail
         FROM public.tbl_alumni 
         WHERE ${whereCondition}
         LIMIT 1
@@ -365,7 +360,6 @@ export async function POST(req: Request) {
           personalemail: string | null;
           universityemail: string | null;
           officialemail: string | null;
-          alumniemail: string | null;
         };
         
         // Determine which identifier matched
@@ -397,10 +391,6 @@ export async function POST(req: Request) {
         if (officialEmail && existingRecord.officialemail && 
             String(existingRecord.officialemail).trim().toLowerCase() === officialEmail) {
           matchedBy.push('officialemail');
-        }
-        if (alumniEmail && existingRecord.alumniemail && 
-            String(existingRecord.alumniemail).trim().toLowerCase() === alumniEmail) {
-          matchedBy.push('alumniemail');
         }
 
       }
@@ -458,7 +448,6 @@ export async function POST(req: Request) {
         const incomingPersonalEmail = clean(body.personalemail);
         const incomingUniversityEmail = clean(body.universityemail);
         const incomingOfficialEmail = clean(body.officialemail);
-        const incomingAlumniEmail = clean(normalizedAlumniEmail);
         
         const preservedRegNo = incomingRegNo ?? existingRecord.registrationno;
         const preservedSapId = incomingSapId ?? existingRecord.sapid;
@@ -467,12 +456,10 @@ export async function POST(req: Request) {
         const preservedPersonalEmail = incomingPersonalEmail ?? existingRecord.personalemail;
         const preservedUniversityEmail = incomingUniversityEmail ?? existingRecord.universityemail;
         const preservedOfficialEmail = incomingOfficialEmail ?? existingRecord.officialemail;
-        const preservedAlumniEmail = incomingAlumniEmail ?? existingRecord.alumniemail;
 
         // Update existing record with new data, set verify = 'underApproval'
         const updateResult = await tx/* sql */`
           UPDATE public.tbl_alumni SET
-            alumniemail = ${preservedAlumniEmail},
             password = ${plainPassword},
             todaydate = ${todayDateValue},
             registrationno = ${preservedRegNo},
@@ -624,7 +611,7 @@ export async function POST(req: Request) {
           higher_education_institute_city,
           alumni_consent_info
         ) VALUES (
-          ${clean(normalizedAlumniEmail)},
+          NULL,
           ${plainPassword},
           ${todayDateValue},
           ${clean(body.registrationno)},

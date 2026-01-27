@@ -432,8 +432,16 @@ export async function GET(req: Request) {
         if (normalized === "NULL" || normalized === "null") {
           conditions.push(sql`(a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '')`);
         } else {
-          // Handle any other value - match exactly as stored in database (case-insensitive)
-          conditions.push(sql`LOWER(TRIM(COALESCE(a.employeed, ''))) = LOWER(TRIM(${status}))`);
+          const lower = normalized.toLowerCase();
+          if (lower === "employed/business") {
+            conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'employed/business' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'employed')`);
+          } else if (lower === "self-employed") {
+            conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-employed' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-emplo')`);
+          } else if (lower === "pursuing higher education") {
+            conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'pursuing higher education' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'highered')`);
+          } else {
+            conditions.push(sql`LOWER(TRIM(COALESCE(a.employeed, ''))) = LOWER(TRIM(${status}))`);
+          }
         }
       });
       

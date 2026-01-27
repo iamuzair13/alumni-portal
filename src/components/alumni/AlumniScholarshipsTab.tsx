@@ -13,12 +13,14 @@ import { useModal } from "@/hooks/useModal";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
+import { useExcelExport } from "@/lib/excel-export";
 
 type ScholarshipItem = {
   alumniId: number;
   sapid: string;
   registrationNo: string | null;
   name: string;
+  contactno: string | null;
   faculty: string | null;
   department: string | null;
   program: string | null;
@@ -103,6 +105,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
   const queryClient = useQueryClient();
   const confirmModal = useModal();
   const isAdmin = canModify(session?.user);
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -277,6 +280,101 @@ export const AlumniScholarshipsTab: React.FC = () => {
     await executePendingAction();
   }, [pendingAction, mutatingIds, executePendingAction]);
 
+  const handleExportToExcel = useCallback(() => {
+    const exportColumnKeys: string[] = [
+      "SAP ID",
+      "Registration No",
+      "Full Name",
+      "Primary Contact",
+      "Faculty",
+      "Department",
+      "Program",
+      "Created At",
+      "Kinship First Name",
+      "Kinship Last Name",
+      "Kinship CNIC",
+      "Apply For",
+      "Scholarship Degree Title",
+      "Status",
+      "Rejection Reason",
+    ];
+
+    const columns = exportColumnKeys.map((key) => ({
+      key,
+      label: key,
+      defaultSelected: true,
+    }));
+
+    const fetchAndTransformData = async (): Promise<Record<string, unknown>[]> => {
+      const allItems: ScholarshipItem[] = [];
+      const exportLimit = 500;
+
+      let page = 1;
+      while (true) {
+        const url = new URL(
+          "/api/alumni/scholarships",
+          typeof window !== "undefined" ? window.location.origin : ""
+        );
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("limit", String(exportLimit));
+        if (debouncedQuery && debouncedQuery.trim()) {
+          url.searchParams.set("search", debouncedQuery.trim());
+        }
+        if (selectedStatus && selectedStatus !== "all") {
+          url.searchParams.set(
+            "status",
+            selectedStatus === "notApproved" ? "not-approved" : selectedStatus
+          );
+        }
+
+        const res = await fetch(url.toString(), {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || `Failed to fetch export data: ${res.status}`);
+        }
+
+        const data = (await res.json()) as ScholarshipResponse;
+        const pageItems = data.items || [];
+        allItems.push(...pageItems);
+
+        const totalPagesForQuery = data.totalPages || 1;
+        if (page >= totalPagesForQuery) break;
+        page += 1;
+      }
+
+      if (!allItems.length) {
+        throw new Error("No data found to export with the applied filters.");
+      }
+
+      return allItems.map((item) => ({
+        "SAP ID": item.sapid || "",
+        "Registration No": item.registrationNo || "",
+        "Full Name": item.name || "",
+        "Primary Contact": item.contactno || "",
+        "Faculty": item.faculty || "",
+        "Department": item.department || "",
+        "Program": item.program || "",
+        "Created At": item.createdAt || "",
+        "Kinship First Name": item.kinshipFirstName || "",
+        "Kinship Last Name": item.kinshipLastName || "",
+        "Kinship CNIC": item.kinshipCnic || "",
+        "Apply For": item.applyFor || "",
+        "Scholarship Degree Title": item.scholarshipDegreeTitle || "",
+        "Status": item.status || "",
+        "Rejection Reason": item.rejectionReason || "",
+      }));
+    };
+
+    openExportModal({
+      data: fetchAndTransformData,
+      columns,
+      filename: "alumni_scholarships_export",
+      sheetName: "Alumni Scholarships",
+    });
+  }, [debouncedQuery, selectedStatus, openExportModal]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
@@ -300,8 +398,19 @@ export const AlumniScholarshipsTab: React.FC = () => {
               placeholder="Search by SAP ID, Reg No, name, kinship name, CNIC..."
               className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px  -3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-100"
             />
+
+            <button
+              type="button"
+              onClick={handleExportToExcel}
+              disabled={isExporting || isLoading}
+              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isExporting ? "Exporting..." : "Export Excel"}
+            </button>
           </div>
         </div>
+
+        <ExportModal />
 
         {/* Status Tabs */}
         <div className="flex flex-wrap gap-3 pt-1">

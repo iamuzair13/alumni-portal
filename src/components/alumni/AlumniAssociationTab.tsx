@@ -7,13 +7,13 @@ import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
 import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
-import * as XLSX from "xlsx";
 import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
 import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
 import { useAlumniAssociations } from "@/app/queries/fetch-alumni-associations";
 import type { MasterFilters } from "@/app/queries/master-filter-types";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
+import { useExcelExport } from "@/lib/excel-export";
 
 type MembershipFilter = "all" | "members" | "non-members";
 
@@ -201,8 +201,9 @@ export const AlumniAssociationTab: React.FC = () => {
   const [selectedAssociations, setSelectedAssociations] = useState<number[]>([]);
   const [membershipFilter, setMembershipFilter] = useState<MembershipFilter>("members");
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(undefined);
-  const [isExporting, setIsExporting] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
   
   // State for expanded filter sections
   const [expandedFilters, setExpandedFilters] = useState<{
@@ -484,11 +485,78 @@ export const AlumniAssociationTab: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedQuery, pageSize, selectedFaculties, selectedDepartments, selectedAssociations, verifiedFilter, membershipFilter, sortField, sortDirection]);
 
-  const handleExportToExcel = useCallback(async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    try {
-      const url = new URL("/api/alumni/association/export", typeof window !== "undefined" ? window.location.origin : "");
+  const handleExportToExcel = useCallback(() => {
+    const exportColumnKeys: string[] = [
+      "SAP ID",
+      "Registration No",
+      "Full Name",
+      "Gender",
+      "Father Name",
+      "Father CNIC",
+      "Date of Birth",
+      "Marital Status",
+      "CNIC/Passport",
+      "Primary Contact",
+      "Secondary Contact",
+      "Personal Email",
+      "Official Email",
+      "Official Number",
+      "Home Address",
+      "Home Country",
+      "Home Province",
+      "Home City",
+      "Academic Session",
+      "Program",
+      "CGPA",
+      "Year of Starting",
+      "Year of Ending",
+      "Faculty",
+      "Campus",
+      "Department",
+      "Major Subject",
+      "Industry",
+      "Employment Status",
+      "Employer",
+      "Designation",
+      "Total Years of Experience",
+      "Work City",
+      "Work Country",
+      "Chapter 1",
+      "Chapter 2",
+      "Chapter 3",
+      "All Chapters",
+      "Chapter Remarks",
+      "Association Title",
+      "Association Description",
+      "Association Dean",
+      "Association Phone",
+      "Association Email",
+      "Association Address",
+      "About Me",
+      "Facebook",
+      "Instagram",
+      "YouTube",
+      "LinkedIn",
+      "Verification Status",
+      "Last Login",
+      "Login Count",
+      "Email Send Count",
+      "Email Send Status",
+      "Alumni Status",
+      "Created Date Time",
+    ];
+
+    const columns = exportColumnKeys.map((key) => ({
+      key,
+      label: key,
+      defaultSelected: true,
+    }));
+
+    const fetchAndTransformData = async (): Promise<Record<string, unknown>[]> => {
+      const url = new URL(
+        "/api/alumni/association/export",
+        typeof window !== "undefined" ? window.location.origin : ""
+      );
       if (selectedFaculties.length > 0) {
         url.searchParams.set("faculties", selectedFaculties.join(","));
       }
@@ -501,85 +569,108 @@ export const AlumniAssociationTab: React.FC = () => {
       if (membershipFilter) {
         url.searchParams.set("membershipFilter", membershipFilter);
       }
-      
+
       const res = await fetch(url.toString(), {
-        headers: { "accept": "application/json" }
+        headers: { accept: "application/json" },
       });
-      
+
       if (!res.ok) {
         throw new Error(`Failed to fetch export data: ${res.status}`);
       }
-      
+
       const data = await res.json();
       const allItems = data.items || [];
 
-      // Map all fields to Excel format - comprehensive export like alumni tab
-      const excelData = allItems.map((item: Record<string, unknown>) => ({
+      if (!allItems || allItems.length === 0) {
+        throw new Error("No data found to export with the applied filters.");
+      }
+
+      const formatChapters = (item: Record<string, unknown>) => {
+        const chapters: string[] = [];
+        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+        if (chapter1) chapters.push(chapter1);
+        if (chapter2) chapters.push(chapter2);
+        if (chapter3) chapters.push(chapter3);
+        return chapters.filter((c) => c).join(", ") || "";
+      };
+
+      return allItems.map((item: Record<string, unknown>) => ({
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
         "Full Name": item.alumniname || "",
-        "Email": item.personalemail || item.officialemail || item.universityemail || "",
+        "Gender": item.gender || "",
+        "Father Name": item.fathername || "",
+        "Father CNIC": item.father_cnic || "",
+        "Date of Birth": item.dateofbirth || "",
+        "Marital Status": item.maritalstatus || "",
+        "CNIC/Passport": item.cnicpassport || "",
+        "Primary Contact": item.contactno || "",
+        "Secondary Contact": item.contactno1 || "",
         "Personal Email": item.personalemail || "",
         "Official Email": item.officialemail || "",
-        "University Email": item.universityemail || "",
+        "Official Number": item.officialnumber || "",
+        "Home Address": item.address || "",
+        "Home Country": item.country || "",
+        "Home Province": item.province || "",
+        "Home City": item.city || "",
+        "Academic Session": item.academicsession || "",
+        "Program": item.degreetitle || item.majorsubject || "",
+        "CGPA": item.cgpa || "",
+        "Year of Starting": item.yearofstarting || "",
+        "Year of Ending": item.yearofending || "",
         "Faculty": item.facultyname || "",
+        "Campus": item.campusname || "",
         "Department": item.departmentname || "",
-        "Program": item.degreetitle || "",
+        "Major Subject": item.majorsubject || "",
+        "Industry": item.industry || "",
+        "Employment Status": item.employeed || "",
+        "Employer": item.nameoforganization || "",
+        "Designation": item.designation || "",
+        "Total Years of Experience": item.totalyearsofexpereince || "",
+        "Work City": item.work_city || "",
+        "Work Country": item.work_country || "",
+        "Chapter 1": item.chapter1_national || item.chapter1_international || "",
+        "Chapter 2": item.chapter2_national || item.chapter2_international || "",
+        "Chapter 3": item.chapter3_national || item.chapter3_international || "",
+        "All Chapters": formatChapters(item),
+        "Chapter Remarks": item.chapter_remarks || "",
         "Association Title": item.association_title || "",
-        "Association ID": item.association_id || "",
-        "Association Created Date": item.association_created_at || "",
-        // Association Organization Data
         "Association Description": item.association_description || "",
         "Association Dean": item.association_dean || "",
         "Association Phone": item.association_phone || "",
         "Association Email": item.association_email || "",
         "Association Address": item.association_address || "",
-        // Include all other fields from tbl_alumni
-        "Gender": item.gender || "",
-        "Father Name": item.fathername || "",
-        "Date of Birth": item.dateofbirth || "",
-        "CNIC/Passport": item.cnicpassport || "",
-        "Contact No": item.contactno || "",
-        "Address": item.address || "",
-        "Province": item.province || "",
-        "City": item.city || "",
-        "Country": item.country || "",
-        "Campus": item.campusname || "",
-        "Year of Ending": item.yearofending || "",
-        "Employment Status": item.employeed || "",
-        "Organization": item.nameoforganization || "",
-        "Designation": item.designation || "",
-        "Total Experience": item.totalyearsofexpereince || "",
-        "Official Phone": item.officialnumber || "",
-        "Work City": item.work_city || "",
-        "Work Country": item.work_country || "",
-        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : String(item.verify || "").trim().toLowerCase() === "underapproval" ? "Under Approval" : item.verify || "",
+        "About Me": item.aboutme || "",
+        "Facebook": item.facebook || "",
+        "Instagram": item.instagram || "",
+        "YouTube": item.youtube || "",
+        "LinkedIn": item.linkedin || "",
+        "Verification Status":
+          item.verify === "true"
+            ? "Verified"
+            : item.verify === "false"
+              ? "Unverified"
+              : String(item.verify || "").trim().toLowerCase() === "underapproval"
+                ? "Under Approval"
+                : item.verify || "",
         "Last Login": item.lasttimelogin || "",
         "Login Count": item.logincount || 0,
         "Email Send Count": item.emailsendcount || 0,
-        "Data Source": item.datasource || "",
+        "Email Send Status": item.emailsendstatus || "",
         "Alumni Status": item.alumnistatus || "",
-        "Created Date": item.createddatetime || "",
+        "Created Date Time": item.createddatetime || "",
       }));
+    };
 
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      XLSX.utils.book_append_sheet(wb, ws, "Alumni Association");
-
-      // Generate filename with current date and filters
-      const dateStr = new Date().toISOString().split("T")[0];
-      const filename = `alumni_association_export_${dateStr}.xlsx`;
-
-      // Write and download
-      XLSX.writeFile(wb, filename);
-      setIsExporting(false);
-    } catch (error) {
-
-      setIsExporting(false);
-      alert("Failed to export data. Please try again.");
-    }
-  }, [isExporting, selectedFaculties, selectedDepartments, selectedAssociations, membershipFilter]);
+    openExportModal({
+      data: fetchAndTransformData,
+      columns,
+      filename: "alumni_association_export",
+      sheetName: "Alumni Association",
+    });
+  }, [selectedFaculties, selectedDepartments, selectedAssociations, membershipFilter, openExportModal]);
 
 
   return (
@@ -623,6 +714,8 @@ export const AlumniAssociationTab: React.FC = () => {
           </button>
           </div>
         </div>
+
+        <ExportModal />
 
         {/* Stats Cards Section - Membership Tabs */}
         <div className="flex flex-wrap gap-4 px-0 pt-2">

@@ -41,7 +41,7 @@ import { usePhotoConsent } from "@/app/queries/fetch-photo-consent";
 import { useCategories } from "@/app/queries/fetch-categories";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { exportJsonToExcel, type ColumnOption } from "@/lib/excel-export";
+import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import type { AlumniFilterOption } from "@/app/queries/fetch-alumni-faculties";
 import toast from "react-hot-toast";
 
@@ -93,7 +93,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
     hoverBorder: "hover:border-blue-400",
-    iconBg: "bg-blue-100 dark:bg-blue-800",
+    iconBg: "bg-blue-400 dark:bg-blue-800",
     iconColor: "text-blue-700 dark:text-blue-200",
     labelText: "text-blue-600 dark:text-blue-300",
   },
@@ -101,7 +101,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20",
     hoverBorder: "hover:border-emerald-400",
-    iconBg: "bg-emerald-100 dark:bg-emerald-800",
+    iconBg: "bg-emerald-400 dark:bg-emerald-800",
     iconColor: "text-emerald-700 dark:text-emerald-200",
     labelText: "text-emerald-600 dark:text-emerald-300",
   },
@@ -109,7 +109,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
     hoverBorder: "hover:border-amber-400",
-    iconBg: "bg-amber-100 dark:bg-amber-800",
+    iconBg: "bg-amber-400 dark:bg-amber-800",
     iconColor: "text-amber-700 dark:text-amber-200",
     labelText: "text-amber-600 dark:text-amber-300",
   },
@@ -117,7 +117,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-indigo-500 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-900/20",
     hoverBorder: "hover:border-indigo-400",
-    iconBg: "bg-indigo-100 dark:bg-indigo-800",
+    iconBg: "bg-indigo-400 dark:bg-indigo-800",
     iconColor: "text-indigo-700 dark:text-indigo-200",
     labelText: "text-indigo-600 dark:text-indigo-300",
   },
@@ -125,7 +125,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-purple-500 bg-purple-50 dark:border-purple-500 dark:bg-purple-900/20",
     hoverBorder: "hover:border-purple-400",
-    iconBg: "bg-purple-100 dark:bg-purple-800",
+    iconBg: "bg-purple-400 dark:bg-purple-800",
     iconColor: "text-purple-700 dark:text-purple-200",
     labelText: "text-purple-600 dark:text-purple-300",
   },
@@ -133,7 +133,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
     hoverBorder: "hover:border-blue-400",
-    iconBg: "bg-blue-100 dark:bg-blue-800",
+    iconBg: "bg-blue-400 dark:bg-blue-800",
     iconColor: "text-blue-700 dark:text-blue-200",
     labelText: "text-blue-600 dark:text-blue-300",
   },
@@ -141,7 +141,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-green-500 bg-green-50 dark:border-green-500 dark:bg-green-900/20",
     hoverBorder: "hover:border-green-400",
-    iconBg: "bg-green-100 dark:bg-green-800",
+    iconBg: "bg-green-400 dark:bg-green-800",
     iconColor: "text-green-700 dark:text-green-200",
     labelText: "text-green-600 dark:text-green-300",
   },
@@ -149,7 +149,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
     hoverBorder: "hover:border-amber-400",
-    iconBg: "bg-amber-100 dark:bg-amber-800",
+    iconBg: "bg-amber-400 dark:bg-amber-800",
     iconColor: "text-amber-700 dark:text-amber-200",
     labelText: "text-amber-600 dark:text-amber-300",
   },
@@ -157,7 +157,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-gray-500 bg-gray-50 dark:border-gray-500 dark:bg-gray-900/20",
     hoverBorder: "hover:border-gray-400",
-    iconBg: "bg-gray-100 dark:bg-gray-800",
+    iconBg: "bg-gray-400 dark:bg-gray-800",
     iconColor: "text-gray-700 dark:text-gray-200",
     labelText: "text-gray-600 dark:text-gray-300",
   },
@@ -165,7 +165,7 @@ const STATUS_CLASS_MAP: Record<
     selectedContainer:
       "border-rose-500 bg-rose-50 dark:border-rose-500 dark:bg-rose-900/20",
     hoverBorder: "hover:border-rose-400",
-    iconBg: "bg-rose-100 dark:bg-rose-800",
+    iconBg: "bg-rose-400 dark:bg-rose-800",
     iconColor: "text-rose-700 dark:text-rose-200",
     labelText: "text-rose-600 dark:text-rose-300",
   },
@@ -272,39 +272,13 @@ export const AlumniTabs: React.FC = () => {
   const [selectedInstitutionCities, setSelectedInstitutionCities] = useState<string[]>([]);
   
   // Export column toggles – control which groups of columns are exported
-  const [exportFaculty, setExportFaculty] = useState<boolean>(true);
-  const [exportDepartment, setExportDepartment] = useState<boolean>(true);
-  const [exportProgram, setExportProgram] = useState<boolean>(true);
-  const [exportStatus, setExportStatus] = useState<boolean>(true);
-  const [exportMaster, setExportMaster] = useState<boolean>(false);
-  // Master filter–specific export toggles
-  const [exportGender, setExportGender] = useState<boolean>(true);
-  const [exportMaritalStatus, setExportMaritalStatus] = useState<boolean>(true);
-  const [exportHomeCountry, setExportHomeCountry] = useState<boolean>(true);
-  const [exportHomeCity, setExportHomeCity] = useState<boolean>(true);
-  const [exportProvince, setExportProvince] = useState<boolean>(true);
-  const [exportCampus, setExportCampus] = useState<boolean>(true);
-  const [exportAdmissionYear, setExportAdmissionYear] = useState<boolean>(true);
-  const [exportPassingYear, setExportPassingYear] = useState<boolean>(true);
-  const [exportOccupationStatus, setExportOccupationStatus] = useState<boolean>(true);
-  const [exportSector, setExportSector] = useState<boolean>(true);
-  const [exportWorkCity, setExportWorkCity] = useState<boolean>(true);
-  const [exportWorkCountry, setExportWorkCountry] = useState<boolean>(true);
-  const [exportEmployer, setExportEmployer] = useState<boolean>(true);
-  const [exportInstitutionName, setExportInstitutionName] = useState<boolean>(true);
-  const [exportProgramEnrolled, setExportProgramEnrolled] = useState<boolean>(true);
-  const [exportFundingSource, setExportFundingSource] = useState<boolean>(true);
-  const [exportInstitutionCountry, setExportInstitutionCountry] = useState<boolean>(true);
-  const [exportInstitutionCity, setExportInstitutionCity] = useState<boolean>(true);
-  const [exportPhotoConsent, setExportPhotoConsent] = useState<boolean>(true);
-  const [exportCategory, setExportCategory] = useState<boolean>(true);
   const [selectedSapIdStates, setSelectedSapIdStates] = useState<string[]>([]);
   const [selectedRegNoStates, setSelectedRegNoStates] = useState<string[]>([]);
   const [selectedPersonalEmailStates, setSelectedPersonalEmailStates] = useState<string[]>([]);
   const [selectedContactNoStates, setSelectedContactNoStates] = useState<string[]>([]);
   const [selectedPhotoConsents, setSelectedPhotoConsents] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
   
   // Sorting state
   const [sortField, setSortField] = useState<string | null>(null);
@@ -1352,8 +1326,10 @@ export const AlumniTabs: React.FC = () => {
       }
       
       // Optimize employment status check (single lowercase conversion)
-      const employmentStatus: "Employed" | "Unemployed" = 
-        (r.employeed?.toLowerCase() === "employed") ? "Employed" : "Unemployed";
+      const employmentStatus: "Employed" | "Unemployed" = (() => {
+        const v = (r.employeed || "").toLowerCase().trim();
+        return v === "employed" || v === "employed/business" ? "Employed" : "Unemployed";
+      })();
       
       // Use sapid as ID if available, otherwise use registrationno, otherwise use alumniid as fallback
       const itemId = r.sapid?.trim() || r.registrationno?.trim() || String(r.alumniid);
@@ -1666,7 +1642,7 @@ export const AlumniTabs: React.FC = () => {
   const [mutatingIds, setMutatingIds] = useState<Set<string>>(new Set());
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   // Export to Excel function with column selection
-  const handleExportToExcel = useCallback(async () => {
+  const handleExportToExcel = useCallback(() => {
     // Helper function to format chapter names
     const formatChapters = (item: Record<string, unknown>) => {
       const chapters: string[] = [];
@@ -1885,10 +1861,8 @@ export const AlumniTabs: React.FC = () => {
       // Map ALL fields to Excel format
       return allItems.map((item: Record<string, unknown>) => ({
         // Basic Information
-        "Alumni ID": item.alumniid || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
-        "Alumni Email": item.alumniemail || "",
         "Full Name": item.alumniname || "",
         "Gender": item.gender || "",
         "Father Name": item.fathername || "",
@@ -1924,7 +1898,14 @@ export const AlumniTabs: React.FC = () => {
         
         // Professional Information
         "Industry": item.industry || "",
-        "Employment Status": item.employeed || "",
+        "Employment Status": (() => {
+          const v = String(item.employeed || "").trim();
+          const lower = v.toLowerCase();
+          if (lower === "employed") return "Employed/Business";
+          if (lower === "self-emplo") return "Self-employed";
+          if (lower === "highered") return "Pursuing Higher Education";
+          return v;
+        })(),
         "Organization": item.nameoforganization || "",
         "Designation": item.designation || "",
         "Total Years of Experience": item.totalyearsofexpereince || "",
@@ -1944,17 +1925,13 @@ export const AlumniTabs: React.FC = () => {
         "Higher Education Institute City": item.higher_education_institute_city || "",
         
         // Chapters
-        "Chapter 1 ID": item.chapter1_id || "",
         "Chapter 1": item.chapter1_national || item.chapter1_international || "",
-        "Chapter 2 ID": item.chapter2_id || "",
         "Chapter 2": item.chapter2_national || item.chapter2_international || "",
-        "Chapter 3 ID": item.chapter3_id || "",
         "Chapter 3": item.chapter3_national || item.chapter3_international || "",
         "All Chapters": formatChapters(item),
         "Chapter Remarks": item.chapter_remarks || "",
         
         // Association
-        "Association ID": item.association_id_value || "",
         "Association Title": item.association_title || "",
         "Association Description": item.association_description || "",
         "Association Dean": item.association_dean || "",
@@ -1963,7 +1940,6 @@ export const AlumniTabs: React.FC = () => {
         "Association Address": item.association_address || "",
         
         // Chapter Leadership
-        "Chapter Leadership ID": item.chapter_leadership_id || "",
         "Chapter Leadership Post": item.chapter_leadership_post || "",
         "Chapter Leadership Status": item.chapter_leadership_status || "",
         "Chapter Leadership Rejection Reason": item.chapter_leadership_rejection_reason || "",
@@ -2022,10 +1998,6 @@ export const AlumniTabs: React.FC = () => {
 
     // Define column options
     const columns: ColumnOption[] = [
-        { key: "Alumni ID", label: "Alumni ID", defaultSelected: true },
-        { key: "SAP ID", label: "SAP ID", defaultSelected: true },
-        { key: "Registration No", label: "Registration No", defaultSelected: true },
-        { key: "Alumni Email", label: "Alumni Email", defaultSelected: true },
         { key: "Full Name", label: "Full Name", defaultSelected: true },
         { key: "Gender", label: "Gender", defaultSelected: true },
         { key: "Father Name", label: "Father Name", defaultSelected: false },
@@ -2033,19 +2005,17 @@ export const AlumniTabs: React.FC = () => {
         { key: "Date of Birth", label: "Date of Birth", defaultSelected: false },
         { key: "Marital Status", label: "Marital Status", defaultSelected: false },
         { key: "CNIC/Passport", label: "CNIC/Passport", defaultSelected: true },
-        { key: "Contact No", label: "Contact No", defaultSelected: true },
-        { key: "Contact No 1", label: "Contact No 1", defaultSelected: true },
-        { key: "Contact No 1 Show", label: "Contact No 1 Show", defaultSelected: false },
+        { key: "Contact No", label: "Primary Contact", defaultSelected: true },
+        { key: "Contact No 1", label: "Secondary Contact", defaultSelected: true },
         { key: "Personal Email", label: "Personal Email", defaultSelected: true },
-        { key: "Personal Email Show", label: "Personal Email Show", defaultSelected: false },
         { key: "University Email", label: "University Email", defaultSelected: false },
         { key: "Official Email", label: "Official Email", defaultSelected: false },
         { key: "Official Number", label: "Official Number", defaultSelected: false },
-        { key: "Address", label: "Address", defaultSelected: false },
-        { key: "Country", label: "Country", defaultSelected: true },
-        { key: "Province", label: "Province", defaultSelected: false },
-        { key: "City", label: "City", defaultSelected: true },
-        { key: "Degree Title", label: "Degree Title", defaultSelected: true },
+        { key: "Address", label: "Home Address", defaultSelected: false },
+        { key: "Country", label: "Home Country", defaultSelected: true },
+        { key: "Province", label: "Home Province", defaultSelected: false },
+        { key: "City", label: "Home City", defaultSelected: true },
+        { key: "Degree Title", label: "Program", defaultSelected: true },
         { key: "CGPA", label: "CGPA", defaultSelected: false },
         { key: "Year of Starting", label: "Year of Starting", defaultSelected: false },
         { key: "Year of Ending", label: "Year of Ending", defaultSelected: true },
@@ -2053,39 +2023,31 @@ export const AlumniTabs: React.FC = () => {
         { key: "Campus", label: "Campus", defaultSelected: true },
         { key: "Department", label: "Department", defaultSelected: true },
         { key: "Major Subject", label: "Major Subject", defaultSelected: false },
-        { key: "Industry", label: "Industry", defaultSelected: false },
+        { key: "Industry", label: "Sector", defaultSelected: false },
         { key: "Employment Status", label: "Employment Status", defaultSelected: false },
-        { key: "Organization", label: "Organization", defaultSelected: false },
+        { key: "Organization", label: "Employer", defaultSelected: false },
         { key: "Designation", label: "Designation", defaultSelected: false },
         { key: "Total Years of Experience", label: "Total Years of Experience", defaultSelected: false },
         { key: "Work City", label: "Work City", defaultSelected: false },
         { key: "Work Country", label: "Work Country", defaultSelected: false },
         { key: "Organization Address", label: "Organization Address", defaultSelected: false },
-        { key: "Supervisor Designation", label: "Supervisor Designation", defaultSelected: false },
-        { key: "Supervisor Number", label: "Supervisor Number", defaultSelected: false },
         { key: "Higher Education Institute Name", label: "Higher Education Institute Name", defaultSelected: false },
-        { key: "Higher Education Degree Title", label: "Higher Education Degree Title", defaultSelected: false },
-        { key: "Is Scholarship", label: "Is Scholarship", defaultSelected: false },
+        { key: "Higher Education Degree Title", label: "Higher Education Program", defaultSelected: false },
+        { key: "Is Scholarship", label: "Funding source", defaultSelected: false },
         { key: "Higher Education Program", label: "Higher Education Program", defaultSelected: false },
         { key: "Higher Education Institute Country", label: "Higher Education Institute Country", defaultSelected: false },
         { key: "Higher Education Institute Province", label: "Higher Education Institute Province", defaultSelected: false },
         { key: "Higher Education Institute City", label: "Higher Education Institute City", defaultSelected: false },
-        { key: "Chapter 1 ID", label: "Chapter 1 ID", defaultSelected: false },
         { key: "Chapter 1", label: "Chapter 1", defaultSelected: false },
-        { key: "Chapter 2 ID", label: "Chapter 2 ID", defaultSelected: false },
         { key: "Chapter 2", label: "Chapter 2", defaultSelected: false },
-        { key: "Chapter 3 ID", label: "Chapter 3 ID", defaultSelected: false },
         { key: "Chapter 3", label: "Chapter 3", defaultSelected: false },
-        { key: "All Chapters", label: "All Chapters", defaultSelected: false },
         { key: "Chapter Remarks", label: "Chapter Remarks", defaultSelected: false },
-        { key: "Association ID", label: "Association ID", defaultSelected: false },
         { key: "Association Title", label: "Association Title", defaultSelected: false },
         { key: "Association Description", label: "Association Description", defaultSelected: false },
         { key: "Association Dean", label: "Association Dean", defaultSelected: false },
         { key: "Association Phone", label: "Association Phone", defaultSelected: false },
         { key: "Association Email", label: "Association Email", defaultSelected: false },
         { key: "Association Address", label: "Association Address", defaultSelected: false },
-        { key: "Chapter Leadership ID", label: "Chapter Leadership ID", defaultSelected: false },
         { key: "Chapter Leadership Post", label: "Chapter Leadership Post", defaultSelected: false },
         { key: "Chapter Leadership Status", label: "Chapter Leadership Status", defaultSelected: false },
         { key: "Chapter Leadership Rejection Reason", label: "Chapter Leadership Rejection Reason", defaultSelected: false },
@@ -2102,9 +2064,6 @@ export const AlumniTabs: React.FC = () => {
         { key: "Scholarship Created At", label: "Scholarship Created At", defaultSelected: false },
         { key: "About Me", label: "About Me", defaultSelected: false },
         { key: "About", label: "About", defaultSelected: false },
-        { key: "Image 1", label: "Image 1", defaultSelected: false },
-        { key: "Image 2", label: "Image 2", defaultSelected: false },
-        { key: "CV", label: "CV", defaultSelected: false },
         { key: "Facebook", label: "Facebook", defaultSelected: false },
         { key: "Instagram", label: "Instagram", defaultSelected: false },
         { key: "YouTube", label: "YouTube", defaultSelected: false },
@@ -2113,201 +2072,22 @@ export const AlumniTabs: React.FC = () => {
         { key: "Last Login", label: "Last Login", defaultSelected: false },
         { key: "Login Count", label: "Login Count", defaultSelected: false },
         { key: "Email Send Count", label: "Email Send Count", defaultSelected: false },
-        { key: "Email Send Status", label: "Email Send Status", defaultSelected: false },
-        { key: "Data Source", label: "Data Source", defaultSelected: false },
         { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
         { key: "Photo Usage Consent", label: "Photo Usage Consent", defaultSelected: false },
         { key: "Category", label: "Category", defaultSelected: false },
         { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
-        { key: "Today Date", label: "Today Date", defaultSelected: false },
       ];
 
-    // Decide which columns to include based on export toggles
-    // Core columns that are ALWAYS exported by default
-    const coreKeys = [
-      "SAP ID",
-      "Registration No",
-      "Full Name", // Alumni Name
-      "Alumni Email",
-      "Contact No",
-      "Contact No 1",
-      "Personal Email",
-    ];
-
-    const facultyKeys = ["Faculty"];
-    const departmentKeys = ["Department"];
-    const programKeys = ["Academic Session", "Degree Title"];
-    // Status columns - only include if at least one status is selected in the dropdown
-    const selectedStatusKeys = additionalFilter.length > 0 ? ["Verification Status", "Alumni Status"] : [];
-
-    // Master filter column groups
-    const genderKeys = ["Gender"];
-    const maritalStatusKeys = ["Marital Status"];
-    const homeCountryKeys = ["Country"];
-    const homeCityKeys = ["City"];
-    const provinceKeys = ["Province"];
-    const campusKeys = ["Campus"];
-    const admissionYearKeys = ["Year of Starting"];
-    const passingYearKeys = ["Year of Ending"];
-    const occupationStatusKeys = ["Employment Status"];
-    const sectorKeys = ["Industry"];
-    const workCityKeys = ["Work City"];
-    const workCountryKeys = ["Work Country"];
-    const employerKeys = ["Organization"];
-    const statusKeys = ["Verification Status", "Alumni Status"];
-    const institutionNameKeys = ["Higher Education Institute Name"];
-    const programEnrolledKeys = ["Higher Education Program"];
-    const fundingSourceKeys = ["Is Scholarship"];
-    const institutionCountryKeys = ["Higher Education Institute Country"];
-    const institutionCityKeys = ["Higher Education Institute City"];
-    const photoConsentKeys = ["Photo Usage Consent"];
-    const categoryKeys = ["Category"];
-
-    // Create a comprehensive mapping of all columns to their groups
-    // This ensures every column is properly categorized
-    const columnGroupMap = new Map<string, boolean>();
-    
-    // Map all columns to their groups
-    columns.forEach((col) => {
-      const key = col.key;
-      
-      // Core columns are always included
-      if (coreKeys.includes(key)) {
-        columnGroupMap.set(key, true);
-        return;
-      }
-      
-      // Map to checkbox groups
-      if (facultyKeys.includes(key)) {
-        columnGroupMap.set(key, exportFaculty);
-      } else if (departmentKeys.includes(key)) {
-        columnGroupMap.set(key, exportDepartment);
-      } else if (programKeys.includes(key)) {
-        columnGroupMap.set(key, exportProgram);
-      } else if (selectedStatusKeys.includes(key)) {
-        // Use exportStatus toggle for status columns
-        columnGroupMap.set(key, exportStatus);
-      } else if (genderKeys.includes(key)) {
-        columnGroupMap.set(key, exportGender);
-      } else if (maritalStatusKeys.includes(key)) {
-        columnGroupMap.set(key, exportMaritalStatus);
-      } else if (homeCountryKeys.includes(key)) {
-        columnGroupMap.set(key, exportHomeCountry);
-      } else if (homeCityKeys.includes(key)) {
-        columnGroupMap.set(key, exportHomeCity);
-      } else if (provinceKeys.includes(key)) {
-        columnGroupMap.set(key, exportProvince);
-      } else if (campusKeys.includes(key)) {
-        columnGroupMap.set(key, exportCampus);
-      } else if (admissionYearKeys.includes(key)) {
-        columnGroupMap.set(key, exportAdmissionYear);
-      } else if (passingYearKeys.includes(key)) {
-        columnGroupMap.set(key, exportPassingYear);
-      } else if (occupationStatusKeys.includes(key)) {
-        columnGroupMap.set(key, exportOccupationStatus);
-      } else if (sectorKeys.includes(key)) {
-        columnGroupMap.set(key, exportSector);
-      } else if (workCityKeys.includes(key)) {
-        columnGroupMap.set(key, exportWorkCity);
-      } else if (workCountryKeys.includes(key)) {
-        columnGroupMap.set(key, exportWorkCountry);
-      } else if (employerKeys.includes(key)) {
-        columnGroupMap.set(key, exportEmployer);
-      } else if (statusKeys.includes(key)) {
-        columnGroupMap.set(key, exportStatus);
-      } else if (institutionNameKeys.includes(key)) {
-        columnGroupMap.set(key, exportInstitutionName);
-      } else if (programEnrolledKeys.includes(key)) {
-        columnGroupMap.set(key, exportProgramEnrolled);
-      } else if (fundingSourceKeys.includes(key)) {
-        columnGroupMap.set(key, exportFundingSource);
-      } else if (institutionCountryKeys.includes(key)) {
-        columnGroupMap.set(key, exportInstitutionCountry);
-      } else if (institutionCityKeys.includes(key)) {
-        columnGroupMap.set(key, exportInstitutionCity);
-      } else if (photoConsentKeys.includes(key)) {
-        columnGroupMap.set(key, exportPhotoConsent);
-      } else if (categoryKeys.includes(key)) {
-        columnGroupMap.set(key, exportCategory);
-      } else {
-        // Columns not in any group are NOT exported (explicit exclusion)
-        columnGroupMap.set(key, false);
-      }
-    });
-
-    // Filter columns based on the mapping - ONLY include columns that are marked as true
-    const filteredColumns = columns.filter((col) => {
-      return columnGroupMap.get(col.key) === true;
-    });
-
-    // Verify we have at least core columns (which should always be present)
-    const coreColumnKeys = new Set(coreKeys);
-    const hasCoreColumns = filteredColumns.some(col => coreColumnKeys.has(col.key));
-    
-    if (filteredColumns.length === 0 || !hasCoreColumns) {
-      toast.error("Please select at least one column group to export");
-      return;
-    }
-    
-    // Use filteredColumns directly - no need for double filtering
-    const finalFilteredColumns = filteredColumns;
-
-      const dateStr = new Date().toISOString().split("T")[0];
-      const statusStr = statusFilter ? `_${statusFilter}` : "";
-      const searchStr = debouncedQuery ? `_search` : "";
+    const statusStr = statusFilter ? `_${statusFilter}` : "";
+    const searchStr = debouncedQuery ? `_search` : "";
     const filenameBase = `alumni_export${statusStr}${searchStr}`;
 
-    // Set loading state and show toast
-    setIsExporting(true);
-    let loadingToast: string | undefined;
-    let processingToast: string | undefined;
-
-    try {
-      loadingToast = toast.loading("Preparing export data...");
-
-      // Fetch data (already filtered by statusFilter and other filters via API)
-      const data = await fetchAndTransformData();
-      
-      // Dismiss loading toast and show processing toast
-      if (loadingToast) toast.dismiss(loadingToast);
-      processingToast = toast.loading(`Processing ${data.length} records for export...`);
-      
-      // Get the list of selected column keys from finalFilteredColumns (not filteredColumns)
-      const selectedColumnKeys = new Set(finalFilteredColumns.map(col => col.key));
-      
-      // Filter data to ONLY include selected columns
-      const filteredData = data.map((row) => {
-        const filteredRow: Record<string, unknown> = {};
-        selectedColumnKeys.forEach((key) => {
-          // Only include columns that are in the selected columns list
-          if (row.hasOwnProperty(key)) {
-            filteredRow[key] = row[key] ?? "";
-          }
-        });
-        return filteredRow;
-      });
-      
-      // Export to Excel with filtered data and columns
-      await exportJsonToExcel({
-        data: filteredData,
-        columns: finalFilteredColumns,
-        filename: filenameBase,
-        sheetName: "Alumni List",
-      });
-      
-      // Dismiss processing toast (success toast will be shown by exportJsonToExcel)
-      if (processingToast) toast.dismiss(processingToast);
-    } catch (err) {
-      // Dismiss any active toasts
-      if (loadingToast) toast.dismiss(loadingToast);
-      if (processingToast) toast.dismiss(processingToast);
-      
-      const msg =
-        err instanceof Error ? err.message : "Failed to export data";
-      toast.error(msg);
-    } finally {
-      setIsExporting(false);
-    }
+    openExportModal({
+      data: fetchAndTransformData,
+      columns,
+      filename: filenameBase,
+      sheetName: "Alumni List",
+    });
   }, [
     debouncedQuery,
     statusFilter,
@@ -2334,31 +2114,8 @@ export const AlumniTabs: React.FC = () => {
     selectedPhotoConsents,
     selectedSapIdStates,
     selectedRegNoStates,
-    exportFaculty,
-    exportDepartment,
-    exportProgram,
     additionalFilter, // Status columns depend on selected statuses in dropdown
-    exportGender,
-    exportMaritalStatus,
-    exportHomeCountry,
-    exportHomeCity,
-    exportProvince,
-    exportCampus,
-    exportAdmissionYear,
-    exportPassingYear,
-    exportOccupationStatus,
-    exportSector,
-    exportWorkCity,
-    exportWorkCountry,
-    exportEmployer,
-    exportInstitutionName,
-    exportProgramEnrolled,
-    exportFundingSource,
-    exportInstitutionCountry,
-    exportInstitutionCity,
-    exportPhotoConsent,
-    exportCategory,
-    exportMaster,
+    openExportModal,
   ]);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -2651,7 +2408,7 @@ export const AlumniTabs: React.FC = () => {
                 type="button"
                 disabled={isDisabled}
                 className={`
-                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50
+                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50 shadow-md
                   ${isSelected 
                     ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
                     : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
@@ -2686,13 +2443,15 @@ export const AlumniTabs: React.FC = () => {
                   }
                 }}
               >
-                <div className="flex items-center justify-between mb-4">
+                {isSelected && (
+                  <div
+                    className={`absolute top-3 right-3 z-10 w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse pointer-events-none ring-2 ring-white/80 dark:ring-gray-900/80`}
+                  />
+                )}
+                <div className="flex items-center justify-between mb-4 ">
                   <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
                     {tab.label}
                   </h6>
-                  {isSelected && (
-                    <div className={`w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse`} />
-                  )}
                 </div>
                 {isLoadingCounts && !countsData ? (
                   <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
@@ -2709,7 +2468,7 @@ export const AlumniTabs: React.FC = () => {
     <div className="p-0">
       <div className="flex flex-col gap-8">
         {/* Stats Cards Section */}
-        <div className="px-6 pt-2">
+        <div className="px-4 py-4  rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200">
           {/* Regular Tabs */}
           <div className="flex flex-wrap gap-4 mb-6">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
@@ -2744,8 +2503,8 @@ export const AlumniTabs: React.FC = () => {
         <div style={{ display: selected !== "distinguished" ? "block" : "none" }}>
         <>
         {/* Search and Filters Section */}
-        <div className="px-6">
-          <div className="flex flex-col  gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+        <div className="rounded-2xl">
+          <div className="flex flex-col  gap-4 bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
             {/* Search Row */}
             <div className="flex-1 w-full">
               <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
@@ -2780,13 +2539,6 @@ export const AlumniTabs: React.FC = () => {
                   className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
                 >
                   <span>Faculty</span>
-                  <input
-                    type="checkbox"
-                    checked={exportFaculty}
-                    onChange={(e) => setExportFaculty(e.target.checked)}
-                    className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                    title="Include Faculty column in Excel export"
-                  />
                 </label>
                 <div className="relative" ref={facultyFilterRef}>
                   <button
@@ -2871,13 +2623,6 @@ export const AlumniTabs: React.FC = () => {
                   className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
                 >
                   <span>Department</span>
-                  <input
-                    type="checkbox"
-                    checked={exportDepartment}
-                    onChange={(e) => setExportDepartment(e.target.checked)}
-                    className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                    title="Include Department column in Excel export"
-                  />
                 </label>
                 <div className="relative" ref={departmentFilterRef}>
                   <button
@@ -2962,13 +2707,6 @@ export const AlumniTabs: React.FC = () => {
                   className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2"
                 >
                   <span>Program</span>
-                  <input
-                    type="checkbox"
-                    checked={exportProgram}
-                    onChange={(e) => setExportProgram(e.target.checked)}
-                    className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                    title="Include Program columns in Excel export"
-                  />
                 </label>
                 <div className="relative" ref={programFilterRef}>
                   <button
@@ -3140,37 +2878,6 @@ export const AlumniTabs: React.FC = () => {
                 >
                   <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                     Master Filters
-                    <input
-                      type="checkbox"
-                      checked={exportMaster}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setExportMaster(checked);
-                        // When master filter checkbox is toggled, toggle all master filter checkboxes
-                        setExportGender(checked);
-                        setExportMaritalStatus(checked);
-                        setExportHomeCountry(checked);
-                        setExportHomeCity(checked);
-                        setExportProvince(checked);
-                        setExportCampus(checked);
-                        setExportAdmissionYear(checked);
-                        setExportPassingYear(checked);
-                        setExportOccupationStatus(checked);
-                        setExportSector(checked);
-                        setExportWorkCity(checked);
-                        setExportWorkCountry(checked);
-                        setExportEmployer(checked);
-                        setExportInstitutionName(checked);
-                        setExportProgramEnrolled(checked);
-                        setExportFundingSource(checked);
-                        setExportInstitutionCountry(checked);
-                        setExportInstitutionCity(checked);
-                        setExportPhotoConsent(checked);
-                      }}
-                      className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                      title="Include all additional (master) columns in Excel export"
-                      onClick={(e) => e.stopPropagation()}
-                    />
                   </span>
                   <svg 
                     className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${expandedFilters.masterFilters ? 'rotate-180' : ''}`}
@@ -3189,13 +2896,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={genderFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Gender</span>
-                          <input
-                            type="checkbox"
-                            checked={exportGender}
-                            onChange={(e) => setExportGender(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Gender column in Excel export"
-                          />
                         </label>
                         {isLoadingGenders ? (
                           <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
@@ -3288,13 +2988,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={maritalStatusFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Marital Status</span>
-                          <input
-                            type="checkbox"
-                            checked={exportMaritalStatus}
-                            onChange={(e) => setExportMaritalStatus(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Marital Status column in Excel export"
-                          />
                         </label>
                         {isLoadingMaritalStatuses ? (
                           <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
@@ -3387,13 +3080,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={homeCountryFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Home Country</span>
-                          <input
-                            type="checkbox"
-                            checked={exportHomeCountry}
-                            onChange={(e) => setExportHomeCountry(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Home Country column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -3468,13 +3154,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={provinceFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Home Province (Pakistan)</span>
-                          <input
-                            type="checkbox"
-                            checked={exportProvince}
-                            onChange={(e) => setExportProvince(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Province column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -3555,13 +3234,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={homeCityFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Home City</span>
-                          <input
-                            type="checkbox"
-                            checked={exportHomeCity}
-                            onChange={(e) => setExportHomeCity(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Home City column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -3644,13 +3316,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={campusFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Campus</span>
-                          <input
-                            type="checkbox"
-                            checked={exportCampus}
-                            onChange={(e) => setExportCampus(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Campus column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -3735,13 +3400,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={admissionYearFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Admission Year</span>
-                          <input
-                            type="checkbox"
-                            checked={exportAdmissionYear}
-                            onChange={(e) => setExportAdmissionYear(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Admission Year columns in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -3816,13 +3474,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={passingYearFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Passing Year</span>
-                          <input
-                            type="checkbox"
-                            checked={exportPassingYear}
-                            onChange={(e) => setExportPassingYear(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Passing Year column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -3897,13 +3548,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={occupationStatusFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Occupation Status</span>
-                          <input
-                            type="checkbox"
-                            checked={exportOccupationStatus}
-                            onChange={(e) => setExportOccupationStatus(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Occupation Status column in Excel export"
-                          />
                         </label>
                         {isLoadingOccupationStatuses ? (
                           <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
@@ -3996,13 +3640,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={sectorFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Sector</span>
-                          <input
-                            type="checkbox"
-                            checked={exportSector}
-                            onChange={(e) => setExportSector(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Sector column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4090,13 +3727,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={workCountryFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Work Country</span>
-                          <input
-                            type="checkbox"
-                            checked={exportWorkCountry}
-                            onChange={(e) => setExportWorkCountry(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Work Country column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4171,13 +3801,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={employerFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Employer</span>
-                          <input
-                            type="checkbox"
-                            checked={exportEmployer}
-                            onChange={(e) => setExportEmployer(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Organization column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4252,13 +3875,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={workCityFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Work City</span>
-                          <input
-                            type="checkbox"
-                            checked={exportWorkCity}
-                            onChange={(e) => setExportWorkCity(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Work City column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4344,13 +3960,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={institutionNameFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Institution Name</span>
-                          <input
-                            type="checkbox"
-                            checked={exportInstitutionName}
-                            onChange={(e) => setExportInstitutionName(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Institution Name column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4436,13 +4045,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={programEnrolledFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Program Enrolled</span>
-                          <input
-                            type="checkbox"
-                            checked={exportProgramEnrolled}
-                            onChange={(e) => setExportProgramEnrolled(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Program Enrolled column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4528,13 +4130,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={fundingSourceFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Funding Source</span>
-                          <input
-                            type="checkbox"
-                            checked={exportFundingSource}
-                            onChange={(e) => setExportFundingSource(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Funding Source column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4620,13 +4215,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={institutionCountryFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Institution Country</span>
-                          <input
-                            type="checkbox"
-                            checked={exportInstitutionCountry}
-                            onChange={(e) => setExportInstitutionCountry(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Institution Country column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4712,13 +4300,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={institutionCityFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Institution City</span>
-                          <input
-                            type="checkbox"
-                            checked={exportInstitutionCity}
-                            onChange={(e) => setExportInstitutionCity(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Institution City column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4804,13 +4385,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={photoConsentFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Photo Consent</span>
-                          <input
-                            type="checkbox"
-                            checked={exportPhotoConsent}
-                            onChange={(e) => setExportPhotoConsent(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Photo Consent column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -4891,13 +4465,6 @@ export const AlumniTabs: React.FC = () => {
                       <div className="relative" ref={categoryFilterRef}>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                           <span>Category</span>
-                          <input
-                            type="checkbox"
-                            checked={exportCategory}
-                            onChange={(e) => setExportCategory(e.target.checked)}
-                            className="h-3 w-3 text-blue-600 border-gray-300 rounded"
-                            title="Include Category column in Excel export"
-                          />
                         </label>
                         <button
                           type="button"
@@ -5064,6 +4631,7 @@ export const AlumniTabs: React.FC = () => {
             
             {/* Actions Row */}
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
+            <ExportModal />
             {sortField && (
               <button
                 type="button"
@@ -5126,7 +4694,7 @@ export const AlumniTabs: React.FC = () => {
         </div>
 
         {/* Table Section */}
-        <div className="px-3 sm:px-1 pb-8">
+        <div className="pb-8 mt-4">
           <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
             {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
             <div 
@@ -5142,13 +4710,12 @@ export const AlumniTabs: React.FC = () => {
             </div>
             <div 
               ref={tableContainerRef}
-              className="max-w-full overflow-x-hidden custom-scrollbar max-h-[750px] overflow-y-auto relative"
               style={{
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none',
               }}
             >
-              <div className="table-content-wrapper" style={{ minWidth: '800px' }}>
+              <div className="table-content-wrapper " style={{ minWidth: '800px' }}>
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">

@@ -163,14 +163,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       let strValue = String(value).trim();
       
       if (key === "employeed") {
-        // Map display values to database values (matching AlumniSqlForm.tsx mapping)
-        if (strValue === "Employed/Business") {
-          strValue = "Employed";
-        } else if (strValue === "Self-employed") {
-          strValue = "Self-Emplo";
+        if (strValue === "Employed") {
+          strValue = "Employed/Business";
+        } else if (strValue === "Self-Emplo") {
+          strValue = "Self-employed";
+        } else if (strValue.toLowerCase() === "highered") {
+          strValue = "Pursuing Higher Education";
         }
-        // "Pursuing Higher Education", "Unemployed By choice", and "Unemployed, searching for job" are stored as-is
-        // Note: employeed is TEXT field in schema.sql, so no length constraint
       }
       
       if (key === "totalyearsofexpereince" && strValue.length > 10) {

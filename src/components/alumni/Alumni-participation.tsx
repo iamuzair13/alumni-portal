@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/modal";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import { useExcelExport } from "@/lib/excel-export";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
@@ -74,7 +75,7 @@ export const AlumniParticipation: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
 
   // Icon mapping (replicates Alumni-tabs typed map; using GroupIcon consistently)
   const ICON_COMPONENT_MAP: Record<
@@ -214,62 +215,132 @@ export const AlumniParticipation: React.FC = () => {
   const pageItems = sortedParticipants.slice(start, end);
 
   // Export to Excel function - comprehensive export with ALL fields
-  const handleExportToExcel = useCallback(async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    try {
-      // Dynamically import xlsx to avoid server-side bundling issues
-      const XLSX = await import("xlsx");
-      
-      // Determine export type
-      let exportType = "all";
-      let filename = "alumni_participation_export";
-      if (selected === "alumniAssociation") {
-        exportType = "association";
-        filename = "alumni_association_export";
-      } else if (selected === "talkMentorship") {
-        exportType = "talks";
-        filename = "alumni_talks_export";
-      } else {
-        exportType = "talks"; // For chapters participation, we still export talks data
-        filename = "alumni_chapters_participation_export";
-      }
+  const handleExportToExcel = useCallback(() => {
+    const exportColumnKeys: string[] = [
+      "SAP ID",
+      "Registration No",
+      "Full Name",
+      "Gender",
+      "Father Name",
+      "Father CNIC",
+      "Date of Birth",
+      "Marital Status",
+      "CNIC/Passport",
+      "Contact No",
+      "Contact No 1",
+      "Contact No 1 Show",
+      "Personal Email",
+      "Personal Email Show",
+      "University Email",
+      "Official Email",
+      "Official Number",
+      "Address",
+      "Country",
+      "Province",
+      "City",
+      "Academic Session",
+      "Degree Title",
+      "CGPA",
+      "Year of Starting",
+      "Year of Ending",
+      "Faculty",
+      "Campus",
+      "Department",
+      "Major Subject",
+      "Industry",
+      "Employment Status",
+      "Organization",
+      "Designation",
+      "Total Years of Experience",
+      "Work City",
+      "Work Country",
+      "Organization Address",
+      "Supervisor Designation",
+      "Supervisor Number",
+      "Chapter 1",
+      "Chapter 2",
+      "Chapter 3",
+      "All Chapters",
+      "Chapter Remarks",
+      "Association Title",
+      "Association Description",
+      "Association Dean",
+      "Association Phone",
+      "Association Email",
+      "Association Address",
+      // Participation-specific unions
+      "Association Role",
+      "Association Status",
+      "Association Created At",
+      "Association Updated At",
+      "Association Rejection Reason",
+      "Topic",
+      "Day",
+      "Timings",
+      "Activity",
+      "Talks Created At",
+    ];
 
-      // Fetch comprehensive data from export endpoint
-      const url = new URL("/api/alumni/participation/export", typeof window !== "undefined" ? window.location.origin : "");
+    const columns = exportColumnKeys.map((key) => ({
+      key,
+      label: key,
+      defaultSelected: true,
+    }));
+
+    // Determine export type
+    let exportType = "all";
+    let filename = "alumni_participation_export";
+    let sheetName = "Participation";
+    if (selected === "alumniAssociation") {
+      exportType = "association";
+      filename = "alumni_association_export";
+      sheetName = "Association";
+    } else if (selected === "talkMentorship") {
+      exportType = "talks";
+      filename = "alumni_talks_export";
+      sheetName = "Talks";
+    } else {
+      exportType = "talks";
+      filename = "alumni_chapters_participation_export";
+      sheetName = "Chapters";
+    }
+
+    // Helper function to format chapter names
+    const formatChapters = (item: Record<string, unknown>) => {
+      const chapters: string[] = [];
+      const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+      const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+      const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+      if (chapter1) chapters.push(chapter1);
+      if (chapter2) chapters.push(chapter2);
+      if (chapter3) chapters.push(chapter3);
+      return chapters.filter((c) => c).join(", ") || "";
+    };
+
+    const fetchAndTransformData = async (): Promise<Record<string, unknown>[]> => {
+      const url = new URL(
+        "/api/alumni/participation/export",
+        typeof window !== "undefined" ? window.location.origin : ""
+      );
       url.searchParams.set("type", exportType);
-      
+
       const res = await fetch(url.toString(), {
-        headers: { "accept": "application/json" }
+        headers: { accept: "application/json" },
       });
-      
       if (!res.ok) {
         throw new Error(`Failed to fetch export data: ${res.status}`);
       }
-      
+
       const data = await res.json();
       const allItems = data.items || [];
+      if (!allItems || allItems.length === 0) {
+        throw new Error("No data found to export with the applied filters.");
+      }
 
-      // Helper function to format chapter names
-      const formatChapters = (item: Record<string, unknown>) => {
-        const chapters: string[] = [];
-        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
-        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
-        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
-        if (chapter1) chapters.push(chapter1);
-        if (chapter2) chapters.push(chapter2);
-        if (chapter3) chapters.push(chapter3);
-        return chapters.filter(c => c).join(", ") || "";
-      };
-
-      // Map ALL fields to Excel format
-      const excelData = allItems.map((item: Record<string, unknown>) => {
+      return allItems.map((item: Record<string, unknown>) => {
         const baseFields = {
-          // Basic Information
-          "Alumni ID": item.alumniid || "",
           "SAP ID": item.sapid || "",
           "Registration No": item.registrationno || "",
-          "Alumni Email": item.alumniemail || "",
           "Full Name": item.alumniname || "",
           "Gender": item.gender || "",
           "Father Name": item.fathername || "",
@@ -277,8 +348,6 @@ export const AlumniParticipation: React.FC = () => {
           "Date of Birth": item.dateofbirth || "",
           "Marital Status": item.maritalstatus || "",
           "CNIC/Passport": item.cnicpassport || "",
-          
-          // Contact Information
           "Contact No": item.contactno || "",
           "Contact No 1": item.contactno1 || "",
           "Contact No 1 Show": item.contactno1show || "",
@@ -291,8 +360,6 @@ export const AlumniParticipation: React.FC = () => {
           "Country": item.country || "",
           "Province": item.province || "",
           "City": item.city || "",
-          
-          // Academic Information
           "Academic Session": item.academicsession || "",
           "Degree Title": item.degreetitle || "",
           "CGPA": item.cgpa || "",
@@ -302,8 +369,6 @@ export const AlumniParticipation: React.FC = () => {
           "Campus": item.campusname || "",
           "Department": item.departmentname || "",
           "Major Subject": item.majorsubject || "",
-          
-          // Professional Information
           "Industry": item.industry || "",
           "Employment Status": item.employeed || "",
           "Organization": item.nameoforganization || "",
@@ -314,19 +379,11 @@ export const AlumniParticipation: React.FC = () => {
           "Organization Address": item.organization_address || "",
           "Supervisor Designation": item.supervisordesignation || "",
           "Supervisor Number": item.supervisornumber || "",
-          
-          // Chapters
-          "Chapter 1 ID": item.chapter1_id || "",
           "Chapter 1": item.chapter1_national || item.chapter1_international || "",
-          "Chapter 2 ID": item.chapter2_id || "",
           "Chapter 2": item.chapter2_national || item.chapter2_international || "",
-          "Chapter 3 ID": item.chapter3_id || "",
           "Chapter 3": item.chapter3_national || item.chapter3_international || "",
           "All Chapters": formatChapters(item),
           "Chapter Remarks": item.chapter_remarks || "",
-          
-          // Association
-          "Association ID": item.association_id_value || "",
           "Association Title": item.association_title || "",
           "Association Description": item.association_description || "",
           "Association Dean": item.association_dean || "",
@@ -336,7 +393,6 @@ export const AlumniParticipation: React.FC = () => {
         };
 
         if (exportType === "association") {
-          // Association-specific fields
           return {
             ...baseFields,
             "Association Role": item.q3 || "",
@@ -345,44 +401,26 @@ export const AlumniParticipation: React.FC = () => {
             "Association Updated At": item.updated_at || "",
             "Association Rejection Reason": item.rejection_reason || "",
           };
-        } else {
-          // Talks/Mentorship-specific fields
-          return {
-            ...baseFields,
-            "Topic": item.topic || "",
-            "Day": item.day || "",
-            "Timings": item.timings || "",
-            "Activity": item.activity || "",
-            "Talks Created At": item.created_at || "",
-          };
         }
+
+        return {
+          ...baseFields,
+          "Topic": item.topic || "",
+          "Day": item.day || "",
+          "Timings": item.timings || "",
+          "Activity": item.activity || "",
+          "Talks Created At": item.created_at || "",
+        };
       });
+    };
 
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Set column widths for all columns (auto-width for comprehensive export)
-      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
-      ws["!cols"] = colWidths;
-
-      // Add worksheet to workbook
-      const sheetName = selected === "alumniAssociation" ? "Association" : selected === "talkMentorship" ? "Talks" : "Chapters";
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-      // Generate filename with current date
-      const dateStr = new Date().toISOString().split("T")[0];
-      const finalFilename = `${filename}_${dateStr}.xlsx`;
-
-      // Write and download
-      XLSX.writeFile(wb, finalFilename);
-      setIsExporting(false);
-    } catch (error) {
-
-      setIsExporting(false);
-      alert("Failed to export data. Please try again.");
-    }
-  }, [isExporting, selected]);
+    openExportModal({
+      data: fetchAndTransformData,
+      columns,
+      filename,
+      sheetName,
+    });
+  }, [selected, openExportModal]);
 
   return (
     <ComponentCard className="">
@@ -447,6 +485,9 @@ export const AlumniParticipation: React.FC = () => {
             <span className="text-sm">{deleteError}</span>
           </div>
         )}
+
+        <ExportModal />
+
         <div className="flex items-center justify-end mb-4">
           <button
             type="button"

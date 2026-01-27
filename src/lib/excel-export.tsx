@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
-import { Modal } from "@/components/ui/modal";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import toast from "react-hot-toast";
+import { ExportColumnsModal } from "@/components/common/ExportColumnsModal";
 
 export type ColumnOption = {
   key: string;
@@ -33,6 +33,18 @@ export function useExcelExport() {
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
     new Set()
   );
+
+  const exportConfigRef = useRef<ExcelExportOptions | null>(null);
+  const isOpenRef = useRef(false);
+  const isExportingRef = useRef(false);
+  const memoizedColumnsRef = useRef<ColumnOption[]>([]);
+  const selectedColumnsRef = useRef<Set<string>>(new Set());
+
+  const closeExportModalRef = useRef<() => void>(() => undefined);
+  const toggleColumnRef = useRef<(key: string) => void>(() => undefined);
+  const selectAllColumnsRef = useRef<() => void>(() => undefined);
+  const deselectAllColumnsRef = useRef<() => void>(() => undefined);
+  const handleExportRef = useRef<() => void>(() => undefined);
 
   const openExportModal = useCallback((options: ExcelExportOptions) => {
     const initialSelected = new Set<string>();
@@ -147,95 +159,43 @@ export function useExcelExport() {
     }
   }, [exportConfig, selectedColumns]);
 
-  const ExportModal: React.FC = () => {
-    if (!exportConfig) return null;
+  exportConfigRef.current = exportConfig;
+  isOpenRef.current = isOpen;
+  isExportingRef.current = isExporting;
+  memoizedColumnsRef.current = memoizedColumns;
+  selectedColumnsRef.current = selectedColumns;
 
-    return (
-      <Modal
-        isOpen={isOpen}
-        onClose={closeExportModal}
-        className="max-w-2xl mx-auto"
-        showCloseButton={true}
-      >
-        <div className="p-6">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Select Columns to Export
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Choose which columns you want to include in the Excel export.
-          </p>
+  closeExportModalRef.current = closeExportModal;
+  toggleColumnRef.current = toggleColumn;
+  selectAllColumnsRef.current = selectAllColumns;
+  deselectAllColumnsRef.current = deselectAllColumns;
+  handleExportRef.current = handleExport;
 
-          <div className="mb-4 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={selectAllColumns}
-              disabled={isExporting}
-              className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Select All
-            </button>
-            <button
-              type="button"
-              onClick={deselectAllColumns}
-              disabled={isExporting}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Deselect All
-            </button>
-            <span className="ml-auto text-sm text-gray-500 dark:text-gray-400">
-              {selectedColumns.size} of {memoizedColumns.length} selected
-            </span>
-          </div>
+  const ExportModalRef = useRef<React.FC | null>(null);
+  if (ExportModalRef.current === null) {
+    ExportModalRef.current = () => {
+      if (!exportConfigRef.current) return null;
 
-          <div className="max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4 bg-white dark:bg-gray-900">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {memoizedColumns.map((column) => (
-                <label
-                  key={column.key}
-                  className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedColumns.has(column.key)}
-                    onChange={() => toggleColumn(column.key)}
-                    disabled={isExporting}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
-                    {column.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={closeExportModal}
-              disabled={isExporting}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={isExporting || selectedColumns.size === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isExporting ? "Exporting..." : "Export"}
-            </button>
-          </div>
-        </div>
-      </Modal>
-    );
-  };
+      return (
+        <ExportColumnsModal
+          isOpen={isOpenRef.current}
+          onClose={closeExportModalRef.current}
+          isExporting={isExportingRef.current}
+          columns={memoizedColumnsRef.current}
+          selectedColumns={selectedColumnsRef.current}
+          onToggleColumn={toggleColumnRef.current}
+          onSelectAll={selectAllColumnsRef.current}
+          onDeselectAll={deselectAllColumnsRef.current}
+          onExport={handleExportRef.current}
+        />
+      );
+    };
+  }
 
   return {
     isExporting,
     openExportModal,
-    ExportModal,
+    ExportModal: ExportModalRef.current,
   };
 }
 

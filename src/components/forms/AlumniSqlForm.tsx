@@ -962,9 +962,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     try {
       const payload: TblAlumniForm = { ...data };
-      if (!payload.alumniemail || String(payload.alumniemail).trim() === "") {
-        payload.alumniemail = payload.personalemail ?? null;
-      }
+      payload.alumniemail = null;
       if (!payload.datasource || String(payload.datasource).trim() === "") {
         payload.datasource = "Alumni";
       }
@@ -972,16 +970,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       // Map employment status to database format
       if (payload.employeed) {
         const employeedValue = String(payload.employeed).trim();
-        if (employeedValue === "Employed/Business") {
-          payload.employeed = "Employed";
-        } else if (employeedValue === "Self-employed") {
-          payload.employeed = "Self-Emplo";
-        } else if (employeedValue === "Pursuing Higher Education") {
+        if (employeedValue === "Employed") {
+          payload.employeed = "Employed/Business";
+        } else if (employeedValue === "Self-Emplo") {
+          payload.employeed = "Self-employed";
+        } else if (employeedValue.toLowerCase() === "highered") {
           payload.employeed = "Pursuing Higher Education";
-        } else if (employeedValue === "Unemployed By choice") {
-          payload.employeed = "Unemployed By choice";
-        } else if (employeedValue === "Unemployed, searching for job") {
-          payload.employeed = "Unemployed, searching for job";
+        } else {
+          payload.employeed = employeedValue;
         }
       }
       

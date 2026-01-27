@@ -9,6 +9,7 @@ import { TrashBinIcon, CheckLineIcon, CloseLineIcon, DownloadIcon, PlusIcon } fr
 import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
+import { useExcelExport } from "@/lib/excel-export";
 
 type TabKey = "chapterMembers" | "associationMembers" | "applications";
 
@@ -94,6 +95,7 @@ async function updateSetting(formType: "chapter_leadership" | "association_leade
 export default function LeadershipPage() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const { isExporting, openExportModal, ExportModal } = useExcelExport();
   const [selectedTab, setSelectedTab] = useState<TabKey>("chapterMembers");
   const [searchQuery, setSearchQuery] = useState("");
   const [facultyFilter, setFacultyFilter] = useState("");
@@ -272,60 +274,90 @@ export default function LeadershipPage() {
   };
 
   // Export to Excel function
-  const handleExport = async () => {
-    try {
-      const XLSX = await import("xlsx");
-      
-      let exportType = "all";
-      let status = "all";
-      let filename = "leadership_export";
-      
-      if (selectedTab === "chapterMembers") {
-        exportType = "chapter";
-        status = "approved";
-        filename = "chapter_leadership_members";
-      } else if (selectedTab === "associationMembers") {
-        exportType = "association";
-        status = "approved";
-        filename = "association_leadership_members";
-      } else if (selectedTab === "applications") {
-        exportType = "all";
-        status = "pending";
-        filename = "leadership_applications";
-      }
+  const handleExport = () => {
+    const exportColumnKeys: string[] = [
+      "Leadership Type",
+      "Leadership Status",
+      "Position",
+      "SAP ID",
+      "Registration No",
+      "Full Name",
+      "Personal Email",
+      "University Email",
+      "Contact No",
+      "Faculty",
+      "Department",
+      "Degree Title",
+      "All Chapters",
+      "Association Title",
+      "Created At",
+    ];
 
-      const url = new URL("/api/leadership/export", typeof window !== "undefined" ? window.location.origin : "");
+    const columns = exportColumnKeys.map((key) => ({
+      key,
+      label: key,
+      defaultSelected: true,
+    }));
+
+    let exportType = "all";
+    let status = "all";
+    let filename = "leadership_export";
+    let sheetName = "Leadership";
+
+    if (selectedTab === "chapterMembers") {
+      exportType = "chapter";
+      status = "approved";
+      filename = "chapter_leadership_members";
+      sheetName = "Chapter Leadership";
+    } else if (selectedTab === "associationMembers") {
+      exportType = "association";
+      status = "approved";
+      filename = "association_leadership_members";
+      sheetName = "Association Leadership";
+    } else if (selectedTab === "applications") {
+      exportType = "all";
+      status = "pending";
+      filename = "leadership_applications";
+      sheetName = "Applications";
+    }
+
+    const formatChapters = (item: Record<string, unknown>) => {
+      const chapters: string[] = [];
+      const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
+      const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
+      const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
+      if (chapter1) chapters.push(chapter1);
+      if (chapter2) chapters.push(chapter2);
+      if (chapter3) chapters.push(chapter3);
+      return chapters.filter((c) => c).join(", ") || "";
+    };
+
+    const fetchAndTransformData = async (): Promise<Record<string, unknown>[]> => {
+      const url = new URL(
+        "/api/leadership/export",
+        typeof window !== "undefined" ? window.location.origin : ""
+      );
       url.searchParams.set("type", exportType);
       url.searchParams.set("status", status);
-      
+
       const res = await fetch(url.toString(), {
-        headers: { "accept": "application/json" }
+        headers: { accept: "application/json" },
       });
-      
+
       if (!res.ok) {
         throw new Error(`Failed to fetch export data: ${res.status}`);
       }
-      
+
       const data = await res.json();
       const allItems = data.items || [];
+      if (!allItems || allItems.length === 0) {
+        throw new Error("No data found to export with the applied filters.");
+      }
 
-      const formatChapters = (item: Record<string, unknown>) => {
-        const chapters: string[] = [];
-        const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
-        const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
-        const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
-        if (chapter1) chapters.push(chapter1);
-        if (chapter2) chapters.push(chapter2);
-        if (chapter3) chapters.push(chapter3);
-        return chapters.filter(c => c).join(", ") || "";
-      };
-
-      const excelData = allItems.map((item: Record<string, unknown>) => ({
+      return allItems.map((item: Record<string, unknown>) => ({
         "Leadership Type": item.leadership_type || "",
-        "Leadership ID": item.id || "",
         "Leadership Status": item.status || "",
-        "Position": item.post || item.q3 || "",
-        "Alumni ID": item.alumniid || "",
+        "Position": item.post || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
         "Full Name": item.alumniname || "",
@@ -339,24 +371,14 @@ export default function LeadershipPage() {
         "Association Title": item.association_title || "",
         "Created At": item.created_at || item.createddatetime || "",
       }));
+    };
 
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
-      ws["!cols"] = colWidths;
-
-      const sheetName = selectedTab === "chapterMembers" ? "Chapter Leadership" : selectedTab === "associationMembers" ? "Association Leadership" : "Applications";
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
-      const dateStr = new Date().toISOString().split("T")[0];
-      const finalFilename = `${filename}_${dateStr}.xlsx`;
-
-      XLSX.writeFile(wb, finalFilename);
-    } catch (error) {
-
-      toast.error("Failed to export data. Please try again.");
-    }
+    openExportModal({
+      data: fetchAndTransformData,
+      columns,
+      filename,
+      sheetName,
+    });
   };
 
   const filteredMembers = useMemo(() => {
@@ -517,6 +539,7 @@ export default function LeadershipPage() {
                   )}
                   <button
                     onClick={handleExport}
+                    disabled={isExporting}
                     className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
                   >
                     <DownloadIcon className="w-4 h-4" />
@@ -527,6 +550,8 @@ export default function LeadershipPage() {
             </div>
           </div>
         </div>
+
+        <ExportModal />
 
         {/* Action Messages */}
         {actionMessage && (
