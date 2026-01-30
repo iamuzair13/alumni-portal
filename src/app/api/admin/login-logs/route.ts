@@ -17,9 +17,9 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
-    const actorUserId = url.searchParams.get("actorUserId");
     const actorType = url.searchParams.get("actorType");
-    const action = url.searchParams.get("action");
+    const actorUserId = url.searchParams.get("actorUserId");
+    const success = url.searchParams.get("success");
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
     const q = url.searchParams.get("q");
@@ -31,13 +31,6 @@ export async function GET(req: Request) {
 
     const conditions: ReturnType<typeof sql>[] = [];
 
-    if (actorUserId) {
-      const n = Number(actorUserId);
-      if (Number.isFinite(n)) {
-        conditions.push(sql`actor_user_id = ${n}`);
-      }
-    }
-
     if (actorType) {
       const actorTypeNorm = String(actorType).toLowerCase().trim();
       if (actorTypeNorm === "staff") {
@@ -47,8 +40,17 @@ export async function GET(req: Request) {
       }
     }
 
-    if (action) {
-      conditions.push(sql`action = ${action}`);
+    if (actorUserId) {
+      const n = Number(actorUserId);
+      if (Number.isFinite(n)) {
+        conditions.push(sql`actor_user_id = ${n}`);
+      }
+    }
+
+    if (success === "true") {
+      conditions.push(sql`success = true`);
+    } else if (success === "false") {
+      conditions.push(sql`success = false`);
     }
 
     if (from) {
@@ -62,12 +64,9 @@ export async function GET(req: Request) {
     if (q) {
       const like = `%${q}%`;
       conditions.push(sql`(
-        actor_email ILIKE ${like}
-        OR actor_type ILIKE ${like}
-        OR action ILIKE ${like}
-        OR COALESCE(entity_type, '') ILIKE ${like}
-        OR COALESCE(entity_id, '') ILIKE ${like}
-        OR COALESCE(request_path, '') ILIKE ${like}
+        COALESCE(actor_email, '') ILIKE ${like}
+        OR COALESCE(actor_type, '') ILIKE ${like}
+        OR COALESCE(identifier, '') ILIKE ${like}
         OR COALESCE(ip, '') ILIKE ${like}
       )`);
     }
@@ -78,7 +77,7 @@ export async function GET(req: Request) {
 
     const totalRows = await sql/* sql */`
       SELECT COUNT(*)::bigint as count
-      FROM public.admin_activity_logs
+      FROM public.login_logs
       ${whereSql ? sql`WHERE ${whereSql}` : sql``}
     ` as Array<{ count: string | number }>;
 
@@ -88,19 +87,16 @@ export async function GET(req: Request) {
       SELECT
         id,
         created_at,
+        actor_type,
         actor_user_id,
         actor_email,
-        actor_type,
-        action,
-        entity_type,
-        entity_id,
+        identifier,
         success,
         error_message,
         ip,
         user_agent,
-        request_path,
         metadata
-      FROM public.admin_activity_logs
+      FROM public.login_logs
       ${whereSql ? sql`WHERE ${whereSql}` : sql``}
       ORDER BY created_at DESC
       LIMIT ${limit}

@@ -489,7 +489,7 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
       
       // Delete the alumni record by alumniid
       // Foreign key constraints with ON DELETE CASCADE will automatically delete related records
-      // (tblcard, tblchapters, tblalumnitalks, tblalumnistories, alumni_chapter)
+      // (tblcard, tblchapters, alumni_talk_sessions, tblalumnistories, alumni_chapter)
       const deleteResult = await tx/* sql */`
         DELETE FROM public.tbl_alumni 
         WHERE alumniid = ${alumniId} 

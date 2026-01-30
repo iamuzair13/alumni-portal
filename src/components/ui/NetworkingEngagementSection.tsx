@@ -9,6 +9,20 @@ type NetworkingEngagementSectionProps = {
   mentorshipStatusError?: string | null;
 };
 
+type EngagementCard = {
+  title: string;
+  decription: string;
+  action: string;
+  href: string;
+  color: string;
+  bg: string;
+  icon: React.ReactElement;
+  status?: string;
+  statusError?: string;
+  disabled?: boolean;
+  disabledText?: string;
+};
+
 export default function NetworkingEngagementSection({
   sapId,
   mentorshipStatus,
@@ -16,7 +30,8 @@ export default function NetworkingEngagementSection({
 }: NetworkingEngagementSectionProps) {
   const { data: session } = useSession();
   const isViewer = isViewerUser(session?.user);
-  const cards = [
+
+  const cards: EngagementCard[] = [
     {
       title: "Success Story",
       decription: "Share your story and inspire the next generation of UOL.",
@@ -33,8 +48,8 @@ export default function NetworkingEngagementSection({
     {
       title: "Alumni Talk",
       decription: "Apply to lead an Alumni Talk and help students prepare for their professional journey.",
-      action: "Apply now",
-      href: sapId ? `/alumni-profile/mentorship?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/mentorship`,
+      action: "View",
+      href: sapId ? `/alumni-profile/talks?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/talks`,
       color: "text-purple-600",
       bg: "bg-purple-100",
       icon: (
@@ -42,9 +57,7 @@ export default function NetworkingEngagementSection({
           <path className="fill-current" d="M7 7a4 4 0 118 0 4 4 0 01-8 0zm-3 12a6 6 0 1112 0H4zm13.5-8a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM21 21h-3.5a4.5 4.5 0 114.5-4.5V21z"/>
         </svg>
       ),
-      disabled: mentorshipStatus === "applied",
-      disabledText: "Already Applied",
-      statusError: mentorshipStatusError,
+      statusError: mentorshipStatusError ?? undefined,
       status: mentorshipStatus,
     },
     {

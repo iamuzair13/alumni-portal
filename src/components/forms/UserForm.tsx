@@ -593,7 +593,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
                   Access Control
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Limit user access to specific Faculties, Departments, and Programs. The user will only be able to access data for the assigned areas. Access is enforced using ID-based filtering at the database level.
+                  Limit user access to specific Faculties and Departments. The user will only be able to access data for the assigned areas. Access is enforced using ID-based filtering at the database level.
                 </p>
               </div>
 

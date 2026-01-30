@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { alumniTalksKey } from "@/app/queries/fetch-alumni-talks";
 
 type MeAlumni = {
   sapid: string;
@@ -60,7 +61,12 @@ function useCurrentAlumni(email: string | undefined) {
   });
 }
 
-export default function MentorshipForm() {
+type MentorshipFormProps = {
+  redirectOnSuccess?: boolean;
+  onSubmitted?: () => void;
+};
+
+export default function MentorshipForm({ redirectOnSuccess = true, onSubmitted }: MentorshipFormProps) {
   const { data: session } = useSession();
   const email = session?.user?.email;
   const { data: me } = useCurrentAlumni(email ?? undefined);
@@ -200,21 +206,26 @@ export default function MentorshipForm() {
       });
       
       qc.invalidateQueries({ queryKey: ["alumni", "participation", "list"] });
+      qc.invalidateQueries({ queryKey: alumniTalksKey });
       resetField("topic");
       resetField("area");
       resetField("briefOutline");
-      
-      // Navigate back to profile page
-      setTimeout(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const sapId = urlParams.get('sapid') || me?.sapid;
-        if (sapId) {
-          router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
-        } else {
-          router.push('/alumni-profile');
-        }
-        router.refresh();
-      }, 1500);
+
+      if (redirectOnSuccess) {
+        // Navigate back to profile page
+        setTimeout(() => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const sapId = urlParams.get('sapid') || me?.sapid;
+          if (sapId) {
+            router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
+          } else {
+            router.push('/alumni-profile');
+          }
+          router.refresh();
+        }, 1500);
+      } else {
+        onSubmitted?.();
+      }
     } catch {
       // Error already handled with toast above
     } finally {

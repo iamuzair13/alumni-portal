@@ -23,16 +23,7 @@ type DepartmentRow = {
   faculty_name: string | null;
 };
 
-type ProgramRow = {
-  id: number;
-  program_name: string | null;
-  department_id: number | null;
-  department_name: string | null;
-  faculty_id: number | null;
-  faculty_name: string | null;
-};
-
-type Mode = "faculty" | "department" | "program";
+type Mode = "faculty" | "department";
 
 type Props = {
   value: AccessAssignmentsValue;
@@ -56,7 +47,6 @@ function uniqTrim(values: string[]) {
 }
 
 function pickInitialMode(v: AccessAssignmentsValue): Mode {
-  if (v.programs?.length) return "program";
   if (v.departments?.length) return "department";
   return "faculty";
 }
@@ -79,7 +69,7 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
   useEffect(() => {
     setMode(pickInitialMode(value));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value.faculties.join("|"), value.departments.join("|"), value.programs.join("|")]);
+  }, [value.faculties.join("|"), value.departments.join("|")]);
 
   const facultiesQuery = useQuery({
     queryKey: ["org", "faculties"],
@@ -91,12 +81,6 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
     queryKey: ["org", "departments"],
     queryFn: () =>
       fetchJson<{ success: boolean; departments: DepartmentRow[] }>("/api/organization/departments"),
-  });
-
-  const programsQuery = useQuery({
-    queryKey: ["org", "programs"],
-    queryFn: () =>
-      fetchJson<{ success: boolean; programs: ProgramRow[] }>("/api/organization/programs"),
   });
 
   const faculties = useMemo(() => {
@@ -120,23 +104,9 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
       .sort((a, b) => a.department.localeCompare(b.department));
   }, [departmentsQuery.data]);
 
-  const programs = useMemo(() => {
-    const rows = programsQuery.data?.programs ?? [];
-    return rows
-      .filter((r) => r.program_name && r.department_name && r.faculty_name)
-      .map((r) => ({
-        id: Number(r.id),
-        program: String(r.program_name ?? "").trim(),
-        department: String(r.department_name ?? "").trim(),
-        faculty: String(r.faculty_name ?? "").trim(),
-      }))
-      .filter((r) => r.program && r.department && r.faculty)
-      .sort((a, b) => a.program.localeCompare(b.program));
-  }, [programsQuery.data]);
 
   const selectedFacultyNorm = useMemo(() => new Set(uniqTrim(value.faculties).map(norm)), [value.faculties]);
   const selectedDeptNorm = useMemo(() => new Set(uniqTrim(value.departments).map(norm)), [value.departments]);
-  const selectedProgNorm = useMemo(() => new Set(uniqTrim(value.programs).map(norm)), [value.programs]);
 
   const visibleFaculties = useMemo(() => {
     const q = norm(search);
@@ -151,17 +121,8 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
     return inSelectedFaculties.filter((d) => norm(d.department).includes(q) || norm(d.faculty).includes(q));
   }, [departments, search, selectedFacultyNorm]);
 
-  const visiblePrograms = useMemo(() => {
-    const q = norm(search);
-    const inSelectedDepartments = programs.filter((p) => selectedDeptNorm.has(norm(p.department)));
-    if (!q) return inSelectedDepartments;
-    return inSelectedDepartments.filter(
-      (p) => norm(p.program).includes(q) || norm(p.department).includes(q) || norm(p.faculty).includes(q)
-    );
-  }, [programs, search, selectedDeptNorm]);
-
-  const isLoading = facultiesQuery.isLoading || departmentsQuery.isLoading || programsQuery.isLoading;
-  const loadError = facultiesQuery.error || departmentsQuery.error || programsQuery.error;
+  const isLoading = facultiesQuery.isLoading || departmentsQuery.isLoading;
+  const loadError = facultiesQuery.error || departmentsQuery.error;
 
   const setModeSafe = (nextMode: Mode) => {
     setMode(nextMode);
@@ -180,21 +141,16 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
 
     const canonicalFaculties = faculties.filter((f) => nextFaculties.has(norm(f)));
 
-    // prune departments/programs that are no longer in selected faculties
+    // prune departments that are no longer in selected faculties
     const allowedDeptNorm = new Set(
       departments.filter((d) => nextFaculties.has(norm(d.faculty))).map((d) => norm(d.department))
     );
     const nextDepartments = uniqTrim(value.departments).filter((d) => allowedDeptNorm.has(norm(d)));
 
-    const allowedProgNorm = new Set(
-      programs.filter((p) => allowedDeptNorm.has(norm(p.department))).map((p) => norm(p.program))
-    );
-    const nextPrograms = uniqTrim(value.programs).filter((p) => allowedProgNorm.has(norm(p)));
-
     onChange({
       faculties: canonicalFaculties,
       departments: mode === "faculty" ? [] : nextDepartments,
-      programs: mode === "program" ? nextPrograms : [],
+      programs: [],
     });
   };
 
@@ -218,50 +174,10 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
       .filter((d) => nextDepts.has(norm(d.department)) && nextFaculties.has(norm(d.faculty)))
       .map((d) => d.department);
 
-    const allowedProgNorm = new Set(
-      programs.filter((p) => nextDepts.has(norm(p.department))).map((p) => norm(p.program))
-    );
-    const nextPrograms = uniqTrim(value.programs).filter((p) => allowedProgNorm.has(norm(p)));
-
     onChange({
       faculties: canonicalFaculties,
       departments: mode === "faculty" ? [] : canonicalDepts,
-      programs: mode === "program" ? nextPrograms : [],
-    });
-  };
-
-  const toggleProgram = (programName: string) => {
-    const progKey = norm(programName);
-    const nextProgs = new Set(selectedProgNorm);
-    if (nextProgs.has(progKey)) nextProgs.delete(progKey);
-    else nextProgs.add(progKey);
-
-    // auto-include parent dept + faculty for selected programs
-    const parentDeptNorm = new Set<string>();
-    const parentFacultyNorm = new Set<string>();
-    for (const p of programs) {
-      if (nextProgs.has(norm(p.program))) {
-        parentDeptNorm.add(norm(p.department));
-        parentFacultyNorm.add(norm(p.faculty));
-      }
-    }
-
-    const nextFaculties = new Set(selectedFacultyNorm);
-    for (const f of parentFacultyNorm) nextFaculties.add(f);
-
-    const nextDepts = new Set(selectedDeptNorm);
-    for (const d of parentDeptNorm) nextDepts.add(d);
-
-    const canonicalFaculties = faculties.filter((f) => nextFaculties.has(norm(f)));
-    const canonicalDepts = departments
-      .filter((d) => nextDepts.has(norm(d.department)) && nextFaculties.has(norm(d.faculty)))
-      .map((d) => d.department);
-    const canonicalProgs = programs.filter((p) => nextProgs.has(norm(p.program))).map((p) => p.program);
-
-    onChange({
-      faculties: canonicalFaculties,
-      departments: canonicalDepts,
-      programs: canonicalProgs,
+      programs: [],
     });
   };
 
@@ -276,9 +192,6 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
       onChange({ faculties: uniqTrim(value.faculties), departments: uniqTrim(depts), programs: [] });
       return;
     }
-    // program
-    const progs = visiblePrograms.map((p) => p.program);
-    onChange({ faculties: uniqTrim(value.faculties), departments: uniqTrim(value.departments), programs: uniqTrim(progs) });
   };
 
   const clearAll = () => onChange({ faculties: [], departments: [], programs: [] });
@@ -313,41 +226,15 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
             >
               Department
             </button>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => setModeSafe("program")}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                mode === "program"
-                  ? "border-blue-300 bg-white text-blue-700 dark:border-blue-700 dark:bg-gray-900 dark:text-blue-300"
-                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-              }`}
-            >
-              Program
-            </button>
           </div>
           <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-            Faculty = all departments/programs in selected faculties. Department = all programs in selected departments. Program = only selected programs.
+            Faculty = all departments in selected faculties. Department = only selected departments.
           </p>
-        </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-[240px]">
-            <Label htmlFor="access-search">Search</Label>
-            <Input
-              id="access-search"
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search faculty / department / program..."
-              className="w-full"
-              disabled={disabled}
-            />
-          </div>
-          <div className="flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={disabled || isLoading}
+              disabled={disabled}
               onClick={selectAllVisible}
               className="h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             >
@@ -367,7 +254,7 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
 
       {(isLoading || loadError) && (
         <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-          {isLoading ? "Loading faculties/departments/programs..." : `Failed to load organization data: ${(loadError as Error)?.message}`}
+          {isLoading ? "Loading faculties/departments..." : `Failed to load organization data: ${(loadError as Error)?.message}`}
         </div>
       )}
 
@@ -450,56 +337,13 @@ export default function AccessControlPicker({ value, onChange, disabled }: Props
           </div>
         </div>
 
-        {/* Programs */}
-        <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-900 dark:text-white">Programs</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{value.programs.length} selected</div>
-            </div>
-            {mode !== "program" && (
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Select “Program” scope to enable program selection.</div>
-            )}
-          </div>
-          <div className={`max-h-[320px] overflow-auto p-2 ${mode !== "program" ? "opacity-50" : ""}`}>
-            {mode !== "program" ? (
-              <div className="p-3 text-sm text-gray-500 dark:text-gray-400">Disabled unless Program scope is selected.</div>
-            ) : selectedDeptNorm.size === 0 ? (
-              <div className="p-3 text-sm text-gray-500 dark:text-gray-400">Select at least one department.</div>
-            ) : visiblePrograms.length === 0 ? (
-              <div className="p-3 text-sm text-gray-500 dark:text-gray-400">No programs for selected departments.</div>
-            ) : (
-              visiblePrograms.map((p) => {
-                const checked = selectedProgNorm.has(norm(p.program));
-                return (
-                  <label
-                    key={`${p.department}::${p.program}`}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-700"
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={() => toggleProgram(p.program)}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-gray-800 dark:text-gray-200">{p.program}</div>
-                      <div className="truncate text-xs text-gray-500 dark:text-gray-400">{p.department}</div>
-                    </div>
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
         <div className="flex flex-wrap gap-2">
           <span className="font-semibold">Selected:</span>
           <span className="text-gray-600 dark:text-gray-400">
-            {value.faculties.length} faculties • {value.departments.length} departments • {value.programs.length} programs
+            {value.faculties.length} faculties • {value.departments.length} departments
           </span>
         </div>
       </div>

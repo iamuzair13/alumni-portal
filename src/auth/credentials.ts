@@ -1,4 +1,5 @@
 import { sql } from "@/lib/dbconnect";
+import { logLoginEvent } from "@/lib/loginLog";
 
 export type DbUser = {
   userid: number;
@@ -217,6 +218,21 @@ export async function authenticateCredentials(identifier: string, password: stri
       try {
         await sql/* sql */`UPDATE public.users SET lastlogindatetime = ${new Date().toISOString()} WHERE id = ${dbUser.userid} OR legacy_userid = ${dbUser.userid}`;
       } catch {}
+
+      try {
+        await logLoginEvent({
+          session: null,
+          input: {
+            actorType: dbUser.type ? String(dbUser.type) : "staff",
+            actorUserId: Number.isFinite(Number(dbUser.userid)) ? Number(dbUser.userid) : null,
+            actorEmail: dbUser.email ?? null,
+            identifier: identifier.trim(),
+            success: true,
+            ip: ip || null,
+            metadata: { mode: "credentials", userType: dbUser.type ?? null },
+          },
+        });
+      } catch {}
       return u;
     }
 
@@ -366,6 +382,25 @@ export async function authenticateCredentials(identifier: string, password: stri
   log("OK", "alumni credentials verified");
   try {
     await sql/* sql */`UPDATE public.tbl_alumni SET lasttimelogin = ${new Date().toISOString()}, logincount = COALESCE(logincount, 0) + 1 WHERE alumniid = ${a.alumniid}`;
+  } catch {}
+
+  try {
+    await logLoginEvent({
+      session: null,
+      input: {
+        actorType: "alumni",
+        actorUserId: Number.isFinite(Number(a.alumniid)) ? Number(a.alumniid) : null,
+        actorEmail: userEmail ?? null,
+        identifier: identifier.trim(),
+        success: true,
+        ip: ip || null,
+        metadata: {
+          mode: "credentials",
+          sapid: a.sapid ?? null,
+          registrationno: a.registrationno ?? null,
+        },
+      },
+    });
   } catch {}
   return u;
 }

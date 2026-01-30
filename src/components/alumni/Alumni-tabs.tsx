@@ -2468,7 +2468,7 @@ export const AlumniTabs: React.FC = () => {
     <div className="p-0">
       <div className="flex flex-col gap-8">
         {/* Stats Cards Section */}
-        <div className="px-4 py-4  rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200">
+        <div className="px-4 py-4  rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 shadow-lg">
           {/* Regular Tabs */}
           <div className="flex flex-wrap gap-4 mb-6">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}

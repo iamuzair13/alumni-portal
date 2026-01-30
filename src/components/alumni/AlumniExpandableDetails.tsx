@@ -49,6 +49,21 @@ const formatDateDisplay = (value: unknown): string => {
   }).format(d);
 };
 
+const formatDateTimeDisplay = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  const str = String(value).trim();
+  if (!str) return "";
+  const d = new Date(str.length === 10 ? `${str}T00:00:00` : str);
+  if (Number.isNaN(d.getTime())) return str;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+};
+
 // Compare two values and return comparison result
 const compareValues = (alumniValue: unknown, erpValue: unknown): ComparisonResult => {
   const alumniNorm = normalizeValue(alumniValue);
@@ -1632,7 +1647,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "Unverified", label: "Unverified" },
             { value: "On-Hold", label: "On-Hold" }
           ]} onEdit={() => startEditingField("verify")} />
-          <CompactField label="Last Login" value={data.lasttimelogin || "Never"} isEditing={isFieldEditing("lasttimelogin")} readOnly={readOnly} register={register} name="lasttimelogin" onEdit={() => startEditingField("lasttimelogin")} />
+          <CompactField label="Last Login" value={formatDateTimeDisplay(data.lasttimelogin) || "Never"} isEditing={false} readOnly={true} />
           <CompactField label="Login Count" value={data.logincount || 0} isEditing={isFieldEditing("logincount")} readOnly={readOnly} register={register} name="logincount" type="number" onEdit={() => startEditingField("logincount")} />
           <CompactField label="Alumni Status" value={data.alumnistatus} isEditing={isFieldEditing("alumnistatus")} readOnly={readOnly} register={register} name="alumnistatus" type="select" options={[
             { value: "", label: "Select" },

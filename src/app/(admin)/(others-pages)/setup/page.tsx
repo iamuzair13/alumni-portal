@@ -20,6 +20,7 @@ import { canModify, isAdminUser, isViewerUser, canManageUsers, isSuperAdminUser 
 import OrganizationComponent from "@/components/setup/OrganizationComponent";
 import ChaptersComponent from "@/components/setup/ChaptersComponent";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import { NewsletterTab } from "@/components/alumni/NewsletterTab";
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -62,10 +63,12 @@ function SetupPageContent() {
     { key: "users", label: "Users" },
     { key: "organizations", label: "Organizations" },
     { key: "chapters", label: "Chapters" },
+    { key: "newsletters", label: "Newsletters" },
   ] as const;
 
   // Get initial tab from URL search params, default to "users"
-  const tabFromUrl = searchParams.get("tab");
+  const tabFromUrlRaw = searchParams.get("tab");
+  const tabFromUrl = tabFromUrlRaw === "newsletter" ? "newsletters" : tabFromUrlRaw;
   const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
   const [selected, setSelected] = useState<typeof TABS[number]["key"]>(validTab);
 
@@ -77,7 +80,8 @@ function SetupPageContent() {
 
   // Sync with URL on mount or when URL changes
   useEffect(() => {
-    const tabFromUrl = searchParams.get("tab");
+    const tabFromUrlRaw = searchParams.get("tab");
+    const tabFromUrl = tabFromUrlRaw === "newsletter" ? "newsletters" : tabFromUrlRaw;
     const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
     setSelected(validTab);
   }, [searchParams]);
@@ -138,6 +142,8 @@ function SetupPageContent() {
     list = list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
   }, [users, userSearch]);
+
+  const isNewslettersTab = selected === "newsletters";
 
   // Calculate total users count after filteredUsers is defined
   const totalUsersCount = filteredUsers.length + realTimeUsersCount;
@@ -557,6 +563,12 @@ function SetupPageContent() {
           </div>
         )}
 
+        {isNewslettersTab && (
+          <div className="mt-6">
+            <NewsletterTab />
+          </div>
+        )}
+
         {/* Add/Edit User Form Component */}
         
         
@@ -745,7 +757,6 @@ function RealTimeUsers() {
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Type</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Faculties</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Departments</th>
-              <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Assigned Programs</th>
               <th scope="col" className="px-4 py-3 text-center text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
@@ -788,9 +799,6 @@ function RealTimeUsers() {
                 </td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                   <AssignedItemsCell items={u.accessAssignments?.departments ?? []} allowDropdown={isSuperAdmin} />
-                </td>
-                <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
-                  <AssignedItemsCell items={u.accessAssignments?.programs ?? []} allowDropdown={isSuperAdmin} />
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex gap-2 justify-center">

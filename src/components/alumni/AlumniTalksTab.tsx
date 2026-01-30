@@ -2,14 +2,17 @@
 
 import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
+import toast from "react-hot-toast";
 
 type TalkItem = {
+  id: number;
   sapid: string;
   registrationNo: string | null;
   name: string;
@@ -17,11 +20,9 @@ type TalkItem = {
   faculty: string | null;
   program: string | null;
   email: string | null;
-  alumnitalks: string | null;
-  mentorshipprogram: string | null;
+  status: string;
   topics: string[];
   areas: string[];
-  linkedin: string | null;
   mode: string | null;
   briefOutline: string | null;
   // Availability dates and timings
@@ -31,17 +32,12 @@ type TalkItem = {
   timings2: string | null;
   date3: string | null;
   timings3: string | null;
-  // Day variations
-  day2: string | null;
-  day3: string | null;
-  // Week variations
-  week1: string | null;
-  week2: string | null;
-  week3: string | null;
-  // Month variations
-  month1: string | null;
-  month2: string | null;
-  month3: string | null;
+  confirmedDate: string | null;
+  confirmedTimings: string | null;
+  adminProposedDate: string | null;
+  adminProposedTimings: string | null;
+  adminNote: string | null;
+  alumniNote: string | null;
 };
 
 async function getAlumniTalks(): Promise<TalkItem[]> {
@@ -68,11 +64,58 @@ async function getAlumniTalks(): Promise<TalkItem[]> {
 }
 
 export const AlumniTalksTab: React.FC = () => {
+  const qc = useQueryClient();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [confirmOptionById, setConfirmOptionById] = useState<Record<number, number>>({});
+  const [proposeDateById, setProposeDateById] = useState<Record<number, string>>({});
+  const [proposeStartById, setProposeStartById] = useState<Record<number, string>>({});
+  const [proposeEndById, setProposeEndById] = useState<Record<number, string>>({});
+  const [proposeNoteById, setProposeNoteById] = useState<Record<number, string>>({});
+
+  const prettyStatus = (s: string | null | undefined) => {
+    const v = String(s || "").toLowerCase().trim();
+    if (!v) return "Pending";
+    if (v === "admin_confirmed" || v === "alumni_confirmed") return "Confirmed";
+    if (v === "admin_proposed") return "Pending Confirmation";
+    if (v === "reschedule_requested") return "Reschedule Requested";
+    if (v === "conducted") return "Conducted";
+    if (v === "cancelled") return "Cancelled";
+    return v;
+  };
+
+  const statusBadgeColor = (s: string | null | undefined): Parameters<typeof Badge>[0]["color"] => {
+    const v = String(s || "").toLowerCase().trim();
+    if (v === "conducted") return "success";
+    if (v === "admin_confirmed" || v === "alumni_confirmed") return "success";
+    if (v === "admin_proposed") return "warning";
+    if (v === "cancelled") return "error";
+    if (v === "reschedule_requested") return "warning";
+    return "info";
+  };
+
+  async function doAdminAction(id: number, body: Record<string, unknown>) {
+    try {
+      setBusyId(id);
+      const res = await fetch(`/api/alumni/talks?id=${encodeURIComponent(String(id))}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) throw new Error(data?.message || data?.error || `Failed (${res.status})`);
+      await qc.invalidateQueries({ queryKey: ["alumni-talks"] });
+      toast.success("Updated successfully");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -127,7 +170,7 @@ export const AlumniTalksTab: React.FC = () => {
       </div>
 
       <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
-        <SyncedTableScroll minWidth={1100} maxHeight={700}>
+        <SyncedTableScroll minWidth={1300} maxHeight={700}>
           <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
               <TableRow>
@@ -137,9 +180,11 @@ export const AlumniTalksTab: React.FC = () => {
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Email</TableCell>
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Faculty</TableCell>
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Department</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Status</TableCell>
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Topic</TableCell>
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Mode</TableCell>
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Availability</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Actions</TableCell>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -152,29 +197,32 @@ export const AlumniTalksTab: React.FC = () => {
                     <TableCell className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-20 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3"><div className="h-4 w-20 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
                   </TableRow>
                 ))
               )}
               {!isLoading && isError && (
                 <TableRow>
-                  <TableCell colSpan={9} className="px-5 py-6 text-center text-red-600">
+                  <TableCell colSpan={11} className="px-5 py-6 text-center text-red-600">
                     {error?.message || "Failed to load data"}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !isError && pageItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="px-5 py-8 text-center text-gray-600">
+                  <TableCell colSpan={11} className="px-5 py-8 text-center text-gray-600">
                     No alumni talks found
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !isError && pageItems.map((item, idx) => {
-                const rowId = `${item.sapid}-${idx}`;
+                const rowId = String(item.id);
                 const isExpanded = expandedRows.has(rowId);
+                const isBusy = busyId === item.id;
                 
                 // Build availability options
                 const availabilityOptions = [];
@@ -187,23 +235,6 @@ export const AlumniTalksTab: React.FC = () => {
                 if (item.date3 && item.timings3) {
                   availabilityOptions.push({ date: item.date3, timings: item.timings3, label: "Option 3" });
                 }
-                
-                // Build day variations
-                const dayOptions = [];
-                if (item.day2) dayOptions.push({ value: item.day2, label: "Day 2" });
-                if (item.day3) dayOptions.push({ value: item.day3, label: "Day 3" });
-                
-                // Build week variations
-                const weekOptions = [];
-                if (item.week1) weekOptions.push({ value: item.week1, label: "Week 1" });
-                if (item.week2) weekOptions.push({ value: item.week2, label: "Week 2" });
-                if (item.week3) weekOptions.push({ value: item.week3, label: "Week 3" });
-                
-                // Build month variations
-                const monthOptions = [];
-                if (item.month1) monthOptions.push({ value: item.month1, label: "Month 1" });
-                if (item.month2) monthOptions.push({ value: item.month2, label: "Month 2" });
-                if (item.month3) monthOptions.push({ value: item.month3, label: "Month 3" });
                 
                 return (
                   <React.Fragment key={rowId}>
@@ -250,6 +281,11 @@ export const AlumniTalksTab: React.FC = () => {
                       <TableCell className="px-4 py-3 text-xs text-slate-700">{item.faculty || "-"}</TableCell>
                       <TableCell className="px-4 py-3 text-xs text-slate-700">{item.department || "-"}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
+                        <Badge size="sm" color={statusBadgeColor(item.status)}>
+                          {prettyStatus(item.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs">
                         {item.topics.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {item.topics.slice(0, 2).map((topic, i) => (
@@ -271,21 +307,64 @@ export const AlumniTalksTab: React.FC = () => {
                           </select>
                         ) : "-"}
                       </TableCell>
+                      <TableCell className="px-4 py-3 text-xs">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <select
+                              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                              value={confirmOptionById[item.id] ?? ""}
+                              onChange={(e) => setConfirmOptionById((p) => ({ ...p, [item.id]: Number(e.target.value) }))}
+                            >
+                              <option value="">Confirm option</option>
+                              <option value={1}>Option 1</option>
+                              <option value={2}>Option 2</option>
+                              <option value={3}>Option 3</option>
+                            </select>
+                            <button
+                              type="button"
+                              disabled={isBusy || !confirmOptionById[item.id]}
+                              onClick={() => doAdminAction(item.id, { action: "confirm_option", option: confirmOptionById[item.id] })}
+                              className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                            >
+                              Confirm
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => doAdminAction(item.id, { action: "mark_conducted" })}
+                              className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              Mark Conducted
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => doAdminAction(item.id, { action: "cancel" })}
+                              className="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </TableCell>
                     </TableRow>
                     {isExpanded && (
                       <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
-                        <TableCell colSpan={9} className="px-4 py-4">
+                        <TableCell colSpan={11} className="px-4 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                             {/* Basic Info */}
                             <div className="space-y-2">
                               <h4 className="font-semibold text-slate-700 mb-2">Basic Information</h4>
-                              <div><span className="font-medium">Alumni Talks:</span> {item.alumnitalks || "-"}</div>
-                              <div><span className="font-medium">Mentorship Program:</span> {item.mentorshipprogram || "-"}</div>
-                              <div><span className="font-medium">LinkedIn:</span> {item.linkedin ? (
-                                <a href={item.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                  View Profile
-                                </a>
-                              ) : "-"}</div>
+                              <div><span className="font-medium">Status:</span> {prettyStatus(item.status)}</div>
+                              {item.alumniNote ? (
+                                <div className="mt-2">
+                                  <span className="font-medium">Alumni Note:</span>
+                                  <p className="mt-1 text-gray-600 whitespace-pre-wrap">{item.alumniNote}</p>
+                                </div>
+                              ) : null}
                               {item.briefOutline && (
                                 <div className="mt-2">
                                   <span className="font-medium">Brief Outline:</span>
@@ -312,43 +391,69 @@ export const AlumniTalksTab: React.FC = () => {
                             
                             {/* Variations */}
                             <div className="space-y-2">
-                              <h4 className="font-semibold text-slate-700 mb-2">Time Variations</h4>
-                              {dayOptions.length > 0 && (
-                                <div className="mb-2">
-                                  <label className="block font-medium mb-1">Day Variations:</label>
-                                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1 bg-white">
-                                    <option value="">Select Day</option>
-                                    {dayOptions.map((opt, i) => (
-                                      <option key={i} value={opt.value}>{opt.label}: {opt.value}</option>
-                                    ))}
-                                  </select>
+                              <h4 className="font-semibold text-slate-700 mb-2">Schedule</h4>
+                              {(item.confirmedDate || item.confirmedTimings) ? (
+                                <div className="p-2 bg-white rounded border border-emerald-200">
+                                  <div className="font-medium text-emerald-800">Confirmed</div>
+                                  <div className="text-gray-700">{item.confirmedDate || "-"} {item.confirmedTimings ? `(${item.confirmedTimings})` : ""}</div>
                                 </div>
+                              ) : (
+                                <div className="text-gray-500">No confirmed schedule</div>
                               )}
-                              {weekOptions.length > 0 && (
-                                <div className="mb-2">
-                                  <label className="block font-medium mb-1">Week Variations:</label>
-                                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1 bg-white">
-                                    <option value="">Select Week</option>
-                                    {weekOptions.map((opt, i) => (
-                                      <option key={i} value={opt.value}>{opt.label}: {opt.value}</option>
-                                    ))}
-                                  </select>
+                              {(item.adminProposedDate || item.adminProposedTimings) ? (
+                                <div className="p-2 bg-white rounded border border-blue-200">
+                                  <div className="font-medium text-blue-800">Admin Proposed</div>
+                                  <div className="text-gray-700">{item.adminProposedDate || "-"} {item.adminProposedTimings ? `(${item.adminProposedTimings})` : ""}</div>
+                                  {item.adminNote ? <div className="mt-1 text-gray-700 whitespace-pre-wrap">{item.adminNote}</div> : null}
                                 </div>
-                              )}
-                              {monthOptions.length > 0 && (
-                                <div className="mb-2">
-                                  <label className="block font-medium mb-1">Month Variations:</label>
-                                  <select className="w-full text-xs border border-gray-300 rounded px-2 py-1 bg-white">
-                                    <option value="">Select Month</option>
-                                    {monthOptions.map((opt, i) => (
-                                      <option key={i} value={opt.value}>{opt.label}: {opt.value}</option>
-                                    ))}
-                                  </select>
+                              ) : null}
+
+                              <div className="p-2 bg-white rounded border border-gray-200">
+                                <div className="font-medium text-slate-700 mb-2">Propose new slot</div>
+                                <div className="grid grid-cols-1 gap-2">
+                                  <input
+                                    type="date"
+                                    value={proposeDateById[item.id] ?? ""}
+                                    onChange={(e) => setProposeDateById((p) => ({ ...p, [item.id]: e.target.value }))}
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                  />
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      type="time"
+                                      value={proposeStartById[item.id] ?? ""}
+                                      onChange={(e) => setProposeStartById((p) => ({ ...p, [item.id]: e.target.value }))}
+                                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                    />
+                                    <input
+                                      type="time"
+                                      value={proposeEndById[item.id] ?? ""}
+                                      onChange={(e) => setProposeEndById((p) => ({ ...p, [item.id]: e.target.value }))}
+                                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                    />
+                                  </div>
+                                  <textarea
+                                    rows={2}
+                                    value={proposeNoteById[item.id] ?? ""}
+                                    onChange={(e) => setProposeNoteById((p) => ({ ...p, [item.id]: e.target.value }))}
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                    placeholder="Optional note"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={isBusy}
+                                    onClick={() => {
+                                      const d = proposeDateById[item.id] ?? "";
+                                      const st = proposeStartById[item.id] ?? "";
+                                      const en = proposeEndById[item.id] ?? "";
+                                      const timings = st && en ? `${st}-${en}` : "";
+                                      doAdminAction(item.id, { action: "propose", date: d, timings, note: proposeNoteById[item.id] ?? "" });
+                                    }}
+                                    className="rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                                  >
+                                    Propose
+                                  </button>
                                 </div>
-                              )}
-                              {dayOptions.length === 0 && weekOptions.length === 0 && monthOptions.length === 0 && (
-                                <div className="text-gray-500">No time variations</div>
-                              )}
+                              </div>
                             </div>
                             
                             {/* Areas */}

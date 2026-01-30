@@ -46,7 +46,7 @@ export async function GET(req: Request) {
           -- Association data
           assoc.id as association_id_value,
           assoc.title as association_title
-        FROM public.tblalumnitalks t
+        FROM public.alumni_talk_sessions t
         LEFT JOIN public.tbl_alumni a ON a.alumniid = t.alumniid
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
         LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
         WHERE 1=1
           ${accessFilterCondition}
-        ORDER BY t.alumniid DESC
+        ORDER BY t.created_at DESC
       `;
       
       talksRows.forEach((row: Record<string, unknown>) => {

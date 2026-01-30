@@ -97,7 +97,7 @@ export const AlumniTabbedMenu: FC = () => {
   return (
     <ComponentCard className="">
       <div
-        className="tab-list flex flex-wrap gap-3 lg:gap-4 justify-start py-4 bg-gray-50 px-4 rounded-2xl border border-gray-200"
+        className="tab-list flex shadow-lg flex-wrap gap-3 lg:gap-4 justify-start py-4 bg-gray-50 px-4 rounded-2xl border border-gray-200"
         role="tablist"
         aria-label="Alumni sections"
       >

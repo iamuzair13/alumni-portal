@@ -237,8 +237,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const associationIdVal = "association_id" in body ? (body.association_id !== null && body.association_id !== undefined && body.association_id !== "" ? Number(body.association_id) : null) : undefined;
     // System fields
     const verifyVal = "verify" in body ? cleanValue("verify", body.verify) : undefined;
-    const lasttimeloginVal = "lasttimelogin" in body ? cleanValue("lasttimelogin", body.lasttimelogin) : undefined;
-    const logincountVal = "logincount" in body ? (body.logincount !== null && body.logincount !== undefined && body.logincount !== "" ? Number(body.logincount) : null) : undefined;
+    const lasttimeloginVal = undefined;
+    const logincountVal = undefined;
     const createddatetimeVal = "createddatetime" in body ? cleanValue("createddatetime", body.createddatetime) : undefined;
     const academicsessionVal = "academicsession" in body ? cleanValue("academicsession", body.academicsession) : undefined;
     const fatherCnicVal = "father_cnic" in body ? cleanValue("father_cnic", body.father_cnic) : undefined;

@@ -15,7 +15,7 @@ import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner, isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 import { canViewAlumni } from "@/lib/rbac";
-import { deriveMentorshipStatus, type MentorshipStatus } from "./status";
+import { type MentorshipStatus } from "./status";
 import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
 import PageBanner from "@/components/ui/PageBanner";
@@ -23,6 +23,8 @@ import AlumniCardClient from "@/components/alumni/AlumniCardClient";
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
 import BenefitCard from "@/components/ui/BenefitCard";
 import RenewCardButton from "@/components/alumni/RenewCardButton";
+import NewslettersCard from "@/components/alumni/NewslettersCard";
+import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
 
 type Profile = {
   alumniname: string | null;
@@ -383,10 +385,16 @@ let cardImageFile: string | null = null;
   if (!isAdmin) {
     try {
       if (alumniId) {
-        const mrows = await sql/* sql */`
-          SELECT alumnitalks, mentorshipprogram FROM public.tblalumnitalks WHERE alumniid = ${alumniId} LIMIT 1`;
-        const rec = mrows[0] as { alumnitalks?: string | null; mentorshipprogram?: string | null } | undefined;
-        mentorshipStatus = deriveMentorshipStatus(rec);
+        const srows = await sql/* sql */`
+          SELECT status FROM public.alumni_talk_sessions WHERE alumniid = ${alumniId} ORDER BY created_at DESC`;
+        const statuses = (srows as unknown as Array<{ status?: string | null }>).map((r) => String(r.status ?? "").toLowerCase().trim());
+        if (statuses.length === 0) {
+          mentorshipStatus = "none";
+        } else if (statuses.includes("conducted")) {
+          mentorshipStatus = "conducted";
+        } else {
+          mentorshipStatus = "applied";
+        }
       }
     } catch (e) {
       mentorshipStatusError = e instanceof Error ? e.message : "Failed to load mentorship status";
@@ -885,6 +893,14 @@ let cardImageFile: string | null = null;
           mentorshipStatus={mentorshipStatus}
           mentorshipStatusError={mentorshipStatusError}
         />
+      </div>
+
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
+        <NewslettersCard />
+      </div>
+
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
+        <AlumniTalksCard sapId={sapId} />
       </div>
 
 
