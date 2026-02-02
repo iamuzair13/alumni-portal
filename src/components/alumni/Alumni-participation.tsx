@@ -4,7 +4,6 @@ import ComponentCard from "@/components/common/ComponentCard";
 import { GroupIcon, EyeIcon, TrashBinIcon } from "@/icons";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import { useRouter } from "next/navigation";
 import { useAlumniParticipationList } from "@/app/queries/fetch-alumni-participation";
 import type { MentorshipItem } from "@/app/queries/fetch-alumni-participation";
 import { useAlumniAssociationList } from "@/app/queries/fetch-alumni-association";
@@ -18,7 +17,7 @@ import { useExcelExport } from "@/lib/excel-export";
 
 type TabKey = "talkMentorship" | "alumniChapters" | "alumniAssociation";
 
-const TABS: { key: TabKey; label: string }[] = [
+const CATEGORY_TABS: { key: TabKey; label: string }[] = [
   { key: "talkMentorship", label: "Mentorship Session" },
   { key: "alumniChapters", label: "Alumni Chapters" },
   { key: "alumniAssociation", label: "Alumni Association" },
@@ -62,9 +61,18 @@ const STATUS_CLASS_MAP: Record<
   },
 };
 
+ function formatCreatedDate(v?: string | Date | null): string {
+   if (!v) return "-";
+   try {
+     const d = typeof v === "string" ? new Date(v) : v;
+     return d.toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "2-digit" });
+   } catch {
+     return String(v);
+   }
+ }
+
 export const AlumniParticipation: React.FC = () => {
   const [selected, setSelected] = useState<TabKey>("talkMentorship");
-  const router = useRouter();
   const { data: participationData, isLoading: isLoadingParticipation, error: participationError } = useAlumniParticipationList();
   const { data: associationData, isLoading: isLoadingAssociation, error: associationError } = useAlumniAssociationList();
   const qc = useQueryClient();
@@ -91,6 +99,7 @@ export const AlumniParticipation: React.FC = () => {
     id: string;
     name: string;
     email?: string;
+    createdAt?: string | Date | null;
     department?: string | null;
     faculty?: string | null;
     program?: string | null;
@@ -110,6 +119,7 @@ export const AlumniParticipation: React.FC = () => {
         id: it.sapid,
         name: it.name,
         email: it.email ?? undefined,
+        createdAt: (it as unknown as { created_at?: string | null }).created_at ?? null,
         department: it.department ?? null,
         faculty: it.faculty ?? null,
         program: it.program ?? null,
@@ -128,6 +138,7 @@ export const AlumniParticipation: React.FC = () => {
       id: it.sapid,
       name: it.name,
       email: it.email ?? undefined,
+      createdAt: it.createdAt ?? null,
       department: it.department ?? null,
       faculty: it.faculty ?? null,
       program: it.program ?? null,
@@ -431,7 +442,7 @@ export const AlumniParticipation: React.FC = () => {
             role="tablist"
             aria-label="Alumni participation categories"
           >
-            {TABS.map((tab, idx) => {
+            {CATEGORY_TABS.map((tab: { key: TabKey; label: string }, idx: number) => {
               const stat = { 
                 count: tab.key === "alumniAssociation" 
                   ? ASSOCIATIONS.length 
@@ -453,12 +464,12 @@ export const AlumniParticipation: React.FC = () => {
                     onKeyDown={(e) => {
                       if (e.key === "ArrowRight") {
                         e.preventDefault();
-                        const nextIdx = (idx + 1) % TABS.length;
-                        setSelected(TABS[nextIdx].key);
+                        const nextIdx = (idx + 1) % CATEGORY_TABS.length;
+                        setSelected(CATEGORY_TABS[nextIdx].key);
                       } else if (e.key === "ArrowLeft") {
                         e.preventDefault();
-                        const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                        setSelected(TABS[prevIdx].key);
+                        const prevIdx = (idx - 1 + CATEGORY_TABS.length) % CATEGORY_TABS.length;
+                        setSelected(CATEGORY_TABS[prevIdx].key);
                       } else if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         setSelected(tab.key);
@@ -525,6 +536,7 @@ export const AlumniParticipation: React.FC = () => {
                             { label: "Name", key: "name" as SortKey, align: "text-start" },
                             { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
                             { label: "Email", key: "email" as SortKey, align: "text-start" },
+                            { label: "Created Date", key: "createdAt" as SortKey, align: "text-start" },
                             { label: "Department", key: "department" as SortKey, align: "text-start" },
                             { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
                             { label: "Program", key: "program" as SortKey, align: "text-start" },
@@ -534,6 +546,7 @@ export const AlumniParticipation: React.FC = () => {
                         { label: "Name", key: "name" as SortKey, align: "text-start" },
                         { label: "SAP ID", key: "id" as SortKey, align: "text-start" },
                         { label: "Email", key: "email" as SortKey, align: "text-start" },
+                        { label: "Created Date", key: "createdAt" as SortKey, align: "text-start" },
                         { label: "Department", key: "department" as SortKey, align: "text-start" },
                         { label: "Faculty", key: "faculty" as SortKey, align: "text-start" },
                         { label: "Program", key: "program" as SortKey, align: "text-start" },
@@ -580,6 +593,7 @@ export const AlumniParticipation: React.FC = () => {
                       <TableCell className="px-5 py-4"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
                       <TableCell className="px-4 py-3"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
@@ -602,12 +616,12 @@ export const AlumniParticipation: React.FC = () => {
                 )}
                 {!loading && errorMsg && (
                   <TableRow>
-                    <TableCell className="px-4 py-3 text-red-600" colSpan={selected === "alumniAssociation" ? 7 : 10}>{errorMsg}</TableCell>
+                    <TableCell className="px-4 py-3 text-red-600" colSpan={selected === "alumniAssociation" ? 8 : 11}>{errorMsg}</TableCell>
                   </TableRow>
                 )}
                 {!loading && !errorMsg && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-4 py-6 text-gray-600 dark:text-gray-400" colSpan={selected === "alumniAssociation" ? 7 : 10}>
+                    <TableCell className="px-4 py-6 text-gray-600 dark:text-gray-400" colSpan={selected === "alumniAssociation" ? 8 : 11}>
                       No alumni found for this category.
                     </TableCell>
                   </TableRow>
@@ -633,6 +647,7 @@ export const AlumniParticipation: React.FC = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.id}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.email ?? "-"}</TableCell>
+                    <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{formatCreatedDate(alum.createdAt)}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.department ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.faculty ?? "-"}</TableCell>
                     <TableCell className="px-4 py-3 text-gray-600 text-start text-theme-sm dark:text-gray-300">{alum.program ?? "-"}</TableCell>
@@ -655,7 +670,7 @@ export const AlumniParticipation: React.FC = () => {
                               }
                               
                               const actions: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; onClick: () => void; hover?: string }> = [
-                                { label: "View", icon: EyeIcon, onClick: () => router.push(`/alumni-profile?sapid=${encodeURIComponent(alum.id)}`), hover: "hover:text-blue-600" },
+                                { label: "View", icon: EyeIcon, onClick: () => { const url = `/alumni-profile?sapid=${encodeURIComponent(alum.id)}`; window.open(url, "_blank", "noopener,noreferrer"); }, hover: "hover:text-blue-600" },
                                 { label: "Delete", icon: TrashBinIcon, onClick: () => { setTargetSapId(alum.id); setConfirmOpen(true); setDeleteError(null); setDeleteSuccess(null); }, hover: "hover:text-rose-600" },
                               ];
                               return actions.map(({ label, icon: Icon, onClick, hover }, i) => (

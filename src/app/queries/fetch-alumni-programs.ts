@@ -28,11 +28,11 @@ export function useAlumniPrograms(filters?: MasterFilters) {
   return useQuery<AlumniProgramsResponse, Error>({
     queryKey: ["alumni", "programs", filters],
     queryFn: ({ signal }) => getAlumniPrograms(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

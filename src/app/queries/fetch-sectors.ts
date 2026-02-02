@@ -36,11 +36,11 @@ export function useSectors(filters?: MasterFilters) {
   return useQuery<SectorsResponse, Error>({
     queryKey: ["sectors", filters],
     queryFn: ({ signal }) => getSectors(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

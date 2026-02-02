@@ -32,11 +32,11 @@ export function useProgramsEnrolled() {
   return useQuery<ProgramsEnrolledResponse, Error>({
     queryKey: ["programs-enrolled"],
     queryFn: ({ signal }) => getProgramsEnrolled(signal),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

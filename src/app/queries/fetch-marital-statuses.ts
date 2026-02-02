@@ -41,11 +41,11 @@ export function useMaritalStatuses(filters?: MasterFilters) {
   return useQuery<MaritalStatusesResponse, Error>({
     queryKey: ["marital-statuses", filters],
     queryFn: ({ signal }) => getMaritalStatuses(signal, filters),
-    staleTime: 0, // Always consider data stale - refetch to get latest values
-    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
-    refetchOnWindowFocus: true, // Refetch when window gains focus to get updated values
-    refetchOnReconnect: true, // Refetch on reconnect
-    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 }
 

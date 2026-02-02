@@ -269,11 +269,20 @@ export async function POST(req: Request) {
       if (!value) return null;
       const val = String(value).trim();
 
-      if (val === "Employed") return "Employed/Business";
-      if (val === "Employed/Business") return "Employed/Business";
-      if (val === "Self-Emplo") return "Self-employed";
-      if (val === "Self-employed") return "Self-employed";
-      if (val.toLowerCase() === "highered" || val === "HigherEd") return "Pursuing Higher Education";
+      const lower = val.toLowerCase();
+
+      if (val === "Employed" || val === "Employed/Business" || lower === "employed/business") return "Employed";
+      if (
+        val === "Self-Emplo" ||
+        val === "Self-Employed" ||
+        val === "Self-employed" ||
+        val === "Self employed" ||
+        val === "Self-Employed/Enterpreneur" ||
+        lower === "self-employed/enterpreneur"
+      ) {
+        return "Self-Employed/Enterpreneur";
+      }
+      if (lower === "highered" || val === "HigherEd") return "Pursuing Higher Education";
       return val;
     };
     

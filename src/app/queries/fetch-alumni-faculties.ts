@@ -33,11 +33,11 @@ export function useAlumniFaculties(filters?: Parameters<typeof getAlumniFacultie
   return useQuery<AlumniFacultiesResponse, Error>({
     queryKey: ["alumni", "faculties", filters],
     queryFn: ({ signal }) => getAlumniFaculties(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

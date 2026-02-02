@@ -226,7 +226,10 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
     try {
       if (key === "view") {
         // Navigate to profile or show details
-        window.location.href = `/alumni-profile?sapid=${encodeURIComponent(alumni.id)}`;
+        if (typeof window !== "undefined") {
+          const url = `/alumni-profile?sapid=${encodeURIComponent(alumni.id)}`;
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
         return;
       }
 

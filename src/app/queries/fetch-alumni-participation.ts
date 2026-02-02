@@ -12,6 +12,7 @@ export type MentorshipItem = {
   areas: string[];
   day: string;
   time: string;
+  created_at?: string | null;
 };
 
 export async function getAlumniParticipationList(signal?: AbortSignal): Promise<MentorshipItem[]> {

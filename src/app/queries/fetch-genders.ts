@@ -41,11 +41,11 @@ export function useGenders(filters?: MasterFilters) {
   return useQuery<GendersResponse, Error>({
     queryKey: ["genders", filters],
     queryFn: ({ signal }) => getGenders(signal, filters),
-    staleTime: 0, // Always consider data stale - refetch to get latest values
-    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
-    refetchOnWindowFocus: true, // Refetch when window gains focus to get updated values
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true, // Refetch on reconnect
-    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnMount: false,
     retry: 2, // Retry failed requests up to 2 times
     retryDelay: 1000, // Wait 1 second between retries
   });

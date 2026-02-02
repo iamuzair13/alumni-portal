@@ -436,7 +436,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       program: null,
       majorsubject: null,
       industry: null,
-      employeed: "Unemployed, searching for job",
+      employeed: "Unemployed(Searching for job)",
       nameoforganization: null,
       designation: null,
       totalyearsofexpereince: null,
@@ -623,7 +623,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   }, [selectedChapters, setValue]);
 
   const personalEmailVal = watch("personalemail") || "";
-  const employeedVal = (watch("employeed") || "Unemployed, searching for job") as string;
+  const employeedVal = (watch("employeed") || "Unemployed(Searching for job)") as string;
   const selectedHomeCountry = watch("country") || "";
   const selectedHomeProvince = watch("province") || "";
   const selectedHomeCity = watch("homeCity") || "";
@@ -884,9 +884,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
     // Validate Work Status section
     const workFieldsToValidate: Array<keyof TblAlumniForm> = ["employeed"];
-    
-    // Only validate work fields if employed or self-employed
-    if ((employeedVal || "").toLowerCase() === "employed/business" || (employeedVal || "").toLowerCase() === "self-employed") {
+  
+    // Only validate work fields if employed or Self-Employed/Enterpreneur
+    if (
+      (employeedVal || "").toLowerCase() === "employed" ||
+      (employeedVal || "").toLowerCase() === "employed/business" ||
+      (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
+    ) {
       workFieldsToValidate.push("industry", "startOfCareer", "nameoforganization", "designation", "officialemail", "officialnumber", "organization_address", "workCity", "workCountry");
     }
     
@@ -899,9 +903,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     const workOk = await trigger(workFieldsToValidate);
     if (!workOk) return false;
-    
-    // Conditional: when employed or self-employed, validate required fields
-    if ((employeedVal || "").toLowerCase() === "employed/business" || (employeedVal || "").toLowerCase() === "self-employed") {
+  
+    // Conditional: when employed or Self-Employed/Enterpreneur, validate required fields
+    if (
+      (employeedVal || "").toLowerCase() === "employed" ||
+      (employeedVal || "").toLowerCase() === "employed/business" ||
+      (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
+    ) {
       const fields: Array<keyof TblAlumniForm> = [
         "industry",
         "startOfCareer",
@@ -970,10 +978,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       // Map employment status to database format
       if (payload.employeed) {
         const employeedValue = String(payload.employeed).trim();
-        if (employeedValue === "Employed") {
-          payload.employeed = "Employed/Business";
+        if (employeedValue === "Employed/Business") {
+          payload.employeed = "Employed";
+        } else if (employeedValue === "Employed") {
+          payload.employeed = "Employed";
         } else if (employeedValue === "Self-Emplo") {
-          payload.employeed = "Self-employed";
+          payload.employeed = "Self-Employed/Enterpreneur";
+        } else if (employeedValue === "Self-Employed" || employeedValue === "Self-employed" || employeedValue === "Self employed") {
+          payload.employeed = "Self-Employed/Enterpreneur";
         } else if (employeedValue.toLowerCase() === "highered") {
           payload.employeed = "Pursuing Higher Education";
         } else {
@@ -2012,25 +2024,25 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="mt-2 flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Employed/Business" {...register("employeed")} /> Employed/Business
+                  <input type="radio" value="Employed" {...register("employeed")} /> Employed
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Self-employed" {...register("employeed")} /> Self-employed
+                  <input type="radio" value="Self-Employed/Enterpreneur" {...register("employeed")} /> Self-Employed/Enterpreneur
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
                   <input type="radio" value="Pursuing Higher Education" {...register("employeed")} /> Pursuing Higher Education
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed By choice" {...register("employeed")} /> Unemployed By choice
+                  <input type="radio" value="Unemployed(By choice)" {...register("employeed")} /> Unemployed(By choice)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed, searching for job" defaultChecked {...register("employeed")} /> Unemployed, searching for job
+                  <input type="radio" value="Unemployed(Searching for job)" defaultChecked {...register("employeed")} /> Unemployed(Searching for job)
                 </label>
               </div>
             </div>
 
             {/* Employed Fields */}
-            {((employeedVal || "").toLowerCase() === "employed/business" || (employeedVal || "").toLowerCase() === "self-employed") && (
+            {(((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "employed/business") || (employeedVal || "").toLowerCase() === "self-employed/enterpreneur") && (
               <>
                 {/* Sector = industry */}
                 <div>
@@ -2085,17 +2097,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Current Organization / Business Name */}
                 <div>
                   <label className={labelBase}>
-                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Name *" : "Current Organization *"}
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Name *" : "Current Organization *"}
                   </label>
                   <input 
                     type="text" 
                     className={inputBase} 
-                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business name" : "Enter organization name"}
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Enter your business name" : "Enter organization name"}
                     {...register("nameoforganization", { required: true, maxLength: 100 })} 
                   />
                   {errors.nameoforganization && (
                     <p className="mt-1 text-xs text-red-600">
-                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business name is required" : "Current organization is required"}
+                      {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business name is required" : "Current organization is required"}
                     </p>
                   )}
                 </div>
@@ -2112,12 +2124,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Work Email */}
                 <div>
                   <label className={labelBase}>
-                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Email *" : "Work Email *"}
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Email *" : "Work Email *"}
                   </label>
                   <input 
                     type="email" 
                     className={inputBase} 
-                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business email" : "Enter work email"}
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Enter your business email" : "Enter work email"}
                     {...register("officialemail", { 
                       required: true, 
                       maxLength: 100,
@@ -2129,7 +2141,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   {errors.officialemail && (
                     <p className="mt-1 text-xs text-red-600">
-                      {errors.officialemail.message || ((employeedVal || "").toLowerCase() === "self-employed" ? "Business email is required" : "Work email is required")}
+                      {errors.officialemail.message || ((employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business email is required" : "Work email is required")}
                     </p>
                   )}
                 </div>
@@ -2137,17 +2149,17 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Work Phone */}
                 <div>
                   <label className={labelBase}>
-                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Phone *" : "Work Phone *"}
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Phone *" : "Work Phone *"}
                   </label>
                   <input 
                     type="text" 
                     className={inputBase} 
-                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business phone" : "Enter work phone"}
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Enter your business phone" : "Enter work phone"}
                     {...register("officialnumber", { required: true, maxLength: 50 })} 
                   />
                   {errors.officialnumber && (
                     <p className="mt-1 text-xs text-red-600">
-                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business phone is required" : "Work phone is required"}
+                      {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business phone is required" : "Work phone is required"}
                     </p>
                   )}
                 </div>
@@ -2155,28 +2167,28 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 {/* Work Address */}
                 <div className="sm:col-span-2 lg:col-span-3">
                   <label className={labelBase}>
-                    {(employeedVal || "").toLowerCase() === "self-employed" ? "Business Address *" : "Work Address *"}
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Address *" : "Work Address *"}
                   </label>
                   <textarea 
                     className={inputBase} 
                     rows={3}
-                    placeholder={(employeedVal || "").toLowerCase() === "self-employed" ? "Enter your business address" : "Enter work address"}
+                    placeholder={(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Enter your business address" : "Enter work address"}
                     {...register("organization_address", { required: true, maxLength: 500 })} 
                   />
                   {errors.organization_address && (
                     <p className="mt-1 text-xs text-red-600">
-                      {(employeedVal || "").toLowerCase() === "self-employed" ? "Business address is required" : "Work address is required"}
+                      {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business address is required" : "Work address is required"}
                     </p>
                   )}
                 </div>
                 {/* Work City */}
                 <div>
-                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed" ? "Business City *" : "Work City *"}</label>
+                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business City *" : "Work City *"}</label>
                   <Controller
                     name="workCity"
                     control={control}
                     rules={{
-                      required: (employeedVal || "").toLowerCase() === "self-employed"
+                      required: (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
                         ? "Business city is required"
                         : "Work city is required",
                       maxLength: {
@@ -2193,7 +2205,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                           placeholder={
                             selectedWorkCountry === "Pakistan"
                               ? "Select from list or type your city"
-                              : (employeedVal || "").toLowerCase() === "self-employed"
+                              : (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
                                 ? "Enter your business city"
                                 : "Enter work city name"
                           }
@@ -2216,7 +2228,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   {errors.workCity && (
                     <p className="mt-1 text-xs text-red-600">
                       {errors.workCity.message ||
-                        ((employeedVal || "").toLowerCase() === "self-employed"
+                        ((employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
                           ? "Business city is required"
                           : "Work city is required")}
                     </p>
@@ -2224,7 +2236,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </div>
                 {/* Work Country */}
                 <div>
-                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed" ? "Business Country *" : "Work Country *"}</label>
+                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Country *" : "Work Country *"}</label>
                   <input
                     type="text"
                         className={inputBase} 

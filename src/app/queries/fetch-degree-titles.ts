@@ -36,11 +36,11 @@ export function useDegreeTitles(filters?: MasterFilters) {
   return useQuery<DegreeTitlesResponse, Error>({
     queryKey: ["degree-titles", filters],
     queryFn: ({ signal }) => getDegreeTitles(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

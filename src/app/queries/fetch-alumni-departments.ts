@@ -28,11 +28,11 @@ export function useAlumniDepartments(filters?: MasterFilters) {
   return useQuery<AlumniDepartmentsResponse, Error>({
     queryKey: ["alumni", "departments", filters],
     queryFn: ({ signal }) => getAlumniDepartments(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

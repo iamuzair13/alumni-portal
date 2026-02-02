@@ -163,12 +163,29 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       let strValue = String(value).trim();
       
       if (key === "employeed") {
-        if (strValue === "Employed") {
-          strValue = "Employed/Business";
+        if (strValue === "Employed" || strValue === "Employed/Business") {
+          strValue = "Employed";
         } else if (strValue === "Self-Emplo") {
-          strValue = "Self-employed";
+          strValue = "Self-Employed/Enterpreneur";
         } else if (strValue.toLowerCase() === "highered") {
           strValue = "Pursuing Higher Education";
+        } else if (
+          strValue === "Self-Employed" ||
+          strValue === "Self employed" ||
+          strValue === "Self-employed" ||
+          strValue === "Self-Employed/Enterpreneur"
+        ) {
+          strValue = "Self-Employed/Enterpreneur";
+        } else if (strValue === "Unemployed(By Choice)" || strValue === "Unemployed By choice") {
+          strValue = "Unemployed(By choice)";
+        } else if (
+          strValue === "Unemployed (Searching for Job)" ||
+          strValue === "Unemployed(Searching for Job)" ||
+          strValue === "Unemployed (Searching Job)" ||
+          strValue === "Unemployed, searching for job" ||
+          strValue === "Unemployed(Searching for job))"
+        ) {
+          strValue = "Unemployed(Searching for job)";
         }
       }
       

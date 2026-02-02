@@ -20,6 +20,7 @@ export type AlumniListItem = {
   officialnumber?: string | null;
   officialemail?: string | null;
   personalemail?: string | null;
+  createddatetime?: string | null;
   contactno?: string | null;
   lasttimelogin?: string | null;
   logincount?: number | null;
@@ -226,11 +227,11 @@ export function useAlumniListPaginated(
         category
       );
     },
-    staleTime: 0, // Always consider data stale - refetch on mount/tab change
-    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 minutes
-    refetchOnWindowFocus: true, // Refetch when window gains focus
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnMount: false,
   });
 }
 

@@ -43,11 +43,11 @@ export function useAlumniNationalChapters(filters?: MasterFilters) {
   return useQuery<AlumniChaptersResponse, Error>({
     queryKey: ["alumni", "chapters", "national", filters],
     queryFn: ({ signal }) => getAlumniNationalChapters(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });
@@ -57,11 +57,11 @@ export function useAlumniInternationalChapters(filters?: MasterFilters) {
   return useQuery<AlumniChaptersResponse, Error>({
     queryKey: ["alumni", "chapters", "international", filters],
     queryFn: ({ signal }) => getAlumniInternationalChapters(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

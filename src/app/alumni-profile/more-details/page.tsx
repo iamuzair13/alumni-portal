@@ -268,10 +268,10 @@ function MoreDetailsContent() {
     // Check employment status (handle both DB values and display values)
     const employmentStatusLower = String(currentEmploymentStatus || "").toLowerCase();
     const isEmployedOrBusiness = employmentStatusLower === "employed" || employmentStatusLower === "employed/business";
-    const isSelfEmployed = employmentStatusLower === "self-emplo" || employmentStatusLower === "self-employed";
+    const isSelfEmployed = employmentStatusLower === "self-emplo" || employmentStatusLower === "self-employed" || employmentStatusLower === "self-employed/enterpreneur";
     const isPursuingHigherEd = employmentStatusLower === "pursuing higher education" || employmentStatusLower === "highered";
     
-    // Both "Employed/Business" and "Self-employed" require the same fields
+    // Both "Employed/Business" and "Self-Employed" require the same fields
     if (isEmployedOrBusiness || isSelfEmployed) {
       const requiredFields = [
         { key: "industry", label: "Sector" },
@@ -302,7 +302,7 @@ function MoreDetailsContent() {
 
       if (missingFields.length > 0) {
         const fieldsList = missingFields.join(", ");
-        const statusLabel = isSelfEmployed ? "Self-employed" : "Employed/Business";
+        const statusLabel = isSelfEmployed ? "Self-Employed/Enterpreneur" : "Employed";
         toast.error(
           `When employment status is "${statusLabel}", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
           {
@@ -530,11 +530,11 @@ function MoreDetailsContent() {
 
   // Employment status options matching AlumniSqlForm.tsx
   const employmentStatusOptions = [
-    { value: "Employed/Business", label: "Employed/Business" },
-    { value: "Self-employed", label: "Self-Employed" },
+    { value: "Employed", label: "Employed" },
+    { value: "Self-Employed/Enterpreneur", label: "Self-Employed/Enterpreneur" },
     { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
-    { value: "Unemployed By choice", label: "Unemployed By choice" },
-    { value: "Unemployed, searching for job", label: "Unemployed, searching for job" },
+    { value: "Unemployed(By choice)", label: "Unemployed(By choice)" },
+    { value: "Unemployed(Searching for job)", label: "Unemployed(Searching for job)" },
   ];
 
   const sections = [

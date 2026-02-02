@@ -1445,9 +1445,9 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Occupation Status" value={data.employeed} isEditing={isFieldEditing("employeed")} readOnly={readOnly} register={register} name="employeed" type="select" options={[
             { value: "", label: "Select" },
             { value: "Employed", label: "Employed" },
-            { value: "Self-Employed", label: "Self-Employed" },
-            { value: "Unemployed (By Choice)", label: "Unemployed (By Choice)" },
-            { value: "Unemployed (Searching Job)", label: "Unemployed (Searching Job)" },
+            { value: "Self-Employed/Enterpreneur", label: "Self-Employed/Enterpreneur" },
+            { value: "Unemployed(By choice)", label: "Unemployed(By Choice)" },
+            { value: "Unemployed(Searching for job)", label: "Unemployed (Searching for Job)" },
             { value: "Pursuing Higher Education", label: "Pursuing Higher Education" }
           ]} onEdit={() => startEditingField("employeed")} />
           <CompactField label="Current Organization" value={data.nameoforganization} isEditing={isFieldEditing("nameoforganization")} readOnly={readOnly} register={register} name="nameoforganization" onEdit={() => startEditingField("nameoforganization")} />

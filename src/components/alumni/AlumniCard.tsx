@@ -1239,7 +1239,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
     const handleView = React.useCallback(() => {
-      router.push(`/alumni-profile?sapid=${encodeURIComponent(sapId)}`);
+      if (typeof window === "undefined") return;
+      const url = `/alumni-profile?sapid=${encodeURIComponent(sapId)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
     }, [router, sapId]);
 
     const handleDelete = async () => {

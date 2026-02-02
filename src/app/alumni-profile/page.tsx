@@ -22,9 +22,10 @@ import PageBanner from "@/components/ui/PageBanner";
 import AlumniCardClient from "@/components/alumni/AlumniCardClient";
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
 import BenefitCard from "@/components/ui/BenefitCard";
-import RenewCardButton from "@/components/alumni/RenewCardButton";
 import NewslettersCard from "@/components/alumni/NewslettersCard";
 import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
+import { formatCardValidityMonthYear } from "@/lib/cardValidity";
+import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
 
 type Profile = {
   alumniname: string | null;
@@ -367,13 +368,7 @@ let cardImageFile: string | null = null;
   // Use validity_date from database if available, otherwise calculate from yearofending (add 5 years as default validity)
   let validity: string | undefined = undefined;
   if (validityDate) {
-    // Format validity_date (YYYY-MM-DD) to MM/YYYY for display
-    const date = new Date(validityDate);
-    if (!isNaN(date.getTime())) {
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const year = date.getFullYear();
-      validity = `${month}/${year}`;
-    }
+    validity = formatCardValidityMonthYear(validityDate);
   } else {
     // Fallback: Calculate validity from yearofending (add 5 years as default validity)
   const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
@@ -720,74 +715,14 @@ let cardImageFile: string | null = null;
                                 initialCardImage={cardTemplateImageFilename}
                               />
                             </div>
-                            {(() => {
-                              // Check expiration using validity_date from database, fallback to computed validity
-                              let expiryDate: Date | null = null;
-                              let isExpired = false;
-                              
-                              if (validityDate) {
-                                // Parse validity_date from database (format: YYYY-MM-DD)
-                                expiryDate = new Date(validityDate);
-                                expiryDate.setHours(0, 0, 0, 0);
-                              } else if (validity) {
-                                // Fallback to computed validity (format: "YYYY-12")
-                                if (validity.includes("/")) {
-                                  const [mmRaw, yyyyRaw] = validity.split("/");
-                                  const month = Number(mmRaw);
-                                  const year = Number(yyyyRaw);
-                                  if (!Number.isNaN(month) && !Number.isNaN(year) && month >= 1 && month <= 12) {
-                                    expiryDate = new Date(year, month, 0);
-                                    expiryDate.setHours(0, 0, 0, 0);
-                                  }
-                                } else {
-                                  const [year] = validity.split("-").map(Number);
-                                  expiryDate = new Date(year, 11, 31); // December 31st
-                                  expiryDate.setHours(0, 0, 0, 0);
-                                }
-                              }
-                              
-                              if (expiryDate) {
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                                isExpired = today > expiryDate;
-                              }
-
-                              const formattedExpiry = validityDate
-                                ? (() => {
-                                    const d = new Date(validityDate);
-                                    if (Number.isNaN(d.getTime())) return "Not set";
-                                    const month = String(d.getMonth() + 1).padStart(2, "0");
-                                    const year = d.getFullYear();
-                                    return `${month}/${year}`;
-                                  })()
-                                : validity ?? "Not set";
-                              
-                              return (
-                                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
-                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-2 sm:mb-3">
-                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                                      Card Expiry Date:
-                                    </span>
-                                    <span className={`text-xs sm:text-sm font-semibold ${
-                                      isExpired 
-                                        ? "text-rose-600 dark:text-rose-400" 
-                                        : "text-gray-900 dark:text-gray-100"
-                                    }`}>
-                                      {formattedExpiry}
-                                    </span>
-                                  </div>
-                                  {isExpired && (
-                                    <RenewCardButton
-                                      alumniId={alumniId}
-                                      name={name}
-                                      sapId={sapId || ""}
-                                      faculty={faculty}
-                                      department={dept}
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            <AlumniCardExpiryClient
+                              sapId={sapId || ""}
+                              fallbackValidity={validityDate ?? validity ?? null}
+                              alumniId={alumniId}
+                              name={name}
+                              faculty={faculty}
+                              department={dept}
+                            />
                           </>
                         ) : (
                           <>
@@ -897,10 +832,6 @@ let cardImageFile: string | null = null;
 
       <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
         <NewslettersCard />
-      </div>
-
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
-        <AlumniTalksCard sapId={sapId} />
       </div>
 
 

@@ -36,11 +36,11 @@ export function useInstitutionNames(filters?: MasterFilters) {
   return useQuery<InstitutionNamesResponse, Error>({
     queryKey: ["institution-names", filters],
     queryFn: ({ signal }) => getInstitutionNames(signal, filters),
-    staleTime: 0,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    refetchOnMount: true,
+    refetchOnMount: false,
     retry: 2,
     retryDelay: 1000,
   });

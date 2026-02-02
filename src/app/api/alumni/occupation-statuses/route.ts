@@ -32,10 +32,11 @@ export async function GET(req: Request) {
         CASE 
           WHEN a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '' 
           THEN 'Null'
-          WHEN LOWER(TRIM(a.employeed)) = 'employed' THEN 'Employed/Business'
-          WHEN LOWER(TRIM(a.employeed)) = 'employed/business' THEN 'Employed/Business'
-          WHEN LOWER(TRIM(a.employeed)) = 'self-emplo' THEN 'Self-employed'
-          WHEN LOWER(TRIM(a.employeed)) = 'self-employed' THEN 'Self-employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'employed' THEN 'Employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'employed/business' THEN 'Employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-emplo' THEN 'Self-Employed/Enterpreneur'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-employed' THEN 'Self-Employed/Enterpreneur'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-employed/enterpreneur' THEN 'Self-Employed/Enterpreneur'
           WHEN LOWER(TRIM(a.employeed)) = 'highered' THEN 'Pursuing Higher Education'
           ELSE TRIM(a.employeed)
         END as occupation_status,
@@ -48,10 +49,11 @@ export async function GET(req: Request) {
         CASE 
           WHEN a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '' 
           THEN 'Null'
-          WHEN LOWER(TRIM(a.employeed)) = 'employed' THEN 'Employed/Business'
-          WHEN LOWER(TRIM(a.employeed)) = 'employed/business' THEN 'Employed/Business'
-          WHEN LOWER(TRIM(a.employeed)) = 'self-emplo' THEN 'Self-employed'
-          WHEN LOWER(TRIM(a.employeed)) = 'self-employed' THEN 'Self-employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'employed' THEN 'Employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'employed/business' THEN 'Employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-emplo' THEN 'Self-Employed/Enterpreneur'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-employed' THEN 'Self-Employed/Enterpreneur'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-employed/enterpreneur' THEN 'Self-Employed/Enterpreneur'
           WHEN LOWER(TRIM(a.employeed)) = 'highered' THEN 'Pursuing Higher Education'
           ELSE TRIM(a.employeed)
         END
@@ -59,10 +61,11 @@ export async function GET(req: Request) {
         CASE 
           WHEN a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '' 
           THEN 'Null'
-          WHEN LOWER(TRIM(a.employeed)) = 'employed' THEN 'Employed/Business'
-          WHEN LOWER(TRIM(a.employeed)) = 'employed/business' THEN 'Employed/Business'
-          WHEN LOWER(TRIM(a.employeed)) = 'self-emplo' THEN 'Self-employed'
-          WHEN LOWER(TRIM(a.employeed)) = 'self-employed' THEN 'Self-employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'employed' THEN 'Employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'employed/business' THEN 'Employed'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-emplo' THEN 'Self-Employed/Enterpreneur'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-employed' THEN 'Self-Employed/Enterpreneur'
+          WHEN LOWER(TRIM(a.employeed)) = 'self-employed/enterpreneur' THEN 'Self-Employed/Enterpreneur'
           WHEN LOWER(TRIM(a.employeed)) = 'highered' THEN 'Pursuing Higher Education'
           ELSE TRIM(a.employeed)
         END ASC

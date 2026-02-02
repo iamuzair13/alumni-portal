@@ -45,6 +45,15 @@ import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import type { AlumniFilterOption } from "@/app/queries/fetch-alumni-faculties";
 import toast from "react-hot-toast";
 
+ function formatRegistrationDate(v?: string | null): string {
+   if (!v) return "-";
+   try {
+     return new Date(v).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "2-digit" });
+   } catch {
+     return String(v);
+   }
+ }
+
 type TabKey =
   | "total"
   | "verified"
@@ -215,6 +224,7 @@ export const AlumniTabs: React.FC = () => {
     registrationNo?: string | null;
     name: string;
     email?: string | null;
+    createdDateTime?: string | null;
     mobile?: string | null;
     campus?: string | null;
     faculty?: string | null;
@@ -1340,6 +1350,7 @@ export const AlumniTabs: React.FC = () => {
         registrationNo: r.registrationno ?? null,
         name: r.alumniname ?? "",
         email: r.personalemail ?? r.officialemail ?? null,
+        createdDateTime: (r as unknown as { createddatetime?: string | null }).createddatetime ?? null,
         mobile: r.contactno ?? null,
         campus: r.campusname ?? null,
         faculty: r.facultyname ?? null,
@@ -1901,8 +1912,8 @@ export const AlumniTabs: React.FC = () => {
         "Employment Status": (() => {
           const v = String(item.employeed || "").trim();
           const lower = v.toLowerCase();
-          if (lower === "employed") return "Employed/Business";
-          if (lower === "self-emplo") return "Self-employed";
+          if (lower === "employed" || lower === "employed/business") return "Employed";
+          if (lower === "self-emplo" || lower === "self-employed" || lower === "self-employed/enterpreneur") return "Self-Employed/Enterpreneur";
           if (lower === "highered") return "Pursuing Higher Education";
           return v;
         })(),
@@ -2366,8 +2377,10 @@ export const AlumniTabs: React.FC = () => {
   }, [pendingAction, mutatingIds, executePendingAction]);
 
   const handleView = useCallback((sapid: string) => {
-    router.push(`/alumni-profile?sapid=${encodeURIComponent(sapid)}`);
-  }, [router]);
+    if (typeof window === "undefined") return;
+    const url = `/alumni-profile?sapid=${encodeURIComponent(sapid)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, []);
 
   // Helper function to render a tab button
   const renderTabButton = (tab: { key: TabKey; label: string }, idx: number, allTabs: { key: TabKey; label: string }[]) => {
@@ -4710,6 +4723,7 @@ export const AlumniTabs: React.FC = () => {
             </div>
             <div 
               ref={tableContainerRef}
+              className="max-w-full overflow-x-auto overflow-y-hidden"
               style={{
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none',
@@ -4766,6 +4780,12 @@ export const AlumniTabs: React.FC = () => {
                           <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortField === "email" && sortDirection === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
                               </div>
                                 </div>
+                    </TableCell>
+                    <TableCell
+                      className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      onClick={() => handleSort("createdDateTime")}
+                    >
+                      Registration Date
                     </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -4836,6 +4856,9 @@ export const AlumniTabs: React.FC = () => {
                         <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
                           <div className="h-5 w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                          <div className="h-5 w-24 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
                           <div className="h-5 w-28 sm:w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
@@ -4856,7 +4879,7 @@ export const AlumniTabs: React.FC = () => {
                   )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={9}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={10}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4893,7 +4916,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={9}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={10}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4984,6 +5007,9 @@ export const AlumniTabs: React.FC = () => {
                           >
                             {alum.email || "-"}
                           </a>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          {formatRegistrationDate(alum.createdDateTime)}
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
                           <span className="truncate block max-w-[120px]">{alum.faculty || "-"}</span>
@@ -5110,7 +5136,7 @@ export const AlumniTabs: React.FC = () => {
                       </TableRow>
                       {expandedRowId === alum.id && (isSuperAdminUser(session?.user) || isAdminUser(session?.user) || isViewerUser(session?.user)) && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={9} className="px-0 py-6">
+                          <TableCell colSpan={10} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start ">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canModify(session?.user)} />

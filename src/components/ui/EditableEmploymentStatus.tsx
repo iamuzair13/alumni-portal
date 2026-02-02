@@ -3,11 +3,11 @@ import EditableField from "./EditableField";
 
 // Employment status options matching AlumniSqlForm.tsx
 const employmentStatusOptions = [
-  { value: "Employed/Business", label: "Employed/Business" },
-  { value: "Self-employed", label: "Self-employed" },
+  { value: "Employed", label: "Employed" },
+  { value: "Self-Employed/Enterpreneur", label: "Self-Employed/Enterpreneur" },
   { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
-  { value: "Unemployed By choice", label: "Unemployed By choice" },
-  { value: "Unemployed, searching for job", label: "Unemployed, searching for job" },
+  { value: "Unemployed(By choice)", label: "Unemployed(By choice)" },
+  { value: "Unemployed(Searching for job)", label: "Unemployed(Searching for job)" },
 ];
 
 // Helper function to map database values to display values
@@ -16,11 +16,25 @@ export function mapDbValueToDisplay(dbValue: unknown): string {
   const normalized = dbValue.trim();
   
   // Map database values to display values
-  if (normalized === "Employed") return "Employed/Business";
-  if (normalized === "Self-Emplo") return "Self-employed";
+  if (normalized === "Employed" || normalized === "Employed/Business") return "Employed";
+  if (normalized === "Self-Emplo") return "Self-Employed/Enterpreneur";
+  if (normalized === "Self-Employed") return "Self-Employed/Enterpreneur";
+  if (normalized === "Self-employed") return "Self-Employed/Enterpreneur";
+  if (normalized === "Self employed") return "Self-Employed/Enterpreneur";
   if (normalized === "Pursuing Higher Education" || normalized === "highered") return "Pursuing Higher Education";
-  if (normalized === "Unemployed By choice") return "Unemployed By choice";
-  if (normalized === "Unemployed, searching for job") return "Unemployed, searching for job";
+  if (normalized === "Unemployed(By choice)" || normalized === "Unemployed(By Choice)" || normalized === "Unemployed By choice" || normalized === "Unemployed(By choice)") {
+    return "Unemployed(By choice)";
+  }
+  if (
+    normalized === "Unemployed(Searching for job)" ||
+    normalized === "Unemployed(Searching for Job)" ||
+    normalized === "Unemployed (Searching for Job)" ||
+    normalized === "Unemployed (Searching Job)" ||
+    normalized === "Unemployed, searching for job" ||
+    normalized === "Unemployed(Searching for job))"
+  ) {
+    return "Unemployed(Searching for job)";
+  }
   
   // If it doesn't match any known mapping, return as-is (for backward compatibility)
   return normalized;
@@ -31,9 +45,17 @@ export function mapDisplayValueToDb(displayValue: unknown): string {
   if (!displayValue || typeof displayValue !== "string") return "";
   const normalized = displayValue.trim();
   
-  if (normalized === "Employed") return "Employed/Business";
-  if (normalized === "Self-Emplo") return "Self-employed";
+  if (normalized === "Employed" || normalized === "Employed/Business") return "Employed";
+  if (normalized === "Self-Emplo") return "Self-Employed/Enterpreneur";
   if (normalized.toLowerCase() === "highered") return "Pursuing Higher Education";
+  if (normalized === "Self-Employed" || normalized === "Self-employed" || normalized === "Self employed") return "Self-Employed/Enterpreneur";
+  if (normalized === "Self-Employed/Enterpreneur") return "Self-Employed/Enterpreneur";
+  // Normalize legacy unemployed variants to canonical stored values
+  if (normalized === "Unemployed(By Choice)" || normalized === "Unemployed By choice") return "Unemployed(By choice)";
+  if (normalized === "Unemployed (Searching for Job)" || normalized === "Unemployed (Searching Job)" || normalized === "Unemployed, searching for job") {
+    return "Unemployed(Searching for job)";
+  }
+  if (normalized === "Unemployed(Searching for job))") return "Unemployed(Searching for job)";
   return normalized;
 }
 
@@ -138,15 +160,19 @@ export default function EditableEmploymentStatus({
   const employeedStatus = String(employeedValue || "").toLowerCase();
   // Check for both "Employed" (DB value) and "Employed/Business" (display value)
   const isEmployed = employeedStatus === "employed" || employeedStatus === "employed/business";
-  // Check for "Self-Emplo" (DB value) and "Self-employed" (display value)
-  const isSelfEmployed = employeedStatus === "self-emplo" || employeedStatus === "self-employed";
+  // Check for self-employed legacy values and new canonical value
+  const isSelfEmployed =
+    employeedStatus === "self-emplo" ||
+    employeedStatus === "self-employed" ||
+    employeedStatus === "self employed" ||
+    employeedStatus === "self-employed/enterpreneur";
   // Check for both database and display values
   const isPursuingHigherEd = employeedStatus === "pursuing higher education" || employeedStatus === "highered";
-  // Show employment fields for both "Employed" and "Self-employed"
+  // Show employment fields for both "Employed" and "Self-Employed/Enterpreneur"
   const showEmploymentFields = isEmployed || isSelfEmployed;
-  // Show work location fields only for "Employed/Business" (not Self-employed)
+  // Show work location fields only for "Employed/Business" (not Self-Employed/Enterpreneur)
   const showWorkLocationFields = isEmployed;
-  // Show self-employed specific fields only for "Self-employed"
+  // Show Self-Employed/Enterpreneur specific fields only for self-employed
   const showSelfEmployedFields = isSelfEmployed;
 
   return (
@@ -163,7 +189,7 @@ export default function EditableEmploymentStatus({
       />
       {showEmploymentFields && (
         <>
-          {/* Sector field - shown for both, but required for self-employed */}
+          {/* Sector field - shown for both, but required for Self-Employed */}
           {showSelfEmployedFields ? (
             <>
               <EditableField
@@ -226,7 +252,7 @@ export default function EditableEmploymentStatus({
             disabled={disabled}
             placeholder="Enter your designation"
           />
-          {/* Start of Career - date picker for self-employed, number for employed */}
+          {/* Start of Career - date picker for Self-Employed, number for employed */}
           {showSelfEmployedFields ? (
             <EditableField
               label="Start of Career *"
@@ -327,7 +353,7 @@ export default function EditableEmploymentStatus({
               placeholder={showSelfEmployedFields ? "Enter your business address" : "Enter company address"}
             />
           )}
-          {/* Self-employed specific fields */}
+          {/* Self-Employed specific fields */}
           {showSelfEmployedFields && (
             <>
               {onWorkEmailChange && (

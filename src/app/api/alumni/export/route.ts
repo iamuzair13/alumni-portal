@@ -433,10 +433,10 @@ export async function GET(req: Request) {
           conditions.push(sql`(a.employeed IS NULL OR TRIM(COALESCE(a.employeed, '')) = '')`);
         } else {
           const lower = normalized.toLowerCase();
-          if (lower === "employed/business") {
+          if (lower === "employed" || lower === "employed/business") {
             conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'employed/business' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'employed')`);
-          } else if (lower === "self-employed") {
-            conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-employed' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-emplo')`);
+          } else if (lower === "self-employed/enterpreneur") {
+            conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-employed/enterpreneur' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-emplo' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'self-employed')`);
           } else if (lower === "pursuing higher education") {
             conditions.push(sql`(LOWER(TRIM(COALESCE(a.employeed, ''))) = 'pursuing higher education' OR LOWER(TRIM(COALESCE(a.employeed, ''))) = 'highered')`);
           } else {

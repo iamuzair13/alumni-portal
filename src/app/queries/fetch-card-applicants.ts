@@ -76,11 +76,11 @@ export function useCardApplicants(status: CardStatusFilter = "all", options?: { 
       } as CardApplicantsResponse;
     },
     enabled: options?.enabled !== false,
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 10 * 60_000, // 10 minutes
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 }
 
@@ -106,11 +106,11 @@ export function useCardCounts() {
         "overdue-under-printing": 0,
       };
     },
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 10 * 60_000, // 10 minutes
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-    refetchOnMount: true,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 }
 

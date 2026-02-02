@@ -80,11 +80,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh for 2 minutes
-            gcTime: 10 * 60 * 1000, // 10 minutes - cache data for 10 minutes
+            staleTime: 2 * 60 * 1000, // 2 minutes
+            gcTime: 30 * 60 * 1000, // 30 minutes
             refetchOnWindowFocus: false, // Don't refetch on window focus by default
             refetchOnReconnect: true, // Refetch when network reconnects
-            refetchOnMount: true, // Refetch on mount if data is stale
+            refetchOnMount: false, // Don't refetch just because component remounts
             retry: (failureCount, error: unknown) => {
               // Don't retry on 401 errors
               const err = error as { status?: number; response?: { status?: number } } | null;
