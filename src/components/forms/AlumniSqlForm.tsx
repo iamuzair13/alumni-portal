@@ -60,6 +60,8 @@ export type TblAlumniForm = {
   highereducationdegreetitle: string | null;
   highereducationinstitute: string | null;
   highereducationprogram: string | null;
+  highereducationinstituteCity: string | null;
+  highereducationinstituteCountry: string | null;
   scholarship: string | null;
   lasttimelogin: string | null;
   logincount: number | null;
@@ -462,6 +464,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       highereducationdegreetitle: null,
       highereducationinstitute: null,
       highereducationprogram: null,
+      highereducationinstituteCity: null,
+      highereducationinstituteCountry: null,
       scholarship: null,
       chapters: null,
       alumni_consent_info: null,
@@ -628,6 +632,48 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const selectedHomeProvince = watch("province") || "";
   const selectedHomeCity = watch("homeCity") || "";
   const selectedWorkCountry = watch("workCountry") || "";
+
+  const isWorkStatus =
+    (employeedVal || "").toLowerCase() === "employed" ||
+    (employeedVal || "").toLowerCase() === "employed/business" ||
+    (employeedVal || "").toLowerCase() === "self-employed/enterpreneur";
+  const isHigherEdStatus = (employeedVal || "").toLowerCase() === "pursuing higher education";
+
+  useEffect(() => {
+    if (isHigherEdStatus) {
+      setValue("industry", null, { shouldValidate: false });
+      setValue("nameoforganization", null, { shouldValidate: false });
+      setValue("designation", null, { shouldValidate: false });
+      setValue("officialemail", null, { shouldValidate: false });
+      setValue("officialnumber", null, { shouldValidate: false });
+      setValue("organization_address", null, { shouldValidate: false });
+      setValue("workCity", null, { shouldValidate: false });
+      setValue("workCountry", null, { shouldValidate: false });
+      setValue("totalyearsofexpereince", null, { shouldValidate: false });
+      setValue("startOfCareer", null, { shouldValidate: false });
+      return;
+    }
+
+    setValue("highereducationdegreetitle", null, { shouldValidate: false });
+    setValue("highereducationinstitute", null, { shouldValidate: false });
+    setValue("highereducationprogram", null, { shouldValidate: false });
+    setValue("highereducationinstituteCity", null, { shouldValidate: false });
+    setValue("highereducationinstituteCountry", null, { shouldValidate: false });
+    setValue("scholarship", null, { shouldValidate: false });
+
+    if (!isWorkStatus) {
+      setValue("industry", null, { shouldValidate: false });
+      setValue("nameoforganization", null, { shouldValidate: false });
+      setValue("designation", null, { shouldValidate: false });
+      setValue("officialemail", null, { shouldValidate: false });
+      setValue("officialnumber", null, { shouldValidate: false });
+      setValue("organization_address", null, { shouldValidate: false });
+      setValue("workCity", null, { shouldValidate: false });
+      setValue("workCountry", null, { shouldValidate: false });
+      setValue("totalyearsofexpereince", null, { shouldValidate: false });
+      setValue("startOfCareer", null, { shouldValidate: false });
+    }
+  }, [employeedVal, isWorkStatus, isHigherEdStatus, setValue]);
   
   // Filter database-backed faculties based on user access
   const filteredFaculties = useMemo(() => {
@@ -896,7 +942,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     
     // Validate higher education fields if pursuing higher education
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      workFieldsToValidate.push("highereducationinstitute", "highereducationprogram", "scholarship", "workCity", "workCountry");
+      workFieldsToValidate.push(
+        "highereducationinstitute",
+        "highereducationprogram",
+        "scholarship",
+        "highereducationinstituteCity",
+        "highereducationinstituteCountry"
+      );
     }
     
     // No validation needed for unemployed options as reason is in the radio button value
@@ -936,8 +988,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         "highereducationinstitute",
         "highereducationprogram",
         "scholarship",
-        "workCity",
-        "workCountry",
+        "highereducationinstituteCity",
+        "highereducationinstituteCountry",
       ];
       for (const f of fields) {
         const val = watch(f);
@@ -1012,13 +1064,19 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       
       // Map work city/country to database city/country if provided, otherwise use home city/country
       // The database only has one city and country field, so we prioritize work location when provided
-      if (payload.workCity && String(payload.workCity).trim() !== "") {
+      const employeedLower = String(payload.employeed ?? "").toLowerCase().trim();
+      const isWorkStatus =
+        employeedLower === "employed" ||
+        employeedLower === "employed/business" ||
+        employeedLower === "self-employed/enterpreneur";
+
+      if (isWorkStatus && payload.workCity && String(payload.workCity).trim() !== "") {
         payload.city = payload.workCity;
       } else if (payload.homeCity && String(payload.homeCity).trim() !== "") {
         payload.city = payload.homeCity;
       }
-      
-      if (payload.workCountry && String(payload.workCountry).trim() !== "") {
+
+      if (isWorkStatus && payload.workCountry && String(payload.workCountry).trim() !== "") {
         payload.country = payload.workCountry;
       } else if (payload.homeCountry && String(payload.homeCountry).trim() !== "") {
         payload.country = payload.homeCountry;
@@ -2033,7 +2091,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input type="radio" value="Pursuing Higher Education" {...register("employeed")} /> Pursuing Higher Education
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed(By choice)" {...register("employeed")} /> Unemployed(By choice)
+                  <input type="radio" value="Unemployed(By Choice)" {...register("employeed")} /> Unemployed(By Choice)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
                   <input type="radio" value="Unemployed(Searching for job)" defaultChecked {...register("employeed")} /> Unemployed(Searching for job)
@@ -2183,14 +2241,22 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </div>
                 {/* Work City */}
                 <div>
-                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business City *" : "Work City *"}</label>
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business City" : "Work City"}
+                    {isWorkStatus ? " *" : ""}
+                  </label>
                   <Controller
                     name="workCity"
                     control={control}
                     rules={{
-                      required: (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
-                        ? "Business city is required"
-                        : "Work city is required",
+                      required:
+                        (employeedVal || "").toLowerCase() === "employed" ||
+                        (employeedVal || "").toLowerCase() === "employed/business" ||
+                        (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
+                          ? (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
+                            ? "Business city is required"
+                            : "Work city is required"
+                          : false,
                       maxLength: {
                         value: 50,
                         message: "City must be 50 characters or less"
@@ -2236,14 +2302,22 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </div>
                 {/* Work Country */}
                 <div>
-                  <label className={labelBase}>{(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Country *" : "Work Country *"}</label>
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business Country" : "Work Country"}
+                    {isWorkStatus ? " *" : ""}
+                  </label>
                   <input
                     type="text"
                         className={inputBase} 
                     list="work-country-options"
                     placeholder="Select from list or type your country"
                     {...register("workCountry", { 
-                      required: "Work country is required",
+                      required:
+                        (employeedVal || "").toLowerCase() === "employed" ||
+                        (employeedVal || "").toLowerCase() === "employed/business" ||
+                        (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
+                          ? "Work country is required"
+                          : false,
                       maxLength: 100 
                     })}
                   />
@@ -2301,7 +2375,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input 
                     type="text" 
                     className={inputBase} 
-                    {...register("workCity", { 
+                    {...register("highereducationinstituteCity", { 
                       required: "Institution city is required", 
                       maxLength: 50,
                       validate: (value) => {
@@ -2313,8 +2387,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     })} 
                     placeholder="e.g. Lahore"
                   />
-                  {errors.workCity && (
-                    <p className="mt-1 text-xs text-red-600">{errors.workCity.message || "Institution city is required"}</p>
+                  {errors.highereducationinstituteCity && (
+                    <p className="mt-1 text-xs text-red-600">{errors.highereducationinstituteCity.message || "Institution city is required"}</p>
                   )}
                 </div>
 
@@ -2325,7 +2399,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                         className={inputBase} 
                     list="institution-country-options"
                     placeholder="Select from list or type your country"
-                    {...register("workCountry", { 
+                    {...register("highereducationinstituteCountry", { 
                       required: "Institution country is required",
                       maxLength: 100 
                     })}
@@ -2335,8 +2409,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       <option key={country} value={country} />
                     ))}
                   </datalist>
-                  {errors.workCountry && (
-                    <p className="mt-1 text-xs text-red-600">{errors.workCountry.message || "Institution country is required"}</p>
+                  {errors.highereducationinstituteCountry && (
+                    <p className="mt-1 text-xs text-red-600">{errors.highereducationinstituteCountry.message || "Institution country is required"}</p>
                   )}
                 </div>
 

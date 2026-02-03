@@ -54,8 +54,8 @@ export default function BenefitCard({
       onClick={handleClick}
       className={`group bg-white border-2 border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${isNavigating ? "opacity-70 pointer-events-none" : ""}`}
     >
-      <div className={`bg-gradient-to-br ${gradient} p-4 sm:p-5 md:p-6 border-b-2 ${borderColor}`}>
-        <div className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 ${iconBg} rounded-xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
+      <div className={`flex items-center bg-gradient-to-br gap-2 ${gradient} p-4 sm:p-5 md:p-6 border-b-2 ${borderColor}`}>
+        <div className={`w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 ${iconBg} rounded-xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
           {icon}
         </div>
         <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors">{title}</h4>

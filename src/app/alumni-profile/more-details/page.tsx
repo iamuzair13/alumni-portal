@@ -279,6 +279,10 @@ function MoreDetailsContent() {
         { key: "designation", label: "Designation" },
         { key: "startOfCareer", label: "Start of Career" },
         { key: "organization_address", label: "Company Address" },
+        { key: "work_country", label: "Work Country" },
+        { key: "work_city", label: "Work City" },
+        { key: "officialemail", label: "Work Email" },
+        { key: "officialnumber", label: "Work Phone" },
       ];
 
       const missingFields: string[] = [];
@@ -533,7 +537,7 @@ function MoreDetailsContent() {
     { value: "Employed", label: "Employed" },
     { value: "Self-Employed/Enterpreneur", label: "Self-Employed/Enterpreneur" },
     { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
-    { value: "Unemployed(By choice)", label: "Unemployed(By choice)" },
+    { value: "Unemployed(By Choice)", label: "Unemployed(By Choice)" },
     { value: "Unemployed(Searching for job)", label: "Unemployed(Searching for job)" },
   ];
 

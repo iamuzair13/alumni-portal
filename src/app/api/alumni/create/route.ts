@@ -518,8 +518,8 @@ export async function POST(req: Request) {
             higher_education_institute_name = ${clean(body.highereducationinstitute)},
             higher_education_program = ${clean(body.highereducationprogram)},
             is_scholarship = ${clean(body.scholarship)},
-            higher_education_institute_country = ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
-            higher_education_institute_city = ${clean((body as { workCity?: string | null }).workCity ?? null)},
+            higher_education_institute_country = ${clean((body as { highereducationinstituteCountry?: string | null; workCountry?: string | null }).highereducationinstituteCountry ?? (body as { workCountry?: string | null }).workCountry ?? null)},
+            higher_education_institute_city = ${clean((body as { highereducationinstituteCity?: string | null; workCity?: string | null }).highereducationinstituteCity ?? (body as { workCity?: string | null }).workCity ?? null)},
             alumni_consent_info = ${body.alumni_consent_info ?? false}
           WHERE alumniid = ${existingAlumniId}
           RETURNING alumniid, verify
@@ -680,8 +680,8 @@ export async function POST(req: Request) {
           ${clean(body.highereducationinstitute)},
           ${clean(body.highereducationprogram)},
           ${clean(body.scholarship)},
-          ${clean((body as { workCountry?: string | null }).workCountry ?? null)},
-          ${clean((body as { workCity?: string | null }).workCity ?? null)},
+          ${clean((body as { highereducationinstituteCountry?: string | null }).highereducationinstituteCountry ?? null)},
+          ${clean((body as { highereducationinstituteCity?: string | null }).highereducationinstituteCity ?? null)},
           ${body.alumni_consent_info ?? false}
         ) RETURNING alumniid;
       `;
@@ -865,13 +865,18 @@ export async function POST(req: Request) {
             employeedRaw.toLowerCase().trim() === "pursuing higher education" ||
             employeedRaw.toLowerCase().trim() === "highered";
 
-          // NOTE: In AlumniSqlForm, "Pursuing Higher Education" uses workCountry/workCity fields
-          // to capture institution country/city. So we intentionally read from workCountry/workCity here.
+          // Prefer institute country/city for higher education; fall back to workCountry/workCity for legacy clients.
+          const instituteCountryRaw = String((body as { highereducationinstituteCountry?: string | null }).highereducationinstituteCountry ?? "").trim();
+          const instituteCityRaw = String((body as { highereducationinstituteCity?: string | null }).highereducationinstituteCity ?? "").trim();
           const workCountryRaw = String((body as { workCountry?: string | null }).workCountry ?? "").trim();
           const workCityRaw = String((body as { workCity?: string | null }).workCity ?? "").trim();
-          const isWorkPakistan = workCountryRaw.toLowerCase().trim() === "pakistan";
+
+          const effectiveCountryRaw = isHigherEducation ? (instituteCountryRaw || workCountryRaw) : workCountryRaw;
+          const effectiveCityRaw = isHigherEducation ? (instituteCityRaw || workCityRaw) : workCityRaw;
+
+          const isWorkPakistan = effectiveCountryRaw.toLowerCase().trim() === "pakistan";
           const workLookupType = isWorkPakistan ? "city" : "country";
-          const workLookupValueRaw = isWorkPakistan ? workCityRaw : workCountryRaw;
+          const workLookupValueRaw = isWorkPakistan ? effectiveCityRaw : effectiveCountryRaw;
 
           if (workLookupValueRaw) {
             try {

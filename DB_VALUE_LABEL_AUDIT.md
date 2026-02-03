@@ -132,7 +132,7 @@ Notes:
     - `Employed` -> Employed
     - `Self-Employed/Enterpreneur` -> Self-Employed/Enterpreneur
     - `Pursuing Higher Education` -> Pursuing Higher Education
-    - `Unemployed(By choice)` -> Unemployed(By choice)
+    - `Unemployed(By Choice)` -> Unemployed(By Choice)
     - `Unemployed(Searching for job)` -> Unemployed(Searching for job)
   - **Normalization before save (client):**
     - Legacy values `Self-Emplo`, `Self-Employed`, `Self-employed`, `Self employed` are normalized to `Self-Employed/Enterpreneur`.
@@ -240,7 +240,7 @@ This component updates the DB via:
     - `""` -> Select
     - `Employed` -> Employed
     - `Self-Employed/Enterpreneur` -> Self-Employed/Enterpreneur
-    - `Unemployed(By choice)` -> Unemployed(By Choice)
+    - `Unemployed(By Choice)` -> Unemployed(By Choice)
     - `Unemployed(Searching for job)` -> Unemployed (Searching for Job)
     - `Pursuing Higher Education` -> Pursuing Higher Education
 - **FieldKey: `is_scholarship`**

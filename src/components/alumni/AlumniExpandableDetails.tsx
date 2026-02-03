@@ -1446,7 +1446,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "", label: "Select" },
             { value: "Employed", label: "Employed" },
             { value: "Self-Employed/Enterpreneur", label: "Self-Employed/Enterpreneur" },
-            { value: "Unemployed(By choice)", label: "Unemployed(By Choice)" },
+            { value: "Unemployed(By Choice)", label: "Unemployed(By Choice)" },
             { value: "Unemployed(Searching for job)", label: "Unemployed (Searching for Job)" },
             { value: "Pursuing Higher Education", label: "Pursuing Higher Education" }
           ]} onEdit={() => startEditingField("employeed")} />

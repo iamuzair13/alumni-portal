@@ -177,7 +177,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         ) {
           strValue = "Self-Employed/Enterpreneur";
         } else if (strValue === "Unemployed(By Choice)" || strValue === "Unemployed By choice") {
-          strValue = "Unemployed(By choice)";
+          strValue = "Unemployed(By Choice)";
         } else if (
           strValue === "Unemployed (Searching for Job)" ||
           strValue === "Unemployed(Searching for Job)" ||

@@ -7,6 +7,10 @@ type NetworkingEngagementSectionProps = {
   sapId?: string;
   mentorshipStatus?: string;
   mentorshipStatusError?: string | null;
+  successStoryCount?: number;
+  alumniTalkCount?: number;
+  chapterMembershipCount?: number;
+  associationTitle?: string | null;
 };
 
 type EngagementCard = {
@@ -27,6 +31,10 @@ export default function NetworkingEngagementSection({
   sapId,
   mentorshipStatus,
   mentorshipStatusError,
+  successStoryCount,
+  alumniTalkCount,
+  chapterMembershipCount,
+  associationTitle,
 }: NetworkingEngagementSectionProps) {
   const { data: session } = useSession();
   const isViewer = isViewerUser(session?.user);
@@ -121,8 +129,18 @@ export default function NetworkingEngagementSection({
           <div className="p-3 sm:p-4 md:p-5 text-center flex flex-col justify-between min-h-[10rem] sm:min-h-[12rem]">
             <h3 className="text-base sm:text-lg font-semibold text-slate-900">{card.title}</h3>
             <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">{card.decription}</p>
+            {card.title === "Success Story" && typeof successStoryCount === "number" && (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-yellow-50 text-yellow-700 px-2.5 py-1 border border-yellow-200">
+                <span className="text-xs">All Stories: {successStoryCount}</span>
+              </div>
+            )}
             {card.title === "Alumni Talk" && (
               <>
+                {typeof alumniTalkCount === "number" && (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-purple-50 text-purple-700 px-2.5 py-1 border border-purple-200">
+                    <span className="text-xs">Applications: {alumniTalkCount}</span>
+                  </div>
+                )}
                 {card.statusError ? (
                   <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-rose-50 text-rose-700 px-2.5 py-1 border border-rose-200">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm3 12l-3-3-3 3 3-3-3-3 3 3 3-3-3 3 3 3z"/></svg>
@@ -140,6 +158,16 @@ export default function NetworkingEngagementSection({
                   </div>
                 ) : null}
               </>
+            )}
+            {card.title === "Chapters Membership" && typeof chapterMembershipCount === "number" && (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-green-50 text-green-700 px-2.5 py-1 border border-green-200">
+                <span className="text-xs">Assigned Chapters: {chapterMembershipCount}</span>
+              </div>
+            )}
+            {card.title === "Association Membership" && (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-orange-50 text-orange-700 px-2.5 py-1 border border-orange-200">
+                <span className="text-xs">{associationTitle ? associationTitle : "Not Assigned"}</span>
+              </div>
             )}
             <NetworkingEngagementCard
               title={card.title}

@@ -292,6 +292,53 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
     ""
   ).trim();
   const alumniId = String(sapRows[0]?.alumniid ?? "");
+
+  // Counts for individual profile cards
+  let successStoryCount = 0;
+  let alumniTalkCount = 0;
+  let chapterMembershipCount = 0;
+  if (alumniId) {
+    try {
+      const rows = await sql/* sql */`
+        SELECT COUNT(*)::int AS count
+        FROM public.tblalumnistories s
+        WHERE s.alumniid = ${alumniId}
+          AND s.alumnistories IS NOT NULL
+          AND s.alumnistories != ''
+          AND TRIM(s.alumnistories) != ''
+      `;
+      successStoryCount = Number((rows[0] as { count?: number | string } | undefined)?.count ?? 0);
+    } catch {
+      successStoryCount = 0;
+    }
+
+    try {
+      const rows = await sql/* sql */`
+        SELECT COUNT(*)::int AS count
+        FROM public.alumni_talk_sessions s
+        WHERE s.alumniid = ${alumniId}
+      `;
+      alumniTalkCount = Number((rows[0] as { count?: number | string } | undefined)?.count ?? 0);
+    } catch {
+      alumniTalkCount = 0;
+    }
+
+    try {
+      const rows = await sql/* sql */`
+        SELECT
+          (CASE WHEN ac."chapter1" IS NOT NULL THEN 1 ELSE 0 END +
+           CASE WHEN ac."chapter2" IS NOT NULL THEN 1 ELSE 0 END +
+           CASE WHEN ac."chapter3" IS NOT NULL THEN 1 ELSE 0 END
+          )::int AS count
+        FROM public.alumni_chapter ac
+        WHERE ac.id = ${alumniId}
+        LIMIT 1
+      `;
+      chapterMembershipCount = Number((rows[0] as { count?: number | string } | undefined)?.count ?? 0);
+    } catch {
+      chapterMembershipCount = 0;
+    }
+  }
   let cardStatus: CardStatus = "none";
   let cardStatusError: string | null = null;
 let cardPicture: string | null = null;
@@ -805,15 +852,14 @@ let cardImageFile: string | null = null;
                             !isViewer && (
                             <Link
                               href={sapId ? `/alumni-profile/card?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card`}
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 motion-safe:animate-pulse"
                             >
-                              Apply now
+                              <span className="motion-safe:animate-pulse motion-safe:animate-infinite motion-safe:animate-duration-1000">Apply now</span>
                             </Link>
                             )
                           ) : null}
-                          </>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   </div>
           </div>
@@ -827,6 +873,10 @@ let cardImageFile: string | null = null;
           sapId={sapId}
           mentorshipStatus={mentorshipStatus}
           mentorshipStatusError={mentorshipStatusError}
+          successStoryCount={successStoryCount}
+          alumniTalkCount={alumniTalkCount}
+          chapterMembershipCount={chapterMembershipCount}
+          associationTitle={associationTitle}
         />
       </div>
 
@@ -941,6 +991,7 @@ let cardImageFile: string | null = null;
           />
         </div>
       </div>
+    </div>
       
   </>
   );

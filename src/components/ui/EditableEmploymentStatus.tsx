@@ -6,7 +6,7 @@ const employmentStatusOptions = [
   { value: "Employed", label: "Employed" },
   { value: "Self-Employed/Enterpreneur", label: "Self-Employed/Enterpreneur" },
   { value: "Pursuing Higher Education", label: "Pursuing Higher Education" },
-  { value: "Unemployed(By choice)", label: "Unemployed(By choice)" },
+  { value: "Unemployed(By Choice)", label: "Unemployed(By Choice)" },
   { value: "Unemployed(Searching for job)", label: "Unemployed(Searching for job)" },
 ];
 
@@ -22,8 +22,8 @@ export function mapDbValueToDisplay(dbValue: unknown): string {
   if (normalized === "Self-employed") return "Self-Employed/Enterpreneur";
   if (normalized === "Self employed") return "Self-Employed/Enterpreneur";
   if (normalized === "Pursuing Higher Education" || normalized === "highered") return "Pursuing Higher Education";
-  if (normalized === "Unemployed(By choice)" || normalized === "Unemployed(By Choice)" || normalized === "Unemployed By choice" || normalized === "Unemployed(By choice)") {
-    return "Unemployed(By choice)";
+  if (normalized === "Unemployed(By Choice)" || normalized === "Unemployed(By Choice)" || normalized === "Unemployed By choice" || normalized === "Unemployed(By Choice)") {
+    return "Unemployed(By Choice)";
   }
   if (
     normalized === "Unemployed(Searching for job)" ||
@@ -51,7 +51,7 @@ export function mapDisplayValueToDb(displayValue: unknown): string {
   if (normalized === "Self-Employed" || normalized === "Self-employed" || normalized === "Self employed") return "Self-Employed/Enterpreneur";
   if (normalized === "Self-Employed/Enterpreneur") return "Self-Employed/Enterpreneur";
   // Normalize legacy unemployed variants to canonical stored values
-  if (normalized === "Unemployed(By Choice)" || normalized === "Unemployed By choice") return "Unemployed(By choice)";
+  if (normalized === "Unemployed(By Choice)" || normalized === "Unemployed By choice") return "Unemployed(By Choice)";
   if (normalized === "Unemployed (Searching for Job)" || normalized === "Unemployed (Searching Job)" || normalized === "Unemployed, searching for job") {
     return "Unemployed(Searching for job)";
   }
