@@ -235,25 +235,33 @@ export async function GET(req: Request) {
     }
     
     // Build filters for faculty, department, program
-    // Faculty and department are now text-based from tbl_alumni columns
+    // IMPORTANT: Faculty/Department values come from /api/alumni/faculties and /api/alumni/departments
+    // and are numeric IDs (or "NULL"). Programs come from /api/alumni/programs and map to a.degreetitle.
     let facultyFilter = sql``;
     if (faculty && (Array.isArray(faculty) ? faculty.length > 0 : faculty)) {
       if (Array.isArray(faculty) && faculty.length > 0) {
-        const facultyConditions = faculty.map(fac => {
+        const facultyConditions = faculty.map((fac) => {
           const normalized = String(fac).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+            return sql`(a.faculty IS NULL)`;
           }
-          return sql`LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${fac}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(a.faculty = ${id})`;
         });
         const combinedCondition = combineOrConditions(facultyConditions);
         facultyFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(faculty) && faculty) {
         const normalized = String(faculty).trim();
         if (normalized === "NULL" || normalized === "null") {
-          facultyFilter = sql`AND (a.facultyname IS NULL OR TRIM(COALESCE(a.facultyname, '')) = '')`;
+          facultyFilter = sql`AND (a.faculty IS NULL)`;
         } else {
-          facultyFilter = sql`AND LOWER(TRIM(COALESCE(a.facultyname, ''))) = LOWER(TRIM(${faculty}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            facultyFilter = sql`AND (a.faculty = ${id})`;
+          } else {
+            facultyFilter = sql`AND 1 = 0`;
+          }
         }
       }
     }
@@ -261,21 +269,28 @@ export async function GET(req: Request) {
     let departmentFilter = sql``;
     if (department && (Array.isArray(department) ? department.length > 0 : department)) {
       if (Array.isArray(department) && department.length > 0) {
-        const departmentConditions = department.map(dept => {
+        const departmentConditions = department.map((dept) => {
           const normalized = String(dept).trim();
           if (normalized === "NULL" || normalized === "null") {
-            return sql`(a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+            return sql`(a.department IS NULL)`;
           }
-          return sql`LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${dept}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (Number.isNaN(id)) return sql`1 = 0`;
+          return sql`(a.department = ${id})`;
         });
         const combinedCondition = combineOrConditions(departmentConditions);
         departmentFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(department) && department) {
         const normalized = String(department).trim();
         if (normalized === "NULL" || normalized === "null") {
-          departmentFilter = sql`AND (a.departmentname IS NULL OR TRIM(COALESCE(a.departmentname, '')) = '')`;
+          departmentFilter = sql`AND (a.department IS NULL)`;
         } else {
-          departmentFilter = sql`AND LOWER(TRIM(COALESCE(a.departmentname, ''))) = LOWER(TRIM(${department}))`;
+          const id = Number.parseInt(normalized, 10);
+          if (!Number.isNaN(id)) {
+            departmentFilter = sql`AND (a.department = ${id})`;
+          } else {
+            departmentFilter = sql`AND 1 = 0`;
+          }
         }
       }
     }
@@ -283,11 +298,22 @@ export async function GET(req: Request) {
     let programFilter = sql``;
     if (program && (Array.isArray(program) ? program.length > 0 : program)) {
       if (Array.isArray(program) && program.length > 0) {
-        const programConditions = program.map(prog => sql`LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${prog}))`);
+        const programConditions = program.map((prog) => {
+          const normalized = String(prog).trim();
+          if (normalized === "NULL" || normalized === "null") {
+            return sql`(a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+          }
+          return sql`(LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${prog})))`;
+        });
         const combinedCondition = combineOrConditions(programConditions);
         programFilter = sql`AND (${combinedCondition})`;
       } else if (!Array.isArray(program) && program) {
-        programFilter = sql`AND LOWER(TRIM(COALESCE(p.program_name, a.degreetitle, ''))) = LOWER(TRIM(${program}))`;
+        const normalized = String(program).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          programFilter = sql`AND (a.degreetitle IS NULL OR TRIM(COALESCE(a.degreetitle, '')) = '')`;
+        } else {
+          programFilter = sql`AND (LOWER(TRIM(COALESCE(a.degreetitle, ''))) = LOWER(TRIM(${program})))`;
+        }
       }
     }
     

@@ -38,6 +38,12 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
     return `${c}, ${co}`;
   }, [data]);
 
+  const normalizeMaritalStatus = (v: unknown): "" | "Married" | "Un-Married" => {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (s === "Married" || s === "Un-Married") return s;
+    return "";
+  };
+
   const handleOpenEdit = () => {
     if (!sapid) return;
     setFormName(data?.name ?? "");
@@ -52,22 +58,21 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
     setSaveError(null);
     setValidationErrors({});
     if (!isEditingInline) {
-      setDraft({
-        registrationNo: data.registrationNo ?? "",
+      const nextDraft: Partial<z.input<typeof alumniRegistrationComprehensiveSchema>> = {
         sapId: data.sapId ?? "",
+        registrationNo: data.registrationNo ?? "",
         name: data.name ?? "",
         fatherName: data.fatherName ?? "",
         gender: data.gender ?? "Other",
         dob: data.dob ?? "",
-        maritalStatus: data.maritalStatus ?? "Single",
+        maritalStatus: normalizeMaritalStatus(data.maritalStatus),
         personalEmail: data.personalEmail ?? "",
         password: data.password ?? "",
         countryCode: data.countryCode ?? "+92",
         phoneNumber: data.phoneNumber ?? "",
-        address: data.address ?? "",
+        homeCountry: data.homeCountry ?? "Pakistan",
         province: data.province ?? undefined,
         homeCity: data.homeCity ?? "",
-        homeCountry: data.homeCountry ?? "Pakistan",
         campus: data.campus ?? "",
         faculty: data.faculty ?? "",
         department: data.department ?? "",
@@ -86,7 +91,8 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
         source: data.source ?? "",
         verified: Boolean(data.verified ?? false),
         category: data.category ?? "",
-      });
+      };
+      setDraft(nextDraft);
       setContactCombined(`${data.countryCode ?? ""} ${data.phoneNumber ?? ""}`.trim());
       setIsEditingInline(true);
     } else {
@@ -112,6 +118,8 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
     try {
       setSaveError(null);
       setValidationErrors({});
+
+      draft.maritalStatus = normalizeMaritalStatus(draft.maritalStatus);
       if (contactCombined) {
         const parsedContact = parseContactNumber(contactCombined);
         if (!parsedContact.valid) {
@@ -171,6 +179,8 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
             | "United Arab Emirates"
             | "Australia") || data.homeCountry,
       };
+      merged.maritalStatus = normalizeMaritalStatus(merged.maritalStatus);
+
       const parsed = alumniRegistrationComprehensiveSchema.safeParse(merged);
       if (!parsed.success) {
         const vErrs: Record<string, string> = {};
@@ -375,7 +385,8 @@ export default function UserMetaCard({ sapid }: UserMetaCardProps) {
               <div className="rounded-xl p-3">
                 <dt className="mb-1 text-[16px] font-bold text-gray-900 dark:text-gray-400">Marital Status</dt>
                 <select value={(draft?.maritalStatus ?? "") as string} onChange={(e) => handleInlineChange("maritalStatus", e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                  {["Single","Married","Divorced"].map((m) => <option key={m} value={m}>{m}</option>)}
+                  <option value="">Select</option>
+                  {["Married", "Un-Married"].map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               {/* CNIC/Passport (read-only from DB) */}

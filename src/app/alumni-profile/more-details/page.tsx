@@ -528,8 +528,8 @@ function MoreDetailsContent() {
   };
 
   const maritalStatusOptions = [
-    { value: "Single", label: "Single" },
     { value: "Married", label: "Married" },
+    { value: "Un-Married", label: "Un-Married" },
   ];
 
   // Employment status options matching AlumniSqlForm.tsx

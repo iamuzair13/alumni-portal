@@ -538,6 +538,13 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const deleteModal = useModal();
+
+  const normalizeMaritalStatus = (v: unknown): string | null => {
+    const s = typeof v === "string" ? v.trim() : "";
+    if (!s) return null;
+    if (s === "Married" || s === "Un-Married") return s;
+    return null;
+  };
   
   // Fetch ERP data for comparison
   // Note: Viewers will get 403, which is handled gracefully in fetchErpData
@@ -578,10 +585,11 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         ...data,
         contactno1show: data.contactno1show !== null && data.contactno1show !== undefined 
           ? String(data.contactno1show) 
-          : null,
+          : "",
+        maritalstatus: normalizeMaritalStatus(data.maritalstatus),
         personalemailshow: data.personalemailshow !== null && data.personalemailshow !== undefined 
           ? String(data.personalemailshow) 
-          : null,
+          : "",
         alumni_consent_info: data.alumni_consent_info ?? null,
         alumni_consent_pic: data.alumni_consent_pic ?? null,
       };

@@ -8,12 +8,6 @@ const extraDomains = (process.env.NEXT_PUBLIC_IMAGE_DOMAINS || "")
   .filter(Boolean);
 
 const nextConfig = {
-  outputFileTracing: false,
-
-  devIndicators: {
-    buildActivity: process.env.NODE_ENV === "development",
-  },
-
   eslint: {
     ignoreDuringBuilds: true,
   },

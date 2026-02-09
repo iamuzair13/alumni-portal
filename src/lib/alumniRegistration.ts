@@ -24,7 +24,7 @@ export const countries = [
 ] as const;
 
 const genderValues = ["Male", "Female", "Other"] as const;
-const maritalValues = ["Single", "Married", "Divorced"] as const;
+const maritalValues = ["Married", "Un-Married"] as const;
 const employmentValues = ["Employed", "Unemployed"] as const;
 
 export const cnicRegex = /^\d{5}-\d{7}-\d$/;
@@ -64,7 +64,7 @@ export const alumniRegistrationSchema = z.object({
   fatherName: z.string().trim().optional().or(z.literal("")),
   gender: z.enum(genderValues),
   dob: z.string().trim().optional().or(z.literal("")),
-  maritalStatus: z.enum(maritalValues).optional(),
+  maritalStatus: z.enum(maritalValues).optional().or(z.literal("")),
 
   cnicOrPassport: z.string().trim().min(1, "CNIC/Passport is required"),
   countryCode: z.string().trim().regex(countryCodeRegex, "Country code must be like +92"),
