@@ -17,6 +17,7 @@ type AlumniCardTemplateProps = {
   department: string;
   faculty: string;
   alumniId: string;
+  cnicPassport?: string | null;
   validity?: string; // Format: YYYY-MM or MM/YYYY
   photoUrl?: string | null; // Profile/thumbnail image filename or path
   cardImage?: string | null; // Dedicated card image filename or path
@@ -27,6 +28,7 @@ export default function AlumniCardTemplate({
   department,
   faculty,
   alumniId,
+  cnicPassport,
   validity,
   photoUrl,
   cardImage,
@@ -147,9 +149,14 @@ export default function AlumniCardTemplate({
         </div>
 
         {/* Alumni ID and Validity */}
-        <div className="absolute bottom-[27%] left-[20%] flex flex-col gap-0.5 text-[#0f7a3a]">
+        <div className="absolute bottom-[28%] left-[20%] flex flex-col justify-start items-start gap-0.3 text-[#0f7a3a]">
           <span className="text-[8px] font-medium">{alumniId || "UOL-AL-0000"}</span>
           <span className="text-[8px] font-medium">{formattedValidity}</span>
+        </div>
+
+        {/* CNIC/Passport */}
+        <div className="absolute bottom-[21%] left-[1%] flex flex-row justify-center items-center gap-8 text-[#0f7a3a]">
+         <p className="text-[10px]">CNIC :</p> <span className="text-[8px] font-medium">{cnicPassport || ""}</span>
         </div>
 
         {/* Photo */}

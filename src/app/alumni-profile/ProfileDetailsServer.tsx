@@ -349,7 +349,27 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
           <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
               <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold break-words">{name}</h4>
-              
+              {/* Assigned Chapters Badges */}
+              {Array.isArray(chapters) && chapters.length > 0 && chapters.map((chapter, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded-lg text-xs font-medium text-green-800 ml-2"
+                >
+                  <svg className="w-3 h-3 text-green-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {chapter}
+                </span>
+              ))}
+              {/* Association Badge */}
+              {associationTitle && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded-lg text-xs font-medium text-blue-800 ml-2">
+                  <svg className="w-3 h-3 text-blue-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h-10a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2z" />
+                  </svg>
+                  Member of {associationTitle}
+                </span>
+              )}
               {/* Leadership Label - Prominent Badge */}
               {leadershipInfo?.roleDisplay && leadershipInfo.type && (
                 <div className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm shadow-md ${
@@ -382,7 +402,6 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                   <span>{leadershipInfo.roleDisplay}</span>
                 </div>
               )}
-              
               {leadershipError && (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg">
                   <span className="text-xs text-rose-700">{leadershipError}</span>
@@ -400,16 +419,10 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
               )}
 
               {/* Not Verified Message */}
-              {!isVerified && !chaptersError && !associationError && (
-                <div className="p-2.5 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg mb-2 sm:mb-3">
-                  <p className="text-xs sm:text-sm text-amber-700">
-                    Your account needs to be verified before you can view or apply for chapters and associations.
-                  </p>
-                </div>
-              )}
+
 
               {/* Verified: Show Chapters and Associations */}
-              {isVerified && !chaptersError && !associationError && (
+              {!chaptersError && !associationError && (
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {/* Chapters */}
                   {chapters.map((chapter, index) => (
@@ -555,6 +568,24 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             <div className="col-span-1"><span className="font-semibold">Department:</span> <br/> {safeText(dept) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Program:</span> <br/> {safeText(fullDetails?.degreetitle) || "N/A"}</div>
             <div className="col-span-1"><span className="font-semibold">Passing Year:</span> <br/> {fullDetails?.yearofending ? String(fullDetails.yearofending) : "N/A"}</div>
+            {/* Assigned Chapters */}
+            {Array.isArray(chapters) && chapters.length > 0 && (
+              <div className="col-span-1">
+                <span className="font-semibold">Assigned Chapters:</span>
+                <ul className="list-disc ml-5 mt-1">
+                  {chapters.map((ch, idx) => (
+                    <li key={idx}>{ch}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Association */}
+            {associationTitle && (
+              <div className="col-span-1">
+                <span className="font-semibold">Association:</span> <br/>
+                {associationTitle}
+              </div>
+            )}
           </div>
           {sapId && (
             <div className="mt-3 sm:mt-4">

@@ -41,6 +41,7 @@ type Profile = {
   youtube: string | null;
   linkedin: string | null;
   contactno: string | null;
+  cnicpassport?: string | null;
 };
 
 async function getProfile(searchParams: { sapid?: string }) {
@@ -70,7 +71,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.instagram, 
           a.youtube, 
           a.linkedin, 
-          a.contactno
+          a.contactno,
+          a.cnicpassport
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -102,7 +104,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.instagram, 
           a.youtube, 
           a.linkedin, 
-          a.contactno
+          a.contactno,
+          a.cnicpassport
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -132,7 +135,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.instagram, 
           a.youtube, 
           a.linkedin, 
-          a.contactno
+          a.contactno,
+          a.cnicpassport
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -157,7 +161,8 @@ async function getProfile(searchParams: { sapid?: string }) {
           a.instagram, 
           a.youtube, 
           a.linkedin, 
-          a.contactno
+          a.contactno,
+          a.cnicpassport
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -230,6 +235,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Alu
   const faculty = p?.facultyname ?? "";
   const dept = p?.departmentname ?? "";
   const contact = p?.contactno ?? "";
+  const cnicPassport = p?.cnicpassport ?? null;
   // Get SAP ID or registration number from session first, then (admin/viewer-only) from search params
   const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
   const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
@@ -461,33 +467,51 @@ let cardImageFile: string | null = null;
                    String(verifyValue).trim() !== '');
       
       if (isVerified || canView) {
-        // Join with tblchapters to get chapter names
+        // Fetch chapter IDs then resolve chapter names from tblchapters
         const chapterRows = await sql/* sql */`
-          SELECT 
-            ac."chapter1",
-            ac."chapter2",
-            ac."chapter3",
-            COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
-            COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
-            COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
+          SELECT ac."chapter1", ac."chapter2", ac."chapter3"
           FROM public.alumni_chapter ac
-          LEFT JOIN public.tblchapters c1 ON c1.id = ac."chapter1"
-          LEFT JOIN public.tblchapters c2 ON c2.id = ac."chapter2"
-          LEFT JOIN public.tblchapters c3 ON c3.id = ac."chapter3"
           WHERE ac.id = ${alumniId}
-          LIMIT 1`;
-        const chapterRec = chapterRows[0] as { 
-          chapter1?: number | null; 
-          chapter2?: number | null; 
-          chapter3?: number | null;
-          chapter1_name?: string | null;
-          chapter2_name?: string | null;
-          chapter3_name?: string | null;
+          LIMIT 1
+        `;
+
+        const chapterRec = chapterRows[0] as {
+          chapter1?: number | string | null;
+          chapter2?: number | string | null;
+          chapter3?: number | string | null;
         } | undefined;
+
+        const chapterIds: number[] = [];
+        const seenIds = new Set<number>();
         if (chapterRec) {
-          if (chapterRec.chapter1_name) chapters.push(String(chapterRec.chapter1_name));
-          if (chapterRec.chapter2_name) chapters.push(String(chapterRec.chapter2_name));
-          if (chapterRec.chapter3_name) chapters.push(String(chapterRec.chapter3_name));
+          [chapterRec.chapter1, chapterRec.chapter2, chapterRec.chapter3].forEach((ch) => {
+            if (ch === null || ch === undefined) return;
+            const chapterId = typeof ch === "number" ? ch : (typeof ch === "string" ? parseFloat(ch) : Number(ch));
+            if (Number.isFinite(chapterId) && chapterId > 0) {
+              const intId = Math.floor(chapterId);
+              if (!seenIds.has(intId)) {
+                seenIds.add(intId);
+                chapterIds.push(intId);
+              }
+            }
+          });
+        }
+
+        if (chapterIds.length > 0) {
+          const chapterNameRows = await sql/* sql */`
+            SELECT id, COALESCE(national_chapter, international_chapter) as chapter_name
+            FROM public.tblchapters
+            WHERE id = ANY(${chapterIds})
+          `;
+          const nameMap = new Map<number, string>();
+          (chapterNameRows as unknown as Array<{ id: number; chapter_name: string | null }>).forEach((r) => {
+            const nm = String(r.chapter_name ?? "").trim();
+            if (nm) nameMap.set(Number(r.id), nm);
+          });
+          chapterIds.forEach((id) => {
+            const nm = nameMap.get(id);
+            if (nm) chapters.push(nm);
+          });
         }
         // Remove duplicate chapters (case-insensitive) while preserving original case
         const seen = new Set<string>();
@@ -748,6 +772,19 @@ let cardImageFile: string | null = null;
                             )}
                           </div>
                         </div>
+                        {(cardStatus === "received" || cardStatus === "active") && (
+                          <div className="mb-3 flex justify-center">
+                            <Link
+                              href={sapId ? `/alumni-profile/card-print?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/card-print`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#183D32] transition-colors"
+                              aria-label="Download alumni card as PDF"
+                            >
+                              Download Card (PDF)
+                            </Link>
+                          </div>
+                        )}
                         {cardStatus === "received" || cardStatus === "active" ? (
                           <>
                             <div className="mt-3 sm:mt-4">
@@ -757,6 +794,7 @@ let cardImageFile: string | null = null;
                                 faculty={faculty}
                                 alumniId={sapId || "UOL-AL-0000"}
                                 sapId={sapId || ""}
+                                cnicPassport={cnicPassport}
                                 validity={validity}
                                 photoUrl={profileImageFilename}
                                 initialCardImage={cardTemplateImageFilename}

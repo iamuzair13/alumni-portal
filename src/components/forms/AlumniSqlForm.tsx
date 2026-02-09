@@ -1026,6 +1026,26 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       if (!payload.datasource || String(payload.datasource).trim() === "") {
         payload.datasource = "Alumni";
       }
+      // Ensure registrationno is always uppercase
+      if (payload.registrationno) {
+        payload.registrationno = String(payload.registrationno).toUpperCase();
+      }
+      // Capitalize alumniname (first letter and first after space)
+      if (payload.alumniname) {
+        payload.alumniname = String(payload.alumniname)
+          .toLowerCase()
+          .replace(/\b\w/g, c => c.toUpperCase());
+      }
+      // Capitalize fathername (first letter and first after space)
+      if (payload.fathername) {
+        payload.fathername = String(payload.fathername)
+          .toLowerCase()
+          .replace(/\b\w/g, c => c.toUpperCase());
+      }
+      // Restrict sapid to digits only
+      if (payload.sapid) {
+        payload.sapid = String(payload.sapid).replace(/\D/g, '');
+      }
       
       // Map employment status to database format
       if (payload.employeed) {

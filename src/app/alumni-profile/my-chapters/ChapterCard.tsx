@@ -20,7 +20,7 @@ export default function ChapterCard({ chapter }: ChapterCardProps) {
   
   const chapterName = chapter.national_chapter || chapter.international_chapter || "Unknown Chapter";
   const isNational = !!chapter.national_chapter;
-  
+
   // Build image path: /images/internationalchapters/(image.ext) or /images/nationalchapters/(image.ext)
   let imagePath: string | null = null;
   if (chapter.chapter_image && !imageError) {
@@ -35,6 +35,9 @@ export default function ChapterCard({ chapter }: ChapterCardProps) {
       imagePath = `/images/${directory}/${filename}`;
     }
   }
+
+  // Show all assigned chapter names
+  const allNames = [chapter.national_chapter, chapter.international_chapter].filter(Boolean);
   
   return (
     <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
@@ -59,9 +62,17 @@ export default function ChapterCard({ chapter }: ChapterCardProps) {
       </div>
       <div className="p-5">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-slate-900 line-clamp-2">
-            {chapterName}
-          </h3>
+          <div className="flex flex-col">
+            {allNames.length > 0 ? (
+              allNames.map((name, idx) => (
+                <span key={idx} className="text-lg font-semibold text-slate-900 line-clamp-2">
+                  {name}
+                </span>
+              ))
+            ) : (
+              <span className="text-lg font-semibold text-slate-900 line-clamp-2">Unknown Chapter</span>
+            )}
+          </div>
           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
             isNational 
               ? 'bg-blue-100 text-blue-700' 

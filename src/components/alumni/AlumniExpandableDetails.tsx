@@ -902,7 +902,26 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     try {
       // Get all current form values to ensure we capture edited fields
       const allFormValues = getValues();
-      
+      // Ensure registrationno is always uppercase if present
+      if (allFormValues.registrationno) {
+        allFormValues.registrationno = String(allFormValues.registrationno).toUpperCase();
+      }
+      // Capitalize alumniname (first letter and first after space)
+      if (allFormValues.alumniname) {
+        allFormValues.alumniname = String(allFormValues.alumniname)
+          .toLowerCase()
+          .replace(/\b\w/g, c => c.toUpperCase());
+      }
+      // Capitalize fathername (first letter and first after space)
+      if (allFormValues.fathername) {
+        allFormValues.fathername = String(allFormValues.fathername)
+          .toLowerCase()
+          .replace(/\b\w/g, c => c.toUpperCase());
+      }
+      // Restrict sapid to digits only
+      if (allFormValues.sapid) {
+        allFormValues.sapid = String(allFormValues.sapid).replace(/\D/g, '');
+      }
       // Build update payload - include all fields that are currently being edited
       const updatePayload: Record<string, unknown> = {};
       

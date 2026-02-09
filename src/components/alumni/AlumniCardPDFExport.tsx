@@ -15,6 +15,7 @@ type Props = {
     department: string;
     faculty: string;
     alumniId: string;
+    cnicPassport?: string | null;
     validity?: string;
     photoUrl?: string | null;
     cardImage?: string | null;
@@ -306,6 +307,7 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
                 <div class="faculty">${exportData.faculty || "Faculty"}</div>
                 <div class="alumni-id">${exportData.alumniId || "UOL-AL-0000"}</div>
                 <div class="validity">${formattedValidity}</div>
+                <div class="validity" style="bottom: calc(${CUSTOM_STYLES.idBottom} - 38px);">${exportData.cnicPassport || ""}</div>
                 <div class="photo-container">
                   <img src="${baseUrl}${photoUrl}" alt="${exportData.studentName}" class="photo-image" onerror="this.src='${baseUrl}/images/person.jpg'" />
                 </div>

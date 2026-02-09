@@ -626,6 +626,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       universityemail: string | null;
       verify: string | boolean | null;
     };
+
+    const prevVerifyValue = current.verify;
     
     // SECURITY: Check access filter for admin/viewer users
     const { buildAccessFilterSQL } = await import("@/lib/userAccess");
@@ -754,11 +756,46 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     } else if (wasUnderApproval && !generatedPassword) {
 
     }
+
+    try {
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: shouldVerify ? "ALUMNI_VERIFY" : "ALUMNI_UNVERIFY",
+          entityType: "alumni",
+          entityId: current.alumniid ?? sapid,
+          success: true,
+          metadata: {
+            alumniid: current.alumniid,
+            identifier: sapid,
+            prevVerify: prevVerifyValue,
+            newVerify: verifyString,
+          },
+        },
+      });
+    } catch {
+    }
     
     return NextResponse.json({ ok: true, verify: verifyString }, { status: 200 });
   } catch (err) {
 
     const message = err instanceof Error ? err.message : "Failed to update verification status";
+    try {
+      const session = await auth();
+      await logAdminAction({
+        session,
+        req,
+        input: {
+          action: "ALUMNI_VERIFY",
+          entityType: "alumni",
+          entityId: (await ctx.params).sapid,
+          success: false,
+          errorMessage: message,
+        },
+      });
+    } catch {
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

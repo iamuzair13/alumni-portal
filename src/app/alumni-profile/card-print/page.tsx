@@ -28,6 +28,7 @@ type AlumniCardData = {
   appliedAt?: string | null;
   photoUrl?: string | null;
   cardImage?: string | null;
+  cnicPassport?: string | null;
 };
 
 function CardPrintPageContent() {
@@ -98,6 +99,7 @@ function CardPrintPageContent() {
           appliedAt: appliedAt,
           photoUrl: alumni.image1 || null,
           cardImage: cardImage,
+          cnicPassport: alumni.cnicpassport || null,
         });
       } catch (err) {
 
@@ -316,7 +318,7 @@ function CardPrintPageContent() {
               </span>
             </div>
 
-            {/* Alumni ID and Validity */}
+            {/* Alumni ID, Validity, and CNIC/Passport */}
             <div
               ref={alumniInfoRef}
               className="absolute bottom-[28%] left-[20%] flex flex-col gap-0.5 text-[#0f7a3a]"
@@ -324,6 +326,11 @@ function CardPrintPageContent() {
               <span className="text-[8px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
               <span className="text-[8px] font-medium">{formattedValidity()}</span>
             </div>
+              {cardData.cnicPassport && (
+                <div className="absolute bottom-[21%] left-[1%] flex flex-row justify-center items-center gap-8 text-[#0f7a3a]">
+                <p className="text-[10px]">CNIC :</p> <span className="text-[8px] font-medium">{cardData.cnicPassport || ""}</span>
+            </div>
+              )}
 
             {/* Photo */}
             <div className="absolute right-[4%] top-[16%] flex h-[70%] w-[32%] items-center justify-center overflow-hidden rounded-sm">

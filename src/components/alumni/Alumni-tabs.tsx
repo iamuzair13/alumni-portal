@@ -2009,6 +2009,8 @@ export const AlumniTabs: React.FC = () => {
 
     // Define column options
     const columns: ColumnOption[] = [
+        { key: "SAP ID", label: "SAP ID", defaultSelected: true },
+        { key: "Registration No", label: "Registration No", defaultSelected: true },
         { key: "Full Name", label: "Full Name", defaultSelected: true },
         { key: "Gender", label: "Gender", defaultSelected: true },
         { key: "Father Name", label: "Father Name", defaultSelected: false },

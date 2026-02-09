@@ -88,17 +88,14 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const avatar = useMemo(() => {
     // If image error occurred, always use fallback
     if (imageError) return "/images/person.jpg";
-    
     // If empty or falsy, return default image
     if (!rawAvatar || rawAvatar === "" || rawAvatar === "null" || rawAvatar === "undefined") {
       return "/images/person.jpg";
     }
-    
     // Remove old path references
     let imagePath = rawAvatar.replace(/\/tumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
-    
     // Normalize image path for Next.js Image component
     // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
     // Images are stored in /public/images/(imagename.extention)
@@ -460,16 +457,10 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                 )}
 
                 {/* Not Verified Message */}
-                {!isVerified && !chaptersError && !associationError && (
-                  <div className="p-2.5 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg mb-2 sm:mb-3">
-                    <p className="text-xs sm:text-sm text-amber-700">
-                      Your account needs to be verified before you can view or apply for chapters and associations.
-                    </p>
-                  </div>
-                )}
+
 
                 {/* Verified: Show Chapters and Associations */}
-                {isVerified && !chaptersError && !associationError && (
+                {!chaptersError && !associationError && (
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {/* Chapters */}
                     {chapters.map((chapter, index) => (

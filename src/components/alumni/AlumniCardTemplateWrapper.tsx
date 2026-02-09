@@ -9,6 +9,7 @@ type AlumniCardTemplateWrapperProps = {
   department: string;
   faculty: string;
   alumniId: string;
+  cnicPassport?: string | null;
   validity?: string;
   photoUrl?: string | null;
   cardImage?: string | null;
@@ -20,6 +21,7 @@ export default function AlumniCardTemplateWrapper({
   department,
   faculty,
   alumniId,
+  cnicPassport,
   validity,
   photoUrl,
   cardImage,
@@ -42,6 +44,7 @@ export default function AlumniCardTemplateWrapper({
               department,
               faculty,
               alumniId,
+              cnicPassport,
               validity,
               photoUrl,
               cardImage,
@@ -55,6 +58,7 @@ export default function AlumniCardTemplateWrapper({
           department={department}
           faculty={faculty}
           alumniId={alumniId}
+          cnicPassport={cnicPassport}
           validity={validity}
           photoUrl={photoUrl}
           cardImage={cardImage}

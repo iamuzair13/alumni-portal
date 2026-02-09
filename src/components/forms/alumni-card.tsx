@@ -59,6 +59,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   const [fetchedName, setFetchedName] = useState(name);
   const [fetchedFaculty, setFetchedFaculty] = useState(faculty);
   const [fetchedDepartment, setFetchedDepartment] = useState(department);
+  const [fetchedCnicPassport, setFetchedCnicPassport] = useState<string>("");
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
     defaultValues: { confirmation: false, comment: "", addressPreference: "Collect", address: "" },
@@ -84,6 +85,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
             if (alumni.alumniname) setFetchedName(alumni.alumniname);
             if (alumni.facultyname) setFetchedFaculty(alumni.facultyname);
             if (alumni.departmentname) setFetchedDepartment(alumni.departmentname);
+            if (alumni.cnicpassport) setFetchedCnicPassport(String(alumni.cnicpassport));
           }
         }
       } catch (error) {
@@ -250,6 +252,13 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           </div>
           <p className="text-xs text-gray-500 mt-1">Card will be valid until {validityDateStr} (3 years from application date)</p>
         </div>
+        <div>
+          <label className={labelBase} htmlFor="cnic">CNIC/Passport</label>
+          <div className="relative flex items-center">
+            <input id="cnic" className={inputBase} value={fetchedCnicPassport || ""} readOnly aria-label="CNIC/Passport" />
+          </div>
+          <p className="text-xs text-blue-700 mt-1">Please enter the correct CNIC. It will be used for verification and card issuance. Make sure it matches your official documents.</p>
+        </div>
       </div>
 
       <div>
@@ -310,6 +319,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
             Delivery Address
             <span className="text-red-600 ml-1">*</span>
           </label>
+          <p className="text-xs text-blue-700 mb-2">Please make sure that your Home address is correct for delivery at this address.</p>
           <div className="relative flex items-center mt-4">
             <textarea
               id="address"

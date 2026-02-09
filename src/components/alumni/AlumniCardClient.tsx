@@ -9,6 +9,7 @@ type AlumniCardClientProps = {
   faculty: string;
   alumniId: string;
   sapId: string;
+  cnicPassport?: string | null;
   validity?: string;
   photoUrl?: string | null; // Profile image from tbl_alumni.image1
   initialCardImage?: string | null; // Initial card image from server (for SSR)
@@ -22,6 +23,7 @@ export default function AlumniCardClient({
   faculty,
   alumniId,
   sapId,
+  cnicPassport,
   validity,
   photoUrl,
   initialCardImage,
@@ -48,6 +50,7 @@ export default function AlumniCardClient({
       department={department}
       faculty={faculty}
       alumniId={alumniId}
+      cnicPassport={cnicPassport}
       validity={computedValidity}
       photoUrl={photoUrl}
       cardImage={cardImage}
