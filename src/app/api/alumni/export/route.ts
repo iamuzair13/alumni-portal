@@ -52,6 +52,7 @@ export async function GET(req: Request) {
     const regNoStateParams = searchParams.getAll("regNoState");
     const personalEmailStateParams = searchParams.getAll("personalEmailState");
     const contactNoStateParams = searchParams.getAll("contactNoState");
+    const selectedAlumniIdsParams = searchParams.getAll("selectedAlumniIds");
     const categoryParams = searchParams.getAll("category");
     
     const faculty = facultyParams.length > 0 ? facultyParams : (searchParams.get("faculty") || "");
@@ -81,6 +82,7 @@ export async function GET(req: Request) {
     const regNoState = regNoStateParams.length > 0 ? regNoStateParams : (searchParams.get("regNoState") || "");
     const personalEmailState = personalEmailStateParams.length > 0 ? personalEmailStateParams : (searchParams.get("personalEmailState") || "");
     const contactNoState = contactNoStateParams.length > 0 ? contactNoStateParams : (searchParams.get("contactNoState") || "");
+    const selectedAlumniIds = selectedAlumniIdsParams.length > 0 ? selectedAlumniIdsParams : (searchParams.get("selectedAlumniIds") || "");
     const category = categoryParams.length > 0 ? categoryParams : (searchParams.get("category") || "");
 
     // Build access filter for admin/viewer users
@@ -127,9 +129,28 @@ export async function GET(req: Request) {
     const hasRegNoStateFilter = regNoState && (Array.isArray(regNoState) ? regNoState.length > 0 : regNoState);
     const hasPersonalEmailStateFilter = personalEmailState && (Array.isArray(personalEmailState) ? personalEmailState.length > 0 : personalEmailState);
     const hasContactNoStateFilter = contactNoState && (Array.isArray(contactNoState) ? contactNoState.length > 0 : contactNoState);
+    const hasSelectedAlumniIdsFilter = selectedAlumniIds && (Array.isArray(selectedAlumniIds) ? selectedAlumniIds.length > 0 : selectedAlumniIds);
     const baseWhere = status === "underApproval" || hasSapIdStateFilter || hasRegNoStateFilter
       ? sql`1=1` 
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
+
+    // Restrict export to selected alumni IDs (if provided)
+    let selectedAlumniIdsFilter = sql``;
+    if (hasSelectedAlumniIdsFilter) {
+      const rawIds = Array.isArray(selectedAlumniIds) ? selectedAlumniIds : [selectedAlumniIds];
+      const ids = rawIds
+        .map((v) => {
+          const n = Number(String(v).trim());
+          return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+        })
+        .filter((v): v is number => v !== null);
+
+      if (ids.length > 0) {
+        selectedAlumniIdsFilter = sql`AND a.alumniid = ANY(${ids})`;
+      } else {
+        selectedAlumniIdsFilter = sql`AND 1 = 0`;
+      }
+    }
 
     // Category filter (independent of status)
     // Supports both "category:aPlus"/"category:a" style and raw "a+","a","b","c","d","NULL"
@@ -628,7 +649,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // SAP ID state filter (NULL only)
+    // SAP ID state filter (NULL/EXISTS)
     let sapIdStateFilter = sql``;
     if (hasSapIdStateFilter) {
       const states = Array.isArray(sapIdState) ? sapIdState : [sapIdState];
@@ -640,6 +661,12 @@ export async function GET(req: Request) {
             OR TRIM(COALESCE(a.sapid, '')) = ''
             OR LOWER(TRIM(COALESCE(a.sapid, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            a.sapid IS NOT NULL
+            AND TRIM(COALESCE(a.sapid, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.sapid, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -647,7 +674,7 @@ export async function GET(req: Request) {
       sapIdStateFilter = sql`AND (${combinedCondition})`;
     }
 
-    // Registration No state filter (NULL only)
+    // Registration No state filter (NULL/EXISTS)
     let regNoStateFilter = sql``;
     if (hasRegNoStateFilter) {
       const states = Array.isArray(regNoState) ? regNoState : [regNoState];
@@ -659,6 +686,12 @@ export async function GET(req: Request) {
             OR TRIM(COALESCE(a.registrationno, '')) = ''
             OR LOWER(TRIM(COALESCE(a.registrationno, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            a.registrationno IS NOT NULL
+            AND TRIM(COALESCE(a.registrationno, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.registrationno, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -666,7 +699,7 @@ export async function GET(req: Request) {
       regNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
-    // Personal Email state filter (NULL only)
+    // Personal Email state filter (NULL/EXISTS)
     let personalEmailStateFilter = sql``;
     if (hasPersonalEmailStateFilter) {
       const states = Array.isArray(personalEmailState) ? personalEmailState : [personalEmailState];
@@ -678,6 +711,12 @@ export async function GET(req: Request) {
             OR TRIM(COALESCE(a.personalemail, '')) = ''
             OR LOWER(TRIM(COALESCE(a.personalemail, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            a.personalemail IS NOT NULL
+            AND TRIM(COALESCE(a.personalemail, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.personalemail, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -685,7 +724,7 @@ export async function GET(req: Request) {
       personalEmailStateFilter = sql`AND (${combinedCondition})`;
     }
 
-    // Contact No state filter (NULL only)
+    // Contact No state filter (NULL/EXISTS)
     let contactNoStateFilter = sql``;
     if (hasContactNoStateFilter) {
       const states = Array.isArray(contactNoState) ? contactNoState : [contactNoState];
@@ -698,6 +737,12 @@ export async function GET(req: Request) {
               OR TRIM(COALESCE(a.contactno, '')) = ''
               OR LOWER(TRIM(COALESCE(a.contactno, ''))) = 'null'
             )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            a.contactno IS NOT NULL
+            AND TRIM(COALESCE(a.contactno, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.contactno, ''))) != 'null'
           )`;
         }
         return sql`1 = 0`;
@@ -790,6 +835,7 @@ export async function GET(req: Request) {
         ${regNoStateFilter}
         ${personalEmailStateFilter}
         ${contactNoStateFilter}
+        ${selectedAlumniIdsFilter}
         ${accessFilterCondition}
         ${searchCondition}
       ORDER BY a.alumniid DESC

@@ -524,6 +524,12 @@ export function buildMasterFilterConditions(
             OR TRIM(COALESCE(sapid, '')) = ''
             OR LOWER(TRIM(COALESCE(sapid, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            sapid IS NOT NULL
+            AND TRIM(COALESCE(sapid, '')) != ''
+            AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
+          )`;
         }
         // Unknown value – do not match anything
         return sql`1 = 0`;
@@ -547,6 +553,12 @@ export function buildMasterFilterConditions(
             OR TRIM(COALESCE(registrationno, '')) = ''
             OR LOWER(TRIM(COALESCE(registrationno, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            registrationno IS NOT NULL
+            AND TRIM(COALESCE(registrationno, '')) != ''
+            AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -568,6 +580,12 @@ export function buildMasterFilterConditions(
             personalemail IS NULL
             OR TRIM(COALESCE(personalemail, '')) = ''
             OR LOWER(TRIM(COALESCE(personalemail, ''))) = 'null'
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            personalemail IS NOT NULL
+            AND TRIM(COALESCE(personalemail, '')) != ''
+            AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
           )`;
         }
         return sql`1 = 0`;
@@ -592,6 +610,12 @@ export function buildMasterFilterConditions(
               OR TRIM(COALESCE(contactno, '')) = ''
               OR LOWER(TRIM(COALESCE(contactno, ''))) = 'null'
             )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            contactno IS NOT NULL
+            AND TRIM(COALESCE(contactno, '')) != ''
+            AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
           )`;
         }
         return sql`1 = 0`;

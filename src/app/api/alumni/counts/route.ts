@@ -709,7 +709,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // SAP ID state filter (NULL only)
+    // SAP ID state filter (NULL/EXISTS)
     let sapIdStateFilter = sql``;
     const hasSapIdStateFilter = sapIdState && (Array.isArray(sapIdState) ? sapIdState.length > 0 : sapIdState);
     if (hasSapIdStateFilter) {
@@ -722,6 +722,12 @@ export async function GET(req: Request) {
             OR TRIM(COALESCE(sapid, '')) = ''
             OR LOWER(TRIM(COALESCE(sapid, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            sapid IS NOT NULL
+            AND TRIM(COALESCE(sapid, '')) != ''
+            AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -729,7 +735,7 @@ export async function GET(req: Request) {
       sapIdStateFilter = sql`AND (${combinedCondition})`;
     }
 
-    // Registration No state filter (NULL only)
+    // Registration No state filter (NULL/EXISTS)
     let regNoStateFilter = sql``;
     const hasRegNoStateFilter = regNoState && (Array.isArray(regNoState) ? regNoState.length > 0 : regNoState);
     if (hasRegNoStateFilter) {
@@ -742,6 +748,12 @@ export async function GET(req: Request) {
             OR TRIM(COALESCE(registrationno, '')) = ''
             OR LOWER(TRIM(COALESCE(registrationno, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            registrationno IS NOT NULL
+            AND TRIM(COALESCE(registrationno, '')) != ''
+            AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -749,7 +761,7 @@ export async function GET(req: Request) {
       regNoStateFilter = sql`AND (${combinedCondition})`;
     }
 
-    // Personal Email state filter (NULL only)
+    // Personal Email state filter (NULL/EXISTS)
     let personalEmailStateFilter = sql``;
     const hasPersonalEmailStateFilter = personalEmailState && (Array.isArray(personalEmailState) ? personalEmailState.length > 0 : personalEmailState);
     if (hasPersonalEmailStateFilter) {
@@ -762,6 +774,12 @@ export async function GET(req: Request) {
             OR TRIM(COALESCE(personalemail, '')) = ''
             OR LOWER(TRIM(COALESCE(personalemail, ''))) = 'null'
           )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            personalemail IS NOT NULL
+            AND TRIM(COALESCE(personalemail, '')) != ''
+            AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -769,7 +787,7 @@ export async function GET(req: Request) {
       personalEmailStateFilter = sql`AND (${combinedCondition})`;
     }
 
-    // Contact No state filter (NULL only)
+    // Contact No state filter (NULL/EXISTS)
     let contactNoStateFilter = sql``;
     const hasContactNoStateFilter = contactNoState && (Array.isArray(contactNoState) ? contactNoState.length > 0 : contactNoState);
     if (hasContactNoStateFilter) {
@@ -783,6 +801,12 @@ export async function GET(req: Request) {
               OR TRIM(COALESCE(contactno, '')) = ''
               OR LOWER(TRIM(COALESCE(contactno, ''))) = 'null'
             )
+          )`;
+        } else if (normalized === "EXISTS") {
+          return sql`(
+            contactno IS NOT NULL
+            AND TRIM(COALESCE(contactno, '')) != ''
+            AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
           )`;
         }
         return sql`1 = 0`;

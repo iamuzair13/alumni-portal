@@ -280,6 +280,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedFundingSources, setSelectedFundingSources] = useState<string[]>([]);
   const [selectedInstitutionCountries, setSelectedInstitutionCountries] = useState<string[]>([]);
   const [selectedInstitutionCities, setSelectedInstitutionCities] = useState<string[]>([]);
+  const [selectedAlumniIds, setSelectedAlumniIds] = useState<number[]>([]);
   
   // Export column toggles – control which groups of columns are exported
   const [selectedSapIdStates, setSelectedSapIdStates] = useState<string[]>([]);
@@ -1573,6 +1574,27 @@ export const AlumniTabs: React.FC = () => {
   // No need to slice - server already returns the correct page
   const pageItems = useMemo(() => filteredItems, [filteredItems]);
 
+  const pageAlumniIds = useMemo(() => {
+    const ids: number[] = [];
+    pageItems.forEach((it) => {
+      const n = Number(it.alumniid);
+      if (Number.isFinite(n) && n > 0) ids.push(Math.floor(n));
+    });
+    return ids;
+  }, [pageItems]);
+
+  const pageAllSelected = useMemo(() => {
+    if (pageAlumniIds.length === 0) return false;
+    const set = new Set(selectedAlumniIds);
+    return pageAlumniIds.every((id) => set.has(id));
+  }, [pageAlumniIds, selectedAlumniIds]);
+
+  const pageSomeSelected = useMemo(() => {
+    if (pageAlumniIds.length === 0) return false;
+    const set = new Set(selectedAlumniIds);
+    return pageAlumniIds.some((id) => set.has(id)) && !pageAllSelected;
+  }, [pageAlumniIds, selectedAlumniIds, pageAllSelected]);
+
   // Reset page only when filters/tabs change, not when page changes
   useEffect(() => { 
     // Only reset if current page is invalid after filter/tab change
@@ -1581,6 +1603,11 @@ export const AlumniTabs: React.FC = () => {
     }
     setSelectedRowId(null); 
   }, [selected, pageSize, debouncedQuery, totalPages]);
+
+  // Clear selected checkboxes when the dataset meaningfully changes
+  useEffect(() => {
+    setSelectedAlumniIds([]);
+  }, [selected, debouncedQuery, pageSize]);
   
   // Separate effect to clear selected row when page changes (but don't reset page)
   useEffect(() => {
@@ -1808,6 +1835,11 @@ export const AlumniTabs: React.FC = () => {
       if (selectedContactNoStates.length > 0) {
         selectedContactNoStates.forEach(state => {
           url.searchParams.append("contactNoState", state);
+        });
+      }
+      if (selectedAlumniIds.length > 0) {
+        selectedAlumniIds.forEach((id) => {
+          url.searchParams.append("selectedAlumniIds", String(id));
         });
       }
       if (selectedCategories.length > 0) {
@@ -4559,82 +4591,110 @@ export const AlumniTabs: React.FC = () => {
                         )}
                       </div>
 
-                      {/* SAP ID State Filter (NULL only) */}
+                      {/* SAP ID State Filter (NULL/EXISTS) */}
                       <div className="relative">
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                          SAP ID (Missing)
+                          SAP ID (Missing/Existing)
                         </label>
                         <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                          <label className="flex items-center justify-between cursor-pointer">
-                            <span className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedSapIdStates.includes("NULL")}
-                                onChange={() => handleSapIdStateToggle("NULL")}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span>NULL</span>
-                            </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedSapIdStates.includes("NULL")}
+                              onChange={() => handleSapIdStateToggle("NULL")}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>NULL</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedSapIdStates.includes("EXISTS")}
+                              onChange={() => handleSapIdStateToggle("EXISTS")}
+                              className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>EXISTS</span>
                           </label>
                         </div>
                       </div>
 
-                      {/* Registration No State Filter (NULL only) */}
+                      {/* Registration No State Filter (NULL/EXISTS) */}
                       <div className="relative">
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                          Registration No (Missing)
+                          Registration No (Missing/Existing)
                         </label>
                         <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                          <label className="flex items-center justify-between cursor-pointer">
-                            <span className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedRegNoStates.includes("NULL")}
-                                onChange={() => handleRegNoStateToggle("NULL")}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span>NULL</span>
-                            </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedRegNoStates.includes("NULL")}
+                              onChange={() => handleRegNoStateToggle("NULL")}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>NULL</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedRegNoStates.includes("EXISTS")}
+                              onChange={() => handleRegNoStateToggle("EXISTS")}
+                              className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>EXISTS</span>
                           </label>
                         </div>
                       </div>
 
-                      {/* Personal Email State Filter (NULL only) */}
+                      {/* Personal Email State Filter (NULL/EXISTS) */}
                       <div className="relative">
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                          Personal Email (Missing)
+                          Personal Email (Missing/Existing)
                         </label>
                         <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                          <label className="flex items-center justify-between cursor-pointer">
-                            <span className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedPersonalEmailStates.includes("NULL")}
-                                onChange={() => handlePersonalEmailStateToggle("NULL")}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span>NULL</span>
-                            </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedPersonalEmailStates.includes("NULL")}
+                              onChange={() => handlePersonalEmailStateToggle("NULL")}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>NULL</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedPersonalEmailStates.includes("EXISTS")}
+                              onChange={() => handlePersonalEmailStateToggle("EXISTS")}
+                              className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>EXISTS</span>
                           </label>
                         </div>
                       </div>
 
-                      {/* Contact No State Filter (NULL only) */}
+                      {/* Contact No State Filter (NULL/EXISTS) */}
                       <div className="relative">
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
-                          Contact No (Missing)
+                          Contact No (Missing/Existing)
                         </label>
                         <div className="space-y-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                          <label className="flex items-center justify-between cursor-pointer">
-                            <span className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedContactNoStates.includes("NULL")}
-                                onChange={() => handleContactNoStateToggle("NULL")}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
-                              />
-                              <span>NULL</span>
-                            </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedContactNoStates.includes("NULL")}
+                              onChange={() => handleContactNoStateToggle("NULL")}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>NULL</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedContactNoStates.includes("EXISTS")}
+                              onChange={() => handleContactNoStateToggle("EXISTS")}
+                              className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>EXISTS</span>
                           </label>
                         </div>
                       </div>
@@ -4735,6 +4795,29 @@ export const AlumniTabs: React.FC = () => {
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[56px]">
+                      <input
+                        type="checkbox"
+                        checked={pageAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = pageSomeSelected;
+                        }}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSelectedAlumniIds((prev) => {
+                            const set = new Set(prev);
+                            if (checked) {
+                              pageAlumniIds.forEach((id) => set.add(id));
+                            } else {
+                              pageAlumniIds.forEach((id) => set.delete(id));
+                            }
+                            return Array.from(set);
+                          });
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
+                        aria-label="Select all rows on this page"
+                      />
+                    </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       onClick={() => handleSort("alumniid")}
@@ -4847,6 +4930,9 @@ export const AlumniTabs: React.FC = () => {
                     Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
                       <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
                         <TableCell className="px-3 sm:px-6 py-5">
+                          <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5">
                           <div className="h-5 w-16 sm:w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5">
@@ -4881,7 +4967,7 @@ export const AlumniTabs: React.FC = () => {
                   )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={10}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={11}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4918,7 +5004,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={10}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={11}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4958,6 +5044,33 @@ export const AlumniTabs: React.FC = () => {
                         onClick={() => setSelectedRowId(alum.id)}
                         aria-selected={selectedRowId === alum.id}
                       >
+                        <TableCell className="px-3 sm:px-6 py-5">
+                          <input
+                            type="checkbox"
+                            checked={(() => {
+                              const n = Number(alum.alumniid);
+                              if (!Number.isFinite(n) || n <= 0) return false;
+                              return selectedAlumniIds.includes(Math.floor(n));
+                            })()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const n = Number(alum.alumniid);
+                              if (!Number.isFinite(n) || n <= 0) return;
+                              const id = Math.floor(n);
+                              setSelectedAlumniIds((prev) => {
+                                if (checked) {
+                                  return prev.includes(id) ? prev : [...prev, id];
+                                }
+                                return prev.filter((x) => x !== id);
+                              });
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
+                            aria-label={`Select alumni ${alum.alumniid ?? ""}`}
+                          />
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
                           <span className="truncate block max-w-[100px] sm:max-w-none">{alum.alumniid ?? "-"}</span>
                         </TableCell>
@@ -5138,7 +5251,7 @@ export const AlumniTabs: React.FC = () => {
                       </TableRow>
                       {expandedRowId === alum.id && (isSuperAdminUser(session?.user) || isAdminUser(session?.user) || isViewerUser(session?.user)) && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={10} className="px-0 py-6">
+                          <TableCell colSpan={11} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start ">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canModify(session?.user)} />
