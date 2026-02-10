@@ -215,7 +215,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     // Update status and reason_onhold if provided
     // If status is not "Onhold", clear reason_onhold
     // If status is "Onhold", add a default note to the comment field
-    let rows: Array<{ cardid: number }>;
+    let rows: Array<{ cardid: number; reason_onhold: string | null }>;
     try {
       if (finalStatus === "Onhold") {
         // Add default note about profile picture when status is set to Onhold
@@ -233,8 +233,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
               TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
               OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
             )
-          RETURNING c.cardid
-        ` as Array<{ cardid: number }>;
+          RETURNING c.cardid, c.reason_onhold
+        ` as Array<{ cardid: number; reason_onhold: string | null }>;
       } else {
         rows = await sql/* sql */`
           UPDATE public.tblcard c
@@ -251,8 +251,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
               TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
               OR TRIM(COALESCE(a.registrationno, '')) = ${normalizedSapid}
             )
-          RETURNING c.cardid
-        ` as Array<{ cardid: number }>;
+          RETURNING c.cardid, c.reason_onhold
+        ` as Array<{ cardid: number; reason_onhold: string | null }>;
       }
     } catch (updateError) {
 
@@ -276,7 +276,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
         if (currentStatus !== finalStatus) {
           if (finalStatus === "Onhold") {
             // Send "on hold" email when status becomes Onhold
-            sendAlumniCardOnHoldEmail(alumniEmail, alumniName).catch((err) => {
+            sendAlumniCardOnHoldEmail(alumniEmail, alumniName, rows[0]?.reason_onhold ?? reasonOnhold).catch((err) => {
 
             });
           } else if (finalStatus === "Delivered") {

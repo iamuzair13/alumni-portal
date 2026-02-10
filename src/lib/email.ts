@@ -1,6 +1,15 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Get email configuration from environment variables (read at runtime for Vercel compatibility)
 function getEmailConfig() {
   const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
@@ -455,10 +464,12 @@ export async function sendAlumniCardApplicationReceivedEmail(
 
 export async function sendAlumniCardOnHoldEmail(
   alumniEmail: string,
-  alumniName: string
+  alumniName: string,
+  reasonOnhold?: string | null
 ): Promise<boolean> {
   const subject = "Alumni Card Application On Hold – Action Required";
   const greeting = `Dear ${alumniName},`;
+  const safeReason = reasonOnhold ? escapeHtml(String(reasonOnhold)) : null;
   const body = `
     <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
       Thank you for applying for the UOL Alumni Card.
@@ -469,6 +480,12 @@ export async function sendAlumniCardOnHoldEmail(
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
       Therefore, your application is currently on hold.
     </p>
+    ${safeReason ? `
+      <div style="margin: 15px 0 0 0; padding: 12px 14px; background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px;">
+        <p style="margin: 0 0 6px 0; color: #333333; font-size: 14px; font-weight: 600;">Reason provided:</p>
+        <p style="margin: 0; color: #333333; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${safeReason}</p>
+      </div>
+    ` : ""}
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
       If you need assistance or clarification, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
     </p>
