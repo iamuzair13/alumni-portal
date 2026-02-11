@@ -21,7 +21,7 @@ export function isSuperAdminUser(user: Session["user"] | null | undefined): bool
  */
 export function isAdminUser(user: Session["user"] | null | undefined): boolean {
   const t = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
-  return t === "admin";
+  return t === "admin" || t === "staff";
 }
 
 /**
@@ -67,7 +67,7 @@ export function computeLoginBanner(user: Session["user"] | null | undefined): { 
   const email = user?.email ? String(user.email) : "";
   const type = String((user as unknown as { type?: string })?.type || "").toLowerCase().trim();
   if (!email) return { show: true, message: "Please sign in to view your alumni profile." };
-  if (type === "admin" || type === "superadmin" || type === "viewer") return { show: false, message: "" };
+  if (type === "admin" || type === "staff" || type === "superadmin" || type === "viewer") return { show: false, message: "" };
   if (type !== "alumni") return { show: true, message: "Only alumni accounts can access this page." };
   return { show: false, message: "" };
 }

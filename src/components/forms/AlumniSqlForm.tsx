@@ -641,6 +641,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
   useEffect(() => {
     if (isHigherEdStatus) {
+      clearErrors([
+        "industry",
+        "nameoforganization",
+        "designation",
+        "officialemail",
+        "officialnumber",
+        "organization_address",
+        "workCity",
+        "workCountry",
+        "totalyearsofexpereince",
+        "startOfCareer",
+      ]);
       setValue("industry", null, { shouldValidate: false });
       setValue("nameoforganization", null, { shouldValidate: false });
       setValue("designation", null, { shouldValidate: false });
@@ -662,6 +674,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     setValue("scholarship", null, { shouldValidate: false });
 
     if (!isWorkStatus) {
+      clearErrors([
+        "industry",
+        "nameoforganization",
+        "designation",
+        "officialemail",
+        "officialnumber",
+        "organization_address",
+        "workCity",
+        "workCountry",
+        "totalyearsofexpereince",
+        "startOfCareer",
+      ]);
       setValue("industry", null, { shouldValidate: false });
       setValue("nameoforganization", null, { shouldValidate: false });
       setValue("designation", null, { shouldValidate: false });
@@ -673,7 +697,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       setValue("totalyearsofexpereince", null, { shouldValidate: false });
       setValue("startOfCareer", null, { shouldValidate: false });
     }
-  }, [employeedVal, isWorkStatus, isHigherEdStatus, setValue]);
+  }, [employeedVal, isWorkStatus, isHigherEdStatus, setValue, clearErrors]);
   
   // Filter database-backed faculties based on user access
   const filteredFaculties = useMemo(() => {

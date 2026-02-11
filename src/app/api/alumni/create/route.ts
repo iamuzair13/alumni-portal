@@ -2,9 +2,6 @@ import { sql } from "@/lib/dbconnect";
 import { NextResponse } from "next/server";
 import generateEasyPassword from "@/lib/passwordUtils";
 import { auth } from "@/lib/auth";
-import { isSuperAdminUser, isAdminUser, canModify } from "@/lib/alumniProfile";
-import { getUserAccessAssignments, getUserIdFromSession } from "@/lib/userAccess";
-import { getFacultyByDepartment } from "@/data/programs-departments";
 import { parseChapterCities } from "@/lib/chapterCities";
 import { erpClient } from "@/lib/erpClient";
 
@@ -203,118 +200,8 @@ type TblAlumniBody = {
 export async function POST(req: Request) {
   try {
     // Get session if available (optional - registration is public)
-    const session = await auth();
+    await auth();
     const body = (await req.json()) as TblAlumniBody;
-    
-    // Check if user is alumni - alumni can self-register without access assignment checks
-    const userType = session?.user ? ((session.user as { type?: string | null })?.type ? String((session.user as { type?: string | null }).type).toLowerCase().trim() : "") : "";
-    const isAlumni = userType === "alumni";
-    
-    // Validate user has access to the selected faculty/department/program
-    // Only apply this check if user is logged in as admin (not for public registration)
-    // Skip this check for:
-    // - Alumni users (they can register themselves)
-    // - Super admins (they have full access to all faculties/departments/programs)
-    // - Unauthenticated users (public registration allowed)
-    // NOTE: This check is skipped for public registration (no session) and alumni self-registration
-    // Admins can add alumni but only within their assigned access (faculty/department/program)
-    const isAdmin = session?.user ? isAdminUser(session.user) : false;
-    const isSuperAdmin = session?.user ? isSuperAdminUser(session.user) : false;
-    const canAddAlumni = session?.user ? canModify(session.user) : false; // Admins and superadmins can add
-
-    // Check access assignments for admins (superadmins have full access, so skip check)
-    if (body.faculty && body.department && body.degreetitle && !isAlumni && session?.user && canAddAlumni && !isSuperAdmin) {
-      // Fetch faculty, department, and program names from IDs for access check
-      const facultyRow = await sql/* sql */`
-        SELECT faculty_name FROM public.tbl_faculties WHERE id = ${body.faculty} LIMIT 1
-      `;
-      const departmentRow = await sql/* sql */`
-        SELECT department_name FROM public.tbl_departments WHERE id = ${body.department} LIMIT 1
-      `;
-      
-      const faculty = facultyRow.length > 0 ? String(facultyRow[0].faculty_name).trim() : "";
-      const department = departmentRow.length > 0 ? String(departmentRow[0].department_name).trim() : "";
-      const program = String(body.degreetitle).trim();
-
-      // Admins can only add alumni within their assigned access
-      // Super admins can add to any faculty/department/program (they skip this check)
-      const userId = getUserIdFromSession(session);
-      if (userId) {
-        const assignments = await getUserAccessAssignments(userId);
-
-        if (assignments.length === 0) {
-
-          return NextResponse.json({ 
-            error: "You do not have permission to add alumni. Please contact an administrator." 
-          }, { status: 403 });
-        }
-        
-        // Check if user has access to this specific combination
-        let hasAccess = false;
-        
-        // Check program-level access
-        const programAccess = assignments.find(a => 
-          a.program_name && 
-          a.program_name.toLowerCase().trim() === program.toLowerCase().trim() &&
-          (!a.department_name || a.department_name.toLowerCase().trim() === department.toLowerCase().trim()) &&
-          (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
-        );
-
-        if (programAccess) {
-          hasAccess = true;
-
-        } else {
-          // Check department-level access
-          const deptAccess = assignments.find(a => 
-            a.department_name && 
-            !a.program_name &&
-            a.department_name.toLowerCase().trim() === department.toLowerCase().trim() &&
-            (!a.faculty_name || a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim())
-          );
-
-          if (deptAccess) {
-            // Department-level access: admin can add any program within this department
-            // No need to validate program - if they have department access, they can add any program
-            hasAccess = true;
-
-          } else {
-            // Check faculty-level access
-            const facultyAccess = assignments.find(a => 
-              a.faculty_name && 
-              !a.department_name && 
-              !a.program_name &&
-              a.faculty_name.toLowerCase().trim() === faculty.toLowerCase().trim()
-            );
-
-            if (facultyAccess) {
-              // Faculty-level access: verify the department belongs to this faculty
-              // No need to validate program - if they have faculty access, they can add any program
-              const deptFaculty = getFacultyByDepartment(department);
-
-              if (deptFaculty && deptFaculty.toLowerCase().trim() === faculty.toLowerCase().trim()) {
-                hasAccess = true;
-
-              } else {
-
-              }
-            }
-          }
-        }
-        
-        if (!hasAccess) {
-
-          return NextResponse.json({ 
-            error: `You do not have permission to add alumni to ${faculty} > ${department} > ${program}. Please select a faculty, department, and program you have access to.` 
-          }, { status: 403 });
-        }
-
-      } else {
-        // If no userId but user is logged in as admin (shouldn't happen), deny access
-        return NextResponse.json({ 
-          error: "You do not have permission to add alumni. Please contact an administrator." 
-        }, { status: 403 });
-      }
-    }
     
     // NOTE: Duplicate checks based on email/SAP ID/Registration Number have been removed.
     // Registration logic now depends ONLY on verify_status (see rules above).
