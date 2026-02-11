@@ -471,7 +471,7 @@ export const AlumniTalksTab: React.FC = () => {
                             {/* Alumni Profile & ERP */}
                             <div className="space-y-2 md:col-span-3">
                               <h4 className="font-semibold text-slate-700 mb-2">Alumni Profile & ERP</h4>
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="flex flex-row justify-start">
                                 <AlumniExpandableDetails
                                   sapId={item.sapid || item.registrationNo || ""}
                                   onClose={() => setExpandedRows(prev => {

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import Badge from "../ui/badge/Badge";
-import { ArrowUpIcon, ArrowDownIcon } from "@/icons";
+import { ArrowUpIcon, ArrowDownIcon, PlusIcon, CloseLineIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
 import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
@@ -1074,6 +1074,7 @@ export const AlumniAssociationTab: React.FC = () => {
           <Table className="min-w-full">
             <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
               <TableRow>
+                <TableCell className="px-3 py-4 text-left text-sm font-semibold text-slate-700">{""}</TableCell>
                 <TableCell 
                   className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={() => handleSort("sapId")}
@@ -1152,6 +1153,7 @@ export const AlumniAssociationTab: React.FC = () => {
               {isLoading && (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
+                    <TableCell className="px-3 py-4"><div className="h-5 w-5 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-6 py-4"><div className="h-5 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-6 py-4"><div className="h-5 w-48 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-6 py-4"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
@@ -1163,14 +1165,14 @@ export const AlumniAssociationTab: React.FC = () => {
               )}
               {!isLoading && isError && (
                 <TableRow>
-                  <TableCell colSpan={6} className="px-5 py-6 text-center text-red-600">
+                  <TableCell colSpan={7} className="px-5 py-6 text-center text-red-600">
                     {error?.message || "Failed to load data"}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !isError && pageItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="px-5 py-8 text-center text-gray-600">
+                  <TableCell colSpan={7} className="px-5 py-8 text-center text-gray-600">
                     No alumni association members found
                   </TableCell>
                 </TableRow>
@@ -1185,9 +1187,22 @@ export const AlumniAssociationTab: React.FC = () => {
                       className={`odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 cursor-pointer ${
                         isExpanded ? "bg-blue-50/70" : ""
                       }`}
-                      onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
                       aria-selected={isExpanded}
                     >
+                      <TableCell className="px-3 py-4 text-sm">
+                        <button
+                          type="button"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedRowId(isExpanded ? null : rowId);
+                          }}
+                          aria-label={isExpanded ? "Collapse row" : "Expand row"}
+                          aria-expanded={isExpanded}
+                        >
+                          {isExpanded ? <CloseLineIcon className="h-4 w-4" /> : <PlusIcon className="h-4 w-4" />}
+                        </button>
+                      </TableCell>
                       <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
                         {item.sapid || item.registrationNo || "-"}
                         {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
@@ -1210,9 +1225,9 @@ export const AlumniAssociationTab: React.FC = () => {
                     </TableRow>
                     {isExpanded && (
                       <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
-                        <TableCell colSpan={6} className="px-0 py-4">
+                        <TableCell colSpan={7} className="px-0 py-4">
                           <div className="w-full overflow-x-hidden" style={{ maxWidth: "calc(100vw - 2rem)", boxSizing: "border-box" }}>
-                            <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4 px-4">
+                            <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start px-4">
                               <AlumniExpandableDetails
                                 sapId={item.sapid || item.registrationNo || ""}
                                 onClose={() => setExpandedRowId(null)}

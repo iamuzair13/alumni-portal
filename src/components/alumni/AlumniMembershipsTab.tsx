@@ -714,7 +714,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                             className="w-full overflow-x-hidden"
                             style={{ maxWidth: "calc(100vw - 2rem)", boxSizing: "border-box" }}
                           >
-                            <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start">
                               <AlumniExpandableDetails
                                 sapId={item.sapid || item.registrationNo || String(item.alumniId)}
                                 onClose={() => setExpandedRowId(null)}

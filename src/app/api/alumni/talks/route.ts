@@ -96,7 +96,28 @@ export async function GET(req: Request) {
         ORDER BY s.created_at DESC
       `;
 
-      return NextResponse.json({ items: rows }, { status: 200 });
+      const countsRows = await sql/* sql */`
+        SELECT
+          COUNT(*) AS all_count,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'pending') AS pending_count,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'admin_proposed') AS pending_confirmation_count,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('admin_confirmed', 'alumni_confirmed')) AS confirmed_count
+        FROM public.alumni_talk_sessions s
+        WHERE s.alumniid = ${me.alumniid}
+      `;
+
+      const countRow = (countsRows as any)[0] as {
+        all_count?: number | bigint;
+        pending_count?: number | bigint;
+        pending_confirmation_count?: number | bigint;
+        confirmed_count?: number | bigint;
+      } | undefined;
+      const all = countRow?.all_count ? Number(countRow.all_count) : 0;
+      const pending = countRow?.pending_count ? Number(countRow.pending_count) : 0;
+      const pendingConfirmation = countRow?.pending_confirmation_count ? Number(countRow.pending_confirmation_count) : 0;
+      const confirmed = countRow?.confirmed_count ? Number(countRow.confirmed_count) : 0;
+
+      return NextResponse.json({ items: rows, counts: { all, pending, pendingConfirmation, confirmed } }, { status: 200 });
     }
 
     // Admin: apply access filter and optional sapid filter
@@ -229,7 +250,34 @@ export async function GET(req: Request) {
       alumniNote: (r.alumni_note ?? null) as string | null,
     }));
 
-    return NextResponse.json({ items }, { status: 200 });
+    const countsRows = await sql/* sql */`
+      SELECT
+        COUNT(*) AS all_count,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'pending') AS pending_count,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) = 'admin_proposed') AS pending_confirmation_count,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('admin_confirmed', 'alumni_confirmed')) AS confirmed_count
+      FROM public.tbl_alumni a
+        INNER JOIN public.alumni_talk_sessions s ON s.alumniid = a.alumniid
+      WHERE (
+        (a.sapid IS NOT NULL AND a.sapid != '')
+        OR (a.registrationno IS NOT NULL AND a.registrationno != '')
+      )
+      ${sapidCondition}
+      ${accessFilterCondition}
+    `;
+
+    const countRow = (countsRows as any)[0] as {
+      all_count?: number | bigint;
+      pending_count?: number | bigint;
+      pending_confirmation_count?: number | bigint;
+      confirmed_count?: number | bigint;
+    } | undefined;
+    const all = countRow?.all_count ? Number(countRow.all_count) : 0;
+    const pending = countRow?.pending_count ? Number(countRow.pending_count) : 0;
+    const pendingConfirmation = countRow?.pending_confirmation_count ? Number(countRow.pending_confirmation_count) : 0;
+    const confirmed = countRow?.confirmed_count ? Number(countRow.confirmed_count) : 0;
+
+    return NextResponse.json({ items, counts: { all, pending, pendingConfirmation, confirmed } }, { status: 200 });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     const errorStack = err instanceof Error ? err.stack : undefined;

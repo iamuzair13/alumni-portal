@@ -1150,7 +1150,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
             { value: "Male", label: "Male" },
             { value: "Female", label: "Female" }
           ]} onEdit={() => startEditingField("gender")} />
-          <CompactField label="Date of Birth" value={data.dateofbirth} isEditing={isFieldEditing("dateofbirth")} readOnly={readOnly} register={register} name="dateofbirth" onEdit={() => startEditingField("dateofbirth")} />
+          <CompactField label="Date of Birth" value={data.dateofbirth} isEditing={isFieldEditing("dateofbirth")} readOnly={readOnly} register={register} name="dateofbirth" type="date" onEdit={() => startEditingField("dateofbirth")} />
           <CompactField label="Marital Status" value={data.maritalstatus} isEditing={isFieldEditing("maritalstatus")} readOnly={readOnly} register={register} name="maritalstatus" type="select" options={[
             { value: "", label: "Select" },
             { value: "Married", label: "Married" },

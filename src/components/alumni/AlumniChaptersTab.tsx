@@ -713,9 +713,9 @@ export const AlumniChaptersTab: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Alumni Chapters</h3>
+          <h3 className="text-lg font-semibold text-white dark:text-slate-100">Alumni Chapters</h3>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="chapters-search">Search:</label>
+            <label className="text-sm text-white dark:text-gray-400" htmlFor="chapters-search">Search:</label>
             <input
               id="chapters-search"
               type="text"
@@ -837,8 +837,8 @@ export const AlumniChaptersTab: React.FC = () => {
             />
             <span className={`text-base font-semibold transition-colors duration-200 ${
               verifiedFilter === true 
-                ? "text-blue-700 dark:text-blue-300" 
-                : "text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100"
+                ? "text-white dark:text-blue-300" 
+                : "text-white dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-gray-100"
             }`}>
               Verified Only
             </span>
@@ -1364,7 +1364,7 @@ export const AlumniChaptersTab: React.FC = () => {
                       <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
                         <TableCell colSpan={6} className="px-0 py-4">
                           <div className="w-full overflow-x-hidden" style={{ maxWidth: "calc(100vw - 2rem)", boxSizing: "border-box" }}>
-                            <div className="w-full max-w-full overflow-x-hidden grid grid-cols-1 lg:grid-cols-2 gap-4 px-4">
+                            <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start px-4">
                               <AlumniExpandableDetails
                                 sapId={item.sapid || item.registrationNo || ""}
                                 onClose={() => setExpandedRowId(null)}

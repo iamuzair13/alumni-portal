@@ -376,7 +376,7 @@ export async function sendWelcomeEmail(
       </table>
     </div>
     <p style="margin: 15px 0 10px 0; color: #333333; font-size: 16px;">
-      <strong>Important:</strong> Please log in using your SAP ID or email and the password above, then change your password from your profile settings for security.
+      <strong>Important:</strong> Please login using your SAP ID or Registration Number and the password above, then change your password from your profile settings for security.
     </p>
     <p style="margin: 10px 0; color: #333333; font-size: 16px;">
       You can access the portal at: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">Sign In</a>
