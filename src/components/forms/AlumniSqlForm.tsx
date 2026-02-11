@@ -1418,7 +1418,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             
             <div>
-              <label className={labelBase}>CNIC/Passport *</label>
+          <p className="text-xs text-blue-700 mt-1">Please ensure to enter correct CNIC. It will be used for verification and Alumni card issuance. Make sure it matches your official documents.</p>
+              <label className={labelBase}>CNIC/Passport * </label>
               <input type="text" className={inputBase} {...register("cnicpassport", { required: true, maxLength: 50 })} />
               {errors.cnicpassport && <p className="mt-1 text-xs text-red-600">CNIC/Passport is required</p>}
             </div>
@@ -2666,7 +2667,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               <span className="font-semibold">Declaration</span>
               <br />
               <span className="text-xs text-neutral-600 mt-1 block">
-                I confirm that the information provided is accurate and up to date. I also consent to the University and Alumni Office using this information for official purposes (academic, administrative, communication, and alumni engagement) in line with University Policies, and applicable government regulations.
+                I confirm that the information provided is accurate and up to date. I also consent to the University and Alumni Office using this information for official purposes (academic, administrative, communication, website, and alumni engagement) in line with University Policies, and applicable government regulations.
               </span>
             </label>
           </div>

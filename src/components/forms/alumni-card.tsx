@@ -46,9 +46,50 @@ export function validateImage(file: File | undefined): { ok: boolean; error?: st
   if (!file) return { ok: false, error: "Select an image file" };
   const types = ["image/jpeg", "image/png", "image/gif"];
   if (!types.includes(file.type)) return { ok: false, error: "Only JPG, PNG or GIF allowed" };
+  const min = 50 * 1024;
+  if (file.size < min) return { ok: false, error: "Image must be at least 50KB" };
   const max = 5 * 1024 * 1024;
   if (file.size > max) return { ok: false, error: "File must be ≤ 5MB" };
   return { ok: true };
+}
+
+async function validatePassportLikeImage(file: File): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new window.Image();
+      img.decoding = "async";
+      const loaded = new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+      });
+      img.src = url;
+      await loaded;
+
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+
+      if (!w || !h) return { ok: false, error: "Invalid image" };
+
+      // Passport photo is typically 35x45mm (w/h ≈ 0.78). Allow a small tolerance.
+      const ratio = w / h;
+      if (ratio < 0.72 || ratio > 0.82) {
+        return { ok: false, error: "Image must be passport size (portrait)" };
+      }
+
+      // Basic resolution guard for “high resolution”.
+      if (w < 300 || h < 400) {
+        return { ok: false, error: "Image resolution is too low. Please upload a clearer photo." };
+      }
+
+      return { ok: true };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    // If we cannot read dimensions, don't block the upload.
+    return { ok: true };
+  }
 }
 
 export default function AlumniCardForm({ alumniId, name, faculty, department, sapId }: Props) {
@@ -257,7 +298,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           <div className="relative flex items-center">
             <input id="cnic" className={inputBase} value={fetchedCnicPassport || ""} readOnly aria-label="CNIC/Passport" />
           </div>
-          <p className="text-xs text-blue-700 mt-1">Please enter the correct CNIC. It will be used for verification and card issuance. Make sure it matches your official documents.</p>
+          <p className="text-xs text-blue-700 mt-1">Please make sure that your CNIC/Passport is correct. It will be used for verification and Alumni card issuance.</p>
         </div>
       </div>
 
@@ -265,7 +306,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         <label className={labelBase} htmlFor="picture">
           Image
           <span className="text-red-600 ml-1">*</span>
-          <span className="ml-2 text-xs text-slate-500">Please Upload Passport size image </span>
+          <span className="ml-2 text-xs text-red-500">Casual pictures are not accepted. Image must be passport size and headshot with blue or white background. Image size must be high resolution and 50kb minimum </span>
         </label>
         <div className="relative flex items-center">
           <input
@@ -274,7 +315,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
             accept="image/jpeg,image/png,image/gif"
             className={inputBase}
             aria-label="Profile picture"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
               const v = validateImage(file);
               if (!v.ok) {
@@ -284,6 +325,18 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
                 setSelectedFile(null);
                 return;
               }
+
+              if (file) {
+                const shape = await validatePassportLikeImage(file);
+                if (!shape.ok) {
+                  setFileError(shape.error || "Invalid image");
+                  setPreviewUrl(null);
+                  setValue("pictureName", "");
+                  setSelectedFile(null);
+                  return;
+                }
+              }
+
               setFileError(null);
               setPreviewUrl(file ? URL.createObjectURL(file) : null);
               setValue("pictureName", file?.name || "");
@@ -303,11 +356,11 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       </div>
 
       <div>
-        <label className={labelBase} htmlFor="addressPreference">Address Preference</label>
+        <label className={labelBase} htmlFor="addressPreference">Delivery Preference</label>
         <div className="relative flex items-center">
           <select id="addressPreference" {...register("addressPreference")} className={inputBase} aria-label="Address preference">
             <option value="Collect">Collect from Campus</option>
-            <option value="Deliver">Deliver to my address</option>
+            <option value="Deliver">Deliver to my below address</option>
           </select>
         </div>
         {errors.addressPreference && <p className="text-xs text-red-600 mt-1">{errors.addressPreference.message}</p>}
@@ -319,7 +372,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
             Delivery Address
             <span className="text-red-600 ml-1">*</span>
           </label>
-          <p className="text-xs text-blue-700 mb-2">Please make sure that your Home address is correct for delivery at this address.</p>
+          <p className="text-xs text-blue-700 mb-2">Please make sure that provided address is correct for delivery at this address.</p>
           <div className="relative flex items-center mt-4">
             <textarea
               id="address"

@@ -6,6 +6,125 @@ import { isSuperAdminUser, isAdminUser, canModify } from "@/lib/alumniProfile";
 import { getUserAccessAssignments, getUserIdFromSession } from "@/lib/userAccess";
 import { getFacultyByDepartment } from "@/data/programs-departments";
 import { parseChapterCities } from "@/lib/chapterCities";
+import { erpClient } from "@/lib/erpClient";
+
+function normalizeCnicOrPassport(value: string, mode: "cnic" | "passport" | "auto" = "auto"): string {
+  const raw = String(value ?? "");
+  const stripped = raw.replace(/[^0-9a-zA-Z]/g, "");
+  if (!stripped) return "";
+
+  if (mode === "cnic") return stripped.replace(/\D/g, "");
+  if (mode === "passport") return stripped.toUpperCase();
+
+  // auto: if it is digits only -> treat as CNIC, else passport
+  const isDigitsOnly = /^\d+$/.test(stripped);
+  return isDigitsOnly ? stripped : stripped.toUpperCase();
+}
+
+function extractErpCnicOrPassport(erpData: unknown): string | null {
+  if (!erpData) return null;
+
+  // ERP client may return object or array (OData results)
+  const record = Array.isArray(erpData) ? erpData[0] : erpData;
+  if (!record || typeof record !== "object") return null;
+
+  const obj = record as Record<string, unknown>;
+  const candidates = [
+    // CNIC variations
+    "cnicpassport",
+    "cnic_or_passport",
+    "cnic",
+    "cnicno",
+    "cnic_no",
+    "CNIC",
+    "CNICNO",
+    "CNIC_NO",
+    // Passport variations
+    "passport",
+    "passportno",
+    "passport_no",
+    "Passport",
+    "PassportNo",
+    "PASSPORT",
+    "PASSPORTNO",
+    "PASSPORT_NO",
+  ];
+
+  for (const key of candidates) {
+    const v = obj[key];
+    if (v === null || v === undefined) continue;
+    const s = String(v).trim();
+    if (s) return s;
+  }
+
+  return null;
+}
+
+async function validateCnicPassportAgainstErp(input: {
+  registrationNo?: string | null;
+  sapId?: string | null;
+  cnicOrPassport?: string | null;
+}): Promise<boolean> {
+  try {
+    const registrationNo = input.registrationNo ? String(input.registrationNo).trim() : "";
+    const sapId = input.sapId ? String(input.sapId).trim() : "";
+    const cnicOrPassport = input.cnicOrPassport ? String(input.cnicOrPassport).trim() : "";
+
+    // Edge case: if both registrationNo and sapId are missing, allow submission
+    if (!registrationNo && !sapId) return true;
+
+    // If user did not provide CNIC/Passport (should be required elsewhere), allow submission here
+    if (!cnicOrPassport) return true;
+
+    // 1) Try by registration number
+    let erpResponse: { success: boolean; data?: unknown; error?: string } | null = null;
+    if (registrationNo) {
+      erpResponse = await erpClient.fetchByRegistrationNo(registrationNo);
+    }
+
+    // 2) If not found and sapId provided, try by SAP ID
+    if (
+      (!erpResponse || erpResponse.success === false) &&
+      (erpResponse?.error === "NOT_FOUND" || !erpResponse?.error) &&
+      sapId
+    ) {
+      const bySap = await erpClient.fetchBySapId(sapId);
+      // Prefer SAP result only if it actually has data
+      erpResponse = bySap.success ? bySap : erpResponse;
+      if (!erpResponse?.success && bySap.success) erpResponse = bySap;
+      if (!erpResponse?.success && erpResponse?.error === "NOT_FOUND") {
+        // still not found
+      }
+    }
+
+    // If ERP has no data (not found) -> allow submission
+    if (!erpResponse || erpResponse.success === false) {
+      // ERP API fail/timeout/network -> allow submission
+      return true;
+    }
+
+    const erpValueRaw = extractErpCnicOrPassport(erpResponse.data);
+
+    // ERP returns null/empty -> allow submission
+    if (!erpValueRaw) return true;
+
+    // Determine type based on ERP value shape
+    const erpStripped = String(erpValueRaw).replace(/[^0-9a-zA-Z]/g, "");
+    const isErpCnic = /^\d+$/.test(erpStripped);
+    const mode: "cnic" | "passport" = isErpCnic ? "cnic" : "passport";
+
+    const normalizedErp = normalizeCnicOrPassport(erpValueRaw, mode);
+    const normalizedUser = normalizeCnicOrPassport(cnicOrPassport, mode);
+
+    if (!normalizedErp) return true;
+    if (!normalizedUser) return true;
+
+    return normalizedErp === normalizedUser;
+  } catch {
+    // If ERP API fails or times out: allow submission
+    return true;
+  }
+}
 
 type TblAlumniBody = {
   alumniemail: string | null;
@@ -241,6 +360,23 @@ export async function POST(req: Request) {
       if (val === null || val === undefined || String(val).trim() === "") {
         return NextResponse.json({ error: `${label} is required` }, { status: 400 });
       }
+    }
+
+    // CNIC/Passport vs ERP validation (confidential):
+    // - Only validate if ERP has a value
+    // - Allow on ERP not-found/failure/timeout
+    // - Never return ERP value in response
+    const isCnicPassportValid = await validateCnicPassportAgainstErp({
+      registrationNo: regNo || null,
+      sapId: sapId || null,
+      cnicOrPassport: cnic || null,
+    });
+
+    if (!isCnicPassportValid) {
+      return NextResponse.json(
+        { error: "Your CNIC/Passport does not match our records. Please recheck and try again." },
+        { status: 400 }
+      );
     }
     if (!emailPattern.test(String(body.personalemail))) {
       return NextResponse.json({ error: "Invalid personal email format" }, { status: 400 });
