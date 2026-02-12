@@ -299,7 +299,7 @@ export const AlumniCardList: React.FC<AlumniCardListProps> = ({ items, loading, 
 import { Table, TableHeader, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { useCardStatus, cardStatusKey, type CardData } from "@/app/queries/fetch-card-status";
-import { useCardApplicants, cardApplicantsKey, type CardApplicantsResponse, type CardStatusFilter } from "@/app/queries/fetch-card-applicants";
+import { useCardApplicants, cardApplicantsKey, type CardApplicantsResponse, type CardStatusFilter, type OverdueType } from "@/app/queries/fetch-card-applicants";
 import PrintCardButton from "./PrintCardButton";
 
 type SortDirection = "asc" | "desc";
@@ -310,6 +310,8 @@ export interface AlumniDataTableProps {
   loading?: boolean;
   error?: string | null;
   defaultPageSize?: number;
+  selectedStatus?: CardStatusFilter;
+  selectedOverdueType?: OverdueType;
   onRowAction?: (item: AlumniListItem, action: ActionKey) => void;
 }
 
@@ -318,6 +320,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   loading = false,
   error,
   defaultPageSize = 10,
+  selectedStatus = "all",
+  selectedOverdueType,
   onRowAction,
 }) => {
   const [query, setQuery] = React.useState<string>("");
@@ -328,7 +332,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const { data: session } = useSession();
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
   const topScrollbarRef = React.useRef<HTMLDivElement>(null);
@@ -387,8 +390,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     let filteredByStatus = baseItems;
     
     // Filter by status - strict matching
-    if (statusFilter !== "all") {
-      const filterStatus = statusFilter.toLowerCase().trim();
+    if (selectedStatus !== "all" && selectedStatus !== "overdue") {
+      const filterStatus = selectedStatus.toLowerCase().trim();
       filteredByStatus = baseItems.filter((i) => {
         // Get the actual status from the item, normalize it
         // Handle null, undefined, empty string, or actual status value
@@ -422,7 +425,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         registrationNo.includes(q)
       );
     });
-  }, [baseItems, debouncedQuery, statusFilter]);
+  }, [baseItems, debouncedQuery, selectedStatus]);
 
   const sorted = React.useMemo(() => {
     const arr = [...filtered];
@@ -471,7 +474,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, sortKey, sortDir, pageSize, statusFilter]);
+  }, [debouncedQuery, sortKey, sortDir, pageSize, selectedStatus]);
 
   // Sync scroll between top scrollbar and table container
   React.useEffect(() => {
@@ -593,8 +596,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       if (debouncedQuery) {
         url.searchParams.set("search", debouncedQuery);
       }
-      if (statusFilter && statusFilter !== "all") {
-        url.searchParams.set("status", statusFilter);
+      if (selectedStatus && selectedStatus !== "all") {
+        url.searchParams.set("status", selectedStatus);
+        if (selectedStatus === "overdue" && selectedOverdueType) {
+          url.searchParams.set("overdueType", selectedOverdueType);
+        }
       }
       
       const res = await fetch(url.toString(), {
@@ -612,186 +618,64 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         throw new Error("No data found to export with the applied filters.");
       }
 
+      const getExportStatusLabel = (raw: unknown): string => {
+        const db = normalizeDbStatus(String(raw ?? "")) as DbCardStatus;
+        const ui = mapDbStatusToUI(db);
+        return getStatusLabel(ui);
+      };
+
+      const isOverdueUnderReview = (rawStatus: unknown, createdAt: unknown): boolean => {
+        const db = normalizeDbStatus(String(rawStatus ?? "")) as DbCardStatus;
+        if (db !== "UnderReview") return false;
+        const d = new Date(String(createdAt ?? ""));
+        if (Number.isNaN(d.getTime())) return false;
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return d < sevenDaysAgo;
+      };
+
+      const isOverdueUnderPrinting = (rawStatus: unknown, createdAt: unknown): boolean => {
+        const db = normalizeDbStatus(String(rawStatus ?? "")) as DbCardStatus;
+        if (db !== "UnderPrinting") return false;
+        const d = new Date(String(createdAt ?? ""));
+        if (Number.isNaN(d.getTime())) return false;
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return d < sevenDaysAgo;
+      };
+
       // Map ALL fields to Excel format
       return allItems.map((item: Record<string, unknown>) => ({
-        // Card Information
-        "Card ID": item.id || "",
-        "Card Status": item.status || "",
-        "Card Created At": item.createdat || "",
-        
-        // Basic Information
-        "SAP ID": item.sapid || "",
-        "Registration No": item.registrationno || "",
-        "Full Name": item.alumniname || "",
-        "Gender": item.gender || "",
-        "Father Name": item.fathername || "",
-        "Father CNIC": item.father_cnic || "",
-        "Date of Birth": item.dateofbirth || "",
-        "Marital Status": item.maritalstatus || "",
-        "CNIC/Passport": item.cnicpassport || "",
-        
-        // Contact Information
-        "Contact No": item.contactno || "",
-        "Contact No 1": item.contactno1 || "",
-        "Contact No 1 Show": item.contactno1show || "",
-        "Personal Email": item.personalemail || "",
-        "Personal Email Show": item.personalemailshow || "",
-        "University Email": item.universityemail || "",
-        "Official Email": item.officialemail || "",
-        "Official Number": item.officialnumber || "",
-        "Address": item.address || "",
-        "Country": item.country || "",
-        "Province": item.province || "",
-        "City": item.city || "",
-        
-        // Academic Information
-        "Academic Session": item.academicsession || "",
-        "Degree Title": item.degreetitle || "",
-        "CGPA": item.cgpa || "",
-        "Year of Starting": item.yearofstarting || "",
-        "Year of Ending": item.yearofending || "",
-        "Faculty": item.facultyname || "",
-        "Campus": item.campusname || "",
-        "Department": item.departmentname || "",
-        "Major Subject": item.majorsubject || "",
-        
-        // Professional Information
-        "Industry": item.industry || "",
-        "Employment Status": item.employeed || "",
-        "Organization": item.nameoforganization || "",
-        "Designation": item.designation || "",
-        "Total Years of Experience": item.totalyearsofexpereince || "",
-        "Work City": item.work_city || "",
-        "Work Country": item.work_country || "",
-        "Organization Address": item.organization_address || "",
-        "Supervisor Designation": item.supervisordesignation || "",
-        "Supervisor Number": item.supervisornumber || "",
-        
-        // Chapters
-        "Chapter 1": item.chapter1_national || item.chapter1_international || "",
-        "Chapter 2": item.chapter2_national || item.chapter2_international || "",
-        "Chapter 3": item.chapter3_national || item.chapter3_international || "",
-        "All Chapters": formatChapters(item),
-        "Chapter Remarks": item.chapter_remarks || "",
-        
-        // Association
-        "Association Title": item.association_title || "",
-        "Association Description": item.association_description || "",
-        "Association Dean": item.association_dean || "",
-        "Association Phone": item.association_phone || "",
-        "Association Email": item.association_email || "",
-        "Association Address": item.association_address || "",
-        
-        // Additional Information
-        "About Me": item.aboutme || "",
-        "Image 1": item.image1 || "",
-        "Image 2": item.image2 || "",
-        "CV": item.cv || "",
-        
-        // Social Links
-        "Facebook": item.facebook || "",
-        "Instagram": item.instagram || "",
-        "YouTube": item.youtube || "",
-        "LinkedIn": item.linkedin || "",
-        
-        // System Information
-        "Verification Status": item.verify === "true" ? "Verified" : item.verify === "false" ? "Unverified" : String(item.verify || "").trim().toLowerCase() === "underapproval" ? "Under Approval" : item.verify || "",
-        "Last Login": item.lasttimelogin || "",
-        "Login Count": item.logincount || 0,
-        "Email Send Count": item.emailsendcount || 0,
-        "Email Send Status": item.emailsendstatus || "",
-        "Data Source": item.datasource || "",
-        "Alumni Status": item.alumnistatus || "",
-        "Created Date Time": item.createddatetime || "",
+        Sapid: String(item.sapid || ""),
+        "Registration no": String(item.registrationno || ""),
+        Alumniname: String(item.alumniname || ""),
+        "Alumni cnic/passport": String(item.cnicpassport || ""),
+        Faculty: String(item.faculty_name || item.facultyname || ""),
+        Department: String(item.department_name || item.departmentname || ""),
+        "Card status": getExportStatusLabel(item.status),
+        "Onhold reason": String((item.reason_onhold ?? "") as string),
+        "Overdue-under-review": isOverdueUnderReview(item.status, item.createdat) ? "true" : "false",
+        "Overdue-under printing": isOverdueUnderPrinting(item.status, item.createdat) ? "true" : "false",
       }));
     };
 
     // Define column options
-  const columns: ColumnOption[] = [
-        { key: "Full Name", label: "Full Name", defaultSelected: true },
-        { key: "Gender", label: "Gender", defaultSelected: true },
-        { key: "Father Name", label: "Father Name", defaultSelected: false },
-        { key: "Father CNIC", label: "Father CNIC", defaultSelected: false },
-        { key: "Date of Birth", label: "Date of Birth", defaultSelected: false },
-        { key: "Marital Status", label: "Marital Status", defaultSelected: false },
-        { key: "CNIC/Passport", label: "CNIC/Passport", defaultSelected: true },
-        { key: "Contact No", label: "Primary Contact", defaultSelected: true },
-        { key: "Contact No 1", label: "Secondary Contact", defaultSelected: true },
-        { key: "Personal Email", label: "Personal Email", defaultSelected: true },
-        { key: "University Email", label: "University Email", defaultSelected: false },
-        { key: "Official Email", label: "Official Email", defaultSelected: false },
-        { key: "Official Number", label: "Official Number", defaultSelected: false },
-        { key: "Address", label: "Home Address", defaultSelected: false },
-        { key: "Country", label: "Home Country", defaultSelected: true },
-        { key: "Province", label: "Home Province", defaultSelected: false },
-        { key: "City", label: "Home City", defaultSelected: true },
-        { key: "Degree Title", label: "Program", defaultSelected: true },
-        { key: "CGPA", label: "CGPA", defaultSelected: false },
-        { key: "Year of Starting", label: "Year of Starting", defaultSelected: false },
-        { key: "Year of Ending", label: "Year of Ending", defaultSelected: true },
-        { key: "Faculty", label: "Faculty", defaultSelected: true },
-        { key: "Campus", label: "Campus", defaultSelected: true },
-        { key: "Department", label: "Department", defaultSelected: true },
-        { key: "Major Subject", label: "Major Subject", defaultSelected: false },
-        { key: "Industry", label: "Sector", defaultSelected: false },
-        { key: "Employment Status", label: "Employment Status", defaultSelected: false },
-        { key: "Organization", label: "Employer", defaultSelected: false },
-        { key: "Designation", label: "Designation", defaultSelected: false },
-        { key: "Total Years of Experience", label: "Total Years of Experience", defaultSelected: false },
-        { key: "Work City", label: "Work City", defaultSelected: false },
-        { key: "Work Country", label: "Work Country", defaultSelected: false },
-        { key: "Organization Address", label: "Organization Address", defaultSelected: false },
-        { key: "Higher Education Institute Name", label: "Higher Education Institute Name", defaultSelected: false },
-        { key: "Higher Education Degree Title", label: "Higher Education Program", defaultSelected: false },
-        { key: "Is Scholarship", label: "Funding source", defaultSelected: false },
-        { key: "Higher Education Program", label: "Higher Education Program", defaultSelected: false },
-        { key: "Higher Education Institute Country", label: "Higher Education Institute Country", defaultSelected: false },
-        { key: "Higher Education Institute Province", label: "Higher Education Institute Province", defaultSelected: false },
-        { key: "Higher Education Institute City", label: "Higher Education Institute City", defaultSelected: false },
-        { key: "Chapter 1", label: "Chapter 1", defaultSelected: false },
-        { key: "Chapter 2", label: "Chapter 2", defaultSelected: false },
-        { key: "Chapter 3", label: "Chapter 3", defaultSelected: false },
-        { key: "Chapter Remarks", label: "Chapter Remarks", defaultSelected: false },
-        { key: "Association Title", label: "Association Title", defaultSelected: false },
-        { key: "Association Description", label: "Association Description", defaultSelected: false },
-        { key: "Association Dean", label: "Association Dean", defaultSelected: false },
-        { key: "Association Phone", label: "Association Phone", defaultSelected: false },
-        { key: "Association Email", label: "Association Email", defaultSelected: false },
-        { key: "Association Address", label: "Association Address", defaultSelected: false },
-        { key: "Chapter Leadership Post", label: "Chapter Leadership Post", defaultSelected: false },
-        { key: "Chapter Leadership Status", label: "Chapter Leadership Status", defaultSelected: false },
-        { key: "Chapter Leadership Rejection Reason", label: "Chapter Leadership Rejection Reason", defaultSelected: false },
-        { key: "Chapter Leadership Created At", label: "Chapter Leadership Created At", defaultSelected: false },
-        { key: "Chapter Leadership Updated At", label: "Chapter Leadership Updated At", defaultSelected: false },
-        { key: "Gym Membership Month", label: "Gym Membership Month", defaultSelected: false },
-        { key: "Swimming Pool Membership Month", label: "Swimming Pool Membership Month", defaultSelected: false },
-        { key: "Membership Created At", label: "Membership Created At", defaultSelected: false },
-        { key: "Scholarship Kinship First Name", label: "Scholarship Kinship First Name", defaultSelected: false },
-        { key: "Scholarship Kinship Last Name", label: "Scholarship Kinship Last Name", defaultSelected: false },
-        { key: "Scholarship Kinship CNIC", label: "Scholarship Kinship CNIC", defaultSelected: false },
-        { key: "Scholarship Apply For", label: "Scholarship Apply For", defaultSelected: false },
-        { key: "Scholarship Degree Title", label: "Scholarship Degree Title", defaultSelected: false },
-        { key: "Scholarship Created At", label: "Scholarship Created At", defaultSelected: false },
-        { key: "About Me", label: "About Me", defaultSelected: false },
-        { key: "About", label: "About", defaultSelected: false },
-        { key: "Facebook", label: "Facebook", defaultSelected: false },
-        { key: "Instagram", label: "Instagram", defaultSelected: false },
-        { key: "YouTube", label: "YouTube", defaultSelected: false },
-        { key: "LinkedIn", label: "LinkedIn", defaultSelected: false },
-        { key: "Verification Status", label: "Verification Status", defaultSelected: true },
-        { key: "Last Login", label: "Last Login", defaultSelected: false },
-        { key: "Login Count", label: "Login Count", defaultSelected: false },
-        { key: "Email Send Count", label: "Email Send Count", defaultSelected: false },
-        { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
-        { key: "Photo Usage Consent", label: "Photo Usage Consent", defaultSelected: false },
-        { key: "Category", label: "Category", defaultSelected: false },
-        { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
-      ];
+    const columns: ColumnOption[] = [
+      { key: "Sapid", label: "Sapid", defaultSelected: true },
+      { key: "Registration no", label: "REgistration no", defaultSelected: true },
+      { key: "Alumniname", label: "Alumniname", defaultSelected: true },
+      { key: "Alumni cnic/passport", label: "Alumni cnic/passport", defaultSelected: true },
+      { key: "Faculty", label: "faculty", defaultSelected: true },
+      { key: "Department", label: "department", defaultSelected: true },
+      { key: "Card status", label: "card status", defaultSelected: true },
+      { key: "Onhold reason", label: "onhold reason", defaultSelected: false },
+      { key: "Overdue-under-review", label: "overdue-under-review as true false", defaultSelected: false },
+      { key: "Overdue-under printing", label: "over due-under printing as true false", defaultSelected: false },
+    ];
     // Generate filename with current date and filters
     const dateStr = new Date().toISOString().split("T")[0];
-    const statusStr = statusFilter && statusFilter !== "all" ? `_${statusFilter}` : "";
     const searchStr = debouncedQuery ? `_search` : "";
-    const filename = `alumni_cards_export${statusStr}${searchStr}_${dateStr}`;
+    const statusStr = selectedStatus && selectedStatus !== "all" ? `_${selectedStatus}` : "";
+    const overdueStr = selectedStatus === "overdue" && selectedOverdueType ? `_${selectedOverdueType}` : "";
+    const filename = `alumni_cards_export${statusStr}${overdueStr}${searchStr}_${dateStr}`;
 
     // Open export modal immediately with async data function
     openExportModal({
@@ -800,7 +684,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       filename,
       sheetName: "Alumni Cards",
     });
-  }, [debouncedQuery, statusFilter, openExportModal]);
+  }, [debouncedQuery, selectedStatus, selectedOverdueType, openExportModal]);
 
   const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
     const { data: session } = useSession();
@@ -1397,20 +1281,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="status-filter-select">Status:</label>
-          <select
-            id="status-filter-select"
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="Filter by status"
-          >
-            {Object.entries(CARD_STATUS_CONFIG).map(([key, config]) => (
-              <option key={key} value={key}>
-                {config.label}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             onClick={handleExportToExcel}
@@ -1434,19 +1304,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               </>
             )}
           </button>
-          <label className="text-sm font-medium text-gray-600 dark:text-gray-400" htmlFor="page-size-select">Items per page:</label>
-          <select
-            id="page-size-select"
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            aria-label="Items per page"
-          >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-          </select>
+          
         </div>
       </div>
 

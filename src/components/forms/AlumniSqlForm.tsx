@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
+import { useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-organization";
 // Removed static data imports - now using database-backed data
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
@@ -498,128 +500,100 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [dbPrograms, setDbPrograms] = useState<Array<{ id: number; name: string; departmentId: number }>>([]);
   const [loadingDbData, setLoadingDbData] = useState(true);
 
-  // Fetch faculties from database
-  useEffect(() => {
-    const fetchFaculties = async () => {
-      try {
-        const res = await fetch("/api/organization/faculties");
-        if (res.ok) {
-          const data = await res.json();
-          // Map faculty_name to name for frontend compatibility
-          const mappedFaculties = (data.faculties || []).map((f: { id: number; faculty_name: string }) => ({
-            id: f.id,
-            name: f.faculty_name
-          }));
-          setDbFaculties(mappedFaculties);
-        }
-      } catch (err) {
+  const facultyId = watch("faculty");
+  const departmentId = watch("department");
 
-      } finally {
-        setLoadingDbData(false);
-      }
-    };
-    fetchFaculties();
-  }, []);
+  const facultiesQuery = useFaculties();
+  const departmentsQuery = useDepartments(facultyId ? Number(facultyId) : undefined);
+  const programsQuery = usePrograms(departmentId ? Number(departmentId) : undefined);
 
-  // Fetch departments when faculty changes
+  // Sync cached org data into the local mapped state expected by this form
   useEffect(() => {
-    const facultyId = watch("faculty");
+    setLoadingDbData(facultiesQuery.isLoading);
+    if (facultiesQuery.data) {
+      const mappedFaculties = facultiesQuery.data.map((f) => ({ id: f.id, name: f.faculty_name }));
+      setDbFaculties(mappedFaculties);
+    }
+  }, [facultiesQuery.data, facultiesQuery.isLoading]);
+
+  useEffect(() => {
     if (!facultyId) {
       setDbDepartments([]);
       return;
     }
+    if (departmentsQuery.data) {
+      const mappedDepartments = departmentsQuery.data
+        .filter((d) => d.faculty_id !== null)
+        .map((d) => ({ id: d.id, name: d.department_name, facultyId: d.faculty_id as number }));
+      setDbDepartments(mappedDepartments);
+    }
+  }, [departmentsQuery.data, facultyId]);
 
-    const fetchDepartments = async () => {
-      try {
-        const res = await fetch(`/api/organization/departments?faculty_id=${facultyId}`);
-        if (res.ok) {
-          const data = await res.json();
-          // Map department_name to name for frontend compatibility
-          const mappedDepartments = (data.departments || []).map((d: { id: number; department_name: string; faculty_id: number }) => ({
-            id: d.id,
-            name: d.department_name,
-            facultyId: d.faculty_id
-          }));
-          setDbDepartments(mappedDepartments);
-        }
-      } catch (err) {
-
-      }
-    };
-    fetchDepartments();
-  }, [watch("faculty")]);
-
-  // Fetch programs when department changes
   useEffect(() => {
-    const departmentId = watch("department");
     if (!departmentId) {
       setDbPrograms([]);
       return;
     }
+    if (programsQuery.data) {
+      const mappedPrograms = programsQuery.data
+        .filter((p) => p.department_id !== null)
+        .map((p) => ({ id: p.id, name: p.program_name, departmentId: p.department_id as number }));
+      setDbPrograms(mappedPrograms);
+    }
+  }, [programsQuery.data, departmentId]);
 
-    const fetchPrograms = async () => {
-      try {
-        const res = await fetch(`/api/organization/programs?department_id=${departmentId}`);
-        if (res.ok) {
-          const data = await res.json();
-          // Map program_name to name for frontend compatibility
-          const mappedPrograms = (data.programs || []).map((p: { id: number; program_name: string; department_id: number }) => ({
-            id: p.id,
-            name: p.program_name,
-            departmentId: p.department_id
-          }));
-          setDbPrograms(mappedPrograms);
-        }
-      } catch (err) {
 
+  const accessAssignmentsQuery = useQuery<
+    { isSuperAdmin: boolean; faculties: string[]; departments: string[]; programs: string[] },
+    Error
+  >({
+    queryKey: ["users", "current", "access-assignments"],
+    queryFn: async ({ signal }) => {
+      const res = await fetch("/api/users/current/access-assignments", {
+        signal,
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) {
+        return { isSuperAdmin: true, faculties: [], departments: [], programs: [] };
       }
-    };
-    fetchPrograms();
-  }, [watch("department")]);
+      return (await res.json()) as { isSuperAdmin: boolean; faculties: string[]; departments: string[]; programs: string[] };
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
 
-
-  // Fetch user access assignments
   useEffect(() => {
-    const fetchAccess = async () => {
-      try {
-        const res = await fetch("/api/users/current/access-assignments", {
-          headers: { "accept": "application/json" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUserAccess(data);
-        } else {
-          // If not authenticated or error, assume no restrictions (for public forms)
-          setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
-        }
-      } catch (err) {
+    if (accessAssignmentsQuery.data) {
+      setUserAccess(accessAssignmentsQuery.data);
+    }
+  }, [accessAssignmentsQuery.data]);
 
-        // On error, assume no restrictions
-        setUserAccess({ isSuperAdmin: true, faculties: [], departments: [], programs: [] });
+  const chaptersQuery = useQuery<{ chapters: Array<{ id: number; name: string; type: "national" | "international" }> }, Error>({
+    queryKey: ["chapters", "list"],
+    queryFn: async ({ signal }) => {
+      const response = await fetch("/api/chapters/list", { signal, headers: { accept: "application/json" } });
+      const result = (await response.json()) as { chapters?: Array<{ id: number; name: string; type: "national" | "international" }> };
+      if (!response.ok) {
+        throw new Error("Failed to load chapters");
       }
-    };
-    fetchAccess();
-  }, []);
+      return { chapters: result.chapters ?? [] };
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
 
-  // Fetch chapters from API
   useEffect(() => {
-    const fetchChapters = async () => {
-      try {
-        const response = await fetch("/api/chapters/list");
-        const result = await response.json();
-        if (response.ok && result.chapters) {
-          setChapters(result.chapters);
-        } else {
-
-        }
-      } catch (error) {
-
-      } finally {
-        setIsLoadingChapters(false);
-      }
-    };
-    fetchChapters();
-  }, []);
+    setIsLoadingChapters(chaptersQuery.isLoading);
+    if (chaptersQuery.data?.chapters) {
+      setChapters(chaptersQuery.data.chapters);
+    }
+  }, [chaptersQuery.data, chaptersQuery.isLoading]);
 
   // Sync selectedChapters with form value
   useEffect(() => {

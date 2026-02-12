@@ -99,7 +99,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     }
     if (body.officialemail !== undefined && body.officialemail !== null && body.officialemail !== "" && !emailPattern.test(String(body.officialemail))) {
       return NextResponse.json({ 
-        error: "Invalid official email format",
+        error: "Invalid Wrok Email format",
         field: "officialemail",
         reason: "INVALID_FORMAT",
         message: "Please enter a valid email address (e.g., user@example.com)"

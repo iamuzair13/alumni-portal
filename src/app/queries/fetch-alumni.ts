@@ -6,6 +6,8 @@ export type AlumniListItem = {
   registrationno: string | null;
   sapid: string;
   alumniname: string;
+  gender?: string | null;
+  maritalstatus?: string | null;
   facultyname: string | null;
   campusname: string | null;
   departmentname: string | null;
@@ -13,18 +15,25 @@ export type AlumniListItem = {
   yearofending: number | null;
   country: string | null;
   city: string | null;
+  province?: string | null;
   verify?: string | null;
   employeed?: string | null;
+  work_country?: string | null;
+  work_city?: string | null;
   nameoforganization?: string | null;
   designation?: string | null;
+  higher_education_institute_country?: string | null;
+  higher_education_institute_city?: string | null;
   officialnumber?: string | null;
   officialemail?: string | null;
   personalemail?: string | null;
   createddatetime?: string | null;
   contactno?: string | null;
+  contactno1?: string | null;
   lasttimelogin?: string | null;
   logincount?: number | null;
   category?: string | null;
+  chapter1name?: string | null;
 };
 
 export type AlumniListResponse = {
@@ -227,7 +236,7 @@ export function useAlumniListPaginated(
         category
       );
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,

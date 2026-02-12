@@ -6,6 +6,7 @@ import { isSuperAdminUser } from "@/lib/alumniProfile";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import Pagination from "@/components/tables/Pagination";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type NewsletterRow = {
   id: number;
@@ -33,6 +34,7 @@ function formatDateTime(iso: string): string {
 
 export const NewsletterTab: React.FC = () => {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const canAccess = useMemo(() => {
     return isSuperAdminUser(session?.user);
   }, [session?.user]);
@@ -49,56 +51,40 @@ export const NewsletterTab: React.FC = () => {
   const [limit, setLimit] = useState(25);
   const [page, setPage] = useState(1);
 
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [data, setData] = useState<NewsletterResponse>({ items: [], total: 0, limit: 25, offset: 0 });
 
-  const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil((data.total || 0) / limit));
-  }, [data.total, limit]);
+  const newslettersQuery = useQuery<NewsletterResponse, Error>({
+    queryKey: ["admin", "newsletters", { q, limit, page, canAccess }],
+    enabled: !!canAccess,
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      params.set("offset", String((page - 1) * limit));
+      if (q.trim()) params.set("q", q.trim());
 
-  useEffect(() => {
-    if (!canAccess) return;
-
-    const controller = new AbortController();
-    const run = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        params.set("limit", String(limit));
-        params.set("offset", String((page - 1) * limit));
-        if (q.trim()) params.set("q", q.trim());
-
-        const res = await fetch(`/api/admin/newsletters?${params.toString()}`, { signal: controller.signal });
-        const json = (await res.json()) as any;
-        if (!res.ok) {
-          throw new Error(String(json?.error || "Failed to fetch newsletters"));
-        }
-        setData(json as NewsletterResponse);
-      } catch (e) {
-        if ((e as any)?.name === "AbortError") return;
-        setError(e instanceof Error ? e.message : "Failed to fetch newsletters");
-      } finally {
-        setLoading(false);
+      const res = await fetch(`/api/admin/newsletters?${params.toString()}`, {
+        signal,
+        headers: { accept: "application/json" },
+      });
+      const json = (await res.json()) as any;
+      if (!res.ok) {
+        throw new Error(String(json?.error || "Failed to fetch newsletters"));
       }
-    };
+      return json as NewsletterResponse;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
 
-    run();
-    return () => controller.abort();
-  }, [canAccess, limit, page, q]);
+  const data = newslettersQuery.data ?? { items: [], total: 0, limit: 25, offset: 0 };
+  const loading = newslettersQuery.isLoading;
 
-  useEffect(() => {
-    setPage(1);
-  }, [limit, q]);
-
-  const handleCreate = async () => {
-    setSaving(true);
-    setError(null);
-    setSuccessMsg(null);
-    try {
+  const createNewsletterMutation = useMutation({
+    mutationFn: async () => {
       const res = await fetch("/api/admin/newsletters", {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
@@ -113,28 +99,36 @@ export const NewsletterTab: React.FC = () => {
       if (!res.ok) {
         throw new Error(String(json?.error || "Failed to create newsletter"));
       }
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "newsletters"] });
+    },
+  });
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil((data.total || 0) / limit));
+  }, [data.total, limit]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [limit, q]);
+
+  const handleCreate = async () => {
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await createNewsletterMutation.mutateAsync();
 
       setTitle("");
       setDate("");
       setImage("");
       setLink("");
       setSuccessMsg("Newsletter published.");
-
-      // refresh list
       setPage(1);
-      const params = new URLSearchParams();
-      params.set("limit", String(limit));
-      params.set("offset", "0");
-      if (q.trim()) params.set("q", q.trim());
-      const refreshRes = await fetch(`/api/admin/newsletters?${params.toString()}`);
-      const refreshJson = (await refreshRes.json()) as any;
-      if (refreshRes.ok) {
-        setData(refreshJson as NewsletterResponse);
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create newsletter");
     } finally {
-      setSaving(false);
     }
   };
 
@@ -255,28 +249,22 @@ export const NewsletterTab: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
 
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={saving}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Publishing..." : "Publish"}
-            </button>
-          </div>
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={createNewsletterMutation.isPending || !title.trim()}
+            className="w-full rounded-lg bg-[#183D32] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0f2b23] disabled:opacity-60"
+          >
+            {createNewsletterMutation.isPending ? "Publishing..." : "Publish"}
+          </button>
         </div>
 
         {successMsg && (
-          <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <div className="mt-3 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-700">
             {successMsg}
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-            {error}
           </div>
         )}
       </div>

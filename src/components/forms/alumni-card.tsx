@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 type Props = {
   alumniId: string;
@@ -110,62 +111,49 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   // Watch address preference to show/hide address field
   const addressPreference = watch("addressPreference");
 
+  const alumniDetailsQuery = useQuery<any, Error>({
+    queryKey: ["alumni", "full-details", sapId],
+    enabled: !!sapId && sapId.trim() !== "",
+    queryFn: async ({ signal }) => {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, {
+        signal,
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load alumni details");
+      }
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
+
   // Auto-fetch alumni details when component mounts or sapId changes
   useEffect(() => {
-    const fetchAlumniData = async () => {
-      if (!sapId || sapId.trim() === "") return;
-      
-      try {
-        const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          const alumni = data.item;
-          
-          if (alumni) {
-            // Update fetched values
-            if (alumni.alumniname) setFetchedName(alumni.alumniname);
-            if (alumni.facultyname) setFetchedFaculty(alumni.facultyname);
-            if (alumni.departmentname) setFetchedDepartment(alumni.departmentname);
-            if (alumni.cnicpassport) setFetchedCnicPassport(String(alumni.cnicpassport));
-          }
-        }
-      } catch (error) {
-
-        // Don't show error to user, just use the props that were passed
-      }
-    };
-
-    fetchAlumniData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sapId]);
+    if (!alumniDetailsQuery.data) return;
+    const alumni = (alumniDetailsQuery.data as any)?.item;
+    if (alumni) {
+      if (alumni.alumniname) setFetchedName(alumni.alumniname);
+      if (alumni.facultyname) setFetchedFaculty(alumni.facultyname);
+      if (alumni.departmentname) setFetchedDepartment(alumni.departmentname);
+      if (alumni.cnicpassport) setFetchedCnicPassport(String(alumni.cnicpassport));
+    }
+  }, [alumniDetailsQuery.data]);
 
   // Auto-populate address when preference changes to "Deliver"
   useEffect(() => {
-    const fetchAndPopulateAddress = async () => {
-      if (addressPreference === "Deliver" && sapId && sapId.trim() !== "") {
-        const currentAddress = watch("address");
-        // Only auto-populate if address field is empty
-        if (!currentAddress || currentAddress.trim() === "") {
-          try {
-            const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
-            if (res.ok) {
-              const data = await res.json();
-              const alumni = data.item;
-              if (alumni?.address && alumni.address.trim()) {
-                setValue("address", alumni.address.trim());
-              }
-            }
-          } catch (error) {
-            // Silently fail, user can enter address manually
-
-          }
-        }
-      }
-    };
-
-    fetchAndPopulateAddress();
+    if (addressPreference !== "Deliver") return;
+    const currentAddress = watch("address");
+    if (currentAddress && currentAddress.trim() !== "") return;
+    const alumni = (alumniDetailsQuery.data as any)?.item;
+    if (alumni?.address && String(alumni.address).trim()) {
+      setValue("address", String(alumni.address).trim());
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressPreference, sapId, setValue]);
+  }, [addressPreference, alumniDetailsQuery.data, sapId, setValue]);
 
   // Clear address when preference changes to "Collect"
   React.useEffect(() => {

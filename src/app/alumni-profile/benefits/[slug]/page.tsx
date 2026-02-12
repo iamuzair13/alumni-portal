@@ -356,7 +356,7 @@ const benefitsData: Record<string, { title: string; description: string; content
                     </tr>
                     <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
                       <td class="px-4 py-4 font-semibold text-gray-900">Job Postings and Career Opportunities</td>
-                      <td class="px-4 py-4 text-gray-700">Access to jobs offered by UOL as well as other employers, as advertised on UOL Alumni website, UOL Career Portal, official emails, social media platforms.</td>
+                      <td class="px-4 py-4 text-gray-700">Access to jobs offered by UOL as well as other employers, as advertised on UOL Alumni website, UOL Career Portal, Wrok Emails, social media platforms.</td>
                     </tr>
                     <tr class="hover:bg-gray-50 transition-colors">
                       <td class="px-4 py-4 font-semibold text-gray-900">Career Counselling & Job Placement Support</td>

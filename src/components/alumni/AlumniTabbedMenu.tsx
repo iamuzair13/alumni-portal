@@ -1,6 +1,6 @@
 "use client";
 import type { FC, CSSProperties } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ComponentCard from "@/components/common/ComponentCard";
 import { AlumniTabs } from "@/components/alumni/Alumni-tabs";
@@ -11,6 +11,7 @@ import { AlumniAssociationTab } from "@/components/alumni/AlumniAssociationTab";
 import { AlumniScholarshipsTab } from "@/components/alumni/AlumniScholarshipsTab";
 import { AlumniMembershipsTab } from "@/components/alumni/AlumniMembershipsTab";
 import { JobsTab } from "@/components/alumni/JobsTab";
+import { useQuery } from "@tanstack/react-query";
 
 import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
@@ -39,6 +40,67 @@ const MENU_TABS: { key: MenuKey; label: string; urlTab: string }[] = [
 ];
 
 type PairCounts = { all: number; secondary: number };
+
+async function fetchTabCounts(): Promise<Partial<Record<MenuKey, PairCounts>>> {
+  const [cardsRes, talksRes, scholarshipsRes, membershipsRes] = await Promise.all([
+    fetch("/api/alumni-cards/counts", { headers: { accept: "application/json" } }),
+    fetch("/api/alumni/talks", { headers: { accept: "application/json" } }),
+    fetch("/api/alumni/scholarships?limit=1&page=1", { headers: { accept: "application/json" } }),
+    fetch("/api/alumni/memberships?limit=1&page=1", { headers: { accept: "application/json" } }),
+  ]);
+
+  const next: Partial<Record<MenuKey, PairCounts>> = {};
+
+  if (cardsRes.ok) {
+    const j = (await cardsRes.json()) as {
+      all?: number;
+      "under-review"?: number;
+      underprinting?: number;
+      active?: number;
+      onhold?: number;
+      delivered?: number;
+    };
+    const underReview = Number((j as any)["under-review"] || 0);
+    const underPrinting = Number((j as any).underprinting || 0);
+    const readyForDelivery = Number((j as any).active || 0);
+    const onHold = Number((j as any).onhold || 0);
+    next.AlumniCards = {
+      all: Number(j.all || 0),
+      secondary: underReview + underPrinting + readyForDelivery + onHold,
+    };
+  }
+
+  if (talksRes.ok) {
+    const j = (await talksRes.json()) as {
+      counts?: { all?: number; pending?: number; pendingConfirmation?: number; confirmed?: number };
+    };
+    const pending = Number(j.counts?.pending || 0);
+    const pendingConfirmation = Number((j.counts as any)?.pendingConfirmation || 0);
+    const confirmed = Number((j.counts as any)?.confirmed || 0);
+    next.AlumniTalks = {
+      all: Number(j.counts?.all || 0),
+      secondary: pending + pendingConfirmation + confirmed,
+    };
+  }
+
+  if (scholarshipsRes.ok) {
+    const j = (await scholarshipsRes.json()) as { counts?: { pending?: number; approved?: number; notApproved?: number } };
+    const pending = Number(j.counts?.pending || 0);
+    const approved = Number(j.counts?.approved || 0);
+    const notApproved = Number((j.counts as any)?.notApproved || 0);
+    next.AlumniScholarships = { all: pending + approved + notApproved, secondary: pending };
+  }
+
+  if (membershipsRes.ok) {
+    const j = (await membershipsRes.json()) as { counts?: { pending?: number; approved?: number; notApproved?: number } };
+    const pending = Number(j.counts?.pending || 0);
+    const approved = Number(j.counts?.approved || 0);
+    const notApproved = Number((j.counts as any)?.notApproved || 0);
+    next.AlumniMemberships = { all: pending + approved + notApproved, secondary: pending };
+  }
+
+  return next;
+}
 
 // Map URL tab values to MenuKey
 const urlTabToMenuKey: Record<string, MenuKey> = {
@@ -82,7 +144,17 @@ export const AlumniTabbedMenu: FC = () => {
 
   const [selected, setSelected] = useState<MenuKey>(getTabFromUrl());
 
-  const [tabCounts, setTabCounts] = useState<Partial<Record<MenuKey, PairCounts>>>({});
+  const { data: tabCountsData } = useQuery({
+    queryKey: ["dashboard-tab-counts"],
+    queryFn: fetchTabCounts,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
+
+  const tabCounts = useMemo(() => tabCountsData ?? {}, [tabCountsData]);
 
   // Update URL when tab changes
   const handleTabChange = (tab: MenuKey) => {
@@ -97,82 +169,6 @@ export const AlumniTabbedMenu: FC = () => {
     setSelected(validTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchCounts = async () => {
-      try {
-        const [cardsRes, talksRes, scholarshipsRes, membershipsRes] = await Promise.all([
-          fetch("/api/alumni-cards/counts"),
-          fetch("/api/alumni/talks"),
-          fetch("/api/alumni/scholarships?limit=1&page=1"),
-          fetch("/api/alumni/memberships?limit=1&page=1"),
-        ]);
-
-        if (cancelled) return;
-
-        const next: Partial<Record<MenuKey, PairCounts>> = {};
-
-        if (cardsRes.ok) {
-          const j = (await cardsRes.json()) as {
-            all?: number;
-            "under-review"?: number;
-            underprinting?: number;
-            active?: number;
-            onhold?: number;
-            delivered?: number;
-          };
-          const underReview = Number((j as any)["under-review"] || 0);
-          const underPrinting = Number((j as any).underprinting || 0);
-          const readyForDelivery = Number((j as any).active || 0);
-          const onHold = Number((j as any).onhold || 0);
-          next.AlumniCards = {
-            all: Number(j.all || 0),
-            secondary: underReview + underPrinting + readyForDelivery + onHold,
-          };
-        }
-
-        if (talksRes.ok) {
-          const j = (await talksRes.json()) as {
-            counts?: { all?: number; pending?: number; pendingConfirmation?: number; confirmed?: number };
-          };
-          const pending = Number(j.counts?.pending || 0);
-          const pendingConfirmation = Number((j.counts as any)?.pendingConfirmation || 0);
-          const confirmed = Number((j.counts as any)?.confirmed || 0);
-          next.AlumniTalks = {
-            all: Number(j.counts?.all || 0),
-            secondary: pending + pendingConfirmation + confirmed,
-          };
-        }
-
-        if (scholarshipsRes.ok) {
-          const j = (await scholarshipsRes.json()) as { counts?: { pending?: number; approved?: number; notApproved?: number } };
-          const pending = Number(j.counts?.pending || 0);
-          const approved = Number(j.counts?.approved || 0);
-          const notApproved = Number((j.counts as any)?.notApproved || 0);
-          next.AlumniScholarships = { all: pending + approved + notApproved, secondary: pending };
-        }
-
-        if (membershipsRes.ok) {
-          const j = (await membershipsRes.json()) as { counts?: { pending?: number; approved?: number; notApproved?: number } };
-          const pending = Number(j.counts?.pending || 0);
-          const approved = Number(j.counts?.approved || 0);
-          const notApproved = Number((j.counts as any)?.notApproved || 0);
-          next.AlumniMemberships = { all: pending + approved + notApproved, secondary: pending };
-        }
-
-        if (!cancelled) setTabCounts(next);
-      } catch {
-        // ignore
-      }
-    };
-
-    fetchCounts();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const renderCounterPair = (key: MenuKey, isSelected: boolean) => {
     const c = tabCounts[key];
@@ -193,7 +189,7 @@ export const AlumniTabbedMenu: FC = () => {
   return (
     <ComponentCard className="">
       <div
-        className="tab-list flex shadow-lg flex-wrap gap-3 lg:gap-4 justify-start py-4 bg-gray-100 px-4 rounded-2xl border border-b-[#183D32] sticky top-0 transition-all duration-300 ease-in-out backdrop-blur-sm bg-opacity-95 z-1000 animate-[slideDown_0.3s_ease-in-out]"
+        className="tab-list flex shadow-lg flex-wrap gap-3 lg:gap-4 justify-start py-4 bg-gray-50 px-4 rounded-2xl border border-b-[#183D32] sticky top-0 transition-all duration-300 ease-in-out backdrop-blur-sm bg-opacity-95 z-1000 animate-[slideDown_0.3s_ease-in-out]"
         role="tablist"
         aria-label="Alumni sections"
       >
@@ -270,11 +266,12 @@ export const AlumniTabbedMenu: FC = () => {
           overflow: hidden;
           position: relative;
           box-shadow: 10px 10px 20px rgba(0,0,0,.05);
-          background-color: #fff;
+          background-color: #c9fff1ff;
           color: #121212;
           border: none;
           cursor: pointer;
           padding: 0.6rem 1.25rem;
+          border-bottom: 2px solid #183D32;
         }
 
         .button-decor {

@@ -49,9 +49,22 @@ export default function AdminProfileForm() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const currentUserQuery = useQuery<{ user: UserData }, Error>({
+    queryKey: ["users", "current"],
+    queryFn: async ({ signal }) => {
+      const res = await fetch("/api/users/current", { signal, headers: { accept: "application/json" } });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({} as any));
+        throw new Error((error as any)?.error || "Failed to fetch user data");
+      }
+      return (await res.json()) as { user: UserData };
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
 
   const accessAssignmentsQuery = useQuery({
     queryKey: ["users", "current", "access-assignments"],
@@ -63,39 +76,36 @@ export default function AdminProfileForm() {
       }
       return (await res.json()) as AccessAssignmentsResponse;
     },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/users/current");
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to fetch user data");
-      }
-      const data = await res.json();
-      const user = data.user as UserData;
-      setUserData(user);
-      setFormData({
-        email: user.email || "",
-        currentPassword: user.password || "",
-        newPassword: "",
-        firstname: user.firstname || "",
-        lastname: user.lastname || "",
-        department: user.department || "",
-      });
-      
-      // Set image preview if user has an image
-      if (user.user_image) {
-        setImagePreview(`/images/${user.user_image}`);
-      }
-    } catch (error) {
-
+  useEffect(() => {
+    setLoading(currentUserQuery.isLoading);
+    if (currentUserQuery.isError) {
       toast.error("Failed to load profile data");
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+    const user = currentUserQuery.data?.user;
+    if (!user) return;
+
+    setUserData(user);
+    setFormData({
+      email: user.email || "",
+      currentPassword: user.password || "",
+      newPassword: "",
+      firstname: user.firstname || "",
+      lastname: user.lastname || "",
+      department: user.department || "",
+    });
+
+    if (user.user_image) {
+      setImagePreview(`/images/${user.user_image}`);
+    }
+  }, [currentUserQuery.data, currentUserQuery.isError, currentUserQuery.isLoading]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -234,7 +244,7 @@ export default function AdminProfileForm() {
         }));
       } else {
         // Fallback: refresh user data if response doesn't include user
-        await fetchUserData();
+        await currentUserQuery.refetch();
         setFormData((prev) => ({ ...prev, newPassword: "" }));
       }
       
@@ -523,7 +533,7 @@ export default function AdminProfileForm() {
       </section>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <Button type="button" variant="outline" onClick={() => fetchUserData()} disabled={saving}>
+        <Button type="button" variant="outline" onClick={() => currentUserQuery.refetch()} disabled={saving}>
           Cancel
         </Button>
         <Button type="submit" disabled={saving}>

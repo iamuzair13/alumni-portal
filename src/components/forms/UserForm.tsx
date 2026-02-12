@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import AccessControlPicker, { type AccessAssignmentsValue } from "@/components/users/AccessControlPicker";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { USER_ROLES, type UserRole } from "@/lib/rbac-constants";
 import { useSession } from "next-auth/react";
@@ -95,6 +95,23 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
   const [error, setError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  const userDetailsQuery = useQuery<any, Error>({
+    queryKey: ["users", "detail", userId],
+    enabled: !!(isEditMode && userId),
+    queryFn: async ({ signal }) => {
+      const res = await fetch(`/api/users/${userId}`, { signal, headers: { accept: "application/json" } });
+      if (!res.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
+
   // Access control state (DB-backed via organization APIs)
   const [accessAssignmentsState, setAccessAssignmentsState] = useState<AccessAssignmentsValue>({
     faculties: [],
@@ -114,42 +131,31 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
   // Load user data for edit mode
   useEffect(() => {
     if (isEditMode && userId) {
-      const loadUserData = async () => {
-        try {
-          setLoading(true);
-          const res = await fetch(`/api/users/${userId}`);
-          if (!res.ok) {
-            throw new Error("Failed to fetch user data");
-          }
-          const data = await res.json();
-          const user = data.item;
-          
-          if (user) {
-            // Populate form with existing data
-            setValues({
-              email: user.email || "",
-              password: "", // Don't pre-fill password
-              firstname: user.firstname || "",
-              lastname: user.lastname || "",
-              department: user.department || "",
-              type: user.type || USER_ROLES.ADMIN,
-              blocked: user.blocked || false,
-              csrf: values.csrf || "",
-              accessAssignments: user.accessAssignments || { faculties: [], departments: [], programs: [] },
-            });
-            
-            const access = (user.accessAssignments ?? { faculties: [], departments: [], programs: [] }) as AccessAssignmentsValue;
-            setAccessAssignmentsState(access);
-          }
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to load user data");
-          toast.error("Failed to load user data");
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      loadUserData();
+      setLoading(userDetailsQuery.isLoading);
+      if (userDetailsQuery.isError) {
+        setError(userDetailsQuery.error?.message || "Failed to load user data");
+        toast.error("Failed to load user data");
+        return;
+      }
+
+      const user = (userDetailsQuery.data as any)?.item;
+      if (user) {
+        setValues({
+          email: user.email || "",
+          password: "", // Don't pre-fill password
+          firstname: user.firstname || "",
+          lastname: user.lastname || "",
+          department: user.department || "",
+          type: user.type || USER_ROLES.ADMIN,
+          blocked: user.blocked || false,
+          csrf: values.csrf || "",
+          accessAssignments: user.accessAssignments || { faculties: [], departments: [], programs: [] },
+        });
+
+        const access = (user.accessAssignments ?? { faculties: [], departments: [], programs: [] }) as AccessAssignmentsValue;
+        setAccessAssignmentsState(access);
+        setLoading(false);
+      }
     } else if (initialData) {
       // Use provided initial data
       setValues({
@@ -170,7 +176,7 @@ export default function UserForm({ userId, initialData, onSuccess }: UserFormPro
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, isEditMode]);
+  }, [userId, isEditMode, userDetailsQuery.data, userDetailsQuery.error, userDetailsQuery.isError, userDetailsQuery.isLoading]);
 
   const emailValid = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()), [values.email]);
   const passwordValid = useMemo(() => values.password.length >= 8, [values.password]);

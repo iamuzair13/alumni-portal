@@ -220,19 +220,29 @@ export const AlumniTabs: React.FC = () => {
   // Unified item type mapped from server response
   type AlumniItem = {
     id: string; // sapId, registrationNo, or alumniid as fallback
-    alumniid?: number | null; // Alumni ID from database
+    alumniid: number | null;
+    sapId?: string;
+    rawName?: string;
     registrationNo?: string | null;
     name: string;
     email?: string | null;
     createdDateTime?: string | null;
     mobile?: string | null;
+    primaryContact?: string | null;
+    gender?: string | null;
     campus?: string | null;
+    homeCountry?: string | null;
+    homeProvince?: string | null;
+    homeCity?: string | null;
     faculty?: string | null;
-    program?: string | null;
     department?: string | null;
-    passingYear?: number | null;
+    program?: string | null;
+    occupationStatus?: string | null;
     workCountry?: string | null;
     workCity?: string | null;
+    higherEducationCountry?: string | null;
+    higherEducationCity?: string | null;
+    chapter1?: string | null;
     organization?: string | null;
     designation?: string | null;
     verified?: boolean;
@@ -240,8 +250,6 @@ export const AlumniTabs: React.FC = () => {
     employmentStatus?: "Employed" | "Unemployed" | null;
     lastLoginTime?: string | null;
     loginCount?: number | null;
-    sapId?: string; // Raw SAP ID for sorting
-    rawName?: string; // Raw name for sorting
   };
 
   // filtering is handled in the server-like fetcher; remove unused memo
@@ -1348,18 +1356,27 @@ export const AlumniTabs: React.FC = () => {
       result[idx++] = {
         id: itemId,
         alumniid: r.alumniid ?? null,
+        sapId: r.sapid?.trim() || "",
         registrationNo: r.registrationno ?? null,
         name: r.alumniname ?? "",
         email: r.personalemail ?? r.officialemail ?? null,
         createdDateTime: (r as unknown as { createddatetime?: string | null }).createddatetime ?? null,
         mobile: r.contactno ?? null,
+        primaryContact: (r as unknown as { contactno1?: string | null }).contactno1 ?? null,
+        gender: (r as unknown as { gender?: string | null }).gender ?? null,
         campus: r.campusname ?? null,
+        homeCountry: r.country ?? null,
+        homeProvince: (r as unknown as { province?: string | null }).province ?? null,
+        homeCity: r.city ?? null,
         faculty: r.facultyname ?? null,
-        program: r.degreetitle ?? null,
         department: r.departmentname ?? null,
-        passingYear: r.yearofending ?? null,
-        workCountry: r.country ?? null,
-        workCity: r.city ?? null,
+        program: r.degreetitle ?? null,
+        occupationStatus: (r as unknown as { employeed?: string | null }).employeed ?? null,
+        workCountry: (r as unknown as { work_country?: string | null }).work_country ?? null,
+        workCity: (r as unknown as { work_city?: string | null }).work_city ?? null,
+        higherEducationCountry: (r as unknown as { higher_education_institute_country?: string | null }).higher_education_institute_country ?? null,
+        higherEducationCity: (r as unknown as { higher_education_institute_city?: string | null }).higher_education_institute_city ?? null,
+        chapter1: (r as unknown as { chapter1name?: string | null }).chapter1name ?? null,
         organization: r.nameoforganization ?? null,
         designation: r.designation ?? null,
         verified,
@@ -1368,9 +1385,8 @@ export const AlumniTabs: React.FC = () => {
         lastLoginTime: r.lasttimelogin ?? null,
         loginCount: r.logincount ?? null,
         // Store raw values for sorting
-        sapId: r.sapid?.trim() || "",
         rawName: r.alumniname || "",
-      } as AlumniItem & { sapId: string; rawName: string };
+      } as AlumniItem;
     }
     
     // Trim array to actual size
@@ -1909,7 +1925,6 @@ export const AlumniTabs: React.FC = () => {
         "Full Name": item.alumniname || "",
         "Gender": item.gender || "",
         "Father Name": item.fathername || "",
-        "Father CNIC": item.father_cnic || "",
         "Date of Birth": item.dateofbirth || "",
         "Marital Status": item.maritalstatus || "",
         "CNIC/Passport": item.cnicpassport || "",
@@ -1921,8 +1936,8 @@ export const AlumniTabs: React.FC = () => {
         "Personal Email": item.personalemail || "",
         "Personal Email Show": item.personalemailshow || "",
         "University Email": item.universityemail || "",
-        "Official Email": item.officialemail || "",
-        "Official Number": item.officialnumber || "",
+        "Wrok Email": item.officialemail || "",
+        "Wrok Number": item.officialnumber || "",
         "Address": item.address || "",
         "Country": item.country || "",
         "Province": item.province || "",
@@ -2034,7 +2049,7 @@ export const AlumniTabs: React.FC = () => {
         })(),
         "Photo Usage Consent": item.alumni_consent_pic === true ? "Allowed" : item.alumni_consent_pic === false ? "Not Allowed" : "Null",
         "Category": item.category || "",
-        "Created Date Time": item.createddatetime || "",
+        "Registration Date": item.createddatetime || "",
         "Today Date": item.todaydate || "",
       }));
     };
@@ -2046,7 +2061,6 @@ export const AlumniTabs: React.FC = () => {
         { key: "Full Name", label: "Full Name", defaultSelected: true },
         { key: "Gender", label: "Gender", defaultSelected: true },
         { key: "Father Name", label: "Father Name", defaultSelected: false },
-        { key: "Father CNIC", label: "Father CNIC", defaultSelected: false },
         { key: "Date of Birth", label: "Date of Birth", defaultSelected: false },
         { key: "Marital Status", label: "Marital Status", defaultSelected: false },
         { key: "CNIC/Passport", label: "CNIC/Passport", defaultSelected: true },
@@ -2054,8 +2068,8 @@ export const AlumniTabs: React.FC = () => {
         { key: "Contact No 1", label: "Secondary Contact", defaultSelected: true },
         { key: "Personal Email", label: "Personal Email", defaultSelected: true },
         { key: "University Email", label: "University Email", defaultSelected: false },
-        { key: "Official Email", label: "Official Email", defaultSelected: false },
-        { key: "Official Number", label: "Official Number", defaultSelected: false },
+        { key: "Wrok Email", label: "Wrok Email", defaultSelected: false },
+        { key: "Wrok Number", label: "Wrok Number", defaultSelected: false },
         { key: "Address", label: "Home Address", defaultSelected: false },
         { key: "Country", label: "Home Country", defaultSelected: true },
         { key: "Province", label: "Home Province", defaultSelected: false },
@@ -2077,7 +2091,6 @@ export const AlumniTabs: React.FC = () => {
         { key: "Work Country", label: "Work Country", defaultSelected: false },
         { key: "Organization Address", label: "Organization Address", defaultSelected: false },
         { key: "Higher Education Institute Name", label: "Higher Education Institute Name", defaultSelected: false },
-        { key: "Higher Education Degree Title", label: "Higher Education Program", defaultSelected: false },
         { key: "Is Scholarship", label: "Funding source", defaultSelected: false },
         { key: "Higher Education Program", label: "Higher Education Program", defaultSelected: false },
         { key: "Higher Education Institute Country", label: "Higher Education Institute Country", defaultSelected: false },
@@ -2120,7 +2133,7 @@ export const AlumniTabs: React.FC = () => {
         { key: "Alumni Status", label: "Alumni Status", defaultSelected: false },
         { key: "Photo Usage Consent", label: "Photo Usage Consent", defaultSelected: false },
         { key: "Category", label: "Category", defaultSelected: false },
-        { key: "Created Date Time", label: "Created Date Time", defaultSelected: false },
+        { key: "Registration Date", label: "Registration Date", defaultSelected: false },
       ];
 
     const statusStr = statusFilter ? `_${statusFilter}` : "";
@@ -2515,7 +2528,7 @@ export const AlumniTabs: React.FC = () => {
     <div className="p-0">
       <div className="flex flex-col gap-8">
         {/* Stats Cards Section */}
-        <div className="px-4 py-4  rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 shadow-lg">
+        <div className="px-4 py-8  rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 shadow-lg">
           {/* Regular Tabs */}
           <div className="flex flex-wrap gap-4 mb-6">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
@@ -4615,6 +4628,15 @@ export const AlumniTabs: React.FC = () => {
                             />
                             <span>EXISTS</span>
                           </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedSapIdStates.includes("DUPLICATE")}
+                              onChange={() => handleSapIdStateToggle("DUPLICATE")}
+                              className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>Duplicate</span>
+                          </label>
                         </div>
                       </div>
 
@@ -4641,6 +4663,15 @@ export const AlumniTabs: React.FC = () => {
                               className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
                             />
                             <span>EXISTS</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedRegNoStates.includes("DUPLICATE")}
+                              onChange={() => handleRegNoStateToggle("DUPLICATE")}
+                              className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>Duplicated</span>
                           </label>
                         </div>
                       </div>
@@ -4669,6 +4700,15 @@ export const AlumniTabs: React.FC = () => {
                             />
                             <span>EXISTS</span>
                           </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedPersonalEmailStates.includes("DUPLICATE")}
+                              onChange={() => handlePersonalEmailStateToggle("DUPLICATE")}
+                              className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>Duplicate</span>
+                          </label>
                         </div>
                       </div>
 
@@ -4695,6 +4735,15 @@ export const AlumniTabs: React.FC = () => {
                               className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300 dark:border-gray-600"
                             />
                             <span>EXISTS</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedContactNoStates.includes("DUPLICATE")}
+                              onChange={() => handleContactNoStateToggle("DUPLICATE")}
+                              className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>Duplicate</span>
                           </label>
                         </div>
                       </div>
@@ -4791,33 +4840,10 @@ export const AlumniTabs: React.FC = () => {
                 msOverflowStyle: 'none',
               }}
             >
-              <div className="table-content-wrapper " style={{ minWidth: '800px' }}>
+              <div className="table-content-wrapper " style={{ minWidth: '1800px' }}>
                 <Table className="min-w-full">
                 <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                   <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[56px]">
-                      <input
-                        type="checkbox"
-                        checked={pageAllSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = pageSomeSelected;
-                        }}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setSelectedAlumniIds((prev) => {
-                            const set = new Set(prev);
-                            if (checked) {
-                              pageAlumniIds.forEach((id) => set.add(id));
-                            } else {
-                              pageAlumniIds.forEach((id) => set.delete(id));
-                            }
-                            return Array.from(set);
-                          });
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
-                        aria-label="Select all rows on this page"
-                      />
-                    </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       onClick={() => handleSort("alumniid")}
@@ -4908,6 +4934,42 @@ export const AlumniTabs: React.FC = () => {
                               </div>
                             </div>
                     </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[90px] hidden lg:table-cell">
+                      Gender
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[110px] hidden lg:table-cell">
+                      Campus
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden xl:table-cell">
+                      Primary Contact
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden xl:table-cell">
+                      Home Country
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
+                      Home Province
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
+                      Home City
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden xl:table-cell">
+                      Occupation Status
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden 2xl:table-cell">
+                      Work Country
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden 2xl:table-cell">
+                      Work City
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden 2xl:table-cell">
+                      Higher Education Country
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px] hidden 2xl:table-cell">
+                      Higher Education City
+                    </TableCell>
+                    <TableCell className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[140px] hidden 2xl:table-cell">
+                      Chapter 1
+                    </TableCell>
                     <TableCell 
                       className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       onClick={() => handleSort("status")}
@@ -4956,6 +5018,42 @@ export const AlumniTabs: React.FC = () => {
                         <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
                           <div className="h-5 w-36 sm:w-44 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                         </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                          <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                          <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden xl:table-cell">
+                          <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden 2xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden 2xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden 2xl:table-cell">
+                          <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden 2xl:table-cell">
+                          <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 hidden 2xl:table-cell">
+                          <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5">
                           <div className="h-7 w-20 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                         </TableCell>
@@ -4967,13 +5065,9 @@ export const AlumniTabs: React.FC = () => {
                   )}
                 {!isLoading && isError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={11}>
+                    <TableCell className="px-6 py-6 text-center" colSpan={23}>
                       <div className="flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                          <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
+                        
                         <div>
                           <p className="text-base font-semibold text-red-600 dark:text-red-400 mb-1">{error?.message ?? "Failed to load data."}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-500">Please try again</p>
@@ -5004,7 +5098,7 @@ export const AlumniTabs: React.FC = () => {
                 )}
                 {!isLoading && !isError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={11}>
+                    <TableCell className="px-6 py-6 text-center text-gray-500 dark:text-gray-400" colSpan={23}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5044,33 +5138,7 @@ export const AlumniTabs: React.FC = () => {
                         onClick={() => setSelectedRowId(alum.id)}
                         aria-selected={selectedRowId === alum.id}
                       >
-                        <TableCell className="px-3 sm:px-6 py-5">
-                          <input
-                            type="checkbox"
-                            checked={(() => {
-                              const n = Number(alum.alumniid);
-                              if (!Number.isFinite(n) || n <= 0) return false;
-                              return selectedAlumniIds.includes(Math.floor(n));
-                            })()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              const n = Number(alum.alumniid);
-                              if (!Number.isFinite(n) || n <= 0) return;
-                              const id = Math.floor(n);
-                              setSelectedAlumniIds((prev) => {
-                                if (checked) {
-                                  return prev.includes(id) ? prev : [...prev, id];
-                                }
-                                return prev.filter((x) => x !== id);
-                              });
-                            }}
-                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
-                            aria-label={`Select alumni ${alum.alumniid ?? ""}`}
-                          />
-                        </TableCell>
+                        
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
                           <span className="truncate block max-w-[100px] sm:max-w-none">{alum.alumniid ?? "-"}</span>
                         </TableCell>
@@ -5134,6 +5202,42 @@ export const AlumniTabs: React.FC = () => {
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">
                           <span className="truncate block max-w-[150px]">{alum.program || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          <span className="truncate block max-w-[90px]">{alum.gender || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          <span className="truncate block max-w-[110px]">{alum.campus || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden xl:table-cell">
+                          <span className="truncate block max-w-[140px]">{alum.primaryContact || alum.mobile || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden xl:table-cell">
+                          <span className="truncate block max-w-[130px]">{alum.homeCountry || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden xl:table-cell">
+                          <span className="truncate block max-w-[120px]">{alum.homeProvince || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden xl:table-cell">
+                          <span className="truncate block max-w-[120px]">{alum.homeCity || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden xl:table-cell">
+                          <span className="truncate block max-w-[150px]">{alum.occupationStatus || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden 2xl:table-cell">
+                          <span className="truncate block max-w-[130px]">{alum.workCountry || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden 2xl:table-cell">
+                          <span className="truncate block max-w-[130px]">{alum.workCity || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden 2xl:table-cell">
+                          <span className="truncate block max-w-[180px]">{alum.higherEducationCountry || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden 2xl:table-cell">
+                          <span className="truncate block max-w-[160px]">{alum.higherEducationCity || "-"}</span>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden 2xl:table-cell">
+                          <span className="truncate block max-w-[140px]">{alum.chapter1 || "-"}</span>
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-start">
                           <Badge 

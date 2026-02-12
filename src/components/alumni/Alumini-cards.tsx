@@ -400,6 +400,8 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 loading={loading}
                 error={isError ? (error instanceof Error ? error.message : "Failed to load") : null}
                 defaultPageSize={pageSize}
+                selectedStatus={selectedStatus}
+                selectedOverdueType={selectedOverdueType}
                 onRowAction={(item, key) => handleAction(item, key)}
               />
             )}

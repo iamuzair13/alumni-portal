@@ -47,6 +47,97 @@ function getDiscountLabel(discountType: string): string {
   }
 }
 
+export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniId: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { alumniId } = await ctx.params;
+    const alumniIdNum = parseInt(String(alumniId), 10);
+    if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
+      return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const mode = (searchParams.get("mode") || "").toLowerCase();
+
+    const applicationRows = await sql/* sql */`
+      SELECT
+        asch.kinship_firstname,
+        asch.kinship_lastname,
+        asch.kinship_cnic,
+        asch.apply_for,
+        asch.degree_title,
+        a.alumniname,
+        a.personalemail,
+        a.universityemail,
+        a.officialemail
+      FROM public.alumni_scholarships asch
+      JOIN public.tbl_alumni a ON a.alumniid = asch.id
+      WHERE asch.id = ${alumniIdNum}
+      LIMIT 1
+    `;
+
+    if (!applicationRows[0]) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    }
+
+    const app = applicationRows[0] as {
+      kinship_firstname: string | null;
+      kinship_lastname: string | null;
+      kinship_cnic: string | null;
+      apply_for: string | null;
+      degree_title: string | null;
+      alumniname: string | null;
+      personalemail: string | null;
+      universityemail: string | null;
+      officialemail: string | null;
+    };
+
+    const alumniName = String(app.alumniname || "");
+    const alumniEmail = String(app.personalemail || app.universityemail || app.officialemail || "");
+
+    if (mode === "pdf") {
+      const kinshipFirstName = app.kinship_firstname;
+      const kinshipLastName = app.kinship_lastname;
+      const hasKinship = !!(kinshipFirstName && kinshipLastName);
+      const discountType = hasKinship ? "kinship" : "alumni";
+
+      const pdfBuffer = await generateScholarshipPDF({
+        alumniName,
+        discountType,
+        applyingFor: String(app.apply_for || ""),
+        degreeTitle: String(app.degree_title || ""),
+        kinshipRelation: null,
+        kinshipFirstName: kinshipFirstName || null,
+        kinshipLastName: kinshipLastName || null,
+        kinshipName: hasKinship ? `${kinshipFirstName} ${kinshipLastName}` : null,
+      });
+
+      return new NextResponse(new Uint8Array(pdfBuffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `inline; filename=Scholarship_Application_${alumniIdNum}.pdf`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    const pdfUrl = `/api/alumni/scholarships/${alumniIdNum}?mode=pdf`;
+    return NextResponse.json({ email: alumniEmail, pdfUrl }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch application preview";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ alumniId: string }> }

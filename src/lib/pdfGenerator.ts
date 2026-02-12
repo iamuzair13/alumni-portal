@@ -24,6 +24,13 @@ export interface ScholarshipApplicationData {
   kinshipName?: string | null; // Keep for backward compatibility
 }
 
+ export interface MembershipApplicationData {
+   alumniName: string;
+   membershipType: string;
+   gymMembershipMonth?: string | null;
+   swimmingPoolMembershipMonth?: string | null;
+ }
+
 export function generateScholarshipPDF(data: ScholarshipApplicationData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
@@ -148,6 +155,115 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
     }
   });
 }
+
+ export function generateMembershipPDF(data: MembershipApplicationData): Promise<Buffer> {
+   return new Promise((resolve, reject) => {
+     try {
+       const doc = new jsPDF();
+       const pageWidth = doc.internal.pageSize.getWidth();
+       const pageHeight = doc.internal.pageSize.getHeight();
+       const margin = 50;
+       const maxWidth = pageWidth - 2 * margin;
+       let yPosition = margin;
+
+       const logoBase64 = getLogoBase64();
+       if (logoBase64) {
+         try {
+           const logoWidth = 40;
+           const logoHeight = 20;
+           const logoX = pageWidth - margin - logoWidth;
+           const logoY = margin;
+           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
+           yPosition = logoY + logoHeight + 15;
+         } catch (logoError) {
+           yPosition = margin + 10;
+         }
+       } else {
+         yPosition = margin + 10;
+       }
+
+       doc.setDrawColor(0, 102, 51);
+       doc.setLineWidth(0.5);
+       doc.line(margin, yPosition, pageWidth - margin, yPosition);
+       yPosition += 15;
+
+       doc.setFontSize(18);
+       doc.setFont("helvetica", "bold");
+       doc.setTextColor(0, 102, 51);
+       doc.text("Alumni Membership Application", margin, yPosition);
+       yPosition += 10;
+
+       const date = new Date().toLocaleDateString("en-US", {
+         year: "numeric",
+         month: "long",
+         day: "numeric",
+       });
+       doc.setFontSize(11);
+       doc.setFont("helvetica", "normal");
+       doc.setTextColor(0, 0, 0);
+       const dateText = `Date: ${date}`;
+       const dateWidth = doc.getTextWidth(dateText);
+       doc.text(dateText, pageWidth - margin - dateWidth, yPosition);
+       yPosition += 20;
+
+       const addText = (
+         text: string,
+         fontSize: number,
+         isBold: boolean = false,
+         align: "left" | "center" | "right" = "left",
+         spacing: number = 5
+       ) => {
+         doc.setFontSize(fontSize);
+         doc.setFont("helvetica", isBold ? "bold" : "normal");
+         doc.setTextColor(0, 0, 0);
+         const lines = doc.splitTextToSize(text, maxWidth);
+         const xPos = align === "center" ? pageWidth / 2 : align === "right" ? pageWidth - margin : margin;
+         doc.text(lines, xPos, yPosition, { align, maxWidth });
+         yPosition += lines.length * (fontSize * 0.4) + spacing;
+       };
+
+       addText("Dear Concern,", 12, false, "left", 8);
+
+       addText(
+         `I, ${data.alumniName}, an alumnus of UOL, am applying for ${data.membershipType} membership.`,
+         12,
+         false,
+         "left",
+         8
+       );
+
+       if (data.gymMembershipMonth) {
+         addText(`Gym Membership Month: ${data.gymMembershipMonth}`, 12, false, "left", 8);
+       }
+       if (data.swimmingPoolMembershipMonth) {
+         addText(`Swimming Pool Membership Month: ${data.swimmingPoolMembershipMonth}`, 12, false, "left", 8);
+       }
+
+       addText("Please approve so that the applicant can proceed with the process.", 12, false, "left", 15);
+
+       addText("Regards,", 12, false, "left", 8);
+       addText(data.alumniName, 12, true, "left", 10);
+
+       const footerY = pageHeight - 30;
+       doc.setDrawColor(0, 102, 51);
+       doc.setLineWidth(0.5);
+       doc.line(margin, footerY, pageWidth - margin, footerY);
+
+       doc.setFontSize(9);
+       doc.setFont("helvetica", "normal");
+       doc.setTextColor(100, 100, 100);
+       const footerText = "Office of Alumni Relations | University of Lahore";
+       const footerWidth = doc.getTextWidth(footerText);
+       doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
+
+       const pdfOutput = doc.output("arraybuffer");
+       const buffer = Buffer.from(pdfOutput);
+       resolve(buffer);
+     } catch (error) {
+       reject(error);
+     }
+   });
+ }
 
 function getDiscountLabel(discountType: string): string {
   switch (discountType) {

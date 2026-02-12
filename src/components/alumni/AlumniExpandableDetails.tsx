@@ -10,6 +10,7 @@ import { PencilIcon, TrashBinIcon } from "@/icons";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { canModify } from "@/lib/alumniProfile";
+import { organizationKeys, useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-organization";
 
 // ERP Record type for comparison
 type ErpRecord = {
@@ -614,13 +615,19 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
 
   // Faculty, Department, and Program state
   const [allFaculties, setAllFaculties] = useState<{ id: number; faculty_name: string }[]>([]);
-  const [allDepartments, setAllDepartments] = useState<{ id: number; department_name: string; faculty_id: number }[]>([]);
-  const [allPrograms, setAllPrograms] = useState<{ id: number; program_name: string; department_id: number }[]>([]);
+  const [allDepartments, setAllDepartments] = useState<{ id: number; department_name: string; faculty_id: number | null }[]>([]);
+  const [allPrograms, setAllPrograms] = useState<{ id: number; program_name: string; department_id: number | null }[]>([]);
   const [facultiesLoading, setFacultiesLoading] = useState(true);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [programsLoading, setProgramsLoading] = useState(false);
   const selectedFacultyId = watch("faculty");
   const selectedDepartmentId = watch("department");
+
+  const { data: facultiesData, isLoading: facultiesQueryLoading } = useFaculties();
+  const facultyIdForDepartments = selectedFacultyId ? Number(selectedFacultyId) : data?.faculty ? Number(data.faculty) : undefined;
+  const { data: departmentsData, isLoading: departmentsQueryLoading } = useDepartments(facultyIdForDepartments);
+  const departmentIdForPrograms = selectedDepartmentId ? Number(selectedDepartmentId) : data?.department ? Number(data.department) : undefined;
+  const { data: programsData, isLoading: programsQueryLoading } = usePrograms(departmentIdForPrograms);
 
   // Fetch chapters and associations for dropdowns
   const { data: chaptersList = [] } = useQuery<Chapter[]>({
@@ -637,111 +644,46 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     refetchOnWindowFocus: false,
   });
 
-  // Fetch faculties on mount
+  // Keep local state in sync with cached TanStack Query data
   useEffect(() => {
-    const fetchFaculties = async () => {
-      setFacultiesLoading(true);
-      try {
-        const res = await fetch("/api/organization/faculties");
-        if (res.ok) {
-          const data = await res.json();
-          setAllFaculties(data.faculties || []);
-        }
-      } catch (error) {
+    setFacultiesLoading(facultiesQueryLoading);
+    if (facultiesData) {
+      setAllFaculties(facultiesData);
+    }
+  }, [facultiesData, facultiesQueryLoading]);
 
-      } finally {
-        setFacultiesLoading(false);
-      }
-    };
-    fetchFaculties();
-  }, []);
-
-  // Fetch departments on mount if faculty ID exists (for display mode)
   useEffect(() => {
-    const fetchInitialDepartments = async () => {
-      if (data?.faculty) {
-        setDepartmentsLoading(true);
-        try {
-          const res = await fetch(`/api/organization/departments?faculty_id=${data.faculty}`);
-          if (res.ok) {
-            const result = await res.json();
-            setAllDepartments(result.departments || []);
-          }
-        } catch (error) {
+    setDepartmentsLoading(departmentsQueryLoading);
+    if (!facultyIdForDepartments) {
+      setAllDepartments([]);
+      return;
+    }
+    if (departmentsData) {
+      setAllDepartments(departmentsData);
+    }
+  }, [departmentsData, departmentsQueryLoading, facultyIdForDepartments]);
 
-        } finally {
-          setDepartmentsLoading(false);
-        }
-      } else {
-        setDepartmentsLoading(false);
-      }
-    };
-    fetchInitialDepartments();
-  }, [data?.faculty]);
-
-  // Fetch departments when faculty changes or on initial load
   useEffect(() => {
-    const fetchDepartments = async () => {
-      if (!selectedFacultyId) {
-        setAllDepartments([]);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/organization/departments?faculty_id=${selectedFacultyId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setAllDepartments(data.departments || []);
-        }
-      } catch (error) {
+    setProgramsLoading(programsQueryLoading);
+    if (!departmentIdForPrograms) {
+      setAllPrograms([]);
+      return;
+    }
+    if (programsData) {
+      setAllPrograms(programsData);
+    }
+  }, [programsData, programsQueryLoading, departmentIdForPrograms]);
 
-      }
-    };
-    fetchDepartments();
-  }, [selectedFacultyId]);
-
-  // Fetch programs when department changes
+  // When alumni changes to a new record, ensure dependent org queries are up-to-date.
   useEffect(() => {
-    const fetchPrograms = async () => {
-      if (!selectedDepartmentId) {
-        setAllPrograms([]);
-        return;
-      }
-      setProgramsLoading(true);
-      try {
-        const res = await fetch(`/api/organization/programs?department_id=${selectedDepartmentId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setAllPrograms(data.programs || []);
-        }
-      } catch (error) {
-
-      } finally {
-        setProgramsLoading(false);
-      }
-    };
-    fetchPrograms();
-  }, [selectedDepartmentId]);
-
-  // Fetch initial programs on mount if department ID exists (for display mode)
-  useEffect(() => {
-    const fetchInitialPrograms = async () => {
-      if (data?.department) {
-        setProgramsLoading(true);
-        try {
-          const res = await fetch(`/api/organization/programs?department_id=${data.department}`);
-          if (res.ok) {
-            const result = await res.json();
-            setAllPrograms(result.programs || []);
-          }
-        } catch (error) {
-
-        } finally {
-          setProgramsLoading(false);
-        }
-      }
-    };
-    fetchInitialPrograms();
-  }, [data?.department]);
+    if (!data) return;
+    if (data.faculty) {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.departments(Number(data.faculty)) });
+    }
+    if (data.department) {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.programs(Number(data.department)) });
+    }
+  }, [data, queryClient]);
 
   // Reset department and program when faculty changes (only during editing)
   useEffect(() => {
@@ -1161,7 +1103,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
           </div>
-          <CompactField label="Mobile" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} />
+          <CompactField label="Primary Contact" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
           <CompactField label="Password" value={data.password || ""} isEditing={isFieldEditing("password")} readOnly={readOnly} register={register} name="password" type="password" onEdit={() => startEditingField("password")} />

@@ -728,6 +728,20 @@ export async function GET(req: Request) {
             AND TRIM(COALESCE(sapid, '')) != ''
             AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
           )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            sapid IS NOT NULL
+            AND TRIM(COALESCE(sapid, '')) != ''
+            AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) = LOWER(TRIM(COALESCE(a.sapid, '')))
+                AND TRIM(COALESCE(a2.sapid, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) != 'null'
+            )
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -754,6 +768,20 @@ export async function GET(req: Request) {
             AND TRIM(COALESCE(registrationno, '')) != ''
             AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
           )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            registrationno IS NOT NULL
+            AND TRIM(COALESCE(registrationno, '')) != ''
+            AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) = LOWER(TRIM(COALESCE(a.registrationno, '')))
+                AND TRIM(COALESCE(a2.registrationno, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) != 'null'
+            )
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -779,6 +807,20 @@ export async function GET(req: Request) {
             personalemail IS NOT NULL
             AND TRIM(COALESCE(personalemail, '')) != ''
             AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            personalemail IS NOT NULL
+            AND TRIM(COALESCE(personalemail, '')) != ''
+            AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) = LOWER(TRIM(COALESCE(a.personalemail, '')))
+                AND TRIM(COALESCE(a2.personalemail, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) != 'null'
+            )
           )`;
         }
         return sql`1 = 0`;
@@ -807,6 +849,20 @@ export async function GET(req: Request) {
             contactno IS NOT NULL
             AND TRIM(COALESCE(contactno, '')) != ''
             AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            contactno IS NOT NULL
+            AND TRIM(COALESCE(contactno, '')) != ''
+            AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) = LOWER(TRIM(COALESCE(a.contactno, '')))
+                AND TRIM(COALESCE(a2.contactno, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) != 'null'
+            )
           )`;
         }
         return sql`1 = 0`;
@@ -953,7 +1009,12 @@ export async function GET(req: Request) {
     const hasUnderApproval = Array.isArray(status) 
       ? status.includes("underApproval")
       : status === "underApproval";
-    const baseWhere = hasUnderApproval || hasSapIdStateFilter || hasRegNoStateFilter
+    const baseWhere =
+      hasUnderApproval ||
+      hasSapIdStateFilter ||
+      hasRegNoStateFilter ||
+      hasPersonalEmailStateFilter ||
+      hasContactNoStateFilter
       ? sql`1=1` 
       : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
 

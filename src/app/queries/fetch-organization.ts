@@ -255,7 +255,7 @@ export function useFaculties() {
   return useQuery<Faculty[], Error>({
     queryKey: organizationKeys.faculties(),
     queryFn: fetchFaculties,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -267,7 +267,7 @@ export function useDepartments(facultyId?: number) {
   return useQuery<Department[], Error>({
     queryKey: organizationKeys.departments(facultyId),
     queryFn: () => fetchDepartments(facultyId),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -279,7 +279,7 @@ export function usePrograms(departmentId?: number) {
   return useQuery<Program[], Error>({
     queryKey: organizationKeys.programs(departmentId),
     queryFn: () => fetchPrograms(departmentId),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -291,7 +291,7 @@ export function useCourses() {
   return useQuery<Course[], Error>({
     queryKey: organizationKeys.courses(),
     queryFn: fetchCourses,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -518,7 +518,7 @@ export function useChapters() {
   return useQuery<Chapter[], Error>({
     queryKey: chapterKeys.list(),
     queryFn: fetchChapters,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,

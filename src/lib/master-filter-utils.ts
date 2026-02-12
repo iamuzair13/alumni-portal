@@ -530,6 +530,20 @@ export function buildMasterFilterConditions(
             AND TRIM(COALESCE(sapid, '')) != ''
             AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
           )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            sapid IS NOT NULL
+            AND TRIM(COALESCE(sapid, '')) != ''
+            AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != alumniid
+                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) = LOWER(TRIM(COALESCE(sapid, '')))
+                AND TRIM(COALESCE(a2.sapid, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) != 'null'
+            )
+          )`;
         }
         // Unknown value – do not match anything
         return sql`1 = 0`;
@@ -559,6 +573,20 @@ export function buildMasterFilterConditions(
             AND TRIM(COALESCE(registrationno, '')) != ''
             AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
           )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            registrationno IS NOT NULL
+            AND TRIM(COALESCE(registrationno, '')) != ''
+            AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != alumniid
+                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) = LOWER(TRIM(COALESCE(registrationno, '')))
+                AND TRIM(COALESCE(a2.registrationno, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) != 'null'
+            )
+          )`;
         }
         return sql`1 = 0`;
       });
@@ -586,6 +614,20 @@ export function buildMasterFilterConditions(
             personalemail IS NOT NULL
             AND TRIM(COALESCE(personalemail, '')) != ''
             AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            personalemail IS NOT NULL
+            AND TRIM(COALESCE(personalemail, '')) != ''
+            AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != alumniid
+                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) = LOWER(TRIM(COALESCE(personalemail, '')))
+                AND TRIM(COALESCE(a2.personalemail, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) != 'null'
+            )
           )`;
         }
         return sql`1 = 0`;
@@ -616,6 +658,20 @@ export function buildMasterFilterConditions(
             contactno IS NOT NULL
             AND TRIM(COALESCE(contactno, '')) != ''
             AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
+          )`;
+        } else if (normalized === "DUPLICATE") {
+          return sql`(
+            contactno IS NOT NULL
+            AND TRIM(COALESCE(contactno, '')) != ''
+            AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
+            AND EXISTS (
+              SELECT 1
+              FROM public.tbl_alumni a2
+              WHERE a2.alumniid != alumniid
+                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) = LOWER(TRIM(COALESCE(contactno, '')))
+                AND TRIM(COALESCE(a2.contactno, '')) != ''
+                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) != 'null'
+            )
           )`;
         }
         return sql`1 = 0`;

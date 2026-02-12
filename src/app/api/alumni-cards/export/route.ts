@@ -20,6 +20,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const statusParam = (searchParams.get("status") || "all") as CardStatus | "overdue";
+    const overdueType = searchParams.get("overdueType") || "";
     const search = searchParams.get("search") || "";
 
     // Build access filter
@@ -34,6 +35,7 @@ export async function GET(req: Request) {
     // Legacy: "Pending" → "UnderReview", "Process" → "UnderPrinting"
     // NULL or empty status should be treated as "UnderReview" (default status)
     let statusCondition = sql``;
+    let overdueCondition = sql``;
     if (statusParam && statusParam !== "all" && statusParam !== "overdue") {
       const dbStatus = mapUIStatusToDb(statusParam as CardStatus);
 
@@ -72,6 +74,28 @@ export async function GET(req: Request) {
           AND c.status IS NOT NULL
           AND UPPER(TRIM(c.status)) = 'DELIVERED'
         `;
+      }
+    } else if (statusParam === "overdue") {
+      // Overdue tab - match /api/alumni-cards/applicants behavior
+      if (overdueType === "under-review") {
+        statusCondition = sql`
+          AND (
+            c.status IS NULL
+            OR TRIM(c.status) = ''
+            OR UPPER(TRIM(c.status)) = 'PENDING'
+            OR UPPER(TRIM(c.status)) = 'UNDERREVIEW'
+          )
+        `;
+        overdueCondition = sql` AND c.createdat < NOW() - INTERVAL '7 days'`;
+      } else if (overdueType === "under-printing") {
+        statusCondition = sql`
+          AND c.status IS NOT NULL
+          AND (
+            UPPER(TRIM(c.status)) = 'PROCESS'
+            OR UPPER(TRIM(c.status)) = 'UNDERPRINTING'
+          )
+        `;
+        overdueCondition = sql` AND c.createdat < NOW() - INTERVAL '7 days'`;
       }
     }
 
@@ -134,6 +158,7 @@ export async function GET(req: Request) {
       WHERE 1=1
         ${accessFilterCondition}
         ${statusCondition}
+        ${overdueCondition}
         ${searchCondition}
       ORDER BY c.createdat DESC
     `;

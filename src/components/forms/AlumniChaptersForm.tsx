@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PakistanFlag,
   getCountryFlag,
@@ -37,6 +38,7 @@ export default function AlumniChaptersForm({
   alumniId,
 }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -56,65 +58,67 @@ export default function AlumniChaptersForm({
     },
   });
 
-  // Fetch chapters from API
-  useEffect(() => {
-    const fetchChapters = async () => {
-      try {
-        const response = await fetch("/api/chapters/list");
-        const result = await response.json();
-        if (response.ok && result.chapters) {
-          setChapters(result.chapters);
-        } else {
-          toast.error("Failed to load chapters. Please refresh the page.", {
-            duration: 5000,
-            style: {
-              background: '#fee2e2',
-              color: '#991b1b',
-              padding: '16px',
-              borderRadius: '8px',
-            },
-          });
-        }
-      } catch (error) {
-        toast.error("Failed to load chapters. Please refresh the page.", {
-          duration: 5000,
-          style: {
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '16px',
-            borderRadius: '8px',
-          },
-        });
-      } finally {
-        setIsLoadingChapters(false);
+  const chaptersQuery = useQuery<{ chapters: Chapter[] }, Error>({
+    queryKey: ["chapters", "list"],
+    queryFn: async ({ signal }) => {
+      const response = await fetch("/api/chapters/list", { signal, headers: { accept: "application/json" } });
+      const result = (await response.json()) as { chapters?: Chapter[] };
+      if (!response.ok) {
+        throw new Error("Failed to load chapters. Please refresh the page.");
       }
-    };
-    fetchChapters();
-  }, []);
+      return { chapters: result.chapters ?? [] };
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
 
-  // Fetch current chapters for the alumni
   useEffect(() => {
-    const fetchCurrentChapters = async () => {
-      if (!alumniId) {
-        setIsLoadingCurrentChapters(false);
-        return;
-      }
+    setIsLoadingChapters(chaptersQuery.isLoading);
+    if (chaptersQuery.data?.chapters) {
+      setChapters(chaptersQuery.data.chapters);
+    }
+    if (chaptersQuery.isError) {
+      toast.error("Failed to load chapters. Please refresh the page.", {
+        duration: 5000,
+        style: {
+          background: "#fee2e2",
+          color: "#991b1b",
+          padding: "16px",
+          borderRadius: "8px",
+        },
+      });
+    }
+  }, [chaptersQuery.data, chaptersQuery.isError, chaptersQuery.isLoading]);
 
-      try {
-        const response = await fetch(`/api/alumni/chapters/current?alumniId=${encodeURIComponent(alumniId)}`);
-        const result = await response.json();
-        if (response.ok && Array.isArray(result.chapters)) {
-          // Pre-populate selected chapters
-          setSelectedChapters(result.chapters);
-        } else {
-        }
-      } catch (error) {
-      } finally {
-        setIsLoadingCurrentChapters(false);
+  const currentChaptersQuery = useQuery<{ chapters: number[] }, Error>({
+    queryKey: ["alumni", "chapters", "current", alumniId],
+    enabled: !!alumniId,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/alumni/chapters/current?alumniId=${encodeURIComponent(alumniId)}`, {
+        signal,
+        headers: { accept: "application/json" },
+      });
+      const result = (await response.json()) as { chapters?: unknown };
+      if (!response.ok) {
+        throw new Error("Failed to load current chapters");
       }
-    };
-    fetchCurrentChapters();
-  }, [alumniId]);
+      return { chapters: Array.isArray(result.chapters) ? (result.chapters as number[]) : [] };
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
+
+  useEffect(() => {
+    if (currentChaptersQuery.data?.chapters) {
+      setSelectedChapters(currentChaptersQuery.data.chapters);
+    }
+  }, [currentChaptersQuery.data]);
 
   // Auto-fill contact number on mount
   useEffect(() => {
@@ -220,6 +224,8 @@ export default function AlumniChaptersForm({
       if (!response.ok) {
         throw new Error(result.error || "Failed to submit application");
       }
+
+      queryClient.invalidateQueries({ queryKey: ["alumni", "chapters", "current", alumniId] });
 
       toast.success("Application submitted successfully!", {
         duration: 4000,

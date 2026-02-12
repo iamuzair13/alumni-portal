@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type JobFormValues = {
   title: string;
@@ -22,6 +23,7 @@ type JobFormProps = {
 export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -40,52 +42,55 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
     },
   });
 
-  // Load job data if editing
+  const jobQuery = useQuery<any, Error>({
+    queryKey: ["jobs", "detail", jobId],
+    enabled: !!jobId,
+    queryFn: async ({ signal }) => {
+      const res = await fetch(`/api/jobs/${jobId}`, { signal, headers: { accept: "application/json" } });
+      if (!res.ok) {
+        throw new Error("Failed to load job");
+      }
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
+  });
+
   useEffect(() => {
-    if (jobId) {
-      setIsLoading(true);
-      fetch(`/api/jobs/${jobId}`)
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error("Failed to load job");
-          }
-          return res.json();
-        })
-        .then((data) => {
-          setValue("title", data.title || "");
-          setValue("category", data.category || "");
-          setValue("company", data.company || "");
-          // Use deadline directly if it's already in YYYY-MM-DD format
-          // Parse date string directly to avoid timezone issues
-          if (data.deadline) {
-            // Check if it's already in YYYY-MM-DD format
-            const dateMatch = String(data.deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (dateMatch) {
-              // Already in correct format, use directly
-              setValue("deadline", dateMatch[0]);
-            } else {
-              // Try to parse and format without timezone conversion
-              const dateStr = String(data.deadline).split('T')[0]; // Get date part only
-              if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                setValue("deadline", dateStr);
-              } else {
-                setValue("deadline", "");
-              }
-            }
-          } else {
-            setValue("deadline", "");
-          }
-          setValue("location", data.location || "");
-          setValue("jobLink", data.jobLink || "");
-        })
-        .catch((err) => {
-          toast.error("Failed to load job data");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+    if (!jobId) return;
+    setIsLoading(jobQuery.isLoading);
+    if (!jobQuery.data) return;
+
+    const data = jobQuery.data as any;
+    setValue("title", data.title || "");
+    setValue("category", data.category || "");
+    setValue("company", data.company || "");
+    // Use deadline directly if it's already in YYYY-MM-DD format
+    // Parse date string directly to avoid timezone issues
+    if (data.deadline) {
+      // Check if it's already in YYYY-MM-DD format
+      const dateMatch = String(data.deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (dateMatch) {
+        // Already in correct format, use directly
+        setValue("deadline", dateMatch[0]);
+      } else {
+        // Try to parse and format without timezone conversion
+        const dateStr = String(data.deadline).split("T")[0]; // Get date part only
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          setValue("deadline", dateStr);
+        } else {
+          setValue("deadline", "");
+        }
+      }
+    } else {
+      setValue("deadline", "");
     }
-  }, [jobId, setValue]);
+    setValue("location", data.location || "");
+    setValue("jobLink", data.jobLink || "");
+  }, [jobId, jobQuery.data, jobQuery.isLoading, setValue]);
 
   const onSubmit = async (data: JobFormValues) => {
     setIsSubmitting(true);
@@ -115,6 +120,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
 
       toast.success(jobId ? "Job updated successfully" : "Job created successfully");
       reset();
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
       if (onSuccess) {
         onSuccess();
       }

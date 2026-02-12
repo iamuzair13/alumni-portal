@@ -840,7 +840,7 @@ function MoreDetailsContent() {
                   ) : (
                     // Regular rendering for other sections
                     section.fields.map((field, fieldIndex) => {
-                      // Handle conditional fields (e.g., official email/number only shown when employed)
+                      // Handle conditional fields (e.g., Wrok Email/number only shown when employed)
                       const fieldWithExtras = field as typeof field & { isConditional?: boolean; conditionalKey?: string; conditionalValue?: string; isSpecial?: boolean; type?: string; options?: Array<{ value: string; label: string }> };
                       if (fieldWithExtras.isConditional) {
                         const conditionalKey = fieldWithExtras.conditionalKey;

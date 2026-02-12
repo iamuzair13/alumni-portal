@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableHeader, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
-import { ArrowUpIcon, ArrowDownIcon, CheckLineIcon, CloseLineIcon, PlusIcon, TrashBinIcon } from "@/icons";
+import { ArrowUpIcon, ArrowDownIcon, CheckLineIcon, CloseLineIcon, EyeIcon, PlusIcon, TrashBinIcon } from "@/icons";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
@@ -101,6 +101,14 @@ export const AlumniScholarshipsTab: React.FC = () => {
   } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [mutatingIds, setMutatingIds] = useState<Set<number>>(new Set());
+  const [applicationPreview, setApplicationPreview] = useState<{
+    alumniId: number;
+    email: string;
+    pdfUrl: string;
+  } | null>(null);
+  const applicationPreviewModal = useModal();
+  const [isLoadingApplicationPreview, setIsLoadingApplicationPreview] = useState(false);
+  const [applicationPreviewError, setApplicationPreviewError] = useState<string | null>(null);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const confirmModal = useModal();
@@ -208,6 +216,29 @@ export const AlumniScholarshipsTab: React.FC = () => {
       stopMut(alumniId);
     }
   }, [startMut, stopMut, queryClient]);
+
+  const handleViewApplication = useCallback(async (alumniId: number) => {
+    setIsLoadingApplicationPreview(true);
+    setApplicationPreviewError(null);
+    try {
+      const res = await fetch(`/api/alumni/scholarships/${alumniId}`, {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Failed to fetch application preview (${res.status})`);
+      }
+      const data = (await res.json()) as { email: string; pdfUrl: string };
+      setApplicationPreview({ alumniId, email: data.email || "-", pdfUrl: data.pdfUrl });
+      applicationPreviewModal.openModal();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setApplicationPreviewError(msg || "Failed to fetch application preview");
+      applicationPreviewModal.openModal();
+    } finally {
+      setIsLoadingApplicationPreview(false);
+    }
+  }, [applicationPreviewModal]);
 
   const handleUnapprove = useCallback(async (alumniId: number, reason?: string): Promise<void> => {
     startMut(alumniId);
@@ -714,9 +745,19 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700  min-w-[180px] sticky right-0 z-10 bg-gray-100 dark:bg-gray-800">
+                      <TableCell className="px-2 py-4 text-sm text-slate-700  min-w-[180px] sticky right-0 z-10 bg-gray-100 dark:bg-gray-800">
                         {isAdmin && (
-                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => handleViewApplication(item.alumniId)}
+                              disabled={mutatingIds.has(item.alumniId)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-300 bg-white/0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label="View Application"
+                              title="View Application"
+                            >
+                              <EyeIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </button>
                             {item.status !== "approved" && (
                               <button
                                 type="button"
@@ -915,6 +956,78 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 )}
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Application Preview Modal */}
+      {applicationPreviewModal.isOpen && (
+        <Modal
+          isOpen={applicationPreviewModal.isOpen}
+          onClose={() => {
+            if (!isLoadingApplicationPreview) {
+              applicationPreviewModal.closeModal();
+              setApplicationPreview(null);
+              setApplicationPreviewError(null);
+            }
+          }}
+          className="max-w-5xl"
+        >
+          <div className="p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Application Preview
+              </h3>
+              <div className="flex items-center gap-2">
+                {applicationPreview?.pdfUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(applicationPreview.pdfUrl, "_blank", "noopener,noreferrer");
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Print / Download
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isLoadingApplicationPreview) {
+                      applicationPreviewModal.closeModal();
+                      setApplicationPreview(null);
+                      setApplicationPreviewError(null);
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {isLoadingApplicationPreview && (
+              <div className="py-10 text-center text-sm text-gray-600 dark:text-gray-300">Loading preview...</div>
+            )}
+
+            {!isLoadingApplicationPreview && applicationPreviewError && (
+              <div className="py-10 text-center text-sm text-red-600">{applicationPreviewError}</div>
+            )}
+
+            {!isLoadingApplicationPreview && !applicationPreviewError && applicationPreview && (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold">Email:</span> {applicationPreview.email || "-"}
+                </div>
+                <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
+                  <iframe
+                    title={`scholarship-application-${applicationPreview.alumniId}`}
+                    src={applicationPreview.pdfUrl}
+                    className="w-full h-[70vh]"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
