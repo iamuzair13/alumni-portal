@@ -713,7 +713,7 @@ export const AlumniChaptersTab: React.FC = () => {
       <div className="flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h3 className="text-lg font-semibold text-white dark:text-slate-100">Alumni Chapters</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Alumni Chapters</h3>
           <div className="flex items-center gap-2">
             <label className="text-sm text-white dark:text-gray-400" htmlFor="chapters-search">Search:</label>
             <input
