@@ -1,15 +1,15 @@
 "use client";
 import React from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { BoltIcon, TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
+import { TimeIcon, LockIcon, GroupIcon, EyeIcon, UserIcon, MailIcon, TrashBinIcon, PlusIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon, FileIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
-import { canModify, isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
+import { canModify } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
-import toast from "react-hot-toast";
+import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import { 
   type CardStatus, 
   type DbCardStatus,
@@ -22,6 +22,7 @@ import {
 
 export type AlumniCardItem = {
   id: string;
+  alumniid?: number;
   name: string;
   email?: string;
   program: string;
@@ -329,10 +330,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const [sortKey, setSortKey] = React.useState<SortKey>("name");
   const [sortDir, setSortDir] = React.useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = React.useState<number>(1);
-  const [pageSize, setPageSize] = React.useState<number>(defaultPageSize);
+  const [pageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
   const { data: session } = useSession();
+  const canEdit = canModify(session?.user);
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
   const topScrollbarRef = React.useRef<HTMLDivElement>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -366,6 +368,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         
         return {
           id: effectiveId,
+          alumniid: r.alumniid,
           name: String(r.alumniname ?? ""),
           email: r.email ?? undefined,
           program: String(r.degreetitle ?? ""),
@@ -577,18 +580,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   // Export to Excel function with column selection
   const handleExportToExcel = React.useCallback(() => {
-    // Helper function to format chapter names
-    const formatChapters = (item: Record<string, unknown>) => {
-      const chapters: string[] = [];
-      const chapter1 = String(item.chapter1_national || item.chapter1_international || "");
-      const chapter2 = String(item.chapter2_national || item.chapter2_international || "");
-      const chapter3 = String(item.chapter3_national || item.chapter3_international || "");
-      if (chapter1) chapters.push(chapter1);
-      if (chapter2) chapters.push(chapter2);
-      if (chapter3) chapters.push(chapter3);
-      return chapters.filter(c => c).join(", ") || "";
-    };
-
     // Async function to fetch and transform data (only called when Export is clicked)
     const fetchAndTransformData = async (): Promise<Record<string, unknown>[]> => {
       // Fetch comprehensive data from export endpoint
@@ -686,21 +677,24 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     });
   }, [debouncedQuery, selectedStatus, selectedOverdueType, openExportModal]);
 
-  const StatusSelect: React.FC<{ sapId: string; initialStatus?: CardStatus; readOnly?: boolean }> = ({ sapId, initialStatus, readOnly = false }) => {
+  const StatusSelect: React.FC<{
+    sapId: string;
+    alumniId?: number | null;
+    recipientEmail?: string | null;
+    alumniName?: string;
+    initialStatus?: CardStatus;
+    readOnly?: boolean;
+  }> = ({ sapId, alumniId, recipientEmail, alumniName, initialStatus, readOnly = false }) => {
     const { data: session } = useSession();
     const queryClient = useQueryClient();
     // Database values: "Pending", "Process", "Active", "Delivered", "Onhold", "UnderPrinting"
     const [localStatus, setLocalStatus] = React.useState<DbCardStatus | null>(null);
-    const [reasonOnhold, setReasonOnhold] = React.useState<string>("");
     const [showReasonInput, setShowReasonInput] = React.useState<boolean>(false);
     const [isUpdating, setIsUpdating] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [showConfirmModal, setShowConfirmModal] = React.useState(false);
     const [pendingStatusChange, setPendingStatusChange] = React.useState<{ status: DbCardStatus; reason?: string } | null>(null);
     const hasUpdatedRef = React.useRef(false);
-    const isAdmin = isAdminUser(session?.user);
-    const isSuperAdmin = isSuperAdminUser(session?.user);
-    const isViewer = isViewerUser(session?.user);
     const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
     // Map UI status (from items list) to DB status using centralized config
@@ -725,7 +719,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           
           // Always load reason from database when status is Onhold
           if (normalizedStatus === "Onhold" && data.reason_onhold) {
-            setReasonOnhold(data.reason_onhold || "");
             setShowReasonInput(true);
           }
         } else {
@@ -756,9 +749,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       setShowReasonInput(current === "Onhold");
       // Don't auto-fill the input field - it should only show what user types
       // The database reason is displayed in the "Current Reason (from database)" section
-      if (current !== "Onhold") {
-        setReasonOnhold("");
-      }
     }, [current]);
     
     const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -767,20 +757,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       // Don't update if same status
       if (next === current) return;
       
-      // If changing to Onhold, switch immediately (no confirmation needed) and show reason input
-      if (next === "Onhold") {
-        hasUpdatedRef.current = true; // Mark as manually updated to prevent useEffect from resetting
-        setLocalStatus("Onhold");
-        setShowReasonInput(true);
-        // Don't pre-fill the input field - let user see the reason in "Current Reason" section and type new one if needed
-        // Clear the input field so it's ready for new input
-        setReasonOnhold("");
-        return;
-      }
-      
       // For other statuses, show confirmation modal first (for admins and superadmins)
       if (canEdit) {
-        setPendingStatusChange({ status: next });
+        setPendingStatusChange({ status: next, reason: next === "Onhold" ? "" : undefined });
         setShowConfirmModal(true);
       } else {
         // Non-admins/superadmins can change status directly (shouldn't happen, but just in case)
@@ -788,17 +767,12 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     };
     
-    const handleReasonSubmit = async () => {
-      if (!reasonOnhold.trim()) {
+    const handleConfirmStatusChange = async () => {
+      if (!pendingStatusChange) return;
+      if (pendingStatusChange.status === "Onhold" && !String(pendingStatusChange.reason || "").trim()) {
         setError("Reason is required when status is Onhold");
         return;
       }
-      // Submit Onhold status with reason directly (no confirmation needed)
-      await submitStatusChange("Onhold", reasonOnhold.trim());
-    };
-    
-    const handleConfirmStatusChange = async () => {
-      if (!pendingStatusChange) return;
       setShowConfirmModal(false);
       await submitStatusChange(pendingStatusChange.status, pendingStatusChange.reason || "");
       setPendingStatusChange(null);
@@ -807,14 +781,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const handleCancelStatusChange = () => {
       setShowConfirmModal(false);
       // Revert local status to the actual current status from data
-      // Only revert if we're not in the middle of switching to Onhold
-      if (pendingStatusChange?.status !== "Onhold") {
-        if (data?.status) {
-          const normalizedStatus = normalizeDbStatus(data.status);
-          setLocalStatus(normalizedStatus);
-        } else {
-          setLocalStatus("UnderReview");
-        }
+      if (data?.status) {
+        const normalizedStatus = normalizeDbStatus(data.status);
+        setLocalStatus(normalizedStatus);
+      } else {
+        setLocalStatus("UnderReview");
       }
       setPendingStatusChange(null);
     };
@@ -907,10 +878,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         // If status is Onhold and reason was saved, clear the input field after a short delay
         // This allows the cache update to complete first, then the reason will be displayed from database
         if (next === "Onhold" && reason) {
-          // Clear input field after cache is updated
-          setTimeout(() => {
-            setReasonOnhold("");
-          }, 100);
+          // no-op (reason is chosen in modal)
         }
         
         // Invalidate applicants list to update counts, but debounce to prevent rapid refetches
@@ -968,63 +936,10 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
           {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
         </div>
-        {showReasonInput && current === "Onhold" && canEdit && (
-          <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-800/50 p-2.5">
-            {/* Field 1: Display current reason from database (always visible) */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
-                Current Reason (from database):
-              </label>
-              {isLoading ? (
-                <div className="rounded-md bg-gray-100 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 px-3 py-2">
-                  <p className="text-[12px] text-gray-400 dark:text-gray-500 italic">
-                    Loading reason...
-                  </p>
-                </div>
-              ) : data?.reason_onhold ? (
-                <div className="rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2">
-                  <p className="text-[12px] text-gray-800 dark:text-gray-200 break-words leading-relaxed">
-                    {data.reason_onhold}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-md bg-gray-100 dark:bg-gray-900/50 border border-dashed border-gray-300 dark:border-gray-700 px-3 py-2">
-                  <p className="text-[12px] text-gray-400 dark:text-gray-500 italic">
-                    No reason has been set yet.
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            {/* Field 2: Input field to add/update reason */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
-                {data?.reason_onhold ? "Update Reason:" : "Add Reason:"} <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={reasonOnhold}
-                  onChange={(e) => {
-                    setReasonOnhold(e.target.value);
-                    setError(null); // Clear error when user types
-                  }}
-                  placeholder={data?.reason_onhold ? "Enter new reason..." : "Enter reason for on hold..."}
-                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-[12px] text-gray-700 dark:text-gray-300 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isUpdating}
-                />
-                <button
-                  onClick={handleReasonSubmit}
-                  disabled={isUpdating || !reasonOnhold.trim()}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {data?.reason_onhold && reasonOnhold !== data.reason_onhold ? "Update" : "Save"}
-                </button>
-              </div>
-            </div>
-            {error && (
-              <span className="text-[10px] text-red-600 dark:text-red-400">{error}</span>
-            )}
+        {showReasonInput && current === "Onhold" && data?.reason_onhold && (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+            <span className="text-[10px] font-semibold text-gray-600">Reason for On Hold:</span>
+            <p className="text-[11px] text-gray-800 mt-1">{data.reason_onhold}</p>
           </div>
         )}
         {showReasonInput && current === "Onhold" && !canEdit && data?.reason_onhold && (
@@ -1042,45 +957,104 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             className="max-w-md mx-auto"
             showCloseButton={true}
           >
-            <div className="p-6" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Confirm Status Change</h2>
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                Are you sure you want to update this card status?
+              </p>
+
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">New Status:</span>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    {pendingStatusChange?.status ? getStatusLabel(mapDbStatusToUI(pendingStatusChange.status)) : "Under-Review"}
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
-                    Confirm Status Change
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Are you sure you want to change the card status?
-                  </p>
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Current Status:</span>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{statusLabel}</span>
+
+                {pendingStatusChange?.status === "Onhold" && (
+                  <div className="mt-4">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">On Hold Reason</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">This will be stored in database and included in email</div>
+                    <select
+                      aria-label="On hold reason"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={pendingStatusChange?.reason || ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPendingStatusChange((prev) => (prev ? { ...prev, reason: v } : prev));
+                        setError(null);
+                      }}
+                      disabled={isUpdating}
+                    >
+                      <option value="">Select reason...</option>
+                      <option value="Picture issue">Picture issue</option>
+                      <option value="Data Mismatch">Data Mismatch</option>
+                    </select>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">New Status:</span>
-                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                      {pendingStatusChange?.status ? getStatusLabel(mapDbStatusToUI(pendingStatusChange.status)) : "Under-Review"}
-                    </span>
-                  </div>
-                  {pendingStatusChange?.status === "Onhold" && pendingStatusChange?.reason && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400 block mb-1">Reason:</span>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 rounded p-2 border border-gray-200 dark:border-gray-700">
-                        {pendingStatusChange.reason}
-                      </p>
+                )}
+
+                {(() => {
+                  const next = pendingStatusChange?.status;
+                  if (!next) return null;
+                  if (next !== "Onhold" && next !== "Active" && next !== "Delivered") return null;
+                  if (!alumniId || !recipientEmail) {
+                    return (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs text-amber-700 dark:text-amber-400">
+                          Email preview is not available because alumni email or alumniId is missing for this record.
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (next === "Onhold" && !String(pendingStatusChange?.reason || "").trim()) {
+                    return (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs text-amber-700 dark:text-amber-400">
+                          Select an On Hold reason to enable email preview.
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const actionType =
+                    next === "Onhold"
+                      ? EMAIL_ACTION_TYPE.ALUMNI_CARD_ONHOLD
+                      : next === "Active"
+                        ? EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY
+                        : EMAIL_ACTION_TYPE.ALUMNI_CARD_DELIVERED;
+
+                  const tpl = generateAdminActionEmail({
+                    actionType,
+                    alumniName: alumniName || "Alumni",
+                    extraBodyHtml:
+                      next === "Onhold" && pendingStatusChange?.reason
+                        ? `<p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;"><strong>Reason:</strong> ${String(pendingStatusChange.reason)}</p>`
+                        : "",
+                  });
+
+                  return (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Email</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
+                        </div>
+                        <SendEmailButton
+                          alumniId={alumniId}
+                          recipientEmail={recipientEmail}
+                          actionType={actionType}
+                          initialSubject={tpl.subject}
+                          initialBody={tpl.html}
+                          disabled={isUpdating}
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
-              <div className="flex items-center justify-end gap-3">
+
+              <div className="mt-6 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={handleCancelStatusChange}
@@ -1108,25 +1082,19 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
     const { data: session } = useSession();
     const queryClient = useQueryClient();
-    const router = useRouter();
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [deleteError, setDeleteError] = React.useState<string | null>(null);
     
-    // Try to get status from cache first, then from item status, fallback to pending
-    const cachedCardData = queryClient.getQueryData<CardData | null>(cardStatusKey(sapId));
     // Preview button available for ALL statuses (fixed rendering issue - no conditional logic)
     const canPreview = true;
-    const isAdmin = isAdminUser(session?.user);
-    const isSuperAdmin = isSuperAdminUser(session?.user);
-    const isViewer = isViewerUser(session?.user);
     const canEdit = canModify(session?.user); // Includes both admin and superadmin
     
     const handleView = React.useCallback(() => {
       if (typeof window === "undefined") return;
       const url = `/alumni-profile?sapid=${encodeURIComponent(sapId)}`;
       window.open(url, "_blank", "noopener,noreferrer");
-    }, [router, sapId]);
+    }, [sapId]);
 
     const handleDelete = async () => {
       if (!sapId || sapId.trim() === "") {
@@ -1505,11 +1473,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 )}
 
                 {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => {
-                  const isAdmin = isAdminUser(session?.user);
-                  const isSuperAdmin = isSuperAdminUser(session?.user);
-                  const isViewer = isViewerUser(session?.user);
-                  // Viewers can view but not edit, admins and superadmins can view and edit
-                  const canEdit = canModify(session?.user); // Includes both admin and superadmin
                   return (
                     <React.Fragment key={`${alum.id}-fragment-${idx}`}>
                       <TableRow
@@ -1562,7 +1525,16 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
                           {formatApplicationDate(alum.createdAt)}
                         </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-start"><StatusSelect sapId={alum.id} initialStatus={alum.status} readOnly={!canEdit} /></TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-start">
+                          <StatusSelect
+                            sapId={alum.id}
+                            alumniId={alum.alumniid ?? null}
+                            recipientEmail={alum.email ?? null}
+                            alumniName={alum.name}
+                            initialStatus={alum.status}
+                            readOnly={!canEdit}
+                          />
+                        </TableCell>
                         <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
                         <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
                         <TableCell className="px-3 sm:px-6 min-w-[250px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>

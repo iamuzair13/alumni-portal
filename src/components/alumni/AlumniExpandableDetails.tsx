@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import { PencilIcon, TrashBinIcon } from "@/icons";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { canModify } from "@/lib/alumniProfile";
+import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
 import { organizationKeys, useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-organization";
 
 // ERP Record type for comparison
@@ -530,15 +530,40 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
 }
 
 export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = ({ sapId, onClose, readOnly = false }) => {
-  const [currentSapId, setCurrentSapId] = useState(sapId);
-  const { data, isLoading, error} = useAlumniFullDetails(currentSapId);
-  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const { register, handleSubmit, reset, watch, setValue, control, getValues } = useForm<AlumniFullData>();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const deleteModal = useModal();
+  const isSuperAdmin = isSuperAdminUser(session?.user);
+  const canSendCredentials = canModify(session?.user);
+  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
+
+  const [currentSapId, setCurrentSapId] = useState(sapId);
+  const { data, isLoading, error } = useAlumniFullDetails(currentSapId);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    control,
+  } = useForm<AlumniFullData>({
+    defaultValues: {} as AlumniFullData,
+    mode: "onSubmit",
+  });
+
+  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const safePasswordValue = useMemo(() => {
+    const raw = data?.password;
+    if (!raw) return "";
+    const s = String(raw);
+    if (s.toLowerCase().startsWith("scrypt:")) return "";
+    return s;
+  }, [data?.password]);
 
   const normalizeMaritalStatus = (v: unknown): string | null => {
     const s = typeof v === "string" ? v.trim() : "";
@@ -1106,7 +1131,50 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Primary Contact" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
-          <CompactField label="Password" value={data.password || ""} isEditing={isFieldEditing("password")} readOnly={readOnly} register={register} name="password" type="password" onEdit={() => startEditingField("password")} />
+          <CompactField
+            label="Password"
+            value={isSuperAdmin ? safePasswordValue : (data.password ? "********" : "")}
+            isEditing={isFieldEditing("password")}
+            readOnly={readOnly || !isSuperAdmin}
+            register={register}
+            name="password"
+            type="password"
+            onEdit={isSuperAdmin && !readOnly ? () => startEditingField("password") : undefined}
+          />
+          {canSendCredentials && data.alumniid && data.alumniid > 0 && (
+            <div className="flex items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-700/50">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Credentials:</span>
+              <button
+                type="button"
+                disabled={isSendingCredentials}
+                onClick={async () => {
+                  if (isSendingCredentials) return;
+                  setIsSendingCredentials(true);
+                  try {
+                    const res = await fetch("/api/send-credentials", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ alumniId: data.alumniid }),
+                    });
+                    const j = await res.json().catch(() => ({}));
+                    if (!res.ok || (j && j.ok === false)) {
+                      throw new Error((j as any)?.error || `Failed (${res.status})`);
+                    }
+                    toast.success("Credentials email sent");
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "Failed to send credentials";
+                    toast.error(msg);
+                  } finally {
+                    setIsSendingCredentials(false);
+                  }
+                }}
+                className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium bg-[#183D32] text-white hover:bg-[#183D32]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSendingCredentials ? "Sending..." : "Send Credentials"}
+              </button>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">Sends a temporary password to the alumni email</span>
+            </div>
+          )}
          
           <CompactField label="Home Address" value={data.address} isEditing={isFieldEditing("address")} readOnly={readOnly} register={register} name="address" type="textarea" onEdit={() => startEditingField("address")} comparisonStatus={getComparisonStatus("Home Address", data.address)} />
           
@@ -1750,3 +1818,5 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
     </div>
   );
 };
+
+export default AlumniExpandableDetails;

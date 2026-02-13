@@ -74,10 +74,10 @@ export async function POST(req: Request) {
       
       if (alumniEmail) {
         // Send email asynchronously (don't wait for it to complete)
-        sendSwimmingPoolMembershipEmail(alumniEmail, alumniName, month.trim()).catch((err) => {
+        sendSwimmingPoolMembershipEmail(alumniEmail, alumniName, month.trim()).catch(() => {
         });
       }
-    } catch (emailError) {
+    } catch {
       // Don't fail the request if email fails
     }
 

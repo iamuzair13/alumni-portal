@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify, isViewerUser } from "@/lib/alumniProfile";
+import { canModify, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -78,6 +78,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
     const canAccess = canModify(session.user); // Checks for both admin and superadmin
+    const isSuperAdmin = isSuperAdminUser(session.user);
     const isViewer = isViewerUser(session.user); // Checks for viewer users
     const isAdminOrViewer = canAccess || isViewer;
     
@@ -104,7 +105,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
             return NextResponse.json({ error: "Forbidden: You don't have access to this alumni record" }, { status: 403 });
           }
         }
-      } catch (error) {
+      } catch {
         // If access filter check fails, log but don't block - let the ownership check below handle it
         // Continue to ownership check below
       }
@@ -170,6 +171,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     // Return all fields from tbl_alumni
     // SECURITY: Only return password for alumni (owners), not for admins
+    const rawPassword = typeof row.password === "string" ? row.password : null;
+    const isHashedPassword = Boolean(rawPassword && rawPassword.toLowerCase().startsWith("scrypt:"));
+    const alumniPassword = isHashedPassword ? "********" : rawPassword;
+    const adminPassword = rawPassword ? "********" : null;
+    const superAdminPassword = !rawPassword || isHashedPassword ? null : rawPassword;
     return NextResponse.json({ 
       item: {
         alumniid: row.alumniid ?? null,
@@ -233,8 +239,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        // SECURITY: Return password for alumni (owners) and admins who can modify
-        password: (isAlumni && isOwner) || canAccess ? (row.password ?? null) : null,
+        password: (isAlumni && isOwner) ? alumniPassword : (isSuperAdmin ? superAdminPassword : (canAccess ? adminPassword : null)),
         father_cnic: row.father_cnic ?? null,
         category: row.category ?? null,
         // Higher Education fields

@@ -144,7 +144,11 @@ export const AlumniTabbedMenu: FC = () => {
 
   const [selected, setSelected] = useState<MenuKey>(getTabFromUrl());
 
-  const { data: tabCountsData } = useQuery({
+  const {
+    data: tabCountsData,
+    isLoading: tabCountsLoading,
+    isFetching: tabCountsFetching,
+  } = useQuery({
     queryKey: ["dashboard-tab-counts"],
     queryFn: fetchTabCounts,
     staleTime: 5 * 60 * 1000,
@@ -172,16 +176,25 @@ export const AlumniTabbedMenu: FC = () => {
 
   const renderCounterPair = (key: MenuKey, isSelected: boolean) => {
     const c = tabCounts[key];
-    if (!c) return null;
+    const showLoader = (tabCountsLoading || tabCountsFetching) && !c;
+    if (!c && !showLoader) return null;
 
     const allCls = "bg-[#183D32] text-white";
     const secondaryCls = "bg-[#183D32] text-white border border-white/40";
 
     return (
       <span className="ml-2 inline-flex items-center gap-1 align-middle">
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${allCls}`}>{c.all}</span>
-        <span className={isSelected ? "text-[#183D32]/60 text-[10px]" : "text-[#183D32]/60 text-[10px]"}>/</span>
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${secondaryCls}`}>{c.secondary}</span>
+        {showLoader ? (
+          <span className="inline-flex items-center justify-center h-4 w-8">
+            <span className="h-3 w-3 rounded-full border-2 border-[#183D32]/30 border-t-[#183D32] animate-spin" />
+          </span>
+        ) : (
+          <>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${allCls}`}>{c!.all}</span>
+            <span className={isSelected ? "text-[#183D32]/60 text-[10px]" : "text-[#183D32]/60 text-[10px]"}>/</span>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${secondaryCls}`}>{c!.secondary}</span>
+          </>
+        )}
       </span>
     );
   };
@@ -189,7 +202,7 @@ export const AlumniTabbedMenu: FC = () => {
   return (
     <ComponentCard className="">
       <div
-        className="tab-list flex shadow-lg flex-wrap gap-3 lg:gap-4 justify-start py-4 bg-gray-50 px-4 rounded-2xl border border-b-[#183D32] sticky top-0 transition-all duration-300 ease-in-out backdrop-blur-sm bg-opacity-95 z-1000 animate-[slideDown_0.3s_ease-in-out]"
+        className="tab-list mt-4 flex shadow-lg flex-wrap gap-3 lg:gap-4 justify-start py-4 bg-[#183D32]/10 px-4 rounded-2xl border border-b-[#183D32] sticky top-22 transition-all duration-300 ease-in-out backdrop-blur-sm bg-opacity-95 z-100  animate-[slideDown_0.3s_ease-in-out]"
         role="tablist"
         aria-label="Alumni sections"
       >

@@ -10,6 +10,10 @@ import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { useExcelExport } from "@/lib/excel-export";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 
 type TabKey = "chapterMembers" | "associationMembers" | "applications";
 
@@ -106,6 +110,19 @@ export default function LeadershipPage() {
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [expandedMemberId, setExpandedMemberId] = useState<number | null>(null);
 
+  const confirmModal = useModal();
+  const [pendingAction, setPendingAction] = useState<
+    | {
+        action: "approve" | "reject" | "delete";
+        applicationId: number;
+        type: "chapter" | "association";
+        alumniId?: number;
+        name?: string;
+        email?: string;
+      }
+    | null
+  >(null);
+
   const isAdmin = session?.user ? canModify(session.user) : false;
 
   // Fetch settings
@@ -170,48 +187,8 @@ export default function LeadershipPage() {
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this leadership member? This action cannot be undone.")) {
-      return;
-    }
-
-    setProcessingIds(prev => new Set(prev).add(memberId));
-    setActionMessage(null);
-    setActionError(null);
-
-    try {
-      const res = await fetch("/api/leadership/actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete", applicationId: memberId, type }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to delete member");
-      }
-
-      setActionMessage("Member deleted successfully");
-      toast.success("Member deleted successfully");
-      
-      if (expandedMemberId === memberId) {
-        setExpandedMemberId(null);
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ["leadership-members"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
-      await refetchMembers();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to delete member";
-      setActionError(msg);
-      toast.error(msg);
-    } finally {
-      setProcessingIds(prev => {
-        const next = new Set(prev);
-        next.delete(memberId);
-        return next;
-      });
-    }
+    setPendingAction({ action: "delete", applicationId: memberId, type });
+    confirmModal.openModal();
   };
 
   const handleAction = async (action: "approve" | "reject" | "delete", applicationId: number, type: "chapter" | "association") => {
@@ -220,7 +197,25 @@ export default function LeadershipPage() {
       return;
     }
 
-    setProcessingIds(prev => new Set(prev).add(applicationId));
+    // Use confirmation modal instead of immediate action
+    const app = applicationsData?.find((x) => x.id === applicationId);
+    setPendingAction({
+      action,
+      applicationId,
+      type,
+      alumniId: app?.alumniId,
+      name: app?.name,
+      email: app?.email,
+    });
+    confirmModal.openModal();
+    return;
+  };
+
+  const executePendingAction = async () => {
+    if (!pendingAction) return;
+    const { action, applicationId, type } = pendingAction;
+
+    setProcessingIds((prev) => new Set(prev).add(applicationId));
     setActionMessage(null);
     setActionError(null);
 
@@ -230,26 +225,30 @@ export default function LeadershipPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, applicationId, type }),
       });
-
-      const data = await res.json();
-
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || "Failed to perform action");
+        throw new Error((data as any).error || "Failed to perform action");
       }
 
-      setActionMessage(`${action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Deleted"} successfully`);
+      setActionMessage(
+        `${action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Deleted"} successfully`
+      );
       toast.success(`Application ${action}d successfully`);
-      
+
       queryClient.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["leadership-members"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["leadership-counts"], exact: false });
       await refetchApplications();
       await refetchMembers();
+
+      confirmModal.closeModal();
+      setPendingAction(null);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to perform action";
       setActionError(msg);
       toast.error(msg);
     } finally {
-      setProcessingIds(prev => {
+      setProcessingIds((prev) => {
         const next = new Set(prev);
         next.delete(applicationId);
         return next;
@@ -553,24 +552,118 @@ export default function LeadershipPage() {
 
         <ExportModal />
 
-        {/* Action Messages */}
-        {actionMessage && (
-          <div className="w-full px-4 py-2">
-            <div className="max-w-7xl mx-auto">
-              <div className="rounded-lg border border-green-300 bg-green-50 p-3 text-green-700 text-sm">
-                {actionMessage}
+        {confirmModal.isOpen && pendingAction && (
+          <Modal
+            isOpen={confirmModal.isOpen}
+            onClose={() => {
+              const id = pendingAction.applicationId;
+              if (!processingIds.has(id)) {
+                confirmModal.closeModal();
+                setPendingAction(null);
+              }
+            }}
+            showCloseButton={true}
+            className="max-w-xl"
+          >
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {pendingAction.action === "approve"
+                  ? "Approve Leadership Application"
+                  : pendingAction.action === "reject"
+                    ? "Not Approve Leadership Application"
+                    : "Delete Leadership Member"}
+              </h3>
+
+              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                {pendingAction.action === "delete" ? (
+                  <>Are you sure you want to delete this record? This action cannot be undone.</>
+                ) : (
+                  <>
+                    Are you sure you want to {pendingAction.action === "approve" ? "approve" : "mark as not approved"} the{" "}
+                    <strong>{pendingAction.type === "chapter" ? "chapter" : "association"}</strong> leadership application
+                    {pendingAction.name ? (
+                      <>
+                        {" "}for <strong>{pendingAction.name}</strong>?
+                      </>
+                    ) : (
+                      "?"
+                    )}
+                  </>
+                )}
+              </p>
+
+              {pendingAction.action !== "delete" && (
+                <div className="mt-5">
+                  {(() => {
+                    const alumniId = pendingAction.alumniId;
+                    const recipientEmail = pendingAction.email;
+                    if (!alumniId || !recipientEmail) {
+                      return (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                          No recipient email found for this alumni. You can still confirm the action, but you cannot send an email.
+                        </div>
+                      );
+                    }
+
+                    const actionType =
+                      pendingAction.type === "chapter"
+                        ? pendingAction.action === "approve"
+                          ? EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_APPROVED
+                          : EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_NOT_APPROVED
+                        : pendingAction.action === "approve"
+                          ? EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_APPROVED
+                          : EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_NOT_APPROVED;
+
+                    const tpl = generateAdminActionEmail({
+                      actionType,
+                      alumniName: pendingAction.name || "Alumni",
+                    });
+
+                    return (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Email</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
+                        </div>
+                        <SendEmailButton
+                          alumniId={alumniId}
+                          recipientEmail={recipientEmail}
+                          actionType={actionType}
+                          initialSubject={tpl.subject}
+                          initialBody={tpl.html}
+                          disabled={processingIds.has(pendingAction.applicationId)}
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!processingIds.has(pendingAction.applicationId)) {
+                      confirmModal.closeModal();
+                      setPendingAction(null);
+                    }
+                  }}
+                  disabled={processingIds.has(pendingAction.applicationId)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executePendingAction}
+                  disabled={processingIds.has(pendingAction.applicationId)}
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Confirm
+                </button>
               </div>
             </div>
-          </div>
-        )}
-        {actionError && (
-          <div className="w-full px-4 py-2">
-            <div className="max-w-7xl mx-auto">
-              <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
-                {actionError}
-              </div>
-            </div>
-          </div>
+          </Modal>
         )}
 
         {/* Table Section */}
@@ -603,6 +696,25 @@ export default function LeadershipPage() {
           </div>
         </div>
       </div>
+
+      {/* Action Messages */}
+      {actionMessage && (
+        <div className="px-6 pt-2">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
+            {actionMessage}
+          </div>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="w-full px-4 py-2">
+          <div className="max-w-7xl mx-auto">
+            <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
+              {actionError}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

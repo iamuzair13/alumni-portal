@@ -712,50 +712,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
     } else if (!shouldVerify && verifyString !== "false") {
 
     }
-    
-    // Send welcome email ONLY when admin verifies/unverifies for the first time (moving from NULL to verified/unverified)
-    // This is a one-time email sent only when status changes from NULL
-    if (wasUnderApproval && generatedPassword) {
-      try {
-        const { sendWelcomeEmail } = await import("@/lib/email");
-        const alumniEmail = current.personalemail || current.officialemail || current.universityemail;
-        const alumniName = current.alumniname || "Alumni";
-        
-        if (alumniEmail) {
-
-
-          try {
-            const emailSent = await sendWelcomeEmail(
-              alumniEmail,
-              alumniName,
-              generatedPassword,
-              sapid
-            );
-            
-            if (emailSent) {
-
-            } else {
-
-            }
-          } catch (emailError) {
-            const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-
-
-            // Don't fail the request if email fails - verification is already updated
-          }
-        } else {
-
-
-        }
-      } catch (emailError) {
-        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-
-
-        // Don't fail the request if email fails
-      }
-    } else if (wasUnderApproval && !generatedPassword) {
-
-    }
 
     try {
       await logAdminAction({

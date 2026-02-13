@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, useCallback, useEffect } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
@@ -11,12 +11,14 @@ import EditableField from "@/components/ui/EditableField";
 import EditableCountryProvinceCity from "@/components/ui/EditableCountryProvinceCity";
 import EditableEmploymentStatus from "@/components/ui/EditableEmploymentStatus";
 import { Toaster, toast } from "react-hot-toast";
-import { isViewerUser } from "@/lib/alumniProfile";
+import { canModify, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 function MoreDetailsContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const isViewer = isViewerUser(session?.user);
+  const isSuperAdmin = isSuperAdminUser(session?.user);
+  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
   
   // Get identifier from URL params, or fallback to session (SAP ID or registration number)
   const urlSapId = searchParams.get("sapid") || "";
@@ -26,11 +28,8 @@ function MoreDetailsContent() {
   let sessionRegNo: string | undefined;
   if (session?.user) {
     const user = session.user as Record<string, unknown>;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const sapIdValue = user["sapid"];
-    const regNoValue = user["registrationno"];
-    sessionSapid = sapIdValue ? String(sapIdValue).trim() : undefined;
-    sessionRegNo = regNoValue ? String(regNoValue).trim() : undefined;
+    sessionSapid = user["sapid"] ? String(user["sapid"]).trim() : undefined;
+    sessionRegNo = user["registrationno"] ? String(user["registrationno"]).trim() : undefined;
   }
   
   // Use URL param if available, otherwise use session SAP ID, otherwise use registration number
@@ -40,6 +39,14 @@ function MoreDetailsContent() {
   const updateMutation = useUpdateAlumniFields(sapId || undefined);
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
   const [isSavingAll, setIsSavingAll] = useState(false);
+
+  const safePasswordValue = useMemo(() => {
+    const raw = data?.password;
+    if (!raw) return null;
+    const s = String(raw);
+    if (s.toLowerCase().startsWith("scrypt:")) return null;
+    return s;
+  }, [data?.password]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Mark as initialized once data is loaded (prevents false positives on initial render)
@@ -66,7 +73,7 @@ function MoreDetailsContent() {
   }, [data, isLoading, isInitialized]);
 
   // Helper function to normalize values for comparison (treat null, undefined, and empty string as equivalent)
-  const normalizeValue = (val: unknown): unknown => {
+  const normalizeValue = useCallback((val: unknown): unknown => {
     if (val === null || val === undefined || val === "") return null;
     if (typeof val === "string") {
       const trimmed = val.trim();
@@ -77,21 +84,7 @@ function MoreDetailsContent() {
       return trimmed;
     }
     return val;
-  };
-
-  // Helper function to check if two values are effectively the same
-  const valuesAreEqual = (val1: unknown, val2: unknown): boolean => {
-    const normalized1 = normalizeValue(val1);
-    const normalized2 = normalizeValue(val2);
-    // Also handle number comparisons (e.g., "123" === 123)
-    if (typeof normalized1 === "string" && typeof normalized2 === "number") {
-      return normalized1 === String(normalized2);
-    }
-    if (typeof normalized1 === "number" && typeof normalized2 === "string") {
-      return String(normalized1) === normalized2;
-    }
-    return normalized1 === normalized2;
-  };
+  }, []);
 
   const formatDateDisplay = (value: unknown): string => {
     if (value === null || value === undefined || value === "") return "-";
@@ -486,18 +479,6 @@ function MoreDetailsContent() {
     );
   }
 
-  const formatValue = (value: unknown, isPassword: boolean = false): string => {
-    if (value === null || value === undefined) return "Not provided";
-    if (typeof value === "boolean") return value ? "Yes" : "No";
-    // For password fields, always show masked value
-    if (isPassword) {
-      const strValue = String(value).trim();
-      return strValue === "" ? "Not provided" : strValue;
-    }
-    const strValue = String(value).trim();
-    return strValue === "" ? "Not provided" : strValue;
-  };
-
   // Normalize image path for Next.js Image component
   const normalizeImagePath = (imagePath: unknown): string => {
     // If empty or falsy, return default image
@@ -541,7 +522,17 @@ function MoreDetailsContent() {
     { value: "Unemployed(Searching for job)", label: "Unemployed(Searching for job)" },
   ];
 
-  const sections = [
+  type MoreDetailsField = {
+    label: string;
+    value: unknown;
+    key: string;
+    editable: boolean;
+    type?: "text" | "email" | "tel" | "number" | "textarea" | "select" | "checkbox" | "password" | "date";
+    options?: Array<{ value: string; label: string }>;
+    isSpecial?: boolean;
+  };
+
+  const sections: Array<{ title: string; fields: MoreDetailsField[] }> = [
     {
       title: "Personal Information",
       fields: [
@@ -553,7 +544,7 @@ function MoreDetailsContent() {
         { label: "Date of Birth", value: data.dateofbirth, key: "dateofbirth", editable: true, type: "date" as const },
         { label: "Marital Status", value: data.maritalstatus, key: "maritalstatus", editable: true, type: "select" as const, options: maritalStatusOptions },
         { label: "CNIC/Passport", value: data.cnicpassport, key: "cnicpassport", editable: false },
-        { label: "Password", value: data.password, key: "password", editable: true, type: "password" as const },
+        { label: "Password", value: safePasswordValue, key: "password", editable: isSuperAdmin, type: "password" as const },
       ],
     },
     {
@@ -637,272 +628,187 @@ function MoreDetailsContent() {
     },
   ];
 
+  const isAdminOrSuperAdmin = canModify(session?.user);
+
+  const handleSendCredentials = async () => {
+    if (!data.alumniid || data.alumniid <= 0) {
+      toast.error("Missing alumniId");
+      return;
+    }
+    if (isSendingCredentials) return;
+    setIsSendingCredentials(true);
+    try {
+      const res = await fetch("/api/send-credentials", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ alumniId: data.alumniid }),
+      });
+      const j = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || j?.ok === false) {
+        throw new Error(j?.error || `Failed (${res.status})`);
+      }
+      toast.success("Credentials email sent");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to send credentials";
+      toast.error(msg);
+    } finally {
+      setIsSendingCredentials(false);
+    }
+  };
+
   return (
     <>
       <AppHeader />
       <Toaster position="top-right" />
-      <PageBanner title="More Details" />
       <div className="min-h-screen bg-gray-50">
+        <PageBanner title="Profile Details" />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Profile Details</h1>
-                <p className="mt-1 text-sm text-gray-500">Complete information about your profile. Hover over fields to edit.</p>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                {Object.keys(pendingChanges).length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <span className="text-sm font-medium text-yellow-800 whitespace-nowrap">
-                      {Object.keys(pendingChanges).length} change{Object.keys(pendingChanges).length > 1 ? 's' : ''} pending
-                    </span>
-                    {!isViewer && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleCancelAll}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors whitespace-nowrap"
-                        >
-                          Cancel All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveAll}
-                          disabled={isSavingAll}
-                          className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap shadow-md"
-                        >
-                          {isSavingAll ? (
-                            <>
-                              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Save All Changes
-                            </>
-                          )}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-                <BackButton />
-              </div>
-            </div>
+            <BackButton />
           </div>
 
-          {/* Profile Image */}
-          {data.image1 && (
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex items-center gap-6">
-                <div className="relative w-32 h-32 rounded-full border-4 border-white bg-gray-100 overflow-hidden">
-                  <Image
-                    src={normalizeImagePath(data.image1)}
-                    alt={data.alumniname || "Profile"}
-                    width={128}
-                    height={128}
-                    className="w-full h-full object-cover"
-                  />
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col lg:flex-row gap-8">
+                <div className="w-full lg:w-72 flex-shrink-0">
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <div className="flex flex-col items-center">
+                      <div className="relative w-32 h-32 rounded-full overflow-hidden border border-gray-200 bg-white">
+                        <Image
+                          src={normalizeImagePath(data.image1)}
+                          alt={data.alumniname || "Profile"}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="mt-4 text-center">
+                        <div className="text-lg font-semibold text-gray-900">{data.alumniname || "-"}</div>
+                        <div className="text-sm text-gray-600">{data.sapid || data.registrationno || ""}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{data.alumniname || "N/A"}</h2>
-                  <p className="text-gray-600">{data.sapid || "N/A"}</p>
+
+                <div className="flex-1">
+                  {isAdminOrSuperAdmin && data.alumniid && data.alumniid > 0 && (
+                    <div className="mb-4 flex items-center justify-end">
+                      <button
+                        type="button"
+                        disabled={isSendingCredentials}
+                        onClick={handleSendCredentials}
+                        className="inline-flex items-center justify-center rounded-md px-3 py-2 text-xs font-semibold bg-[#183D32] text-white hover:bg-[#183D32]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isSendingCredentials ? "Sending..." : "Send Credentials"}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-8">
+                    {sections.map((section) => (
+                      <div key={section.title} className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                          <h3 className="text-sm font-semibold text-gray-800">{section.title}</h3>
+                        </div>
+                        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                          {section.fields.map((field) => {
+                            const editable = field.editable && !isViewer;
+
+                            if (field.isSpecial && field.key === "country") {
+                              return (
+                                <EditableCountryProvinceCity
+                                  key={field.key}
+                                  countryValue={data.country}
+                                  provinceValue={data.province}
+                                  cityValue={data.city}
+                                  disabled={!editable}
+                                  onCountryChange={(_, value) => handleFieldValueChange("country", value)}
+                                  onProvinceChange={(_, value) => handleFieldValueChange("province", value)}
+                                  onCityChange={(_, value) => handleFieldValueChange("city", value)}
+                                />
+                              );
+                            }
+
+                            if (field.isSpecial && field.key === "employeed") {
+                              return (
+                                <EditableEmploymentStatus
+                                  key={field.key}
+                                  employeedValue={data.employeed}
+                                  industryValue={data.industry}
+                                  nameoforganizationValue={data.nameoforganization}
+                                  designationValue={data.designation}
+                                  totalyearsofexpereinceValue={data.totalyearsofexpereince}
+                                  organizationAddressValue={data.organization_address}
+                                  workCountryValue={data.work_country}
+                                  workCityValue={data.work_city}
+                                  workEmailValue={data.officialemail}
+                                  workPhoneValue={data.officialnumber}
+                                  instituteNameValue={data.higher_education_institute_name}
+                                  programValue={data.higher_education_program}
+                                  instituteCountryValue={data.higher_education_institute_country}
+                                  instituteCityValue={data.higher_education_institute_city}
+                                  scholarshipValue={data.is_scholarship}
+                                  disabled={!editable}
+                                  onEmployeedChange={(_, value) => handleFieldValueChange("employeed", value)}
+                                  onIndustryChange={(_, value) => handleFieldValueChange("industry", value)}
+                                  onOrganizationChange={(_, value) => handleFieldValueChange("nameoforganization", value)}
+                                  onDesignationChange={(_, value) => handleFieldValueChange("designation", value)}
+                                  onExperienceChange={(_, value) => handleFieldValueChange("totalyearsofexpereince", value)}
+                                  onOrganizationAddressChange={(_, value) => handleFieldValueChange("organization_address", value)}
+                                  onWorkCountryChange={(_, value) => handleFieldValueChange("work_country", value)}
+                                  onWorkCityChange={(_, value) => handleFieldValueChange("work_city", value)}
+                                  onWorkEmailChange={(_, value) => handleFieldValueChange("officialemail", value)}
+                                  onWorkPhoneChange={(_, value) => handleFieldValueChange("officialnumber", value)}
+                                  onInstituteNameChange={(_, value) => handleFieldValueChange("higher_education_institute_name", value)}
+                                  onProgramChange={(_, value) => handleFieldValueChange("higher_education_program", value)}
+                                  onInstituteCountryChange={(_, value) => handleFieldValueChange("higher_education_institute_country", value)}
+                                  onInstituteCityChange={(_, value) => handleFieldValueChange("higher_education_institute_city", value)}
+                                  onScholarshipChange={(_, value) => handleFieldValueChange("is_scholarship", value)}
+                                />
+                              );
+                            }
+
+                            return (
+                              <EditableField
+                                key={field.key}
+                                label={field.label}
+                                value={field.value}
+                                fieldKey={field.key}
+                                type={field.type}
+                                options={field.options}
+                                disabled={!editable}
+                                revealPassword={field.key === "password" && isSuperAdmin}
+                                batchMode={true}
+                                onValueChange={handleFieldValueChange}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelAll}
+                      disabled={isSavingAll || Object.keys(pendingChanges).length === 0}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel Changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveAll}
+                      disabled={isSavingAll || Object.keys(pendingChanges).length === 0}
+                      className="px-4 py-2 text-sm font-semibold text-white bg-[#183D32] hover:bg-[#183D32]/90 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSavingAll ? "Saving..." : "Save All"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Details Sections */}
-          <div className="space-y-6">
-            {sections.map((section, sectionIndex) => (
-              <div key={sectionIndex} className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                  {section.title}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {section.title === "Address Information" ? (
-                    // Special rendering for Country/Province/City with dependencies
-                    <>
-                      <EditableCountryProvinceCity
-                        countryValue={pendingChanges.country !== undefined ? pendingChanges.country : data.country}
-                        provinceValue={pendingChanges.province !== undefined ? pendingChanges.province : data.province}
-                        cityValue={pendingChanges.city !== undefined ? pendingChanges.city : data.city}
-                        onCountryChange={handleFieldValueChange}
-                        onProvinceChange={handleFieldValueChange}
-                        onCityChange={handleFieldValueChange}
-                        disabled={isViewer}
-                      />
-                      <EditableField
-                        label="Address"
-                        value={pendingChanges.address !== undefined ? pendingChanges.address : data.address}
-                        fieldKey="address"
-                        onValueChange={handleFieldValueChange}
-                        type="textarea"
-                        batchMode={true}
-                        disabled={isViewer}
-                      />
-                    </>
-                  ) : section.title === "Employment Information" ? (
-                    // Special rendering for Employment Status with conditional fields
-                    <>
-                      <EditableEmploymentStatus
-                        employeedValue={pendingChanges.employeed !== undefined ? pendingChanges.employeed : data.employeed}
-                        industryValue={pendingChanges.industry !== undefined ? pendingChanges.industry : data.industry}
-                        nameoforganizationValue={pendingChanges.nameoforganization !== undefined ? pendingChanges.nameoforganization : data.nameoforganization}
-                        designationValue={pendingChanges.designation !== undefined ? pendingChanges.designation : data.designation}
-                        totalyearsofexpereinceValue={(() => {
-                          // Check if startOfCareer is in pending changes
-                          if (pendingChanges.startOfCareer !== undefined) {
-                            const startYear = typeof pendingChanges.startOfCareer === "number" ? pendingChanges.startOfCareer : Number(pendingChanges.startOfCareer);
-                            if (!isNaN(startYear) && startYear > 1900) {
-                              const currentYear = new Date().getFullYear();
-                              const calculatedYears = currentYear - startYear;
-                              return calculatedYears > 0 ? String(calculatedYears) : null;
-                            }
-                          }
-                          // Check if startOfCareer is in data
-                          const startOfCareer = (data as Record<string, unknown>).startOfCareer;
-                          if (startOfCareer) {
-                            const startYear = typeof startOfCareer === "number" ? startOfCareer : (typeof startOfCareer === "string" ? new Date(startOfCareer).getFullYear() : Number(startOfCareer));
-                            if (!isNaN(startYear) && startYear > 1900) {
-                              const currentYear = new Date().getFullYear();
-                              const calculatedYears = currentYear - startYear;
-                              return calculatedYears > 0 ? String(calculatedYears) : null;
-                            }
-                          }
-                          // Fall back to totalyearsofexpereince
-                          return pendingChanges.totalyearsofexpereince !== undefined ? pendingChanges.totalyearsofexpereince : data.totalyearsofexpereince;
-                        })()}
-                        organizationAddressValue={pendingChanges.organization_address !== undefined ? pendingChanges.organization_address : data.organization_address}
-                        disabled={isViewer}
-                        degreeTitleValue={pendingChanges.degree_title !== undefined ? pendingChanges.degree_title : (data as Record<string, unknown>).degree_title ?? null}
-                        instituteNameValue={pendingChanges.higher_education_institute_name !== undefined ? pendingChanges.higher_education_institute_name : (data as Record<string, unknown>).higher_education_institute_name ?? null}
-                        programValue={pendingChanges.higher_education_program !== undefined ? pendingChanges.higher_education_program : (data as Record<string, unknown>).higher_education_program ?? null}
-                        instituteCountryValue={pendingChanges.higher_education_institute_country !== undefined ? pendingChanges.higher_education_institute_country : (data as Record<string, unknown>).higher_education_institute_country ?? null}
-                        instituteCityValue={pendingChanges.higher_education_institute_city !== undefined ? pendingChanges.higher_education_institute_city : (data as Record<string, unknown>).higher_education_institute_city ?? null}
-                        scholarshipValue={pendingChanges.is_scholarship !== undefined ? pendingChanges.is_scholarship : (data as Record<string, unknown>).is_scholarship ?? null}
-                        onEmployeedChange={handleFieldValueChange}
-                        onIndustryChange={handleFieldValueChange}
-                        onOrganizationChange={handleFieldValueChange}
-                        onDesignationChange={handleFieldValueChange}
-                        onExperienceChange={handleFieldValueChange}
-                        onStartOfCareerChange={handleFieldValueChange}
-                        onOrganizationAddressChange={handleFieldValueChange}
-                        workCountryValue={pendingChanges.work_country !== undefined ? pendingChanges.work_country : (data as Record<string, unknown>).work_country}
-                        workCityValue={pendingChanges.work_city !== undefined ? pendingChanges.work_city : (data as Record<string, unknown>).work_city}
-                        workPhoneValue={pendingChanges.officialnumber !== undefined ? pendingChanges.officialnumber : data.officialnumber}
-                        workEmailValue={pendingChanges.officialemail !== undefined ? pendingChanges.officialemail : data.officialemail}
-                        aboutMeValue={pendingChanges.about !== undefined ? pendingChanges.about : (data as Record<string, unknown>).about}
-                        onWorkCountryChange={handleFieldValueChange}
-                        onWorkCityChange={handleFieldValueChange}
-                        onWorkPhoneChange={handleFieldValueChange}
-                        onWorkEmailChange={handleFieldValueChange}
-                        onAboutMeChange={handleFieldValueChange}
-                        onDegreeTitleChange={handleFieldValueChange}
-                        onInstituteNameChange={handleFieldValueChange}
-                        onProgramChange={handleFieldValueChange}
-                        onInstituteCountryChange={handleFieldValueChange}
-                        onInstituteCityChange={handleFieldValueChange}
-                        onScholarshipChange={handleFieldValueChange}
-                      />
-                      {section.fields
-                        .filter(f => {
-                          const fieldWithExtras = f as typeof f & { isSpecial?: boolean };
-                          return !f.editable || !fieldWithExtras.isSpecial;
-                        })
-                        .map((field, fieldIndex) => (
-                          <div key={fieldIndex} className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-500 mb-1">{field.label}</span>
-                            <span className="text-base text-gray-900 break-words">
-                              {field.value && typeof field.value === "string" && (field.value.startsWith("http://") || field.value.startsWith("https://")) ? (
-                                <a
-                                  href={field.value}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 underline"
-                                >
-                                  {field.value}
-                                </a>
-                              ) : (
-                                formatValue(field.value)
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                    </>
-                  ) : (
-                    // Regular rendering for other sections
-                    section.fields.map((field, fieldIndex) => {
-                      // Handle conditional fields (e.g., Wrok Email/number only shown when employed)
-                      const fieldWithExtras = field as typeof field & { isConditional?: boolean; conditionalKey?: string; conditionalValue?: string; isSpecial?: boolean; type?: string; options?: Array<{ value: string; label: string }> };
-                      if (fieldWithExtras.isConditional) {
-                        const conditionalKey = fieldWithExtras.conditionalKey;
-                        const conditionalValue = fieldWithExtras.conditionalValue;
-                        if (conditionalKey) {
-                          const currentConditionalValue = pendingChanges[conditionalKey] !== undefined 
-                            ? pendingChanges[conditionalKey] 
-                            : data[conditionalKey as keyof typeof data];
-                          const shouldShow = String(currentConditionalValue || "").toLowerCase() === String(conditionalValue || "").toLowerCase();
-                          if (!shouldShow) {
-                            return null;
-                          }
-                        }
-                      }
-                      
-                      if (field.editable && !fieldWithExtras.isSpecial) {
-                        // Use the pending value if available, otherwise use the original value
-                        const displayValue = pendingChanges[field.key] !== undefined 
-                          ? pendingChanges[field.key] 
-                          : field.value;
-                        
-                        return (
-                          <EditableField
-                            key={fieldIndex}
-                            label={field.label}
-                            value={displayValue}
-                            fieldKey={field.key}
-                            onValueChange={handleFieldValueChange}
-                            type={fieldWithExtras.type || "text"}
-                            options={fieldWithExtras.options}
-                            batchMode={true}
-                            disabled={isViewer}
-                          />
-                        );
-                      }
-                      if (!field.editable) {
-                        return (
-                          <div key={fieldIndex} className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-500 mb-1">{field.label}</span>
-                            <span className="text-base text-gray-900 break-words">
-                              {field.value && typeof field.value === "string" && (field.value.startsWith("http://") || field.value.startsWith("https://")) ? (
-                                <a
-                                  href={field.value}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 underline"
-                                >
-                                  {field.value}
-                                </a>
-                              ) : (
-                                formatValue(field.value)
-                              )}
-                            </span>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -912,30 +818,8 @@ function MoreDetailsContent() {
 
 export default function MoreDetailsPage() {
   return (
-    <Suspense
-      fallback={
-        <>
-          <AppHeader />
-          <div className="min-h-screen bg-gray-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="bg-white rounded-lg shadow-sm p-8">
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-4">
-                    <svg className="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p className="text-sm text-gray-600">Loading...</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      }
-    >
+    <Suspense fallback={null}>
       <MoreDetailsContent />
     </Suspense>
   );
 }
-

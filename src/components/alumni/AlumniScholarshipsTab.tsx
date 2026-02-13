@@ -14,6 +14,8 @@ import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import { useExcelExport } from "@/lib/excel-export";
+import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 
 type ScholarshipItem = {
   alumniId: number;
@@ -21,6 +23,7 @@ type ScholarshipItem = {
   registrationNo: string | null;
   name: string;
   contactno: string | null;
+  email: string | null;
   faculty: string | null;
   department: string | null;
   program: string | null;
@@ -137,6 +140,11 @@ export const AlumniScholarshipsTab: React.FC = () => {
   });
 
   const items = data?.items ?? [];
+  const itemByAlumniId = useMemo(() => {
+    const m = new Map<number, ScholarshipItem>();
+    for (const it of items) m.set(it.alumniId, it);
+    return m;
+  }, [items]);
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
@@ -917,6 +925,45 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   This reason will be visible to the alumni.
                 </p>
+              </div>
+            )}
+
+            {pendingAction.type !== "delete" && (
+              <div className="mb-6">
+                {(() => {
+                  const it = itemByAlumniId.get(pendingAction.alumniId);
+                  const recipientEmail = it?.email || null;
+                  if (!recipientEmail) {
+                    return (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        No recipient email found for this alumni. You can still confirm the action, but you cannot send an email.
+                      </div>
+                    );
+                  }
+
+                  const actionType =
+                    pendingAction.type === "approve"
+                      ? EMAIL_ACTION_TYPE.ALUMNI_SCHOLARSHIP_APPROVED
+                      : EMAIL_ACTION_TYPE.ALUMNI_SCHOLARSHIP_NOT_APPROVED;
+                  const tpl = generateAdminActionEmail({ actionType, alumniName: pendingAction.name });
+
+                  return (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Email</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
+                      </div>
+                      <SendEmailButton
+                        alumniId={pendingAction.alumniId}
+                        recipientEmail={recipientEmail}
+                        actionType={actionType}
+                        initialSubject={tpl.subject}
+                        initialBody={tpl.html}
+                        disabled={mutatingIds.has(pendingAction.alumniId)}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             )}
             <div className="flex justify-end gap-3">

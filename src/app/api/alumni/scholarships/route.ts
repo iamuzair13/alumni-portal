@@ -9,6 +9,9 @@ type RawRow = {
   registrationno: string | null;
   alumniname: string | null;
   contactno: string | null;
+  personalemail: string | null;
+  officialemail: string | null;
+  universityemail: string | null;
   facultyname: string | null;
   departmentname: string | null;
   degreetitle: string | null;
@@ -87,6 +90,9 @@ export async function GET(request: NextRequest) {
         a.registrationno,
         a.alumniname,
         a.contactno,
+        a.personalemail,
+        a.officialemail,
+        a.universityemail,
         a.facultyname,
         a.departmentname,
         a.degreetitle,
@@ -116,6 +122,7 @@ export async function GET(request: NextRequest) {
       registrationNo: r.registrationno ?? null,
       name: r.alumniname ?? "",
       contactno: r.contactno ?? null,
+      email: r.personalemail || r.officialemail || r.universityemail || null,
       faculty: r.facultyname ?? null,
       department: r.departmentname ?? null,
       program: r.degreetitle ?? null,

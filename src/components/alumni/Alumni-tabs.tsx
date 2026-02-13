@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
-import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from "@/icons";
+import { CloseLineIcon, EyeIcon, TrashBinIcon, CheckLineIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon, MailIcon } from "@/icons";
 import { AlumniExpandableDetails } from "./AlumniExpandableDetails";
 import { ErpDataDetails } from "./ErpDataDetails";
 import { DistinguishedAlumniTab } from "./DistinguishedAlumniTab";
@@ -43,6 +43,9 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import type { AlumniFilterOption } from "@/app/queries/fetch-alumni-faculties";
+import { EmailHistoryModal } from "@/components/email/EmailHistoryModal";
+import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import toast from "react-hot-toast";
 
  function formatRegistrationDate(v?: string | null): string {
@@ -653,10 +656,14 @@ export const AlumniTabs: React.FC = () => {
   
   // Confirmation modal state
   const confirmModal = useModal();
+  const emailHistoryModal = useModal();
+  const [emailHistoryAlumniId, setEmailHistoryAlumniId] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<{
     type: "verify" | "unverify" | "delete";
     sapid: string;
     name: string;
+    alumniId: number | null;
+    email: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -2212,22 +2219,35 @@ export const AlumniTabs: React.FC = () => {
       return old.filter((it) => it.sapid !== sapid);
     });
     // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
-    queryClient.invalidateQueries({ 
-      queryKey: ["alumnilist-counts"], 
-      exact: false 
+    queryClient.invalidateQueries({
+      queryKey: ["alumnilist-counts"],
+      exact: false,
     });
     // Force refetch to get immediate updates
-    queryClient.refetchQueries({ 
-      queryKey: ["alumnilist-counts"], 
-      exact: false 
+    queryClient.refetchQueries({
+      queryKey: ["alumnilist-counts"],
+      exact: false,
     });
   }, [queryClient]);
 
+  const handleOpenEmailHistory = useCallback(
+    (alumniId: number | null) => {
+      const n = alumniId === null || alumniId === undefined ? NaN : Number(alumniId);
+      if (!Number.isFinite(n) || n <= 0) return;
+      setEmailHistoryAlumniId(n);
+      emailHistoryModal.openModal();
+    },
+    [emailHistoryModal]
+  );
+
   // Open confirmation modal for verify
-  const handleVerifyClick = useCallback((sapid: string, name: string) => {
-    setPendingAction({ type: "verify", sapid, name });
-    confirmModal.openModal();
-  }, [confirmModal]);
+  const handleVerifyClick = useCallback(
+    (sapid: string, name: string, alumniId: number | null, email: string | null) => {
+      setPendingAction({ type: "verify", sapid, name, alumniId, email });
+      confirmModal.openModal();
+    },
+    [confirmModal]
+  );
 
   // Execute verify after confirmation
   const handleVerify = useCallback(async (sapid: string): Promise<void> => {
@@ -2255,28 +2275,28 @@ export const AlumniTabs: React.FC = () => {
       const responseData = await res.json();
 
       if (responseData.verify === false || responseData.verify === "false") {
-
         throw new Error("Verification failed - server returned false");
       }
+
       setActionMessage("Alumni verified successfully.");
       queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
-      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
-      queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Force immediate refetch
-      queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
+      queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist"] });
     } catch (e: unknown) {
       // revert
       updateCacheVerify(sapid, false);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to verify alumni.");
-      throw e; // Re-throw so executePendingAction can catch it
+      throw e;
     } finally {
       stopMut(sapid);
     }
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
   // Open confirmation modal for unverify
-  const handleUnverifyClick = useCallback((sapid: string, name: string) => {
-    setPendingAction({ type: "unverify", sapid, name });
+  const handleUnverifyClick = useCallback((sapid: string, name: string, alumniId: number | null, email: string | null) => {
+    setPendingAction({ type: "unverify", sapid, name, alumniId, email });
     confirmModal.openModal();
   }, [confirmModal]);
 
@@ -2528,9 +2548,9 @@ export const AlumniTabs: React.FC = () => {
     <div className="p-0">
       <div className="flex flex-col gap-8">
         {/* Stats Cards Section */}
-        <div className="px-4 py-8  rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 shadow-lg">
+        <div className="px-4 py-8  rounded-2xl bg-[#183D32]/10 dark:bg-gray-800 border border-gray-200 shadow-lg">
           {/* Regular Tabs */}
-          <div className="flex flex-wrap gap-4 mb-6">
+          <div className="flex flex-wrap gap-4 mb-6 ">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
             {DISTINGUISHED_TAB.map((tab, idx) => renderTabButton(tab, idx, DISTINGUISHED_TAB))}
 
@@ -2563,8 +2583,8 @@ export const AlumniTabs: React.FC = () => {
         <div style={{ display: selected !== "distinguished" ? "block" : "none" }}>
         <>
         {/* Search and Filters Section */}
-        <div className="rounded-2xl">
-          <div className="flex flex-col  gap-4 bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+        <div className="rounded-2xl ">
+          <div className="flex flex-col bg-[#183D32]/10 gap-4 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
             {/* Search Row */}
             <div className="flex-1 w-full">
               <label htmlFor="alumni-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
@@ -5297,20 +5317,23 @@ export const AlumniTabs: React.FC = () => {
                                   // Verified: can unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), hover: "hover:text-indigo-600" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-amber-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   // Unverified: can verify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), hover: "hover:text-indigo-600" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-emerald-600" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), hover: "hover:text-indigo-600" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-emerald-600" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-amber-600" },
                                   ];
                                 }
                               } else {
@@ -5318,19 +5341,22 @@ export const AlumniTabs: React.FC = () => {
                                 if (alum.verifyStatus === "verified") {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), hover: "hover:text-indigo-600" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-amber-600" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), hover: "hover:text-indigo-600" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-emerald-600" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), hover: "hover:text-blue-600" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name), hover: "hover:text-emerald-600" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name), hover: "hover:text-amber-600" },
+                                    { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), hover: "hover:text-indigo-600" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-emerald-600" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), hover: "hover:text-amber-600" },
                                   ];
                                 }
                               }
@@ -5339,7 +5365,11 @@ export const AlumniTabs: React.FC = () => {
                                 <button
                                   key={`${alum.id}-action-${i}`}
                                   type="button"
-                                  onClick={onClick}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onClick();
+                                  }}
                                   disabled={isBusy}
                                   aria-disabled={isBusy}
                                   className={`p-1.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${hover ?? "hover:text-gray-700 dark:hover:text-gray-200"} hover:bg-gray-100 dark:hover:bg-gray-700/50 ${isBusy ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -5530,6 +5560,32 @@ export const AlumniTabs: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center justify-end gap-3">
+              {pendingAction.alumniId && pendingAction.email ? (
+                (() => {
+                  const mappedActionType =
+                    pendingAction.type === "verify"
+                      ? EMAIL_ACTION_TYPE.ALUMNI_VERIFY
+                      : pendingAction.type === "unverify"
+                      ? EMAIL_ACTION_TYPE.ALUMNI_UNVERIFY
+                      : EMAIL_ACTION_TYPE.ALUMNI_DELETE;
+
+                  const tpl = generateAdminActionEmail({
+                    actionType: mappedActionType,
+                    alumniName: pendingAction.name,
+                  });
+
+                  return (
+                    <SendEmailButton
+                      alumniId={pendingAction.alumniId}
+                      recipientEmail={pendingAction.email}
+                      actionType={mappedActionType}
+                      initialSubject={tpl.subject}
+                      initialBody={tpl.html}
+                      disabled={mutatingIds.has(pendingAction.sapid)}
+                    />
+                  );
+                })()
+              ) : null}
               <button
                 type="button"
                 disabled={mutatingIds.has(pendingAction.sapid)}
@@ -5574,6 +5630,15 @@ export const AlumniTabs: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <EmailHistoryModal
+        isOpen={emailHistoryModal.isOpen}
+        onClose={() => {
+          emailHistoryModal.closeModal();
+          setEmailHistoryAlumniId(null);
+        }}
+        alumniId={emailHistoryAlumniId}
+      />
       <style jsx global>{`
         .top-horizontal-scrollbar::-webkit-scrollbar {
           height: 24px !important;

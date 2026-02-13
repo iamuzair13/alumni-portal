@@ -21,6 +21,7 @@ import {
  */
 
 type AlumniCardItem = {
+  alumniid?: number;
   id: string;
   name: string;
   email?: string;
@@ -58,6 +59,7 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
   const effectiveId = normalizedSapid || rawRegNo || "";
 
   return {
+    alumniid: applicant.alumniid,
     id: effectiveId,
     name: applicant.alumniname || "Unknown",
     email: applicant.email || undefined,

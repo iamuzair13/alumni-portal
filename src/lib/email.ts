@@ -1,15 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 // Get email configuration from environment variables (read at runtime for Vercel compatibility)
 function getEmailConfig() {
   const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
@@ -74,6 +65,11 @@ export interface EmailOptions {
   text?: string;
 }
 
+export type SendEmailResult = {
+  ok: boolean;
+  errorMessage?: string;
+};
+
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     const config = getEmailConfig();
@@ -113,6 +109,31 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
     // Don't throw error - just log it so the application continues
     return false;
+  }
+}
+
+export async function sendEmailDetailed(options: EmailOptions): Promise<SendEmailResult> {
+  try {
+    const config = getEmailConfig();
+    const transporter = getTransporter();
+
+    if (!transporter) {
+      return { ok: false, errorMessage: "SMTP not configured" };
+    }
+
+    const mailOptions = {
+      from: `"${config.FROM_NAME}" <${config.FROM_EMAIL}>`,
+      to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
+      subject: options.subject,
+      text: options.text || options.html.replace(/<[^>]*>/g, ""),
+      html: options.html,
+    };
+
+    await transporter.sendMail(mailOptions);
+    return { ok: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { ok: false, errorMessage };
   }
 }
 
@@ -235,7 +256,7 @@ export async function sendChaptersApplicationEmail(
   alumniName: string,
   chapters: string[]
 ): Promise<boolean> {
-  const subject = "Alumni Chapters Application Received";
+  const subject = "Your Request for Joining / Changing UOL Alumni Chapter";
   const greeting = `Dear ${alumniName},`;
   const body = `
     <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
@@ -248,7 +269,71 @@ export async function sendChaptersApplicationEmail(
       Your application has been received and is under review. We will contact you soon with updates.
     </p>
   `;
-  const footer = "We appreciate your interest in staying connected with the UOL community.";
+  const footer = "We appreciate your interest in staying connected with the UOL community.<br><br>Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
+export async function sendAlumniCardApplicationReceivedEmail(
+  alumniEmail: string,
+  alumniName: string
+): Promise<boolean> {
+  const subject = "Your Application for UOL Alumni Honor Card";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0; color: #333333; font-size: 16px;">
+      This is an auto-generated email to confirm that we have successfully received your application for the UOL Alumni Card.
+    </p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+      Our team has begun processing your request. You will be notified via email or SMS once your alumni card is ready for collection or dispatch.
+    </p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
+export async function sendAlumniCardOnHoldEmail(
+  alumniEmail: string,
+  alumniName: string,
+  onHoldReasons: string
+): Promise<boolean> {
+  const subject = "Your UOL Alumni Card is On-Hold";
+  const greeting = `Dear ${alumniName},`;
+  const safeReasons = String(onHoldReasons || "").trim();
+  const body = `
+    <p style="margin: 0; color: #333333; font-size: 16px;">
+      Thank you for applying for the UOL Alumni Card. After reviewing your application, we found that following required information or documents are missing or do not meet the criteria.
+    </p>
+    ${safeReasons ? `
+    <div style="margin: 14px 0; padding: 12px 14px; border: 1px solid #fde68a; border-radius: 10px; background: #fffbeb; color: #92400e; white-space: pre-line;">
+      ${safeReasons}
+    </div>
+    ` : ""}
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application is currently on hold.</p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Kindly arrange to provide the required information so your application can be processed.</p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
+export async function sendSwimmingPoolMembershipEmail(
+  alumniEmail: string,
+  alumniName: string,
+  month: string
+): Promise<boolean> {
+  const subject = "UOL Swimming Pool Membership Application – Update on Your Application";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">Thank you for applying for the UOL Swimming Pool Facility.</p>
+    <p style="margin: 10px 0; color: #333333; font-size: 16px;">Being an alumnus of UOL, you are availing a special discount on your swimming pool fee for ${month}. Your application has been received and is currently being processed.</p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">You will be notified once your access is activated.</p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -263,15 +348,13 @@ export async function sendMentorshipApplicationEmail(
   mode: string,
   availability: string
 ): Promise<boolean> {
-  const subject = "Alumni Talk Application Received";
+  const subject = "Alumni Talk";
   const greeting = `Dear ${alumniName},`;
   const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Thank you for your application to lead an Alumni Talk. Here are your application details:
-    </p>
+    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">Thank you for your application to lead an Alumni Talk. Below are the details you submitted:</p>
     <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
       <tr>
-        <td style="padding: 8px 0; font-weight: bold; color: #333333;">Major/Specialization:</td>
+        <td style="padding: 8px 0; font-weight: bold; color: #333333; width: 40%;">Major / Specialization:</td>
         <td style="padding: 8px 0; color: #555555;">${major}</td>
       </tr>
       <tr>
@@ -291,11 +374,10 @@ export async function sendMentorshipApplicationEmail(
         <td style="padding: 8px 0; color: #555555; white-space: pre-line;">${availability}</td>
       </tr>
     </table>
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      Your application has been received and is under review. We will contact you soon with updates.
-    </p>
+    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">Your application has been received and is currently under review. We will contact you soon with updates.</p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Thank you for your commitment to inspiring and guiding the next generation of UOL students.</p>
   `;
-  const footer = "Thank you for your commitment to inspiring and guiding the next generation of UOL students.";
+  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -306,7 +388,7 @@ export async function sendAssociationApplicationEmail(
   alumniName: string,
   role: string
 ): Promise<boolean> {
-  const subject = "Alumni Association Application Received";
+  const subject = "Your Application for Association Leadership Role";
   const greeting = `Dear ${alumniName},`;
   const body = `
     <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
@@ -319,7 +401,7 @@ export async function sendAssociationApplicationEmail(
       We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.
     </p>
   `;
-  const footer = "Your leadership and involvement are invaluable to our community.";
+  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -329,7 +411,7 @@ export async function sendSuccessStoryEmail(
   alumniEmail: string,
   alumniName: string
 ): Promise<boolean> {
-  const subject = "Success Story Submitted Successfully";
+  const subject = "Success Story";
   const greeting = `Dear ${alumniName},`;
   const body = `
     <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
@@ -342,7 +424,7 @@ export async function sendSuccessStoryEmail(
       We appreciate you taking the time to share your journey and contribute to the alumni network.
     </p>
   `;
-  const footer = "Your story can inspire the next generation of UOL students and alumni.";
+  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -354,35 +436,25 @@ export async function sendWelcomeEmail(
   generatedPassword: string,
   sapIdOrRegNo: string
 ): Promise<boolean> {
-  const subject = "Welcome to UOL Alumni Portal - Your Account Details";
+  const subject = "Your Alumni Registration is Approved!";
   const greeting = `Dear ${alumniName},`;
   const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Welcome to the University of Lahore Alumni Portal! Your account has been successfully created.
+    <p style="margin: 0; color: #333333; font-size: 16px;">
+      Welcome to the UOL vibrant alumni community. Your account has been successfully created and below are your Login Credentials:
     </p>
-    <div style="margin: 20px 0; padding: 20px; background-color: #f0f7ff; border: 2px solid #007bff; border-radius: 8px;">
-      <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px; font-weight: bold;">
-        Your Login Credentials:
-      </p>
-      <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
-        <tr>
-          <td style="padding: 8px 0; font-weight: bold; color: #333333; width: 40%;">SAP ID / Registration No:</td>
-          <td style="padding: 8px 0; color: #555555;">${sapIdOrRegNo || "N/A"}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 0; font-weight: bold; color: #333333;">Temporary Password:</td>
-          <td style="padding: 8px 0; color: #007bff; font-size: 18px; font-weight: bold; font-family: monospace;">${generatedPassword}</td>
-        </tr>
-      </table>
+    <div style="margin: 16px 0; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+      <p style="margin: 0; font-size: 14px;"><strong>SAP ID / Registration No:</strong> ${sapIdOrRegNo || "-"}</p>
+      <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Temporary Password:</strong> ${generatedPassword}</p>
     </div>
-    <p style="margin: 15px 0 10px 0; color: #333333; font-size: 16px;">
-      <strong>Important:</strong> Please login using your SAP ID or Registration Number and the password above, then change your password from your profile settings for security.
+    <p style="margin: 0; color: #333333; font-size: 14px;">
+      Please log in UOL Alumni portal using above credentials and change your password from your profile settings for security reasons.
     </p>
-    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      You can access the portal at: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">Sign In</a>
+    <p style="margin: 10px 0 0 0; color: #333333; font-size: 14px;">
+      Portal Login: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin</a>
     </p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">We look forward to your active participation in the alumni community.</p>
   `;
-  const footer = "We look forward to your active participation in the alumni community. If you have any questions, please don't hesitate to contact us.";
+  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -393,16 +465,19 @@ export async function sendGymMembershipEmail(
   alumniName: string,
   month: string
 ): Promise<boolean> {
-  const subject = "Gym Facility Discount Confirmation";
+  const subject = "UOL Gym Membership Application";
   const greeting = `Dear ${alumniName},`;
   const body = `
     <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
       Thank you for applying for the UOL Gym Facility.
     </p>
     <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      Being an alumni of UOL, you are availing a special discount on your gym fee for ${month}. Your application has been received and is currently being processed. You will be notified once your access is activated.
+      Being an alumnus of UOL, you are availing a special discount on your gym fee for ${month}. Your application has been received and is currently being processed.
     </p>
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
+      You will be notified once your access is activated.
+    </p>
+    <p style="margin: 10px 0 0 0; color: #333333; font-size: 16px;">
       If you have any questions, feel free to contact us.
     </p>
   `;
@@ -412,106 +487,17 @@ export async function sendGymMembershipEmail(
   return await sendEmail({ to: alumniEmail, subject, html });
 }
 
-export async function sendSwimmingPoolMembershipEmail(
-  alumniEmail: string,
-  alumniName: string,
-  month: string
-): Promise<boolean> {
-  const subject = "Swimming Pool Facility Discount Confirmation";
-  const greeting = `Dear ${alumniName},`;
-  const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Thank you for applying for the UOL Swimming Pool Facility.
-    </p>
-    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      Being an alumni of UOL, you are availing a special discount on your swimming pool fee for ${month}. Your application has been received and is currently being processed. You will be notified once your access is activated.
-    </p>
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      If you have any questions, feel free to contact us.
-    </p>
-  `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
-
-  const html = createEmailTemplate(subject, greeting, body, footer);
-  return await sendEmail({ to: alumniEmail, subject, html });
-}
-
-export async function sendAlumniCardApplicationReceivedEmail(
-  alumniEmail: string,
-  alumniName: string
-): Promise<boolean> {
-  const subject = "Alumni Card Application Received – Thank You!";
-  const greeting = `Dear ${alumniName},`;
-  const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Thank you for applying for the UOL Alumni Card.
-    </p>
-    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      This is an auto-generated email to confirm that we have successfully received your application.
-    </p>
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      Our team has begun processing your request. You will be notified via email/SMS once your alumni card is ready for collection or dispatch.
-    </p>
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      If you have any questions in the meantime, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
-    </p>
-  `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
-
-  const html = createEmailTemplate(subject, greeting, body, footer);
-  return await sendEmail({ to: alumniEmail, subject, html });
-}
-
-export async function sendAlumniCardOnHoldEmail(
-  alumniEmail: string,
-  alumniName: string,
-  reasonOnhold?: string | null
-): Promise<boolean> {
-  const subject = "Alumni Card Application On Hold – Action Required";
-  const greeting = `Dear ${alumniName},`;
-  const safeReason = reasonOnhold ? escapeHtml(String(reasonOnhold)) : null;
-  const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Thank you for applying for the UOL Alumni Card.
-    </p>
-    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      After reviewing your application, we found that certain required information/documents are missing or do not meet the necessary criteria.
-    </p>
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      Therefore, your application is currently on hold.
-    </p>
-    ${safeReason ? `
-      <div style="margin: 15px 0 0 0; padding: 12px 14px; background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px;">
-        <p style="margin: 0 0 6px 0; color: #333333; font-size: 14px; font-weight: 600;">Reason provided:</p>
-        <p style="margin: 0; color: #333333; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${safeReason}</p>
-      </div>
-    ` : ""}
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      If you need assistance or clarification, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
-    </p>
-  `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
-
-  const html = createEmailTemplate(subject, greeting, body, footer);
-  return await sendEmail({ to: alumniEmail, subject, html });
-}
 
 export async function sendAlumniCardActivatedEmail(
   alumniEmail: string,
   alumniName: string
 ): Promise<boolean> {
-  const subject = "Alumni Card Activated – Ready for Collection/Delivery";
+  const subject = "Your UOL Alumni Card Has Been Activated";
   const greeting = `Dear ${alumniName},`;
   const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Great news! Your UOL Alumni Card has been activated and is ready.
-    </p>
-    <p style="margin: 10px 0; color: #333333; font-size: 16px;">
-      Your alumni card has been processed and is now active. You will be notified via email/SMS with details about collection or delivery.
-    </p>
-    <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      If you have any questions, feel free to contact us at <a href="mailto:alumni@uol.edu.pk" style="color: #007bff; text-decoration: underline;">alumni@uol.edu.pk</a>
-    </p>
+    <p style="margin: 0; color: #333333; font-size: 16px;">Great news!</p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your UOL Alumni Card has been activated, and you can access its e-version through your alumni portal.</p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">For physical card collection, you may visit the UOL Alumni Relations Office on campus. Alternatively, if you would like us to dispatch the card to your address (within Pakistan only), please share your complete postal address and contact number. Once dispatched, a confirmation will be sent to you via email or SMS.</p>
   `;
   const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
 
@@ -524,33 +510,22 @@ export async function sendPasswordResetEmail(
   alumniName: string,
   newPassword: string
 ): Promise<boolean> {
-  const subject = "Password Reset – UOL Alumni Portal";
+  const subject = "Password Reset Request";
   const greeting = `Dear ${alumniName},`;
   const body = `
-    <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      You have requested to reset your password for the UOL Alumni Portal.
-    </p>
-    <div style="margin: 20px 0; padding: 20px; background-color: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;">
-      <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px; font-weight: bold;">
-        Your New Password:
-      </p>
-      <p style="margin: 10px 0; color: #d63384; font-size: 20px; font-weight: bold; font-family: monospace; letter-spacing: 2px;">
-        ${newPassword}
-      </p>
+    <p style="margin: 0; color: #333333; font-size: 16px;">You have requested to reset your password for the UOL Alumni Portal.</p>
+    <div style="margin: 16px 0; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb;">
+      <p style="margin: 0; color: #333333; font-size: 14px;"><strong>Your New Password:</strong> <span style="font-family: monospace;">${newPassword}</span></p>
     </div>
-    <p style="margin: 15px 0 10px 0; color: #333333; font-size: 16px;">
-      <strong>Important Security Notice:</strong>
-    </p>
-    <ul style="margin: 10px 0; padding-left: 20px; color: #333333;">
-      <li style="margin: 5px 0;">Please log in immediately and change this password from your profile settings</li>
-      <li style="margin: 5px 0;">Never share your password with anyone</li>
-      <li style="margin: 5px 0;">If you did not request this password reset, please contact us immediately</li>
+    <p style="margin: 0; color: #333333; font-size: 14px;"><strong>Important Security Notice:</strong></p>
+    <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #333333;">
+      <li style="margin: 5px 0;">Please log in immediately and change this password from your profile settings.</li>
+      <li style="margin: 5px 0;">Never share your password with anyone.</li>
+      <li style="margin: 5px 0;">If you did not request this password reset, please contact us immediately.</li>
     </ul>
-    <p style="margin: 15px 0; color: #333333; font-size: 16px;">
-      You can sign in at: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">Alumni Portal Sign In</a>
-    </p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">Portal Login: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin</a></p>
   `;
-  const footer = "If you did not request a password reset, please contact us immediately at <a href=\"mailto:alumni@uol.edu.pk\" style=\"color: #007bff;\">alumni@uol.edu.pk</a>";
+  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });

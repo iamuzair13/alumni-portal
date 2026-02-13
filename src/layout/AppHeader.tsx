@@ -44,9 +44,9 @@ const AppHeader: React.FC = () => {
   }, []);
 
   return (
-    <header className=" top-0 flex dark:border-gray-800 dark:bg-gray-900 lg:border-b  ">
-      <div className="flex flex-col items-center justify-between  grow lg:flex-row lg:px-6 ">
-        <div className="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
+    <header className="sticky top-0 z-40 flex bg-white text-[#183D32] border-b border-gray-200/70">
+      <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
+        <div className="flex items-center justify-between w-full gap-2 px-3 py-3 sm:gap-4 lg:justify-normal lg:px-0 lg:py-4">
           {isAlumni ? (
             <Link href="/" className="flex items-center gap-2">
               <Image
@@ -67,8 +67,9 @@ const AppHeader: React.FC = () => {
               />
             </Link>
           ) : (
+            <div className="flex flex-row justify-center items-center">
             <button
-              className="items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg  dark:border-gray-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border"
+              className="inline-flex items-center justify-center w-10 h-10 text-[#183D32] rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 lg:flex lg:h-11 lg:w-11"
               onClick={handleToggle}
               aria-label="Toggle Sidebar"
             >
@@ -104,13 +105,17 @@ const AppHeader: React.FC = () => {
                 </svg>
               )}
             </button>
+            <span className="ml-2 text-xs font-medium text-[#183D32]/70 italic tracking-wide">
+              Made by Team SPMO
+            </span>
+            </div>
           )}
 
          
 
           <button
             onClick={toggleApplicationMenu}
-            className="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg  hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+            className="flex items-center justify-center w-10 h-10 text-[#183D32] rounded-xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 lg:hidden"
           >
             <svg
               width="24"
@@ -133,7 +138,7 @@ const AppHeader: React.FC = () => {
         <div
           className={`${
             isApplicationMenuOpen ? "flex" : "hidden"
-          } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none z-100000`}
+          } items-center justify-between w-full gap-4 px-5 py-4 lg:flex lg:justify-end lg:px-0 z-100000`}
         >
           <div className="flex items-center gap-2 2xsm:gap-3">
             {/* <!-- Dark Mode Toggler --> */}
@@ -152,7 +157,7 @@ const AppHeader: React.FC = () => {
           )}
           {status === "authenticated" && <UserDropdown />}
           {status === "unauthenticated" && (
-            <Link href="/signin" className="text-sm text-blue-600">Sign in</Link>
+            <Link href="/signin" className="text-sm text-[#183D32] hover:text-[#183D32]/80 underline-offset-4 hover:underline">Sign in</Link>
           )}
     
         </div>

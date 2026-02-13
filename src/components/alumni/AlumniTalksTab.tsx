@@ -10,9 +10,14 @@ import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
 import { ErpDataDetails } from "@/components/alumni/ErpDataDetails";
 import toast from "react-hot-toast";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 
 type TalkItem = {
   id: number;
+  alumniId: number;
   sapid: string;
   registrationNo: string | null;
   name: string;
@@ -60,7 +65,11 @@ async function getAlumniTalks(): Promise<TalkItem[]> {
     throw new Error(msg);
   }
   const data = (await res.json()) as { items: TalkItem[] };
-  return data.items ?? [];
+  // API returns `alumniid` (snake-ish). Map it to `alumniId` for UI + email logging.
+  return (data.items ?? []).map((it: any) => ({
+    ...it,
+    alumniId: Number(it.alumniId ?? it.alumniid ?? 0),
+  })) as TalkItem[];
 }
 
 export const AlumniTalksTab: React.FC = () => {
@@ -76,6 +85,20 @@ export const AlumniTalksTab: React.FC = () => {
   const [proposeStartById, setProposeStartById] = useState<Record<number, string>>({});
   const [proposeEndById, setProposeEndById] = useState<Record<number, string>>({});
   const [proposeNoteById, setProposeNoteById] = useState<Record<number, string>>({});
+
+  const confirmModal = useModal();
+  const [pendingAction, setPendingAction] = useState<
+    | {
+        talkId: number;
+        alumniId: number;
+        alumniName: string;
+        recipientEmail: string | null;
+        title: string;
+        body: Record<string, unknown>;
+        emailActionType: string;
+      }
+    | null
+  >(null);
 
   const prettyStatus = (s: string | null | undefined) => {
     const v = String(s || "").toLowerCase().trim();
@@ -128,6 +151,24 @@ export const AlumniTalksTab: React.FC = () => {
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  const openConfirm = (input: {
+    item: TalkItem;
+    title: string;
+    body: Record<string, unknown>;
+    emailActionType: string;
+  }) => {
+    setPendingAction({
+      talkId: input.item.id,
+      alumniId: input.item.alumniId,
+      alumniName: input.item.name,
+      recipientEmail: input.item.email ?? null,
+      title: input.title,
+      body: input.body,
+      emailActionType: input.emailActionType,
+    });
+    confirmModal.openModal();
+  };
 
   const filteredItems = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
@@ -323,7 +364,14 @@ export const AlumniTalksTab: React.FC = () => {
                             <button
                               type="button"
                               disabled={isBusy || !confirmOptionById[item.id]}
-                              onClick={() => doAdminAction(item.id, { action: "confirm_option", option: confirmOptionById[item.id] })}
+                              onClick={() =>
+                                openConfirm({
+                                  item,
+                                  title: "Confirm Talk Session",
+                                  body: { action: "confirm_option", option: confirmOptionById[item.id] },
+                                  emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_CONFIRM,
+                                })
+                              }
                               className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                             >
                               Confirm
@@ -334,7 +382,14 @@ export const AlumniTalksTab: React.FC = () => {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => doAdminAction(item.id, { action: "mark_conducted" })}
+                              onClick={() =>
+                                openConfirm({
+                                  item,
+                                  title: "Mark Talk as Conducted",
+                                  body: { action: "mark_conducted" },
+                                  emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_MARK_CONDUCTED,
+                                })
+                              }
                               className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                             >
                               Mark Conducted
@@ -342,7 +397,14 @@ export const AlumniTalksTab: React.FC = () => {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => doAdminAction(item.id, { action: "cancel" })}
+                              onClick={() =>
+                                openConfirm({
+                                  item,
+                                  title: "Cancel Talk Session",
+                                  body: { action: "cancel" },
+                                  emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_CANCEL,
+                                })
+                              }
                               className="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                             >
                               Cancel
@@ -446,7 +508,12 @@ export const AlumniTalksTab: React.FC = () => {
                                       const st = proposeStartById[item.id] ?? "";
                                       const en = proposeEndById[item.id] ?? "";
                                       const timings = st && en ? `${st}-${en}` : "";
-                                      doAdminAction(item.id, { action: "propose", date: d, timings, note: proposeNoteById[item.id] ?? "" });
+                                      openConfirm({
+                                        item,
+                                        title: "Propose New Slot",
+                                        body: { action: "propose", date: d, timings, note: proposeNoteById[item.id] ?? "" },
+                                        emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_PROPOSE_SLOT,
+                                      });
                                     }}
                                     className="rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                                   >
@@ -521,6 +588,78 @@ export const AlumniTalksTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => {
+          confirmModal.closeModal();
+          setPendingAction(null);
+        }}
+        showCloseButton={true}
+        className="max-w-xl mx-auto"
+      >
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{pendingAction?.title || "Confirm Action"}</h2>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+            This action will update the talk status for <strong>{pendingAction?.alumniName || "Alumni"}</strong>.
+          </p>
+
+          {pendingAction?.recipientEmail ? (
+            <div className="mt-5">
+              {(() => {
+                const tpl = generateAdminActionEmail({
+                  actionType: pendingAction.emailActionType as any,
+                  alumniName: pendingAction.alumniName,
+                });
+                return (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Email</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
+                    </div>
+                    <SendEmailButton
+                      alumniId={pendingAction.alumniId}
+                      recipientEmail={pendingAction.recipientEmail}
+                      actionType={pendingAction.emailActionType}
+                      initialSubject={tpl.subject}
+                      initialBody={tpl.html}
+                    />
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              No recipient email found for this alumni. You can still confirm the action, but you cannot send an email.
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                confirmModal.closeModal();
+                setPendingAction(null);
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!pendingAction) return;
+                await doAdminAction(pendingAction.talkId, pendingAction.body);
+                confirmModal.closeModal();
+                setPendingAction(null);
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

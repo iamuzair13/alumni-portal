@@ -14,6 +14,7 @@ type EditableFieldProps = {
   batchMode?: boolean;
   datalistId?: string;
   placeholder?: string;
+  revealPassword?: boolean;
 };
 
 export default function EditableField({
@@ -28,15 +29,14 @@ export default function EditableField({
   batchMode = false,
   datalistId,
   placeholder,
+  revealPassword = false,
 }: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState<string>(() => {
     if (value === null || value === undefined) return "";
     if (typeof value === "boolean") return value ? "true" : "false";
-    // For password fields, show the actual password value
-    if (type === "password") {
-      return String(value).trim();
-    }
+    // For password fields, never prefill (avoid showing hashes/secrets)
+    if (type === "password") return "";
     return String(value);
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -44,10 +44,14 @@ export default function EditableField({
   // Sync editValue when value prop changes (e.g., after save)
   useEffect(() => {
     if (!isEditing) {
-      const newValue = value === null || value === undefined ? "" : (typeof value === "boolean" ? (value ? "true" : "false") : String(value));
-      setEditValue(newValue);
+      if (type === "password") {
+        setEditValue("");
+      } else {
+        const newValue = value === null || value === undefined ? "" : (typeof value === "boolean" ? (value ? "true" : "false") : String(value));
+        setEditValue(newValue);
+      }
     }
-  }, [value, isEditing]);
+  }, [value, isEditing, type]);
 
   const convertValue = (val: string): unknown => {
     if (type === "checkbox") {
@@ -117,10 +121,11 @@ export default function EditableField({
   const displayValue = (val: unknown): string => {
     if (val === null || val === undefined) return "Not provided";
     if (typeof val === "boolean") return val ? "Yes" : "No";
-    // For password fields, show the actual password text
+    // For password fields, always mask the stored value
     if (type === "password") {
       const strVal = String(val).trim();
-      return strVal === "" ? "Not provided" : strVal;
+      if (strVal === "") return "Not provided";
+      return revealPassword ? strVal : "********";
     }
     // For select fields, try to find the label from options
     if (type === "select" && options) {
