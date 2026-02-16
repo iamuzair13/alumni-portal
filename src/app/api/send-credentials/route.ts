@@ -5,6 +5,7 @@
  import { canModify } from "@/lib/alumniProfile";
  import { sql } from "@/lib/dbconnect";
  import { sendEmailDetailed } from "@/lib/email";
+ import { hashPassword } from "@/auth/credentials";
  import {
    EMAIL_ACTION_TYPE,
    generateAdminActionEmail,
@@ -68,11 +69,13 @@
      let passwordToSend = String(alumni.password || "").trim();
      let didUpdatePassword = false;
  
-     if (!passwordToSend) {
+     const shouldRotatePassword = !passwordToSend || passwordToSend.startsWith("scrypt:");
+     if (shouldRotatePassword) {
        passwordToSend = generateEasyPassword();
+       const passwordToStore = await hashPassword(passwordToSend);
        await sql/* sql */`
          UPDATE public.tbl_alumni
-         SET password = ${passwordToSend}
+         SET password = ${passwordToStore}
          WHERE alumniid = ${alumniId}
        `;
        didUpdatePassword = true;
