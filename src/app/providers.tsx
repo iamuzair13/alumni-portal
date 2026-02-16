@@ -41,28 +41,44 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
     // Store original fetch
     const originalFetch = window.fetch;
 
+    let inFlight = 0;
+    const progressStart = () => window.dispatchEvent(new Event("global-progress-start"));
+    const progressStop = () => window.dispatchEvent(new Event("global-progress-stop"));
+
     // Override fetch to handle 401 errors
     window.fetch = async function(...args: Parameters<typeof fetch>): Promise<Response> {
-      const response = await originalFetch(...args);
-
-      // Handle 401 Unauthorized errors
-      if (response.status === 401 && window.location.pathname !== "/signin") {
-        // Clear all caches
-        queryClient.clear();
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Sign out and redirect
-        signOut({ redirect: false }).then(() => {
-          // Use window.location for reliable redirect on Plesk server
-          window.location.href = "/signin";
-        }).catch(() => {
-          // If signOut fails, force redirect
-          window.location.href = "/signin";
-        });
+      inFlight += 1;
+      if (inFlight === 1) {
+        progressStart();
       }
 
-      return response;
+      try {
+        const response = await originalFetch(...args);
+
+        // Handle 401 Unauthorized errors
+        if (response.status === 401 && window.location.pathname !== "/signin") {
+          // Clear all caches
+          queryClient.clear();
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Sign out and redirect
+          signOut({ redirect: false }).then(() => {
+            // Use window.location for reliable redirect on Plesk server
+            window.location.href = "/signin";
+          }).catch(() => {
+            // If signOut fails, force redirect
+            window.location.href = "/signin";
+          });
+        }
+
+        return response;
+      } finally {
+        inFlight = Math.max(0, inFlight - 1);
+        if (inFlight === 0) {
+          progressStop();
+        }
+      }
     };
 
     // Cleanup: restore original fetch on unmount

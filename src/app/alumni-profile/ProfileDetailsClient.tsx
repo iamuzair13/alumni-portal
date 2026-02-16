@@ -4,7 +4,6 @@ import LoadingLink from "@/components/ui/LoadingLink";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useAlumniProfile, alumniProfileKey, useAlumniFullDetails, alumniFullDetailsKey, currentUserImageKey } from "@/app/queries/alumni-profile";
 import { useQueryClient } from "@tanstack/react-query";
-import { useProgress } from "@bprogress/react";
 import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
@@ -50,7 +49,6 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     }
   }, [isError, error, isFullDetailsError, fullDetailsError]);
   const queryClient = useQueryClient();
-  const { start, stop } = useProgress();
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -66,11 +64,11 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
 
   useEffect(() => {
     if (isLoading || isLoadingFullDetails) {
-      start();
+      window.dispatchEvent(new Event("global-progress-start"));
     } else {
-      stop();
+      window.dispatchEvent(new Event("global-progress-stop"));
     }
-  }, [isLoading, isLoadingFullDetails, start, stop]);
+  }, [isLoading, isLoadingFullDetails]);
   
   // Use fullDetails for displaying profile summary as it has the raw database values
   // Fallback to data (mapped profile) if fullDetails is not available yet

@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useProgress } from "@bprogress/react";
 import { safeText, formatPhone } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import SocialLinksForm from "@/components/forms/social-links-form";
@@ -38,7 +37,6 @@ type Props = {
 };
 
 export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: Props) {
-  const { start, stop } = useProgress();
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
   const queryClient = useQueryClient();
   // Get SAP ID and Registration Number from fullDetails
@@ -114,18 +112,18 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
 
   useEffect(() => {
     // Show progress on mount
-    start();
+    window.dispatchEvent(new Event("global-progress-start"));
     // Show loading spinner briefly
     const timer = setTimeout(() => {
       setIsLoading(false);
-      stop();
+      window.dispatchEvent(new Event("global-progress-stop"));
     }, 500);
 
     return () => {
       clearTimeout(timer);
-      stop();
+      window.dispatchEvent(new Event("global-progress-stop"));
     };
-  }, [start, stop]);
+  }, []);
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
