@@ -781,8 +781,10 @@ export async function GET(req: Request) {
     const query = sql/* sql */`
       SELECT 
         a.*,
-        -- Text-based faculty and department are in a.* (facultyname, departmentname)
-        -- Program name from ID-based join (program is still ID-based)
+        -- Prefer ID-based names when available, fall back to legacy text columns
+        COALESCE(f.faculty_name, a.facultyname) AS facultyname,
+        COALESCE(d.department_name, a.departmentname) AS departmentname,
+        COALESCE(p.program_name, a.degreetitle) AS degreetitle,
         p.program_name,
         -- Chapter data
         ac.chapter1 as chapter1_id,
@@ -822,6 +824,8 @@ export async function GET(req: Request) {
         asch.degree_title as scholarship_degree_title,
         asch.created_at as scholarship_created_at
       FROM public.tbl_alumni a
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
       LEFT JOIN public.tbl_programs p ON p.id = a.program
       LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
       LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
@@ -829,7 +833,7 @@ export async function GET(req: Request) {
       LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
       LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
       LEFT JOIN public.chapter_leadership cl ON cl.id = a.chapter_leadership
-      LEFT JOIN public.alumni_memberships am ON am.id = a.alumniid
+      LEFT JOIN public.alumni_memberships am ON am.alumniid = a.alumniid
       LEFT JOIN public.alumni_scholarships asch ON asch.id = a.alumniid
       WHERE ${baseWhere}
         ${verifyFilter}

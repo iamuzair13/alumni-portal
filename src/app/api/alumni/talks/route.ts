@@ -4,6 +4,9 @@ import { auth } from "@/lib/auth";
 import { validatePayload } from "./validation";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import type { Session } from "next-auth";
+import { sendEmailDetailed } from "@/lib/email";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
 
 async function resolveAlumniIdFromSession(session: Session | null): Promise<
   | { ok: true; alumniid: number; email: string | null; userSapid: string | null; userRegNo: string | null }
@@ -353,6 +356,60 @@ export async function POST(req: Request) {
       `;
       return rows[0] as { id: number } | undefined;
     });
+
+    const recipientRows = await sql/* sql */`
+      SELECT
+        a.alumniname,
+        COALESCE(a.personalemail, a.officialemail, a.universityemail, a.alumniemail) AS email
+      FROM public.tbl_alumni a
+      WHERE a.alumniid = ${me.alumniid}
+      LIMIT 1
+    `;
+
+    const recipientRow = recipientRows[0] as { alumniname?: string | null; email?: string | null } | undefined;
+    const recipientEmail = String(recipientRow?.email || "").trim();
+    const alumniName = String(recipientRow?.alumniname || "Alumni").trim() || "Alumni";
+
+    if (recipientEmail && recipientEmail.includes("@")) {
+      const availabilityLines = availability
+        .map((a) => {
+          const d = String(a?.date || "").trim();
+          const t = String(a?.timings || "").trim();
+          if (!d && !t) return null;
+          return [d, t].filter(Boolean).join(" ");
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      const tpl = generateAdminActionEmail({
+        actionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_APPLICATION_ACK,
+        alumniName,
+      });
+
+      const html = tpl.html
+        .replaceAll("{Major}", majorStr)
+        .replaceAll("{Area}", activityStr)
+        .replaceAll("{Topic}", topicStr)
+        .replaceAll("{Mode}", modeStr)
+        .replaceAll("{Availability}", availabilityLines);
+
+      const emailRes = await sendEmailDetailed({
+        to: recipientEmail,
+        subject: tpl.subject,
+        html,
+      });
+
+      await insertEmailLog({
+        recipientEmail,
+        alumniId: me.alumniid,
+        subject: tpl.subject,
+        body: html,
+        status: emailRes.ok ? EMAIL_LOG_STATUS.SENT : EMAIL_LOG_STATUS.FAILED,
+        errorMessage: emailRes.ok ? null : emailRes.errorMessage ?? "Unknown error",
+        triggeredBy: EMAIL_TRIGGERED_BY.AUTO,
+        actionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_APPLICATION_ACK,
+      });
+    }
 
     return NextResponse.json({ ok: true, id: inserted?.id ?? null }, { status: 201 });
   } catch (err) {

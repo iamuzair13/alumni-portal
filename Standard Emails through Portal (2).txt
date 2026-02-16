@@ -1,0 +1,213 @@
+Alumni Portal – Standard Emails
+ProcessStageActionEmail Title & TextRegistrationAlumni applying for RegistrationAcknowledgementSubject: Welcome to the UOL Alumni Network!
+Dear Alumnus/Alumna,
+We are delighted to welcome you to your alma mater and to the University of Lahore Alumni Network. By becoming part of this vibrant community, you will have the opportunity to reconnect with fellow graduates while enjoying a range of exclusive privileges designed especially for our alumni, including:
+
+* Discounted access to the university gym and other campus facilities
+* Special discounts at the University of Lahore Hospital
+* Eligibility for alumni scholarships and kinship discounts for your family members
+* Exclusive invitations to job fairs, networking sessions, and professional events
+
+Your application will be reviewed by the Office of Alumni Relations. Once approved, you will receive a confirmation email along with your login credentials.
+
+We look forward to welcoming you back and strengthening our lifelong connection with you.
+
+Warm regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkConfirmation of registration-Alumni data Verification
+-Sending user ID / PW Subject: Your Alumni Registration is Approved!
+Dear {Alumni Name},
+Welcome to the UOL vibrant alumni community. Your account has been successfully created and below are your Login Credentials:
+SAP ID / Registration No: {SAP_ID_OR_REG_NO}
+Temporary Password: {Generated Password}
+
+Please log in UOL Alumni portal using above credentials and change your password from your profile settings for security reasons.
+
+Portal Login: {Portal URL}/signin
+
+We look forward to your active participation in the alumni community.
+
+Regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkPassword ResetSubject: Password Reset Request
+
+Dear {Alumni Name},
+You have requested to reset your password for the UOL Alumni Portal.
+
+Your New Password: {New Password}
+
+Important Security Notice:
+- Please log in immediately and change this password from your profile settings.
+- Never share your password with anyone.
+- If you did not request this password reset, please contact us immediately.
+
+Portal Login: {Portal URL}/signin
+
+Regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkHonor CardAlumni applying for Honor Card- Acknowledgement
+- Inform its under review
+Subject: Your Application for UOL Alumni Honor Card
+Dear {Alumni Name},
+This is an auto-generated email to confirm that we have successfully received your application for the UOL Alumni Card.
+Our team has begun processing your request. You will be notified via email or SMS once your alumni card is ready for collection or dispatch.
+
+Warm regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkCard processing on hold- Mark on-hold for application with missing data/pic
+- Inform Alumni to provideSubject: Your UOL Alumni Card is On-Hold
+Dear {Alumni Name},
+Thank you for applying for the UOL Alumni Card. After reviewing your application, we found that following required information or documents are missing or do not meet the criteria.
+
+[on-hold reasons]
+
+Your application is currently on hold.
+
+Kindly arrange to provide the required information so your application can be processed.
+
+Warm regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkCard ready for delivery-Activate card in alumni profile
+- Ask for delivery mode
+-Inform Alumni about deliverySubject: Your UOL Alumni Card Has Been Activated
+
+Dear {Alumni Name},
+Great news!
+Your UOL Alumni Card has been activated, and you can access its e-version through your alumni portal.
+For physical card collection, you may visit the UOL Alumni Relations Office on campus. Alternatively, if you would like us to dispatch the card to your address (within Pakistan only), please share your complete postal address and contact number. Once dispatched, a confirmation will be sent to you via email or SMS.
+Warm regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkChapter MembershipRequest for joining another chapter or change of chapterAcknowledgementSubject: Your Request for Joining / Changing UOL Alumni Chapter
+
+Dear {Alumni Name},
+Thank you for your application to join the following Alumni Chapters:
+{Chapter List}
+Your application has been received and is currently under review. We will contact you soon with updates.
+We appreciate your interest in staying connected with the UOL community.
+
+Regards,
+Office of Alumni Relations
+University of Lahore
+alumni@uol.edu.pkAssociation LeadershipApplication Received for Association Leadership postAcknowledgementSubject: Your Application for Association Leadership Role
+Dear {Alumni Name},
+Thank you for your application to join the Alumni Association as {Role}.
+Your application has been received and is currently under review by the Alumni Office. We will contact you soon with updates regarding your application.
+We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.
+
+Regards,
+Office of Alumni Relations
+University of LahoreChapter LeadershipApplication Received for Chapter Leadership postUOL Alumni Association Application – ReceivedDear {Alumni Name},
+Thank you for your application to join the Alumni Association as {Role}.
+Your application has been received and is currently under review by the Alumni Office. We will contact you soon with updates regarding your application.
+We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.
+
+Regards,
+Office of Alumni Relations
+University of LahorePerks & BenefitsScholarship (Self / Kinship) application receivedScholarship Application (Self / Kinship) – ReceivedDear {Applicant Name},
+Thank you for submitting your Scholarship Application (Self / Kinship).
+We are pleased to inform you that your application has been successfully received and is currently under review by the concerned department. You will be notified once the evaluation process is completed.
+If any additional documents or information are required, our team will contact you accordingly.
+For further queries, please feel free to reach out to us.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreStatus update on (Self / Kinship) application Approval StatusDear {Applicant Name},
+We are pleased to inform you that your Scholarship Application (Self / Kinship) has been approved.
+Congratulations! The relevant department will proceed with the necessary formalities and adjustments as per university policy. If any further documentation or action is required from your side, you will be informed accordingly.
+Should you have any questions, please feel free to contact us.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreUOL Gym Membership application receivedAcknowledgementSubject: UOL Gym Membership Application 
+Dear {Alumni Name},
+Thank you for applying for the UOL Gym Facility.
+Being an alumnus of UOL, you are availing a special discount on your gym fee for {Month}. Your application has been received and is currently being processed.
+You will be notified once your access is activated.
+If you have any questions, feel free to contact us.
+Warm regards,
+Office of Alumni Relations
+University of LahoreUOL Gym Membership Application Response (Approved)Subject: UOL Gym Membership Application – Update on Your ApplicationDear {Alumni Name},
+We are pleased to inform you that your application for the UOL Gym Facility has been approved.
+As a valued alumnus of UOL, you are entitled to a special discounted gym fee for {Month}. Your access has now been activated, and you may proceed with the necessary formalities at the Sports Complex.
+Should you require any further assistance, please feel free to contact us.
+Warm regards,
+Office of Alumni Relations
+University of LahoreUOL Gym Membership Application Response (Not Approved)Subject: UOL Gym Membership Application – Update on Your ApplicationDear {Alumni Name},
+Thank you for applying for the UOL Gym Facility.
+After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.
+We appreciate your interest and look forward to assisting you in the future.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreSwimming Pool Membership Application receivedSubject: UOL Swimming Pool Membership Application – Update on Your ApplicationDear {Alumni Name},
+Thank you for applying for the UOL Swimming Pool Facility.
+Being an alumnus of UOL, you are availing a special discount on your swimming pool fee for {Month}. Your application has been received and is currently being processed.
+You will be notified once your access is activated.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreSwimming Pool Membership Application Response (Approved)Subject: UOL Swimming Pool Membership Application – Update on Your ApplicationDear {Alumni Name},
+We are pleased to inform you that your application for the UOL Gym Facility has been approved.
+As a valued alumnus of UOL, you are entitled to a special discounted gym fee for {Month}. Your access has now been activated, and you may proceed with the necessary formalities at the Sports Complex.
+Should you require any further assistance, please feel free to contact us.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreSwimming Pool Membership Application Response (Not Approved)Subject: UOL Swimming Pool Membership Application – Update on Your ApplicationDear {Alumni Name},
+Thank you for applying for the UOL Swimming Pool Facility.
+After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.
+We appreciate your interest and look forward to assisting you in the future.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreLahore Qalander Cricket Club Membership Application receivedSubject: Lahore Qalander Cricket Club Membership Application – Update on Your ApplicationDear {Applicant Name},
+Thank you for submitting your membership application for the Lahore Qalandars Cricket Club.
+We are pleased to inform you that your application has been successfully received and is currently under review. Our team will evaluate the submitted details and notify you once a decision has been made regarding your membership status.
+If any additional information is required, we will contact you accordingly.
+Thank you for your interest in being a part of the Lahore Qalandars community.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreLahore Qalander Cricket Club Application Response (Approved)Subject: Lahore Qalander Cricket Club Membership Application – Update on Your ApplicationDear {Applicant Name},
+We are pleased to inform you that your application for the Lahore Qalandars Cricket Club Membership has been approved.
+Congratulations and welcome to the club! Further details regarding membership benefits, access, and next steps will be shared with you shortly.
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreLahore Qalander Cricket Club Application Response (Not Approved)Subject: Lahore Qalander Cricket Club Membership Application – Update on Your ApplicationDear {Applicant Name},
+Thank you for your interest in becoming a member of the Lahore Qalandars Cricket Club.
+After careful review, we regret to inform you that your application has not been approved at this time.
+We appreciate your interest in the club and encourage you to apply again in the future. 
+
+Warm regards,
+Office of Alumni Relations
+University of LahoreSuccess Story
+Dear {Alumni Name},
+Thank you for sharing your success story with the UOL Alumni community.
+Your story has been received and will be reviewed by our team. Once approved, it will be published on the Alumni Portal to inspire other graduates
+We appreciate you taking the time to share your journey and contribute to the alumni network.
+Regards,
+Office of Alumni Relations
+University of LahoreAlumni TalkApplication acknowledgementDear {Alumni Name},
+Thank you for your application to lead an Alumni Talk. Below are the details you submitted:
+Major / Specialization:
+{Major}
+Area of Experience:
+{Area} years
+Topic:
+{Topic}
+Mode:
+{Mode}
+Availability:
+{Availability}
+Your application has been received and is currently under review. We will contact you soon with updates.
+Thank you for your commitment to inspiring and guiding the next generation of UOL students.
+Regards,
+Office of Alumni Relations
+University of Lahore

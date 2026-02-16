@@ -996,7 +996,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                 {(() => {
                   const next = pendingStatusChange?.status;
                   if (!next) return null;
-                  if (next !== "Onhold" && next !== "Active" && next !== "Delivered") return null;
+                  if (next !== "Onhold" && next !== "Active") return null;
                   if (!alumniId || !recipientEmail) {
                     return (
                       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1022,7 +1022,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       ? EMAIL_ACTION_TYPE.ALUMNI_CARD_ONHOLD
                       : next === "Active"
                         ? EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY
-                        : EMAIL_ACTION_TYPE.ALUMNI_CARD_DELIVERED;
+                        : EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY;
 
                   const tpl = generateAdminActionEmail({
                     actionType,

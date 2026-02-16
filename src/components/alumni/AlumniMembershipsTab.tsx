@@ -883,10 +883,21 @@ export const AlumniMembershipsTab: React.FC = () => {
                     );
                   }
 
+                  const isGym = Boolean(it?.gymMembershipMonth);
+                  const isPool = Boolean(it?.swimmingPoolMembershipMonth);
+
                   const actionType =
                     pendingAction.type === "approve"
-                      ? EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_APPROVED
-                      : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_NOT_APPROVED;
+                      ? isGym
+                        ? EMAIL_ACTION_TYPE.UOL_GYM_MEMBERSHIP_APPROVED
+                        : isPool
+                          ? EMAIL_ACTION_TYPE.SWIMMING_POOL_MEMBERSHIP_APPROVED
+                          : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_APPROVED
+                      : isGym
+                        ? EMAIL_ACTION_TYPE.UOL_GYM_MEMBERSHIP_NOT_APPROVED
+                        : isPool
+                          ? EMAIL_ACTION_TYPE.SWIMMING_POOL_MEMBERSHIP_NOT_APPROVED
+                          : EMAIL_ACTION_TYPE.ALUMNI_MEMBERSHIP_NOT_APPROVED;
                   const tpl = generateAdminActionEmail({ actionType, alumniName: pendingAction.name });
 
                   return (

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { sendAssociationApplicationEmail } from "@/lib/email";
+import { sendEmailDetailed } from "@/lib/email";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
 
 export async function GET(request: NextRequest) {
 
@@ -299,26 +301,45 @@ export async function POST(request: NextRequest) {
     // Send confirmation email
     try {
       const alumniRows = await sql/* sql */`
-        SELECT alumniname, personalemail, officialemail, universityemail
+        SELECT
+          alumniname,
+          COALESCE(personalemail, officialemail, universityemail, alumniemail) AS email
         FROM public.tbl_alumni 
         WHERE alumniid = ${alumniId}
         LIMIT 1
       `;
       const alumni = alumniRows[0] as {
         alumniname: string | null;
-        personalemail: string | null;
-        officialemail: string | null;
-        universityemail: string | null;
+        email: string | null;
       } | undefined;
       
       if (alumni) {
-        const alumniEmail = alumni.personalemail || alumni.officialemail || alumni.universityemail;
+        const alumniEmail = alumni.email;
         const alumniName = alumni.alumniname || "Alumni";
         
         if (alumniEmail) {
-          // Send email asynchronously (don't wait for it to complete)
-          sendAssociationApplicationEmail(alumniEmail, alumniName, roleDisplayName).catch((err) => {
+          const tpl = generateAdminActionEmail({
+            actionType: EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_ACK,
+            alumniName,
+          });
 
+          const html = tpl.html.replaceAll("{ROLE}", roleDisplayName);
+
+          const emailRes = await sendEmailDetailed({
+            to: alumniEmail,
+            subject: tpl.subject,
+            html,
+          });
+
+          await insertEmailLog({
+            recipientEmail: alumniEmail,
+            alumniId: alumniIdNum,
+            subject: tpl.subject,
+            body: html,
+            status: emailRes.ok ? EMAIL_LOG_STATUS.SENT : EMAIL_LOG_STATUS.FAILED,
+            errorMessage: emailRes.ok ? null : emailRes.errorMessage ?? "Unknown error",
+            triggeredBy: EMAIL_TRIGGERED_BY.AUTO,
+            actionType: EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_ACK,
           });
         }
       }

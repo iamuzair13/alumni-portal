@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { sendEmailDetailed } from "@/lib/email";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
 
 export async function GET() {
   try {
@@ -138,6 +141,48 @@ export async function POST(request: NextRequest) {
     // Verify the record was created with 'pending' status
     if (createdRecord.status !== 'pending') {
 
+    }
+
+    try {
+      const alumniRows = await sql/* sql */`
+        SELECT
+          alumniname,
+          COALESCE(personalemail, officialemail, universityemail, alumniemail) AS email
+        FROM public.tbl_alumni
+        WHERE alumniid = ${alumniIdNum}
+        LIMIT 1
+      `;
+
+      const alumni = alumniRows[0] as { alumniname?: string | null; email?: string | null } | undefined;
+      const recipientEmail = String(alumni?.email || "").trim();
+      const alumniName = String(alumni?.alumniname || "Alumni").trim() || "Alumni";
+
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const tpl = generateAdminActionEmail({
+          actionType: EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_ACK,
+          alumniName,
+        });
+
+        const html = tpl.html.replaceAll("{ROLE}", postDisplayName);
+
+        const emailRes = await sendEmailDetailed({
+          to: recipientEmail,
+          subject: tpl.subject,
+          html,
+        });
+
+        await insertEmailLog({
+          recipientEmail,
+          alumniId: alumniIdNum,
+          subject: tpl.subject,
+          body: html,
+          status: emailRes.ok ? EMAIL_LOG_STATUS.SENT : EMAIL_LOG_STATUS.FAILED,
+          errorMessage: emailRes.ok ? null : emailRes.errorMessage ?? "Unknown error",
+          triggeredBy: EMAIL_TRIGGERED_BY.AUTO,
+          actionType: EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_ACK,
+        });
+      }
+    } catch {
     }
 
     return NextResponse.json({ 

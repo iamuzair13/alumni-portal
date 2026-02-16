@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 
+import { createEmailTemplate } from "@/lib/emailTemplate";
+
 // Get email configuration from environment variables (read at runtime for Vercel compatibility)
 function getEmailConfig() {
   const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
@@ -183,73 +185,6 @@ export async function verifySMTPConfig(): Promise<{ ok: boolean; message: string
   }
 }
 
-// Email template helpers
-export function createEmailTemplate(
-  title: string,
-  greeting: string,
-  body: string,
-  footer?: string
-): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px;">University of Lahore</h1>
-              <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px;">Alumni Portal</p>
-            </td>
-          </tr>
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 30px;">
-              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 20px;">${title}</h2>
-              
-              <p style="margin: 0 0 15px 0; color: #555555; font-size: 16px; line-height: 1.6;">
-                ${greeting}
-              </p>
-              
-              <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #667eea; border-radius: 4px;">
-                ${body}
-              </div>
-              
-              ${footer ? `
-              <p style="margin: 20px 0 0 0; color: #777777; font-size: 14px; line-height: 1.6;">
-                ${footer}
-              </p>
-              ` : ''}
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-              <p style="margin: 0; color: #777777; font-size: 12px;">
-                This is an automated email from the UOL Alumni Portal.<br>
-                Please do not reply to this email.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-}
-
 // Specific email templates for different application types
 export async function sendChaptersApplicationEmail(
   alumniEmail: string,
@@ -260,13 +195,13 @@ export async function sendChaptersApplicationEmail(
   const greeting = `Dear ${alumniName},`;
   const body = `
     <p style="margin: 0 0 10px 0; color: #333333; font-size: 16px;">
-      Thank you for your application to join the following Alumni Chapters:
+      Thank you for joining the  Alumni Chapters:
     </p>
     <ul style="margin: 10px 0; padding-left: 20px; color: #333333;">
       ${chapters.map(chapter => `<li style="margin: 5px 0;">${chapter}</li>`).join("")}
     </ul>
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">
-      Your application has been received and is under review. We will contact you soon with updates.
+      You have successfully joined the Alumni Chapters.
     </p>
   `;
   const footer = "We appreciate your interest in staying connected with the UOL community.<br><br>Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";

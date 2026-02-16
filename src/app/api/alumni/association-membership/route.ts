@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
+import { sendEmailDetailed } from "@/lib/email";
+import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
+import { EMAIL_LOG_STATUS, EMAIL_TRIGGERED_BY, insertEmailLog } from "@/lib/emailLogs";
 
 export async function GET(request: NextRequest) {
   try {
@@ -102,6 +105,53 @@ export async function POST(request: NextRequest) {
       SET association_id = ${associationIdNum}
       WHERE alumniid = ${alumniIdNum}
     `;
+
+    // Send acknowledgement email
+    try {
+      const alumniRows = await sql/* sql */`
+        SELECT
+          alumniname,
+          COALESCE(personalemail, officialemail, universityemail, alumniemail) AS email
+        FROM public.tbl_alumni
+        WHERE alumniid = ${alumniIdNum}
+        LIMIT 1
+      `;
+
+      const alumni = alumniRows[0] as { alumniname?: string | null; email?: string | null } | undefined;
+      const recipientEmail = String(alumni?.email || "").trim();
+      const alumniName = String(alumni?.alumniname || "Alumni").trim() || "Alumni";
+
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const tpl = generateAdminActionEmail({
+          actionType: EMAIL_ACTION_TYPE.ASSOCIATION_MEMBERSHIP_ACK,
+          alumniName,
+          extraBodyHtml: `
+            <ul style="margin: 10px 0; padding-left: 20px; color: #333333;">
+              <li style="margin: 5px 0;">${String(associationRows[0]?.title || "")}</li>
+            </ul>
+          `,
+        });
+
+        const emailRes = await sendEmailDetailed({
+          to: recipientEmail,
+          subject: tpl.subject,
+          html: tpl.html,
+        });
+
+        await insertEmailLog({
+          recipientEmail,
+          alumniId: alumniIdNum,
+          subject: tpl.subject,
+          body: tpl.html,
+          status: emailRes.ok ? EMAIL_LOG_STATUS.SENT : EMAIL_LOG_STATUS.FAILED,
+          errorMessage: emailRes.ok ? null : emailRes.errorMessage ?? "Unknown error",
+          triggeredBy: EMAIL_TRIGGERED_BY.AUTO,
+          actionType: EMAIL_ACTION_TYPE.ASSOCIATION_MEMBERSHIP_ACK,
+        });
+      }
+    } catch {
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({ 
       success: true,
