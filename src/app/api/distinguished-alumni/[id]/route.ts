@@ -122,6 +122,9 @@ export async function PUT(
     let image: string | null = existingImage; // Default to existing image
     let role: string | null = null;
     let summary: string | null = null;
+    let faculty_id: number | null = null;
+    let department_id: number | null = null;
+    let program_id: number | null = null;
     let headline: string | null = null;
     let quote: string | null = null;
     let quote_by: string | null = null;
@@ -138,9 +141,31 @@ export async function PUT(
       name = formData.get("name") ? String(formData.get("name")).trim() : null;
       role = formData.get("role") ? String(formData.get("role")).trim() : null;
       summary = formData.get("summary") ? String(formData.get("summary")).trim() : null;
+      {
+        const raw = formData.get("faculty_id");
+        const n = raw === null ? NaN : Number(String(raw));
+        faculty_id = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      }
+      {
+        const raw = formData.get("department_id");
+        const n = raw === null ? NaN : Number(String(raw));
+        department_id = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      }
+      {
+        const raw = formData.get("program_id");
+        const n = raw === null ? NaN : Number(String(raw));
+        program_id = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      }
       headline = formData.get("headline") ? String(formData.get("headline")).trim() : null;
       quote = formData.get("quote") ? String(formData.get("quote")).trim() : null;
       quote_by = formData.get("quote_by") ? String(formData.get("quote_by")).trim() : null;
+
+      if (faculty_id === null || department_id === null || program_id === null) {
+        return NextResponse.json(
+          { error: "Faculty, department, and program are required" },
+          { status: 400 }
+        );
+      }
       
       // Parse JSON fields
       const tagsStr = formData.get("tags");
@@ -229,6 +254,9 @@ export async function PUT(
       image = body.image !== undefined ? body.image : existingImage; // Use existing if not provided
       role = body.role || null;
       summary = body.summary || null;
+      faculty_id = Number.isFinite(Number(body.faculty_id)) ? Number(body.faculty_id) : null;
+      department_id = Number.isFinite(Number(body.department_id)) ? Number(body.department_id) : null;
+      program_id = Number.isFinite(Number(body.program_id)) ? Number(body.program_id) : null;
       headline = body.headline || null;
       quote = body.quote || null;
       quote_by = body.quote_by || null;
@@ -263,6 +291,9 @@ export async function PUT(
         image = COALESCE(${image}, image),
         role = COALESCE(${role}, role),
         summary = COALESCE(${summary}, summary),
+        faculty_id = COALESCE(${faculty_id}, faculty_id),
+        department_id = COALESCE(${department_id}, department_id),
+        program_id = COALESCE(${program_id}, program_id),
         headline = COALESCE(${headline}, headline),
         quote = COALESCE(${quote}, quote),
         quote_by = COALESCE(${quote_by}, quote_by),

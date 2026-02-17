@@ -1037,7 +1037,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Send Email</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview Email</div>
                           <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
                         </div>
                         <SendEmailButton

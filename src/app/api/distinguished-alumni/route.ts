@@ -236,6 +236,9 @@ export async function POST(request: NextRequest) {
     let image: string | null = null;
     let role: string;
     let summary: string;
+    let facultyId: number | null = null;
+    let departmentId: number | null = null;
+    let programId: number | null = null;
     let headline: string | null = null;
     let quote: string | null = null;
     let quote_by: string | null = null;
@@ -252,6 +255,21 @@ export async function POST(request: NextRequest) {
       name = String(formData.get("name") || "").trim();
       role = String(formData.get("role") || "").trim();
       summary = String(formData.get("summary") || "").trim();
+      {
+        const raw = formData.get("faculty_id");
+        const n = raw === null ? NaN : Number(String(raw));
+        facultyId = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      }
+      {
+        const raw = formData.get("department_id");
+        const n = raw === null ? NaN : Number(String(raw));
+        departmentId = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      }
+      {
+        const raw = formData.get("program_id");
+        const n = raw === null ? NaN : Number(String(raw));
+        programId = Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+      }
       headline = formData.get("headline") ? String(formData.get("headline")).trim() : null;
       quote = formData.get("quote") ? String(formData.get("quote")).trim() : null;
       quote_by = formData.get("quote_by") ? String(formData.get("quote_by")).trim() : null;
@@ -347,6 +365,9 @@ export async function POST(request: NextRequest) {
       image = body.image;
       role = body.role;
       summary = body.summary;
+      facultyId = Number.isFinite(Number(body.faculty_id)) ? Number(body.faculty_id) : null;
+      departmentId = Number.isFinite(Number(body.department_id)) ? Number(body.department_id) : null;
+      programId = Number.isFinite(Number(body.program_id)) ? Number(body.program_id) : null;
       headline = body.headline || null;
       quote = body.quote || null;
       quote_by = body.quote_by || null;
@@ -362,6 +383,16 @@ export async function POST(request: NextRequest) {
         { error: "Missing required fields: slug, name, image, role, summary" },
         { status: 400 }
       );
+    }
+
+    if (typeof facultyId !== "number" || !Number.isFinite(facultyId) || facultyId <= 0) {
+      return NextResponse.json({ error: "Faculty is required" }, { status: 400 });
+    }
+    if (typeof departmentId !== "number" || !Number.isFinite(departmentId) || departmentId <= 0) {
+      return NextResponse.json({ error: "Department is required" }, { status: 400 });
+    }
+    if (typeof programId !== "number" || !Number.isFinite(programId) || programId <= 0) {
+      return NextResponse.json({ error: "Program is required" }, { status: 400 });
     }
 
     // Check if slug already exists
@@ -382,7 +413,7 @@ export async function POST(request: NextRequest) {
     const result = await sql/* sql */`
       INSERT INTO public.distinguished_alumni (
         slug, name, image, role, summary, headline, quote, quote_by,
-        tags, stats, achievements, story, created_at, updated_at
+        tags, stats, achievements, story, faculty_id, department_id, program_id, created_at, updated_at
       ) VALUES (
         ${slug},
         ${name},
@@ -396,6 +427,9 @@ export async function POST(request: NextRequest) {
         ${stats ? JSON.stringify(stats) : JSON.stringify([])},
         ${achievements ? JSON.stringify(achievements) : JSON.stringify([])},
         ${story ? JSON.stringify(story) : JSON.stringify([])},
+        ${facultyId},
+        ${departmentId},
+        ${programId},
         NOW(),
         NOW()
       )

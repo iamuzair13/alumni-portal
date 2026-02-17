@@ -2,22 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { getUserAccessAssignmentsWithIds, hasAllFacultiesAccess } from "@/lib/rbac";
 
 // GET /api/organization/programs - Fetch all or filtered programs
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const departmentId = searchParams.get("department_id");
 
-    let rows;
-    if (departmentId) {
-      // Fetch programs for specific department
-      const departmentIdNum = parseInt(departmentId, 10);
-      if (isNaN(departmentIdNum)) {
-        return NextResponse.json({ error: "Invalid department ID" }, { status: 400 });
-      }
-
-      rows = await sql/* sql */`
+    const baseSelectByDepartment = (departmentIdNum: number) =>
+      sql/* sql */`
         SELECT 
           p.id,
           p.program_name,
@@ -33,9 +32,9 @@ export async function GET(request: NextRequest) {
         WHERE p.department_id = ${departmentIdNum}
         ORDER BY p.program_name ASC
       `;
-    } else {
-      // Return all programs
-      rows = await sql/* sql */`
+
+    const baseSelectAll = () =>
+      sql/* sql */`
         SELECT 
           p.id,
           p.program_name,
@@ -50,6 +49,91 @@ export async function GET(request: NextRequest) {
         LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
         ORDER BY p.program_name ASC
       `;
+
+    let rows;
+
+    if (isSuperAdminUser(session.user)) {
+      if (departmentId) {
+        const departmentIdNum = parseInt(departmentId, 10);
+        if (isNaN(departmentIdNum)) {
+          return NextResponse.json({ error: "Invalid department ID" }, { status: 400 });
+        }
+        rows = await baseSelectByDepartment(departmentIdNum);
+      } else {
+        rows = await baseSelectAll();
+      }
+    } else {
+      const userId = (session.user as { userId?: number })?.userId;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      }
+
+      const fullAccess = await hasAllFacultiesAccess(userId);
+      if (fullAccess) {
+        if (departmentId) {
+          const departmentIdNum = parseInt(departmentId, 10);
+          if (isNaN(departmentIdNum)) {
+            return NextResponse.json({ error: "Invalid department ID" }, { status: 400 });
+          }
+          rows = await baseSelectByDepartment(departmentIdNum);
+        } else {
+          rows = await baseSelectAll();
+        }
+      } else {
+        const assignments = await getUserAccessAssignmentsWithIds(userId);
+        const allowedFacultyIds = new Set<number>();
+        const allowedDepartmentIds = new Set<number>();
+        const allowedProgramIds = new Set<number>();
+
+        for (const a of assignments) {
+          const f = a.faculty_id === null ? null : Number(a.faculty_id);
+          const d = a.department_id === null ? null : Number(a.department_id);
+          const p = a.program_id === null ? null : Number(a.program_id);
+          if (typeof f === "number" && Number.isFinite(f) && f > 0) allowedFacultyIds.add(f);
+          if (typeof d === "number" && Number.isFinite(d) && d > 0) allowedDepartmentIds.add(d);
+          if (typeof p === "number" && Number.isFinite(p) && p > 0) allowedProgramIds.add(p);
+        }
+
+        if (departmentId) {
+          const departmentIdNum = parseInt(departmentId, 10);
+          if (isNaN(departmentIdNum)) {
+            return NextResponse.json({ error: "Invalid department ID" }, { status: 400 });
+          }
+          if (!allowedDepartmentIds.has(departmentIdNum)) {
+            return NextResponse.json({ success: true, programs: [] }, { status: 200 });
+          }
+          rows = await baseSelectByDepartment(departmentIdNum);
+        } else {
+          const facultyIds = Array.from(allowedFacultyIds);
+          const departmentIds = Array.from(allowedDepartmentIds);
+          const programIds = Array.from(allowedProgramIds);
+
+          if (facultyIds.length === 0 && departmentIds.length === 0 && programIds.length === 0) {
+            return NextResponse.json({ success: true, programs: [] }, { status: 200 });
+          }
+
+          rows = await sql/* sql */`
+            SELECT 
+              p.id,
+              p.program_name,
+              p.department_id,
+              p.program_abv,
+              d.department_name,
+              d.faculty_id,
+              f.faculty_name,
+              p.created_at
+            FROM public.tbl_programs p
+            LEFT JOIN public.tbl_departments d ON d.id = p.department_id
+            LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+            WHERE (
+              (${programIds.length} > 0 AND p.id = ANY(${programIds}::int[]))
+              OR (${departmentIds.length} > 0 AND p.department_id = ANY(${departmentIds}::int[]))
+              OR (${facultyIds.length} > 0 AND d.faculty_id = ANY(${facultyIds}::int[]))
+            )
+            ORDER BY p.program_name ASC
+          `;
+        }
+      }
     }
 
     const programs = rows.map((row: Record<string, unknown>) => ({

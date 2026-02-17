@@ -449,6 +449,10 @@ let cardImageFile: string | null = null;
     }
   }
 
+  if (typeof alumniTalkCount === "number" && alumniTalkCount <= 0) {
+    mentorshipStatus = "none";
+  }
+
   // Fetch chapters for verified alumni (both for alumni and admin views)
   let chapters: string[] = [];
   let chaptersError: string | null = null;

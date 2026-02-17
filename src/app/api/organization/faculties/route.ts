@@ -2,18 +2,68 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { getUserAccessAssignmentsWithIds, hasAllFacultiesAccess } from "@/lib/rbac";
 
 // GET /api/organization/faculties - Fetch all faculties
 export async function GET() {
   try {
-    const rows = await sql/* sql */`
-      SELECT 
-        id,
-        faculty_name,
-        created_at
-      FROM public.tbl_faculties
-      ORDER BY faculty_name ASC
-    `;
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    let rows: Array<Record<string, unknown>>;
+
+    if (isSuperAdminUser(session.user)) {
+      rows = await sql/* sql */`
+        SELECT 
+          id,
+          faculty_name,
+          created_at
+        FROM public.tbl_faculties
+        ORDER BY faculty_name ASC
+      `;
+    } else {
+      const userId = (session.user as { userId?: number })?.userId;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      }
+
+      const fullAccess = await hasAllFacultiesAccess(userId);
+      if (fullAccess) {
+        rows = await sql/* sql */`
+          SELECT 
+            id,
+            faculty_name,
+            created_at
+          FROM public.tbl_faculties
+          ORDER BY faculty_name ASC
+        `;
+      } else {
+        const assignments = await getUserAccessAssignmentsWithIds(userId);
+        const facultyIds = Array.from(
+          new Set(
+            assignments
+              .map((a) => (a.faculty_id === null ? null : Number(a.faculty_id)))
+              .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0)
+          )
+        );
+
+        if (facultyIds.length === 0) {
+          return NextResponse.json({ success: true, faculties: [] }, { status: 200 });
+        }
+
+        rows = await sql/* sql */`
+          SELECT 
+            id,
+            faculty_name,
+            created_at
+          FROM public.tbl_faculties
+          WHERE id = ANY(${facultyIds}::int[])
+          ORDER BY faculty_name ASC
+        `;
+      }
+    }
 
     const faculties = rows.map((row: Record<string, unknown>) => ({
       id: Number(row.id),

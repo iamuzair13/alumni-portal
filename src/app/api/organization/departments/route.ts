@@ -2,51 +2,159 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isSuperAdminUser } from "@/lib/alumniProfile";
+import { getUserAccessAssignmentsWithIds, hasAllFacultiesAccess } from "@/lib/rbac";
 
 // GET /api/organization/departments - Fetch all or filtered departments
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const facultyId = searchParams.get("faculty_id");
 
     let rows;
-    if (facultyId) {
-      // Fetch departments for specific faculty
-      const facultyIdNum = parseInt(facultyId, 10);
-      if (isNaN(facultyIdNum)) {
-        return NextResponse.json({ error: "Invalid faculty ID" }, { status: 400 });
+
+    if (isSuperAdminUser(session.user)) {
+      if (facultyId) {
+        // Fetch departments for specific faculty
+        const facultyIdNum = parseInt(facultyId, 10);
+        if (isNaN(facultyIdNum)) {
+          return NextResponse.json({ error: "Invalid faculty ID" }, { status: 400 });
+        }
+
+        rows = await sql/* sql */`
+          SELECT 
+            d.id,
+            d.department_name,
+            d.faculty_id,
+            d.department_code,
+            f.faculty_name,
+            d.created_at
+          FROM public.tbl_departments d
+          LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+          WHERE d.faculty_id = ${facultyIdNum}
+          ORDER BY d.department_name ASC
+        `;
+      } else {
+        // Return all departments
+        rows = await sql/* sql */`
+          SELECT 
+            d.id,
+            d.department_name,
+            d.faculty_id,
+            d.department_code,
+            f.faculty_name,
+            d.created_at
+          FROM public.tbl_departments d
+          LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+          ORDER BY d.department_name ASC
+        `;
+      }
+    } else {
+      const userId = (session.user as { userId?: number })?.userId;
+      if (!userId) {
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
       }
 
-      rows = await sql/* sql */`
-        SELECT 
-          d.id,
-          d.department_name,
-          d.faculty_id,
-          d.department_code,
-          f.faculty_name,
-          d.created_at
-        FROM public.tbl_departments d
-        LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
-        WHERE d.faculty_id = ${facultyIdNum}
-        ORDER BY d.department_name ASC
-      `;
-    } else {
-      // Return all departments
-      rows = await sql/* sql */`
-        SELECT 
-          d.id,
-          d.department_name,
-          d.faculty_id,
-          d.department_code,
-          f.faculty_name,
-          d.created_at
-        FROM public.tbl_departments d
-        LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
-        ORDER BY d.department_name ASC
-      `;
+      const fullAccess = await hasAllFacultiesAccess(userId);
+      if (fullAccess) {
+        if (facultyId) {
+          const facultyIdNum = parseInt(facultyId, 10);
+          if (isNaN(facultyIdNum)) {
+            return NextResponse.json({ error: "Invalid faculty ID" }, { status: 400 });
+          }
+          rows = await sql/* sql */`
+            SELECT 
+              d.id,
+              d.department_name,
+              d.faculty_id,
+              d.department_code,
+              f.faculty_name,
+              d.created_at
+            FROM public.tbl_departments d
+            LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+            WHERE d.faculty_id = ${facultyIdNum}
+            ORDER BY d.department_name ASC
+          `;
+        } else {
+          rows = await sql/* sql */`
+            SELECT 
+              d.id,
+              d.department_name,
+              d.faculty_id,
+              d.department_code,
+              f.faculty_name,
+              d.created_at
+            FROM public.tbl_departments d
+            LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+            ORDER BY d.department_name ASC
+          `;
+        }
+      } else {
+        const assignments = await getUserAccessAssignmentsWithIds(userId);
+        const allowedFacultyIds = new Set<number>();
+        const allowedDepartmentIds = new Set<number>();
+
+        for (const a of assignments) {
+          const f = a.faculty_id === null ? null : Number(a.faculty_id);
+          const d = a.department_id === null ? null : Number(a.department_id);
+          if (typeof f === "number" && Number.isFinite(f) && f > 0) allowedFacultyIds.add(f);
+          if (typeof d === "number" && Number.isFinite(d) && d > 0) allowedDepartmentIds.add(d);
+        }
+
+        if (facultyId) {
+          const facultyIdNum = parseInt(facultyId, 10);
+          if (isNaN(facultyIdNum)) {
+            return NextResponse.json({ error: "Invalid faculty ID" }, { status: 400 });
+          }
+          if (!allowedFacultyIds.has(facultyIdNum)) {
+            return NextResponse.json({ success: true, departments: [] }, { status: 200 });
+          }
+          rows = await sql/* sql */`
+            SELECT 
+              d.id,
+              d.department_name,
+              d.faculty_id,
+              d.department_code,
+              f.faculty_name,
+              d.created_at
+            FROM public.tbl_departments d
+            LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+            WHERE d.faculty_id = ${facultyIdNum}
+            ORDER BY d.department_name ASC
+          `;
+        } else {
+          const departmentIds = Array.from(allowedDepartmentIds);
+          const facultyIds = Array.from(allowedFacultyIds);
+
+          if (departmentIds.length === 0 && facultyIds.length === 0) {
+            return NextResponse.json({ success: true, departments: [] }, { status: 200 });
+          }
+
+          rows = await sql/* sql */`
+            SELECT 
+              d.id,
+              d.department_name,
+              d.faculty_id,
+              d.department_code,
+              f.faculty_name,
+              d.created_at
+            FROM public.tbl_departments d
+            LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+            WHERE (
+              (${departmentIds.length} > 0 AND d.id = ANY(${departmentIds}::int[]))
+              OR (${facultyIds.length} > 0 AND d.faculty_id = ANY(${facultyIds}::int[]))
+            )
+            ORDER BY d.department_name ASC
+          `;
+        }
+      }
     }
 
-    const departments = rows.map((row: Record<string, unknown>) => ({
+    const departments = (rows as any[]).map((row: Record<string, unknown>) => ({
       id: Number(row.id),
       department_name: String(row.department_name || ""),
       faculty_id: row.faculty_id ? Number(row.faculty_id) : null,

@@ -105,9 +105,6 @@ const AppHeader: React.FC = () => {
                 </svg>
               )}
             </button>
-            <span className="ml-2 text-xs font-medium text-[#183D32]/70 italic tracking-wide">
-              Developed by Team SPMO
-            </span>
             </div>
           )}
 

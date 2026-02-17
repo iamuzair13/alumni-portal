@@ -563,6 +563,41 @@ export async function PATCH(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+
+    const { canModify } = await import("@/lib/alumniProfile");
+    if (!canModify(session.user)) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    const url = new URL(req.url);
+    const idParam = String(url.searchParams.get("id") || "").trim();
+    const id = Number(idParam);
+    if (!idParam || !Number.isFinite(id) || id <= 0) {
+      return NextResponse.json({ error: "ID_REQUIRED" }, { status: 400 });
+    }
+
+    const existing = await sql/* sql */`
+      SELECT id FROM public.alumni_talk_sessions WHERE id = ${id} LIMIT 1
+    `;
+    if (!existing[0]) {
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+
+    await sql/* sql */`
+      DELETE FROM public.alumni_talk_sessions WHERE id = ${id}
+    `;
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to delete";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function PUT(req: Request) {
   try {
     const session = await auth();
@@ -657,8 +692,4 @@ export async function PUT(req: Request) {
     const msg = err instanceof Error ? err.message : "Failed to update";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
-}
-
-export async function DELETE(req: Request) {
-  return NextResponse.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
 }

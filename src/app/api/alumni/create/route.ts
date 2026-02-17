@@ -180,6 +180,7 @@ type TblAlumniBody = {
   linkedin: string | null;
   datasource: string | null;
   alumnistatus: string | null;
+  category?: string | null;
   // Higher Education fields
   highereducationdegreetitle: string | null;
   highereducationinstitute: string | null;
@@ -537,6 +538,7 @@ export async function POST(req: Request) {
             verify = ${'underApproval'}, /* Set verify = 'underApproval' for re-registration (Under Approval) */
             datasource = ${clean(body.datasource)},
             alumnistatus = ${clean(body.alumnistatus)},
+            category = ${clean((body as { category?: string | null }).category ?? null)},
             degree_title = ${clean(body.highereducationdegreetitle)},
             higher_education_institute_name = ${clean(body.highereducationinstitute)},
             higher_education_program = ${clean(body.highereducationprogram)},
@@ -635,6 +637,7 @@ export async function POST(req: Request) {
           linkedin,
           datasource,
           alumnistatus,
+          category,
           degree_title,
           higher_education_institute_name,
           higher_education_program,
@@ -699,6 +702,7 @@ export async function POST(req: Request) {
           ${clean(body.linkedin)},
           ${clean(body.datasource)},
           ${clean(body.alumnistatus)},
+          ${clean((body as { category?: string | null }).category ?? null)},
           ${clean(body.highereducationdegreetitle)},
           ${clean(body.highereducationinstitute)},
           ${clean(body.highereducationprogram)},

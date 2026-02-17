@@ -38,23 +38,10 @@ const navItems: NavItem[] = [
       { name: "Alumni Memberships", path: "/dashboard?tab=alumni-memberships" },
       { name: "Jobs", path: "/dashboard?tab=jobs" },
       { name: "Add Alumni", path: "/dashboard?tab=add-alumni" },
+      { name: "Stories Management", path: "/alumni-stories" },
+      { name: "Events Management", path: "/events" },
+      { name: "Leadership", path: "/leadership" },
     ],
-  },
- 
-  {
-    icon: <PageIcon />,
-    name: "Stories Management", //add dropdown with add and view
-    path: "/alumni-stories",
-  },
-  {
-    icon: <CalenderIcon />,
-    name: "Events Management", //add dropdown with add and view
-    path: "/events",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "Leadership", 
-    path: "/leadership",
   },
   {
     icon: <BoltIcon />,

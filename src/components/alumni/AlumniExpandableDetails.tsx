@@ -984,6 +984,12 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
       queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["alumnilist"] });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "faculties"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "departments"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "programs"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["degree-titles"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["institution-names"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["categories"], exact: false });
       // Invalidate marital statuses query when marital status is updated
       queryClient.invalidateQueries({ queryKey: ["marital-statuses"] });
       // Invalidate genders query when gender is updated

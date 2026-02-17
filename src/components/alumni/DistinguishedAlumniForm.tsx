@@ -14,6 +14,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import DOMPurify from "dompurify";
+import { useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-organization";
 
 // Normalize image path - if it's not a full URL, assume it's in /images/
 function normalizeImagePath(image: string | null | undefined): string {
@@ -40,6 +41,9 @@ interface DistinguishedAlumni {
   image: string;
   role: string;
   summary: string;
+  faculty_id?: number | null;
+  department_id?: number | null;
+  program_id?: number | null;
   headline?: string | null;
   quote?: string | null;
   quote_by?: string | null;
@@ -85,6 +89,9 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       name: "",
       role: "",
       summary: "",
+      faculty_id: null,
+      department_id: null,
+      program_id: null,
       headline: "",
       quote: "",
       quote_by: "",
@@ -172,6 +179,9 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
         name: editingItem.name || "",
         role: roleContent,
         summary: summaryContent,
+        faculty_id: (editingItem as any).faculty_id ?? null,
+        department_id: (editingItem as any).department_id ?? null,
+        program_id: (editingItem as any).program_id ?? null,
         headline: editingItem.headline || "",
         quote: editingItem.quote || "",
         quote_by: editingItem.quote_by || "",
@@ -200,6 +210,9 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
         name: "",
         role: "",
         summary: "",
+        faculty_id: null,
+        department_id: null,
+        program_id: null,
         headline: "",
         quote: "",
         quote_by: "",
@@ -221,6 +234,23 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
     }
     setImageFile(null);
   }, [editingItem, reset, isOpen, roleEditor, summaryEditor]);
+
+  const selectedFacultyId = watch("faculty_id");
+  const selectedDepartmentId = watch("department_id");
+  const selectedProgramId = watch("program_id");
+
+  const facultiesQuery = useFaculties();
+  const departmentsQuery = useDepartments(typeof selectedFacultyId === "number" ? selectedFacultyId : undefined);
+  const programsQuery = usePrograms(typeof selectedDepartmentId === "number" ? selectedDepartmentId : undefined);
+
+  useEffect(() => {
+    setValue("department_id", null);
+    setValue("program_id", null);
+  }, [selectedFacultyId, setValue]);
+
+  useEffect(() => {
+    setValue("program_id", null);
+  }, [selectedDepartmentId, setValue]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -321,6 +351,15 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       formData.append("name", data.name);
       formData.append("role", sanitizedRole);
       formData.append("summary", sanitizedSummary);
+      if (typeof data.faculty_id === "number" && data.faculty_id > 0) {
+        formData.append("faculty_id", String(data.faculty_id));
+      }
+      if (typeof data.department_id === "number" && data.department_id > 0) {
+        formData.append("department_id", String(data.department_id));
+      }
+      if (typeof data.program_id === "number" && data.program_id > 0) {
+        formData.append("program_id", String(data.program_id));
+      }
       if (data.headline) formData.append("headline", data.headline);
       if (data.quote) formData.append("quote", data.quote);
       if (data.quote_by) formData.append("quote_by", data.quote_by);
@@ -429,6 +468,97 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
               <p className="mt-1 text-xs text-gray-500">
                 URL-friendly identifier (e.g., john-doe-2024)
               </p>
+              <p className="mt-1 text-xs text-gray-500">Slug must be unique</p>
+            </div>
+
+            {/* Faculty */}
+            <div>
+              <Label htmlFor="faculty_id">Faculty</Label>
+              <select
+                id="faculty_id"
+                className={`w-full rounded-md border px-3 py-2 text-sm ${errors.faculty_id ? "border-red-500" : "border-gray-300"}`}
+                disabled={isSubmitting || facultiesQuery.isLoading}
+                value={typeof selectedFacultyId === "number" ? String(selectedFacultyId) : ""}
+                onChange={(e) => {
+                  const v = String(e.target.value || "");
+                  const n = Number(v);
+                  setValue("faculty_id", Number.isFinite(n) && n > 0 ? Math.floor(n) : null, { shouldValidate: true });
+                }}
+                {...register("faculty_id", {
+                  required: "Faculty is required",
+                  valueAsNumber: true,
+                })}
+              >
+                <option value="">Select</option>
+                {(facultiesQuery.data ?? []).map((f) => (
+                  <option key={f.id} value={String(f.id)}>
+                    {f.faculty_name}
+                  </option>
+                ))}
+              </select>
+              {errors.faculty_id && <p className="mt-1 text-sm text-red-600">{String(errors.faculty_id.message || "Faculty is required")}</p>}
+            </div>
+
+            {/* Department */}
+            <div>
+              <Label htmlFor="department_id">Department</Label>
+              <select
+                id="department_id"
+                className={`w-full rounded-md border px-3 py-2 text-sm ${errors.department_id ? "border-red-500" : "border-gray-300"}`}
+                disabled={isSubmitting || departmentsQuery.isLoading || !(typeof selectedFacultyId === "number" && selectedFacultyId > 0)}
+                value={typeof selectedDepartmentId === "number" ? String(selectedDepartmentId) : ""}
+                onChange={(e) => {
+                  const v = String(e.target.value || "");
+                  const n = Number(v);
+                  setValue("department_id", Number.isFinite(n) && n > 0 ? Math.floor(n) : null, { shouldValidate: true });
+                }}
+                {...register("department_id", {
+                  required: "Department is required",
+                  valueAsNumber: true,
+                })}
+              >
+                <option value="">Select</option>
+                {(departmentsQuery.data ?? []).map((d) => (
+                  <option key={d.id} value={String(d.id)}>
+                    {d.department_name}
+                  </option>
+                ))}
+              </select>
+              {!(typeof selectedFacultyId === "number" && selectedFacultyId > 0) && (
+                <p className="mt-1 text-xs text-gray-500">Select faculty first</p>
+              )}
+              {errors.department_id && <p className="mt-1 text-sm text-red-600">{String(errors.department_id.message || "Department is required")}</p>}
+            </div>
+
+            {/* Program */}
+            <div className="md:col-span-2">
+              <Label htmlFor="program_id">Program</Label>
+              <select
+                id="program_id"
+                className={`w-full rounded-md border px-3 py-2 text-sm ${errors.program_id ? "border-red-500" : "border-gray-300"}`}
+                disabled={isSubmitting || programsQuery.isLoading || !(typeof selectedDepartmentId === "number" && selectedDepartmentId > 0)}
+                value={typeof selectedProgramId === "number" ? String(selectedProgramId) : ""}
+                onChange={(e) => {
+                  const v = String(e.target.value || "");
+                  const n = Number(v);
+                  setValue("program_id", Number.isFinite(n) && n > 0 ? Math.floor(n) : null, { shouldValidate: true });
+                }}
+                {...register("program_id", {
+                  required: "Program is required",
+                  valueAsNumber: true,
+                })}
+              >
+                <option value="">Select</option>
+                {(programsQuery.data ?? []).map((p) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.program_name}
+                  </option>
+                ))}
+              </select>
+              {!(typeof selectedDepartmentId === "number" && selectedDepartmentId > 0) && (
+                <p className="mt-1 text-xs text-gray-500">Select department first</p>
+              )}
+              {errors.program_id && <p className="mt-1 text-sm text-red-600">{String(errors.program_id.message || "Program is required")}</p>}
             </div>
 
             {/* Name */}

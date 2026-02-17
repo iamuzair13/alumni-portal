@@ -1721,7 +1721,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   {...register("province", { required: true })}
                   key={`province-${selectedHomeCountry || "none"}`}
                 > 
-                  <option value="">Select</option>
+                  <option key="__select" value="">Select</option>
                   {homeProvinceOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -2641,6 +2641,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="C">C</option>
+                <option value="D">D</option>
                 
               </select>
             </div>
