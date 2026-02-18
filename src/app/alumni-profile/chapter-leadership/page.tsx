@@ -26,37 +26,56 @@ export default async function ChapterLeadershipPage({ searchParams }: { searchPa
     redirect("/signin");
   }
   
-  await searchParams; // Await to handle the promise, but we don't use it in this component
-  
-  // Get SAP ID from session first, then from search params, then from email lookup
-  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+  const sp = await searchParams;
+  const identifier = sp?.sapid ? String(sp.sapid).trim() : undefined;
+
+  // Get identifier from session first, then URL param, then from email lookup (legacy)
+  const sessionSapid = session?.user
+    ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined)
+    : undefined;
+  const sessionRegNo = session?.user
+    ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined)
+    : undefined;
   const email = session?.user?.email ? String(session.user.email) : undefined;
-  
-  let sapRows: Array<{ alumniid: number; sapid: string }> = [];
+
+  let rows: Array<{ alumniid: number }> = [];
   let sapError: string | null = null;
-  
-  // If we have SAP ID from session, use it directly
-  if (sessionSapid) {
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE sapid = ${sessionSapid} LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from session";
+
+  try {
+    if (sessionSapid) {
+      rows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE sapid IS NOT NULL AND TRIM(sapid) = ${sessionSapid}
+        LIMIT 1`;
     }
-  } else if (email) {
-    // Fallback to email lookup (backward compatibility)
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
+
+    if (rows.length === 0 && sessionRegNo) {
+      rows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE registrationno IS NOT NULL AND TRIM(registrationno) = ${sessionRegNo}
+        LIMIT 1`;
+    }
+
+    if (rows.length === 0 && identifier) {
+      rows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE (sapid IS NOT NULL AND TRIM(sapid) = ${identifier})
+           OR (registrationno IS NOT NULL AND TRIM(registrationno) = ${identifier})
+        LIMIT 1`;
+    }
+
+    if (rows.length === 0 && email) {
+      // Fallback to email lookup (backward compatibility)
+      rows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni
         WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
         ORDER BY alumniid DESC LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
     }
+  } catch (e) {
+    sapError = e instanceof Error ? e.message : "Failed to load alumni ID";
   }
-  
-  const alumniId = String(sapRows[0]?.alumniid ?? "");
+
+  const alumniId = String(rows[0]?.alumniid ?? "");
 
   return (
     <>

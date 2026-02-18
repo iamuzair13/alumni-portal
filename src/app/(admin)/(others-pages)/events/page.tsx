@@ -8,8 +8,9 @@
  */
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
@@ -29,6 +30,8 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapLink from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
+
+export const dynamic = "force-dynamic";
 
 // TypeScript typings for Events
 type EventItem = {
@@ -1252,8 +1255,11 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
 };
 
 // Default export function
-export default function EventsPage() {
+function EventsPageInner() {
   const [selected, setSelected] = useState<TabKey>("viewEvents");
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: rawEvents, isLoading, isFetching, isError, error } = useEventsList();
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -1268,6 +1274,13 @@ export default function EventsPage() {
     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "viewEvents" || tab === "addEvent") {
+      setSelected(tab);
+    }
+  }, [searchParams]);
 
   // Map server events to our format
   useEffect(() => {
@@ -1317,11 +1330,17 @@ export default function EventsPage() {
   const handleEdit = (id: string) => {
     setEditingEventId(id);
     setSelected("addEvent");
+    const qp = new URLSearchParams(searchParams.toString());
+    qp.set("tab", "addEvent");
+    router.replace(`${pathname}?${qp.toString()}`);
   };
 
   const handleEditSuccess = () => {
     setEditingEventId(null);
     setSelected("viewEvents");
+    const qp = new URLSearchParams(searchParams.toString());
+    qp.set("tab", "viewEvents");
+    router.replace(`${pathname}?${qp.toString()}`);
   };
 
   const confirmDelete = async () => {
@@ -1352,12 +1371,8 @@ export default function EventsPage() {
       <div className="flex flex-col gap-8">
         {/* Tabs navigation */}
         <div className="px-6 pt-2">
-          <div
-            className="tab-list flex flex-wrap gap-4"
-            role="tablist"
-            aria-label="Events sections"
-          >
-            {TABS.map((tab, idx) => (
+          <div className="tab-list flex flex-wrap gap-4" role="tablist" aria-label="Events sections">
+            {TABS.map((tab) => (
               <button
                 key={tab.key}
                 className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
@@ -1370,24 +1385,13 @@ export default function EventsPage() {
                   if (tab.key === "addEvent" && editingEventId) {
                     setEditingEventId(null);
                   }
+                  const qp = new URLSearchParams(searchParams.toString());
+                  qp.set("tab", tab.key);
+                  router.replace(`${pathname}?${qp.toString()}`);
                 }}
                 role="tab"
                 aria-selected={selected === tab.key}
                 tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    e.preventDefault();
-                    const nextIdx = (idx + 1) % TABS.length;
-                    setSelected(TABS[nextIdx].key);
-                  } else if (e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                    setSelected(TABS[prevIdx].key);
-                  } else if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelected(tab.key);
-                  }
-                }}
               >
                 {tab.label}
               </button>
@@ -1473,12 +1477,8 @@ export default function EventsPage() {
               <TrashBinIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                Confirm Deletion
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                This action cannot be undone.
-              </p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Confirm Deletion</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
             </div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-6">
@@ -1519,6 +1519,15 @@ export default function EventsPage() {
         </div>
       </Modal>
     </ComponentCard>
+  );
+}
+
+// Default export function
+export default function EventsPage() {
+  return (
+    <Suspense fallback={null}>
+      <EventsPageInner />
+    </Suspense>
   );
 }
 

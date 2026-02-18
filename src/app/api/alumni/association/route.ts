@@ -222,7 +222,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, role } = body;
+    const { alumniId, role, criteriaIds, additionalAchievements } = body as {
+      alumniId?: number;
+      role?: string;
+      criteriaIds?: unknown;
+      additionalAchievements?: unknown;
+    };
 
     if (!alumniId) {
       return NextResponse.json({ error: "Alumni ID is required" }, { status: 400 });
@@ -238,6 +243,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid role selected" }, { status: 400 });
     }
 
+    const roleName = role === "vicePresident" ? "vice_president" : role;
+    const confirmedCriteriaIds = Array.isArray(criteriaIds)
+      ? Array.from(
+          new Set(
+            criteriaIds
+              .map((x) => Number(x))
+              .filter((n) => Number.isFinite(n) && n > 0)
+          )
+        )
+      : [];
+
+    const mandatoryRows = await sql/* sql */`
+      SELECT c.id
+      FROM public.leadership_roles r
+      JOIN public.leadership_role_criteria c ON c.role_id = r.id
+      WHERE r.leadership_type = 'association'
+        AND r.role_name = ${roleName}
+        AND c.is_mandatory = true
+    `;
+    const mandatoryIds = (mandatoryRows ?? []).map((r: Record<string, unknown>) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
+    const missingMandatory = mandatoryIds.filter((id) => !confirmedCriteriaIds.includes(id));
+    if (missingMandatory.length > 0) {
+      return NextResponse.json(
+        { error: "Please confirm all mandatory criteria before submitting." },
+        { status: 400 }
+      );
+    }
+
     // Map role values to display names
     const roleDisplayNames: Record<string, string> = {
       president: "President",
@@ -250,6 +283,10 @@ export async function POST(request: NextRequest) {
     if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
+
+    const additionalAchievementsTextRaw = typeof additionalAchievements === "string" ? additionalAchievements : "";
+    const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
+    const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
 
     // Check if alumni already has a pending application (by alumni_id)
     const pendingApp = await sql/* sql */`
@@ -282,8 +319,8 @@ export async function POST(request: NextRequest) {
     // Insert new record with status='pending' (DO NOT link to tbl_alumni yet)
     // Aligned with schema - add status, rejection_reason, updated_at, alumni_id
     const insertResult = await sql/* sql */`
-      INSERT INTO public.tblalumniassociation (q3, createddatetime, status, alumni_id)
-      VALUES (${roleDisplayName}, NOW(), 'pending', ${alumniIdNum})
+      INSERT INTO public.tblalumniassociation (q3, createddatetime, status, alumni_id, additional_achievements)
+      VALUES (${roleDisplayName}, NOW(), 'pending', ${alumniIdNum}, ${additionalAchievementsValue})
       RETURNING id, status
     `;
     
@@ -292,6 +329,29 @@ export async function POST(request: NextRequest) {
     }
     
     const createdRecord = insertResult[0] as { id: number; status: string };
+
+    if (confirmedCriteriaIds.length > 0) {
+      await sql/* sql */`
+        INSERT INTO public.leadership_criteria_confirmations (
+          leadership_type,
+          association_application_id,
+          criterion_id,
+          actor_type,
+          confirmed,
+          created_at
+        )
+        SELECT
+          'association',
+          ${Number(createdRecord.id)},
+          c.id,
+          'alumni',
+          true,
+          NOW()
+        FROM public.leadership_role_criteria c
+        WHERE c.id = ANY(${confirmedCriteriaIds}::bigint[])
+        ON CONFLICT (association_application_id, criterion_id, actor_type) DO NOTHING
+      `;
+    }
 
     // Verify the record was created with 'pending' status
     if (createdRecord.status !== 'pending') {

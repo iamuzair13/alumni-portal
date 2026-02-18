@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { isAdminUser, isViewerUser, isSuperAdminUser } from "@/lib/alumniProfile";
-import { hashPassword } from "@/auth/credentials";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { hashAdminPassword } from "@/lib/adminPassword";
 
 type DbUser = {
   userid: number;
@@ -66,12 +66,10 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
-    // Return user with plain text password from users.password
-    // If password is hashed (starts with "scrypt:"), it means it was migrated and plain text is not available
     return NextResponse.json({ 
       user: {
         ...user,
-        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
+        password: user.password ?? null
       } 
     }, { status: 200 });
   } catch (error) {
@@ -172,27 +170,32 @@ export async function PUT(req: Request) {
     
     // Validate and process new password if provided
     let plainTextPassword: string | undefined = undefined;
-    let hashedPassword: string | undefined = undefined;
+    let storedPasswordHash: string | undefined = undefined;
     if (body.newPassword && String(body.newPassword).trim().length > 0) {
       const newPasswordStr = String(body.newPassword).trim();
       if (newPasswordStr.length < 8) {
         return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
       }
-      // Store plain text in password field and hash in password_hash field
+      // Store plain text in password field (system rule: plain text everywhere)
       plainTextPassword = newPasswordStr;
-      hashedPassword = await hashPassword(newPasswordStr);
+      storedPasswordHash = (isAdmin || isSuperAdmin || isViewer) ? await hashAdminPassword(newPasswordStr) : newPasswordStr;
 
     } else {
 
     }
     
+    const passwordUpdateFragment =
+      plainTextPassword !== undefined && storedPasswordHash !== undefined
+        ? sql`password = ${plainTextPassword}, password_hash = ${storedPasswordHash},`
+        : sql``;
+
     // Build update query - only include fields that are provided
     // Use conditional SQL fragments, ensuring proper comma placement
     await sql/* sql */`
       UPDATE public.users
       SET
         ${body.email !== undefined && !isRestrictedStaff ? sql`email = ${body.email},` : sql``}
-        ${plainTextPassword !== undefined && hashedPassword !== undefined ? sql`password = ${plainTextPassword}, password_hash = ${hashedPassword},` : sql``}
+        ${passwordUpdateFragment}
         ${body.firstname !== undefined && !isRestrictedStaff ? sql`firstname = ${body.firstname},` : sql``}
         ${body.lastname !== undefined && !isRestrictedStaff ? sql`lastname = ${body.lastname},` : sql``}
         ${body.department !== undefined && isSuperAdmin ? sql`department = ${body.department},` : sql``}
@@ -225,11 +228,10 @@ export async function PUT(req: Request) {
     
     const updatedUser = rows[0];
     
-    // Return plain text password (exclude if hashed)
     return NextResponse.json({ 
       user: {
         ...updatedUser,
-        password: updatedUser.password && !updatedUser.password.startsWith("scrypt:") ? updatedUser.password : null
+        password: updatedUser.password ?? null
       } 
     }, { status: 200 });
   } catch (error) {

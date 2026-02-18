@@ -62,6 +62,9 @@ export async function GET(req: Request) {
     try {
       if (sapId) {
         erpResponse = await erpClient.fetchBySapId(sapId);
+        if (erpResponse && erpResponse.success === false && erpResponse.error === "NOT_FOUND" && registrationNo) {
+          erpResponse = await erpClient.fetchByRegistrationNo(registrationNo);
+        }
       } else if (registrationNo) {
         erpResponse = await erpClient.fetchByRegistrationNo(registrationNo);
       } else {

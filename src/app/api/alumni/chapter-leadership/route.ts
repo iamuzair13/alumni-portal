@@ -63,7 +63,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, post } = body;
+    const { alumniId, post, criteriaIds, additionalAchievements } = body as {
+      alumniId?: number;
+      post?: string;
+      criteriaIds?: unknown;
+      additionalAchievements?: unknown;
+    };
 
     if (!alumniId) {
       return NextResponse.json({ error: "Alumni ID is required" }, { status: 400 });
@@ -79,11 +84,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid post selected" }, { status: 400 });
     }
 
+    const roleName = post === "vicePresident" ? "vice_president" : post;
+    const confirmedCriteriaIds = Array.isArray(criteriaIds)
+      ? Array.from(
+          new Set(
+            criteriaIds
+              .map((x) => Number(x))
+              .filter((n) => Number.isFinite(n) && n > 0)
+          )
+        )
+      : [];
+
+    const mandatoryRows = await sql/* sql */`
+      SELECT c.id
+      FROM public.leadership_roles r
+      JOIN public.leadership_role_criteria c ON c.role_id = r.id
+      WHERE r.leadership_type = 'chapter'
+        AND r.role_name = ${roleName}
+        AND c.is_mandatory = true
+    `;
+    const mandatoryIds = (mandatoryRows ?? []).map((r: Record<string, unknown>) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
+    const missingMandatory = mandatoryIds.filter((id) => !confirmedCriteriaIds.includes(id));
+    if (missingMandatory.length > 0) {
+      return NextResponse.json(
+        { error: "Please confirm all mandatory criteria before submitting." },
+        { status: 400 }
+      );
+    }
+
     // Map post values to display names
     const postDisplayNames: Record<string, string> = {
-      president: "Chapter President",
-      vicePresident: "Chapter Vice President",
-      coordinator: "Chapter Coordinator",
+      president: "President",
+      vicePresident: "Vice President",
+      coordinator: "Coordinator",
     };
 
     const postDisplayName = postDisplayNames[post] || post;
@@ -91,6 +124,10 @@ export async function POST(request: NextRequest) {
     if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
+
+    const additionalAchievementsTextRaw = typeof additionalAchievements === "string" ? additionalAchievements : "";
+    const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
+    const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
 
     // Check if alumni already has a pending application (by alumniid)
     const pendingApp = await sql/* sql */`
@@ -127,8 +164,8 @@ export async function POST(request: NextRequest) {
     // Store alumniid for reference (aligned with schema)
     // Use INSERT with ON CONFLICT to prevent duplicates (if unique constraint exists)
     const newChapterLeadership = await sql/* sql */`
-      INSERT INTO public.chapter_leadership (post, created_at, status, updated_at, alumniid)
-      VALUES (${postDisplayName}, NOW(), 'pending', NOW(), ${alumniIdNum})
+      INSERT INTO public.chapter_leadership (post, created_at, status, updated_at, alumniid, additional_achievements)
+      VALUES (${postDisplayName}, NOW(), 'pending', NOW(), ${alumniIdNum}, ${additionalAchievementsValue})
       RETURNING id, status
     `;
     
@@ -137,6 +174,29 @@ export async function POST(request: NextRequest) {
     }
     
     const createdRecord = newChapterLeadership[0] as { id: number; status: string };
+
+    if (confirmedCriteriaIds.length > 0) {
+      await sql/* sql */`
+        INSERT INTO public.leadership_criteria_confirmations (
+          leadership_type,
+          chapter_application_id,
+          criterion_id,
+          actor_type,
+          confirmed,
+          created_at
+        )
+        SELECT
+          'chapter',
+          ${Number(createdRecord.id)},
+          c.id,
+          'alumni',
+          true,
+          NOW()
+        FROM public.leadership_role_criteria c
+        WHERE c.id = ANY(${confirmedCriteriaIds}::bigint[])
+        ON CONFLICT (chapter_application_id, criterion_id, actor_type) DO NOTHING
+      `;
+    }
 
     // Verify the record was created with 'pending' status
     if (createdRecord.status !== 'pending') {

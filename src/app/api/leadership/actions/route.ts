@@ -29,7 +29,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, applicationId, type } = body; // action: "approve" | "reject" | "delete", type: "chapter" | "association"
+    const { action, applicationId, type, adminCriteriaIds } = body as {
+      action?: "approve" | "reject" | "delete";
+      applicationId?: number;
+      type?: "chapter" | "association";
+      adminCriteriaIds?: unknown;
+    }; // action: "approve" | "reject" | "delete", type: "chapter" | "association"
     // rejectionReason is accessed from body.rejectionReason when needed
 
     if (!action || !applicationId || !type) {
@@ -51,7 +56,7 @@ export async function POST(req: NextRequest) {
     if (type === "chapter") {
       // First, verify the application exists
       const appRecord = await sql/* sql */`
-        SELECT id FROM public.chapter_leadership
+        SELECT id, post FROM public.chapter_leadership
         WHERE id = ${Number(applicationId)}
         LIMIT 1
       `;
@@ -141,6 +146,85 @@ export async function POST(req: NextRequest) {
       }
 
       if (action === "approve") {
+        const roleText = String((appRecord[0] as { post?: unknown }).post ?? "");
+        const roleName = roleText.toLowerCase().includes("vice")
+          ? "vice_president"
+          : roleText.toLowerCase().includes("coordinator")
+            ? "coordinator"
+            : "president";
+
+        const confirmedAdminIds = Array.isArray(adminCriteriaIds)
+          ? Array.from(
+              new Set(
+                adminCriteriaIds
+                  .map((x) => Number(x))
+                  .filter((n) => Number.isFinite(n) && n > 0)
+              )
+            )
+          : [];
+
+        const mandatoryRows = await sql/* sql */`
+          SELECT c.id
+          FROM public.leadership_roles r
+          JOIN public.leadership_role_criteria c ON c.role_id = r.id
+          WHERE r.leadership_type = 'chapter'
+            AND r.role_name = ${roleName}
+            AND c.is_mandatory = true
+        `;
+        const mandatoryIds = (mandatoryRows ?? []).map((r: Record<string, unknown>) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
+
+        if (mandatoryIds.length > 0) {
+          const alumniConfirmedRows = await sql/* sql */`
+            SELECT criterion_id
+            FROM public.leadership_criteria_confirmations
+            WHERE leadership_type = 'chapter'
+              AND chapter_application_id = ${Number(applicationId)}
+              AND actor_type = 'alumni'
+              AND confirmed = true
+          `;
+          const alumniConfirmed = (alumniConfirmedRows ?? [])
+            .map((r: Record<string, unknown>) => Number(r.criterion_id))
+            .filter((n) => Number.isFinite(n) && n > 0);
+          const missingAlumni = mandatoryIds.filter((id) => !alumniConfirmed.includes(id));
+          if (missingAlumni.length > 0) {
+            return NextResponse.json(
+              { error: "Cannot approve: alumni must resubmit the application and confirm all mandatory criteria." },
+              { status: 400 }
+            );
+          }
+
+          const missingAdmin = mandatoryIds.filter((id) => !confirmedAdminIds.includes(id));
+          if (missingAdmin.length > 0) {
+            return NextResponse.json(
+              { error: "Cannot approve: please confirm all mandatory criteria." },
+              { status: 400 }
+            );
+          }
+
+          if (confirmedAdminIds.length > 0) {
+            await sql/* sql */`
+              INSERT INTO public.leadership_criteria_confirmations (
+                leadership_type,
+                chapter_application_id,
+                criterion_id,
+                actor_type,
+                confirmed,
+                created_at
+              )
+              SELECT
+                'chapter',
+                ${Number(applicationId)},
+                c.id,
+                'admin',
+                true,
+                NOW()
+              FROM public.leadership_role_criteria c
+              WHERE c.id = ANY(${confirmedAdminIds}::bigint[])
+              ON CONFLICT (chapter_application_id, criterion_id, actor_type) DO NOTHING
+            `;
+          }
+        }
+
         // Update status to 'approved' and link to tbl_alumni
         await sql/* sql */`
           UPDATE public.chapter_leadership
@@ -199,7 +283,7 @@ export async function POST(req: NextRequest) {
     } else if (type === "association") {
       // First, verify the application exists
       const appRecord = await sql/* sql */`
-        SELECT id FROM public.tblalumniassociation
+        SELECT id, q3 FROM public.tblalumniassociation
         WHERE id = ${Number(applicationId)}
         LIMIT 1
       `;
@@ -289,6 +373,85 @@ export async function POST(req: NextRequest) {
       }
 
       if (action === "approve") {
+        const roleText = String((appRecord[0] as { q3?: unknown }).q3 ?? "");
+        const roleName = roleText.toLowerCase().includes("vice")
+          ? "vice_president"
+          : roleText.toLowerCase().includes("coordinator")
+            ? "coordinator"
+            : "president";
+
+        const confirmedAdminIds = Array.isArray(adminCriteriaIds)
+          ? Array.from(
+              new Set(
+                adminCriteriaIds
+                  .map((x) => Number(x))
+                  .filter((n) => Number.isFinite(n) && n > 0)
+              )
+            )
+          : [];
+
+        const mandatoryRows = await sql/* sql */`
+          SELECT c.id
+          FROM public.leadership_roles r
+          JOIN public.leadership_role_criteria c ON c.role_id = r.id
+          WHERE r.leadership_type = 'association'
+            AND r.role_name = ${roleName}
+            AND c.is_mandatory = true
+        `;
+        const mandatoryIds = (mandatoryRows ?? []).map((r: Record<string, unknown>) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
+
+        if (mandatoryIds.length > 0) {
+          const alumniConfirmedRows = await sql/* sql */`
+            SELECT criterion_id
+            FROM public.leadership_criteria_confirmations
+            WHERE leadership_type = 'association'
+              AND association_application_id = ${Number(applicationId)}
+              AND actor_type = 'alumni'
+              AND confirmed = true
+          `;
+          const alumniConfirmed = (alumniConfirmedRows ?? [])
+            .map((r: Record<string, unknown>) => Number(r.criterion_id))
+            .filter((n) => Number.isFinite(n) && n > 0);
+          const missingAlumni = mandatoryIds.filter((id) => !alumniConfirmed.includes(id));
+          if (missingAlumni.length > 0) {
+            return NextResponse.json(
+              { error: "Cannot approve: alumni must resubmit the application and confirm all mandatory criteria." },
+              { status: 400 }
+            );
+          }
+
+          const missingAdmin = mandatoryIds.filter((id) => !confirmedAdminIds.includes(id));
+          if (missingAdmin.length > 0) {
+            return NextResponse.json(
+              { error: "Cannot approve: please confirm all mandatory criteria." },
+              { status: 400 }
+            );
+          }
+
+          if (confirmedAdminIds.length > 0) {
+            await sql/* sql */`
+              INSERT INTO public.leadership_criteria_confirmations (
+                leadership_type,
+                association_application_id,
+                criterion_id,
+                actor_type,
+                confirmed,
+                created_at
+              )
+              SELECT
+                'association',
+                ${Number(applicationId)},
+                c.id,
+                'admin',
+                true,
+                NOW()
+              FROM public.leadership_role_criteria c
+              WHERE c.id = ANY(${confirmedAdminIds}::bigint[])
+              ON CONFLICT (association_application_id, criterion_id, actor_type) DO NOTHING
+            `;
+          }
+        }
+
         // Update status to 'approved' and link to tbl_alumni
         // Note: tblalumniassociation doesn't have updated_at or rejection_reason in schema
         await sql/* sql */`

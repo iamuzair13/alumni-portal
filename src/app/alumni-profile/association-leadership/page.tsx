@@ -18,22 +18,29 @@ import PageBanner from "@/components/ui/PageBanner";
 type AlumniProfileSearchParams = { sapid?: string };
 
 async function getAlumniId(searchParams: { sapid?: string }) {
-  const sapid = searchParams?.sapid ? String(searchParams.sapid) : undefined;
+  const identifier = searchParams?.sapid ? String(searchParams.sapid).trim() : undefined;
   
   const session = await auth();
   
-  // First try to get SAP ID from session (if alumni logged in with SAP ID)
-  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+  // First try to get identifier from session (sapid, then registrationno)
+  const sessionSapid = session?.user
+    ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined)
+    : undefined;
+  const sessionRegNo = session?.user
+    ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined)
+    : undefined;
   const email = session?.user?.email ? String(session.user.email) : undefined;
   
-  let sapRows: Array<{ alumniid: number; sapid: string }> = [];
+  let sapRows: Array<{ alumniid: number }> = [];
   
-  // If we have SAP ID from search params, use it
-  if (sapid) {
+  // If we have identifier from search params, treat it as SAP ID OR Registration No
+  if (identifier) {
     try {
       sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE sapid = ${sapid} LIMIT 1`;
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE (sapid IS NOT NULL AND TRIM(sapid) = ${identifier})
+           OR (registrationno IS NOT NULL AND TRIM(registrationno) = ${identifier})
+        LIMIT 1`;
     } catch {
       // Continue to other methods
     }
@@ -43,8 +50,21 @@ async function getAlumniId(searchParams: { sapid?: string }) {
   if (sapRows.length === 0 && sessionSapid) {
     try {
       sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE sapid = ${sessionSapid} LIMIT 1`;
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE sapid IS NOT NULL AND TRIM(sapid) = ${sessionSapid}
+        LIMIT 1`;
+    } catch {
+      // Continue to fallback
+    }
+  }
+
+  // If we have Registration No from session, use it
+  if (sapRows.length === 0 && sessionRegNo) {
+    try {
+      sapRows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE registrationno IS NOT NULL AND TRIM(registrationno) = ${sessionRegNo}
+        LIMIT 1`;
     } catch {
       // Continue to fallback
     }

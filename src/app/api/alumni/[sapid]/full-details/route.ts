@@ -170,12 +170,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
     
     // Return all fields from tbl_alumni
-    // SECURITY: Only return password for alumni (owners), not for admins
+    // Password is treated as plain text system-wide; keep existing role gating.
     const rawPassword = typeof row.password === "string" ? row.password : null;
-    const isHashedPassword = Boolean(rawPassword && rawPassword.toLowerCase().startsWith("scrypt:"));
-    const alumniPassword = isHashedPassword ? "********" : rawPassword;
-    const adminPassword = rawPassword ? "********" : null;
-    const superAdminPassword = !rawPassword || isHashedPassword ? null : rawPassword;
+    const alumniPassword = rawPassword;
+    const adminPassword = rawPassword;
+    const superAdminPassword = rawPassword;
     return NextResponse.json({ 
       item: {
         alumniid: row.alumniid ?? null,
@@ -239,7 +238,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        password: (isAlumni && isOwner) ? alumniPassword : (isSuperAdmin ? superAdminPassword : (canAccess ? adminPassword : null)),
+        password: (isAlumni && isOwner) ? alumniPassword : (isSuperAdmin ? superAdminPassword : (isAdminOrViewer ? adminPassword : null)),
         father_cnic: row.father_cnic ?? null,
         category: row.category ?? null,
         // Higher Education fields

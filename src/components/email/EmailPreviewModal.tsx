@@ -194,6 +194,8 @@ export function EmailPreviewModal(props: {
           <button
             type="button"
             onClick={async () => {
+              const ok = window.confirm("Send this email now?");
+              if (!ok) return;
               await onSend(saved);
             }}
             disabled={sending}

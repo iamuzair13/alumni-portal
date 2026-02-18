@@ -284,6 +284,149 @@ export interface UpskillApplicationData {
   departmentName: string;
 }
 
+export interface LeadershipApplicationPDFData {
+  leadershipType: "chapter" | "association";
+  status: string;
+  position: string;
+  applicant: {
+    name: string;
+    sapId: string;
+    registrationNo?: string | null;
+    email: string;
+    faculty?: string | null;
+    department?: string | null;
+    program?: string | null;
+  };
+  criteria: Array<{
+    label: string;
+    description?: string | null;
+    isMandatory: boolean;
+    alumniConfirmed: boolean;
+    adminConfirmed: boolean;
+  }>;
+  additionalAchievements?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  rejectionReason?: string | null;
+}
+
+export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 40;
+      const maxWidth = pageWidth - 2 * margin;
+      let y = margin;
+
+      const logoBase64 = getLogoBase64();
+      if (logoBase64) {
+        try {
+          const logoWidth = 40;
+          const logoHeight = 20;
+          const logoX = pageWidth - margin - logoWidth;
+          const logoY = margin;
+          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
+          y = logoY + logoHeight + 12;
+        } catch {
+          y = margin + 10;
+        }
+      } else {
+        y = margin + 10;
+      }
+
+      doc.setDrawColor(0, 102, 51);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 14;
+
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 102, 51);
+      doc.text("Leadership Application", margin, y);
+      y += 8;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+
+      const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const dateText = `Date: ${date}`;
+      doc.text(dateText, pageWidth - margin - doc.getTextWidth(dateText), y);
+      y += 16;
+
+      const addText = (text: string, fontSize: number, isBold: boolean = false, spacing: number = 6) => {
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", isBold ? "bold" : "normal");
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        doc.text(lines, margin, y, { maxWidth });
+        y += lines.length * (fontSize * 0.42) + spacing;
+        if (y > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      };
+
+      const labelValue = (label: string, value: string) => {
+        addText(`${label}: ${value}`, 11, false, 4);
+      };
+
+      addText(`Applicant: ${data.applicant.name || "-"}`, 12, true, 6);
+      labelValue("Leadership Type", data.leadershipType === "chapter" ? "Chapter" : "Association");
+      labelValue("Role", data.position || "-");
+      labelValue("Status", String(data.status || "pending"));
+      if (data.createdAt) labelValue("Created At", String(data.createdAt));
+      if (data.updatedAt) labelValue("Updated At", String(data.updatedAt));
+      if (data.rejectionReason) labelValue("Rejection Reason", String(data.rejectionReason));
+
+      const idLine = data.applicant.sapId
+        ? `SAP ID: ${data.applicant.sapId}`
+        : data.applicant.registrationNo
+          ? `Registration No: ${data.applicant.registrationNo}`
+          : "";
+      if (idLine) addText(idLine, 11, false, 4);
+      if (data.applicant.email) addText(`Email: ${data.applicant.email}`, 11, false, 4);
+      if (data.applicant.faculty) addText(`Faculty: ${data.applicant.faculty}`, 11, false, 4);
+      if (data.applicant.department) addText(`Department: ${data.applicant.department}`, 11, false, 4);
+      if (data.applicant.program) addText(`Program: ${data.applicant.program}`, 11, false, 8);
+
+      addText("Criteria", 12, true, 6);
+      if (!data.criteria || data.criteria.length === 0) {
+        addText("No criteria found.", 11, false, 10);
+      } else {
+        data.criteria.forEach((c, idx) => {
+          const flags = `${c.isMandatory ? "Mandatory" : "Optional"} | Alumni: ${c.alumniConfirmed ? "Yes" : "No"} | Admin: ${c.adminConfirmed ? "Yes" : "No"}`;
+          addText(`${idx + 1}. ${c.label}`, 11, true, 2);
+          if (c.description) addText(String(c.description), 10, false, 2);
+          addText(flags, 10, false, 8);
+        });
+      }
+
+      addText("Additional Achievements", 12, true, 6);
+      addText(String(data.additionalAchievements || "No additional achievements provided."), 11, false, 10);
+
+      const footerY = pageHeight - 24;
+      doc.setDrawColor(0, 102, 51);
+      doc.setLineWidth(0.5);
+      doc.line(margin, footerY, pageWidth - margin, footerY);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      const footerText = "Office of Alumni Relations | University of Lahore";
+      const footerWidth = doc.getTextWidth(footerText);
+      doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
+
+      const pdfOutput = doc.output("arraybuffer");
+      const buffer = Buffer.from(pdfOutput);
+      resolve(buffer);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 export function generateUpskillPDF(data: UpskillApplicationData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {

@@ -661,9 +661,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       // Always generate password when admin verifies/unverifies for the first time (moving from NULL to verified/unverified)
       // This is a one-time action - email will be sent only when moving from NULL status
       const { default: generateEasyPassword } = await import("@/lib/passwordUtils");
-      const { hashPassword } = await import("@/auth/credentials");
       generatedPassword = generateEasyPassword();
-      passwordToStore = await hashPassword(generatedPassword);
+      passwordToStore = generatedPassword;
 
     } else {
       // Keep existing password if alumni was already verified/unverified (admin is just changing status)

@@ -7,6 +7,7 @@ import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 import { createAccessAssignmentsInNewRBAC, deleteAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { hashAdminPassword } from "@/lib/adminPassword";
 
 type DbUser = {
   userid: number;
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
           COALESCE(type, legacy_type) as type, 
           COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime, 
-          COALESCE(password, password_hash) as password
+          password
         FROM public.users 
         WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
@@ -74,7 +75,7 @@ export async function GET(req: Request) {
           COALESCE(type, legacy_type) as type, 
           COALESCE(blocked, NOT is_active) as blocked, 
           lastlogindatetime, 
-          COALESCE(password, password_hash) as password
+          password
         FROM public.users 
         WHERE id = ${id} OR legacy_userid = ${id}
         LIMIT 1
@@ -280,17 +281,10 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "FORBIDDEN: You can only update your password" }, { status: 403 });
       }
       // Admin can only update password for themselves
-      // Hash password if provided
-      let hashedPassword: string | undefined = undefined;
-      if (body.password) {
-        const { hashPassword } = await import("@/auth/credentials");
-        hashedPassword = await hashPassword(String(body.password));
-      }
-      
       await sql/* sql */`
         UPDATE public.users
         SET
-          ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
+          ${body.password ? sql`password = ${String(body.password)}, password_hash = ${String(body.password)},` : sql``}
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
 
@@ -320,6 +314,12 @@ export async function PUT(req: Request) {
     // Normalize "user" type to "viewer" for consistency
     const userType = body.type ? String(body.type).toLowerCase().trim() : null;
     const normalizedType = userType === "user" ? "viewer" : (userType || null);
+
+    const passwordPlain = body.password !== undefined ? String(body.password) : null;
+    const passwordHash =
+      passwordPlain && (normalizedType === "admin" || normalizedType === "superadmin" || normalizedType === "viewer" || normalizedType === "user")
+        ? await hashAdminPassword(passwordPlain)
+        : passwordPlain;
     
     // Note: Multiple superadmins are now allowed
     
@@ -327,15 +327,10 @@ export async function PUT(req: Request) {
     // Super Admin can update all fields
     if (isViewer && !isAdmin && !isSuperAdmin) {
       // Viewers can only update password
-      let hashedPassword: string | undefined = undefined;
-      if (body.password) {
-        const { hashPassword } = await import("@/auth/credentials");
-        hashedPassword = await hashPassword(String(body.password));
-      }
       await sql/* sql */`
         UPDATE public.users
         SET
-          ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
+          ${body.password ? sql`password = ${passwordPlain}, password_hash = ${passwordHash},` : sql``}
           updated_at = now()
         WHERE id = ${id} OR legacy_userid = ${id}`;
 
@@ -355,16 +350,11 @@ export async function PUT(req: Request) {
       });
     } else {
       // Super Admin can update all fields
-      let hashedPassword: string | undefined = undefined;
-      if (body.password) {
-        const { hashPassword } = await import("@/auth/credentials");
-        hashedPassword = await hashPassword(String(body.password));
-      }
       await sql/* sql */`
         UPDATE public.users
         SET
           email = ${body.email ?? null},
-          ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
+          ${body.password ? sql`password = ${passwordPlain}, password_hash = ${passwordHash},` : sql``}
           firstname = ${body.firstname ?? null},
           lastname = ${body.lastname ?? null},
           department = ${body.department ?? null},

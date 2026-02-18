@@ -1,36 +1,22 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import LeadershipApplicationsTracker from "@/components/alumni/LeadershipApplicationsTracker";
 
 type AlumniChapterLeadershipFormValues = {
   post: string;
+  additionalAchievements: string;
 };
 
-type PostDetails = {
-  post: string;
-  description: string;
-  criteria: string;
-};
-
-const POST_DETAILS: Record<string, PostDetails> = {
-  president: {
-    post: "Chapter President",
-    description: "Lead the chapter, organize events, coordinate with the Alumni Office, and represent the chapter in official matters.",
-    criteria: "Alumni with 8–12 years of experience, strong leadership skills, active in the local community, and commitment to chapter growth.",
-  },
-  vicePresident: {
-    post: "Chapter Vice President",
-    description: "Support the Chapter President, assist in event planning and execution, and step in when the President is unavailable.",
-    criteria: "Alumni with 5 years or more experience, organizational skills, and active involvement in chapter activities.",
-  },
-  coordinator: {
-    post: "Chapter Coordinator",
-    description: "Organize chapter events, manage logistics, coordinate with members, and assist in day-to-day chapter operations.",
-    criteria: "Alumni with 2–3 years of experience, good administrative skills, event management capabilities, and attention to detail.",
-  },
+type RoleCriterion = {
+  id: number;
+  label: string;
+  description: string | null;
+  is_mandatory: boolean;
+  sort_order: number;
 };
 
 const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
@@ -50,8 +36,14 @@ async function fetchFormSettings() {
 
 export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const router = useRouter();
+  const qc = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPost, setSelectedPost] = useState<string>("");
+  const [selectedCriteriaIds, setSelectedCriteriaIds] = useState<Set<number>>(new Set());
+  const alumniIdNumber = useMemo(() => {
+    const n = Number(alumniId);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [alumniId]);
 
   // Check if form is enabled
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -70,6 +62,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   } = useForm<AlumniChapterLeadershipFormValues>({
     defaultValues: {
       post: "",
+      additionalAchievements: "",
     },
     disabled: !isFormEnabled,
   });
@@ -79,12 +72,58 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   // Update selectedPost when form value changes
   React.useEffect(() => {
     setSelectedPost(post || "");
+    setSelectedCriteriaIds(new Set());
   }, [post]);
+
+  const criteriaRoleName = useMemo(() => {
+    if (!selectedPost) return null;
+    if (selectedPost === "vicePresident") return "vice_president";
+    if (selectedPost === "president" || selectedPost === "coordinator") return selectedPost;
+    return null;
+  }, [selectedPost]);
+
+  const { data: criteriaData, isLoading: criteriaLoading } = useQuery({
+    queryKey: ["leadership-criteria", "chapter", criteriaRoleName],
+    queryFn: async () => {
+      if (!criteriaRoleName) return { items: [] as RoleCriterion[] };
+      const res = await fetch(`/api/leadership/criteria?type=chapter&role=${encodeURIComponent(criteriaRoleName)}`, {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to load criteria");
+      return (await res.json()) as { items: RoleCriterion[]; roleDescription?: string };
+    },
+    enabled: !!criteriaRoleName && isFormEnabled,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const criteriaItems = useMemo(() => {
+    const items = criteriaData?.items ?? [];
+    return Array.isArray(items) ? items : [];
+  }, [criteriaData]);
+
+  const roleDescription = useMemo(() => {
+    const raw = (criteriaData as any)?.roleDescription;
+    const s = String(raw ?? "").trim();
+    return s;
+  }, [criteriaData]);
+
+  const mandatoryCriteriaIds = useMemo(() => {
+    return criteriaItems.filter((c) => c.is_mandatory).map((c) => Number(c.id)).filter((n) => Number.isFinite(n) && n > 0);
+  }, [criteriaItems]);
 
   const onSubmit = async (data: AlumniChapterLeadershipFormValues) => {
     // Prevent double submission
     if (isSubmitting) {
       return;
+    }
+
+    if (mandatoryCriteriaIds.length > 0) {
+      const missing = mandatoryCriteriaIds.filter((id) => !selectedCriteriaIds.has(id));
+      if (missing.length > 0) {
+        toast.error("Please confirm all mandatory criteria.");
+        return;
+      }
     }
 
     if (!alumniId) {
@@ -117,6 +156,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         body: JSON.stringify({
           alumniId: parseInt(alumniId, 10),
           post: data.post,
+          criteriaIds: Array.from(selectedCriteriaIds),
+          additionalAchievements: data.additionalAchievements,
         }),
       });
 
@@ -138,17 +179,10 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         },
       });
 
-      // Navigate back to my chapters page
-      setTimeout(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const sapId = urlParams.get('sapid');
-        if (sapId) {
-          router.push(`/alumni-profile/my-chapters?sapid=${encodeURIComponent(sapId)}`);
-        } else {
-          router.push('/alumni-profile/my-chapters');
-        }
-        router.refresh();
-      }, 1500);
+      // Refresh leadership applications tracker (stay on same page)
+      qc.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
+      qc.refetchQueries({ queryKey: ["leadership-applications"], exact: false });
+      router.refresh();
     } catch (error) {
       toast.dismiss(loadingToast);
       const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
@@ -165,8 +199,6 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
       setIsSubmitting(false);
     }
   };
-
-  const selectedPostDetails = selectedPost ? POST_DETAILS[selectedPost] : null;
 
   if (settingsLoading) {
     return (
@@ -198,6 +230,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
   return (
     <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="mb-6">
+        <LeadershipApplicationsTracker alumniId={alumniIdNumber} />
+      </div>
       <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Chapter Leadership</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400">Apply for a leadership position in your chapter.</p>
 
@@ -210,9 +245,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
             </label>
             <div className="space-y-3 mt-3">
               {[
-                { value: "president", label: "Chapter President" },
-                { value: "vicePresident", label: "Chapter Vice President" },
-                { value: "coordinator", label: "Chapter Coordinator" },
+                { value: "president", label: "President" },
+                { value: "vicePresident", label: "Vice President" },
+                { value: "coordinator", label: "Coordinator" },
               ].map((postOption) => (
                 <label
                   key={postOption.value}
@@ -237,28 +272,81 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
             {errors.post && <span className={errorText}>{errors.post.message}</span>}
           </div>
 
-          {/* Post Description - Shown when post is selected */}
-          {selectedPostDetails && (
-            <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                {selectedPostDetails.post}
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Role:</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {selectedPostDetails.description}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Criteria:</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {selectedPostDetails.criteria}
-                  </p>
-                </div>
+          {/* Role Description */}
+          {selectedPost ? (
+            <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4">
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Description</div>
+              <div className="mt-1 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                {criteriaLoading ? "Loading..." : roleDescription ? roleDescription : "No role description configured yet."}
               </div>
             </div>
-          )}
+          ) : null}
+
+          {/* Role Criteria */}
+          {selectedPost ? (
+            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Criteria</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Mandatory criteria must be confirmed to submit.</p>
+                </div>
+                {criteriaLoading ? (
+                  <div className="text-xs text-gray-500">Loading...</div>
+                ) : null}
+              </div>
+
+              {criteriaItems.length === 0 && !criteriaLoading ? (
+                <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">No criteria configured yet.</div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {criteriaItems.map((c) => {
+                    const id = Number(c.id);
+                    const checked = selectedCriteriaIds.has(id);
+                    return (
+                      <label key={id} className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSelectedCriteriaIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(id);
+                              else next.delete(id);
+                              return next;
+                            });
+                          }}
+                          className="mt-1 h-4 w-4 text-blue-600"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                            {c.is_mandatory ? (
+                              <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
+                            ) : (
+                              <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
+                            )}
+                          </div>
+                          {c.description ? (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
+                          ) : null}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          <div>
+            <label className={labelBase}>Additional Achievements</label>
+            <textarea
+              {...register("additionalAchievements")}
+              rows={5}
+              placeholder="Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role."
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {/* Submit Button */}

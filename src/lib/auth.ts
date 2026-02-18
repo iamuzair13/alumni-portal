@@ -78,6 +78,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials, req) {
         const identifier = String(credentials?.identifier || "").trim();
         const password = String(credentials?.password || "").trim();
+        const userType = credentials && "user_type" in (credentials as Record<string, unknown>)
+          ? String((credentials as Record<string, unknown>).user_type || "").trim()
+          : "";
         
         if (!identifier || !password) {
           throw new Error("INVALID_IDENTIFIER");
@@ -86,7 +89,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const ip = (req as unknown as { ip?: string }).ip || req?.headers?.get?.("x-forwarded-for") || "unknown";
         
         try {
-          const result = await authenticateCredentials(identifier, password, String(ip));
+          const result = await authenticateCredentials(identifier, password, String(ip), userType || null);
           
           // Return user object that NextAuth expects
           return result as User | null;

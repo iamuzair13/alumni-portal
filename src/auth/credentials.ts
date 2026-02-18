@@ -1,5 +1,6 @@
 import { sql } from "@/lib/dbconnect";
 import { logLoginEvent } from "@/lib/loginLog";
+import { verifyAdminPassword } from "@/lib/adminPassword";
 
 export type DbUser = {
   userid: number;
@@ -12,39 +13,8 @@ export type DbUser = {
   lastlogindatetime: string | null;
 };
 
-export async function hashPassword(plain: string): Promise<string> {
-  const { randomBytes, scrypt } = await import("crypto");
-  const salt = randomBytes(16);
-  const buf: Buffer = await new Promise((resolve, reject) => {
-    scrypt(plain, salt, 64, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
-  });
-  return `scrypt:${salt.toString("hex")}:${buf.toString("hex")}`;
-}
-
 export async function verifyPassword(plain: string, stored: string): Promise<boolean> {
   if (!stored) return false;
-  // Support scrypt-hash format used by hashPassword():
-  //   scrypt:<saltHex>:<derivedKeyHex>
-  if (stored.startsWith("scrypt:")) {
-    try {
-      const parts = stored.split(":");
-      if (parts.length !== 3) return false;
-      const saltHex = parts[1] || "";
-      const hashHex = parts[2] || "";
-      const salt = Buffer.from(saltHex, "hex");
-      const expected = Buffer.from(hashHex, "hex");
-
-      const { scrypt, timingSafeEqual } = await import("crypto");
-      const derived: Buffer = await new Promise((resolve, reject) => {
-        scrypt(plain, salt, expected.length, (err, derivedKey) => (err ? reject(err) : resolve(derivedKey as Buffer)));
-      });
-
-      if (derived.length !== expected.length) return false;
-      return timingSafeEqual(derived, expected);
-    } catch {
-      return false;
-    }
-  }
 
   // Compare as plain text (trim both to handle whitespace issues)
   // Also normalize line endings and handle potential encoding differences
@@ -101,9 +71,24 @@ export interface UserWithDbLike {
   };
 }
 
-export async function authenticateCredentials(identifier: string, password: string, ip: string): Promise<UserWithDbLike> {
+export async function authenticateCredentials(
+  identifier: string,
+  password: string,
+  ip: string,
+  userTypeHint?: string | null
+): Promise<UserWithDbLike> {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isEmail = emailRegex.test(identifier);
+  const requestedType = userTypeHint ? String(userTypeHint).toLowerCase().trim() : null;
+  if (requestedType && requestedType !== "alumni" && requestedType !== "admin") {
+    throw new Error("INVALID_USER_TYPE");
+  }
+  if (requestedType === "admin" && !isEmail) {
+    throw new Error("INVALID_IDENTIFIER");
+  }
+  if (requestedType === "alumni" && isEmail) {
+    throw new Error("INVALID_IDENTIFIER");
+  }
   
   const log = (status: string, msg: string) => {
     const ts = new Date().toISOString();
@@ -137,7 +122,8 @@ export async function authenticateCredentials(identifier: string, password: stri
         SELECT 
           id as userid, 
           email, 
-          COALESCE(password_hash, password) as password, 
+          password, 
+          password_hash,
           firstname, 
           lastname, 
           department, 
@@ -153,15 +139,16 @@ export async function authenticateCredentials(identifier: string, password: stri
       log("FAIL", `db error: ${err instanceof Error ? err.message : String(err)}`);
       throw new Error("DB_CONNECTION_ERROR");
     }
-    const dbUserRow = rows[0] as ((DbUser & { password: string | null; type_normalized: string | null; type_original: string | null }) | undefined);
+    const dbUserRow = rows[0] as ((DbUser & { password: string | null; password_hash: string | null; type_normalized: string | null; type_original: string | null }) | undefined);
     
     // If user exists in users table, handle them (regardless of type)
     if (dbUserRow) {
       // Reconstruct dbUser with normalized type
-      const dbUser: DbUser & { password: string | null } = {
+      const dbUser: DbUser & { password: string | null; password_hash: string | null } = {
         userid: dbUserRow.userid,
         email: dbUserRow.email,
         password: dbUserRow.password,
+        password_hash: dbUserRow.password_hash,
         firstname: dbUserRow.firstname,
         lastname: dbUserRow.lastname,
         department: dbUserRow.department,
@@ -176,11 +163,32 @@ export async function authenticateCredentials(identifier: string, password: stri
         throw new Error("USER_BLOCKED");
       }
       
-      // Verify password - handle potential encoding issues
-      const stored = dbUser.password || "";
-      const ok = await verifyPassword(password, stored);
+      const userType = (dbUser.type || "").toLowerCase().trim();
+      const normalizedType = userType.replace(/\s+/g, "");
+
+      const isStaffType =
+        normalizedType === "admin" ||
+        normalizedType === "superadmin" ||
+        normalizedType === "viewer" ||
+        normalizedType === "user";
+      let ok = false;
+      if (isStaffType) {
+        const storedHash = String(dbUser.password_hash || "");
+        if (storedHash.startsWith("scrypt:")) {
+          ok = await verifyAdminPassword(password, storedHash);
+        } else {
+          ok = await verifyPassword(password, dbUser.password || "");
+        }
+      } else {
+        ok = await verifyPassword(password, dbUser.password || "");
+      }
       if (!ok) {
-        log("FAIL", `invalid password (stored length: ${stored.length}, provided length: ${password.length})`);
+        const storedPlainLen = (dbUser.password || "").length;
+        const storedHashLen = (dbUser.password_hash || "").length;
+        log(
+          "FAIL",
+          `invalid password (stored plain length: ${storedPlainLen}, stored hash length: ${storedHashLen}, provided length: ${password.length})`
+        );
         throw new Error("INVALID_PASSWORD");
       }
       
@@ -190,10 +198,7 @@ export async function authenticateCredentials(identifier: string, password: stri
       // Viewer has view-only access
       // Note: "user" type is treated as "viewer" for backward compatibility
       // Use the normalized type from database query
-      const userType = (dbUser.type || "").toLowerCase().trim();
-      
       // Also check for variations like "super admin" with space
-      const normalizedType = userType.replace(/\s+/g, ""); // Remove spaces
       
       if (normalizedType !== "admin" && normalizedType !== "superadmin" && normalizedType !== "viewer" && normalizedType !== "user") {
         log("FAIL", `user type is not admin, superadmin, viewer, or user: original="${dbUserRow.type_original}", normalized="${userType}", spaces_removed="${normalizedType}"`);
@@ -266,11 +271,29 @@ export async function authenticateCredentials(identifier: string, password: stri
     const trimmedIdentifier = identifier.trim();
     log("INFO", `Attempting alumni login with identifier: "${trimmedIdentifier}" (SAP ID first, then Registration Number)`);
 
+    const normalizedIdentifier = trimmedIdentifier.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[auth][alumni] identifier normalized", {
+        rawLength: trimmedIdentifier.length,
+        normalizedLength: normalizedIdentifier.length,
+        normalized: normalizedIdentifier,
+      });
+    }
+
     const sapRows = await sql/* sql */`
       SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount
       FROM public.tbl_alumni
-      WHERE sapid IS NOT NULL AND TRIM(sapid) = ${trimmedIdentifier}
+      WHERE sapid IS NOT NULL
+        AND (
+          TRIM(sapid) = ${trimmedIdentifier}
+          OR LOWER(TRIM(sapid)) = LOWER(${trimmedIdentifier})
+          OR REGEXP_REPLACE(LOWER(TRIM(sapid)), '[^a-z0-9]+', '', 'g') = ${normalizedIdentifier}
+        )
     ` as typeof arows;
+
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[auth][alumni] sapid matches", { count: sapRows.length });
+    }
 
     if (sapRows.length > 1) {
       log("FAIL", `Ambiguous alumni identifier (multiple SAPID matches): "${trimmedIdentifier}" count=${sapRows.length}`);
@@ -284,8 +307,17 @@ export async function authenticateCredentials(identifier: string, password: stri
       const regRows = await sql/* sql */`
         SELECT alumniid, sapid, registrationno, alumniemail, personalemail, officialemail, universityemail, password, alumniname, departmentname, facultyname, degreetitle, yearofending, campusname, alumnistatus, verify, lasttimelogin, logincount
         FROM public.tbl_alumni
-        WHERE registrationno IS NOT NULL AND TRIM(registrationno) = ${trimmedIdentifier}
+        WHERE registrationno IS NOT NULL
+          AND (
+            TRIM(registrationno) = ${trimmedIdentifier}
+            OR LOWER(TRIM(registrationno)) = LOWER(${trimmedIdentifier})
+            OR REGEXP_REPLACE(LOWER(TRIM(registrationno)), '[^a-z0-9]+', '', 'g') = ${normalizedIdentifier}
+          )
       ` as typeof arows;
+
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[auth][alumni] registrationno matches", { count: regRows.length });
+      }
 
       if (regRows.length > 1) {
         log("FAIL", `Ambiguous alumni identifier (multiple RegistrationNo matches): "${trimmedIdentifier}" count=${regRows.length}`);

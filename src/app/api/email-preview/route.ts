@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { sql } from "@/lib/dbconnect";
-import generateEasyPassword from "@/lib/passwordUtils";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
-import { hashPassword } from "@/auth/credentials";
 
 type EmailPreviewBody = {
   actionType: string;
@@ -61,17 +59,10 @@ export async function POST(req: NextRequest) {
     }
 
     const storedPassword = String(alumni.password || "").trim();
-    const shouldRotatePassword = !storedPassword || storedPassword.startsWith("scrypt:");
-    const passwordToSend = shouldRotatePassword ? generateEasyPassword() : storedPassword;
-
-    if (shouldRotatePassword) {
-      const passwordToStore = await hashPassword(passwordToSend);
-      await sql/* sql */`
-        UPDATE public.tbl_alumni
-        SET password = ${passwordToStore}
-        WHERE alumniid = ${alumniId}
-      `;
+    if (!storedPassword) {
+      return NextResponse.json({ error: "PASSWORD_NOT_SET" }, { status: 400 });
     }
+    const passwordToSend = storedPassword;
 
     const alumniName = String(alumni.alumniname || "Alumni").trim() || "Alumni";
     const tpl = generateAdminActionEmail({

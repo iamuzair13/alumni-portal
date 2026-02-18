@@ -25,7 +25,7 @@ export async function queryUsersAsTblUsers(whereClause?: string, orderBy?: strin
     SELECT 
       id as userid,
       email,
-      COALESCE(password, password_hash) as password,
+      password,
       firstname,
       lastname,
       department,
@@ -53,7 +53,7 @@ export async function getUserById(id: number) {
     SELECT 
       id as userid,
       email,
-      COALESCE(password, password_hash) as password,
+      password,
       firstname,
       lastname,
       department,
@@ -77,7 +77,7 @@ export async function getUserByEmail(email: string) {
     SELECT 
       id as userid,
       email,
-      COALESCE(password, password_hash) as password,
+      password,
       firstname,
       lastname,
       department,

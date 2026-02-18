@@ -82,6 +82,7 @@ CREATE TABLE public.chapter_leadership (
   rejection_reason text,
   updated_at timestamp with time zone DEFAULT now(),
   alumniid integer,
+  additional_achievements text,
   CONSTRAINT chapter_leadership_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.leadership_form_settings (
@@ -93,6 +94,43 @@ CREATE TABLE public.leadership_form_settings (
   CONSTRAINT leadership_form_settings_pkey PRIMARY KEY (id),
     CONSTRAINT leadership_form_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id)
 );
+
+CREATE TABLE IF NOT EXISTS public.leadership_roles (
+  id BIGSERIAL PRIMARY KEY,
+  leadership_type TEXT NOT NULL CHECK (leadership_type IN ('chapter','association')),
+  role_name TEXT NOT NULL CHECK (role_name IN ('president','vice_president','coordinator')),
+  role_description TEXT,
+  UNIQUE (leadership_type, role_name)
+);
+
+CREATE TABLE IF NOT EXISTS public.leadership_role_criteria (
+  id BIGSERIAL PRIMARY KEY,
+  role_id BIGINT NOT NULL REFERENCES public.leadership_roles(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  description TEXT,
+  is_mandatory BOOLEAN NOT NULL DEFAULT false,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_leadership_role_criteria_role_id ON public.leadership_role_criteria(role_id);
+
+CREATE TABLE IF NOT EXISTS public.leadership_criteria_confirmations (
+  id BIGSERIAL PRIMARY KEY,
+  leadership_type TEXT NOT NULL CHECK (leadership_type IN ('chapter','association')),
+  chapter_application_id BIGINT REFERENCES public.chapter_leadership(id) ON DELETE CASCADE,
+  association_application_id INTEGER REFERENCES public.tblalumniassociation(id) ON DELETE CASCADE,
+  criterion_id BIGINT NOT NULL REFERENCES public.leadership_role_criteria(id) ON DELETE CASCADE,
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('alumni','admin')),
+  confirmed BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (chapter_application_id, criterion_id, actor_type),
+  UNIQUE (association_application_id, criterion_id, actor_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_leadership_criteria_confirmations_chapter_app ON public.leadership_criteria_confirmations(chapter_application_id);
+CREATE INDEX IF NOT EXISTS idx_leadership_criteria_confirmations_assoc_app ON public.leadership_criteria_confirmations(association_application_id);
 -- Table: public.newsletters
 
 -- DROP TABLE IF EXISTS public.newsletters;
@@ -385,6 +423,7 @@ CREATE TABLE public.tblalumniassociation (
   createddatetime timestamp without time zone,
   status character varying DEFAULT 'pending'::character varying,
   alumni_id integer,
+  additional_achievements text,
   CONSTRAINT tblalumniassociation_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.tblalumnistories (
@@ -999,3 +1038,59 @@ ALTER TABLE public.alumni_talk_sessions
     'conducted'::text,
     'cancelled'::text
   ]));
+
+-- Leadership role criteria tables
+
+CREATE TABLE IF NOT EXISTS public.leadership_roles (
+  id BIGSERIAL PRIMARY KEY,
+  leadership_type TEXT NOT NULL CHECK (leadership_type IN ('chapter','association')),
+  role_name TEXT NOT NULL CHECK (role_name IN ('president','vice_president','coordinator')),
+  UNIQUE (leadership_type, role_name)
+);
+
+CREATE TABLE IF NOT EXISTS public.leadership_role_criteria (
+  id BIGSERIAL PRIMARY KEY,
+  role_id BIGINT NOT NULL REFERENCES public.leadership_roles(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  description TEXT,
+  is_mandatory BOOLEAN NOT NULL DEFAULT false,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_leadership_role_criteria_role_id ON public.leadership_role_criteria(role_id);
+
+CREATE TABLE IF NOT EXISTS public.leadership_criteria_confirmations (
+  id BIGSERIAL PRIMARY KEY,
+  leadership_type TEXT NOT NULL CHECK (leadership_type IN ('chapter','association')),
+  chapter_application_id BIGINT REFERENCES public.chapter_leadership(id) ON DELETE CASCADE,
+  association_application_id INTEGER REFERENCES public.tblalumniassociation(id) ON DELETE CASCADE,
+  criterion_id BIGINT NOT NULL REFERENCES public.leadership_role_criteria(id) ON DELETE CASCADE,
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('alumni','admin')),
+  confirmed BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (chapter_application_id, criterion_id, actor_type),
+  UNIQUE (association_application_id, criterion_id, actor_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_leadership_criteria_confirmations_chapter_app ON public.leadership_criteria_confirmations(chapter_application_id);
+CREATE INDEX IF NOT EXISTS idx_leadership_criteria_confirmations_assoc_app ON public.leadership_criteria_confirmations(association_application_id);
+
+INSERT INTO public.leadership_roles (leadership_type, role_name)
+VALUES
+  ('chapter','president'),
+  ('chapter','vice_president'),
+  ('chapter','coordinator'),
+  ('association','president'),
+  ('association','vice_president'),
+  ('association','coordinator')
+ON CONFLICT (leadership_type, role_name) DO NOTHING;
+
+-- Adds optional Additional Achievements field to leadership application tables
+
+ALTER TABLE IF EXISTS public.chapter_leadership
+  ADD COLUMN IF NOT EXISTS additional_achievements TEXT;
+
+ALTER TABLE IF EXISTS public.tblalumniassociation
+  ADD COLUMN IF NOT EXISTS additional_achievements TEXT;

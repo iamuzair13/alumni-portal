@@ -583,17 +583,10 @@ let cardImageFile: string | null = null;
       if (chapterLeadershipRows && chapterLeadershipRows.length > 0) {
         const post = String(chapterLeadershipRows[0]?.post || "").trim();
         if (post) {
-          // Map role to display name for chapter leadership
-          const chapterRoleMap: Record<string, string> = {
-            "President": "Chapter President",
-            "Vice President": "Chapter Vice President",
-            "Coordinator": "Chapter Coordinator",
-          };
-          
           leadershipInfo = {
             type: "chapter",
             role: post,
-            roleDisplay: chapterRoleMap[post] || post,
+            roleDisplay: post,
           };
         }
       } else {
@@ -609,17 +602,10 @@ let cardImageFile: string | null = null;
         if (associationLeadershipRows && associationLeadershipRows.length > 0) {
           const role = String(associationLeadershipRows[0]?.role || "").trim();
           if (role) {
-            // Map role to display name
-            const roleMap: Record<string, string> = {
-              "President": "Association President",
-              "Vice President": "Association Vice President",
-              "Coordinator": "Association Coordinator",
-            };
-            
             leadershipInfo = {
               type: "association",
               role: role,
-              roleDisplay: roleMap[role] || role,
+              roleDisplay: role,
             };
           }
         }

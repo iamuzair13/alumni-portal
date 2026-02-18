@@ -5,6 +5,7 @@ import { isSuperAdminUser } from "@/lib/alumniProfile";
 import { buildAccessAssignmentRowsFromDb } from "@/lib/orgAccessLookup";
 import { createAccessAssignmentsInNewRBAC } from "@/lib/rbac-assignments";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { hashAdminPassword } from "@/lib/adminPassword";
 
 type UserBody = {
   email: string;
@@ -83,11 +84,17 @@ export async function POST(req: Request) {
     // Note: Multiple superadmins are now allowed
     const userType = String(body.type || "viewer").trim().toLowerCase();
 
+    const passwordPlain = String(body.password);
+    const passwordHash =
+      userType === "admin" || userType === "superadmin" || userType === "viewer" || userType === "user"
+        ? await hashAdminPassword(passwordPlain)
+        : passwordPlain;
+
     // Create user directly in new users table
     const rows = await sql/* sql */`
       INSERT INTO public.users (
         email, 
-        password_hash, 
+        password_hash,
         password, 
         firstname, 
         lastname, 
@@ -102,8 +109,8 @@ export async function POST(req: Request) {
       )
       VALUES (
         ${String(body.email).trim()},
-        ${String(body.password)},
-        ${String(body.password)},
+        ${passwordHash},
+        ${passwordPlain},
         ${body.firstname ?? null},
         ${body.lastname ?? null},
         ${body.department ?? null},

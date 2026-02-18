@@ -560,9 +560,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const safePasswordValue = useMemo(() => {
     const raw = data?.password;
     if (!raw) return "";
-    const s = String(raw);
-    if (s.toLowerCase().startsWith("scrypt:")) return "";
-    return s;
+    return String(raw);
   }, [data?.password]);
 
   const normalizeMaritalStatus = (v: unknown): string | null => {
@@ -1139,7 +1137,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
           <CompactField
             label="Password"
-            value={isSuperAdmin ? safePasswordValue : (data.password ? "********" : "")}
+            value={safePasswordValue}
             isEditing={isFieldEditing("password")}
             readOnly={readOnly || !isSuperAdmin}
             register={register}

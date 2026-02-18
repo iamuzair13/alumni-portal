@@ -2,8 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ComponentCard from "@/components/common/ComponentCard";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
@@ -14,6 +15,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, TrashBinIcon } from "@/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
+
+export const dynamic = "force-dynamic";
 
 // TypeScript typings for Stories
 type Story = {
@@ -246,8 +249,11 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
 };
 
 // Default export function name preserved
-export default function AlumniPage() {
+function AlumniPageInner() {
   const [selected, setSelected] = useState<TabKey>("viewStories");
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: rawStories, isLoading, isFetching, isError, error, refetch } = useAlumniStories();
   const [stories, setStories] = useState<Story[]>([]);
@@ -289,6 +295,13 @@ export default function AlumniPage() {
     }
   }, [isLoading, rawStories, isError, refetch]);
 
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "viewStories" || tab === "addStory") {
+      setSelected(tab);
+    }
+  }, [searchParams]);
+
   return (
     <ComponentCard title="Alumni Stories" className="">
       {/* Tabs navigation: identical styling and accessible keyboard interaction */}
@@ -305,7 +318,12 @@ export default function AlumniPage() {
                 ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                 : "border-gray-200 bg-slate-100 text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
             }`}
-            onClick={() => setSelected(tab.key)}
+            onClick={() => {
+              setSelected(tab.key);
+              const qp = new URLSearchParams(searchParams.toString());
+              qp.set("tab", tab.key);
+              router.replace(`${pathname}?${qp.toString()}`);
+            }}
             role="tab"
             aria-selected={selected === tab.key}
             tabIndex={selected === tab.key ? 0 : -1}
@@ -313,14 +331,25 @@ export default function AlumniPage() {
               if (e.key === "ArrowRight") {
                 e.preventDefault();
                 const nextIdx = (idx + 1) % TABS.length;
-                setSelected(TABS[nextIdx].key);
+                const nextKey = TABS[nextIdx].key;
+                setSelected(nextKey);
+                const qp = new URLSearchParams(searchParams.toString());
+                qp.set("tab", nextKey);
+                router.replace(`${pathname}?${qp.toString()}`);
               } else if (e.key === "ArrowLeft") {
                 e.preventDefault();
                 const prevIdx = (idx - 1 + TABS.length) % TABS.length;
-                setSelected(TABS[prevIdx].key);
+                const prevKey = TABS[prevIdx].key;
+                setSelected(prevKey);
+                const qp = new URLSearchParams(searchParams.toString());
+                qp.set("tab", prevKey);
+                router.replace(`${pathname}?${qp.toString()}`);
               } else if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 setSelected(tab.key);
+                const qp = new URLSearchParams(searchParams.toString());
+                qp.set("tab", tab.key);
+                router.replace(`${pathname}?${qp.toString()}`);
               }
             }}
           >
@@ -694,4 +723,13 @@ function safeImageSrc(input?: string): string {
   } catch {
     return "https://via.placeholder.com/64";
   }
+}
+
+// Default export function name preserved
+export default function AlumniPage() {
+  return (
+    <Suspense fallback={null}>
+      <AlumniPageInner />
+    </Suspense>
+  );
 }

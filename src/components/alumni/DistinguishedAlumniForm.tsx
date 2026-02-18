@@ -239,6 +239,21 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
   const selectedDepartmentId = watch("department_id");
   const selectedProgramId = watch("program_id");
 
+  const { onChange: facultyIdOnChange, ...facultyIdRegister } = register("faculty_id", {
+    required: "Faculty is required",
+    valueAsNumber: true,
+  });
+
+  const { onChange: departmentIdOnChange, ...departmentIdRegister } = register("department_id", {
+    required: "Department is required",
+    valueAsNumber: true,
+  });
+
+  const { onChange: programIdOnChange, ...programIdRegister } = register("program_id", {
+    required: "Program is required",
+    valueAsNumber: true,
+  });
+
   const facultiesQuery = useFaculties();
   const departmentsQuery = useDepartments(typeof selectedFacultyId === "number" ? selectedFacultyId : undefined);
   const programsQuery = usePrograms(typeof selectedDepartmentId === "number" ? selectedDepartmentId : undefined);
@@ -479,15 +494,13 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 className={`w-full rounded-md border px-3 py-2 text-sm ${errors.faculty_id ? "border-red-500" : "border-gray-300"}`}
                 disabled={isSubmitting || facultiesQuery.isLoading}
                 value={typeof selectedFacultyId === "number" ? String(selectedFacultyId) : ""}
+                {...facultyIdRegister}
                 onChange={(e) => {
+                  facultyIdOnChange(e);
                   const v = String(e.target.value || "");
                   const n = Number(v);
                   setValue("faculty_id", Number.isFinite(n) && n > 0 ? Math.floor(n) : null, { shouldValidate: true });
                 }}
-                {...register("faculty_id", {
-                  required: "Faculty is required",
-                  valueAsNumber: true,
-                })}
               >
                 <option value="">Select</option>
                 {(facultiesQuery.data ?? []).map((f) => (
@@ -507,15 +520,13 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 className={`w-full rounded-md border px-3 py-2 text-sm ${errors.department_id ? "border-red-500" : "border-gray-300"}`}
                 disabled={isSubmitting || departmentsQuery.isLoading || !(typeof selectedFacultyId === "number" && selectedFacultyId > 0)}
                 value={typeof selectedDepartmentId === "number" ? String(selectedDepartmentId) : ""}
+                {...departmentIdRegister}
                 onChange={(e) => {
+                  departmentIdOnChange(e);
                   const v = String(e.target.value || "");
                   const n = Number(v);
                   setValue("department_id", Number.isFinite(n) && n > 0 ? Math.floor(n) : null, { shouldValidate: true });
                 }}
-                {...register("department_id", {
-                  required: "Department is required",
-                  valueAsNumber: true,
-                })}
               >
                 <option value="">Select</option>
                 {(departmentsQuery.data ?? []).map((d) => (
@@ -538,15 +549,13 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 className={`w-full rounded-md border px-3 py-2 text-sm ${errors.program_id ? "border-red-500" : "border-gray-300"}`}
                 disabled={isSubmitting || programsQuery.isLoading || !(typeof selectedDepartmentId === "number" && selectedDepartmentId > 0)}
                 value={typeof selectedProgramId === "number" ? String(selectedProgramId) : ""}
+                {...programIdRegister}
                 onChange={(e) => {
+                  programIdOnChange(e);
                   const v = String(e.target.value || "");
                   const n = Number(v);
                   setValue("program_id", Number.isFinite(n) && n > 0 ? Math.floor(n) : null, { shouldValidate: true });
                 }}
-                {...register("program_id", {
-                  required: "Program is required",
-                  valueAsNumber: true,
-                })}
               >
                 <option value="">Select</option>
                 {(programsQuery.data ?? []).map((p) => (

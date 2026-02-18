@@ -20,6 +20,24 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "all"; // "chapter", "association", "all"
     const status = searchParams.get("status") || "all"; // "all", "approved", "pending", "rejected"
+    const role = searchParams.get("role") || "all"; // "all", "president", "vice_president", "coordinator"
+    const search = String(searchParams.get("search") || "").trim();
+    const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
+
+    const statusValues = new Set(["all", "approved", "pending", "rejected"]);
+    if (!statusValues.has(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
+    if (!roleValues.has(role)) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    }
+
+    const hasAdditionalValues = new Set(["", "0", "1", "true", "false"]);
+    if (!hasAdditionalValues.has(hasAdditionalAchievements.toLowerCase())) {
+      return NextResponse.json({ error: "Invalid hasAdditionalAchievements" }, { status: 400 });
+    }
 
     // Build access filter
     const accessFilter = await buildAccessFilterSQL(session, "");
@@ -30,6 +48,43 @@ export async function GET(req: Request) {
     if (status && status !== "all") {
       statusCondition = sql` AND status = ${status}`;
     }
+
+    const searchCondition = search
+      ? sql` AND (
+          COALESCE(a.alumniname, '') ILIKE ${`%${search}%`} OR
+          COALESCE(a.sapid, '') ILIKE ${`%${search}%`} OR
+          COALESCE(a.registrationno, '') ILIKE ${`%${search}%`} OR
+          COALESCE(a.personalemail, '') ILIKE ${`%${search}%`} OR
+          COALESCE(a.officialemail, '') ILIKE ${`%${search}%`} OR
+          COALESCE(a.universityemail, '') ILIKE ${`%${search}%`}
+        )`
+      : sql``;
+
+    const chapterRoleCondition =
+      role === "all"
+        ? sql``
+        : role === "vice_president"
+          ? sql` AND cl.post ILIKE '%Vice%'`
+          : role === "coordinator"
+            ? sql` AND cl.post ILIKE '%Coordinator%'`
+            : sql` AND cl.post ILIKE '%President%'`;
+
+    const assocRoleCondition =
+      role === "all"
+        ? sql``
+        : role === "vice_president"
+          ? sql` AND ass.q3 ILIKE '%Vice%'`
+          : role === "coordinator"
+            ? sql` AND ass.q3 ILIKE '%Coordinator%'`
+            : sql` AND ass.q3 ILIKE '%President%'`;
+
+    const hasAdditional = hasAdditionalAchievements.toLowerCase() === "1" || hasAdditionalAchievements.toLowerCase() === "true";
+    const chapterAdditionalCondition = hasAdditional
+      ? sql` AND cl.additional_achievements IS NOT NULL AND LENGTH(TRIM(cl.additional_achievements)) > 0`
+      : sql``;
+    const assocAdditionalCondition = hasAdditional
+      ? sql` AND ass.additional_achievements IS NOT NULL AND LENGTH(TRIM(ass.additional_achievements)) > 0`
+      : sql``;
 
     const allItems: Array<Record<string, unknown>> = [];
 
@@ -63,6 +118,9 @@ export async function GET(req: Request) {
         WHERE 1=1
           ${accessFilterCondition}
           ${statusCondition}
+          ${searchCondition}
+          ${chapterRoleCondition}
+          ${chapterAdditionalCondition}
         ORDER BY cl.created_at DESC
       `;
       
@@ -109,6 +167,9 @@ export async function GET(req: Request) {
         WHERE 1=1
           ${accessFilterCondition}
           ${statusCondition}
+          ${searchCondition}
+          ${assocRoleCondition}
+          ${assocAdditionalCondition}
         ORDER BY ass.createddatetime DESC
       `;
       

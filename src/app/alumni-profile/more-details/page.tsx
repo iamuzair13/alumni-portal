@@ -43,9 +43,7 @@ function MoreDetailsContent() {
   const safePasswordValue = useMemo(() => {
     const raw = data?.password;
     if (!raw) return null;
-    const s = String(raw);
-    if (s.toLowerCase().startsWith("scrypt:")) return null;
-    return s;
+    return String(raw);
   }, [data?.password]);
   const [isInitialized, setIsInitialized] = useState(false);
 

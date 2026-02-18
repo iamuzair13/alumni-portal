@@ -487,16 +487,12 @@ export default function AdminProfileForm() {
               <Input
                 id="currentPassword"
                 type="text"
-                value={!formData.currentPassword || formData.currentPassword.startsWith("scrypt:")
-                  ? "Password is hashed (cannot display)"
-                  : formData.currentPassword}
+                value={formData.currentPassword || "-"}
                 readOnly
                 className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {!formData.currentPassword || formData.currentPassword.startsWith("scrypt:")
-                  ? "Password is hashed. Plain text password not available. Enter a new password to change it."
-                  : "Your current password from the database (plain text)."}
+                {"Your current password from the database (plain text)."}
               </p>
             </div>
 
@@ -512,7 +508,7 @@ export default function AdminProfileForm() {
               />
               {errors.newPassword && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.newPassword}</p>}
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Leave blank to keep your current password. Minimum 8 characters. Password will be hashed before saving.
+                Leave blank to keep your current password. Minimum 8 characters.
               </p>
             </div>
           </div>

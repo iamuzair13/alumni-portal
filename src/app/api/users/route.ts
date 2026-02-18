@@ -6,6 +6,7 @@ import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile
 import { getUserAccessAssignments } from "@/lib/userAccess";
 import { getUserAccessAssignmentsWithIds } from "@/lib/rbac";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { hashAdminPassword } from "@/lib/adminPassword";
 
 type DbUser = {
   userid: number;
@@ -131,14 +132,8 @@ export async function GET() {
           password
         FROM public.users
         ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
-      
-      // Return plain text passwords (exclude hashed ones)
-      const usersWithPlainPasswords = rows.map((user) => ({
-        ...user,
-        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
-      }));
 
-      const usersWithAccess = await attachAssignments(usersWithPlainPasswords);
+      const usersWithAccess = await attachAssignments(rows);
       return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     } else if (isAdmin && currentUserId) {
       // Admins can only see their own password
@@ -178,14 +173,8 @@ export async function GET() {
           END as password
         FROM public.users
         ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
-      
-      // Return plain text passwords (exclude hashed ones)
-      const usersWithPlainPasswords = rows.map((user) => ({
-        ...user,
-        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
-      }));
 
-      const usersWithAccess = await attachAssignments(usersWithPlainPasswords);
+      const usersWithAccess = await attachAssignments(rows);
       return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     } else if (isViewer && currentUserId) {
       // Viewer: can only see their own password
@@ -226,13 +215,7 @@ export async function GET() {
         FROM public.users
         ORDER BY id DESC` as Array<DbUser & { password?: string | null }>;
       
-      // Return plain text passwords (exclude hashed ones)
-      const usersWithPlainPasswords = rows.map((user) => ({
-        ...user,
-        password: user.password && !user.password.startsWith("scrypt:") ? user.password : null
-      }));
-
-      const usersWithAccess = await attachAssignments(usersWithPlainPasswords);
+      const usersWithAccess = await attachAssignments(rows);
       return NextResponse.json({ items: usersWithAccess ?? [] }, { status: 200 });
     } else {
       // No session or user ID, return without passwords
@@ -283,23 +266,35 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "INVALID_EMAIL_FORMAT" }, { status: 400 });
     }
     if (body.password && String(body.password).length < 8) return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
-    let hashedPassword: string | undefined = undefined;
-    if (body.password) {
-      const { hashPassword } = await import("@/auth/credentials");
-      hashedPassword = await hashPassword(String(body.password));
-    }
     const userid = Number(body.userid);
     if (!userid || Number.isNaN(userid)) return NextResponse.json({ error: "INVALID_USERID" }, { status: 400 });
     
     // Note: Multiple superadmins are now allowed
     // Normalize user type
     const normalizedType = body.type ? String(body.type).toLowerCase().trim() : null;
+
+    let effectiveType = normalizedType;
+    if (effectiveType === null && body.password) {
+      const existing = await sql/* sql */`
+        SELECT LOWER(TRIM(COALESCE(type, legacy_type, ''))) as type_normalized
+        FROM public.users
+        WHERE id = ${userid} OR legacy_userid = ${userid}
+        LIMIT 1
+      ` as Array<{ type_normalized: string | null }>;
+      effectiveType = String(existing?.[0]?.type_normalized || "").trim() || null;
+    }
+
+    const passwordPlain = body.password !== undefined ? String(body.password) : null;
+    const passwordHash =
+      passwordPlain && (effectiveType === "admin" || effectiveType === "superadmin" || effectiveType === "viewer" || effectiveType === "user")
+        ? await hashAdminPassword(passwordPlain)
+        : passwordPlain;
     
     await sql/* sql */`
       UPDATE public.users
       SET
         email = ${body.email ?? null},
-        ${hashedPassword ? sql`password = ${String(body.password)}, password_hash = ${hashedPassword},` : sql``}
+        ${body.password ? sql`password = ${passwordPlain}, password_hash = ${passwordHash},` : sql``}
         firstname = ${body.firstname ?? null},
         lastname = ${body.lastname ?? null},
         department = ${body.department ?? null},

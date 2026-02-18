@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
       id: number;
       alumniId: number;
       sapId: string;
+      registrationno?: string | null;
       name: string;
       email: string;
       faculty: string | null;
@@ -101,6 +102,7 @@ export async function GET(req: NextRequest) {
           id: Number(r.leadership_id),
           alumniId: Number(r.alumniid),
           sapId: String(r.sapid ?? ""),
+          registrationno: r.registrationno ? String(r.registrationno) : null,
           name: String(r.alumniname ?? ""),
           email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null) || "",
           faculty: r.facultyname ? String(r.facultyname) : null,
@@ -158,6 +160,7 @@ export async function GET(req: NextRequest) {
         id: Number(r.leadership_id),
         alumniId: Number(r.alumniid),
         sapId: String(r.sapid ?? ""),
+        registrationno: r.registrationno ? String(r.registrationno) : null,
         name: String(r.alumniname ?? ""),
         email: (r.personalemail ? String(r.personalemail) : null) || (r.officialemail ? String(r.officialemail) : null) || (r.universityemail ? String(r.universityemail) : null) || "",
         faculty: r.facultyname ? String(r.facultyname) : null,

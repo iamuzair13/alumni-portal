@@ -9,6 +9,8 @@ import SocialLinksForm from "@/components/forms/social-links-form";
 import { calculateProfileCompletion } from "@/lib/profileCompletion";
 import { useSession } from "next-auth/react";
 import { isViewerUser } from "@/lib/alumniProfile";
+import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
+import ApprovedLeadershipBadges from "@/components/alumni/ApprovedLeadershipBadges";
 
 type LeadershipInfo = {
   type: "chapter" | "association" | null;
@@ -32,6 +34,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const isViewer = isViewerUser(session?.user);
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
   const { data: fullDetails, isLoading: isLoadingFullDetails, isError: isFullDetailsError, error: fullDetailsError } = useAlumniFullDetails(sapId);
+  const alumniIdForBadges = fullDetails?.alumniid ? Number(fullDetails.alumniid) : null;
   
   // Show error if API calls fail
   useEffect(() => {
@@ -404,39 +407,10 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
             <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
                 <h4 className="text-slate-900 text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words">{name}</h4>
+
+                <ApprovedLeadershipBadges alumniId={alumniIdForBadges} size="sm" />
                 
-                {/* Leadership Label - Prominent Badge */}
-                {leadershipInfo?.roleDisplay && leadershipInfo.type && (
-                  <div className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm shadow-md ${
-                    leadershipInfo.role?.toLowerCase().includes("president") 
-                      ? leadershipInfo.type === "chapter"
-                        ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white border-2 border-purple-800"
-                        : "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white border-2 border-indigo-800"
-                      : leadershipInfo.role?.toLowerCase().includes("vice") 
-                      ? leadershipInfo.type === "chapter"
-                        ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white border-2 border-blue-800"
-                        : "bg-gradient-to-r from-cyan-600 to-cyan-700 text-white border-2 border-cyan-800"
-                      : leadershipInfo.type === "chapter"
-                        ? "bg-gradient-to-r from-green-600 to-green-700 text-white border-2 border-green-800"
-                        : "bg-gradient-to-r from-teal-600 to-teal-700 text-white border-2 border-teal-800"
-                  }`}>
-                    <svg
-                      className="w-4 h-4 sm:w-5 sm:h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
-                      />
-                    </svg>
-                    <span>{leadershipInfo.roleDisplay}</span>
-                  </div>
-                )}
+               
                 
                 {leadershipError && (
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-lg">
@@ -444,7 +418,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
                   </div>
                 )}
               </div>
-              
+
               {/* Chapters and Association Section - Right after name */}
               <div className="mt-2 sm:mt-3 mb-3 sm:mb-4">
                 {/* Error Messages */}
@@ -587,6 +561,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
               )}
             </div>
           </div>
+
           <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
             <h5 className="text-base sm:text-lg font-semibold text-slate-800 mb-2 sm:mb-3">Profile Details</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-xs sm:text-sm text-slate-700">
