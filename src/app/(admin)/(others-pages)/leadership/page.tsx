@@ -282,7 +282,6 @@ export default function LeadershipPage() {
   const [hasAdditionalAchievementsFilter, setHasAdditionalAchievementsFilter] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [exportEnabled, setExportEnabled] = useState(true);
   const [appPage, setAppPage] = useState(1);
   const pageSize = 10;
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -629,6 +628,8 @@ export default function LeadershipPage() {
       "Leadership Status",
       "Position",
       "Additional Achievements",
+      "Alumni Confirmed Criteria",
+      "Admin Confirmed Criteria",
       "SAP ID",
       "Registration No",
       "Full Name",
@@ -665,7 +666,7 @@ export default function LeadershipPage() {
       filename = "association_leadership_members";
       sheetName = "Association Leadership";
     } else if (selectedTab === "applications") {
-      exportType = "all";
+      exportType = applicationTypeFilter;
       status = applicationStatusTab;
       filename = "leadership_applications";
       sheetName = "Applications";
@@ -690,10 +691,13 @@ export default function LeadershipPage() {
       url.searchParams.set("type", exportType);
       url.searchParams.set("status", status);
       if (selectedTab === "applications") {
-        if (applicationTypeFilter && applicationTypeFilter !== "all") url.searchParams.set("type", applicationTypeFilter);
         if (applicationRoleFilter && applicationRoleFilter !== "all") url.searchParams.set("role", applicationRoleFilter);
         if (debouncedSearch) url.searchParams.set("search", debouncedSearch);
         if (hasAdditionalAchievementsFilter) url.searchParams.set("hasAdditionalAchievements", "1");
+      } else {
+        if (searchQuery) url.searchParams.set("search", searchQuery);
+        if (facultyFilter) url.searchParams.set("faculty", facultyFilter);
+        if (chapterFilter) url.searchParams.set("chapter", chapterFilter);
       }
 
       const res = await fetch(url.toString(), {
@@ -713,8 +717,10 @@ export default function LeadershipPage() {
       return allItems.map((item: Record<string, unknown>) => ({
         "Leadership Type": item.leadership_type || "",
         "Leadership Status": item.status || "",
-        "Position": item.post || "",
+        "Position": item.position || "",
         "Additional Achievements": item.additional_achievements || "",
+        "Alumni Confirmed Criteria": item.alumni_confirmed_criteria || "",
+        "Admin Confirmed Criteria": item.admin_confirmed_criteria || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
         "Full Name": item.alumniname || "",
@@ -726,7 +732,7 @@ export default function LeadershipPage() {
         "Degree Title": item.degreetitle || "",
         "All Chapters": formatChapters(item),
         "Association Title": item.association_title || "",
-        "Created At": item.created_at || item.createddatetime || "",
+        "Created At": item.created_at || "",
       }));
     };
 
@@ -1191,7 +1197,7 @@ export default function LeadershipPage() {
                   )}
                   <button
                     onClick={handleExport}
-                    disabled={isExporting || !exportEnabled}
+                    disabled={isExporting}
                     className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
                   >
                     <DownloadIcon className="w-4 h-4" />
@@ -1265,22 +1271,6 @@ export default function LeadershipPage() {
                       <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">With Additional Achievements</span>
                     </label>
 
-                    <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">Export</div>
-                      <button
-                        type="button"
-                        onClick={() => setExportEnabled((v) => !v)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-                          exportEnabled ? "bg-green-600" : "bg-gray-300"
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            exportEnabled ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                    </div>
                   </div>
                 </div>
               )}
