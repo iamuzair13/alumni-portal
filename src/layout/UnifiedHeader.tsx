@@ -239,7 +239,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
 
   return (
     <>
-      <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-50">
+      <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-[60]">
         <div className="w-full mx-auto flex items-center justify-start flex-wrap  gap-4">
           
 
@@ -355,7 +355,7 @@ const UnifiedHeaderTopbar: FC = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-50">
+    <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-10000">
       <div className="w-full mx-auto flex items-center justify-between gap-3">
         <div className="flex items-center justify-between gap-3 ">
           {isAlumni ? (
@@ -436,7 +436,7 @@ const UnifiedHeaderTopbar: FC = () => {
 
         <div
           className={
-            "fixed inset-y-0 right-0 w-72 bg-white shadow-xl border-l border-gray-200 p-4 flex flex-col gap-4 transform transition-transform duration-300 z-50 " +
+            "fixed inset-y-0 right-0 w-72 bg-white shadow-xl border-l border-gray-200 p-4 flex flex-col gap-4 transform transition-transform duration-300 z-[60] " +
             (isApplicationMenuOpen ? "translate-x-0" : "translate-x-full") +
             " lg:static lg:inset-auto lg:w-auto lg:translate-x-0 lg:shadow-none lg:border-0 lg:p-0 lg:flex lg:flex-row lg:items-center"
           }
