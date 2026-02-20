@@ -895,6 +895,16 @@ export async function POST(req: Request) {
             employeedRaw.toLowerCase().trim() === "pursuing higher education" ||
             employeedRaw.toLowerCase().trim() === "highered";
 
+          const isWorkStatus =
+            employeedRaw.toLowerCase().trim() === "employed" ||
+            employeedRaw.toLowerCase().trim() === "employed/business" ||
+            employeedRaw.toLowerCase().trim() === "self-employed/enterpreneur";
+
+          // If user is not employed/self-employed and not pursuing higher education, work-location chapter2 is not applicable.
+          if (!isWorkStatus && !isHigherEducation) {
+            return;
+          }
+
           // Prefer institute country/city for higher education; fall back to workCountry/workCity for legacy clients.
           const instituteCountryRaw = String((body as { highereducationinstituteCountry?: string | null }).highereducationinstituteCountry ?? "").trim();
           const instituteCityRaw = String((body as { highereducationinstituteCity?: string | null }).highereducationinstituteCity ?? "").trim();
@@ -978,10 +988,9 @@ export async function POST(req: Request) {
 
             }
           } else {
-            return NextResponse.json(
-              { error: isHigherEducation ? "Institution country missing" : "Work country missing" },
-              { status: 400 }
-            );
+            // Do not block registration if work/institute location is missing.
+            // Auto-assign chapter2 is best-effort only.
+            return;
           }
         }
 
