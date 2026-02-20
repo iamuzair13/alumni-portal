@@ -902,95 +902,95 @@ export async function POST(req: Request) {
 
           // If user is not employed/self-employed and not pursuing higher education, work-location chapter2 is not applicable.
           if (!isWorkStatus && !isHigherEducation) {
-            return;
-          }
+            // skip auto-assign
+          } else {
 
-          // Prefer institute country/city for higher education; fall back to workCountry/workCity for legacy clients.
-          const instituteCountryRaw = String((body as { highereducationinstituteCountry?: string | null }).highereducationinstituteCountry ?? "").trim();
-          const instituteCityRaw = String((body as { highereducationinstituteCity?: string | null }).highereducationinstituteCity ?? "").trim();
-          const workCountryRaw = String((body as { workCountry?: string | null }).workCountry ?? "").trim();
-          const workCityRaw = String((body as { workCity?: string | null }).workCity ?? "").trim();
+            // Prefer institute country/city for higher education; fall back to workCountry/workCity for legacy clients.
+            const instituteCountryRaw = String((body as { highereducationinstituteCountry?: string | null }).highereducationinstituteCountry ?? "").trim();
+            const instituteCityRaw = String((body as { highereducationinstituteCity?: string | null }).highereducationinstituteCity ?? "").trim();
+            const workCountryRaw = String((body as { workCountry?: string | null }).workCountry ?? "").trim();
+            const workCityRaw = String((body as { workCity?: string | null }).workCity ?? "").trim();
 
-          const effectiveCountryRaw = isHigherEducation ? (instituteCountryRaw || workCountryRaw) : workCountryRaw;
-          const effectiveCityRaw = isHigherEducation ? (instituteCityRaw || workCityRaw) : workCityRaw;
+            const effectiveCountryRaw = isHigherEducation ? (instituteCountryRaw || workCountryRaw) : workCountryRaw;
+            const effectiveCityRaw = isHigherEducation ? (instituteCityRaw || workCityRaw) : workCityRaw;
 
-          const isWorkPakistan = effectiveCountryRaw.toLowerCase().trim() === "pakistan";
-          const workLookupType = isWorkPakistan ? "city" : "country";
-          const workLookupValueRaw = isWorkPakistan ? effectiveCityRaw : effectiveCountryRaw;
+            const isWorkPakistan = effectiveCountryRaw.toLowerCase().trim() === "pakistan";
+            const workLookupType = isWorkPakistan ? "city" : "country";
+            const workLookupValueRaw = isWorkPakistan ? effectiveCityRaw : effectiveCountryRaw;
 
-          if (workLookupValueRaw) {
-            try {
-              const chapters = await sql<
-                {
-                  id: number;
-                  national_chapter: string | null;
-                  international_chapter: string | null;
-                  cities: unknown;
-                }[]
-              >/* sql */`
-                SELECT id, national_chapter, international_chapter, cities
-                FROM public.tblchapters
-                WHERE is_active = true
-                  AND cities IS NOT NULL
-              `;
-
-              const lookupLower = workLookupValueRaw.toLowerCase().trim();
-              const matches = chapters
-                .map((ch) => {
-                  const parsed = parseChapterCities(ch.cities);
-                  const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
-                  return {
-                    id: Number(ch.id),
-                    name: String(ch.national_chapter || ch.international_chapter || ""),
-                    type: ch.national_chapter ? "national" : "international",
-                    has,
-                  };
-                })
-                .filter((m) => m.has);
-
-              const preferredType = workLookupType === "city" ? "national" : "international";
-              matches.sort((a, b) => {
-                const aPref = a.type === preferredType ? 0 : 1;
-                const bPref = b.type === preferredType ? 0 : 1;
-                if (aPref !== bPref) return aPref - bPref;
-                return a.id - b.id;
-              });
-
-              const chosen = matches[0];
-
-              if (chosen) {
-                const existing = await sql<{ id: number; chapter2: number | null }[]>/* sql */`
-                  SELECT id, "chapter2"
-                  FROM public.alumni_chapter
-                  WHERE id = ${id}
-                  LIMIT 1
+            if (workLookupValueRaw) {
+              try {
+                const chapters = await sql<
+                  {
+                    id: number;
+                    national_chapter: string | null;
+                    international_chapter: string | null;
+                    cities: unknown;
+                  }[]
+                >/* sql */`
+                  SELECT id, national_chapter, international_chapter, cities
+                  FROM public.tblchapters
+                  WHERE is_active = true
+                    AND cities IS NOT NULL
                 `;
 
-                const currentChapter2 = existing[0]?.chapter2 ?? null;
-                if (currentChapter2) {
+                const lookupLower = workLookupValueRaw.toLowerCase().trim();
+                const matches = chapters
+                  .map((ch) => {
+                    const parsed = parseChapterCities(ch.cities);
+                    const has = parsed.some((c) => c.toLowerCase().trim() === lookupLower);
+                    return {
+                      id: Number(ch.id),
+                      name: String(ch.national_chapter || ch.international_chapter || ""),
+                      type: ch.national_chapter ? "national" : "international",
+                      has,
+                    };
+                  })
+                  .filter((m) => m.has);
 
-                } else if (existing.length > 0) {
-                  await sql/* sql */`
-                    UPDATE public.alumni_chapter
-                    SET "chapter2" = ${chosen.id}
+                const preferredType = workLookupType === "city" ? "national" : "international";
+                matches.sort((a, b) => {
+                  const aPref = a.type === preferredType ? 0 : 1;
+                  const bPref = b.type === preferredType ? 0 : 1;
+                  if (aPref !== bPref) return aPref - bPref;
+                  return a.id - b.id;
+                });
+
+                const chosen = matches[0];
+
+                if (chosen) {
+                  const existing = await sql<{ id: number; chapter2: number | null }[]>/* sql */`
+                    SELECT id, "chapter2"
+                    FROM public.alumni_chapter
                     WHERE id = ${id}
+                    LIMIT 1
                   `;
 
-                } else {
-                  await sql/* sql */`
-                    INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
-                    VALUES (${id}, NULL, ${chosen.id}, NULL)
-                  `;
+                  const currentChapter2 = existing[0]?.chapter2 ?? null;
+                  if (currentChapter2) {
 
+                  } else if (existing.length > 0) {
+                    await sql/* sql */`
+                      UPDATE public.alumni_chapter
+                      SET "chapter2" = ${chosen.id}
+                      WHERE id = ${id}
+                    `;
+
+                  } else {
+                    await sql/* sql */`
+                      INSERT INTO public.alumni_chapter (id, "chapter1", "chapter2", "chapter3")
+                      VALUES (${id}, NULL, ${chosen.id}, NULL)
+                    `;
+
+                  }
                 }
-              }
-            } catch (err) {
+              } catch (err) {
 
+              }
+            } else {
+              // Do not block registration if work/institute location is missing.
+              // Auto-assign chapter2 is best-effort only.
             }
-          } else {
-            // Do not block registration if work/institute location is missing.
-            // Auto-assign chapter2 is best-effort only.
-            return;
           }
         }
 

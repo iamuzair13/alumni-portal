@@ -1235,12 +1235,33 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         body: JSON.stringify(payload),
       });
       
-      const json = await res.json();
+      const rawText = await res.text();
+      const json = rawText ? (() => {
+        try {
+          return JSON.parse(rawText);
+        } catch {
+          return null;
+        }
+      })() : null;
       
       toast.dismiss(submittingToast);
       
       if (!res.ok) {
-        const errorMsg = json?.error || json?.message || "Failed to save record. Please check all fields and try again.";
+        const errorMsg =
+          (json && typeof json === "object" && (json as any)?.error) ||
+          (json && typeof json === "object" && (json as any)?.message) ||
+          rawText ||
+          "Failed to save record. Please check all fields and try again.";
+        toast.error(errorMsg, {
+          duration: 6000,
+        });
+        setSubmitError(errorMsg);
+        setSubmitting(false);
+        return;
+      }
+
+      if (!json || typeof json !== "object") {
+        const errorMsg = "Unexpected server response. Please try again.";
         toast.error(errorMsg, {
           duration: 6000,
         });
@@ -1250,8 +1271,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       }
       
       // Success - show toast and close form
-      let successMessage = `Registration successful! Your Alumni ID is ${json.alumniid}.`;
-      if (json.generatedPassword) {
+      const alumniId = (json as any).alumniid;
+      const generatedPassword = (json as any).generatedPassword;
+      let successMessage = `Registration successful! Your Alumni ID is ${alumniId}.`;
+      if (generatedPassword) {
         successMessage += ` A password has been generated and sent to your email. Please check your inbox for login credentials.`;
         toast.success(successMessage, {
           duration: 6000,
@@ -1274,9 +1297,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         });
       }
       
-      setSubmitMsg(json.generatedPassword 
-        ? `Registration successful! Your Alumni ID is ${json.alumniid}. You will be notified via email when your registration is approved.`
-        : `Registration successful! Your Alumni ID is ${json.alumniid}. Redirecting to sign in...`);
+      setSubmitMsg(generatedPassword 
+        ? `Registration successful! Your Alumni ID is ${alumniId}. You will be notified via email when your registration is approved.`
+        : `Registration successful! Your Alumni ID is ${alumniId}. Redirecting to sign in...`);
       
       // Reset form
       reset();
