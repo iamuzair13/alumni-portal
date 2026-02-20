@@ -159,13 +159,6 @@ export async function PUT(
       headline = formData.get("headline") ? String(formData.get("headline")).trim() : null;
       quote = formData.get("quote") ? String(formData.get("quote")).trim() : null;
       quote_by = formData.get("quote_by") ? String(formData.get("quote_by")).trim() : null;
-
-      if (faculty_id === null || department_id === null || program_id === null) {
-        return NextResponse.json(
-          { error: "Faculty, department, and program are required" },
-          { status: 400 }
-        );
-      }
       
       // Parse JSON fields
       const tagsStr = formData.get("tags");

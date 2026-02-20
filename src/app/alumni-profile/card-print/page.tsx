@@ -33,7 +33,8 @@ type AlumniCardData = {
 
 function CardPrintPageContent() {
   const searchParams = useSearchParams();
-  const sapId = searchParams.get("sapid") || "";
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const sapId = safeSearchParams.get("sapid") || "";
   
   const [cardData, setCardData] = useState<AlumniCardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

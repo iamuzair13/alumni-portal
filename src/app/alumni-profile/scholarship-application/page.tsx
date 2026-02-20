@@ -9,7 +9,8 @@ import PageBanner from "@/components/ui/PageBanner";
 
 function ScholarshipApplicationContent() {
   const searchParams = useSearchParams();
-  const sapIdFromParams = searchParams.get("sapid");
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const sapIdFromParams = safeSearchParams.get("sapid");
   const [sapId, setSapId] = useState(sapIdFromParams || "");
   
   // Try to get SAP ID from session if not in params

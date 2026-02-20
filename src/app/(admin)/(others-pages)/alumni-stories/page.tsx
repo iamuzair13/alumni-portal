@@ -295,12 +295,14 @@ function AlumniPageInner() {
     }
   }, [isLoading, rawStories, isError, refetch]);
 
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+
   useEffect(() => {
-    const tab = searchParams.get("tab");
+    const tab = safeSearchParams.get("tab");
     if (tab === "viewStories" || tab === "addStory") {
       setSelected(tab);
     }
-  }, [searchParams]);
+  }, [safeSearchParams]);
 
   return (
     <ComponentCard title="Alumni Stories" className="">
@@ -320,7 +322,7 @@ function AlumniPageInner() {
             }`}
             onClick={() => {
               setSelected(tab.key);
-              const qp = new URLSearchParams(searchParams.toString());
+              const qp = new URLSearchParams(safeSearchParams.toString());
               qp.set("tab", tab.key);
               router.replace(`${pathname}?${qp.toString()}`);
             }}
@@ -333,7 +335,7 @@ function AlumniPageInner() {
                 const nextIdx = (idx + 1) % TABS.length;
                 const nextKey = TABS[nextIdx].key;
                 setSelected(nextKey);
-                const qp = new URLSearchParams(searchParams.toString());
+                const qp = new URLSearchParams(safeSearchParams.toString());
                 qp.set("tab", nextKey);
                 router.replace(`${pathname}?${qp.toString()}`);
               } else if (e.key === "ArrowLeft") {
@@ -341,13 +343,13 @@ function AlumniPageInner() {
                 const prevIdx = (idx - 1 + TABS.length) % TABS.length;
                 const prevKey = TABS[prevIdx].key;
                 setSelected(prevKey);
-                const qp = new URLSearchParams(searchParams.toString());
+                const qp = new URLSearchParams(safeSearchParams.toString());
                 qp.set("tab", prevKey);
                 router.replace(`${pathname}?${qp.toString()}`);
               } else if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 setSelected(tab.key);
-                const qp = new URLSearchParams(searchParams.toString());
+                const qp = new URLSearchParams(safeSearchParams.toString());
                 qp.set("tab", tab.key);
                 router.replace(`${pathname}?${qp.toString()}`);
               }

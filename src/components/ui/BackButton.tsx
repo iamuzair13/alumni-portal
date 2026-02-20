@@ -7,7 +7,8 @@ function BackButtonContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const sapId = searchParams.get("sapid");
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const sapId = safeSearchParams.get("sapid");
   const [isNavigating, setIsNavigating] = useState(false);
 
   // Reset loading state when pathname changes (navigation completed)

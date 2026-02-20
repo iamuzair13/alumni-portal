@@ -166,6 +166,8 @@ const AppSidebarContent: React.FC = () => {
 
   const searchParams = useSearchParams();
 
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+
   const queryClient = useQueryClient();
 
 
@@ -626,7 +628,7 @@ const AppSidebarContent: React.FC = () => {
 
 
 
-    const currentTab = searchParams.get("tab");
+    const currentTab = safeSearchParams.get("tab");
 
     const qp = new URLSearchParams(queryString);
 
@@ -646,7 +648,7 @@ const AppSidebarContent: React.FC = () => {
 
     return def ? (!currentTab || currentTab === def) : true;
 
-  }, [pathname, searchParams]);
+  }, [pathname, safeSearchParams]);
 
 
 

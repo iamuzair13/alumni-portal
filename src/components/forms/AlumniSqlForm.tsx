@@ -4,7 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
-import { useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-organization";
+import type { Faculty, Department, Program } from "@/app/queries/fetch-organization";
 // Removed static data imports - now using database-backed data
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
@@ -499,48 +499,93 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const [dbDepartments, setDbDepartments] = useState<Array<{ id: number; name: string; facultyId: number }>>([]);
   const [dbPrograms, setDbPrograms] = useState<Array<{ id: number; name: string; departmentId: number }>>([]);
   const [loadingDbData, setLoadingDbData] = useState(true);
+  const [orgLoadError, setOrgLoadError] = useState<string | null>(null);
 
   const facultyId = watch("faculty");
   const departmentId = watch("department");
 
-  const facultiesQuery = useFaculties();
-  const departmentsQuery = useDepartments(facultyId ? Number(facultyId) : undefined);
-  const programsQuery = usePrograms(departmentId ? Number(departmentId) : undefined);
+  const [allDepartments, setAllDepartments] = useState<Array<{ id: number; name: string; facultyId: number }>>([]);
+  const [allPrograms, setAllPrograms] = useState<Array<{ id: number; name: string; departmentId: number }>>([]);
 
-  // Sync cached org data into the local mapped state expected by this form
   useEffect(() => {
-    setLoadingDbData(facultiesQuery.isLoading);
-    if (facultiesQuery.data) {
-      const mappedFaculties = facultiesQuery.data.map((f) => ({ id: f.id, name: f.faculty_name }));
-      setDbFaculties(mappedFaculties);
+    let cancelled = false;
+
+    async function loadOrgDatasetsOnce() {
+      setLoadingDbData(true);
+      setOrgLoadError(null);
+      try {
+        const res = await fetch("/api/public/org-datasets", { headers: { accept: "application/json" } });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Failed to load org datasets (${res.status})`);
+        }
+        const j = (await res.json()) as {
+          success?: boolean;
+          faculties?: Faculty[];
+          departments?: Department[];
+          programs?: Program[];
+        };
+
+        const mappedFaculties = (j.faculties ?? [])
+          .map((f) => ({ id: Number(f.id), name: String((f as any).faculty_name ?? "").trim() }))
+          .filter((f) => Number.isFinite(f.id) && f.id > 0 && f.name);
+
+        const mappedDepartments = (j.departments ?? [])
+          .map((d) => ({
+            id: Number(d.id),
+            name: String((d as any).department_name ?? "").trim(),
+            facultyId: Number((d as any).faculty_id),
+          }))
+          .filter((d) => Number.isFinite(d.id) && d.id > 0 && d.name && Number.isFinite(d.facultyId) && d.facultyId > 0);
+
+        const mappedPrograms = (j.programs ?? [])
+          .map((p) => ({
+            id: Number(p.id),
+            name: String((p as any).program_name ?? "").trim(),
+            departmentId: Number((p as any).department_id),
+          }))
+          .filter((p) => Number.isFinite(p.id) && p.id > 0 && p.name && Number.isFinite(p.departmentId) && p.departmentId > 0);
+
+        if (cancelled) return;
+        setDbFaculties(mappedFaculties);
+        setAllDepartments(mappedDepartments);
+        setAllPrograms(mappedPrograms);
+      } catch (e) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : "Failed to load faculties/departments/programs";
+        setOrgLoadError(msg);
+        setDbFaculties([]);
+        setAllDepartments([]);
+        setAllPrograms([]);
+      } finally {
+        if (!cancelled) setLoadingDbData(false);
+      }
     }
-  }, [facultiesQuery.data, facultiesQuery.isLoading]);
 
+    loadOrgDatasetsOnce();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Filter dependent datasets locally (no network calls on selection)
   useEffect(() => {
-    if (!facultyId) {
+    const fid = typeof facultyId === "number" ? facultyId : facultyId ? Number(facultyId) : null;
+    if (!fid || !Number.isFinite(fid) || fid <= 0) {
       setDbDepartments([]);
       return;
     }
-    if (departmentsQuery.data) {
-      const mappedDepartments = departmentsQuery.data
-        .filter((d) => d.faculty_id !== null)
-        .map((d) => ({ id: d.id, name: d.department_name, facultyId: d.faculty_id as number }));
-      setDbDepartments(mappedDepartments);
-    }
-  }, [departmentsQuery.data, facultyId]);
+    setDbDepartments(allDepartments.filter((d) => d.facultyId === fid));
+  }, [facultyId, allDepartments]);
 
   useEffect(() => {
-    if (!departmentId) {
+    const did = typeof departmentId === "number" ? departmentId : departmentId ? Number(departmentId) : null;
+    if (!did || !Number.isFinite(did) || did <= 0) {
       setDbPrograms([]);
       return;
     }
-    if (programsQuery.data) {
-      const mappedPrograms = programsQuery.data
-        .filter((p) => p.department_id !== null)
-        .map((p) => ({ id: p.id, name: p.program_name, departmentId: p.department_id as number }));
-      setDbPrograms(mappedPrograms);
-    }
-  }, [programsQuery.data, departmentId]);
+    setDbPrograms(allPrograms.filter((p) => p.departmentId === did));
+  }, [departmentId, allPrograms]);
 
 
   const accessAssignmentsQuery = useQuery<
@@ -548,6 +593,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     Error
   >({
     queryKey: ["users", "current", "access-assignments"],
+    enabled: !excludeAdminStep,
     queryFn: async ({ signal }) => {
       const res = await fetch("/api/users/current/access-assignments", {
         signal,
@@ -566,9 +612,11 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   });
 
   useEffect(() => {
-    if (accessAssignmentsQuery.data) {
-      setUserAccess(accessAssignmentsQuery.data);
+    if (excludeAdminStep) {
+      setUserAccess(null);
+      return;
     }
+    if (accessAssignmentsQuery.data) setUserAccess(accessAssignmentsQuery.data);
   }, [accessAssignmentsQuery.data]);
 
   const chaptersQuery = useQuery<{ chapters: Array<{ id: number; name: string; type: "national" | "international" }> }, Error>({

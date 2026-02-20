@@ -385,16 +385,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (typeof facultyId !== "number" || !Number.isFinite(facultyId) || facultyId <= 0) {
-      return NextResponse.json({ error: "Faculty is required" }, { status: 400 });
-    }
-    if (typeof departmentId !== "number" || !Number.isFinite(departmentId) || departmentId <= 0) {
-      return NextResponse.json({ error: "Department is required" }, { status: 400 });
-    }
-    if (typeof programId !== "number" || !Number.isFinite(programId) || programId <= 0) {
-      return NextResponse.json({ error: "Program is required" }, { status: 400 });
-    }
-
     // Check if slug already exists
     const existing = await sql/* sql */`
       SELECT id FROM public.distinguished_alumni
@@ -427,9 +417,9 @@ export async function POST(request: NextRequest) {
         ${stats ? JSON.stringify(stats) : JSON.stringify([])},
         ${achievements ? JSON.stringify(achievements) : JSON.stringify([])},
         ${story ? JSON.stringify(story) : JSON.stringify([])},
-        ${facultyId},
-        ${departmentId},
-        ${programId},
+        ${typeof facultyId === "number" && Number.isFinite(facultyId) && facultyId > 0 ? facultyId : null},
+        ${typeof departmentId === "number" && Number.isFinite(departmentId) && departmentId > 0 ? departmentId : null},
+        ${typeof programId === "number" && Number.isFinite(programId) && programId > 0 ? programId : null},
         NOW(),
         NOW()
       )

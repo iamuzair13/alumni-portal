@@ -28,7 +28,27 @@ export async function GET(
       return addCorsHeaders(response, request);
     }
 
-    const response = NextResponse.json({ data: result[0], error: null });
+    const row = result[0] as any;
+    const parsed: any = { ...row };
+
+    const safeJsonParse = (value: unknown, fallback: unknown) => {
+      if (typeof value !== "string") return value ?? fallback;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return fallback;
+      }
+    };
+
+    parsed.tags = safeJsonParse(parsed.tags, []);
+    parsed.stats = safeJsonParse(parsed.stats, []);
+    parsed.achievements = safeJsonParse(parsed.achievements, []);
+    parsed.story = safeJsonParse(parsed.story, []);
+
+    const storyArr = Array.isArray(parsed.story) ? parsed.story : [];
+    parsed.published = storyArr.length > 0;
+
+    const response = NextResponse.json({ data: parsed, error: null });
     return addCorsHeaders(response, request);
   } catch (error) {
     const response = NextResponse.json(

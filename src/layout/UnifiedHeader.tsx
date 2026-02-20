@@ -170,8 +170,10 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+
   const getTabFromUrl = () => {
-    const tabFromUrl = searchParams.get("tab");
+    const tabFromUrl = safeSearchParams.get("tab");
     if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
       return urlTabToMenuKey[tabFromUrl];
     }
@@ -210,7 +212,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     const validTab = getTabFromUrl();
     setSelected(validTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [safeSearchParams]);
 
   const renderCounterPair = (key: MenuKey, isSelected: boolean) => {
     const c = tabCounts[key];

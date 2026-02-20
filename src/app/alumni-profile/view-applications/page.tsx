@@ -49,7 +49,8 @@ async function getApplications(sapid: string): Promise<ApplicationsResponse> {
 
 function ViewApplicationsContent() {
   const searchParams = useSearchParams();
-  const sapid = searchParams.get("sapid") || "";
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const sapid = safeSearchParams.get("sapid") || "";
 
   const { data, isLoading, error } = useQuery<ApplicationsResponse, Error>({
     queryKey: ["alumni-scholarship-applications", sapid],

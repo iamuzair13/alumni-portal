@@ -22,6 +22,7 @@ export default function SignInForm() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const params = useSearchParams();
+  const safeParams = params ?? new URLSearchParams();
   const router = useRouter();
   const { isOpen, openModal, closeModal } = useModal();
   
@@ -33,7 +34,7 @@ export default function SignInForm() {
   const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
-    const err = params.get("error");
+    const err = safeParams.get("error");
     if (err === "USER_NOT_FOUND") setErrorMessage("User not registered");
     else if (err === "SAPID_NOT_REGISTERED") setErrorMessage("SAP ID or Registration Number not found");
     else if (err === "EMAIL_NOT_REGISTERED") setErrorMessage("Email not registered");
@@ -42,7 +43,7 @@ export default function SignInForm() {
     else if (err === "INVALID_IDENTIFIER") setErrorMessage("SAP ID, Registration Number, or Email is required");
     else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
     else setErrorMessage(null);
-  }, [params]);
+  }, [safeParams]);
 
   const handleCredentials = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

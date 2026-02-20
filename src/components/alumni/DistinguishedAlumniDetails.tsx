@@ -66,6 +66,45 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
   const sanitizedRole = item.role ? sanitizeHtml(item.role) : "";
   const sanitizedSummary = item.summary ? sanitizeHtml(item.summary) : "";
 
+  const renderRichArray = (value: unknown) => {
+    if (!Array.isArray(value) || value.length === 0) return null;
+
+    // If editor stores a single HTML string element, render it as HTML.
+    if (value.length === 1 && typeof value[0] === "string") {
+      const html = sanitizeHtml(value[0]);
+      const emptyLike = html.replace(/\s|&nbsp;|<br\s*\/?\s*>|<p>\s*<\/p>/gi, "").trim();
+      if (!emptyLike) return null;
+      return (
+        <div
+          className="prose prose-slate max-w-none text-gray-700 dark:text-gray-300 leading-relaxed dark:prose-invert"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      );
+    }
+
+    // Legacy rendering: array of strings/objects.
+    return (
+      <div className="space-y-4">
+        {value.map((entry, index) => (
+          <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            {typeof entry === "object" && entry !== null ? (
+              <div>
+                {Object.entries(entry).map(([key, val]) => (
+                  <div key={key} className="mb-2">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{key}:</span>{" "}
+                    <span className="text-gray-600 dark:text-gray-400">{String(val)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{String(entry)}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -203,15 +242,13 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Achievements
             </h3>
-            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
-              {item.achievements.map((achievement, index) => (
-                <li key={index}>
-                  {typeof achievement === "string"
-                    ? achievement
-                    : JSON.stringify(achievement)}
-                </li>
-              ))}
-            </ul>
+            {renderRichArray(item.achievements) ?? (
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                {item.achievements.map((achievement, index) => (
+                  <li key={index}>{typeof achievement === "string" ? achievement : JSON.stringify(achievement)}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
@@ -220,33 +257,7 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Story
             </h3>
-            <div className="space-y-4">
-              {item.story.map((storyItem, index) => (
-                <div
-                  key={index}
-                  className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                >
-                  {typeof storyItem === "object" && storyItem !== null ? (
-                    <div>
-                      {Object.entries(storyItem).map(([key, value]) => (
-                        <div key={key} className="mb-2">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {key}:
-                          </span>{" "}
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {String(value)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {String(storyItem)}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+            {renderRichArray(item.story)}
           </div>
         )}
 

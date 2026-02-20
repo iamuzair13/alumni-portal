@@ -59,6 +59,8 @@ function SetupPageContent() {
   const hasModifyAccess = canModify(session?.user);
   const canManage = canManageUsers(session?.user);
 
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+
   const TABS = [
     { key: "users", label: "Users" },
     { key: "organizations", label: "Organizations" },
@@ -67,7 +69,7 @@ function SetupPageContent() {
   ] as const;
 
   // Get initial tab from URL search params, default to "users"
-  const tabFromUrlRaw = searchParams.get("tab");
+  const tabFromUrlRaw = safeSearchParams.get("tab");
   const tabFromUrl = tabFromUrlRaw === "newsletter" ? "newsletters" : tabFromUrlRaw;
   const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
   const [selected, setSelected] = useState<typeof TABS[number]["key"]>(validTab);
@@ -80,11 +82,11 @@ function SetupPageContent() {
 
   // Sync with URL on mount or when URL changes
   useEffect(() => {
-    const tabFromUrlRaw = searchParams.get("tab");
+    const tabFromUrlRaw = safeSearchParams.get("tab");
     const tabFromUrl = tabFromUrlRaw === "newsletter" ? "newsletters" : tabFromUrlRaw;
     const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
     setSelected(validTab);
-  }, [searchParams]);
+  }, [safeSearchParams]);
 
   // Users management state
   const [users, setUsers] = useState<UserItem[]>([]);

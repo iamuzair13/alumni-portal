@@ -19,9 +19,10 @@ function MoreDetailsContent() {
   const isViewer = isViewerUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   
   // Get identifier from URL params, or fallback to session (SAP ID or registration number)
-  const urlSapId = searchParams.get("sapid") || "";
+  const urlSapId = safeSearchParams.get("sapid") || "";
   
   // Extract session identifiers
   let sessionSapid: string | undefined;

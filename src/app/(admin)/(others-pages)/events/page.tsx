@@ -1275,12 +1275,14 @@ function EventsPageInner() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  const safeSearchParams = searchParams ?? new URLSearchParams();
+
   useEffect(() => {
-    const tab = searchParams.get("tab");
+    const tab = safeSearchParams.get("tab");
     if (tab === "viewEvents" || tab === "addEvent") {
       setSelected(tab);
     }
-  }, [searchParams]);
+  }, [safeSearchParams]);
 
   // Map server events to our format
   useEffect(() => {
@@ -1330,7 +1332,7 @@ function EventsPageInner() {
   const handleEdit = (id: string) => {
     setEditingEventId(id);
     setSelected("addEvent");
-    const qp = new URLSearchParams(searchParams.toString());
+    const qp = new URLSearchParams(safeSearchParams.toString());
     qp.set("tab", "addEvent");
     router.replace(`${pathname}?${qp.toString()}`);
   };
@@ -1338,7 +1340,7 @@ function EventsPageInner() {
   const handleEditSuccess = () => {
     setEditingEventId(null);
     setSelected("viewEvents");
-    const qp = new URLSearchParams(searchParams.toString());
+    const qp = new URLSearchParams(safeSearchParams.toString());
     qp.set("tab", "viewEvents");
     router.replace(`${pathname}?${qp.toString()}`);
   };
@@ -1385,7 +1387,7 @@ function EventsPageInner() {
                   if (tab.key === "addEvent" && editingEventId) {
                     setEditingEventId(null);
                   }
-                  const qp = new URLSearchParams(searchParams.toString());
+                  const qp = new URLSearchParams(safeSearchParams.toString());
                   qp.set("tab", tab.key);
                   router.replace(`${pathname}?${qp.toString()}`);
                 }}

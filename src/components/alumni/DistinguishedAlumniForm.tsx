@@ -74,6 +74,8 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [stats, setStats] = useState<Array<{ key: string; value: string }>>([]);
+  const [achievementsHtml, setAchievementsHtml] = useState("");
+  const [storyHtml, setStoryHtml] = useState("");
 
   const {
     register,
@@ -128,6 +130,66 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
     editorProps: {
       attributes: {
         class: "prose prose-sm max-w-none focus:outline-none min-h-[200px] p-4",
+      },
+    },
+    editable: true,
+  });
+
+  // TipTap editor for Achievements
+  const achievementsEditor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+    ],
+    content: "",
+    onUpdate: ({ editor }) => {
+      setAchievementsHtml(editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[200px] p-4",
+      },
+    },
+    editable: true,
+  });
+
+  // TipTap editor for Story
+  const storyEditor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+    ],
+    content: "",
+    onUpdate: ({ editor }) => {
+      setStoryHtml(editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
       },
     },
     editable: true,
@@ -193,12 +255,27 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       
       setTags(editingTags);
       setStats(editingStats);
+
+      const firstAchievement = Array.isArray(editingItem.achievements) ? editingItem.achievements[0] : "";
+      const firstStory = Array.isArray(editingItem.story) ? editingItem.story[0] : "";
+      const achievementsContent = typeof firstAchievement === "string" ? firstAchievement : "";
+      const storyContent = typeof firstStory === "string" ? firstStory : "";
+
+      setAchievementsHtml(achievementsContent);
+      setStoryHtml(storyContent);
       
       if (roleEditor && roleContent) {
         roleEditor.commands.setContent(roleContent);
       }
       if (summaryEditor && summaryContent) {
         summaryEditor.commands.setContent(summaryContent);
+      }
+
+      if (achievementsEditor) {
+        achievementsEditor.commands.setContent(achievementsContent || "");
+      }
+      if (storyEditor) {
+        storyEditor.commands.setContent(storyContent || "");
       }
       
       if (editingItem.image) {
@@ -224,33 +301,38 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       setTags([]);
       setStats([]);
       setTagInput("");
+      setAchievementsHtml("");
+      setStoryHtml("");
       if (roleEditor) {
         roleEditor.commands.clearContent();
       }
       if (summaryEditor) {
         summaryEditor.commands.clearContent();
       }
+      if (achievementsEditor) {
+        achievementsEditor.commands.clearContent();
+      }
+      if (storyEditor) {
+        storyEditor.commands.clearContent();
+      }
       setImagePreview(null);
     }
     setImageFile(null);
-  }, [editingItem, reset, isOpen, roleEditor, summaryEditor]);
+  }, [editingItem, reset, isOpen, roleEditor, summaryEditor, achievementsEditor, storyEditor]);
 
   const selectedFacultyId = watch("faculty_id");
   const selectedDepartmentId = watch("department_id");
   const selectedProgramId = watch("program_id");
 
   const { onChange: facultyIdOnChange, ...facultyIdRegister } = register("faculty_id", {
-    required: "Faculty is required",
     valueAsNumber: true,
   });
 
   const { onChange: departmentIdOnChange, ...departmentIdRegister } = register("department_id", {
-    required: "Department is required",
     valueAsNumber: true,
   });
 
   const { onChange: programIdOnChange, ...programIdRegister } = register("program_id", {
-    required: "Program is required",
     valueAsNumber: true,
   });
 
@@ -360,6 +442,22 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
         return acc;
       }, {} as Record<string, string>);
 
+      const achievementsHtmlRaw = achievementsEditor?.getHTML() || achievementsHtml || "";
+      const storyHtmlRaw = storyEditor?.getHTML() || storyHtml || "";
+
+      const sanitizedAchievements = DOMPurify.sanitize(achievementsHtmlRaw, {
+        ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
+        ALLOWED_ATTR: ["href", "target", "rel"],
+      });
+      const sanitizedStory = DOMPurify.sanitize(storyHtmlRaw, {
+        ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
+        ALLOWED_ATTR: ["href", "target", "rel"],
+      });
+
+      // Preserve existing JSONB shape: store HTML as a single element string array
+      const parsedAchievements: any[] = sanitizedAchievements.trim() ? [sanitizedAchievements] : [];
+      const parsedStory: any[] = sanitizedStory.trim() ? [sanitizedStory] : [];
+
       // Use FormData to handle image upload
       const formData = new FormData();
       formData.append("slug", data.slug);
@@ -380,8 +478,8 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
       if (data.quote_by) formData.append("quote_by", data.quote_by);
       formData.append("tags", JSON.stringify(tags));
       formData.append("stats", JSON.stringify(statsObj));
-      formData.append("achievements", JSON.stringify(data.achievements || []));
-      formData.append("story", JSON.stringify(data.story || []));
+      formData.append("achievements", JSON.stringify(parsedAchievements));
+      formData.append("story", JSON.stringify(parsedStory));
 
       // Only append image if it's a new file (not when editing with existing image)
       if (imageFile) {
@@ -567,7 +665,7 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
               {!(typeof selectedDepartmentId === "number" && selectedDepartmentId > 0) && (
                 <p className="mt-1 text-xs text-gray-500">Select department first</p>
               )}
-              {errors.program_id && <p className="mt-1 text-sm text-red-600">{String(errors.program_id.message || "Program is required")}</p>}
+              {errors.program_id && <p className="mt-1 text-sm text-red-600">{String(errors.program_id.message || "Invalid program")}</p>}
             </div>
 
             {/* Name */}
@@ -1059,6 +1157,210 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 </Button>
               </div>
               <p className="mt-1 text-xs text-gray-500">Add key-value pairs for statistics (e.g., "Awards": "5", "Publications": "20")</p>
+            </div>
+
+            {/* Achievements - HTML Editor */}
+            <div className="md:col-span-2">
+              <Label htmlFor="achievements">Achievements (Optional)</Label>
+              <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
+                {achievementsEditor && (
+                  <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleHeading({ level: 1 }).run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        achievementsEditor.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
+                      }`}
+                      title="Heading 1"
+                    >
+                      H1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleHeading({ level: 2 }).run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        achievementsEditor.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
+                      }`}
+                      title="Heading 2"
+                    >
+                      H2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleHeading({ level: 3 }).run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        achievementsEditor.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
+                      }`}
+                      title="Heading 3"
+                    >
+                      H3
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-1" />
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleBold().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors ${
+                        achievementsEditor.isActive("bold") ? "bg-gray-300" : ""
+                      }`}
+                      title="Bold"
+                    >
+                      <strong>B</strong>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleItalic().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors ${
+                        achievementsEditor.isActive("italic") ? "bg-gray-300" : ""
+                      }`}
+                      title="Italic"
+                    >
+                      <em>I</em>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleUnderline().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors ${
+                        achievementsEditor.isActive("underline") ? "bg-gray-300" : ""
+                      }`}
+                      title="Underline"
+                    >
+                      <u>U</u>
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-1" />
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleBulletList().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        achievementsEditor.isActive("bulletList") ? "bg-gray-300" : ""
+                      }`}
+                      title="Bullet List"
+                    >
+                      •
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => achievementsEditor.chain().focus().toggleOrderedList().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        achievementsEditor.isActive("orderedList") ? "bg-gray-300" : ""
+                      }`}
+                      title="Numbered List"
+                    >
+                      1.
+                    </button>
+                  </div>
+                )}
+                <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
+                  {achievementsEditor ? (
+                    <EditorContent editor={achievementsEditor} />
+                  ) : (
+                    <div className="min-h-[200px] p-4 flex items-center justify-center text-gray-400">
+                      <p>Loading editor...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Story - HTML Editor */}
+            <div className="md:col-span-2">
+              <Label htmlFor="story">Story (Optional)</Label>
+              <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
+                {storyEditor && (
+                  <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleHeading({ level: 1 }).run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        storyEditor.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
+                      }`}
+                      title="Heading 1"
+                    >
+                      H1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleHeading({ level: 2 }).run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        storyEditor.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
+                      }`}
+                      title="Heading 2"
+                    >
+                      H2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleHeading({ level: 3 }).run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        storyEditor.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
+                      }`}
+                      title="Heading 3"
+                    >
+                      H3
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-1" />
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleBold().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors ${
+                        storyEditor.isActive("bold") ? "bg-gray-300" : ""
+                      }`}
+                      title="Bold"
+                    >
+                      <strong>B</strong>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleItalic().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors ${
+                        storyEditor.isActive("italic") ? "bg-gray-300" : ""
+                      }`}
+                      title="Italic"
+                    >
+                      <em>I</em>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleUnderline().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors ${
+                        storyEditor.isActive("underline") ? "bg-gray-300" : ""
+                      }`}
+                      title="Underline"
+                    >
+                      <u>U</u>
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-1" />
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleBulletList().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        storyEditor.isActive("bulletList") ? "bg-gray-300" : ""
+                      }`}
+                      title="Bullet List"
+                    >
+                      •
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => storyEditor.chain().focus().toggleOrderedList().run()}
+                      className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                        storyEditor.isActive("orderedList") ? "bg-gray-300" : ""
+                      }`}
+                      title="Numbered List"
+                    >
+                      1.
+                    </button>
+                  </div>
+                )}
+                <div className="min-h-[300px] max-h-[500px] overflow-y-auto">
+                  {storyEditor ? (
+                    <EditorContent editor={storyEditor} />
+                  ) : (
+                    <div className="min-h-[300px] p-4 flex items-center justify-center text-gray-400">
+                      <p>Loading editor...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
