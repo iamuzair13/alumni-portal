@@ -317,6 +317,8 @@ export async function POST(req: Request) {
       return val.length > 10 ? val.substring(0, 10) : val;
     };
 
+    const createdDateTimeValue = clean(body.createddatetime) ?? new Date().toISOString();
+
     const todayDateValue = body.todaydate ? new Date(String(body.todaydate)) : null;
     // alumniemail is admin-assigned and should not be populated from public/alumni registration.
 
@@ -495,6 +497,7 @@ export async function POST(req: Request) {
           UPDATE public.tbl_alumni SET
             password = ${plainPassword},
             todaydate = ${todayDateValue},
+            createddatetime = COALESCE(createddatetime, ${createdDateTimeValue}),
             registrationno = ${preservedRegNo},
             sapid = ${preservedSapId},
             cnicpassport = ${preservedCnic},
@@ -695,7 +698,7 @@ export async function POST(req: Request) {
           ${'underApproval'}, /* verify = 'underApproval' for new registrations (Under Approval) */
           ${body.emailsendcount ?? null},
           ${clean(body.emailsendstatus)},
-          ${clean(body.createddatetime)},
+          ${createdDateTimeValue},
           ${clean(body.facebook)},
           ${clean(body.instagram)},
           ${clean(body.youtube)},
