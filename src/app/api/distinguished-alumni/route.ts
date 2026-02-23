@@ -36,26 +36,27 @@ export async function GET(request: NextRequest) {
       return sql`${left} OR ${right}`;
     };
 
-    // RBAC filter (new). Superadmin => no filter (includes NULL). Admin/viewer =>
-    // - if all faculties assigned => no filter (includes NULL)
-    // - else restricted to assigned faculty/department/program (excludes NULL)
+    // RBAC filter (ID-based) applied on *effective* org IDs.
+    // Some records may have faculty_id NULL while department_id / program_id is set.
+    // For access consistency, derive effective faculty/department from joins.
     const access = await buildIdBasedAccessFilterSQL(session, {
-      alias: "d",
-      facultyColumn: "faculty_id",
-      departmentColumn: "department_id",
-      programColumn: "program_id",
+      alias: "x",
+      facultyColumn: "effective_faculty_id",
+      departmentColumn: "effective_department_id",
+      programColumn: "effective_program_id",
     });
     const accessFilter = access.sql ? sql`AND (${access.sql})` : sql``;
 
     // Faculty/Department/Program master filters (ID-based)
+    // Apply to the same effective columns used by RBAC.
     let facultyFilter = sql``;
     if (faculty && faculty.length > 0) {
       const conditions = faculty.map((f) => {
         const normalized = String(f).trim();
-        if (normalized === "NULL" || normalized === "null") return sql`(d.faculty_id IS NULL)`;
+        if (normalized === "NULL" || normalized === "null") return sql`(x.effective_faculty_id IS NULL)`;
         const id = Number.parseInt(normalized, 10);
         if (Number.isNaN(id)) return sql`1 = 0`;
-        return sql`(d.faculty_id = ${id})`;
+        return sql`(x.effective_faculty_id = ${id})`;
       });
       facultyFilter = sql`AND (${combineOrConditions(conditions)})`;
     }
@@ -64,10 +65,10 @@ export async function GET(request: NextRequest) {
     if (department && department.length > 0) {
       const conditions = department.map((dept) => {
         const normalized = String(dept).trim();
-        if (normalized === "NULL" || normalized === "null") return sql`(d.department_id IS NULL)`;
+        if (normalized === "NULL" || normalized === "null") return sql`(x.effective_department_id IS NULL)`;
         const id = Number.parseInt(normalized, 10);
         if (Number.isNaN(id)) return sql`1 = 0`;
-        return sql`(d.department_id = ${id})`;
+        return sql`(x.effective_department_id = ${id})`;
       });
       departmentFilter = sql`AND (${combineOrConditions(conditions)})`;
     }
@@ -76,10 +77,10 @@ export async function GET(request: NextRequest) {
     if (program && program.length > 0) {
       const conditions = program.map((prog) => {
         const normalized = String(prog).trim();
-        if (normalized === "NULL" || normalized === "null") return sql`(d.program_id IS NULL)`;
+        if (normalized === "NULL" || normalized === "null") return sql`(x.effective_program_id IS NULL)`;
         const id = Number.parseInt(normalized, 10);
         if (Number.isNaN(id)) return sql`1 = 0`;
-        return sql`(d.program_id = ${id})`;
+        return sql`(x.effective_program_id = ${id})`;
       });
       programFilter = sql`AND (${combineOrConditions(conditions)})`;
     }
@@ -91,38 +92,64 @@ export async function GET(request: NextRequest) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
       query = sql/* sql */`
         SELECT 
-          d.*,
+          x.*,
           f.faculty_name as faculty_name,
           dept.department_name as department_name,
           prog.program_name as program_name
-        FROM public.distinguished_alumni d
-        LEFT JOIN public.tbl_faculties f ON d.faculty_id = f.id
-        LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
-        LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+        FROM (
+          SELECT
+            d.*,
+            COALESCE(d.program_id, prog.id) as effective_program_id,
+            COALESCE(d.department_id, prog.department_id, dept.id) as effective_department_id,
+            COALESCE(d.faculty_id, dept.faculty_id, prog_dept.faculty_id) as effective_faculty_id
+          FROM public.distinguished_alumni d
+          LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+          LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+          LEFT JOIN public.tbl_departments prog_dept ON prog.department_id = prog_dept.id
+        ) x
+        LEFT JOIN public.tbl_faculties f ON x.effective_faculty_id = f.id
+        LEFT JOIN public.tbl_departments dept ON x.effective_department_id = dept.id
+        LEFT JOIN public.tbl_programs prog ON x.effective_program_id = prog.id
         WHERE (
-          LOWER(name) LIKE ${searchTerm}
-          OR LOWER(slug) LIKE ${searchTerm}
-          OR LOWER(role) LIKE ${searchTerm}
-          OR LOWER(summary) LIKE ${searchTerm}
-          OR LOWER(headline) LIKE ${searchTerm}
+          LOWER(x.name) LIKE ${searchTerm}
+          OR LOWER(x.slug) LIKE ${searchTerm}
+          OR LOWER(x.role) LIKE ${searchTerm}
+          OR LOWER(x.summary) LIKE ${searchTerm}
+          OR LOWER(x.headline) LIKE ${searchTerm}
         )
         ${accessFilter}
         ${facultyFilter}
         ${departmentFilter}
         ${programFilter}
-        ORDER BY created_at DESC
+        ORDER BY x.created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
       
       countQuery = sql/* sql */`
         SELECT COUNT(*) as total
-        FROM public.distinguished_alumni d
+        FROM (
+          SELECT
+            d.id,
+            d.name,
+            d.slug,
+            d.role,
+            d.summary,
+            d.headline,
+            d.created_at,
+            COALESCE(d.program_id, prog.id) as effective_program_id,
+            COALESCE(d.department_id, prog.department_id, dept.id) as effective_department_id,
+            COALESCE(d.faculty_id, dept.faculty_id, prog_dept.faculty_id) as effective_faculty_id
+          FROM public.distinguished_alumni d
+          LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+          LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+          LEFT JOIN public.tbl_departments prog_dept ON prog.department_id = prog_dept.id
+        ) x
         WHERE (
-          LOWER(name) LIKE ${searchTerm}
-          OR LOWER(slug) LIKE ${searchTerm}
-          OR LOWER(role) LIKE ${searchTerm}
-          OR LOWER(summary) LIKE ${searchTerm}
-          OR LOWER(headline) LIKE ${searchTerm}
+          LOWER(x.name) LIKE ${searchTerm}
+          OR LOWER(x.slug) LIKE ${searchTerm}
+          OR LOWER(x.role) LIKE ${searchTerm}
+          OR LOWER(x.summary) LIKE ${searchTerm}
+          OR LOWER(x.headline) LIKE ${searchTerm}
         )
         ${accessFilter}
         ${facultyFilter}
@@ -132,26 +159,47 @@ export async function GET(request: NextRequest) {
     } else {
       query = sql/* sql */`
         SELECT 
-          d.*,
+          x.*,
           f.faculty_name as faculty_name,
           dept.department_name as department_name,
           prog.program_name as program_name
-        FROM public.distinguished_alumni d
-        LEFT JOIN public.tbl_faculties f ON d.faculty_id = f.id
-        LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
-        LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+        FROM (
+          SELECT
+            d.*,
+            COALESCE(d.program_id, prog.id) as effective_program_id,
+            COALESCE(d.department_id, prog.department_id, dept.id) as effective_department_id,
+            COALESCE(d.faculty_id, dept.faculty_id, prog_dept.faculty_id) as effective_faculty_id
+          FROM public.distinguished_alumni d
+          LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+          LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+          LEFT JOIN public.tbl_departments prog_dept ON prog.department_id = prog_dept.id
+        ) x
+        LEFT JOIN public.tbl_faculties f ON x.effective_faculty_id = f.id
+        LEFT JOIN public.tbl_departments dept ON x.effective_department_id = dept.id
+        LEFT JOIN public.tbl_programs prog ON x.effective_program_id = prog.id
         WHERE 1=1
         ${accessFilter}
         ${facultyFilter}
         ${departmentFilter}
         ${programFilter}
-        ORDER BY created_at DESC
+        ORDER BY x.created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
       
       countQuery = sql/* sql */`
         SELECT COUNT(*) as total
-        FROM public.distinguished_alumni d
+        FROM (
+          SELECT
+            d.id,
+            d.created_at,
+            COALESCE(d.program_id, prog.id) as effective_program_id,
+            COALESCE(d.department_id, prog.department_id, dept.id) as effective_department_id,
+            COALESCE(d.faculty_id, dept.faculty_id, prog_dept.faculty_id) as effective_faculty_id
+          FROM public.distinguished_alumni d
+          LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+          LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+          LEFT JOIN public.tbl_departments prog_dept ON prog.department_id = prog_dept.id
+        ) x
         WHERE 1=1
         ${accessFilter}
         ${facultyFilter}

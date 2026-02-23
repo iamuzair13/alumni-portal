@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { buildIdBasedAccessFilterSQL } from "@/lib/rbac";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -25,10 +26,29 @@ export async function GET(
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
+    const access = await buildIdBasedAccessFilterSQL(session, {
+      alias: "x",
+      facultyColumn: "effective_faculty_id",
+      departmentColumn: "effective_department_id",
+      programColumn: "effective_program_id",
+    });
+    const accessFilter = access.sql ? sql`AND (${access.sql})` : sql``;
+
     const result = await sql/* sql */`
-      SELECT *
-      FROM public.distinguished_alumni
-      WHERE id = ${idNum}
+      SELECT x.*
+      FROM (
+        SELECT
+          d.*,
+          COALESCE(d.program_id, prog.id) as effective_program_id,
+          COALESCE(d.department_id, prog.department_id, dept.id) as effective_department_id,
+          COALESCE(d.faculty_id, dept.faculty_id, prog_dept.faculty_id) as effective_faculty_id
+        FROM public.distinguished_alumni d
+        LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+        LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+        LEFT JOIN public.tbl_departments prog_dept ON prog.department_id = prog_dept.id
+      ) x
+      WHERE x.id = ${idNum}
+      ${accessFilter}
       LIMIT 1
     `;
 

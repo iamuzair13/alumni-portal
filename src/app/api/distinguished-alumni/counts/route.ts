@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
     };
 
     const access = await buildIdBasedAccessFilterSQL(session, {
-      alias: "d",
-      facultyColumn: "faculty_id",
-      departmentColumn: "department_id",
-      programColumn: "program_id",
+      alias: "x",
+      facultyColumn: "effective_faculty_id",
+      departmentColumn: "effective_department_id",
+      programColumn: "effective_program_id",
     });
     const accessFilter = access.sql ? sql`AND (${access.sql})` : sql``;
 
@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
     if (faculty && faculty.length > 0) {
       const conditions = faculty.map((f) => {
         const normalized = String(f).trim();
-        if (normalized === "NULL" || normalized === "null") return sql`(d.faculty_id IS NULL)`;
+        if (normalized === "NULL" || normalized === "null") return sql`(x.effective_faculty_id IS NULL)`;
         const id = Number.parseInt(normalized, 10);
         if (Number.isNaN(id)) return sql`1 = 0`;
-        return sql`(d.faculty_id = ${id})`;
+        return sql`(x.effective_faculty_id = ${id})`;
       });
       facultyFilter = sql`AND (${combineOrConditions(conditions)})`;
     }
@@ -52,10 +52,10 @@ export async function GET(request: NextRequest) {
     if (department && department.length > 0) {
       const conditions = department.map((dept) => {
         const normalized = String(dept).trim();
-        if (normalized === "NULL" || normalized === "null") return sql`(d.department_id IS NULL)`;
+        if (normalized === "NULL" || normalized === "null") return sql`(x.effective_department_id IS NULL)`;
         const id = Number.parseInt(normalized, 10);
         if (Number.isNaN(id)) return sql`1 = 0`;
-        return sql`(d.department_id = ${id})`;
+        return sql`(x.effective_department_id = ${id})`;
       });
       departmentFilter = sql`AND (${combineOrConditions(conditions)})`;
     }
@@ -64,10 +64,10 @@ export async function GET(request: NextRequest) {
     if (program && program.length > 0) {
       const conditions = program.map((prog) => {
         const normalized = String(prog).trim();
-        if (normalized === "NULL" || normalized === "null") return sql`(d.program_id IS NULL)`;
+        if (normalized === "NULL" || normalized === "null") return sql`(x.effective_program_id IS NULL)`;
         const id = Number.parseInt(normalized, 10);
         if (Number.isNaN(id)) return sql`1 = 0`;
-        return sql`(d.program_id = ${id})`;
+        return sql`(x.effective_program_id = ${id})`;
       });
       programFilter = sql`AND (${combineOrConditions(conditions)})`;
     }
@@ -76,17 +76,32 @@ export async function GET(request: NextRequest) {
     if (search.trim()) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
       searchFilter = sql`AND (
-        LOWER(d.name) LIKE ${searchTerm}
-        OR LOWER(d.slug) LIKE ${searchTerm}
-        OR LOWER(d.role) LIKE ${searchTerm}
-        OR LOWER(d.summary) LIKE ${searchTerm}
-        OR LOWER(d.headline) LIKE ${searchTerm}
+        LOWER(x.name) LIKE ${searchTerm}
+        OR LOWER(x.slug) LIKE ${searchTerm}
+        OR LOWER(x.role) LIKE ${searchTerm}
+        OR LOWER(x.summary) LIKE ${searchTerm}
+        OR LOWER(x.headline) LIKE ${searchTerm}
       )`;
     }
 
     const countResult = await sql/* sql */`
       SELECT COUNT(*) as total
-      FROM public.distinguished_alumni d
+      FROM (
+        SELECT
+          d.id,
+          d.name,
+          d.slug,
+          d.role,
+          d.summary,
+          d.headline,
+          COALESCE(d.program_id, prog.id) as effective_program_id,
+          COALESCE(d.department_id, prog.department_id, dept.id) as effective_department_id,
+          COALESCE(d.faculty_id, dept.faculty_id, prog_dept.faculty_id) as effective_faculty_id
+        FROM public.distinguished_alumni d
+        LEFT JOIN public.tbl_programs prog ON d.program_id = prog.id
+        LEFT JOIN public.tbl_departments dept ON d.department_id = dept.id
+        LEFT JOIN public.tbl_departments prog_dept ON prog.department_id = prog_dept.id
+      ) x
       WHERE 1=1
       ${accessFilter}
       ${searchFilter}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Modal } from "@/components/ui/modal";
 import Label from "@/components/form/Label";
@@ -336,9 +336,22 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
     valueAsNumber: true,
   });
 
+  // Fetch full mapping once and filter locally to avoid per-selection server calls
   const facultiesQuery = useFaculties();
-  const departmentsQuery = useDepartments(typeof selectedFacultyId === "number" ? selectedFacultyId : undefined);
-  const programsQuery = usePrograms(typeof selectedDepartmentId === "number" ? selectedDepartmentId : undefined);
+  const departmentsQuery = useDepartments(undefined);
+  const programsQuery = usePrograms(undefined);
+
+  const filteredDepartments = useMemo(() => {
+    const all = departmentsQuery.data ?? [];
+    if (!(typeof selectedFacultyId === "number" && selectedFacultyId > 0)) return [];
+    return all.filter((d) => Number(d.faculty_id) === Number(selectedFacultyId));
+  }, [departmentsQuery.data, selectedFacultyId]);
+
+  const filteredPrograms = useMemo(() => {
+    const all = programsQuery.data ?? [];
+    if (!(typeof selectedDepartmentId === "number" && selectedDepartmentId > 0)) return [];
+    return all.filter((p) => Number(p.department_id) === Number(selectedDepartmentId));
+  }, [programsQuery.data, selectedDepartmentId]);
 
   useEffect(() => {
     setValue("department_id", null);
@@ -627,7 +640,7 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 }}
               >
                 <option value="">Select</option>
-                {(departmentsQuery.data ?? []).map((d) => (
+                {filteredDepartments.map((d) => (
                   <option key={d.id} value={String(d.id)}>
                     {d.department_name}
                   </option>
@@ -656,7 +669,7 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                 }}
               >
                 <option value="">Select</option>
-                {(programsQuery.data ?? []).map((p) => (
+                {filteredPrograms.map((p) => (
                   <option key={p.id} value={String(p.id)}>
                     {p.program_name}
                   </option>

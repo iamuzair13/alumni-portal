@@ -384,6 +384,7 @@ CREATE TABLE IF NOT EXISTS public.tbl_programs
     department_id bigint,
     program_abv text COLLATE pg_catalog."default",
     CONSTRAINT tbl_programs_pkey PRIMARY KEY (id),
+    CONSTRAINT uniq_program_id_department UNIQUE (id, department_id),
     CONSTRAINT uniq_program_department UNIQUE (department_id, program_name),
     CONSTRAINT tbl_programs_department_id_fkey FOREIGN KEY (department_id)
         REFERENCES public.tbl_departments (id) MATCH SIMPLE
