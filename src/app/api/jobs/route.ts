@@ -3,6 +3,10 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -39,30 +43,56 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(total / limit);
 
     // Get jobs with pagination
-    const rows = await sql/* sql */`
-      SELECT 
-        id,
-        title,
-        category,
-        company,
-        deadline,
-        location,
-        job_link,
-        created_at
-      FROM public.tbljobs
-      WHERE 1=1 ${searchCondition}
-      ORDER BY created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    ` as Array<{
+    let rows: Array<{
       id: number;
       title: string | null;
       category: string | null;
       company: string | null;
+      company_email?: string | null;
       deadline: string | null;
       location: string | null;
       job_link: string | null;
       created_at: string | null;
     }>;
+
+    try {
+      rows = await sql/* sql */`
+        SELECT 
+          id,
+          title,
+          category,
+          company,
+          company_email,
+          deadline,
+          location,
+          job_link,
+          created_at
+        FROM public.tbljobs
+        WHERE 1=1 ${searchCondition}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      ` as typeof rows;
+    } catch (dbError) {
+      if (dbError instanceof Error && dbError.message.includes('column "company_email"')) {
+        rows = await sql/* sql */`
+          SELECT 
+            id,
+            title,
+            category,
+            company,
+            deadline,
+            location,
+            job_link,
+            created_at
+          FROM public.tbljobs
+          WHERE 1=1 ${searchCondition}
+          ORDER BY created_at DESC
+          LIMIT ${limit} OFFSET ${offset}
+        ` as unknown as typeof rows;
+      } else {
+        throw dbError;
+      }
+    }
 
     return NextResponse.json({
       items: rows.map((row) => ({
@@ -70,6 +100,7 @@ export async function GET(request: NextRequest) {
         title: row.title || "",
         category: row.category || "",
         company: row.company || "",
+        companyEmail: row.company_email || "",
         deadline: row.deadline || null,
         location: row.location || "",
         jobLink: row.job_link || "",
@@ -99,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, category, company, deadline, location, jobLink } = body;
+    const { title, category, company, companyEmail, deadline, location, jobLink } = body;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -109,33 +140,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Company is required" }, { status: 400 });
     }
 
+    const companyEmailValue = String(companyEmail || "").trim();
+    if (!companyEmailValue) {
+      return NextResponse.json({ error: "Company email is required" }, { status: 400 });
+    }
+    if (!isValidEmail(companyEmailValue)) {
+      return NextResponse.json({ error: "Invalid company email" }, { status: 400 });
+    }
+
     // Insert new job
     // Use deadline string directly (already in YYYY-MM-DD format from HTML date input)
     // Don't convert through Date object to avoid timezone issues
     const deadlineValue = deadline && deadline.trim() ? deadline.trim() : null;
     
-    const rows = await sql/* sql */`
-      INSERT INTO public.tbljobs (title, category, company, deadline, location, job_link, created_at)
-      VALUES (
-        ${String(title).trim()},
-        ${category ? String(category).trim() : null},
-        ${String(company).trim()},
-        ${deadlineValue},
-        ${location ? String(location).trim() : null},
-        ${jobLink ? String(jobLink).trim() : null},
-        now()
-      )
-      RETURNING id, title, category, company, deadline, location, job_link, created_at
-    ` as Array<{
+    let rows: Array<{
       id: number;
       title: string | null;
       category: string | null;
       company: string | null;
+      company_email?: string | null;
       deadline: string | null;
       location: string | null;
       job_link: string | null;
       created_at: string | null;
     }>;
+
+    try {
+      rows = await sql/* sql */`
+        INSERT INTO public.tbljobs (title, category, company, company_email, deadline, location, job_link, created_at)
+        VALUES (
+          ${String(title).trim()},
+          ${category ? String(category).trim() : null},
+          ${String(company).trim()},
+          ${companyEmailValue},
+          ${deadlineValue},
+          ${location ? String(location).trim() : null},
+          ${jobLink ? String(jobLink).trim() : null},
+          now()
+        )
+        RETURNING id, title, category, company, company_email, deadline, location, job_link, created_at
+      ` as typeof rows;
+    } catch (dbError) {
+      if (dbError instanceof Error && dbError.message.includes('column "company_email"')) {
+        rows = await sql/* sql */`
+          INSERT INTO public.tbljobs (title, category, company, deadline, location, job_link, created_at)
+          VALUES (
+            ${String(title).trim()},
+            ${category ? String(category).trim() : null},
+            ${String(company).trim()},
+            ${deadlineValue},
+            ${location ? String(location).trim() : null},
+            ${jobLink ? String(jobLink).trim() : null},
+            now()
+          )
+          RETURNING id, title, category, company, deadline, location, job_link, created_at
+        ` as unknown as typeof rows;
+      } else {
+        throw dbError;
+      }
+    }
 
     if (!rows[0]) {
       return NextResponse.json({ error: "Failed to create job" }, { status: 500 });
@@ -146,6 +209,7 @@ export async function POST(request: NextRequest) {
       title: rows[0].title || "",
       category: rows[0].category || "",
       company: rows[0].company || "",
+      companyEmail: rows[0].company_email || companyEmailValue,
       deadline: rows[0].deadline || null,
       location: rows[0].location || "",
       jobLink: rows[0].job_link || "",

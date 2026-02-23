@@ -12,12 +12,14 @@ import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import JobForm from "@/components/forms/JobForm";
+import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 
 type JobItem = {
   id: number;
   title: string;
   category: string;
   company: string;
+  companyEmail?: string;
   deadline: string | null;
   location: string;
   jobLink: string;
@@ -112,6 +114,7 @@ export const JobsTab: React.FC = () => {
   const viewModal = useModal();
   const deleteModal = useModal();
   const isAdmin = canModify(session?.user);
+  const { openExportModal, ExportModal } = useExcelExport();
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -244,6 +247,74 @@ export const JobsTab: React.FC = () => {
     return items.find((job) => job.id === viewJobId);
   }, [viewJobId, items]);
 
+  const applicantName = useMemo(() => {
+    const first = (session?.user as any)?.firstName ? String((session?.user as any).firstName).trim() : "";
+    const last = (session?.user as any)?.lastName ? String((session?.user as any).lastName).trim() : "";
+    const combined = [first, last].filter(Boolean).join(" ").trim();
+    const fallback = (session?.user as any)?.name ? String((session?.user as any).name).trim() : "";
+    return combined || fallback || "Applicant";
+  }, [session?.user]);
+
+  const buildMailtoHref = useCallback((job: JobItem): string => {
+    const recipient = String(job.companyEmail || "").trim();
+    if (!recipient) return "";
+
+    const title = job.title || "Job";
+    const subject = `Application for ${title}`;
+    const body = `Dear Hiring Team,\n\nI am interested in applying for the position of ${title}.\n\nPlease find my details attached.\n\nRegards,\n${applicantName}`;
+
+    return `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }, [applicantName]);
+
+  const exportColumns = useMemo<ColumnOption[]>(() => {
+    return [
+      { key: "title", label: "Title" },
+      { key: "company", label: "Company" },
+      { key: "companyEmail", label: "Company Email" },
+      { key: "category", label: "Category" },
+      { key: "location", label: "Location" },
+      { key: "deadline", label: "Deadline" },
+      { key: "jobLink", label: "Job Link" },
+      { key: "createdAt", label: "Created At" },
+    ];
+  }, []);
+
+  const fetchJobsForExport = useCallback(async (): Promise<Record<string, unknown>[]> => {
+    const limit = 100;
+    const out: Record<string, unknown>[] = [];
+
+    let page = 1;
+    // Pull all pages under current search query
+    while (true) {
+      const res = await getJobs(page, limit, debouncedQuery);
+      const batch = res.items.map((j) => ({
+        title: j.title || "",
+        company: j.company || "",
+        companyEmail: j.companyEmail || "",
+        category: j.category || "",
+        location: j.location || "",
+        deadline: j.deadline || "",
+        jobLink: j.jobLink || "",
+        createdAt: j.createdAt || "",
+      }));
+      out.push(...batch);
+
+      if (page >= res.totalPages) break;
+      page += 1;
+    }
+
+    return out;
+  }, [debouncedQuery]);
+
+  const handleExport = useCallback(() => {
+    openExportModal({
+      data: fetchJobsForExport,
+      columns: exportColumns,
+      filename: "jobs",
+      sheetName: "Jobs",
+    });
+  }, [openExportModal, fetchJobsForExport, exportColumns]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
@@ -254,14 +325,23 @@ export const JobsTab: React.FC = () => {
           </h3>
           <div className="flex items-center gap-2">
             {isAdmin && (
-              <button
-                type="button"
-                onClick={handleCreate}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Add Job
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Job
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                  Export
+                </button>
+              </>
             )}
             <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="job-search">
               Search:
@@ -694,6 +774,16 @@ export const JobsTab: React.FC = () => {
                   </a>
                 </div>
               )}
+              {selectedJob.companyEmail && String(selectedJob.companyEmail).trim() && (
+                <div>
+                  <a
+                    href={buildMailtoHref(selectedJob)}
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    Apply via Email
+                  </a>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Created At
@@ -782,6 +872,8 @@ export const JobsTab: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <ExportModal />
     </div>
   );
 };

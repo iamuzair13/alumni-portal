@@ -9,6 +9,7 @@ type JobFormValues = {
   title: string;
   category: string;
   company: string;
+  companyEmail: string;
   deadline: string;
   location: string;
   jobLink: string;
@@ -36,6 +37,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
       title: "",
       category: "",
       company: "",
+      companyEmail: "",
       deadline: "",
       location: "",
       jobLink: "",
@@ -68,6 +70,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
     setValue("title", data.title || "");
     setValue("category", data.category || "");
     setValue("company", data.company || "");
+    setValue("companyEmail", data.companyEmail || "");
     // Use deadline directly if it's already in YYYY-MM-DD format
     // Parse date string directly to avoid timezone issues
     if (data.deadline) {
@@ -107,6 +110,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
           title: data.title.trim(),
           category: data.category.trim() || null,
           company: data.company.trim(),
+          companyEmail: data.companyEmail.trim(),
           deadline: data.deadline.trim() || null,
           location: data.location.trim() || null,
           jobLink: data.jobLink.trim() || null,
@@ -183,6 +187,28 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
         />
         {errors.company && (
           <p className="mt-1 text-sm text-red-600">{errors.company.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Company Email (for Applications) <span className="text-red-600">*</span>
+        </label>
+        <input
+          id="companyEmail"
+          type="email"
+          {...register("companyEmail", {
+            required: "Company email is required",
+            pattern: {
+              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              message: "Please enter a valid email address",
+            },
+          })}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="company@example.com"
+        />
+        {errors.companyEmail && (
+          <p className="mt-1 text-sm text-red-600">{errors.companyEmail.message}</p>
         )}
       </div>
 

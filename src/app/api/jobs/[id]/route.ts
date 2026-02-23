@@ -3,6 +3,10 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function GET(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
@@ -21,29 +25,54 @@ export async function GET(
       return NextResponse.json({ error: "Invalid job ID" }, { status: 400 });
     }
 
-    const rows = await sql/* sql */`
-      SELECT 
-        id,
-        title,
-        category,
-        company,
-        deadline,
-        location,
-        job_link,
-        created_at
-      FROM public.tbljobs
-      WHERE id = ${jobId}
-      LIMIT 1
-    ` as Array<{
+    let rows: Array<{
       id: number;
       title: string | null;
       category: string | null;
       company: string | null;
+      company_email?: string | null;
       deadline: string | null;
       location: string | null;
       job_link: string | null;
       created_at: string | null;
     }>;
+
+    try {
+      rows = await sql/* sql */`
+        SELECT 
+          id,
+          title,
+          category,
+          company,
+          company_email,
+          deadline,
+          location,
+          job_link,
+          created_at
+        FROM public.tbljobs
+        WHERE id = ${jobId}
+        LIMIT 1
+      ` as typeof rows;
+    } catch (dbError) {
+      if (dbError instanceof Error && dbError.message.includes('column "company_email"')) {
+        rows = await sql/* sql */`
+          SELECT 
+            id,
+            title,
+            category,
+            company,
+            deadline,
+            location,
+            job_link,
+            created_at
+          FROM public.tbljobs
+          WHERE id = ${jobId}
+          LIMIT 1
+        ` as unknown as typeof rows;
+      } else {
+        throw dbError;
+      }
+    }
 
     if (!rows[0]) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
@@ -54,6 +83,7 @@ export async function GET(
       title: rows[0].title || "",
       category: rows[0].category || "",
       company: rows[0].company || "",
+      companyEmail: rows[0].company_email || "",
       deadline: rows[0].deadline || null,
       location: rows[0].location || "",
       jobLink: rows[0].job_link || "",
@@ -88,7 +118,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, category, company, deadline, location, jobLink } = body;
+    const { title, category, company, companyEmail, deadline, location, jobLink } = body;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -98,32 +128,63 @@ export async function PUT(
       return NextResponse.json({ error: "Company is required" }, { status: 400 });
     }
 
+    const companyEmailValue = String(companyEmail || "").trim();
+    if (!companyEmailValue) {
+      return NextResponse.json({ error: "Company email is required" }, { status: 400 });
+    }
+    if (!isValidEmail(companyEmailValue)) {
+      return NextResponse.json({ error: "Invalid company email" }, { status: 400 });
+    }
+
     // Update job
     // Use deadline string directly (already in YYYY-MM-DD format from HTML date input)
     // Don't convert through Date object to avoid timezone issues
     const deadlineValue = deadline && deadline.trim() ? deadline.trim() : null;
     
-    const rows = await sql/* sql */`
-      UPDATE public.tbljobs
-      SET
-        title = ${String(title).trim()},
-        category = ${category ? String(category).trim() : null},
-        company = ${String(company).trim()},
-        deadline = ${deadlineValue},
-        location = ${location ? String(location).trim() : null},
-        job_link = ${jobLink ? String(jobLink).trim() : null}
-      WHERE id = ${jobId}
-      RETURNING id, title, category, company, deadline, location, job_link, created_at
-    ` as Array<{
+    let rows: Array<{
       id: number;
       title: string | null;
       category: string | null;
       company: string | null;
+      company_email?: string | null;
       deadline: string | null;
       location: string | null;
       job_link: string | null;
       created_at: string | null;
     }>;
+
+    try {
+      rows = await sql/* sql */`
+        UPDATE public.tbljobs
+        SET
+          title = ${String(title).trim()},
+          category = ${category ? String(category).trim() : null},
+          company = ${String(company).trim()},
+          company_email = ${companyEmailValue},
+          deadline = ${deadlineValue},
+          location = ${location ? String(location).trim() : null},
+          job_link = ${jobLink ? String(jobLink).trim() : null}
+        WHERE id = ${jobId}
+        RETURNING id, title, category, company, company_email, deadline, location, job_link, created_at
+      ` as typeof rows;
+    } catch (dbError) {
+      if (dbError instanceof Error && dbError.message.includes('column "company_email"')) {
+        rows = await sql/* sql */`
+          UPDATE public.tbljobs
+          SET
+            title = ${String(title).trim()},
+            category = ${category ? String(category).trim() : null},
+            company = ${String(company).trim()},
+            deadline = ${deadlineValue},
+            location = ${location ? String(location).trim() : null},
+            job_link = ${jobLink ? String(jobLink).trim() : null}
+          WHERE id = ${jobId}
+          RETURNING id, title, category, company, deadline, location, job_link, created_at
+        ` as unknown as typeof rows;
+      } else {
+        throw dbError;
+      }
+    }
 
     if (!rows[0]) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
@@ -134,6 +195,7 @@ export async function PUT(
       title: rows[0].title || "",
       category: rows[0].category || "",
       company: rows[0].company || "",
+      companyEmail: rows[0].company_email || companyEmailValue,
       deadline: rows[0].deadline || null,
       location: rows[0].location || "",
       jobLink: rows[0].job_link || "",
