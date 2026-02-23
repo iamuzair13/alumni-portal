@@ -31,6 +31,7 @@ export async function GET(
       category: string | null;
       company: string | null;
       company_email?: string | null;
+      job_description?: string | null;
       deadline: string | null;
       location: string | null;
       job_link: string | null;
@@ -45,6 +46,7 @@ export async function GET(
           category,
           company,
           company_email,
+          job_description,
           deadline,
           location,
           job_link,
@@ -54,7 +56,7 @@ export async function GET(
         LIMIT 1
       ` as typeof rows;
     } catch (dbError) {
-      if (dbError instanceof Error && dbError.message.includes('column "company_email"')) {
+      if (dbError instanceof Error && (dbError.message.includes('column "company_email"') || dbError.message.includes('column "job_description"'))) {
         rows = await sql/* sql */`
           SELECT 
             id,
@@ -84,6 +86,7 @@ export async function GET(
       category: rows[0].category || "",
       company: rows[0].company || "",
       companyEmail: rows[0].company_email || "",
+      jobDescription: rows[0].job_description || "",
       deadline: rows[0].deadline || null,
       location: rows[0].location || "",
       jobLink: rows[0].job_link || "",
@@ -118,7 +121,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, category, company, companyEmail, deadline, location, jobLink } = body;
+    const { title, category, company, companyEmail, deadline, location, jobLink, jobDescription } = body;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -140,6 +143,7 @@ export async function PUT(
     // Use deadline string directly (already in YYYY-MM-DD format from HTML date input)
     // Don't convert through Date object to avoid timezone issues
     const deadlineValue = deadline && deadline.trim() ? deadline.trim() : null;
+    const jobDescriptionValue = jobDescription && String(jobDescription).trim() ? String(jobDescription).trim() : null;
     
     let rows: Array<{
       id: number;
@@ -147,6 +151,7 @@ export async function PUT(
       category: string | null;
       company: string | null;
       company_email?: string | null;
+      job_description?: string | null;
       deadline: string | null;
       location: string | null;
       job_link: string | null;
@@ -161,14 +166,15 @@ export async function PUT(
           category = ${category ? String(category).trim() : null},
           company = ${String(company).trim()},
           company_email = ${companyEmailValue},
+          job_description = ${jobDescriptionValue},
           deadline = ${deadlineValue},
           location = ${location ? String(location).trim() : null},
           job_link = ${jobLink ? String(jobLink).trim() : null}
         WHERE id = ${jobId}
-        RETURNING id, title, category, company, company_email, deadline, location, job_link, created_at
+        RETURNING id, title, category, company, company_email, job_description, deadline, location, job_link, created_at
       ` as typeof rows;
     } catch (dbError) {
-      if (dbError instanceof Error && dbError.message.includes('column "company_email"')) {
+      if (dbError instanceof Error && (dbError.message.includes('column "company_email"') || dbError.message.includes('column "job_description"'))) {
         rows = await sql/* sql */`
           UPDATE public.tbljobs
           SET
@@ -196,6 +202,7 @@ export async function PUT(
       category: rows[0].category || "",
       company: rows[0].company || "",
       companyEmail: rows[0].company_email || companyEmailValue,
+      jobDescription: rows[0].job_description || "",
       deadline: rows[0].deadline || null,
       location: rows[0].location || "",
       jobLink: rows[0].job_link || "",

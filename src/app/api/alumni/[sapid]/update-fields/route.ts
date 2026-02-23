@@ -274,6 +274,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     // Handle password separately - store as plain text
     let passwordVal: string | undefined = undefined;
     if ("password" in body && body.password !== undefined && body.password !== null && body.password !== "") {
+      if (!isAdmin) {
+        return NextResponse.json({
+          error: "Password cannot be changed from this screen. Use Change Password.",
+          field: "password",
+          reason: "FORBIDDEN",
+        }, { status: 403 });
+      }
       const passwordStr = String(body.password).trim();
       
       // Check if it's the same as current password

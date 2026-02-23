@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
@@ -18,6 +18,7 @@ function MoreDetailsContent() {
   const { data: session } = useSession();
   const isViewer = isViewerUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
+  const isAlumniUser = String((session?.user as { type?: string | null })?.type || "").toLowerCase().trim() === "alumni";
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
   const safeSearchParams = searchParams ?? new URLSearchParams();
   
@@ -41,12 +42,53 @@ function MoreDetailsContent() {
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
   const [isSavingAll, setIsSavingAll] = useState(false);
 
-  const safePasswordValue = useMemo(() => {
-    const raw = data?.password;
-    if (!raw) return null;
-    return String(raw);
-  }, [data?.password]);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (isChangingPassword) return;
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      toast.error("Please fill all password fields");
+      return;
+    }
+    if (newPassword.trim().length < 4) {
+      toast.error("New password must be at least 4 characters long");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New password and confirm password do not match");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch("/api/alumni/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(payload?.error || "Failed to change password");
+        return;
+      }
+      toast.success("Password changed successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to change password");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   // Mark as initialized once data is loaded (prevents false positives on initial render)
   // Also clear any pending changes that might have been set during initialization
@@ -543,7 +585,6 @@ function MoreDetailsContent() {
         { label: "Date of Birth", value: data.dateofbirth, key: "dateofbirth", editable: true, type: "date" as const },
         { label: "Marital Status", value: data.maritalstatus, key: "maritalstatus", editable: true, type: "select" as const, options: maritalStatusOptions },
         { label: "CNIC/Passport", value: data.cnicpassport, key: "cnicpassport", editable: false },
-        { label: "Password", value: safePasswordValue, key: "password", editable: isSuperAdmin, type: "password" as const },
       ],
     },
     {
@@ -776,7 +817,6 @@ function MoreDetailsContent() {
                                 type={field.type}
                                 options={field.options}
                                 disabled={!editable}
-                                revealPassword={field.key === "password" && isSuperAdmin}
                                 batchMode={true}
                                 onValueChange={handleFieldValueChange}
                               />
@@ -805,6 +845,90 @@ function MoreDetailsContent() {
                       {isSavingAll ? "Saving..." : "Save All"}
                     </button>
                   </div>
+
+                  {isAlumniUser && (
+                    <div className="mt-8 rounded-xl border border-gray-200 bg-white p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-base font-semibold text-slate-900">Change Password</h3>
+                          <p className="mt-1 text-sm text-slate-600">For security, you must enter your current password.</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700">Current Password</label>
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              type={showCurrentPassword ? "text" : "password"}
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              disabled={isChangingPassword}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrentPassword((v) => !v)}
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                            >
+                              {showCurrentPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700">New Password</label>
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              type={showNewPassword ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              disabled={isChangingPassword}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword((v) => !v)}
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                            >
+                              {showNewPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700">Confirm New Password</label>
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              type={showConfirmPassword ? "text" : "password"}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              disabled={isChangingPassword}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword((v) => !v)}
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                            >
+                              {showConfirmPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleChangePassword}
+                            disabled={isChangingPassword}
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                          >
+                            {isChangingPassword ? "Changing..." : "Change Password"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

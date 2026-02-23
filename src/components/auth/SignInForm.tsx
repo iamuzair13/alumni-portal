@@ -265,7 +265,7 @@ export default function SignInForm() {
         <div className="flex-1 w-full">
           <div className="w-full max-w-md mx-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-md bg-gray-100 dark:bg-white/10 bg-gray-600 flex items-center justify-center" aria-label="Logo">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-md bg-gray-100 dark:bg-white/10  flex items-center justify-center" aria-label="Logo">
                 <Image src="/images/logo/UOL-Rebrand-ID_Final-02.png" alt="Logo" width={40} height={40} className="rounded" sizes="40px" />
               </div>
               <div>
@@ -276,7 +276,6 @@ export default function SignInForm() {
       <div className="fixed inset-0 flex flex-col overflow-y-auto bg-white dark:bg-gray-900 p-4 sm:p-6">
         <div className="flex items-center justify-between border-b pb-3">
           <h2 className="text-lg font-semibold text-slate-900">Alumni Registration</h2>
-          <button aria-label="Close" onClick={closeModal} className="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100">Close</button>
         </div>
         <div className="mt-4">
           <AlumniSqlForm excludeAdminStep={true} onSuccess={closeModal} />

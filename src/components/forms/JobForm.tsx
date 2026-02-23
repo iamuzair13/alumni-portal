@@ -13,6 +13,7 @@ type JobFormValues = {
   deadline: string;
   location: string;
   jobLink: string;
+  jobDescription: string;
 };
 
 type JobFormProps = {
@@ -41,6 +42,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
       deadline: "",
       location: "",
       jobLink: "",
+      jobDescription: "",
     },
   });
 
@@ -93,6 +95,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
     }
     setValue("location", data.location || "");
     setValue("jobLink", data.jobLink || "");
+    setValue("jobDescription", data.jobDescription || "");
   }, [jobId, jobQuery.data, jobQuery.isLoading, setValue]);
 
   const onSubmit = async (data: JobFormValues) => {
@@ -114,6 +117,7 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
           deadline: data.deadline.trim() || null,
           location: data.location.trim() || null,
           jobLink: data.jobLink.trim() || null,
+          jobDescription: data.jobDescription.trim() || null,
         }),
       });
 
@@ -256,6 +260,19 @@ export default function JobForm({ jobId, onSuccess, onCancel }: JobFormProps) {
         {errors.jobLink && (
           <p className="mt-1 text-sm text-red-600">{errors.jobLink.message}</p>
         )}
+      </div>
+
+      <div>
+        <label htmlFor="jobDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Job Description
+        </label>
+        <textarea
+          id="jobDescription"
+          rows={5}
+          {...register("jobDescription")}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Write job responsibilities, requirements, etc."
+        />
       </div>
 
       <div className="flex justify-end gap-3 pt-4">

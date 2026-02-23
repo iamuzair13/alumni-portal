@@ -170,11 +170,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
     
     // Return all fields from tbl_alumni
-    // Password is treated as plain text system-wide; keep existing role gating.
-    const rawPassword = typeof row.password === "string" ? row.password : null;
-    const alumniPassword = rawPassword;
-    const adminPassword = rawPassword;
-    const superAdminPassword = rawPassword;
     return NextResponse.json({ 
       item: {
         alumniid: row.alumniid ?? null,
@@ -238,7 +233,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         linkedin: row.linkedin ?? null,
         datasource: row.datasource ?? null,
         alumnistatus: row.alumnistatus ?? null,
-        password: (isAlumni && isOwner) ? alumniPassword : (isSuperAdmin ? superAdminPassword : (isAdminOrViewer ? adminPassword : null)),
         father_cnic: row.father_cnic ?? null,
         category: row.category ?? null,
         // Higher Education fields
