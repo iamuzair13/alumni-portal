@@ -13,7 +13,7 @@ import Select from "@/components/form/Select";
 import Checkbox from "@/components/form/input/Checkbox";
 import Alert from "@/components/ui/alert/Alert";
 import UserForm from "@/components/forms/UserForm";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminUser } from "@/app/queries/fetch-users";
 import { useSession } from "next-auth/react";
 import { canModify, isAdminUser, isViewerUser, canManageUsers, isSuperAdminUser } from "@/lib/alumniProfile";
@@ -21,6 +21,129 @@ import OrganizationComponent from "@/components/setup/OrganizationComponent";
 import ChaptersComponent from "@/components/setup/ChaptersComponent";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { NewsletterTab } from "@/components/alumni/NewsletterTab";
+
+type LeadershipType = "chapter" | "association";
+type LeadershipRoleName = "president" | "vice_president" | "coordinator";
+
+type LeadershipSettings = {
+  chapter_leadership: boolean;
+  association_leadership: boolean;
+};
+
+type RoleCriterion = {
+  id: number;
+  label: string;
+  description: string | null;
+  is_mandatory: boolean;
+  sort_order: number;
+};
+
+type CriteriaDraft = {
+  id?: number;
+  label: string;
+  description: string;
+  isMandatory: boolean;
+  sortOrder: number;
+};
+
+function roleLabel(role: LeadershipRoleName): string {
+  if (role === "vice_president") return "Vice President";
+  if (role === "coordinator") return "Coordinator";
+  return "President";
+}
+
+function typeLabel(t: LeadershipType): string {
+  return t === "chapter" ? "Chapter Leadership" : "Association Leadership";
+}
+
+async function fetchLeadershipSettings(): Promise<LeadershipSettings> {
+  const res = await fetch("/api/leadership/settings");
+  if (!res.ok) {
+    return { chapter_leadership: true, association_leadership: true };
+  }
+  return res.json();
+}
+
+async function updateLeadershipSetting(formType: "chapter_leadership" | "association_leadership", isEnabled: boolean) {
+  const res = await fetch("/api/leadership/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ formType, isEnabled }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any)?.error || "Failed to update setting");
+  return data as { success: boolean; message?: string };
+}
+
+async function fetchLeadershipCriteria(type: LeadershipType, role: LeadershipRoleName) {
+  const res = await fetch(`/api/leadership/criteria?type=${encodeURIComponent(type)}&role=${encodeURIComponent(role)}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to fetch criteria");
+  return (await res.json()) as { items: RoleCriterion[]; roleDescription?: string };
+}
+
+async function createLeadershipCriterion(input: { type: LeadershipType; role: LeadershipRoleName } & CriteriaDraft) {
+  const res = await fetch("/api/leadership/criteria", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: input.type,
+      role: input.role,
+      label: input.label,
+      description: input.description ? input.description : null,
+      isMandatory: input.isMandatory,
+      sortOrder: input.sortOrder,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to create criterion");
+  return data as { item: RoleCriterion };
+}
+
+async function updateLeadershipCriterion(input: CriteriaDraft) {
+  const res = await fetch("/api/leadership/criteria", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: input.id,
+      label: input.label,
+      description: input.description,
+      isMandatory: input.isMandatory,
+      sortOrder: input.sortOrder,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to update criterion");
+  return data as { item: RoleCriterion };
+}
+
+async function deleteLeadershipCriterion(id: number) {
+  const res = await fetch(`/api/leadership/criteria?id=${encodeURIComponent(String(id))}`, { method: "DELETE" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to delete criterion");
+  return data as { success: boolean };
+}
+
+async function fetchLeadershipRole(type: LeadershipType, role: LeadershipRoleName) {
+  const res = await fetch(`/api/leadership/roles?type=${encodeURIComponent(type)}&role=${encodeURIComponent(role)}`, {
+    headers: { accept: "application/json" },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to fetch role");
+  return data as { role: { role_description?: string | null } | null };
+}
+
+async function updateLeadershipRoleDescription(input: { type: LeadershipType; role: LeadershipRoleName; roleDescription: string }) {
+  const res = await fetch(`/api/leadership/roles`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: input.type, role: input.role, roleDescription: input.roleDescription }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "Failed to update role");
+  return data as { role: { role_description?: string | null } | null };
+}
 
 // ---------------------------
 // Users Management (Frontend-Only)
@@ -49,33 +172,38 @@ const STORAGE_KEY_USERS = "setup_users_v1";
 
 type ToastItem = { id: string; type: "success" | "error"; message: string };
 
-
 function SetupPageContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
   const isAdmin = isAdminUser(session?.user);
   const isSuperAdmin = isSuperAdminUser(session?.user);
+
   const hasModifyAccess = canModify(session?.user);
   const canManage = canManageUsers(session?.user);
 
+  const queryClient = useQueryClient();
+
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  const TABS = [
+  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership";
+
+  const TABS: Array<{ key: SetupTabKey; label: string }> = [
     { key: "users", label: "Users" },
     { key: "organizations", label: "Organizations" },
     { key: "chapters", label: "Chapters" },
     { key: "newsletters", label: "Newsletters" },
-  ] as const;
+    ...(isSuperAdmin ? [{ key: "leadership" as const, label: "Leadership" }] : []),
+  ];
 
   // Get initial tab from URL search params, default to "users"
   const tabFromUrlRaw = safeSearchParams.get("tab");
   const tabFromUrl = tabFromUrlRaw === "newsletter" ? "newsletters" : tabFromUrlRaw;
-  const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
-  const [selected, setSelected] = useState<typeof TABS[number]["key"]>(validTab);
+  const validTab = TABS.find((t) => t.key === (tabFromUrl as SetupTabKey))?.key || "users";
+  const [selected, setSelected] = useState<SetupTabKey>(validTab);
 
   // Update URL when tab changes
-  const handleTabChange = (tab: typeof TABS[number]["key"]) => {
+  const handleTabChange = (tab: SetupTabKey) => {
     setSelected(tab);
     router.push(`/setup?tab=${tab}`, { scroll: false });
   };
@@ -84,9 +212,56 @@ function SetupPageContent() {
   useEffect(() => {
     const tabFromUrlRaw = safeSearchParams.get("tab");
     const tabFromUrl = tabFromUrlRaw === "newsletter" ? "newsletters" : tabFromUrlRaw;
-    const validTab = TABS.find(t => t.key === tabFromUrl)?.key || "users";
+    const validTab = TABS.find((t) => t.key === (tabFromUrl as SetupTabKey))?.key || "users";
     setSelected(validTab);
   }, [safeSearchParams]);
+
+  const [criteriaType, setCriteriaType] = useState<LeadershipType>("chapter");
+  const [criteriaRole, setCriteriaRole] = useState<LeadershipRoleName>("president");
+  const [roleDescriptionDraft, setRoleDescriptionDraft] = useState<string>("");
+  const [savingRoleDescription, setSavingRoleDescription] = useState(false);
+  const [criteriaDraft, setCriteriaDraft] = useState<CriteriaDraft>({
+    label: "",
+    description: "",
+    isMandatory: false,
+    sortOrder: 0,
+  });
+  const [criteriaEditingId, setCriteriaEditingId] = useState<number | null>(null);
+
+  const { data: leadershipSettings, refetch: refetchLeadershipSettings } = useQuery({
+    queryKey: ["leadership-settings"],
+    queryFn: fetchLeadershipSettings,
+    enabled: isSuperAdmin && selected === "leadership",
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: criteriaAdminData, isLoading: criteriaAdminLoading } = useQuery({
+    queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole],
+    queryFn: () => fetchLeadershipCriteria(criteriaType, criteriaRole),
+    enabled: isSuperAdmin && selected === "leadership",
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: roleAdminData, isLoading: roleAdminLoading } = useQuery({
+    queryKey: ["leadership-role-admin", criteriaType, criteriaRole],
+    queryFn: () => fetchLeadershipRole(criteriaType, criteriaRole),
+    enabled: isSuperAdmin && selected === "leadership",
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (selected !== "leadership") return;
+    const s = String(roleAdminData?.role?.role_description ?? "");
+    setRoleDescriptionDraft(s);
+  }, [roleAdminData?.role?.role_description, selected, criteriaType, criteriaRole]);
+
+  const criteriaAdminItems = useMemo(() => {
+    const items = (criteriaAdminData as any)?.items ?? [];
+    return Array.isArray(items) ? (items as RoleCriterion[]) : [];
+  }, [criteriaAdminData]);
 
   // Users management state
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -178,12 +353,12 @@ function SetupPageContent() {
         <div className="flex gap-2">
           {canModify ? (
             <>
-          <Button size="sm" aria-label={`Edit ${user.name}`} startIcon={<PencilIcon />} onClick={onEdit}>
-            <span className="sr-only">Edit</span>
-          </Button>
-          <Button size="sm" variant="outline" aria-label={`Remove ${user.name}`} startIcon={<TrashBinIcon />} onClick={onRemove}>
-            <span className="sr-only">Remove</span>
-          </Button>
+              <Button size="sm" aria-label={`Edit ${user.name}`} startIcon={<PencilIcon />} onClick={onEdit}>
+                <span className="sr-only">Edit</span>
+              </Button>
+              <Button size="sm" variant="outline" aria-label={`Remove ${user.name}`} startIcon={<TrashBinIcon />} onClick={onRemove}>
+                <span className="sr-only">Remove</span>
+              </Button>
             </>
           ) : (
             <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
@@ -309,10 +484,16 @@ function SetupPageContent() {
     );
   };
 
-
   return (
     <div className="">
       <ComponentCard title="Setup" className="overflow-x-hidden">
+        {/* Notifications */}
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+          {toasts.map((t) => (
+            <Alert key={t.id} variant={t.type} title={t.type === "success" ? "Success" : "Error"} message={t.message} />
+          ))}
+        </div>
+
         {/* Role indicator */}
         <div className="mb-4 flex items-center justify-between">
           <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -334,6 +515,7 @@ function SetupPageContent() {
             )}
           </div>
         </div>
+
         <div
           className="tab-list"
           role="tablist"
@@ -368,7 +550,7 @@ function SetupPageContent() {
               aria-label={`Open ${tab.label} tab`}
             >
               <span className="flex items-center gap-2">
-              {tab.label}
+                {tab.label}
                 {tab.key === "users" && (
                   <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                     {usersLoading || realTimeUsersLoading ? "..." : totalUsersCount.toLocaleString()}
@@ -381,13 +563,6 @@ function SetupPageContent() {
 
         {selected === "users" && (
           <div className="mt-6">
-            {/* Notifications */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-              {toasts.map((t) => (
-                <Alert key={t.id} variant={t.type} title={t.type === "success" ? "Success" : "Error"} message={t.message} />
-              ))}
-            </div>
-
             {/* Users Counter */}
             <UsersCounter 
               realTimeCount={realTimeUsersCount}
@@ -412,9 +587,9 @@ function SetupPageContent() {
                 )}
               </div>
               {canManage && (
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
-              </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
+                </div>
               )}
               {!canManage && (
                 <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
@@ -452,53 +627,53 @@ function SetupPageContent() {
               <div className="mt-6">
                 <SyncedTableScroll minWidth={1100}>
                   <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
-                  <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
-                    <tr className="border-b border-gray-200 dark:border-white/[0.06]">
-                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
-                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Role</th>
-                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Status</th>
-                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Last Access</th>
-                      <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Permissions</th>
-                      <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
-                    {filteredUsers.map((u) => (
-                      <tr key={u.id} className="odd:bg-gray-50">
-                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
-                          <div className="flex flex-col">
-                            <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{u.name}</span>
-                            <span className="text-xs text-gray-600 dark:text-gray-300">{u.email}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.role}</td>
-                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.status}</td>
-                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatDateTime(u.lastAccess)}</td>
-                        <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
-                          {Object.entries(u.permissions)
-                            .filter(([, v]) => v)
-                            .map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase())
-                            .join(", ") || "None"}
-                          </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex gap-2 justify-end">
-                            {canManage ? (
-                              <>
-                            <Button size="sm" aria-label={`Edit ${u.name}`} startIcon={<PencilIcon />} onClick={() => setEditUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button size="sm" variant="outline" aria-label={`Remove ${u.name}`} startIcon={<TrashBinIcon />} onClick={() => setRemoveUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
-                              <span className="sr-only">Remove</span>
-                            </Button>
-                              </>
-                            ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{isAdmin ? "Admin - Cannot manage users" : "View only"}</span>
-                            )}
-                          </div>
-                        </td>
+                    <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                      <tr className="border-b border-gray-200 dark:border-white/[0.06]">
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Role</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Status</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Last Access</th>
+                        <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Permissions</th>
+                        <th scope="col" className="px-4 py-3 text-right text-[13px] font-medium text-slate-600 dark:text-gray-300">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
+                    </thead>
+                    <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id} className="odd:bg-gray-50">
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                            <div className="flex flex-col">
+                              <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{u.name}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-300">{u.email}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.role}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.status}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatDateTime(u.lastAccess)}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                            {Object.entries(u.permissions)
+                              .filter(([, v]) => v)
+                              .map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase())
+                              .join(", ") || "None"}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex gap-2 justify-end">
+                              {canManage ? (
+                                <>
+                                  <Button size="sm" aria-label={`Edit ${u.name}`} startIcon={<PencilIcon />} onClick={() => setEditUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                                    <span className="sr-only">Edit</span>
+                                  </Button>
+                                  <Button size="sm" variant="outline" aria-label={`Remove ${u.name}`} startIcon={<TrashBinIcon />} onClick={() => setRemoveUserId(u.id)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                                    <span className="sr-only">Remove</span>
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{isAdmin ? "Admin - Cannot manage users" : "View only"}</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                   </table>
                 </SyncedTableScroll>
               </div>
@@ -506,49 +681,49 @@ function SetupPageContent() {
 
             {/* Add User Modal */}
             {canManage && (
-            <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
-              <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                <h4 className="text-2xl font-bold text-gray-900 dark:text-white">Add New User</h4>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Create a new user account with appropriate access permissions</p>
-              </div>
-              <UserForm />
-            </Modal>
+              <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <h4 className="text-2xl font-bold text-gray-900 dark:text-white">Add New User</h4>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Create a new user account with appropriate access permissions</p>
+                </div>
+                <UserForm />
+              </Modal>
             )}
 
             {/* Edit User Modal */}
             {canManage && (
-            <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[720px] p-5 lg:p-10">
-              <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Permissions</h4>
-              {editUserId && (
-                <AddOrEditUserForm
-                  mode="edit"
-                  initial={users.find((u) => u.id === editUserId)!}
-                  onCancel={() => setEditUserId(null)}
-                  onSubmit={(payload) => {
-                    setUsers((prev) => prev.map((u) => (u.id === editUserId ? { ...u, ...payload } : u)));
-                    setEditUserId(null);
-                    pushToast("success", "User updated.");
-                  }}
-                />
-              )}
-            </Modal>
+              <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[720px] p-5 lg:p-10">
+                <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Permissions</h4>
+                {editUserId && (
+                  <AddOrEditUserForm
+                    mode="edit"
+                    initial={users.find((u) => u.id === editUserId)!}
+                    onCancel={() => setEditUserId(null)}
+                    onSubmit={(payload) => {
+                      setUsers((prev) => prev.map((u) => (u.id === editUserId ? { ...u, ...payload } : u)));
+                      setEditUserId(null);
+                      pushToast("success", "User updated.");
+                    }}
+                  />
+                )}
+              </Modal>
             )}
 
             {/* Remove User Modal */}
             {canManage && (
-            <Modal isOpen={!!removeUserId} onClose={() => setRemoveUserId(null)} className="max-w-[520px] p-5 lg:p-8">
-              <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Removal</h4>
-              <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to remove access for this user?</p>
-              <div className="flex items-center justify-end w-full gap-3 mt-6">
-                <Button size="sm" variant="outline" onClick={() => setRemoveUserId(null)} aria-label="Cancel removal">Cancel</Button>
-                <Button size="sm" onClick={() => {
-                  if (!removeUserId) return;
-                  setUsers((prev) => prev.filter((u) => u.id !== removeUserId));
-                  setRemoveUserId(null);
-                  pushToast("success", "User removed.");
-                }} aria-label="Confirm removal">Remove</Button>
-              </div>
-            </Modal>
+              <Modal isOpen={!!removeUserId} onClose={() => setRemoveUserId(null)} className="max-w-[520px] p-5 lg:p-8">
+                <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Removal</h4>
+                <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to remove access for this user?</p>
+                <div className="flex items-center justify-end w-full gap-3 mt-6">
+                  <Button size="sm" variant="outline" onClick={() => setRemoveUserId(null)} aria-label="Cancel removal">Cancel</Button>
+                  <Button size="sm" onClick={() => {
+                    if (!removeUserId) return;
+                    setUsers((prev) => prev.filter((u) => u.id !== removeUserId));
+                    setRemoveUserId(null);
+                    pushToast("success", "User removed.");
+                  }} aria-label="Confirm removal">Remove</Button>
+                </div>
+              </Modal>
             )}
           </div>
         )}
@@ -571,10 +746,321 @@ function SetupPageContent() {
           </div>
         )}
 
-        {/* Add/Edit User Form Component */}
-        
-        
+        {selected === "leadership" && isSuperAdmin && (
+          <div className="mt-6 space-y-6">
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/50">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Form Settings</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex-1 min-w-0">
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">Chapter Leadership</label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Enable/disable form</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const currentValue = leadershipSettings?.chapter_leadership ?? true;
+                        await updateLeadershipSetting("chapter_leadership", !currentValue);
+                        pushToast("success", `Chapter Leadership form ${!currentValue ? "enabled" : "disabled"}`);
+                        await refetchLeadershipSettings();
+                      } catch (e) {
+                        pushToast("error", e instanceof Error ? e.message : "Failed");
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                      leadershipSettings?.chapter_leadership ?? true ? "bg-blue-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        leadershipSettings?.chapter_leadership ?? true ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
 
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex-1 min-w-0">
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">Association Leadership</label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Enable/disable form</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const currentValue = leadershipSettings?.association_leadership ?? true;
+                        await updateLeadershipSetting("association_leadership", !currentValue);
+                        pushToast("success", `Association Leadership form ${!currentValue ? "enabled" : "disabled"}`);
+                        await refetchLeadershipSettings();
+                      } catch (e) {
+                        pushToast("error", e instanceof Error ? e.message : "Failed");
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                      leadershipSettings?.association_leadership ?? true ? "bg-blue-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        leadershipSettings?.association_leadership ?? true ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Role Criteria Management</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Configure criteria rules for leadership roles.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={criteriaType}
+                    onChange={(e) => {
+                      setCriteriaType(e.target.value as LeadershipType);
+                      setCriteriaEditingId(null);
+                      setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
+                    }}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="chapter">Chapter</option>
+                    <option value="association">Association</option>
+                  </select>
+                  <select
+                    value={criteriaRole}
+                    onChange={(e) => {
+                      setCriteriaRole(e.target.value as LeadershipRoleName);
+                      setCriteriaEditingId(null);
+                      setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
+                    }}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="president">President</option>
+                    <option value="vice_president">Vice President</option>
+                    <option value="coordinator">Coordinator</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Role Description ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Informational only. Not selectable and not a validation rule.</div>
+                    <textarea
+                      value={roleDescriptionDraft}
+                      onChange={(e) => setRoleDescriptionDraft(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                      rows={6}
+                      placeholder={roleAdminLoading ? "Loading..." : "Enter role description"}
+                      disabled={roleAdminLoading || savingRoleDescription}
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            setSavingRoleDescription(true);
+                            await updateLeadershipRoleDescription({
+                              type: criteriaType,
+                              role: criteriaRole,
+                              roleDescription: roleDescriptionDraft,
+                            });
+                            pushToast("success", "Role description saved");
+                            queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
+                            queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                          } catch (e) {
+                            pushToast("error", e instanceof Error ? e.message : "Failed");
+                          } finally {
+                            setSavingRoleDescription(false);
+                          }
+                        }}
+                        disabled={savingRoleDescription || roleAdminLoading}
+                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        {savingRoleDescription ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Criteria List ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
+                  </div>
+                  <div className="p-4 max-h-[420px] overflow-y-auto">
+                    {criteriaAdminLoading ? (
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Loading...</div>
+                    ) : criteriaAdminItems.length === 0 ? (
+                      <div className="text-sm text-gray-600 dark:text-gray-400">No criteria yet.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {criteriaAdminItems.map((c) => (
+                          <div key={c.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{c.label}</div>
+                                  {c.is_mandatory ? (
+                                    <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
+                                  ) : (
+                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
+                                  )}
+                                </div>
+                                {c.description ? <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{c.description}</div> : null}
+                                <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">Sort: {c.sort_order}</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCriteriaEditingId(Number(c.id));
+                                    setCriteriaDraft({
+                                      id: Number(c.id),
+                                      label: String(c.label ?? ""),
+                                      description: String(c.description ?? ""),
+                                      isMandatory: Boolean(c.is_mandatory),
+                                      sortOrder: Number(c.sort_order ?? 0),
+                                    });
+                                  }}
+                                  className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await deleteLeadershipCriterion(Number(c.id));
+                                      pushToast("success", "Deleted");
+                                      queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                                    } catch (e) {
+                                      pushToast("error", e instanceof Error ? e.message : "Failed");
+                                    }
+                                  }}
+                                  className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    {criteriaEditingId ? "Edit Criterion" : "Add Criterion"}
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Label *</label>
+                      <input
+                        value={criteriaDraft.label}
+                        onChange={(e) => setCriteriaDraft((p) => ({ ...p, label: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                        placeholder="e.g., Minimum 5 years experience"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                      <textarea
+                        value={criteriaDraft.description}
+                        onChange={(e) => setCriteriaDraft((p) => ({ ...p, description: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                        rows={3}
+                        placeholder="Optional help text"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
+                        <input
+                          type="number"
+                          value={criteriaDraft.sortOrder}
+                          onChange={(e) => setCriteriaDraft((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-6">
+                        <input
+                          id="criteria-mandatory"
+                          type="checkbox"
+                          checked={criteriaDraft.isMandatory}
+                          onChange={(e) => setCriteriaDraft((p) => ({ ...p, isMandatory: e.target.checked }))}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <label htmlFor="criteria-mandatory" className="text-sm font-medium text-gray-900 dark:text-gray-100">Mandatory</label>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      {criteriaEditingId ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCriteriaEditingId(null);
+                            setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
+                          }}
+                          className="rounded-lg px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const label = String(criteriaDraft.label || "").trim();
+                          if (!label) {
+                            pushToast("error", "Label is required");
+                            return;
+                          }
+                          try {
+                            if (criteriaEditingId) {
+                              await updateLeadershipCriterion({
+                                id: criteriaEditingId,
+                                label,
+                                description: criteriaDraft.description,
+                                isMandatory: criteriaDraft.isMandatory,
+                                sortOrder: criteriaDraft.sortOrder,
+                              });
+                              pushToast("success", "Updated");
+                            } else {
+                              await createLeadershipCriterion({
+                                type: criteriaType,
+                                role: criteriaRole,
+                                label,
+                                description: criteriaDraft.description,
+                                isMandatory: criteriaDraft.isMandatory,
+                                sortOrder: criteriaDraft.sortOrder,
+                              });
+                              pushToast("success", "Created");
+                            }
+                            setCriteriaEditingId(null);
+                            setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
+                            queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                          } catch (e) {
+                            pushToast("error", e instanceof Error ? e.message : "Failed");
+                          }
+                        }}
+                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        {criteriaEditingId ? "Save" : "Add"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </ComponentCard>
 
       <style jsx>{`

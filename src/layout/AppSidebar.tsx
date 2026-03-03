@@ -132,6 +132,8 @@ const navItems: NavItem[] = [
 
       { name: "Newsletters", path: "/setup?tab=newsletters" },
 
+      { name: "Leadership Settings", path: "/setup?tab=leadership" },
+
       { name: "Activity Logs", path: "/activity-logs" },
 
     ],

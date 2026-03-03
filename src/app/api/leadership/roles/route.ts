@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify } from "@/lib/alumniProfile";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
 
 type LeadershipType = "chapter" | "association";
 type RoleName = "president" | "vice_president" | "coordinator";
@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!canModify(session.user)) {
+    if (!isSuperAdminUser(session.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

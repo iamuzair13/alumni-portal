@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify } from "@/lib/alumniProfile";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
 
 // Get leadership form settings
 export async function GET() {
@@ -52,9 +52,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only admin and superadmin can update settings
-    if (!canModify(session.user)) {
-      return NextResponse.json({ error: "Forbidden: Only admins can update settings" }, { status: 403 });
+    if (!isSuperAdminUser(session.user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
