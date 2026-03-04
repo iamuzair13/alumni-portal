@@ -29,6 +29,7 @@ import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
 
 type Profile = {
   alumniname: string | null;
+  gender: string | null;
   image1: string | null;
   image2: string | null;
   campusname: string | null;
@@ -60,6 +61,7 @@ async function getProfile(searchParams: { sapid?: string }) {
       const rows = await sql/* sql */`
         SELECT 
           a.alumniname, 
+          a.gender,
           a.image1, 
           a.image2, 
           a.campusname, 
@@ -93,6 +95,7 @@ async function getProfile(searchParams: { sapid?: string }) {
       const rows = await sql/* sql */`
         SELECT 
           a.alumniname, 
+          a.gender,
           a.image1, 
           a.image2, 
           a.campusname, 
@@ -124,6 +127,7 @@ async function getProfile(searchParams: { sapid?: string }) {
       const rows = await sql/* sql */`
         SELECT 
           a.alumniname, 
+          a.gender,
           a.image1, 
           a.image2, 
           a.campusname, 
@@ -150,6 +154,7 @@ async function getProfile(searchParams: { sapid?: string }) {
       const rows = await sql/* sql */`
         SELECT 
           a.alumniname, 
+          a.gender,
           a.image1, 
           a.image2, 
           a.campusname, 
@@ -814,8 +819,11 @@ let cardImageFile: string | null = null;
                                 studentName={name}
                                 department={dept}
                                 faculty={faculty}
+                                campus={p?.campusname ?? null}
+                                passingYear={p?.yearofending ?? null}
                                 alumniId={sapId || "UOL-AL-0000"}
                                 sapId={sapId || ""}
+                                gender={p?.gender ?? null}
                                 cnicPassport={cnicPassport}
                                 validity={validity}
                                 photoUrl={profileImageFilename}

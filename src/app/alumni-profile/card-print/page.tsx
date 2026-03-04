@@ -14,14 +14,18 @@ const roboto = Roboto({
 });
 
 // Images from public folder
-const frontTemplate = "/images/cards/alumni-card-front.jpg";
-const backTemplate = "/images/cards/alumni-card-back.jpg";
+const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
+const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
+const backTemplate = "/images/cards/alumni-card-back.jpeg";
 
 type AlumniCardData = {
   studentName: string;
   department: string;
   faculty: string;
   alumniId: string;
+  campus?: string | null;
+  passingYear?: number | string | null;
+  gender?: string | null;
   sapId?: string | null;
   registrationNo?: string | null;
   validity?: string | null;
@@ -47,6 +51,19 @@ function CardPrintPageContent() {
   const sapBarcodeRef = useRef<SVGSVGElement>(null);
   const regBarcodeRef = useRef<SVGSVGElement>(null);
   const alumniInfoRef = useRef<HTMLDivElement>(null);
+
+  const infoTextClass = (() => {
+    const g = String(cardData?.gender ?? "").trim().toLowerCase();
+    const isMale = g === "male" || g === "m";
+    return isMale ? "text-[#0f7a3a]" : "text-white";
+  })();
+
+  const getFrontTemplate = () => {
+    const g = String(cardData?.gender ?? "").trim().toLowerCase();
+    if (g === "female" || g === "f") return femaleFrontTemplate;
+    if (g === "male" || g === "m") return maleFrontTemplate;
+    return maleFrontTemplate;
+  };
 
   // Fetch alumni data
   useEffect(() => {
@@ -94,6 +111,9 @@ function CardPrintPageContent() {
           department: alumni.departmentname || "",
           faculty: alumni.facultyname || "",
           alumniId: alumni.sapid || alumni.registrationno || "UOL-AL-0000",
+          campus: alumni.campusname || null,
+          passingYear: alumni.yearofending ?? null,
+          gender: alumni.gender || null,
           sapId: alumni.sapid || null,
           registrationNo: alumni.registrationno || null,
           validity: validity,
@@ -164,6 +184,16 @@ function CardPrintPageContent() {
     return "/images/person.jpg";
   };
 
+  const preloadImage = (src: string) => {
+    return new Promise<void>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = src;
+    });
+  };
+
   const handleDownloadPDF = async () => {
     if (!frontSideRef.current || !backSideRef.current || isGenerating || !cardData) return;
 
@@ -171,6 +201,26 @@ function CardPrintPageContent() {
 
     try {
       setIsGenerating(true);
+
+      // Ensure fonts are loaded before rasterizing (prevents text shifting in canvas/PDF)
+      if (typeof document !== "undefined" && "fonts" in document) {
+        try {
+          const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts;
+          if (fonts?.ready) {
+            await fonts.ready;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Ensure images are loaded before rasterizing
+      await Promise.all([
+        preloadImage(getFrontTemplate()),
+        preloadImage(backTemplate),
+        preloadImage(getPhotoUrl()),
+      ]);
+
       if (alumniInfoRef.current) {
         originalAlumniTransform = alumniInfoRef.current.style.transform;
         alumniInfoRef.current.style.transform = "translateY(-6px)";
@@ -182,21 +232,31 @@ function CardPrintPageContent() {
       const cardHeightPt = 5.2 * 28.35; // 147.42pt
 
       // Capture front side
+      const frontRect = frontSideRef.current.getBoundingClientRect();
       const frontCanvas = await html2canvas(frontSideRef.current, {
-        scale: 2,
+        scale: Math.max(2, Math.ceil((typeof window !== "undefined" ? window.devicePixelRatio : 2) || 2)),
         backgroundColor: null, // Transparent background to avoid white space
         useCORS: true,
         allowTaint: true,
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        width: Math.round(frontRect.width),
+        height: Math.round(frontRect.height),
       });
 
       // Capture back side
+      const backRect = backSideRef.current.getBoundingClientRect();
       const backCanvas = await html2canvas(backSideRef.current, {
-        scale: 2,
+        scale: Math.max(2, Math.ceil((typeof window !== "undefined" ? window.devicePixelRatio : 2) || 2)),
         backgroundColor: null, // Transparent background to avoid white space
         useCORS: true,
         allowTaint: true,
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        width: Math.round(backRect.width),
+        height: Math.round(backRect.height),
       });
 
       // Create PDF with exact card dimensions (8.5cm x 5.2cm in points)
@@ -298,7 +358,7 @@ function CardPrintPageContent() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={frontTemplate}
+              src={getFrontTemplate()}
               alt="Alumni card front template"
               className="w-full h-full object-cover"
               style={{
@@ -306,35 +366,43 @@ function CardPrintPageContent() {
               }}
             />
 
-            {/* Student Name, Department, Faculty */}
-            <div className="absolute left-[1%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a]">
-              <span className="text-[11px] font-semibold leading-tight tracking-tight">
+            {/* Student Name */}
+            <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
+              <span className="text-[14px] leading-tight tracking-tight">
                 {cardData.studentName || "Alumni Name"}
               </span>
-              <span className="text-[9px] font-semibold leading-tight">
-                {cardData.department || "Department"}
-              </span>
-              <span className="text-[8px] font-semibold leading-tight">
-                {cardData.faculty || "Faculty"}
-              </span>
             </div>
 
-            {/* Alumni ID, Validity, and CNIC/Passport */}
+            {/* CNIC/Passport */}
+            {cardData.cnicPassport && (
+              <div className={`absolute top-[44%] left-[18%] flex flex-row justify-center items-center gap-8 ${infoTextClass}`}>
+                <span className="text-[11px] font-medium">{cardData.cnicPassport || ""}</span>
+              </div>
+            )}
+
+            {/* Alumni ID, Campus, Validity */}
             <div
               ref={alumniInfoRef}
-              className="absolute bottom-[28%] left-[20%] flex flex-col gap-0.5 text-[#0f7a3a]"
+              className={`absolute top-[52%] left-[23%] flex flex-col justify-start items-start gap-0.2 ${infoTextClass}`}
             >
-              <span className="text-[8px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
-              <span className="text-[8px] font-medium">{formattedValidity()}</span>
+              <span className="text-[10px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
+              <span className="text-[10px] font-medium">{cardData.campus || "Campus"}</span>
+              <span className="text-[10px] font-medium">{formattedValidity()}</span>
             </div>
-              {cardData.cnicPassport && (
-                <div className="absolute bottom-[21%] left-[1%] flex flex-row justify-center items-center gap-8 text-[#0f7a3a]">
-                <p className="text-[10px]">CNIC :</p> <span className="text-[8px] font-medium">{cardData.cnicPassport || ""}</span>
+
+            {/* Department | Passing Year and Faculty */}
+            <div className={`absolute left-[7%] bottom-[10%] right-[35%] ${infoTextClass} flex flex-col justify-start items-start`}>
+              <div className="text-[8px] font-medium leading-tight ">
+                {cardData.department || "Department"}
+                {cardData.passingYear ? ` | ${cardData.passingYear}` : ""}
+              </div>
+              <div className="text-[8px] font-medium leading-tight opacity-95">
+                {cardData.faculty || "Faculty"}
+              </div>
             </div>
-              )}
 
             {/* Photo */}
-            <div className="absolute right-[4%] top-[16%] flex h-[70%] w-[32%] items-center justify-center overflow-hidden rounded-sm">
+            <div className="absolute right-[14%] top-[28%] flex  w-[20%] items-center justify-center overflow-hidden rounded-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getPhotoUrl()}

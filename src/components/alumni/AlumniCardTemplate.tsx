@@ -10,13 +10,17 @@ const roboto = Roboto({
 });
 
 // Images from public folder are referenced as URL strings
-const frontTemplate = "/images/cards/alumni-card-front.jpg";
+const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
+const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
 
 type AlumniCardTemplateProps = {
   studentName: string;
   department: string;
   faculty: string;
+  campus?: string | null;
+  passingYear?: number | string | null;
   alumniId: string;
+  gender?: string | null;
   cnicPassport?: string | null;
   validity?: string; // Format: YYYY-MM or MM/YYYY
   photoUrl?: string | null; // Profile/thumbnail image filename or path
@@ -27,13 +31,29 @@ export default function AlumniCardTemplate({
   studentName,
   department,
   faculty,
+  campus,
+  passingYear,
   alumniId,
+  gender,
   cnicPassport,
   validity,
   photoUrl,
   cardImage,
 }: AlumniCardTemplateProps) {
   const [imageIndex, setImageIndex] = useState(0);
+
+  const infoTextClass = useMemo(() => {
+    const g = String(gender ?? "").trim().toLowerCase();
+    const isMale = g === "male" || g === "m";
+    return isMale ? "text-[#163D30]" : "text-white";
+  }, [gender]);
+
+  const frontTemplate = useMemo(() => {
+    const g = String(gender ?? "").trim().toLowerCase();
+    if (g === "female" || g === "f") return femaleFrontTemplate;
+    if (g === "male" || g === "m") return maleFrontTemplate;
+    return maleFrontTemplate;
+  }, [gender]);
 
   const normalizeImagePath = (raw: string | null | undefined): string | null => {
     if (!raw) return null;
@@ -136,31 +156,38 @@ export default function AlumniCardTemplate({
         />
 
         {/* Student Name, Department, Faculty */}
-        <div className="absolute left-[2%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a] flex flex-col justify-start items-start">
-          <span className="text-[11px] font-semibold leading-tight tracking-tight">
+        <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
+          <span className="text-[14px]  leading-tight tracking-tight">
             {studentName || "Alumni Name"}
           </span>
-          <span className="text-[9px] font-semibold leading-tight">
-            {department || "Department"}
-          </span>
-          <span className="text-[8px] font-semibold leading-tight">
-            {faculty || "Faculty"}
-          </span>
+        </div>
+
+         {/* CNIC/Passport */}
+
+         <div className={`absolute top-[44%] left-[18%] flex flex-row justify-center items-center gap-8 ${infoTextClass}`}>
+         <span className="text-[11px] font-medium">{cnicPassport || ""}</span>
         </div>
 
         {/* Alumni ID and Validity */}
-        <div className="absolute bottom-[28%] left-[20%] flex flex-col justify-start items-start gap-0.3 text-[#0f7a3a]">
-          <span className="text-[8px] font-medium">{alumniId || "UOL-AL-0000"}</span>
-          <span className="text-[8px] font-medium">{formattedValidity}</span>
+        <div className={`absolute top-[52%] left-[23%] flex flex-col justify-start items-start gap-0.2 ${infoTextClass}`}>
+          <span className="text-[10px] font-medium">{alumniId || "UOL-AL-0000"}</span>
+          <span className="text-[10px] font-medium">{campus || "Campus"}</span>
+          <span className="text-[10px] font-medium">{formattedValidity}</span>
         </div>
 
-        {/* CNIC/Passport */}
-        <div className="absolute bottom-[21%] left-[1%] flex flex-row justify-center items-center gap-8 text-[#0f7a3a]">
-         <p className="text-[10px]">CNIC :</p> <span className="text-[8px] font-medium">{cnicPassport || ""}</span>
+        <div className={`absolute left-[7%] bottom-[10%] right-[35%] ${infoTextClass} flex flex-col justify-start items-start`}>
+          <div className="text-[8px] font-medium leading-tight ">
+            {department || "Department"}
+            {passingYear ? ` | ${passingYear}` : ""}
+          </div>
+          <div className="text-[8px] font-medium leading-tight opacity-95">
+            {faculty || "Faculty"}
+          </div>
         </div>
+
 
         {/* Photo */}
-        <div className="absolute right-[5%] top-[18%] flex  w-[30%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+        <div className="absolute right-[14%] top-[28%] flex  w-[20%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={`${activeImageSrc}-${imageIndex}`}

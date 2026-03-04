@@ -7,8 +7,11 @@ type AlumniCardClientProps = {
   studentName: string;
   department: string;
   faculty: string;
+  campus?: string | null;
+  passingYear?: number | string | null;
   alumniId: string;
   sapId: string;
+  gender?: string | null;
   cnicPassport?: string | null;
   validity?: string;
   photoUrl?: string | null; // Profile image from tbl_alumni.image1
@@ -21,8 +24,11 @@ export default function AlumniCardClient({
   studentName,
   department,
   faculty,
+  campus,
+  passingYear,
   alumniId,
   sapId,
+  gender,
   cnicPassport,
   validity,
   photoUrl,
@@ -49,7 +55,10 @@ export default function AlumniCardClient({
       studentName={studentName}
       department={department}
       faculty={faculty}
+      campus={campus}
+      passingYear={passingYear}
       alumniId={alumniId}
+      gender={gender}
       cnicPassport={cnicPassport}
       validity={computedValidity}
       photoUrl={photoUrl}
