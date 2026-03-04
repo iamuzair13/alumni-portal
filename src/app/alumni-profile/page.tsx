@@ -568,6 +568,7 @@ let cardImageFile: string | null = null;
   
   let leadershipInfo: LeadershipInfo = { type: null, role: null, roleDisplay: null };
   let leadershipError: string | null = null;
+  let leadershipGovernanceHtml: string | null = null;
   
   if (alumniId) {
     try {
@@ -614,6 +615,36 @@ let cardImageFile: string | null = null;
       leadershipError = e instanceof Error ? e.message : "Failed to load leadership information";
     }
   }
+
+  const mapLeadershipRoleToRoleName = (rawRole: string): "president" | "vice_president" | "coordinator" | null => {
+    const s = String(rawRole || "").trim().toLowerCase();
+    if (!s) return null;
+    if (s.includes("vice")) return "vice_president";
+    if (s.includes("coordinator")) return "coordinator";
+    if (s.includes("president")) return "president";
+    return null;
+  };
+
+  if (leadershipInfo.type && leadershipInfo.roleDisplay) {
+    try {
+      const roleName = mapLeadershipRoleToRoleName(leadershipInfo.roleDisplay);
+      if (roleName) {
+        const governanceRows = await sql/* sql */`
+          SELECT office_term_governance_html
+          FROM public.leadership_roles
+          WHERE leadership_type = ${leadershipInfo.type}
+            AND role_name = ${roleName}
+          LIMIT 1
+        `;
+        const governanceRec = governanceRows?.[0] as { office_term_governance_html?: string | null } | undefined;
+        const html = String(governanceRec?.office_term_governance_html ?? "").trim();
+        leadershipGovernanceHtml = html ? html : null;
+      }
+    } catch {
+      leadershipGovernanceHtml = null;
+    }
+  }
+
   return (
     <>
     <div className=" bg-slate-100 overflow-x-hidden">
@@ -647,7 +678,7 @@ let cardImageFile: string | null = null;
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
-                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} leadershipInfo={leadershipInfo} leadershipError={leadershipError} />
+                  <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} leadershipInfo={leadershipInfo} leadershipError={leadershipError} leadershipGovernanceHtml={leadershipGovernanceHtml} />
                 ) : canView ? (
                   <div className="w-full p-8 text-center">
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
@@ -682,6 +713,7 @@ let cardImageFile: string | null = null;
                     associationError={associationError}
                     leadershipInfo={leadershipInfo}
                     leadershipError={leadershipError}
+                    leadershipGovernanceHtml={leadershipGovernanceHtml}
                   />
                 )}
                 </div>

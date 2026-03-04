@@ -63,11 +63,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, post, criteriaIds, additionalAchievements } = body as {
+    const { alumniId, post, criteriaIds, additionalAchievements, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
       alumniId?: number;
       post?: string;
       criteriaIds?: unknown;
       additionalAchievements?: unknown;
+      cvFileUrl?: unknown;
+      additionalFile1Url?: unknown;
+      additionalFile2Url?: unknown;
     };
 
     if (!alumniId) {
@@ -129,6 +132,14 @@ export async function POST(request: NextRequest) {
     const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
     const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
 
+    const cvFileUrlValue = typeof cvFileUrl === "string" && cvFileUrl.trim() ? cvFileUrl.trim().slice(0, 500) : null;
+    const additionalFile1UrlValue = typeof additionalFile1Url === "string" && additionalFile1Url.trim() ? additionalFile1Url.trim().slice(0, 500) : null;
+    const additionalFile2UrlValue = typeof additionalFile2Url === "string" && additionalFile2Url.trim() ? additionalFile2Url.trim().slice(0, 500) : null;
+
+    if (!cvFileUrlValue) {
+      return NextResponse.json({ error: "CV upload is required" }, { status: 400 });
+    }
+
     // Check if alumni already has a pending application (by alumniid)
     const pendingApp = await sql/* sql */`
       SELECT id, status FROM public.chapter_leadership 
@@ -164,8 +175,28 @@ export async function POST(request: NextRequest) {
     // Store alumniid for reference (aligned with schema)
     // Use INSERT with ON CONFLICT to prevent duplicates (if unique constraint exists)
     const newChapterLeadership = await sql/* sql */`
-      INSERT INTO public.chapter_leadership (post, created_at, status, updated_at, alumniid, additional_achievements)
-      VALUES (${postDisplayName}, NOW(), 'pending', NOW(), ${alumniIdNum}, ${additionalAchievementsValue})
+      INSERT INTO public.chapter_leadership (
+        post,
+        created_at,
+        status,
+        updated_at,
+        alumniid,
+        additional_achievements,
+        cv_file_url,
+        additional_file1_url,
+        additional_file2_url
+      )
+      VALUES (
+        ${postDisplayName},
+        NOW(),
+        'pending',
+        NOW(),
+        ${alumniIdNum},
+        ${additionalAchievementsValue},
+        ${cvFileUrlValue},
+        ${additionalFile1UrlValue},
+        ${additionalFile2UrlValue}
+      )
       RETURNING id, status
     `;
     

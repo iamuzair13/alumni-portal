@@ -3,7 +3,7 @@
 import type { FC } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -169,10 +169,16 @@ const UnifiedHeader: FC<Props> = ({ variant, showTabsContent = true }) => {
 const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
   const getTabFromUrl = () => {
+    const p = String(pathname ?? "");
+    if (p === "/leadership" || p.startsWith("/leadership/")) {
+      return "Leadership";
+    }
+
     const tabFromUrl = safeSearchParams.get("tab");
     if (tabFromUrl && urlTabToMenuKey[tabFromUrl]) {
       return urlTabToMenuKey[tabFromUrl];
@@ -212,7 +218,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     const validTab = getTabFromUrl();
     setSelected(validTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeSearchParams]);
+  }, [safeSearchParams, pathname]);
 
   const renderCounterPair = (key: MenuKey, isSelected: boolean) => {
     const c = tabCounts[key];

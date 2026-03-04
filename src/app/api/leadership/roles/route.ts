@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     }
 
     const rows = await sql/* sql */`
-      SELECT id, leadership_type, role_name, role_description
+      SELECT id, leadership_type, role_name, role_description, office_term_governance_html, code_of_ethics, compliance_declaration
       FROM public.leadership_roles
       WHERE leadership_type = ${type}
         AND role_name = ${role}
@@ -60,6 +60,9 @@ export async function PUT(req: NextRequest) {
       type?: LeadershipType;
       role?: RoleName;
       roleDescription?: string | null;
+      officeTermGovernanceHtml?: string | null;
+      codeOfEthics?: string | null;
+      complianceDeclaration?: string | null;
     };
 
     const type = parseLeadershipType(body.type ?? null);
@@ -68,16 +71,36 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Invalid type or role" }, { status: 400 });
     }
 
-    const roleDescription = body.roleDescription === null || body.roleDescription === undefined
-      ? null
-      : String(body.roleDescription);
+    const setRoleDescription = Object.prototype.hasOwnProperty.call(body, "roleDescription");
+    const roleDescription = setRoleDescription
+      ? (body.roleDescription === null ? null : String(body.roleDescription ?? ""))
+      : null;
+
+    const setGovernance = Object.prototype.hasOwnProperty.call(body, "officeTermGovernanceHtml");
+    const officeTermGovernanceHtml = setGovernance
+      ? (body.officeTermGovernanceHtml === null ? null : String(body.officeTermGovernanceHtml ?? ""))
+      : null;
+
+    const setCodeOfEthics = Object.prototype.hasOwnProperty.call(body, "codeOfEthics");
+    const codeOfEthics = setCodeOfEthics
+      ? (body.codeOfEthics === null ? null : String(body.codeOfEthics ?? ""))
+      : null;
+
+    const setComplianceDeclaration = Object.prototype.hasOwnProperty.call(body, "complianceDeclaration");
+    const complianceDeclaration = setComplianceDeclaration
+      ? (body.complianceDeclaration === null ? null : String(body.complianceDeclaration ?? ""))
+      : null;
 
     const rows = await sql/* sql */`
       UPDATE public.leadership_roles
-      SET role_description = ${roleDescription}
+      SET
+          role_description = CASE WHEN ${setRoleDescription} THEN ${roleDescription} ELSE role_description END,
+          office_term_governance_html = CASE WHEN ${setGovernance} THEN ${officeTermGovernanceHtml} ELSE office_term_governance_html END,
+          code_of_ethics = CASE WHEN ${setCodeOfEthics} THEN ${codeOfEthics} ELSE code_of_ethics END,
+          compliance_declaration = CASE WHEN ${setComplianceDeclaration} THEN ${complianceDeclaration} ELSE compliance_declaration END
       WHERE leadership_type = ${type}
         AND role_name = ${role}
-      RETURNING id, leadership_type, role_name, role_description
+      RETURNING id, leadership_type, role_name, role_description, office_term_governance_html, code_of_ethics, compliance_declaration
     `;
 
     return NextResponse.json({ role: rows?.[0] ?? null }, { status: 200 });

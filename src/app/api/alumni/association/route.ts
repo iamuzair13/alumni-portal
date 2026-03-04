@@ -222,11 +222,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, role, criteriaIds, additionalAchievements } = body as {
+    const { alumniId, role, criteriaIds, additionalAchievements, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
       alumniId?: number;
       role?: string;
       criteriaIds?: unknown;
       additionalAchievements?: unknown;
+      cvFileUrl?: unknown;
+      additionalFile1Url?: unknown;
+      additionalFile2Url?: unknown;
     };
 
     if (!alumniId) {
@@ -288,6 +291,14 @@ export async function POST(request: NextRequest) {
     const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
     const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
 
+    const cvFileUrlValue = typeof cvFileUrl === "string" && cvFileUrl.trim() ? cvFileUrl.trim().slice(0, 500) : null;
+    const additionalFile1UrlValue = typeof additionalFile1Url === "string" && additionalFile1Url.trim() ? additionalFile1Url.trim().slice(0, 500) : null;
+    const additionalFile2UrlValue = typeof additionalFile2Url === "string" && additionalFile2Url.trim() ? additionalFile2Url.trim().slice(0, 500) : null;
+
+    if (!cvFileUrlValue) {
+      return NextResponse.json({ error: "CV upload is required" }, { status: 400 });
+    }
+
     // Check if alumni already has a pending application (by alumni_id)
     const pendingApp = await sql/* sql */`
       SELECT id, status FROM public.tblalumniassociation 
@@ -319,8 +330,26 @@ export async function POST(request: NextRequest) {
     // Insert new record with status='pending' (DO NOT link to tbl_alumni yet)
     // Aligned with schema - add status, rejection_reason, updated_at, alumni_id
     const insertResult = await sql/* sql */`
-      INSERT INTO public.tblalumniassociation (q3, createddatetime, status, alumni_id, additional_achievements)
-      VALUES (${roleDisplayName}, NOW(), 'pending', ${alumniIdNum}, ${additionalAchievementsValue})
+      INSERT INTO public.tblalumniassociation (
+        q3,
+        createddatetime,
+        status,
+        alumni_id,
+        additional_achievements,
+        cv_file_url,
+        additional_file1_url,
+        additional_file2_url
+      )
+      VALUES (
+        ${roleDisplayName},
+        NOW(),
+        'pending',
+        ${alumniIdNum},
+        ${additionalAchievementsValue},
+        ${cvFileUrlValue},
+        ${additionalFile1UrlValue},
+        ${additionalFile2UrlValue}
+      )
       RETURNING id, status
     `;
     

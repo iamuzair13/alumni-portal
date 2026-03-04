@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     }
 
     const roleRows = await sql/* sql */`
-      SELECT id, leadership_type, role_name, role_description
+      SELECT id, leadership_type, role_name, role_description, office_term_governance_html, code_of_ethics, compliance_declaration
       FROM public.leadership_roles
       WHERE leadership_type = ${type}
         AND role_name = ${role}
@@ -58,6 +58,9 @@ export async function GET(req: NextRequest) {
       {
         role: roleRow,
         roleDescription: roleRow ? String(roleRow.role_description ?? "") : "",
+        officeTermGovernanceHtml: roleRow ? String((roleRow as any).office_term_governance_html ?? "") : "",
+        codeOfEthics: roleRow ? String((roleRow as any).code_of_ethics ?? "") : "",
+        complianceDeclaration: roleRow ? String((roleRow as any).compliance_declaration ?? "") : "",
         items: rows,
       },
       { status: 200 }

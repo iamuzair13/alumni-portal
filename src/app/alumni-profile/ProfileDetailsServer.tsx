@@ -35,9 +35,10 @@ type Props = {
   associationError?: string | null;
   leadershipInfo?: LeadershipInfo;
   leadershipError?: string | null;
+  leadershipGovernanceHtml?: string | null;
 };
 
-export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null }: Props) {
+export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapId, contact, faculty, dept, facebook, instagram, youtube, linkedin, chapters = [], isVerified = false, chaptersError, associationTitle = null, associationError = null, leadershipInfo = { type: null, role: null, roleDisplay: null }, leadershipError = null, leadershipGovernanceHtml = null }: Props) {
   const { data: fullDetails } = useAlumniFullDetails(sapId || undefined);
   const queryClient = useQueryClient();
   // Get SAP ID and Registration Number from fullDetails
@@ -379,6 +380,17 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                 </div>
               )}
             </div>
+
+            {leadershipGovernanceHtml ? (
+              <div className="mt-3">
+                <details className="rounded-lg border border-gray-200 bg-white">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-gray-800">Office Term & Related Governance</summary>
+                  <div className="border-t border-gray-200 px-3 py-3">
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: leadershipGovernanceHtml }} />
+                  </div>
+                </details>
+              </div>
+            ) : null}
             
             {/* Chapters and Association Section - Right after name */}
             <div className="mt-2 sm:mt-3 mb-3 sm:mb-4">
