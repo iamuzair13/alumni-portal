@@ -141,8 +141,8 @@ export default function AlumniCardTemplate({
       <div 
         className="relative overflow-hidden rounded-lg shadow-md"
         style={{
-          width: "8.5cm",
-          height: "5.2cm",
+          width: "322px",
+          height: "197px",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,20 +156,16 @@ export default function AlumniCardTemplate({
         />
 
         {/* Student Name, Department, Faculty */}
-        <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
+        <div className={`absolute left-[7%] right-[45%] top-[31%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
           <span className="text-[14px]  leading-tight tracking-tight">
             {studentName || "Alumni Name"}
           </span>
         </div>
 
-         {/* CNIC/Passport */}
-
-         <div className={`absolute top-[44%] left-[18%] flex flex-row justify-center items-center gap-8 ${infoTextClass}`}>
-         <span className="text-[11px] font-medium">{cnicPassport || ""}</span>
-        </div>
 
         {/* Alumni ID and Validity */}
-        <div className={`absolute top-[52%] left-[23%] flex flex-col justify-start items-start gap-0.2 ${infoTextClass}`}>
+        <div className={`absolute top-[44%] left-[23%] flex flex-col justify-start items-start gap-0.1 ${infoTextClass}`}>
+         <span className="text-[11px] font-medium">{cnicPassport || ""}</span>
           <span className="text-[10px] font-medium">{alumniId || "UOL-AL-0000"}</span>
           <span className="text-[10px] font-medium">{campus || "Campus"}</span>
           <span className="text-[10px] font-medium">{formattedValidity}</span>

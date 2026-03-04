@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Roboto } from "next/font/google";
 import html2canvas from "html2canvas";
@@ -39,6 +39,7 @@ function CardPrintPageContent() {
   const searchParams = useSearchParams();
   const safeSearchParams = searchParams ?? new URLSearchParams();
   const sapId = safeSearchParams.get("sapid") || "";
+  const autoDownload = safeSearchParams.get("download") === "1";
   
   const [cardData, setCardData] = useState<AlumniCardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +52,7 @@ function CardPrintPageContent() {
   const sapBarcodeRef = useRef<SVGSVGElement>(null);
   const regBarcodeRef = useRef<SVGSVGElement>(null);
   const alumniInfoRef = useRef<HTMLDivElement>(null);
+  const hasAutoDownloadedRef = useRef(false);
 
   const infoTextClass = (() => {
     const g = String(cardData?.gender ?? "").trim().toLowerCase();
@@ -194,7 +196,7 @@ function CardPrintPageContent() {
     });
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = useCallback(async () => {
     if (!frontSideRef.current || !backSideRef.current || isGenerating || !cardData) return;
 
     let originalAlumniTransform: string | null = null;
@@ -226,11 +228,6 @@ function CardPrintPageContent() {
         alumniInfoRef.current.style.transform = "translateY(-6px)";
       }
 
-      // Card dimensions: 8.5cm width x 5.2cm height
-      // Convert cm to points: 1cm = 28.35pt
-      const cardWidthPt = 8.5 * 28.35;  // 240.975pt
-      const cardHeightPt = 5.2 * 28.35; // 147.42pt
-
       // Capture front side
       const frontRect = frontSideRef.current.getBoundingClientRect();
       const frontCanvas = await html2canvas(frontSideRef.current, {
@@ -259,21 +256,23 @@ function CardPrintPageContent() {
         height: Math.round(backRect.height),
       });
 
-      // Create PDF with exact card dimensions (8.5cm x 5.2cm in points)
+      // Create PDF using the exact rendered pixel size of the card.
+      // This avoids any stretching caused by cm->pt conversion mismatches.
+      const pageWidthPx = Math.round(frontRect.width);
+      const pageHeightPx = Math.round(frontRect.height);
+
       const pdf = new jsPDF({
-        orientation: "landscape", // Width > Height
-        unit: "pt",
-        format: [cardWidthPt, cardHeightPt],
+        orientation: "landscape",
+        unit: "px",
+        format: [pageWidthPx, pageHeightPx],
       });
 
-      // Add front side to first page (exact dimensions, no offsets)
       const frontImageData = frontCanvas.toDataURL("image/png");
-      pdf.addImage(frontImageData, "PNG", 0, 0, cardWidthPt, cardHeightPt);
+      pdf.addImage(frontImageData, "PNG", 0, 0, pageWidthPx, pageHeightPx);
 
-      // Add back side to second page (exact dimensions)
-      pdf.addPage([cardWidthPt, cardHeightPt], "landscape");
+      pdf.addPage([pageWidthPx, pageHeightPx], "landscape");
       const backImageData = backCanvas.toDataURL("image/png");
-      pdf.addImage(backImageData, "PNG", 0, 0, cardWidthPt, cardHeightPt);
+      pdf.addImage(backImageData, "PNG", 0, 0, pageWidthPx, pageHeightPx);
 
       const filename = `${(cardData.studentName || "alumni-card").replace(/\s+/g, "-")}.pdf`;
       pdf.save(filename.toLowerCase());
@@ -283,7 +282,33 @@ function CardPrintPageContent() {
       }
       setIsGenerating(false);
     }
-  };
+  }, [cardData, isGenerating]);
+
+  useEffect(() => {
+    if (!autoDownload || !cardData) return;
+    if (hasAutoDownloadedRef.current) return;
+    if (isGenerating) return;
+
+    hasAutoDownloadedRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await handleDownloadPDF();
+        if (!cancelled) {
+          window.setTimeout(() => {
+            window.close();
+          }, 500);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoDownload, cardData, handleDownloadPDF, isGenerating]);
 
   const handlePrint = () => {
     window.print();
@@ -352,8 +377,8 @@ function CardPrintPageContent() {
             ref={frontSideRef} 
             className="relative overflow-hidden rounded-lg"
             style={{
-              width: "8.5cm",
-              height: "5.2cm",
+              width: "322px",
+              height: "197px",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -367,24 +392,18 @@ function CardPrintPageContent() {
             />
 
             {/* Student Name */}
-            <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
+            <div className={`absolute left-[7%] right-[45%] top-[31%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
               <span className="text-[14px] leading-tight tracking-tight">
                 {cardData.studentName || "Alumni Name"}
               </span>
             </div>
 
-            {/* CNIC/Passport */}
-            {cardData.cnicPassport && (
-              <div className={`absolute top-[44%] left-[18%] flex flex-row justify-center items-center gap-8 ${infoTextClass}`}>
-                <span className="text-[11px] font-medium">{cardData.cnicPassport || ""}</span>
-              </div>
-            )}
-
             {/* Alumni ID, Campus, Validity */}
             <div
               ref={alumniInfoRef}
-              className={`absolute top-[52%] left-[23%] flex flex-col justify-start items-start gap-0.2 ${infoTextClass}`}
+              className={`absolute top-[44%] left-[23%] flex flex-col justify-start items-start gap-0.1 ${infoTextClass}`}
             >
+              <span className="text-[11px] font-medium">{cardData.cnicPassport || ""}</span>
               <span className="text-[10px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
               <span className="text-[10px] font-medium">{cardData.campus || "Campus"}</span>
               <span className="text-[10px] font-medium">{formattedValidity()}</span>
@@ -420,8 +439,8 @@ function CardPrintPageContent() {
             ref={backSideRef} 
             className="relative overflow-hidden rounded-lg"
             style={{
-              width: "8.5cm",
-              height: "5.2cm",
+              width: "322px",
+              height: "197px",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
