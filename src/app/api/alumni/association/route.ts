@@ -222,11 +222,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, role, criteriaIds, additionalAchievements, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
+    const { alumniId, role, criteriaIds, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
       alumniId?: number;
       role?: string;
       criteriaIds?: unknown;
       additionalAchievements?: unknown;
+      planStrategy?: unknown;
+      optionalCriteriaProficiency?: unknown;
       cvFileUrl?: unknown;
       additionalFile1Url?: unknown;
       additionalFile2Url?: unknown;
@@ -291,6 +293,31 @@ export async function POST(request: NextRequest) {
     const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
     const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
 
+    const planStrategyTextRaw = typeof planStrategy === "string" ? planStrategy : "";
+    const planStrategyText = String(planStrategyTextRaw ?? "").trim().slice(0, 1000);
+    const planStrategyValue = planStrategyText ? planStrategyText : null;
+    if (planStrategyValue && planStrategyValue.length < 50) {
+      return NextResponse.json({ error: "Plan/strategy must be at least 50 characters (or leave it empty)." }, { status: 400 });
+    }
+
+    const optionalCriteriaProficiencyObj = optionalCriteriaProficiency && typeof optionalCriteriaProficiency === "object"
+      ? (optionalCriteriaProficiency as Record<string, unknown>)
+      : null;
+    const optionalCriteriaProficiencyValue = optionalCriteriaProficiencyObj
+      ? Object.fromEntries(
+          Object.entries(optionalCriteriaProficiencyObj)
+            .map(([k, v]) => {
+              const id = Number(k);
+              const rating = Number(v);
+              if (!Number.isFinite(id) || id <= 0) return null;
+              if (!Number.isFinite(rating) || rating < 1) return null;
+              const normalized = Math.min(5, Math.max(1, Math.round(rating)));
+              return [String(id), normalized] as const;
+            })
+            .filter(Boolean) as Array<readonly [string, number]>
+        )
+      : null;
+
     const cvFileUrlValue = typeof cvFileUrl === "string" && cvFileUrl.trim() ? cvFileUrl.trim().slice(0, 500) : null;
     const additionalFile1UrlValue = typeof additionalFile1Url === "string" && additionalFile1Url.trim() ? additionalFile1Url.trim().slice(0, 500) : null;
     const additionalFile2UrlValue = typeof additionalFile2Url === "string" && additionalFile2Url.trim() ? additionalFile2Url.trim().slice(0, 500) : null;
@@ -336,6 +363,8 @@ export async function POST(request: NextRequest) {
         status,
         alumni_id,
         additional_achievements,
+        plan_strategy,
+        optional_criteria_proficiency,
         cv_file_url,
         additional_file1_url,
         additional_file2_url
@@ -346,6 +375,8 @@ export async function POST(request: NextRequest) {
         'pending',
         ${alumniIdNum},
         ${additionalAchievementsValue},
+        ${planStrategyValue},
+        ${optionalCriteriaProficiencyValue ? JSON.stringify(optionalCriteriaProficiencyValue) : null},
         ${cvFileUrlValue},
         ${additionalFile1UrlValue},
         ${additionalFile2UrlValue}

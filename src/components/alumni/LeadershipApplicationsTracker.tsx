@@ -4,11 +4,45 @@ import React, { useMemo, useState } from "react";
 import { useLeadershipApplications } from "@/app/queries/leadership-applications";
 import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import ApprovedLeadershipBadges from "@/components/alumni/ApprovedLeadershipBadges";
+import { Modal } from "@/components/ui/modal";
+import { useModal } from "@/hooks/useModal";
+import { useQuery } from "@tanstack/react-query";
 
 type Props = {
   alumniId: number | null | undefined;
   className?: string;
 };
+
+type ViewApp = { type: "chapter" | "association"; applicationId: number };
+
+function proficiencyLabel(value: number | null | undefined): string {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return "";
+  const m = Math.min(5, Math.max(1, Math.round(n)));
+  if (m === 1) return "Very Poor";
+  if (m === 2) return "Poor";
+  if (m === 3) return "Fair";
+  if (m === 4) return "Good";
+  return "Excellent";
+}
+
+function starsText(value: number | null | undefined): string {
+  const n = Math.min(5, Math.max(0, Math.round(Number(value) || 0)));
+  if (!n) return "";
+  return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
+}
+
+async function fetchApplicationDetails(input: ViewApp) {
+  const params = new URLSearchParams();
+  params.set("type", input.type);
+  params.set("applicationId", String(input.applicationId));
+  const res = await fetch(`/api/leadership/application-details?${params.toString()}`, {
+    headers: { accept: "application/json" },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any)?.error || "Failed to load application details");
+  return data as any;
+}
 
 export default function LeadershipApplicationsTracker({ alumniId, className }: Props) {
   const enabled = Number.isFinite(alumniId) && Number(alumniId) > 0;
@@ -17,8 +51,24 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
     enabled
   );
 
+  const viewModal = useModal(false);
+  const [selectedViewApp, setSelectedViewApp] = useState<ViewApp | null>(null);
+
   const [appsSortKey, setAppsSortKey] = useState<"createdAt" | "type" | "position" | "status">("createdAt");
   const [appsSortDir, setAppsSortDir] = useState<"asc" | "desc">("desc");
+
+  const { data: viewDetailsData, isLoading: viewDetailsLoading } = useQuery({
+    queryKey: ["leadership-application-details", selectedViewApp?.type, selectedViewApp?.applicationId],
+    queryFn: async () => {
+      if (!selectedViewApp) throw new Error("Missing application");
+      return fetchApplicationDetails(selectedViewApp);
+    },
+    enabled: viewModal.isOpen && !!selectedViewApp,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    refetchOnMount: true,
+  });
 
   const leadershipApplicationsSorted = useMemo(() => {
     const items = Array.isArray(leadershipApplications) ? leadershipApplications : [];
@@ -61,6 +111,25 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
     const reg = String(app.registrationno || "").trim();
     if (sap && reg) return `${sap} / ${reg}`;
     return sap || reg || "-";
+  }
+
+  function openPdfDownload() {
+    if (!selectedViewApp) return;
+    const params = new URLSearchParams();
+    params.set("type", selectedViewApp.type);
+    params.set("applicationId", String(selectedViewApp.applicationId));
+    window.open(`/api/leadership/application-pdf?${params.toString()}`, "_blank", "noopener,noreferrer");
+  }
+
+  function documentsFromItem(item: any) {
+    const docs: Array<{ key: string; label: string; url: string }> = [];
+    const cv = String(item?.cvFileUrl || "").trim();
+    const f1 = String(item?.additionalFile1Url || "").trim();
+    const f2 = String(item?.additionalFile2Url || "").trim();
+    if (cv) docs.push({ key: "cv", label: "CV", url: cv });
+    if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
+    if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
+    return docs;
   }
 
   return (
@@ -117,6 +186,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Status</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Submitted</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Additional Achievements</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -152,6 +222,18 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                           <div className="line-clamp-2 break-words">{String(app.additionalAchievements || "-")}</div>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedViewApp({ type: app.type, applicationId: app.id });
+                            viewModal.openModal();
+                          }}
+                          className="text-xs font-semibold rounded-md border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50"
+                        >
+                          View Application
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -160,6 +242,247 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
           </div>
         )}
       </div>
+
+      {viewModal.isOpen && selectedViewApp && (
+        <Modal
+          isOpen={viewModal.isOpen}
+          onClose={() => {
+            viewModal.closeModal();
+            setSelectedViewApp(null);
+          }}
+          showCloseButton={true}
+          className="max-w-5xl"
+        >
+          <div className="p-6">
+            {viewDetailsLoading ? (
+              <div className="text-sm text-gray-600">Loading...</div>
+            ) : !viewDetailsData?.item ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Unable to load application details.
+              </div>
+            ) : (
+              (() => {
+                const item = viewDetailsData.item as any;
+                const statusText = String(item.status || "pending");
+                const statusLower = statusText.toLowerCase();
+                const statusBadge =
+                  statusLower === "approved"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : statusLower === "rejected"
+                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200";
+
+                const docs = documentsFromItem(item);
+                const downloadAllDocs = () => {
+                  docs.forEach((d) => {
+                    const a = document.createElement("a");
+                    a.href = d.url;
+                    a.download = "";
+                    a.rel = "noopener noreferrer";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  });
+                };
+
+                const profMap = item?.optionalCriteriaProficiency && typeof item.optionalCriteriaProficiency === "object" ? item.optionalCriteriaProficiency : null;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-900">Leadership Application Details</div>
+                        <div className="mt-1 h-px bg-gray-200" />
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700">
+                          <div className="truncate"><span className="font-medium">Applicant:</span> {item.name || "-"}</div>
+                          <div className="truncate"><span className="font-medium">Role Applied For:</span> {item.position || "-"}</div>
+                          <div className="truncate"><span className="font-medium">Application Date:</span> {item.createdAt ? String(item.createdAt) : "-"}</div>
+                          <div>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadge}`}>
+                              {statusLower === "rejected" ? "Not Approved" : statusText}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={openPdfDownload}
+                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                        >
+                          Download PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={downloadAllDocs}
+                          disabled={docs.length === 0}
+                          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Download Documents
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            viewModal.closeModal();
+                            setSelectedViewApp(null);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-[75vh] overflow-y-auto pr-1 space-y-4">
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900">Personal Information</div>
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
+                          <div><span className="font-medium">Full Name:</span> {item.name || "-"}</div>
+                          <div><span className="font-medium">SAP ID:</span> {item.sapId || "-"}</div>
+                          <div><span className="font-medium">Gender:</span> {item.gender || "-"}</div>
+                          <div><span className="font-medium">Faculty:</span> {item.faculty || "-"}</div>
+                          <div><span className="font-medium">Department:</span> {item.department || "-"}</div>
+                          <div><span className="font-medium">Program:</span> {item.program || "-"}</div>
+                          <div><span className="font-medium">Passing Year:</span> {item.passingYear ?? "-"}</div>
+                          <div><span className="font-medium">Email:</span> {item.email || "-"}</div>
+                          <div><span className="font-medium">Phone:</span> {item.phone || "-"}</div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900">Role Information</div>
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-600">Role Title</div>
+                            <div className="mt-1 text-sm text-gray-900 font-semibold">{item.position || "-"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-gray-600">Application Type</div>
+                            <div className="mt-1 text-sm text-gray-900 font-semibold">{item.type === "chapter" ? "Chapter" : "Association"}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-600">Role Description</div>
+                            <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+                              {String(item.roleDescription || "").trim() || "No role description configured."}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-gray-600">Office Term & Governance</div>
+                            <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[300px] overflow-y-auto">
+                              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: String(item.officeTermGovernanceHtml || "").trim() || "-" }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900">Criteria</div>
+                        <div className="mt-3 overflow-x-auto">
+                          <table className="min-w-[760px] w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                            <thead className="sticky top-0 bg-gray-50 z-10">
+                              <tr className="border-b border-gray-200">
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700">Requirement</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 w-[160px]">Alumni</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 w-[160px]">Admin</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {(Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : []).map((c: any) => {
+                                const isMandatory = Boolean(c.is_mandatory);
+                                const alumniYes = Boolean(c.alumni_confirmed);
+                                const adminYes = Boolean(c.admin_confirmed);
+                                const rating = profMap && typeof profMap === "object" ? Number(profMap[String(c.id)] ?? 0) : 0;
+                                const stars = !isMandatory && alumniYes && rating ? starsText(rating) : "";
+                                const label = !isMandatory && alumniYes && rating ? proficiencyLabel(rating) : "";
+
+                                return (
+                                  <tr key={c.id} className="bg-white">
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-start gap-2">
+                                        <span className={`mt-0.5 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${isMandatory ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                                          {isMandatory ? "Mandatory" : "Optional"}
+                                        </span>
+                                        <div className="min-w-0">
+                                          <div className="font-semibold text-gray-900 break-words">{c.label}</div>
+                                          {c.description ? <div className="mt-0.5 text-xs text-gray-600 break-words">{c.description}</div> : null}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      {alumniYes ? (
+                                        <div className="text-gray-900">
+                                          <div className="font-semibold">✔ Yes</div>
+                                          {!isMandatory ? (
+                                            <div className="mt-1 text-xs text-gray-700">
+                                              {stars ? (
+                                                <span>
+                                                  <span className="font-semibold text-amber-700">{stars}</span>
+                                                  {label ? ` (${label})` : ""}
+                                                </span>
+                                              ) : (
+                                                <span className="text-gray-500">No rating</span>
+                                              )}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      ) : (
+                                        <div className="font-semibold text-gray-500">No</div>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className={`font-semibold ${adminYes ? "text-gray-900" : "text-gray-500"}`}>{adminYes ? "✔ Yes" : "☐"}</div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900">Plan / Strategy</div>
+                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
+                          {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900">Uploaded Documents</div>
+                        <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 overflow-hidden">
+                          {docs.length === 0 ? (
+                            <div className="px-4 py-3 text-sm text-gray-600 bg-gray-50">No documents found.</div>
+                          ) : (
+                            docs.map((d) => (
+                              <div key={d.key} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
+                                <div className="min-w-0">
+                                  <div className="font-medium text-gray-900 truncate">{d.label}</div>
+                                  <div className="text-xs text-gray-500 truncate">Size: -</div>
+                                </div>
+                                <a
+                                  href={d.url}
+                                  download
+                                  className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                  Download
+                                </a>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

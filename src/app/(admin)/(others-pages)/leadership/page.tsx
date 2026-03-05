@@ -14,7 +14,6 @@ import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
 import { SendEmailButton } from "@/components/email/SendEmailButton";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
-import Pagination from "@/components/tables/Pagination";
 import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import { getLeadershipApplications } from "@/app/queries/leadership-applications";
 
@@ -100,27 +99,44 @@ type ApplicationDetailsItem = LeadershipApplication & {
   updatedAt?: string | null;
 };
 
+type ViewDetailsItem = ApplicationDetailsItem & {
+  gender?: string | null;
+  passingYear?: number | null;
+  phone?: string | null;
+  planStrategy?: string | null;
+  optionalCriteriaProficiency?: Record<string, number | null> | null;
+  cvFileUrl?: string | null;
+  additionalFile1Url?: string | null;
+  additionalFile2Url?: string | null;
+};
+
 async function fetchMembers(type: string, search?: string, faculty?: string, chapter?: string) {
   const params = new URLSearchParams({ type });
   if (search) params.append("search", search);
   if (faculty) params.append("faculty", faculty);
   if (chapter) params.append("chapter", chapter);
-  
+
   const res = await fetch(`/api/leadership/members?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch members");
   const data = await res.json();
   return data.items as LeadershipMember[];
 }
 
-async function fetchApplications(input: { type?: string; status?: string; role?: string; search?: string; hasAdditionalAchievements?: boolean }) {
+async function fetchApplications(input: {
+  type?: "all" | "chapter" | "association";
+  status?: ApplicationStatusTab;
+  role?: RoleFilter;
+  search?: string;
+  hasAdditionalAchievements?: boolean;
+}) {
   const items = await getLeadershipApplications({
-    type: (input.type as any) ?? "all",
-    status: (input.status as any) ?? "pending",
-    role: (input.role as any) ?? "all",
+    type: input.type ?? "all",
+    status: input.status ?? "pending",
+    role: input.role ?? "all",
     search: input.search,
     hasAdditionalAchievements: input.hasAdditionalAchievements,
   });
-  return items as unknown as LeadershipApplication[];
+  return items as LeadershipApplication[];
 }
 
 function identifierText(app: { sapId?: string | null; registrationno?: string | null }): string {
@@ -130,7 +146,41 @@ function identifierText(app: { sapId?: string | null; registrationno?: string | 
   return sap || reg || "-";
 }
 
-async function fetchApplicationCounts(input: { type?: string; role?: string; search?: string; hasAdditionalAchievements?: boolean }) {
+function proficiencyLabel(value: number | null | undefined): string {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return "";
+  const m = Math.min(5, Math.max(1, Math.round(n)));
+  if (m === 1) return "Very Poor";
+  if (m === 2) return "Poor";
+  if (m === 3) return "Fair";
+  if (m === 4) return "Good";
+  return "Excellent";
+}
+
+function starsText(value: number | null | undefined): string {
+  const n = Math.min(5, Math.max(0, Math.round(Number(value) || 0)));
+  if (!n) return "";
+  return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
+}
+
+function documentsFromItem(item: unknown) {
+  const obj = (item ?? {}) as Record<string, unknown>;
+  const docs: Array<{ key: string; label: string; url: string }> = [];
+  const cv = String(obj.cvFileUrl || "").trim();
+  const f1 = String(obj.additionalFile1Url || "").trim();
+  const f2 = String(obj.additionalFile2Url || "").trim();
+  if (cv) docs.push({ key: "cv", label: "CV", url: cv });
+  if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
+  if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
+  return docs;
+}
+
+async function fetchApplicationCounts(input: {
+  type?: "all" | "chapter" | "association";
+  role?: RoleFilter;
+  search?: string;
+  hasAdditionalAchievements?: boolean;
+}) {
   const params = new URLSearchParams();
   if (input.type && input.type !== "all") params.append("type", input.type);
   if (input.role && input.role !== "all") params.append("role", input.role);
@@ -148,20 +198,18 @@ async function fetchApplicationDetails(input: { type: "chapter" | "association";
   params.set("type", input.type);
   params.set("applicationId", String(input.applicationId));
 
-  const res = await fetch(`/api/leadership/application-details?${params.toString()}` , {
+  const res = await fetch(`/api/leadership/application-details?${params.toString()}`, {
     headers: { accept: "application/json" },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as any).error || "Failed to fetch application details");
+  if (!res.ok) {
+    const err =
+      data && typeof data === "object" && "error" in data
+        ? String((data as { error?: unknown }).error || "")
+        : "";
+    throw new Error(err || "Failed to fetch application details");
+  }
   return data as { item: ApplicationDetailsItem; criteria: ApplicationDetailsCriterion[] };
-}
-
-async function fetchCriteria(type: "chapter" | "association", role: "president" | "vice_president" | "coordinator") {
-  const res = await fetch(`/api/leadership/criteria?type=${encodeURIComponent(type)}&role=${encodeURIComponent(role)}`, {
-    headers: { accept: "application/json" },
-  });
-  if (!res.ok) throw new Error("Failed to fetch criteria");
-  return (await res.json()) as { items: RoleCriterion[] };
 }
 
 export default function LeadershipPage() {
@@ -181,8 +229,6 @@ export default function LeadershipPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [appPage, setAppPage] = useState(1);
   const pageSize = 10;
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [expandedMemberId, setExpandedMemberId] = useState<number | null>(null);
   const [adminCriteriaIds, setAdminCriteriaIds] = useState<Set<number>>(new Set());
@@ -229,7 +275,11 @@ export default function LeadershipPage() {
       const res = await fetch(url.toString(), { headers: { accept: "application/pdf" } });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error((data as any).error || "Failed to download PDF");
+        const err =
+          data && typeof data === "object" && "error" in data
+            ? String((data as { error?: unknown }).error || "")
+            : "";
+        throw new Error(err || "Failed to download PDF");
       }
 
       const blob = await res.blob();
@@ -285,7 +335,7 @@ export default function LeadershipPage() {
   }, [confirmModal.isOpen, pendingAction?.applicationId]);
 
   // Fetch chapter members
-  const { data: chapterMembersData, isLoading: chapterMembersLoading, refetch: refetchChapterMembers } = useQuery({
+  const { data: chapterMembersData, isLoading: chapterMembersLoading } = useQuery({
     queryKey: ["leadership-members", "chapter", searchQuery, facultyFilter, chapterFilter],
     queryFn: () => fetchMembers("chapter", searchQuery || undefined, facultyFilter || undefined, chapterFilter || undefined),
     enabled: true,
@@ -295,7 +345,7 @@ export default function LeadershipPage() {
   });
 
   // Fetch association members
-  const { data: associationMembersData, isLoading: associationMembersLoading, refetch: refetchAssociationMembers } = useQuery({
+  const { data: associationMembersData, isLoading: associationMembersLoading } = useQuery({
     queryKey: ["leadership-members", "association", searchQuery, facultyFilter, chapterFilter],
     queryFn: () => fetchMembers("association", searchQuery || undefined, facultyFilter || undefined, chapterFilter || undefined),
     enabled: true,
@@ -306,14 +356,6 @@ export default function LeadershipPage() {
 
   const membersData = selectedTab === "chapterMembers" ? chapterMembersData : associationMembersData;
   const membersLoading = selectedTab === "chapterMembers" ? chapterMembersLoading : associationMembersLoading;
-  
-  const refetchMembers = async () => {
-    if (selectedTab === "chapterMembers") {
-      await refetchChapterMembers();
-    } else if (selectedTab === "associationMembers") {
-      await refetchAssociationMembers();
-    }
-  };
 
   // Fetch applications
   const { data: applicationsData, isLoading: applicationsLoading, refetch: refetchApplications } = useQuery({
@@ -403,14 +445,12 @@ export default function LeadershipPage() {
     if (action === "approve" && isAdmin && mandatoryCriteriaIds.length > 0) {
       const missing = mandatoryCriteriaIds.filter((id) => !adminCriteriaIds.has(id));
       if (missing.length > 0) {
-        setActionError("Please confirm all mandatory criteria before approving.");
+        toast.error("Please confirm all mandatory criteria before approving.");
         return;
       }
     }
 
     setProcessingIds((prev) => new Set(prev).add(applicationId));
-    setActionMessage(null);
-    setActionError(null);
 
     try {
       const res = await fetch("/api/leadership/actions", {
@@ -425,12 +465,13 @@ export default function LeadershipPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as any).error || "Failed to perform action");
+        const err =
+          data && typeof data === "object" && "error" in data
+            ? String((data as { error?: unknown }).error || "")
+            : "";
+        throw new Error(err || "Failed to perform action");
       }
 
-      setActionMessage(
-        `${action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Deleted"} successfully`
-      );
       toast.success(`Application ${action}d successfully`);
 
       queryClient.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
@@ -442,7 +483,6 @@ export default function LeadershipPage() {
       setPendingAction(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed";
-      setActionError(msg);
       toast.error(msg);
     } finally {
       setProcessingIds((prev) => {
@@ -611,10 +651,6 @@ export default function LeadershipPage() {
     const start = (appPage - 1) * pageSize;
     return filteredApplications.slice(start, start + pageSize);
   }, [filteredApplications, appPage]);
-
-  const totalAppPages = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredApplications.length / pageSize));
-  }, [filteredApplications.length]);
 
   const uniqueFaculties = useMemo(() => {
     const allData = selectedTab === "applications" ? applicationsData : membersData;
@@ -981,11 +1017,11 @@ export default function LeadershipPage() {
                       loading={applicationsLoading}
                       isAdmin={isAdmin}
                       onAction={handleAction}
-                      onViewAdditionalAchievements={(app) => {
+                      onViewAdditionalAchievements={(app: LeadershipApplication) => {
                         setSelectedAchievementsApp(app);
                         achievementsModal.openModal();
                       }}
-                      onViewApplication={(app) => {
+                      onViewApplication={(app: LeadershipApplication) => {
                         setSelectedViewApp({ type: app.type, applicationId: app.id });
                         viewModal.openModal();
                       }}
@@ -1095,150 +1131,201 @@ export default function LeadershipPage() {
                   setSelectedViewApp(null);
                 }}
                 showCloseButton={true}
-                className="max-w-3xl"
+                className="max-w-5xl"
               >
                 <div className="p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">View Application</h3>
-                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {selectedViewApp.type === "chapter" ? "Chapter" : "Association"} • ID {selectedViewApp.applicationId}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleDownloadApplicationPDF}
-                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                    >
-                      <DownloadIcon className="h-4 w-4" />
-                      Download PDF
-                    </button>
-                  </div>
-
                   {viewDetailsLoading ? (
-                    <div className="mt-6 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Loading...</div>
                   ) : !viewDetailsData?.item ? (
-                    <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                       Unable to load application details.
                     </div>
                   ) : (
-                    <div className="mt-6 space-y-4">
-                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-4">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Applicant</div>
-                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                          <div><span className="font-medium">Name:</span> {viewDetailsData.item.name || "-"}</div>
-                          <div><span className="font-medium">SAP ID:</span> {viewDetailsData.item.sapId || "-"}</div>
-                          <div><span className="font-medium">Email:</span> {viewDetailsData.item.email || "-"}</div>
-                          <div><span className="font-medium">Registration No:</span> {viewDetailsData.item.registrationNo || "-"}</div>
-                          <div><span className="font-medium">Faculty:</span> {viewDetailsData.item.faculty || "-"}</div>
-                          <div><span className="font-medium">Department:</span> {viewDetailsData.item.department || "-"}</div>
-                        </div>
-                      </div>
+                    (() => {
+                      const item = viewDetailsData.item as ViewDetailsItem;
+                      const statusText = String(item.status || "pending");
+                      const statusLower = statusText.toLowerCase();
+                      const statusBadge =
+                        statusLower === "approved"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : statusLower === "rejected"
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200";
 
-                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-4">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Application</div>
-                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                          <div><span className="font-medium">Type:</span> {viewDetailsData.item.type === "chapter" ? "Chapter" : "Association"}</div>
-                          <div><span className="font-medium">Role:</span> {viewDetailsData.item.position || "-"}</div>
-                          <div><span className="font-medium">Status:</span> {String(viewDetailsData.item.status || "pending")}</div>
-                          <div><span className="font-medium">Created:</span> {viewDetailsData.item.createdAt ? String(viewDetailsData.item.createdAt) : "-"}</div>
-                        </div>
-                      </div>
+                      const docs = documentsFromItem(item);
+                      const downloadAllDocs = () => {
+                        docs.forEach((d) => {
+                          const a = document.createElement("a");
+                          a.href = d.url;
+                          a.download = "";
+                          a.rel = "noopener noreferrer";
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        });
+                      };
 
-                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-4">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Criteria</div>
-                        {Array.isArray(viewDetailsData.criteria) && viewDetailsData.criteria.length > 0 ? (
-                          <div className="mt-3 space-y-2">
-                            {viewDetailsData.criteria.map((c) => (
-                              <div key={c.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{c.label}</div>
-                                    {c.description ? (
-                                      <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">{c.description}</div>
-                                    ) : null}
-                                  </div>
-                                  <div className="flex flex-col items-end gap-1 text-[11px] font-semibold">
-                                    <span className={`rounded-full border px-2 py-0.5 ${c.is_mandatory ? "bg-rose-50 text-rose-800 border-rose-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}>
-                                      {c.is_mandatory ? "Mandatory" : "Optional"}
-                                    </span>
-                                    <span className={`rounded-full border px-2 py-0.5 ${c.alumni_confirmed ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}>
-                                      Alumni: {c.alumni_confirmed ? "Yes" : "No"}
-                                    </span>
-                                    <span className={`rounded-full border px-2 py-0.5 ${c.admin_confirmed ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}>
-                                      Admin: {c.admin_confirmed ? "Yes" : "No"}
-                                    </span>
-                                  </div>
+                      const profMap =
+                        item?.optionalCriteriaProficiency && typeof item.optionalCriteriaProficiency === "object"
+                          ? item.optionalCriteriaProficiency
+                          : null;
+
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leadership Application Details</div>
+                              <div className="mt-1 h-px bg-gray-200 dark:bg-gray-800" />
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                <div className="truncate"><span className="font-medium">Applicant Name:</span> {item.name || "-"}</div>
+                                <div className="truncate"><span className="font-medium">Role Applied For:</span> {item.position || "-"}</div>
+                                <div className="truncate"><span className="font-medium">Application Date:</span> {item.createdAt ? String(item.createdAt) : "-"}</div>
+                                <div>
+                                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadge}`}>
+                                    {statusLower === "rejected" ? "Not Approved" : statusText}
+                                  </span>
                                 </div>
                               </div>
-                            ))}
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={handleDownloadApplicationPDF}
+                                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                              >
+                                <DownloadIcon className="h-4 w-4" />
+                                Download PDF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={downloadAllDocs}
+                                disabled={docs.length === 0}
+                                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/40 disabled:opacity-50"
+                              >
+                                <DownloadIcon className="h-4 w-4" />
+                                Download Documents
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  viewModal.closeModal();
+                                  setSelectedViewApp(null);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/40"
+                              >
+                                Close
+                              </button>
+                            </div>
                           </div>
-                        ) : (
-                          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">No criteria found.</div>
-                        )}
-                      </div>
 
-                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-4">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Additional Achievements</div>
-                        <div className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-700 dark:text-gray-300 max-h-[30vh] overflow-auto">
-                          {String(viewDetailsData.item.additionalAchievements || "").trim() || "No additional achievements provided."}
+                          <div className="max-h-[75vh] overflow-y-auto pr-1 space-y-4">
+                            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Personal Information</div>
+                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
+                                <div><span className="font-medium">Full Name:</span> {item.name || "-"}</div>
+                                <div><span className="font-medium">SAP ID:</span> {item.sapId || "-"}</div>
+                                <div><span className="font-medium">Gender:</span> {item.gender || "-"}</div>
+                                <div><span className="font-medium">Faculty:</span> {item.faculty || "-"}</div>
+                                <div><span className="font-medium">Department:</span> {item.department || "-"}</div>
+                                <div><span className="font-medium">Program:</span> {item.program || "-"}</div>
+                                <div><span className="font-medium">Passing Year:</span> {item.passingYear ?? "-"}</div>
+                                <div><span className="font-medium">Email:</span> {item.email || "-"}</div>
+                                <div><span className="font-medium">Phone:</span> {item.phone || "-"}</div>
+                              </div>
+                            </div>
+
+                          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Criteria</div>
+                            <div className="mt-3 overflow-x-auto">
+                              <table className="min-w-[760px] w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10">
+                                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200">Requirement</th>
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Alumni</th>
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Admin</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                  {(Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : []).map((c: ApplicationDetailsCriterion) => {
+                                    const isMandatory = Boolean(c.is_mandatory);
+                                    const alumniYes = Boolean(c.alumni_confirmed);
+                                    const adminYes = Boolean(c.admin_confirmed);
+                                    const rating = profMap && typeof profMap === "object" ? Number(profMap[String(c.id)] ?? 0) : 0;
+                                    const stars = !isMandatory && alumniYes && rating ? starsText(rating) : "";
+                                    const label = !isMandatory && alumniYes && rating ? proficiencyLabel(rating) : "";
+
+                                    return (
+                                      <tr key={c.id} className="bg-white dark:bg-transparent">
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-start gap-2">
+                                            <span
+                                              className={`mt-0.5 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                                                isMandatory
+                                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                                  : "bg-gray-100 text-gray-700 border-gray-200"
+                                              }`}
+                                            >
+                                              {isMandatory ? "Mandatory" : "Optional"}
+                                            </span>
+                                            <div className="min-w-0">
+                                              <div className="font-semibold text-gray-900 dark:text-gray-100 break-words">{c.label}</div>
+                                              {c.description ? <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 break-words">{c.description}</div> : null}
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          {alumniYes ? (
+                                            <div className="text-gray-900 dark:text-gray-100">
+                                              <div className="font-semibold">✔ Yes</div>
+                                              {!isMandatory ? (
+                                                <div className="mt-1 text-xs text-gray-700 dark:text-gray-300">
+                                                  {stars ? (
+                                                    <span>
+                                                      <span className="font-semibold text-amber-700">{stars}</span>
+                                                      {label ? ` (${label})` : ""}
+                                                    </span>
+                                                  ) : (
+                                                    <span className="text-gray-500">No rating</span>
+                                                  )}
+                                                </div>
+                                              ) : null}
+                                            </div>
+                                          ) : (
+                                            <div className="font-semibold text-gray-500">No</div>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          <div className={`font-semibold ${adminYes ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}`}>{adminYes ? "✔ Yes" : "☐"}</div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Plan / Strategy</div>
+                            <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
+                              {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
+                            </div>
+                          </div>
+
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()
                   )}
-
-                  <div className="mt-6 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        viewModal.closeModal();
-                        setSelectedViewApp(null);
-                      }}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    >
-                      Close
-                    </button>
-                  </div>
                 </div>
               </Modal>
             )}
 
-            {selectedTab === "applications" && totalAppPages > 1 ? (
-              <div className="flex justify-end pt-4">
-                <Pagination
-                  currentPage={appPage}
-                  totalPages={totalAppPages}
-                  onPageChange={(p) => {
-                    const next = Math.max(1, Math.min(totalAppPages, p));
-                    setAppPage(next);
-                  }}
-                />
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
-
-      {/* Action Messages */}
-      {actionMessage && (
-        <div className="px-6 pt-2">
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
-            {actionMessage}
-          </div>
-        </div>
-      )}
-
-      {actionError && (
-        <div className="w-full px-4 py-2">
-          <div className="max-w-7xl mx-auto">
-            <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-700 text-sm">
-              {actionError}
-            </div>
-          </div>
-        </div>
-      )}
-
-      </div>
+    </div>
   );
 }
 
@@ -1253,7 +1340,7 @@ function ApplicationsTable({
   sortKey,
   sortDir,
   onSort,
-}: {
+ }: {
   applications: LeadershipApplication[];
   loading: boolean;
   isAdmin: boolean;
@@ -1264,7 +1351,7 @@ function ApplicationsTable({
   sortKey: SortKey;
   sortDir: "asc" | "desc";
   onSort: (k: SortKey) => void;
-}) {
+ }) {
   const sortIndicator = (k: SortKey) => {
     if (sortKey !== k) return "";
     return sortDir === "asc" ? " ↑" : " ↓";

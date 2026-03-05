@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LeadershipApplicationsTracker from "@/components/alumni/LeadershipApplicationsTracker";
+import StarRating, { proficiencyLabel } from "@/components/ui/StarRating";
 
 type AlumniChapterLeadershipFormValues = {
   post: string;
   additionalAchievements: string;
+  planStrategy: string;
   complianceAccepted: boolean;
 };
 
@@ -76,6 +78,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [selectedPost, setSelectedPost] = useState<string>("");
   const [selectedCriteriaIds, setSelectedCriteriaIds] = useState<Set<number>>(new Set());
+  const [optionalCriteriaProficiency, setOptionalCriteriaProficiency] = useState<Record<number, number>>({});
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [additionalFile1, setAdditionalFile1] = useState<File | null>(null);
   const [additionalFile2, setAdditionalFile2] = useState<File | null>(null);
@@ -126,17 +129,24 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     defaultValues: {
       post: "",
       additionalAchievements: "",
+      planStrategy: "",
       complianceAccepted: false,
     },
     disabled: !isFormEnabled,
   });
 
   const post = watch("post");
+  const planStrategy = watch("planStrategy");
+
+  const planMinLen = 50;
+  const planMaxLen = 1000;
+  const planLen = useMemo(() => String(planStrategy || "").length, [planStrategy]);
 
   // Update selectedPost when form value changes
   React.useEffect(() => {
     setSelectedPost(post || "");
     setSelectedCriteriaIds(new Set());
+    setOptionalCriteriaProficiency({});
     setCvFile(null);
     setAdditionalFile1(null);
     setAdditionalFile2(null);
@@ -206,6 +216,122 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const mandatoryCriteriaIds = useMemo(() => {
     return criteriaItems.filter((c) => c.is_mandatory).map((c) => Number(c.id)).filter((n) => Number.isFinite(n) && n > 0);
   }, [criteriaItems]);
+
+  function starsText(value: number): string {
+    const n = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+    return "★".repeat(n) + "☆".repeat(5 - n);
+  }
+
+  const handlePrintApplication = () => {
+    try {
+      const applicantId = String(parseInt(alumniId, 10) || "").trim();
+      const position = selectedPost ? selectedPost : "-";
+      const selected = criteriaItems
+        .filter((c) => selectedCriteriaIds.has(Number(c.id)))
+        .map((c) => ({
+          id: Number(c.id),
+          label: String(c.label || ""),
+          isMandatory: Boolean(c.is_mandatory),
+        }));
+
+      const rowsHtml = selected
+        .map((c) => {
+          if (c.isMandatory) {
+            return `
+              <div class="row">
+                <div class="label">${c.label}</div>
+                <div class="value"><span class="pill pill-mandatory">Mandatory</span></div>
+              </div>
+            `;
+          }
+          const rating = Number(optionalCriteriaProficiency[c.id] || 0);
+          const label = proficiencyLabel(rating) || "-";
+          const stars = rating ? starsText(rating) : "-";
+          return `
+            <div class="row">
+              <div class="label">${c.label}</div>
+              <div class="value">
+                <div><span class="pill pill-optional">Optional</span></div>
+                <div class="sub">Proficiency: <span class="stars">${stars}</span> <span class="muted">(${label})</span></div>
+              </div>
+            </div>
+          `;
+        })
+        .join("\n");
+
+      const html = `
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Leadership Application</title>
+            <style>
+              :root { --border: #e5e7eb; --text: #0f172a; --muted: #475569; --bg: #ffffff; --pill: #f1f5f9; --gold: #f59e0b; }
+              * { box-sizing: border-box; }
+              body { margin: 0; padding: 24px; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans"; color: var(--text); background: #f8fafc; }
+              .card { max-width: 860px; margin: 0 auto; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+              h1 { margin: 0 0 6px; font-size: 20px; }
+              .meta { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; }
+              .meta div { color: var(--muted); font-size: 12px; }
+              .sectionTitle { margin-top: 18px; font-size: 14px; font-weight: 700; }
+              .list { margin-top: 10px; border-top: 1px solid var(--border); }
+              .row { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+              .label { font-size: 13px; font-weight: 600; }
+              .value { font-size: 12px; color: var(--muted); }
+              .pill { display: inline-flex; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--pill); font-size: 10px; font-weight: 700; }
+              .pill-mandatory { background: #fff1f2; border-color: #fecdd3; color: #9f1239; }
+              .pill-optional { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+              .sub { margin-top: 6px; }
+              .stars { letter-spacing: 1px; color: var(--gold); font-weight: 700; }
+              .muted { color: var(--muted); }
+              @media (min-width: 640px) {
+                .meta { grid-template-columns: 1fr 1fr; }
+                .row { grid-template-columns: 1fr 1fr; align-items: start; }
+              }
+              @media print {
+                body { background: #fff; padding: 0; }
+                .card { border: none; border-radius: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Leadership Application</h1>
+              <div class="meta">
+                <div><strong>Type:</strong> Chapter</div>
+                <div><strong>Role:</strong> ${position}</div>
+                <div><strong>Applicant ID:</strong> ${applicantId || "-"}</div>
+                <div><strong>Date:</strong> ${new Date().toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "2-digit" })}</div>
+              </div>
+
+              <div class="sectionTitle">Selected Criteria</div>
+              <div class="list">
+                ${rowsHtml || `<div class="row"><div class="label">-</div><div class="value">No criteria selected.</div></div>`}
+              </div>
+
+              <div class="sectionTitle">Additional Achievements</div>
+              <div class="value" style="margin-top: 8px; white-space: pre-wrap;">${String(watch("additionalAchievements") || "-")}</div>
+            </div>
+            <script>
+              window.addEventListener('load', () => { setTimeout(() => window.print(), 250); });
+            </script>
+          </body>
+        </html>
+      `;
+
+      const w = window.open("", "_blank", "noopener,noreferrer");
+      if (!w) {
+        toast.error("Popup blocked. Please allow popups to print the application.");
+        return;
+      }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to prepare print view");
+    }
+  };
 
   const onSubmit = async (data: AlumniChapterLeadershipFormValues) => {
     // Prevent double submission
@@ -314,22 +440,24 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          alumniId: parseInt(alumniId, 10),
+          alumniId: alumniIdNumber,
           post: data.post,
           criteriaIds: Array.from(selectedCriteriaIds),
           additionalAchievements: data.additionalAchievements,
+          planStrategy: data.planStrategy,
+          optionalCriteriaProficiency,
           cvFileUrl: cvUrl,
           additionalFile1Url: file1Url,
           additionalFile2Url: file2Url,
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       toast.dismiss(loadingToast);
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to submit application");
+        throw new Error((result as any)?.error || "Failed to submit application");
       }
 
       toast.success("Application submitted successfully!", {
@@ -498,6 +626,14 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                                     else next.delete(id);
                                     return next;
                                   });
+
+                                  if (!e.target.checked && !c.is_mandatory) {
+                                    setOptionalCriteriaProficiency((prev) => {
+                                      const next = { ...prev };
+                                      delete next[id];
+                                      return next;
+                                    });
+                                  }
                                 }}
                                 className="mt-1 h-4 w-4 text-blue-600"
                               />
@@ -513,6 +649,20 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                                 {c.description ? (
                                   <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
                                 ) : null}
+
+                                {!c.is_mandatory && checked ? (
+                                  <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                    <div className="text-xs font-semibold text-slate-700 mb-1">Proficiency (optional)</div>
+                                    <StarRating
+                                      value={Number(optionalCriteriaProficiency[id] || 0)}
+                                      onChange={(val) => {
+                                        setOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: val }));
+                                      }}
+                                      ariaLabel={`Proficiency rating for ${c.label}`}
+                                      sizeClassName="text-[18px]"
+                                    />
+                                  </div>
+                                ) : null}
                               </div>
                             </label>
                           );
@@ -521,6 +671,41 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                     )}
                   </div>
                 </details>
+
+                <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Please tell your plan or strategy to achieve the role and responsibility assigned to you.
+                    </div>
+                    <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500"}`}>
+                      {planLen} / {planMaxLen}
+                    </div>
+                  </div>
+                  <textarea
+                    {...register("planStrategy", {
+                      validate: (v) => {
+                        const s = String(v || "");
+                        const trimmed = s.trim();
+                        if (!trimmed) return true;
+                        if (trimmed.length < planMinLen) return `Please write at least ${planMinLen} characters (or leave it empty).`;
+                        if (trimmed.length > planMaxLen) return `Please keep it under ${planMaxLen} characters.`;
+                        return true;
+                      },
+                    })}
+                    rows={4}
+                    placeholder="Write your plan or strategy here..."
+                    onInput={(e) => {
+                      const el = e.currentTarget;
+                      el.style.height = "auto";
+                      el.style.height = `${el.scrollHeight}px`;
+                    }}
+                    className="mt-3 w-full resize-none rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {errors.planStrategy ? <div className={errorText}>{errors.planStrategy.message}</div> : null}
+                  <div className="mt-1 text-xs text-gray-500">
+                    Optional. If provided, aim for {planMinLen}-{planMaxLen} characters.
+                  </div>
+                </div>
 
                 <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                   <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Compliance Declaration</div>
@@ -563,6 +748,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
         {/* Submit Button */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
+       
+
           <button
             type="submit"
             disabled={isSubmitting || isUploadingFiles || !selectedPost}

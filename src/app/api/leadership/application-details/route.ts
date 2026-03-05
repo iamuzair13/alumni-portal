@@ -11,6 +11,31 @@ function inferRoleNameFromPosition(position: string): "president" | "vice_presid
   return "president";
 }
 
+function normalizeOptionalCriteriaProficiency(raw: unknown): Record<string, number> | null {
+  try {
+    let obj: unknown = raw;
+    if (typeof obj === "string") {
+      const s = obj.trim();
+      if (!s) return null;
+      obj = JSON.parse(s) as unknown;
+    }
+    if (!obj || typeof obj !== "object") return null;
+
+    const rec = obj as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      const id = Number(k);
+      const rating = Number(v);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      if (!Number.isFinite(rating) || rating < 1) continue;
+      out[String(id)] = Math.min(5, Math.max(1, Math.round(rating)));
+    }
+    return Object.keys(out).length ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -47,10 +72,19 @@ export async function GET(req: NextRequest) {
           cl.updated_at,
           cl.rejection_reason,
           cl.additional_achievements,
+          cl.plan_strategy,
+          cl.optional_criteria_proficiency,
+          cl.cv_file_url,
+          cl.additional_file1_url,
+          cl.additional_file2_url,
           a.alumniid,
           a.sapid,
           a.registrationno,
           a.alumniname,
+          a.gender,
+          a.contactno,
+          a.officialnumber,
+          a.yearofending,
           a.personalemail,
           a.officialemail,
           a.universityemail,
@@ -82,6 +116,15 @@ export async function GET(req: NextRequest) {
       const position = String(r.post ?? "");
       const roleName = inferRoleNameFromPosition(position);
 
+      const roleRows = await sql/* sql */`
+        SELECT role_description, office_term_governance_html
+        FROM public.leadership_roles
+        WHERE leadership_type = 'chapter'
+          AND role_name = ${roleName}
+        LIMIT 1
+      `;
+      const roleRow = (roleRows?.[0] as Record<string, unknown> | undefined) ?? null;
+
       const criteriaRows = await sql/* sql */`
         SELECT
           c.id,
@@ -108,6 +151,8 @@ export async function GET(req: NextRequest) {
         ORDER BY c.sort_order ASC, c.id ASC
       `;
 
+      const optionalCriteriaProficiency = normalizeOptionalCriteriaProficiency(r.optional_criteria_proficiency ?? null);
+
       return NextResponse.json(
         {
           item: {
@@ -117,17 +162,27 @@ export async function GET(req: NextRequest) {
             sapId: String(r.sapid ?? ""),
             registrationNo: r.registrationno ? String(r.registrationno) : null,
             name: String(r.alumniname ?? ""),
+            gender: r.gender ? String(r.gender) : null,
+            passingYear: Number.isFinite(Number(r.yearofending)) ? Number(r.yearofending) : null,
             email:
               (r.personalemail ? String(r.personalemail) : null) ||
               (r.officialemail ? String(r.officialemail) : null) ||
               (r.universityemail ? String(r.universityemail) : null) ||
               "",
+            phone: (r.contactno ? String(r.contactno) : null) || (r.officialnumber ? String(r.officialnumber) : null) || null,
             faculty: r.facultyname ? String(r.facultyname) : null,
             department: r.departmentname ? String(r.departmentname) : null,
             program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
             position,
+            roleDescription: roleRow ? String(roleRow.role_description ?? "") : "",
+            officeTermGovernanceHtml: roleRow ? String((roleRow as Record<string, unknown>).office_term_governance_html ?? "") : "",
             status: r.status ? String(r.status) : "pending",
             additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
+            planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
+            optionalCriteriaProficiency,
+            cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
+            additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
+            additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
             createdAt: r.created_at ?? null,
             updatedAt: r.updated_at ?? null,
             rejectionReason: r.rejection_reason ? String(r.rejection_reason) : null,
@@ -153,10 +208,19 @@ export async function GET(req: NextRequest) {
         ass.status,
         ass.createddatetime,
         ass.additional_achievements,
+        ass.plan_strategy,
+        ass.optional_criteria_proficiency,
+        ass.cv_file_url,
+        ass.additional_file1_url,
+        ass.additional_file2_url,
         a.alumniid,
         a.sapid,
         a.registrationno,
         a.alumniname,
+        a.gender,
+        a.contactno,
+        a.officialnumber,
+        a.yearofending,
         a.personalemail,
         a.officialemail,
         a.universityemail,
@@ -188,6 +252,15 @@ export async function GET(req: NextRequest) {
     const position = String(r.role ?? "");
     const roleName = inferRoleNameFromPosition(position);
 
+    const roleRows = await sql/* sql */`
+      SELECT role_description, office_term_governance_html
+      FROM public.leadership_roles
+      WHERE leadership_type = 'association'
+        AND role_name = ${roleName}
+      LIMIT 1
+    `;
+    const roleRow = (roleRows?.[0] as Record<string, unknown> | undefined) ?? null;
+
     const criteriaRows = await sql/* sql */`
       SELECT
         c.id,
@@ -214,6 +287,8 @@ export async function GET(req: NextRequest) {
       ORDER BY c.sort_order ASC, c.id ASC
     `;
 
+    const optionalCriteriaProficiency = normalizeOptionalCriteriaProficiency(r.optional_criteria_proficiency ?? null);
+
     return NextResponse.json(
       {
         item: {
@@ -223,17 +298,27 @@ export async function GET(req: NextRequest) {
           sapId: String(r.sapid ?? ""),
           registrationNo: r.registrationno ? String(r.registrationno) : null,
           name: String(r.alumniname ?? ""),
+          gender: r.gender ? String(r.gender) : null,
+          passingYear: Number.isFinite(Number(r.yearofending)) ? Number(r.yearofending) : null,
           email:
             (r.personalemail ? String(r.personalemail) : null) ||
             (r.officialemail ? String(r.officialemail) : null) ||
             (r.universityemail ? String(r.universityemail) : null) ||
             "",
+          phone: (r.contactno ? String(r.contactno) : null) || (r.officialnumber ? String(r.officialnumber) : null) || null,
           faculty: r.facultyname ? String(r.facultyname) : null,
           department: r.departmentname ? String(r.departmentname) : null,
           program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
           position,
+          roleDescription: roleRow ? String(roleRow.role_description ?? "") : "",
+          officeTermGovernanceHtml: roleRow ? String((roleRow as Record<string, unknown>).office_term_governance_html ?? "") : "",
           status: r.status ? String(r.status) : "pending",
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
+          planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
+          optionalCriteriaProficiency,
+          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
+          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
+          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           createdAt: r.createddatetime ?? null,
           updatedAt: null,
           rejectionReason: null,

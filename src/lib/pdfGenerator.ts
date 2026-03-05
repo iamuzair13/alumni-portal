@@ -8,7 +8,7 @@ function getLogoBase64(): string {
     const logoPath = join(process.cwd(), "public", "images", "logo", "logo.png");
     const logoBuffer = readFileSync(logoPath);
     return `data:image/png;base64,${logoBuffer.toString("base64")}`;
-  } catch (error) {
+  } catch {
     return "";
   }
 }
@@ -51,7 +51,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
           const logoY = margin;
           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
           yPosition = logoY + logoHeight + 15;
-        } catch (logoError) {
+        } catch {
           yPosition = margin + 10;
         }
       } else {
@@ -175,7 +175,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
            const logoY = margin;
            doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
            yPosition = logoY + logoHeight + 15;
-         } catch (logoError) {
+         } catch {
            yPosition = margin + 10;
          }
        } else {
@@ -293,11 +293,17 @@ export interface LeadershipApplicationPDFData {
     sapId: string;
     registrationNo?: string | null;
     email: string;
+    gender?: string | null;
+    phone?: string | null;
+    passingYear?: number | null;
     faculty?: string | null;
     department?: string | null;
     program?: string | null;
   };
+  roleDescription?: string | null;
+  officeTermGovernanceHtml?: string | null;
   criteria: Array<{
+    id: number;
     label: string;
     description?: string | null;
     isMandatory: boolean;
@@ -305,6 +311,9 @@ export interface LeadershipApplicationPDFData {
     adminConfirmed: boolean;
   }>;
   additionalAchievements?: string | null;
+  planStrategy?: string | null;
+  optionalCriteriaProficiency?: unknown;
+  uploadedDocuments?: Array<{ label: string; url: string; uploadedAt?: string | null }>;
   createdAt?: string | null;
   updatedAt?: string | null;
   rejectionReason?: string | null;
@@ -316,9 +325,201 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 40;
+      const margin = 30;
       const maxWidth = pageWidth - 2 * margin;
       let y = margin;
+
+      const pageBottomY = () => pageHeight - margin;
+
+      const ensureSpace = (neededHeight: number) => {
+        if (y + neededHeight <= pageBottomY()) return;
+        doc.addPage();
+        y = margin;
+      };
+
+      const hLine = (gapTop: number = 8, gapBottom: number = 10) => {
+        ensureSpace(gapTop + gapBottom + 2);
+        y += gapTop;
+        doc.setDrawColor(210, 210, 210);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += gapBottom;
+      };
+
+      const setTextStyle = (fontSize: number, bold: boolean = false, color: [number, number, number] = [0, 0, 0]) => {
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setTextColor(color[0], color[1], color[2]);
+      };
+
+      const textHeight = (fontSize: number) => fontSize * 0.42;
+
+      const drawWrappedText = (text: string, x: number, fontSize: number, bold: boolean, maxW: number, spacing: number = 4) => {
+        setTextStyle(fontSize, bold);
+        const lines = doc.splitTextToSize(String(text ?? ""), maxW);
+        const height = lines.length * textHeight(fontSize);
+        ensureSpace(height + spacing);
+        doc.text(lines, x, y, { maxWidth: maxW });
+        y += height + spacing;
+      };
+
+      const sectionTitle = (title: string) => {
+        ensureSpace(18);
+        setTextStyle(12, true);
+        doc.text(title, margin, y);
+        y += 8;
+        doc.setDrawColor(0, 102, 51);
+        doc.setLineWidth(0.4);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 10;
+      };
+
+      const fieldPairGrid = (left: Array<{ label: string; value: string }>, right: Array<{ label: string; value: string }>) => {
+        const colGap = 14;
+        const colW = (maxWidth - colGap) / 2;
+        const x1 = margin;
+        const x2 = margin + colW + colGap;
+        const fontSize = 10.5;
+
+        const measureLines = (txt: string) => doc.splitTextToSize(txt, colW).length;
+        const rows = Math.max(left.length, right.length);
+        for (let i = 0; i < rows; i++) {
+          const l = left[i] ?? { label: "", value: "" };
+          const r = right[i] ?? { label: "", value: "" };
+          const lText = l.label ? `${l.label}: ${l.value || "-"}` : "";
+          const rText = r.label ? `${r.label}: ${r.value || "-"}` : "";
+          const rowLines = Math.max(measureLines(lText), measureLines(rText), 1);
+          const rowH = rowLines * textHeight(fontSize) + 3;
+          ensureSpace(rowH + 2);
+          if (lText) {
+            setTextStyle(fontSize, false);
+            doc.text(doc.splitTextToSize(lText, colW), x1, y, { maxWidth: colW });
+          }
+          if (rText) {
+            setTextStyle(fontSize, false);
+            doc.text(doc.splitTextToSize(rText, colW), x2, y, { maxWidth: colW });
+          }
+          y += rowH;
+        }
+        y += 4;
+      };
+
+      const ratingLabel = (value: number | null | undefined) => {
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 1) return "";
+        const m = Math.min(5, Math.max(1, Math.round(n)));
+        if (m === 1) return "Very Poor";
+        if (m === 2) return "Poor";
+        if (m === 3) return "Fair";
+        if (m === 4) return "Good";
+        return "Excellent";
+      };
+
+      const proficiencyMap = (() => {
+        try {
+          const raw = data.optionalCriteriaProficiency as unknown;
+          let obj: unknown = raw;
+          if (typeof obj === "string") {
+            const s = obj.trim();
+            if (!s) return {} as Record<string, number>;
+            obj = JSON.parse(s) as unknown;
+          }
+          if (!obj || typeof obj !== "object") return {} as Record<string, number>;
+          const rec = obj as Record<string, unknown>;
+          const out: Record<string, number> = {};
+          for (const [k, v] of Object.entries(rec)) {
+            const id = Number(k);
+            const rating = Number(v);
+            if (!Number.isFinite(id) || id <= 0) continue;
+            if (!Number.isFinite(rating) || rating < 1) continue;
+            out[String(id)] = Math.min(5, Math.max(1, Math.round(rating)));
+          }
+          return out;
+        } catch {
+          return {} as Record<string, number>;
+        }
+      })();
+
+      const normalizeHtml = (html: string) => {
+        return String(html || "")
+          .replace(/\r\n/g, "\n")
+          .replace(/<br\s*\/?\s*>/gi, "\n")
+          .replace(/<\/?p\b[^>]*>/gi, "\n")
+          .replace(/<\/?div\b[^>]*>/gi, "\n")
+          .replace(/<\/?h[1-6]\b[^>]*>/gi, "\n")
+          .replace(/<li\b[^>]*>/gi, "\n• ")
+          .replace(/<\/?(ul|ol)\b[^>]*>/gi, "\n")
+          .replace(/<strong\b[^>]*>/gi, "**")
+          .replace(/<\/strong>/gi, "**")
+          .replace(/<b\b[^>]*>/gi, "**")
+          .replace(/<\/b>/gi, "**")
+          .replace(/<[^>]+>/g, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+      };
+
+      const drawInlineBoldLine = (line: string, x: number, fontSize: number, maxW: number) => {
+        const parts = String(line || "").split("**");
+        const outLines: Array<Array<{ t: string; b: boolean }>> = [[]];
+        let bold = false;
+
+        for (let i = 0; i < parts.length; i++) {
+          const t = parts[i];
+          if (t) outLines[outLines.length - 1].push({ t, b: bold });
+          bold = !bold;
+        }
+
+        const tokens = outLines[0];
+        const words: Array<{ t: string; b: boolean }> = [];
+        tokens.forEach((tk) => {
+          tk.t.split(/(\s+)/).forEach((w) => {
+            if (w) words.push({ t: w, b: tk.b });
+          });
+        });
+
+        const lines: Array<Array<{ t: string; b: boolean }>> = [[]];
+        let curW = 0;
+        for (const w of words) {
+          setTextStyle(fontSize, w.b);
+          const wW = doc.getTextWidth(w.t);
+          if (curW + wW > maxW && lines[lines.length - 1].length > 0) {
+            lines.push([]);
+            curW = 0;
+          }
+          lines[lines.length - 1].push(w);
+          curW += wW;
+        }
+
+        ensureSpace(lines.length * textHeight(fontSize) + 2);
+        for (const ln of lines) {
+          let xPos = x;
+          for (const w of ln) {
+            setTextStyle(fontSize, w.b);
+            doc.text(w.t, xPos, y);
+            xPos += doc.getTextWidth(w.t);
+          }
+          y += textHeight(fontSize);
+        }
+        y += 2;
+      };
+
+      const drawRichTextBlock = (htmlOrText: string, maxW: number) => {
+        const txt = normalizeHtml(htmlOrText);
+        if (!txt) {
+          drawWrappedText("-", margin, 10.5, false, maxW, 6);
+          return;
+        }
+        const lines = txt.split("\n");
+        for (const rawLine of lines) {
+          const line = rawLine.trimEnd();
+          if (!line.trim()) {
+            y += 4;
+            continue;
+          }
+          drawInlineBoldLine(line, margin, 10.5, maxW);
+        }
+        y += 2;
+      };
 
       const logoBase64 = getLogoBase64();
       if (logoBase64) {
@@ -328,7 +529,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           const logoX = pageWidth - margin - logoWidth;
           const logoY = margin;
           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
-          y = logoY + logoHeight + 12;
+          y = logoY + logoHeight + 10;
         } catch {
           y = margin + 10;
         }
@@ -336,87 +537,164 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         y = margin + 10;
       }
 
-      doc.setDrawColor(0, 102, 51);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 14;
-
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 102, 51);
+      setTextStyle(14, true, [0, 102, 51]);
       doc.text("Leadership Application", margin, y);
-      y += 8;
+      y += 10;
+      hLine(0, 10);
 
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
+      setTextStyle(12, true);
+      const applicantName = String(data.applicant.name || "-");
+      drawWrappedText(applicantName, margin, 12, true, maxWidth, 4);
 
-      const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-      const dateText = `Date: ${date}`;
-      doc.text(dateText, pageWidth - margin - doc.getTextWidth(dateText), y);
-      y += 16;
+      const headerLeft: Array<{ label: string; value: string }> = [
+        { label: "SAP ID", value: String(data.applicant.sapId || data.applicant.registrationNo || "-") },
+        { label: "Role Applied For", value: String(data.position || "-") },
+      ];
+      const headerRight: Array<{ label: string; value: string }> = [
+        { label: "Application Date", value: String(data.createdAt || "-") },
+        { label: "Application Status", value: String(data.status || "pending") },
+      ];
+      fieldPairGrid(headerLeft, headerRight);
+      hLine(2, 10);
 
-      const addText = (text: string, fontSize: number, isBold: boolean = false, spacing: number = 6) => {
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", isBold ? "bold" : "normal");
-        doc.setTextColor(0, 0, 0);
-        const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, margin, y, { maxWidth });
-        y += lines.length * (fontSize * 0.42) + spacing;
-        if (y > pageHeight - margin) {
+      sectionTitle("Personal Information");
+      fieldPairGrid(
+        [
+          { label: "Full Name", value: String(data.applicant.name || "-") },
+          { label: "SAP ID", value: String(data.applicant.sapId || "-") },
+          { label: "Gender", value: String(data.applicant.gender || "-") },
+          { label: "Email", value: String(data.applicant.email || "-") },
+        ],
+        [
+          { label: "Faculty", value: String(data.applicant.faculty || "-") },
+          { label: "Department", value: String(data.applicant.department || "-") },
+          { label: "Program", value: String(data.applicant.program || "-") },
+          { label: "Passing Year", value: data.applicant.passingYear ? String(data.applicant.passingYear) : "-" },
+        ]
+      );
+      hLine(0, 10);
+
+      sectionTitle("Role Information");
+      drawWrappedText(`Role Title: ${String(data.position || "-")}`, margin, 10.5, false, maxWidth, 4);
+      drawWrappedText(`Role Description: ${String(data.roleDescription || "-")}`, margin, 10.5, false, maxWidth, 8);
+      drawRichTextBlock(String(data.officeTermGovernanceHtml || ""), maxWidth);
+      hLine(0, 10);
+
+      sectionTitle("Criteria");
+      const tableColW = {
+        req: maxWidth * 0.46,
+        type: maxWidth * 0.16,
+        selected: maxWidth * 0.16,
+        prof: maxWidth * 0.22,
+      };
+      const tableX = {
+        req: margin,
+        type: margin + tableColW.req,
+        selected: margin + tableColW.req + tableColW.type,
+        prof: margin + tableColW.req + tableColW.type + tableColW.selected,
+      };
+      const tableFont = 9.5;
+
+      const drawTableHeader = () => {
+        ensureSpace(18);
+        doc.setFillColor(245, 245, 245);
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.2);
+        const headerH = 10;
+        doc.rect(margin, y, maxWidth, headerH, "F");
+        doc.rect(margin, y, maxWidth, headerH);
+        doc.line(tableX.type, y, tableX.type, y + headerH);
+        doc.line(tableX.selected, y, tableX.selected, y + headerH);
+        doc.line(tableX.prof, y, tableX.prof, y + headerH);
+        setTextStyle(tableFont, true);
+        doc.text("Requirement", tableX.req + 2, y + 7);
+        doc.text("Type", tableX.type + 2, y + 7);
+        doc.text("Selected", tableX.selected + 2, y + 7);
+        doc.text("Proficiency", tableX.prof + 2, y + 7);
+        y += headerH;
+      };
+
+      const drawTableRow = (cells: { req: string; type: string; selected: string; prof: string }) => {
+        const reqLines = doc.splitTextToSize(cells.req, tableColW.req - 4);
+        const typeLines = doc.splitTextToSize(cells.type, tableColW.type - 4);
+        const selLines = doc.splitTextToSize(cells.selected, tableColW.selected - 4);
+        const profLines = doc.splitTextToSize(cells.prof, tableColW.prof - 4);
+        const lines = Math.max(reqLines.length, typeLines.length, selLines.length, profLines.length, 1);
+        const rowH = lines * textHeight(tableFont) + 6;
+        if (y + rowH > pageBottomY()) {
           doc.addPage();
           y = margin;
+          drawTableHeader();
         }
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.2);
+        doc.rect(margin, y, maxWidth, rowH);
+        doc.line(tableX.type, y, tableX.type, y + rowH);
+        doc.line(tableX.selected, y, tableX.selected, y + rowH);
+        doc.line(tableX.prof, y, tableX.prof, y + rowH);
+        setTextStyle(tableFont, false);
+        doc.text(reqLines, tableX.req + 2, y + 5, { maxWidth: tableColW.req - 4 });
+        doc.text(typeLines, tableX.type + 2, y + 5, { maxWidth: tableColW.type - 4 });
+        doc.text(selLines, tableX.selected + 2, y + 5, { maxWidth: tableColW.selected - 4 });
+        doc.text(profLines, tableX.prof + 2, y + 5, { maxWidth: tableColW.prof - 4 });
+        y += rowH;
       };
 
-      const labelValue = (label: string, value: string) => {
-        addText(`${label}: ${value}`, 11, false, 4);
-      };
-
-      addText(`Applicant: ${data.applicant.name || "-"}`, 12, true, 6);
-      labelValue("Leadership Type", data.leadershipType === "chapter" ? "Chapter" : "Association");
-      labelValue("Role", data.position || "-");
-      labelValue("Status", String(data.status || "pending"));
-      if (data.createdAt) labelValue("Created At", String(data.createdAt));
-      if (data.updatedAt) labelValue("Updated At", String(data.updatedAt));
-      if (data.rejectionReason) labelValue("Rejection Reason", String(data.rejectionReason));
-
-      const idLine = data.applicant.sapId
-        ? `SAP ID: ${data.applicant.sapId}`
-        : data.applicant.registrationNo
-          ? `Registration No: ${data.applicant.registrationNo}`
-          : "";
-      if (idLine) addText(idLine, 11, false, 4);
-      if (data.applicant.email) addText(`Email: ${data.applicant.email}`, 11, false, 4);
-      if (data.applicant.faculty) addText(`Faculty: ${data.applicant.faculty}`, 11, false, 4);
-      if (data.applicant.department) addText(`Department: ${data.applicant.department}`, 11, false, 4);
-      if (data.applicant.program) addText(`Program: ${data.applicant.program}`, 11, false, 8);
-
-      addText("Criteria", 12, true, 6);
       if (!data.criteria || data.criteria.length === 0) {
-        addText("No criteria found.", 11, false, 10);
+        drawWrappedText("No criteria found.", margin, 10.5, false, maxWidth, 10);
       } else {
-        data.criteria.forEach((c, idx) => {
-          const flags = `${c.isMandatory ? "Mandatory" : "Optional"} | Alumni: ${c.alumniConfirmed ? "Yes" : "No"} | Admin: ${c.adminConfirmed ? "Yes" : "No"}`;
-          addText(`${idx + 1}. ${c.label}`, 11, true, 2);
-          if (c.description) addText(String(c.description), 10, false, 2);
-          addText(flags, 10, false, 8);
+        drawTableHeader();
+        data.criteria.forEach((c) => {
+          const selected = c.alumniConfirmed ? "Yes" : "No";
+          const typeLabel = c.isMandatory ? "Mandatory" : "Optional";
+          let prof = "—";
+          if (!c.isMandatory) {
+            if (!c.alumniConfirmed) {
+              prof = "-";
+            } else {
+              const rating = Number(proficiencyMap[String(c.id)] ?? 0);
+              const label = ratingLabel(rating);
+              prof = label || "No Rating";
+            }
+          }
+          drawTableRow({
+            req: String(c.label || "-") + (c.description ? `\n${String(c.description)}` : ""),
+            type: typeLabel,
+            selected,
+            prof,
+          });
         });
+        y += 10;
       }
 
-      addText("Additional Achievements", 12, true, 6);
-      addText(String(data.additionalAchievements || "No additional achievements provided."), 11, false, 10);
+      hLine(0, 10);
+      sectionTitle("Role Plan / Strategy");
+      drawRichTextBlock(String(data.planStrategy || "No plan/strategy provided."), maxWidth);
+      hLine(0, 10);
 
-      const footerY = pageHeight - 24;
-      doc.setDrawColor(0, 102, 51);
-      doc.setLineWidth(0.5);
-      doc.line(margin, footerY, pageWidth - margin, footerY);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
+      sectionTitle("Uploaded Documents");
+      const docs = Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : [];
+      if (!docs.length) {
+        drawWrappedText("No documents uploaded.", margin, 10.5, false, maxWidth, 10);
+      } else {
+        docs.forEach((d, i) => {
+          const url = String(d.url || "");
+          const name = url ? decodeURIComponent(url.split("?")[0].split("#")[0].split("/").pop() || url) : "";
+          const label = String(d.label || "Document");
+          const line = `${i + 1}. ${name || label}`;
+          drawWrappedText(line, margin, 10.5, false, maxWidth, 4);
+        });
+        y += 6;
+      }
+
+      const footerY = pageHeight - 18;
+      doc.setDrawColor(210, 210, 210);
+      doc.setLineWidth(0.3);
+      doc.line(margin, footerY - 6, pageWidth - margin, footerY - 6);
+      setTextStyle(9, false, [100, 100, 100]);
       const footerText = "Office of Alumni Relations | University of Lahore";
       const footerWidth = doc.getTextWidth(footerText);
-      doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
+      doc.text(footerText, (pageWidth - footerWidth) / 2, footerY);
 
       const pdfOutput = doc.output("arraybuffer");
       const buffer = Buffer.from(pdfOutput);
@@ -447,7 +725,7 @@ export function generateUpskillPDF(data: UpskillApplicationData): Promise<Buffer
           const logoY = margin;
           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
           yPosition = logoY + logoHeight + 15;
-        } catch (logoError) {
+        } catch {
           yPosition = margin + 10;
         }
       } else {

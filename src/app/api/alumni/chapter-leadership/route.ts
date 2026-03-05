@@ -62,36 +62,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { alumniId, post, criteriaIds, additionalAchievements, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
-      alumniId?: number;
+    const body = (await request.json()) as {
+      alumniId?: number | string;
       post?: string;
-      criteriaIds?: unknown;
-      additionalAchievements?: unknown;
-      cvFileUrl?: unknown;
-      additionalFile1Url?: unknown;
-      additionalFile2Url?: unknown;
+      criteriaIds?: number[];
+      additionalAchievements?: string;
+      planStrategy?: string;
+      optionalCriteriaProficiency?: Record<string, unknown>;
+      cvFileUrl?: string;
+      additionalFile1Url?: string | null;
+      additionalFile2Url?: string | null;
     };
 
-    if (!alumniId) {
+    if (!body.alumniId) {
       return NextResponse.json({ error: "Alumni ID is required" }, { status: 400 });
     }
 
-    if (!post) {
+    if (!body.post) {
       return NextResponse.json({ error: "Post is required" }, { status: 400 });
     }
 
     // Validate post
     const validPosts = ["president", "vicePresident", "coordinator"];
-    if (!validPosts.includes(post)) {
+    if (!validPosts.includes(body.post)) {
       return NextResponse.json({ error: "Invalid post selected" }, { status: 400 });
     }
 
-    const roleName = post === "vicePresident" ? "vice_president" : post;
-    const confirmedCriteriaIds = Array.isArray(criteriaIds)
+    const roleName = body.post === "vicePresident" ? "vice_president" : body.post;
+    const confirmedCriteriaIds = Array.isArray(body.criteriaIds)
       ? Array.from(
           new Set(
-            criteriaIds
+            body.criteriaIds
               .map((x) => Number(x))
               .filter((n) => Number.isFinite(n) && n > 0)
           )
@@ -122,19 +123,45 @@ export async function POST(request: NextRequest) {
       coordinator: "Coordinator",
     };
 
-    const postDisplayName = postDisplayNames[post] || post;
-    const alumniIdNum = Number(alumniId);
+    const postDisplayName = postDisplayNames[body.post] || body.post;
+    const alumniIdNum = Number(body.alumniId);
     if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
 
-    const additionalAchievementsTextRaw = typeof additionalAchievements === "string" ? additionalAchievements : "";
+    const additionalAchievementsTextRaw = typeof body.additionalAchievements === "string" ? body.additionalAchievements : "";
     const additionalAchievementsText = String(additionalAchievementsTextRaw ?? "").trim().slice(0, 5000);
     const additionalAchievementsValue = additionalAchievementsText ? additionalAchievementsText : null;
 
-    const cvFileUrlValue = typeof cvFileUrl === "string" && cvFileUrl.trim() ? cvFileUrl.trim().slice(0, 500) : null;
-    const additionalFile1UrlValue = typeof additionalFile1Url === "string" && additionalFile1Url.trim() ? additionalFile1Url.trim().slice(0, 500) : null;
-    const additionalFile2UrlValue = typeof additionalFile2Url === "string" && additionalFile2Url.trim() ? additionalFile2Url.trim().slice(0, 500) : null;
+    const planStrategyRaw = typeof body.planStrategy === "string" ? body.planStrategy : "";
+    const planStrategy = planStrategyRaw.trim();
+    const planStrategyValue = planStrategy ? planStrategy : null;
+
+    const optionalCriteriaProficiencyRaw = body.optionalCriteriaProficiency && typeof body.optionalCriteriaProficiency === "object"
+      ? (body.optionalCriteriaProficiency as Record<string, unknown>)
+      : null;
+    const optionalCriteriaProficiency = optionalCriteriaProficiencyRaw
+      ? Object.fromEntries(
+          Object.entries(optionalCriteriaProficiencyRaw)
+            .map(([k, v]) => {
+              const id = Number(k);
+              const rating = Number(v);
+              if (!Number.isFinite(id) || id <= 0) return null;
+              if (!Number.isFinite(rating) || rating < 1) return null;
+              const normalized = Math.min(5, Math.max(1, Math.round(rating)));
+              return [String(id), normalized] as const;
+            })
+            .filter(Boolean) as Array<readonly [string, number]>
+        )
+      : null;
+
+    if (planStrategyValue && planStrategyValue.length < 50) {
+      return NextResponse.json({ error: "Plan/strategy must be at least 50 characters (or leave it empty)." }, { status: 400 });
+    }
+
+    const cvFileUrlValue = typeof body.cvFileUrl === "string" && body.cvFileUrl.trim() ? body.cvFileUrl.trim().slice(0, 500) : null;
+    const additionalFile1UrlValue = typeof body.additionalFile1Url === "string" && body.additionalFile1Url.trim() ? body.additionalFile1Url.trim().slice(0, 500) : null;
+    const additionalFile2UrlValue = typeof body.additionalFile2Url === "string" && body.additionalFile2Url.trim() ? body.additionalFile2Url.trim().slice(0, 500) : null;
 
     if (!cvFileUrlValue) {
       return NextResponse.json({ error: "CV upload is required" }, { status: 400 });
@@ -182,6 +209,8 @@ export async function POST(request: NextRequest) {
         updated_at,
         alumniid,
         additional_achievements,
+        plan_strategy,
+        optional_criteria_proficiency,
         cv_file_url,
         additional_file1_url,
         additional_file2_url
@@ -193,6 +222,8 @@ export async function POST(request: NextRequest) {
         NOW(),
         ${alumniIdNum},
         ${additionalAchievementsValue},
+        ${planStrategyValue},
+        ${optionalCriteriaProficiency ? JSON.stringify(optionalCriteriaProficiency) : null},
         ${cvFileUrlValue},
         ${additionalFile1UrlValue},
         ${additionalFile2UrlValue}

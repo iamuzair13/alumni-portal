@@ -12,6 +12,31 @@ function inferRoleNameFromPosition(position: string): "president" | "vice_presid
   return "president";
 }
 
+function normalizeOptionalCriteriaProficiency(raw: unknown): Record<string, number> | null {
+  try {
+    let obj: unknown = raw;
+    if (typeof obj === "string") {
+      const s = obj.trim();
+      if (!s) return null;
+      obj = JSON.parse(s) as unknown;
+    }
+    if (!obj || typeof obj !== "object") return null;
+
+    const rec = obj as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      const id = Number(k);
+      const rating = Number(v);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      if (!Number.isFinite(rating) || rating < 1) continue;
+      out[String(id)] = Math.min(5, Math.max(1, Math.round(rating)));
+    }
+    return Object.keys(out).length ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -20,9 +45,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!canModify(session.user)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const canStaffDownload = canModify(session.user);
+    const sessionAlumniIdRaw = (session.user as { userId?: number | null })?.userId;
+    const sessionAlumniId = sessionAlumniIdRaw && Number.isFinite(Number(sessionAlumniIdRaw)) ? Number(sessionAlumniIdRaw) : null;
 
     const searchParams = req.nextUrl.searchParams;
     const type = searchParams.get("type");
@@ -39,10 +64,16 @@ export async function GET(req: NextRequest) {
 
     const isSuperAdmin = isSuperAdminUser(session?.user);
     const isAdmin = isAdminUser(session?.user);
-    const shouldApplyFilter = !isSuperAdmin && !isAdmin;
+    const isAlumni = !canStaffDownload;
+    if (isAlumni && (!sessionAlumniId || sessionAlumniId <= 0)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const shouldApplyFilter = !isAlumni && !isSuperAdmin && !isAdmin;
     const accessFilter = shouldApplyFilter ? await buildAccessFilterSQL(session, "") : { sql: null, hasFilter: false };
 
     let item: Record<string, unknown> | null = null;
+    let roleRow: Record<string, unknown> | null = null;
 
     if (type === "chapter") {
       const rows = await sql/* sql */`
@@ -54,10 +85,19 @@ export async function GET(req: NextRequest) {
           cl.updated_at,
           cl.rejection_reason,
           cl.additional_achievements,
+          cl.plan_strategy,
+          cl.optional_criteria_proficiency,
+          cl.cv_file_url,
+          cl.additional_file1_url,
+          cl.additional_file2_url,
           a.alumniid,
           a.sapid,
           a.registrationno,
           a.alumniname,
+          a.gender,
+          a.contactno,
+          a.officialnumber,
+          a.yearofending,
           a.personalemail,
           a.officialemail,
           a.universityemail,
@@ -71,6 +111,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE cl.id = ${applicationId}
+          ${isAlumni && sessionAlumniId ? sql` AND cl.alumniid = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter
@@ -86,6 +127,17 @@ export async function GET(req: NextRequest) {
       }
 
       item = rows[0] as Record<string, unknown>;
+
+      const position = String(item.post ?? "");
+      const roleName = inferRoleNameFromPosition(position);
+      const roleRows = await sql/* sql */`
+        SELECT role_description, office_term_governance_html
+        FROM public.leadership_roles
+        WHERE leadership_type = 'chapter'
+          AND role_name = ${roleName}
+        LIMIT 1
+      `;
+      roleRow = (roleRows?.[0] as Record<string, unknown> | undefined) ?? null;
     } else {
       const rows = await sql/* sql */`
         SELECT 
@@ -94,10 +146,19 @@ export async function GET(req: NextRequest) {
           ass.status,
           ass.createddatetime,
           ass.additional_achievements,
+          ass.plan_strategy,
+          ass.optional_criteria_proficiency,
+          ass.cv_file_url,
+          ass.additional_file1_url,
+          ass.additional_file2_url,
           a.alumniid,
           a.sapid,
           a.registrationno,
           a.alumniname,
+          a.gender,
+          a.contactno,
+          a.officialnumber,
+          a.yearofending,
           a.personalemail,
           a.officialemail,
           a.universityemail,
@@ -111,6 +172,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         WHERE ass.id = ${applicationId}
+          ${isAlumni && sessionAlumniId ? sql` AND ass.alumni_id = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter
@@ -126,6 +188,17 @@ export async function GET(req: NextRequest) {
       }
 
       item = rows[0] as Record<string, unknown>;
+
+      const position = String(item.role ?? "");
+      const roleName = inferRoleNameFromPosition(position);
+      const roleRows = await sql/* sql */`
+        SELECT role_description, office_term_governance_html
+        FROM public.leadership_roles
+        WHERE leadership_type = 'association'
+          AND role_name = ${roleName}
+        LIMIT 1
+      `;
+      roleRow = (roleRows?.[0] as Record<string, unknown> | undefined) ?? null;
     }
 
     const position = type === "chapter" ? String(item.post ?? "") : String(item.role ?? "");
@@ -178,26 +251,43 @@ export async function GET(req: NextRequest) {
           (item.officialemail ? String(item.officialemail) : null) ||
           (item.universityemail ? String(item.universityemail) : null) ||
           "",
+        gender: item.gender ? String(item.gender) : null,
+        phone:
+          (item.contactno ? String(item.contactno) : null) ||
+          (item.officialnumber ? String(item.officialnumber) : null) ||
+          null,
+        passingYear: Number.isFinite(Number(item.yearofending)) ? Number(item.yearofending) : null,
         faculty: item.facultyname ? String(item.facultyname) : null,
         department: item.departmentname ? String(item.departmentname) : null,
         program: item.program_name ? String(item.program_name) : (item.degreetitle ? String(item.degreetitle) : null),
       },
+      roleDescription: roleRow ? String(roleRow.role_description ?? "") : "",
+      officeTermGovernanceHtml: roleRow ? String(roleRow.office_term_governance_html ?? "") : "",
       additionalAchievements: item.additional_achievements ? String(item.additional_achievements) : null,
+      planStrategy: item.plan_strategy ? String(item.plan_strategy) : null,
       createdAt: (type === "chapter" ? item.created_at : item.createddatetime) ? String(type === "chapter" ? item.created_at : item.createddatetime) : null,
       updatedAt: item.updated_at ? String(item.updated_at) : null,
       rejectionReason: item.rejection_reason ? String(item.rejection_reason) : null,
+      uploadedDocuments: [
+        item.cv_file_url ? { label: "CV", url: String(item.cv_file_url) } : null,
+        item.additional_file1_url ? { label: "Supporting Document 1", url: String(item.additional_file1_url) } : null,
+        item.additional_file2_url ? { label: "Supporting Document 2", url: String(item.additional_file2_url) } : null,
+      ].filter(Boolean) as Array<{ label: string; url: string }>,
       criteria: (criteriaRows || []).map((c: Record<string, unknown>) => ({
+        id: Number(c.id ?? 0),
         label: String(c.label ?? ""),
         description: c.description ? String(c.description) : null,
         isMandatory: Boolean(c.is_mandatory),
         alumniConfirmed: Boolean(c.alumni_confirmed),
         adminConfirmed: Boolean(c.admin_confirmed),
       })),
+      optionalCriteriaProficiency: normalizeOptionalCriteriaProficiency(item.optional_criteria_proficiency ?? null),
     });
 
     const filenameBase = `${type}-leadership-application-${String(item.sapid ?? "").trim() || String(item.registrationno ?? "").trim() || String(applicationId)}`;
 
-    return new NextResponse(pdf, {
+    const body = new Uint8Array(pdf);
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
