@@ -21,10 +21,8 @@ import OrganizationComponent from "@/components/setup/OrganizationComponent";
 import ChaptersComponent from "@/components/setup/ChaptersComponent";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { NewsletterTab } from "@/components/alumni/NewsletterTab";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
-import Underline from "@tiptap/extension-underline";
+import RoleDescriptionSection from "@/components/leadership/RoleDescriptionSection";
+import LeadershipCriteriaManager from "@/components/leadership/LeadershipCriteriaManager";
 
 type LeadershipType = "chapter" | "association";
 type LeadershipRoleName = "president" | "vice_president" | "coordinator";
@@ -276,8 +274,6 @@ function SetupPageContent() {
   const [savingComplianceDeclaration, setSavingComplianceDeclaration] = useState(false);
   const [governanceDraft, setGovernanceDraft] = useState<string>("");
   const [savingGovernance, setSavingGovernance] = useState(false);
-  const [governanceEditOpen, setGovernanceEditOpen] = useState(false);
-  const [governanceModalDraft, setGovernanceModalDraft] = useState<string>("");
   const [criteriaDraft, setCriteriaDraft] = useState<CriteriaDraft>({
     label: "",
     description: "",
@@ -334,102 +330,6 @@ function SetupPageContent() {
     const s = String((roleAdminData?.role as any)?.office_term_governance_html ?? "");
     setGovernanceDraft(s);
   }, [(roleAdminData?.role as any)?.office_term_governance_html, selected, criteriaType, criteriaRole]);
-
-  useEffect(() => {
-    if (!governanceEditOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [governanceEditOpen]);
-
-  useEffect(() => {
-    if (!governanceEditOpen) return;
-    setGovernanceModalDraft(governanceDraft || "");
-  }, [governanceEditOpen, governanceDraft]);
-
-  const governanceModalEditor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-      }),
-      Underline,
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          target: "_blank",
-          rel: "noopener noreferrer",
-        },
-      }),
-    ],
-    content: governanceModalDraft || "",
-    onUpdate: ({ editor }) => {
-      setGovernanceModalDraft(editor.getHTML());
-    },
-    editorProps: {
-      attributes: {
-        class: "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[260px] p-3",
-      },
-    },
-  });
-
-  useEffect(() => {
-    if (!governanceModalEditor) return;
-    governanceModalEditor.setEditable(governanceEditOpen && !savingGovernance);
-  }, [governanceModalEditor, governanceEditOpen, savingGovernance]);
-
-  useEffect(() => {
-    if (!governanceModalEditor) return;
-    if (!governanceEditOpen) return;
-    const current = governanceModalEditor.getHTML();
-    const next = governanceModalDraft || "";
-    if (current !== next) {
-      governanceModalEditor.commands.setContent(next, { emitUpdate: false });
-    }
-  }, [governanceModalEditor, governanceModalDraft, governanceEditOpen]);
-
-  const printGovernance = () => {
-    const html = String(governanceDraft ?? "");
-    const w = window.open("", "_blank", "noopener,noreferrer");
-    if (!w) {
-      pushToast("error", "Popup blocked. Please allow popups to print.");
-      return;
-    }
-
-    w.document.open();
-    w.document.write(`<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Office Term & Related Governance</title>
-    <style>
-      :root { color-scheme: light; }
-      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 32px; color: #111827; }
-      h1 { font-size: 20px; margin: 0 0 16px; }
-      .prose { max-width: 820px; }
-      .prose h1, .prose h2, .prose h3 { margin: 16px 0 8px; }
-      .prose p { margin: 10px 0; line-height: 1.55; }
-      .prose ul, .prose ol { padding-left: 22px; margin: 10px 0; }
-      .prose li { margin: 6px 0; }
-      .prose a { color: #2563eb; text-decoration: underline; }
-      @media print { body { margin: 16mm; } }
-    </style>
-  </head>
-  <body>
-    <h1>Office Term & Related Governance</h1>
-    <div class="prose">${html}</div>
-    <script>
-      window.addEventListener('load', () => { window.focus(); window.print(); });
-    </script>
-  </body>
-</html>`);
-    w.document.close();
-  };
 
   const criteriaAdminItems = useMemo(() => {
     const items = (criteriaAdminData as any)?.items ?? [];
@@ -1017,476 +917,116 @@ function SetupPageContent() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 lg:grid-cols-5 gap-4">
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Role Description ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Informational only. Not selectable and not a validation rule.</div>
-                    <textarea
-                      value={roleDescriptionDraft}
-                      onChange={(e) => setRoleDescriptionDraft(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                      rows={6}
-                      placeholder={roleAdminLoading ? "Loading..." : "Enter role description"}
-                      disabled={roleAdminLoading || savingRoleDescription}
-                    />
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            setSavingRoleDescription(true);
-                            await updateLeadershipRoleDescription({
-                              type: criteriaType,
-                              role: criteriaRole,
-                              roleDescription: roleDescriptionDraft,
-                            });
-                            pushToast("success", "Role description saved");
-                            queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
-                            queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
-                          } catch (e) {
-                            pushToast("error", e instanceof Error ? e.message : "Failed");
-                          } finally {
-                            setSavingRoleDescription(false);
-                          }
-                        }}
-                        disabled={savingRoleDescription || roleAdminLoading}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        {savingRoleDescription ? "Saving..." : "Save"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Code of Ethics ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Informational only. Not selectable and not a validation rule.</div>
-                    <textarea
-                      value={codeOfEthicsDraft}
-                      onChange={(e) => setCodeOfEthicsDraft(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                      rows={6}
-                      placeholder={roleAdminLoading ? "Loading..." : "Enter code of ethics"}
-                      disabled={roleAdminLoading || savingCodeOfEthics}
-                    />
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            setSavingCodeOfEthics(true);
-                            await updateLeadershipRoleCodeOfEthics({
-                              type: criteriaType,
-                              role: criteriaRole,
-                              codeOfEthics: codeOfEthicsDraft,
-                            });
-                            pushToast("success", "Code of ethics saved");
-                            queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
-                            queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
-                          } catch (e) {
-                            pushToast("error", e instanceof Error ? e.message : "Failed");
-                          } finally {
-                            setSavingCodeOfEthics(false);
-                          }
-                        }}
-                        disabled={savingCodeOfEthics || roleAdminLoading}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        {savingCodeOfEthics ? "Saving..." : "Save"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Compliance Declaration ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Required consent. Alumni must check a checkbox before submitting an application.</div>
-                    <textarea
-                      value={complianceDeclarationDraft}
-                      onChange={(e) => setComplianceDeclarationDraft(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                      rows={6}
-                      placeholder={roleAdminLoading ? "Loading..." : "Enter compliance declaration"}
-                      disabled={roleAdminLoading || savingComplianceDeclaration}
-                    />
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            setSavingComplianceDeclaration(true);
-                            await updateLeadershipRoleComplianceDeclaration({
-                              type: criteriaType,
-                              role: criteriaRole,
-                              complianceDeclaration: complianceDeclarationDraft,
-                            });
-                            pushToast("success", "Compliance declaration saved");
-                            queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
-                            queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
-                          } catch (e) {
-                            pushToast("error", e instanceof Error ? e.message : "Failed");
-                          } finally {
-                            setSavingComplianceDeclaration(false);
-                          }
-                        }}
-                        disabled={savingComplianceDeclaration || roleAdminLoading}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        {savingComplianceDeclaration ? "Saving..." : "Save"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Office Term & Related Governance ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Rich formatting supported (headings, bold, lists, links). Informational only.</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setGovernanceEditOpen(true)}
-                        disabled={roleAdminLoading}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={printGovernance}
-                        disabled={roleAdminLoading}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Print (PDF)
-                      </button>
-                      <div className="ml-auto text-[11px] text-gray-500 dark:text-gray-400">Characters: {governanceDraft.length}</div>
-                    </div>
-
-                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 overflow-y-auto max-h-[360px] scroll-smooth">
-                      <div
-                        className="prose prose-sm dark:prose-invert max-w-none p-3"
-                        dangerouslySetInnerHTML={{ __html: governanceDraft || "" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Criteria List ({typeLabel(criteriaType)} / {roleLabel(criteriaRole)})
-                  </div>
-                  <div className="p-4 max-h-[420px] overflow-y-auto">
-                    {criteriaAdminLoading ? (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Loading...</div>
-                    ) : criteriaAdminItems.length === 0 ? (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">No criteria yet.</div>
-                    ) : (
-                      <div className="space-y-2">
-                        {criteriaAdminItems.map((c) => (
-                          <div key={c.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{c.label}</div>
-                                  {c.is_mandatory ? (
-                                    <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
-                                  ) : (
-                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
-                                  )}
-                                </div>
-                                {c.description ? <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{c.description}</div> : null}
-                                <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">Sort: {c.sort_order}</div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCriteriaEditingId(Number(c.id));
-                                    setCriteriaDraft({
-                                      id: Number(c.id),
-                                      label: String(c.label ?? ""),
-                                      description: String(c.description ?? ""),
-                                      isMandatory: Boolean(c.is_mandatory),
-                                      sortOrder: Number(c.sort_order ?? 0),
-                                    });
-                                  }}
-                                  className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      await deleteLeadershipCriterion(Number(c.id));
-                                      pushToast("success", "Deleted");
-                                      queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
-                                    } catch (e) {
-                                      pushToast("error", e instanceof Error ? e.message : "Failed");
-                                    }
-                                  }}
-                                  className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900/30 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    {criteriaEditingId ? "Edit Criterion" : "Add Criterion"}
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Label *</label>
-                      <input
-                        value={criteriaDraft.label}
-                        onChange={(e) => setCriteriaDraft((p) => ({ ...p, label: e.target.value }))}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                        placeholder="e.g., Minimum 5 years experience"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                      <textarea
-                        value={criteriaDraft.description}
-                        onChange={(e) => setCriteriaDraft((p) => ({ ...p, description: e.target.value }))}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                        rows={3}
-                        placeholder="Optional help text"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
-                        <input
-                          type="number"
-                          value={criteriaDraft.sortOrder}
-                          onChange={(e) => setCriteriaDraft((p) => ({ ...p, sortOrder: Number(e.target.value) }))}
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 pt-6">
-                        <input
-                          id="criteria-mandatory"
-                          type="checkbox"
-                          checked={criteriaDraft.isMandatory}
-                          onChange={(e) => setCriteriaDraft((p) => ({ ...p, isMandatory: e.target.checked }))}
-                          className="h-4 w-4 text-blue-600"
-                        />
-                        <label htmlFor="criteria-mandatory" className="text-sm font-medium text-gray-900 dark:text-gray-100">Mandatory</label>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-2">
-                      {criteriaEditingId ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCriteriaEditingId(null);
-                            setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
-                          }}
-                          className="rounded-lg px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const label = String(criteriaDraft.label || "").trim();
-                          if (!label) {
-                            pushToast("error", "Label is required");
-                            return;
-                          }
-                          try {
-                            if (criteriaEditingId) {
-                              await updateLeadershipCriterion({
-                                id: criteriaEditingId,
-                                label,
-                                description: criteriaDraft.description,
-                                isMandatory: criteriaDraft.isMandatory,
-                                sortOrder: criteriaDraft.sortOrder,
-                              });
-                              pushToast("success", "Updated");
-                            } else {
-                              await createLeadershipCriterion({
-                                type: criteriaType,
-                                role: criteriaRole,
-                                label,
-                                description: criteriaDraft.description,
-                                isMandatory: criteriaDraft.isMandatory,
-                                sortOrder: criteriaDraft.sortOrder,
-                              });
-                              pushToast("success", "Created");
-                            }
-                            setCriteriaEditingId(null);
-                            setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
-                            queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
-                          } catch (e) {
-                            pushToast("error", e instanceof Error ? e.message : "Failed");
-                          }
-                        }}
-                        className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        {criteriaEditingId ? "Save" : "Add"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selected === "leadership" && isSuperAdmin ? (
-          <>
-            <Modal
-              isOpen={governanceEditOpen}
-              onClose={() => setGovernanceEditOpen(false)}
-              className="max-w-[980px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8"
-            >
-              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white">Office Term & Related Governance</h4>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Edit content for {typeLabel(criteriaType)} / {roleLabel(criteriaRole)}.</p>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-2 flex flex-wrap gap-1">
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().toggleHeading({ level: 2 }).run()}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors ${
-                      governanceModalEditor?.isActive("heading", { level: 2 }) ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    H2
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().toggleBold().run()}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 font-bold transition-colors ${
-                      governanceModalEditor?.isActive("bold") ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().toggleItalic().run()}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 italic transition-colors ${
-                      governanceModalEditor?.isActive("italic") ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().toggleUnderline().run()}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 underline transition-colors ${
-                      governanceModalEditor?.isActive("underline") ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    U
-                  </button>
-                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().toggleBulletList().run()}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors ${
-                      governanceModalEditor?.isActive("bulletList") ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    •
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().toggleOrderedList().run()}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors ${
-                      governanceModalEditor?.isActive("orderedList") ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    1.
-                  </button>
-                  <div className="w-px h-6 bg-gray-300 dark:bg-gray-700 mx-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!governanceModalEditor) return;
-                      const url = window.prompt("Enter URL:");
-                      if (url && url.trim()) {
-                        governanceModalEditor.chain().focus().setLink({ href: url.trim() }).run();
-                      }
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors ${
-                      governanceModalEditor?.isActive("link") ? "bg-gray-300 dark:bg-gray-800" : ""
-                    }`}
-                    disabled={!governanceModalEditor}
-                  >
-                    Link
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => governanceModalEditor?.chain().focus().unsetLink().run()}
-                    className="px-3 py-1.5 text-xs rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!governanceModalEditor || !governanceModalEditor.isActive("link")}
-                  >
-                    Unlink
-                  </button>
-                </div>
-
-                <div className="px-3 py-2">
-                  <EditorContent editor={governanceModalEditor} />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 mt-5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGovernanceEditOpen(false);
-                    setGovernanceModalDraft(governanceDraft || "");
+              <div className="mt-5 flex flex-wrap gap-4">
+                <RoleDescriptionSection
+                  title="Role Description"
+                  content={String(roleAdminData?.role?.role_description ?? "")}
+                  loading={roleAdminLoading}
+                  roleDescriptionDraft={roleDescriptionDraft}
+                  setRoleDescriptionDraft={setRoleDescriptionDraft}
+                  savingRoleDescription={savingRoleDescription}
+                  onSave={async (nextHtml) => {
+                    try {
+                      setSavingRoleDescription(true);
+                      await updateLeadershipRoleDescription({
+                        type: criteriaType,
+                        role: criteriaRole,
+                        roleDescription: nextHtml,
+                      });
+                      pushToast("success", "Role description saved");
+                      queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
+                      queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                    } catch (e) {
+                      pushToast("error", e instanceof Error ? e.message : "Failed");
+                    } finally {
+                      setSavingRoleDescription(false);
+                    }
                   }}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-                  disabled={savingGovernance}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
+                  criteriaType={criteriaType}
+                  criteriaRole={criteriaRole}
+                  typeLabel={typeLabel}
+                  roleLabel={roleLabel}
+                />
+
+                <RoleDescriptionSection
+                  title="Code of Ethics"
+                  content={String((roleAdminData?.role as any)?.code_of_ethics ?? "")}
+                  loading={roleAdminLoading}
+                  pdfSection="code_of_ethics"
+                  roleDescriptionDraft={codeOfEthicsDraft}
+                  setRoleDescriptionDraft={setCodeOfEthicsDraft}
+                  savingRoleDescription={savingCodeOfEthics}
+                  onSave={async (nextHtml) => {
+                    try {
+                      setSavingCodeOfEthics(true);
+                      await updateLeadershipRoleCodeOfEthics({
+                        type: criteriaType,
+                        role: criteriaRole,
+                        codeOfEthics: nextHtml,
+                      });
+                      pushToast("success", "Code of ethics saved");
+                      queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
+                      queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                    } catch (e) {
+                      pushToast("error", e instanceof Error ? e.message : "Failed");
+                    } finally {
+                      setSavingCodeOfEthics(false);
+                    }
+                  }}
+                  criteriaType={criteriaType}
+                  criteriaRole={criteriaRole}
+                  typeLabel={typeLabel}
+                  roleLabel={roleLabel}
+                />
+
+                <RoleDescriptionSection
+                  title="Compliance Declaration"
+                  content={String((roleAdminData?.role as any)?.compliance_declaration ?? "")}
+                  loading={roleAdminLoading}
+                  pdfSection="compliance_declaration"
+                  roleDescriptionDraft={complianceDeclarationDraft}
+                  setRoleDescriptionDraft={setComplianceDeclarationDraft}
+                  savingRoleDescription={savingComplianceDeclaration}
+                  onSave={async (nextHtml) => {
+                    try {
+                      setSavingComplianceDeclaration(true);
+                      await updateLeadershipRoleComplianceDeclaration({
+                        type: criteriaType,
+                        role: criteriaRole,
+                        complianceDeclaration: nextHtml,
+                      });
+                      pushToast("success", "Compliance declaration saved");
+                      queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
+                      queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                    } catch (e) {
+                      pushToast("error", e instanceof Error ? e.message : "Failed");
+                    } finally {
+                      setSavingComplianceDeclaration(false);
+                    }
+                  }}
+                  criteriaType={criteriaType}
+                  criteriaRole={criteriaRole}
+                  typeLabel={typeLabel}
+                  roleLabel={roleLabel}
+                />
+
+                <RoleDescriptionSection
+                  title="Office Term & Related Governance"
+                  content={String((roleAdminData?.role as any)?.office_term_governance_html ?? "")}
+                  loading={roleAdminLoading}
+                  pdfSection="office_term_governance"
+                  roleDescriptionDraft={governanceDraft}
+                  setRoleDescriptionDraft={setGovernanceDraft}
+                  savingRoleDescription={savingGovernance}
+                  onSave={async (nextHtml) => {
                     try {
                       setSavingGovernance(true);
                       await updateLeadershipRoleGovernance({
                         type: criteriaType,
                         role: criteriaRole,
-                        officeTermGovernanceHtml: governanceModalDraft,
+                        officeTermGovernanceHtml: nextHtml,
                       });
                       pushToast("success", "Governance saved");
-                      setGovernanceEditOpen(false);
                       queryClient.invalidateQueries({ queryKey: ["leadership-role-admin", criteriaType, criteriaRole] });
                       queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
                     } catch (e) {
@@ -1495,15 +1035,35 @@ function SetupPageContent() {
                       setSavingGovernance(false);
                     }
                   }}
-                  disabled={savingGovernance || roleAdminLoading}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {savingGovernance ? "Saving..." : "Save"}
-                </button>
+                  criteriaType={criteriaType}
+                  criteriaRole={criteriaRole}
+                  typeLabel={typeLabel}
+                  roleLabel={roleLabel}
+                />
+
+                <LeadershipCriteriaManager
+                  criteriaType={criteriaType}
+                  criteriaRole={criteriaRole}
+                  typeLabel={typeLabel}
+                  roleLabel={roleLabel}
+                  criteriaAdminLoading={criteriaAdminLoading}
+                  criteriaAdminItems={criteriaAdminItems}
+                  criteriaEditingId={criteriaEditingId}
+                  setCriteriaEditingId={setCriteriaEditingId}
+                  criteriaDraft={criteriaDraft}
+                  setCriteriaDraft={setCriteriaDraft}
+                  createLeadershipCriterion={createLeadershipCriterion}
+                  updateLeadershipCriterion={updateLeadershipCriterion}
+                  deleteLeadershipCriterion={deleteLeadershipCriterion}
+                  invalidateCriteriaQueries={() => {
+                    queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                  }}
+                  pushToast={pushToast}
+                />
               </div>
-            </Modal>
-          </>
-        ) : null}
+            </div>
+          </div>
+        )}
       </ComponentCard>
 
       <style jsx>{`
