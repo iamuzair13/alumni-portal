@@ -393,7 +393,7 @@ function CardPrintPageContent() {
 
             {/* Student Name */}
             <div className={`absolute left-[7%] right-[45%] top-[31%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
-              <span className="text-[14px] leading-tight tracking-tight">
+              <span className="text-[12px] leading-tight tracking-tight">
                 {cardData.studentName || "Alumni Name"}
               </span>
             </div>
@@ -403,10 +403,10 @@ function CardPrintPageContent() {
               ref={alumniInfoRef}
               className={`absolute top-[44%] left-[23%] flex flex-col justify-start items-start gap-0.1 ${infoTextClass}`}
             >
-              <span className="text-[11px] font-medium">{cardData.cnicPassport || ""}</span>
+              <span className="text-[11px] font-medium">{cardData.cnicPassport || "Passport"}</span>
               <span className="text-[10px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
               <span className="text-[10px] font-medium">{cardData.campus || "Campus"}</span>
-              <span className="text-[10px] font-medium">{formattedValidity()}</span>
+              <span className="text-[10px] font-medium">{formattedValidity() || "Validity"}</span>
             </div>
 
             {/* Department | Passing Year and Faculty */}

@@ -7,6 +7,7 @@ import { z } from "zod";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
 
 type Props = {
   alumniId: string;
@@ -98,6 +99,8 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const [fetchedName, setFetchedName] = useState(name);
   const [fetchedFaculty, setFetchedFaculty] = useState(faculty);
   const [fetchedDepartment, setFetchedDepartment] = useState(department);
@@ -254,6 +257,23 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
 
   return (
     <>
+    <PassportPhotoCropModal
+      isOpen={showCropModal}
+      file={pendingCropFile}
+      onClose={() => {
+        setShowCropModal(false);
+        setPendingCropFile(null);
+      }}
+      onCropped={(cropped) => {
+        setShowCropModal(false);
+        setPendingCropFile(null);
+        setFileError(null);
+        setPreviewUrl(cropped ? URL.createObjectURL(cropped) : null);
+        setValue("pictureName", cropped?.name || "");
+        setSelectedFile(cropped ?? null);
+      }}
+      title="Edit Passport Photo"
+    />
     <form className="max-w-4xl mx-auto  " onSubmit={handleSubmit(onSubmit)} aria-label="Alumni card form">
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
@@ -315,20 +335,9 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
               }
 
               if (file) {
-                const shape = await validatePassportLikeImage(file);
-                if (!shape.ok) {
-                  setFileError(shape.error || "Invalid image");
-                  setPreviewUrl(null);
-                  setValue("pictureName", "");
-                  setSelectedFile(null);
-                  return;
-                }
+                setPendingCropFile(file);
+                setShowCropModal(true);
               }
-
-              setFileError(null);
-              setPreviewUrl(file ? URL.createObjectURL(file) : null);
-              setValue("pictureName", file?.name || "");
-              setSelectedFile(file ?? null);
             }}
             disabled={isSubmitting}
           />

@@ -156,8 +156,8 @@ export default function AlumniCardTemplate({
         />
 
         {/* Student Name, Department, Faculty */}
-        <div className={`absolute left-[7%] right-[45%] top-[31%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
-          <span className="text-[14px]  leading-tight tracking-tight">
+        <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
+          <span className="text-[12px]  leading-tight tracking-tight">
             {studentName || "Alumni Name"}
           </span>
         </div>
@@ -165,10 +165,10 @@ export default function AlumniCardTemplate({
 
         {/* Alumni ID and Validity */}
         <div className={`absolute top-[44%] left-[23%] flex flex-col justify-start items-start gap-0.1 ${infoTextClass}`}>
-         <span className="text-[11px] font-medium">{cnicPassport || ""}</span>
+         <span className="text-[11px] font-medium">{cnicPassport || "Passport"}</span>
           <span className="text-[10px] font-medium">{alumniId || "UOL-AL-0000"}</span>
           <span className="text-[10px] font-medium">{campus || "Campus"}</span>
-          <span className="text-[10px] font-medium">{formattedValidity}</span>
+          <span className="text-[10px] font-medium">{formattedValidity || "Validity"}</span>
         </div>
 
         <div className={`absolute left-[7%] bottom-[10%] right-[35%] ${infoTextClass} flex flex-col justify-start items-start`}>
@@ -183,7 +183,7 @@ export default function AlumniCardTemplate({
 
 
         {/* Photo */}
-        <div className="absolute right-[14%] top-[28%] flex  w-[20%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+        <div className="absolute right-[14%] top-[30%] flex  w-[20%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={`${activeImageSrc}-${imageIndex}`}

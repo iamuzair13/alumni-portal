@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import { isViewerUser } from "@/lib/alumniProfile";
 import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import ApprovedLeadershipBadges from "@/components/alumni/ApprovedLeadershipBadges";
+import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
 
 type LeadershipInfo = {
   type: "chapter" | "association" | null;
@@ -57,6 +58,8 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [photoConsent, setPhotoConsent] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,10 +182,8 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       return;
     }
 
-    // Store file and show consent modal
-    setSelectedFile(file);
-    setShowConsentModal(true);
-    setPhotoConsent(null);
+    setPendingCropFile(file);
+    setShowCropModal(true);
   };
 
   const handleUploadWithConsent = async () => {
@@ -314,7 +315,27 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     );
   }
 
-  return (
+return (
+  <>
+    <PassportPhotoCropModal
+      isOpen={showCropModal}
+      file={pendingCropFile}
+      onClose={() => {
+        setShowCropModal(false);
+        setPendingCropFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }}
+      onCropped={(cropped) => {
+        setShowCropModal(false);
+        setPendingCropFile(null);
+        setSelectedFile(cropped);
+        setShowConsentModal(true);
+        setPhotoConsent(null);
+      }}
+      title="Edit Profile Picture"
+    />
     <div className="w-full flex-shrink-0">
       <div className="bg-white flex justify-between rounded-lg p-6 pt-0">
         <div>
@@ -692,5 +713,6 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
         </div>
       )}
     </div>
+  </>
   );
 }

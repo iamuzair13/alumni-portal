@@ -7,6 +7,8 @@ import { ErpDataDetails } from "./ErpDataDetails";
 import { canModify } from "@/lib/alumniProfile";
 import { Modal } from "@/components/ui/modal";
 import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
 import { useExcelExport, type ColumnOption } from "@/lib/excel-export";
 import { SendEmailButton } from "@/components/email/SendEmailButton";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
@@ -1085,6 +1087,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [deleteError, setDeleteError] = React.useState<string | null>(null);
+    const [isSavingPicture, setIsSavingPicture] = React.useState(false);
+    const [showCropModal, setShowCropModal] = React.useState(false);
+    const [pendingCropFile, setPendingCropFile] = React.useState<File | null>(null);
     
     // Preview button available for ALL statuses (fixed rendering issue - no conditional logic)
     const canPreview = true;
@@ -1132,9 +1137,125 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
     };
 
+    const handleEditPicture = async () => {
+      if (!sapId || sapId.trim() === "") {
+        toast.error("Invalid SAP ID");
+        return;
+      }
+      const alumniId = alumItem.alumniid;
+      if (!alumniId) {
+        toast.error("Missing alumniId for this record");
+        return;
+      }
+
+      try {
+        setIsSavingPicture(true);
+        setShowCropModal(true);
+        setPendingCropFile(null);
+
+        const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}`, { cache: "no-store" });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.error || `Failed to load card (${res.status})`);
+        }
+        const j = await res.json();
+        const card = (j?.card ?? null) as { cardpicture?: string | null; card_image?: string | null } | null;
+        const raw = String(card?.cardpicture ?? card?.card_image ?? "").trim();
+        if (!raw) {
+          throw new Error("No card picture found for this applicant");
+        }
+
+        // cardpicture/card_image may be just a filename, or already contain a path.
+        // Normalize to a public URL that Next can serve.
+        const normalized = raw
+          .replace(/\\/g, "/")
+          .replace(/^public\//, "")
+          .replace(/^\.\//, "")
+          .replace(/^\/public\//, "/")
+          .trim();
+        const imageUrl = /^https?:\/\//i.test(normalized)
+          ? normalized
+          : normalized.startsWith("/")
+            ? normalized
+            : normalized.toLowerCase().startsWith("images/")
+              ? `/${normalized}`
+              : `/images/${normalized}`;
+
+        const imgRes = await fetch(imageUrl, { cache: "no-store" });
+        if (!imgRes.ok) {
+          throw new Error(`Failed to load image (${imgRes.status})`);
+        }
+        const blob = await imgRes.blob();
+        const inferredType = blob.type || "image/jpeg";
+        const safeName = raw.split("/").pop() || "card-picture.jpg";
+        const existingFile = new File([blob], safeName, { type: inferredType });
+
+        setPendingCropFile(existingFile);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to load card picture";
+        toast.error(msg);
+        setPendingCropFile(null);
+      } finally {
+        setIsSavingPicture(false);
+      }
+    };
+
+    const uploadCroppedPicture = async (cropped: File) => {
+      const alumniId = alumItem.alumniid;
+      if (!alumniId) {
+        toast.error("Missing alumniId for this record");
+        return;
+      }
+
+      setIsSavingPicture(true);
+      const loadingToast = toast.loading("Saving picture...");
+      try {
+        const formData = new FormData();
+        formData.append("alumniId", String(alumniId));
+        formData.append("sapId", String(sapId));
+        formData.append("image", cropped);
+
+        const res = await fetch("/api/alumni-cards", {
+          method: "POST",
+          body: formData,
+        });
+
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(j?.error || `Failed (${res.status})`);
+        }
+
+        toast.dismiss(loadingToast);
+        toast.success("Picture updated successfully");
+
+        queryClient.invalidateQueries({ queryKey: ["alumni", "card", "applicants"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["alumni", "card", sapId], exact: true });
+      } catch (err) {
+        toast.dismiss(loadingToast);
+        const msg = err instanceof Error ? err.message : "Failed to save picture";
+        toast.error(msg);
+      } finally {
+        setIsSavingPicture(false);
+      }
+    };
+
     return (
       <>
-        <div role="group" aria-label="Row actions" className="inline-flex items-center gap-2">
+        <PassportPhotoCropModal
+          isOpen={showCropModal}
+          file={pendingCropFile}
+          onClose={() => {
+            setShowCropModal(false);
+            setPendingCropFile(null);
+          }}
+          onCropped={(cropped) => {
+            setShowCropModal(false);
+            setPendingCropFile(null);
+            uploadCroppedPicture(cropped);
+          }}
+          title="Edit Card Picture"
+        />
+        <div role="group" aria-label="Row actions" className=" items-center gap-2 flex flex-row justify-start flex-wrap">
           {canEdit && (
             <button
               type="button"
@@ -1146,11 +1267,26 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               aria-label="View Profile"
               title="View Profile"
             >
-              <EyeIcon className="h-7 w-7" />
+              <EyeIcon className="h-4 w-4" />
             </button>
           )}
           {canPreview && (
             <PrintCardButton sapId={sapId} studentName={studentName} registrationNo={alumItem.registrationno} />
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditPicture();
+              }}
+              disabled={isSavingPicture || isDeleting}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Edit Picture"
+              title="Edit Picture"
+            >
+              <FileIcon className="h-4 w-4" />
+            </button>
           )}
           {canEdit && (
             <button
@@ -1163,7 +1299,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               aria-label="Delete Card"
               title="Delete Card"
             >
-              <TrashBinIcon className="h-7 w-7" />
+              <TrashBinIcon className="h-4 w-4" />
             </button>
           )}
         </div>

@@ -263,9 +263,9 @@ export const AlumniTabs: React.FC = () => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [query, setQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const [additionalFilter, setAdditionalFilter] = useState<string[]>([]); // Array of selected statuses
-  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   
   // Filter state for faculty, department, and program (cascading) - arrays for multi-select
   const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
@@ -1319,6 +1319,7 @@ export const AlumniTabs: React.FC = () => {
     const result: AlumniItem[] = [];
     result.length = sourceItems.length;
     let idx = 0;
+    const seenAlumniIds = new Set<number>();
     
     for (let i = 0; i < sourceItems.length; i++) {
       const r = sourceItems[i];
@@ -1358,7 +1359,13 @@ export const AlumniTabs: React.FC = () => {
       })();
       
       // Use sapid as ID if available, otherwise use registrationno, otherwise use alumniid as fallback
-      const itemId = r.sapid?.trim() || r.registrationno?.trim() || String(r.alumniid);
+      const itemId = String(r.alumniid ?? (r.sapid?.trim() || r.registrationno?.trim() || ""));
+
+      const alumniIdNum = r.alumniid === null || r.alumniid === undefined ? null : Number(r.alumniid);
+      if (alumniIdNum && Number.isFinite(alumniIdNum)) {
+        if (seenAlumniIds.has(alumniIdNum)) continue;
+        seenAlumniIds.add(alumniIdNum);
+      }
       
       result[idx++] = {
         id: itemId,
@@ -2196,10 +2203,13 @@ export const AlumniTabs: React.FC = () => {
     });
   }, []);
 
-  const updateCacheVerify = useCallback((sapid: string, verify: boolean) => {
+  const updateCacheVerify = useCallback((identifier: string, alumniId: number | null, verify: boolean) => {
     queryClient.setQueryData<AlumniListItem[] | undefined>(["alumnilist"], (old) => {
       if (!old) return old;
-      return old.map((it) => (it.sapid === sapid ? { ...it, verify: verify ? "true" : "false" } : it));
+      if (alumniId) {
+        return old.map((it) => (Number(it.alumniid) === Number(alumniId) ? { ...it, verify: verify ? "true" : "false" } : it));
+      }
+      return old.map((it) => (it.sapid === identifier ? { ...it, verify: verify ? "true" : "false" } : it));
     });
     // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
     queryClient.invalidateQueries({ 
@@ -2213,10 +2223,13 @@ export const AlumniTabs: React.FC = () => {
     });
   }, [queryClient]);
 
-  const removeFromCache = useCallback((sapid: string) => {
+  const removeFromCache = useCallback((identifier: string, alumniId: number | null) => {
     queryClient.setQueryData<AlumniListItem[] | undefined>(["alumnilist"], (old) => {
       if (!old) return old;
-      return old.filter((it) => it.sapid !== sapid);
+      if (alumniId) {
+        return old.filter((it) => Number(it.alumniid) !== Number(alumniId));
+      }
+      return old.filter((it) => it.sapid !== identifier);
     });
     // Invalidate counts to refetch real-time data (matches all query keys starting with ["alumnilist-counts"])
     queryClient.invalidateQueries({
@@ -2250,20 +2263,19 @@ export const AlumniTabs: React.FC = () => {
   );
 
   // Execute verify after confirmation
-  const handleVerify = useCallback(async (sapid: string): Promise<void> => {
-    // Validate sapid before proceeding
-    if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      const errorMsg = "Invalid SAP ID. Cannot verify alumni without a valid SAP ID.";
+  const handleVerify = useCallback(async (identifier: string, alumniId: number | null): Promise<void> => {
+    if (!identifier || String(identifier).trim() === "") {
+      const errorMsg = "Invalid identifier. Cannot verify alumni.";
       setActionError(errorMsg);
       throw new Error(errorMsg);
     }
 
     setActionError(null);
-    startMut(sapid);
+    startMut(identifier);
     // optimistic
-    updateCacheVerify(sapid, true);
+    updateCacheVerify(identifier, alumniId, true);
     try {
-      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(identifier)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify: true }),
@@ -2279,18 +2291,18 @@ export const AlumniTabs: React.FC = () => {
       }
 
       setActionMessage("Alumni verified successfully.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", identifier] });
       queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
       queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["alumnilist"] });
     } catch (e: unknown) {
       // revert
-      updateCacheVerify(sapid, false);
+      updateCacheVerify(identifier, alumniId, false);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to verify alumni.");
       throw e;
     } finally {
-      stopMut(sapid);
+      stopMut(identifier);
     }
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
@@ -2301,20 +2313,19 @@ export const AlumniTabs: React.FC = () => {
   }, [confirmModal]);
 
   // Execute unverify after confirmation
-  const handleUnverify = useCallback(async (sapid: string): Promise<void> => {
-    // Validate sapid before proceeding
-    if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      const errorMsg = "Invalid SAP ID. Cannot unverify alumni without a valid SAP ID.";
+  const handleUnverify = useCallback(async (identifier: string, alumniId: number | null): Promise<void> => {
+    if (!identifier || String(identifier).trim() === "") {
+      const errorMsg = "Invalid identifier. Cannot unverify alumni.";
       setActionError(errorMsg);
       throw new Error(errorMsg);
     }
 
     setActionError(null);
-    startMut(sapid);
+    startMut(identifier);
     // optimistic
-    updateCacheVerify(sapid, false);
+    updateCacheVerify(identifier, alumniId, false);
     try {
-      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(identifier)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verify: false }),
@@ -2326,18 +2337,18 @@ export const AlumniTabs: React.FC = () => {
       const responseData = await res.json();
 
       setActionMessage("Alumni marked as unverified.");
-      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "profile", identifier] });
       queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Refresh counts
       queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }); // Force immediate refetch
       queryClient.invalidateQueries({ queryKey: ["alumnilist"] }); // Refresh list
     } catch (e: unknown) {
       // revert
-      updateCacheVerify(sapid, true);
+      updateCacheVerify(identifier, alumniId, true);
       const msg = e instanceof Error ? e.message : String(e);
       setActionError(msg || "Failed to update verification.");
       throw e; // Re-throw so executePendingAction can catch it
     } finally {
-      stopMut(sapid);
+      stopMut(identifier);
     }
   }, [startMut, stopMut, updateCacheVerify, queryClient]);
 
@@ -2348,21 +2359,20 @@ export const AlumniTabs: React.FC = () => {
   // }, [confirmModal]);
 
   // Execute delete after confirmation
-  const handleDelete = useCallback(async (sapid: string) => {
-    // Validate sapid before proceeding
-    if (!sapid || sapid === "null" || sapid === "undefined" || sapid.trim() === "") {
-      setActionError("Invalid SAP ID. Cannot delete alumni without a valid SAP ID.");
+  const handleDelete = useCallback(async (identifier: string, alumniId: number | null) => {
+    if (!identifier || String(identifier).trim() === "") {
+      setActionError("Invalid identifier. Cannot delete alumni.");
       return;
     }
 
     setActionError(null);
     setActionMessage(null);
-    startMut(sapid);
+    startMut(identifier);
     const prev = queryClient.getQueryData<AlumniListItem[] | undefined>(["alumnilist"]);
     // optimistic remove
-    removeFromCache(sapid);
+    removeFromCache(identifier, alumniId);
     try {
-      const res = await fetch(`/api/alumni/${encodeURIComponent(sapid)}`, { 
+      const res = await fetch(`/api/alumni/${encodeURIComponent(identifier)}`, { 
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
       });
@@ -2375,7 +2385,7 @@ export const AlumniTabs: React.FC = () => {
       setActionMessage("Alumni deleted successfully.");
       // Invalidate both profile and list queries to ensure fresh data
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["alumni", "profile", sapid] }),
+        queryClient.invalidateQueries({ queryKey: ["alumni", "profile", identifier] }),
         queryClient.invalidateQueries({ queryKey: ["alumnilist"] }),
         queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false }), // Refresh counts
         queryClient.refetchQueries({ queryKey: ["alumnilist-counts"], exact: false }) // Force immediate refetch
@@ -2387,7 +2397,7 @@ export const AlumniTabs: React.FC = () => {
       setActionError(msg || "Failed to delete alumni.");
 
     } finally {
-      stopMut(sapid);
+      stopMut(identifier);
     }
   }, [removeFromCache, startMut, stopMut, queryClient]);
 
@@ -2398,19 +2408,20 @@ export const AlumniTabs: React.FC = () => {
       return;
     }
     
-    const { type, sapid } = pendingAction;
+    const { type, sapid, alumniId } = pendingAction;
     
     // Store the action locally before async operations
     const actionType = type;
     const actionSapid = sapid;
+    const actionAlumniId = alumniId ?? null;
     
     try {
       if (actionType === "verify") {
-        await handleVerify(actionSapid);
+        await handleVerify(actionSapid, actionAlumniId);
       } else if (actionType === "unverify") {
-        await handleUnverify(actionSapid);
+        await handleUnverify(actionSapid, actionAlumniId);
       } else if (actionType === "delete") {
-        await handleDelete(actionSapid);
+        await handleDelete(actionSapid, actionAlumniId);
       }
       
       // Close modal and clear pending action after successful execution
@@ -5151,12 +5162,12 @@ export const AlumniTabs: React.FC = () => {
                   })();
 
                   return (
-                    <React.Fragment key={`${alum.id}-fragment-${idx}`}>
+                    <React.Fragment key={`${String(alum.alumniid ?? alum.id)}-fragment`}>
                       <TableRow
-                        key={`${alum.id}-${idx}`}
-                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
-                        onClick={() => setSelectedRowId(alum.id)}
-                        aria-selected={selectedRowId === alum.id}
+                        key={`${String(alum.alumniid ?? alum.id)}-row`}
+                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === (alum.alumniid ?? null) ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
+                        onClick={() => setSelectedRowId(alum.alumniid ?? null)}
+                        aria-selected={selectedRowId === (alum.alumniid ?? null)}
                       >
                         
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
@@ -5170,17 +5181,18 @@ export const AlumniTabs: React.FC = () => {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setExpandedRowId(expandedRowId === alum.id ? null : alum.id);
+                                    if (!alum.alumniid) return;
+                                    setExpandedRowId(expandedRowId === alum.alumniid ? null : alum.alumniid);
                                   }}
                                   className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
-                                    expandedRowId === alum.id
+                                    expandedRowId === (alum.alumniid ?? null)
                                       ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                                       : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
                                   }`}
-                                  aria-label={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
-                                  title={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
+                                  aria-label={expandedRowId === (alum.alumniid ?? null) ? "Collapse details" : "Expand details"}
+                                  title={expandedRowId === (alum.alumniid ?? null) ? "Collapse details" : "Expand details"}
                                 >
-                                  <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === alum.id ? "rotate-45" : ""}`} />
+                                  <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === (alum.alumniid ?? null) ? "rotate-45" : ""}`} />
                                 </button>
                               )}
                               <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">{alum.name || "-"}</span>
@@ -5278,13 +5290,14 @@ export const AlumniTabs: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
-                          selectedRowId === alum.id 
+                          selectedRowId === (alum.alumniid ?? null) 
                             ? "bg-blue-50/80 dark:bg-blue-900/30" 
                             : "bg-white dark:bg-gray-800/30"
                         }`}>
                           <div role="group" aria-label="Row actions" className="flex w-40 items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
                             {(() => {
-                              const isBusy = mutatingIds.has(alum.id);
+                              const actionKey = String(alum.alumniid ?? alum.id);
+                              const isBusy = mutatingIds.has(actionKey);
                               const canPerformActions = canModify(session?.user);
                               
                               // For viewers, only show View button
@@ -5318,22 +5331,22 @@ export const AlumniTabs: React.FC = () => {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   // Unverified: can verify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 }
                               } else {
@@ -5342,21 +5355,21 @@ export const AlumniTabs: React.FC = () => {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 } else if (alum.verifyStatus === "unverified") {
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
                                   ];
                                 } else {
                                   // Under approval (first-time registration): can verify, unverify
                                   actions = [
                                     { label: "View", icon: EyeIcon, onClick: () => handleView(alum.id), defaultClass: "text-blue-600 dark:text-blue-400", hover: "hover:text-blue-700 dark:hover:text-blue-300" },
                                     { label: "Email", icon: MailIcon, onClick: () => handleOpenEmailHistory(alum.alumniid), defaultClass: "text-indigo-600 dark:text-indigo-400", hover: "hover:text-indigo-700 dark:hover:text-indigo-300" },
-                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
-                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(alum.id, alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
+                                    { label: "Verify", icon: CheckLineIcon, onClick: () => handleVerifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-emerald-600 dark:text-emerald-400", hover: "hover:text-emerald-700 dark:hover:text-emerald-300" },
+                                    { label: "Unverify", icon: CloseLineIcon, onClick: () => handleUnverifyClick(String(alum.alumniid ?? alum.id), alum.name, alum.alumniid ?? null, alum.email ?? null), defaultClass: "text-amber-600 dark:text-amber-400", hover: "hover:text-amber-700 dark:hover:text-amber-300" },
                                   ];
                                 }
                               }
@@ -5383,12 +5396,12 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                      {expandedRowId === alum.id && (isSuperAdminUser(session?.user) || isAdminUser(session?.user) || isViewerUser(session?.user)) && (
-                        <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
+                      {expandedRowId === (alum.alumniid ?? null) && (isSuperAdminUser(session?.user) || isAdminUser(session?.user) || isViewerUser(session?.user)) && (
+                        <TableRow key={`${String(alum.alumniid ?? alum.id)}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
                           <TableCell colSpan={11} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start ">
-                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canModify(session?.user)} />
+                                <AlumniExpandableDetails sapId={String(alum.alumniid ?? alum.id)} onClose={() => setExpandedRowId(null)} readOnly={!canModify(session?.user)} />
                                 <ErpDataDetails sapId={alum.sapId || undefined} registrationNo={alum.registrationNo || undefined} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>

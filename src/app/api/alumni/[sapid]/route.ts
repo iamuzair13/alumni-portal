@@ -115,6 +115,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       rows = await sql/* sql */`
         SELECT * FROM public.tbl_alumni WHERE registrationno = ${normalizedIdentifier} LIMIT 1`;
     }
+
+    // If still not found, try alumniid (if identifier is numeric)
+    if (!rows[0] && !Number.isNaN(Number(normalizedIdentifier))) {
+      rows = await sql/* sql */`
+        SELECT * FROM public.tbl_alumni WHERE alumniid = ${Number(normalizedIdentifier)} LIMIT 1`;
+    }
     
     if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
     
@@ -425,6 +431,15 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ sapid: string 
         SELECT alumniid, sapid, registrationno, alumniname 
         FROM public.tbl_alumni 
         WHERE registrationno = ${normalizedIdentifier} 
+        LIMIT 1`);
+    }
+
+    // If still not found, try alumniid (if identifier is numeric)
+    if (!lookupResult[0] && !Number.isNaN(Number(normalizedIdentifier))) {
+      lookupResult = await retryDbOperation(async () => await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, alumniname 
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${Number(normalizedIdentifier)} 
         LIMIT 1`);
     }
     

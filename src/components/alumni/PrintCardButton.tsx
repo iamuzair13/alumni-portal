@@ -29,7 +29,7 @@ export default function PrintCardButton({ sapId }: Props) {
         aria-label="Download Card PDF"
         title="Download Card PDF"
       >
-        <DownloadIcon className="h-7 w-7" />
+        <DownloadIcon className="h-4 w-4" />
       </button>
     </>
   );

@@ -6,6 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { PencilIcon, TrashBinIcon } from "@/icons";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
@@ -529,15 +530,21 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
   }
 }
 
-export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = ({ sapId, onClose, readOnly = false }) => {
+function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: string; onClose: () => void; readOnly?: boolean }) {
   const queryClient = useQueryClient();
-  const { data: session } = useSession();
-  const deleteModal = useModal();
-  const isSuperAdmin = isSuperAdminUser(session?.user);
-  const canSendCredentials = canModify(session?.user);
+  const session = useSession();
+  const router = useRouter();
+  const isSuperAdmin = isSuperAdminUser(session.data?.user);
+  const canSendCredentials = canModify(session.data?.user);
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
+  const deleteModal = useModal();
+
   const [currentSapId, setCurrentSapId] = useState(sapId);
+  const openedWithNumericIdentifier = useMemo(() => {
+    const v = String(sapId || "").trim();
+    return v !== "" && !Number.isNaN(Number(v));
+  }, [sapId]);
   const { data, isLoading, error } = useAlumniFullDetails(currentSapId);
 
   const {
@@ -861,15 +868,21 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       if (data.city) {
         setCitySearch(data.city);
       }
-      // Update currentSapId if the data has a different SAP ID (in case it was changed)
-      if (data.sapid && data.sapid !== currentSapId) {
-        setCurrentSapId(data.sapid);
+
+
+      // Only switch identifier to sapid if the panel was opened by a non-numeric identifier.
+      // If the panel was opened using alumniid (numeric), sapid may be non-unique and switching
+      // can cause updates/deletes to affect the wrong duplicate row.
+      if (!openedWithNumericIdentifier) {
+        if (data.sapid && data.sapid !== currentSapId) {
+          setCurrentSapId(data.sapid);
+        }
       }
     }
-  }, [data, reset, currentSapId]);
+  }, [data, reset, openedWithNumericIdentifier]);
 
-  const onSubmit = async (formData: AlumniFullData) => {
-    if (!currentSapId) return;
+  const onSubmit = async (formValues: AlumniFullData) => {
+    if (!currentSapId || !data) return;
     
     setIsSaving(true);
     try {
@@ -964,7 +977,9 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         }
       }
 
-      const res = await fetch(`/api/alumni/${encodeURIComponent(currentSapId)}/update-fields`, {
+      const stableIdentifier = data?.alumniid ? String(data.alumniid) : currentSapId;
+
+      const res = await fetch(`/api/alumni/${encodeURIComponent(stableIdentifier)}/update-fields`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatePayload),
@@ -977,6 +992,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
 
       const responseData = await res.json();
       const updatedSapId = responseData?.updated?.sapid;
+      const updatedAlumniId = responseData?.updated?.alumniid;
       
       // Invalidate queries (non-blocking) - React Query will refetch when components need the data
       queryClient.invalidateQueries({ queryKey: ["alumni"] });
@@ -997,16 +1013,20 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       // Invalidate occupation statuses query when occupation status is updated
       queryClient.invalidateQueries({ queryKey: ["occupation-statuses"] });
       
-      // If SAP ID was changed, update our current identifier
-      if (updatedSapId && updatedSapId !== currentSapId) {
-        setCurrentSapId(updatedSapId);
-        // Invalidate the specific query - will refetch automatically when component needs it
-        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", updatedSapId] });
-      } else {
-        // Invalidate current query - will refetch automatically when component needs it
-        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });
+      // Always invalidate the current identifier
+      queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });
+
+      // Also invalidate any new identifiers returned by the API (e.g. if sapid was changed)
+      if (updatedSapId) {
+        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", String(updatedSapId)] });
+      }
+      if (updatedAlumniId) {
+        queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", String(updatedAlumniId)] });
       }
 
+      // IMPORTANT: Do NOT switch the panel's identifier to sapid, because sapid can be non-unique.
+      // Keep the original identifier stable; future update/delete must continue targeting alumniid.
+      
       toast.success("Alumni data updated successfully");
       setEditingFields(new Set());
     } catch (error) {
@@ -1020,15 +1040,17 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
   const handleDelete = async () => {
     if (!currentSapId || !data) return;
     
-    // Validate sapid before proceeding
-    if (!currentSapId || currentSapId === "null" || currentSapId === "undefined" || currentSapId.trim() === "") {
-      toast.error("Invalid SAP ID. Cannot delete alumni without a valid SAP ID.");
+    // Validate identifier before proceeding
+    if (String(currentSapId || "").trim() === "") {
+      toast.error("Invalid identifier. Cannot delete alumni.");
       return;
     }
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/alumni/${encodeURIComponent(currentSapId)}`, { 
+      const stableIdentifier = data?.alumniid ? String(data.alumniid) : currentSapId;
+
+      const res = await fetch(`/api/alumni/${encodeURIComponent(stableIdentifier)}`, { 
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
       });
@@ -1739,7 +1761,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
         )}
 
         {/* Delete Button - Only show for admins and when not editing */}
-        {editingFields.size === 0 && !readOnly && canModify(session?.user) && (
+        {editingFields.size === 0 && !readOnly && canModify(session.data?.user) && (
           <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-red-200 dark:border-red-800">
             <button
               type="button"
@@ -1821,6 +1843,7 @@ export const AlumniExpandableDetails: React.FC<AlumniExpandableDetailsProps> = (
       )}
     </div>
   );
-};
+}
 
+export { AlumniExpandableDetails };
 export default AlumniExpandableDetails;

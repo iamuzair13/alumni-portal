@@ -45,6 +45,22 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         WHERE a.registrationno = ${normalizedIdentifier} 
         LIMIT 1`;
     }
+
+    // If still not found, try alumniid (if identifier is numeric)
+    if (!rows[0] && !Number.isNaN(Number(normalizedIdentifier))) {
+      rows = await sql/* sql */`
+        SELECT 
+          a.*,
+          COALESCE(f.faculty_name, a.facultyname) as facultyname,
+          COALESCE(d.department_name, a.departmentname) as departmentname,
+          COALESCE(p.program_name, a.degreetitle) as degreetitle
+        FROM public.tbl_alumni a
+        LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_departments d ON d.id = a.department
+        LEFT JOIN public.tbl_programs p ON p.id = a.program
+        WHERE a.alumniid = ${Number(normalizedIdentifier)}
+        LIMIT 1`;
+    }
     
     if (!rows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });

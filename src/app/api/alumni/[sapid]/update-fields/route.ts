@@ -35,6 +35,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         WHERE registrationno = ${normalizedIdentifier} 
         LIMIT 1`;
     }
+
+    // If still not found, try alumniid (if identifier is numeric)
+    if (!rows[0] && !Number.isNaN(Number(normalizedIdentifier))) {
+      rows = await sql/* sql */`
+        SELECT alumniid, sapid, registrationno, personalemail, universityemail, officialemail, password 
+        FROM public.tbl_alumni 
+        WHERE alumniid = ${Number(normalizedIdentifier)} 
+        LIMIT 1`;
+    }
     
     if (!rows[0]) {
       return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
