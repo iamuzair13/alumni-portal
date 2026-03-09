@@ -567,29 +567,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         }
       }
       
-      // Check if card status is "Onhold" and change it to "UnderReview" when profile data changes
-      // Only check if any fields were actually updated (not just password or chapters)
-      if (updates.length > 0) {
-        try {
-          const cardStatus = await tx/* sql */`
-            SELECT status 
-            FROM public.tblcard 
-            WHERE alumniid = ${alumniId} 
-            LIMIT 1
-          ` as Array<{ status: string | null }>;
-          
-          if (cardStatus[0]?.status === "Onhold") {
-            await tx/* sql */`
-              UPDATE public.tblcard 
-              SET status = 'UnderReview'
-              WHERE alumniid = ${alumniId}
-            `;
-          }
-        } catch (cardError) {
-          // Don't fail the request if card status update fails
-        }
-      }
-      
       // Return the updated record using alumniid (primary key)
       const updated = await tx`
         SELECT alumniid, sapid, registrationno FROM public.tbl_alumni WHERE alumniid = ${alumniId} LIMIT 1

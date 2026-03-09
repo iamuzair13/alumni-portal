@@ -117,16 +117,12 @@ export async function POST(req: Request) {
       `;
       const isNewApplication = existingCard.length === 0;
       
-      // For new applications, always set status to "UnderReview"
-      // For existing applications, use the status from body if provided, otherwise keep existing status
-      let status: string;
-      if (isNewApplication) {
-        status = "UnderReview";
-      } else {
-        // For updates, use status from body if provided, otherwise keep existing status
-        const existingStatus = existingCard[0]?.status ? String(existingCard[0].status) : "UnderReview";
-        status = body?.status ? String(body.status) : existingStatus;
-      }
+      // IMPORTANT: Do not mutate card status on any data update.
+      // - New application: status must start at "UnderReview".
+      // - Existing application: keep existing status unchanged (ignore any incoming status).
+      const status = isNewApplication
+        ? "UnderReview"
+        : (existingCard[0]?.status ? String(existingCard[0].status) : "UnderReview");
       
       if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
         return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
@@ -138,7 +134,7 @@ export async function POST(req: Request) {
         ON CONFLICT (alumniid) DO UPDATE
         SET cnicno = EXCLUDED.cnicno,
             cardaddress = EXCLUDED.cardaddress,
-            status = EXCLUDED.status,
+            status = public.tblcard.status,
             cardpicture = EXCLUDED.cardpicture,
             card_image = EXCLUDED.card_image,
             createdat = public.tblcard.createdat,
@@ -246,23 +242,23 @@ export async function POST(req: Request) {
 
     // Check if this is a new application (no existing record)
     const existingCard = await sql/* sql */`
-      SELECT cardid FROM public.tblcard WHERE alumniid = ${alumniId} LIMIT 1
+      SELECT cardid, status FROM public.tblcard WHERE alumniid = ${alumniId} LIMIT 1
     `;
     const isNewApplication = existingCard.length === 0;
 
-    // Set status to 'UnderReview' for new applications (default status)
-    // Validity date is calculated as 3 years from application date
-    const status = "UnderReview";
+    // IMPORTANT: Do not mutate card status on any update.
+    // - New application: status must start at "UnderReview".
+    // - Existing application: keep existing status unchanged.
+    const status = isNewApplication
+      ? "UnderReview"
+      : (existingCard[0]?.status ? String((existingCard[0] as any).status) : "UnderReview");
 
     // When updating card image, if status is "Onhold", automatically change to "UnderReview"
     const rows = await sql/* sql */`
       INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date)
       VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate})
       ON CONFLICT (alumniid) DO UPDATE
-      SET status = CASE 
-          WHEN public.tblcard.status = 'Onhold' THEN 'UnderReview'
-          ELSE EXCLUDED.status
-        END,
+      SET status = public.tblcard.status,
           cardpicture = EXCLUDED.cardpicture,
           card_image = EXCLUDED.card_image,
           createdat = NOW(),

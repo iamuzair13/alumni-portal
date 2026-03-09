@@ -329,27 +329,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       SET image1 = ${filename}, image2 = ${filename}, alumni_consent_pic = ${consentPicValue}
       WHERE alumniid = ${alumni.alumniid}`;
 
-    // Check if card status is "Onhold" and change it to "UnderReview" when profile data changes
-    // NOTE: We update card status but NOT the card image - card images are managed separately
-    try {
-      const cardStatus = await sql/* sql */`
-        SELECT status 
-        FROM public.tblcard 
-        WHERE alumniid = ${alumni.alumniid} 
-        LIMIT 1
-      ` as Array<{ status: string | null }>;
-      
-      if (cardStatus[0]?.status === "Onhold") {
-        await sql/* sql */`
-          UPDATE public.tblcard 
-          SET status = 'UnderReview'
-          WHERE alumniid = ${alumni.alumniid}
-        `;
-      }
-    } catch (cardError) {
-      // Don't fail the request if card status update fails
-    }
-
     // Return the full path for immediate display
     const imagePath = `/images/${filename}`;
     const duration = Date.now() - startTime;

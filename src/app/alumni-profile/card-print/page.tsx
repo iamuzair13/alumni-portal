@@ -393,7 +393,7 @@ function CardPrintPageContent() {
 
             {/* Student Name */}
             <div className={`absolute left-[7%] right-[45%] top-[31%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
-              <span className="text-[12px] leading-tight tracking-tight">
+              <span className={"text-[12px] leading-tight tracking-tight"}>
                 {cardData.studentName || "Alumni Name"}
               </span>
             </div>
