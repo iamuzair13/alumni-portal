@@ -251,6 +251,16 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       await queryClient.invalidateQueries({ queryKey: currentUserImageKey() });
       // Force refetch current user image to update header immediately
       await queryClient.refetchQueries({ queryKey: currentUserImageKey() });
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent("alumni-card-revision-changed", {
+            detail: { sapId },
+          })
+        );
+      } catch {
+        // ignore
+      }
       
       // Refresh the page after a short delay to show the updated image
       setTimeout(() => {

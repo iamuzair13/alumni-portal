@@ -20,12 +20,13 @@ import ProfileDetailsClient from "./ProfileDetailsClient";
 import ProfileDetailsServer from "./ProfileDetailsServer";
 import PageBanner from "@/components/ui/PageBanner";
 import AlumniCardClient from "@/components/alumni/AlumniCardClient";
+import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
+import SubmitRevisionButton from "@/components/alumni/SubmitRevisionButton";
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
-import BenefitCard from "@/components/ui/BenefitCard";
 import NewslettersCard from "@/components/alumni/NewslettersCard";
+import BenefitCard from "@/components/ui/BenefitCard";
 import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
 import { formatCardValidityMonthYear } from "@/lib/cardValidity";
-import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
 
 type Profile = {
   alumniname: string | null;
@@ -873,7 +874,7 @@ let cardImageFile: string | null = null;
                               type="button"
                               disabled
                               aria-disabled
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                             >
                               Under review
                             </button>
@@ -882,7 +883,7 @@ let cardImageFile: string | null = null;
                               type="button"
                               disabled
                               aria-disabled
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                             >
                               In-Process
                             </button>
@@ -892,13 +893,16 @@ let cardImageFile: string | null = null;
                                 type="button"
                                 disabled
                                 aria-disabled
-                                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+                                className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                               >
                                 Application on hold
                               </button>
+                              {!!sapId && (
+                                <SubmitRevisionButton sapId={sapId} />
+                              )}
                               <button
                                 type="button"
-                                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors"
+                                className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors"
                                 aria-label="Contact Management"
                               >
                                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -912,7 +916,7 @@ let cardImageFile: string | null = null;
                               type="button"
                               disabled
                               aria-disabled
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
                             >
                               Capacity Full
                             </button>

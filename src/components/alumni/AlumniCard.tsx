@@ -1160,9 +1160,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         }
         const j = await res.json();
         const card = (j?.card ?? null) as { cardpicture?: string | null; card_image?: string | null } | null;
-        const raw = String(card?.cardpicture ?? card?.card_image ?? "").trim();
+        let raw = String(card?.cardpicture ?? card?.card_image ?? "").trim();
+
+        // Some card records do not store cardpicture/card_image, even though the picture exists
+        // (e.g. stored only in tbl_alumni image1/image2). Fallback to alumni profile image.
         if (!raw) {
-          throw new Error("No card picture found for this applicant");
+          const alumniRes = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/full-details`, { cache: "no-store" });
+          if (!alumniRes.ok) {
+            const jj = await alumniRes.json().catch(() => ({}));
+            throw new Error(jj?.error || `No card picture found (${alumniRes.status})`);
+          }
+          const jj = await alumniRes.json().catch(() => ({}));
+          const alumni = (jj?.item ?? null) as { image2?: string | null; image1?: string | null } | null;
+          raw = String(alumni?.image2 ?? alumni?.image1 ?? "").trim();
+          if (!raw) {
+            throw new Error("No card picture found for this applicant");
+          }
         }
 
         // cardpicture/card_image may be just a filename, or already contain a path.

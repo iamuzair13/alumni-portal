@@ -402,9 +402,20 @@ function MoreDetailsContent() {
       await updateMutation.mutateAsync(pendingChanges as Partial<NonNullable<typeof data>>);
       // Clear pending changes after successful save
       setPendingChanges({});
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent("alumni-card-revision-changed", {
+            detail: { sapId },
+          })
+        );
+      } catch {
+        // ignore
+      }
+
       // Force refetch to ensure we have the latest from the database
       await refetch();
-      toast.success(`Successfully saved ${changesCount} field${changesCount > 1 ? 's' : ''}`, {
+      toast.success(`Saved ${changesCount} field${changesCount !== 1 ? "s" : ""} successfully`, {
         duration: 3000,
         style: {
           background: '#d1fae5',
