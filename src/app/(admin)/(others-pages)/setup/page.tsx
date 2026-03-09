@@ -20,6 +20,7 @@ import { canModify, isAdminUser, isViewerUser, canManageUsers, isSuperAdminUser 
 import OrganizationComponent from "@/components/setup/OrganizationComponent";
 import ChaptersComponent from "@/components/setup/ChaptersComponent";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import Pagination from "@/components/tables/Pagination";
 import { NewsletterTab } from "@/components/alumni/NewsletterTab";
 import RoleDescriptionSection from "@/components/leadership/RoleDescriptionSection";
 import LeadershipCriteriaManager from "@/components/leadership/LeadershipCriteriaManager";
@@ -225,6 +226,7 @@ function SetupPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isAdmin = isAdminUser(session?.user);
+
   const isSuperAdmin = isSuperAdminUser(session?.user);
 
   const hasModifyAccess = canModify(session?.user);
@@ -341,14 +343,36 @@ function SetupPageContent() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "superadmin" | "admin" | "viewer">("all");
+  const [userFacultyFilter, setUserFacultyFilter] = useState<string>("");
+  const [userDepartmentFilter, setUserDepartmentFilter] = useState<string>("");
+  const [usersPage, setUsersPage] = useState(1);
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [removeUserId, setRemoveUserId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const pushToast = (type: "success" | "error", message: string) => {
+    const id = `${type}-${Date.now()}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 2500);
+  };
+
   // Get real-time users count for counter
   const { data: realTimeUsers, isLoading: realTimeUsersLoading } = useUsersList();
   const realTimeUsersCount = realTimeUsers?.length || 0;
+
+  const facultyOptions = useMemo(() => {
+    const all = (realTimeUsers ?? []).flatMap((u) => u.accessAssignments?.faculties ?? []);
+    return Array.from(new Set(all.map((s) => String(s || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }, [realTimeUsers]);
+
+  const departmentOptions = useMemo(() => {
+    const all = (realTimeUsers ?? []).flatMap((u) => u.accessAssignments?.departments ?? []);
+    return Array.from(new Set(all.map((s) => String(s || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }, [realTimeUsers]);
 
   // hydrate from localStorage
   useEffect(() => {
@@ -376,22 +400,32 @@ function SetupPageContent() {
     } catch {}
   }, [users]);
 
-  const pushToast = (type: "success" | "error", message: string) => {
-    const id = `${type}-${Date.now()}`;
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 2500);
-  };
-
   const filteredUsers = useMemo(() => {
     const q = userSearch.trim().toLowerCase();
     let list = users.filter((u) =>
       [u.name, u.email, u.role, u.status].join(" ").toLowerCase().includes(q)
     );
+    if (userRoleFilter !== "all") {
+      if (userRoleFilter === "admin") list = list.filter((u) => String(u.role).toLowerCase() === "admin");
+      if (userRoleFilter === "viewer") list = list.filter((u) => String(u.role).toLowerCase() === "viewer");
+      if (userRoleFilter === "superadmin") list = [];
+    }
     list = list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
-  }, [users, userSearch]);
+  }, [users, userSearch, userRoleFilter]);
+
+  const USERS_PAGE_SIZE = 10;
+
+  useEffect(() => {
+    setUsersPage(1);
+  }, [userSearch, userRoleFilter, userFacultyFilter, userDepartmentFilter]);
+
+  const usersTotalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PAGE_SIZE));
+  const usersPageSafe = Math.min(usersPage, usersTotalPages);
+  const paginatedUsers = useMemo(() => {
+    const start = (usersPageSafe - 1) * USERS_PAGE_SIZE;
+    return filteredUsers.slice(start, start + USERS_PAGE_SIZE);
+  }, [filteredUsers, usersPageSafe]);
 
   const isNewslettersTab = selected === "newsletters";
 
@@ -659,6 +693,43 @@ function SetupPageContent() {
                   <Button size="sm" variant="outline" onClick={() => setUserSearch("")} aria-label="Clear user search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Clear</Button>
                 )}
               </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value as "all" | "superadmin" | "admin" | "viewer")}
+                  aria-label="Filter by role"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <option value="all">All roles</option>
+                  <option value="superadmin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+
+                <select
+                  value={userFacultyFilter}
+                  onChange={(e) => setUserFacultyFilter(e.target.value)}
+                  aria-label="Filter by faculty"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <option value="">All faculties</option>
+                  {facultyOptions.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={userDepartmentFilter}
+                  onChange={(e) => setUserDepartmentFilter(e.target.value)}
+                  aria-label="Filter by department"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <option value="">All departments</option>
+                  {departmentOptions.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
               {canManage && (
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
@@ -683,7 +754,12 @@ function SetupPageContent() {
               </div>
             )}
             {!usersLoading && !usersError && filteredUsers.length === 0 && (
-              <RealTimeUsers />
+              <RealTimeUsers 
+                searchQuery={userSearch}
+                roleFilter={userRoleFilter}
+                facultyFilter={userFacultyFilter}
+                departmentFilter={userDepartmentFilter}
+              />
             )}
 
             {/* User Cards (preview) */}
@@ -711,7 +787,7 @@ function SetupPageContent() {
                       </tr>
                     </thead>
                     <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
-                      {filteredUsers.map((u) => (
+                      {paginatedUsers.map((u) => (
                         <tr key={u.id} className="odd:bg-gray-50">
                           <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                             <div className="flex flex-col">
@@ -749,6 +825,16 @@ function SetupPageContent() {
                     </tbody>
                   </table>
                 </SyncedTableScroll>
+
+                {usersTotalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-end">
+                    <Pagination
+                      currentPage={usersPageSafe}
+                      totalPages={usersTotalPages}
+                      onPageChange={(p) => setUsersPage(Math.max(1, Math.min(p, usersTotalPages)))}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -1123,7 +1209,13 @@ function UsersCounter({
   );
 }
 
-function RealTimeUsers() {
+function RealTimeUsers(props: {
+  searchQuery: string;
+  roleFilter: "all" | "superadmin" | "admin" | "viewer";
+  facultyFilter: string;
+  departmentFilter: string;
+}) {
+  const { searchQuery, roleFilter, facultyFilter, departmentFilter } = props;
   const { data: session } = useSession();
   const canManage = canManageUsers(session?.user);
   const isAdmin = isAdminUser(session?.user);
@@ -1134,6 +1226,11 @@ function RealTimeUsers() {
   const queryClient = useQueryClient();
   const [editUserId, setEditUserId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, roleFilter, facultyFilter, departmentFilter]);
 
   const AssignedItemsCell: React.FC<{ items: string[]; allowDropdown: boolean }> = ({ items, allowDropdown }) => {
     const [open, setOpen] = useState(false);
@@ -1164,7 +1261,7 @@ function RealTimeUsers() {
       <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-slate-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200 dark:hover:bg-gray-900"
+          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-slate-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
           aria-haspopup="menu"
           aria-expanded={open}
           title={items.join(", ")}
@@ -1195,6 +1292,7 @@ function RealTimeUsers() {
       </div>
     );
   };
+
   if (isLoading) {
     return (
       <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
@@ -1217,7 +1315,44 @@ function RealTimeUsers() {
       </div>
     );
   }
-  
+
+  const PAGE_SIZE = 10;
+  const q = String(searchQuery || "").trim().toLowerCase();
+  let filtered = q
+    ? users.filter((u) => {
+        const name = `${u.firstname ?? ""} ${u.lastname ?? ""}`.trim();
+        return [name, u.email, u.department, u.type]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      })
+    : users;
+
+  if (roleFilter !== "all") {
+    filtered = filtered.filter((u) => {
+      const t = String(u.type ?? "").toLowerCase();
+      const isSuper = t.includes("super");
+      const isAdmin = t.includes("admin");
+      const isViewer = t.includes("viewer");
+
+      if (roleFilter === "superadmin") return isSuper;
+      if (roleFilter === "admin") return isAdmin && !isSuper;
+      if (roleFilter === "viewer") return isViewer;
+      return true;
+    });
+  }
+
+  if (facultyFilter) {
+    filtered = filtered.filter((u) => (u.accessAssignments?.faculties ?? []).includes(facultyFilter));
+  }
+  if (departmentFilter) {
+    filtered = filtered.filter((u) => (u.accessAssignments?.departments ?? []).includes(departmentFilter));
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const pageItems = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+
   function openEdit(u: AdminUser) {
     setEditUserId(u.userid);
   }
@@ -1252,15 +1387,13 @@ function RealTimeUsers() {
             </tr>
           </thead>
           <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
-            {users.map((u) => (
+            {pageItems.map((u) => (
               <tr key={u.userid} className="odd:bg-gray-50">
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                   <div className="flex flex-col">
                     <span className={`block font-medium  ${u.blocked ? "text-red-600" : "text-slate-900"} text-[13px] dark:text-white/90`}>{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
-                    
                   </div>
                 </td>
-                
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.email ?? "-"}</td>
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 font-mono text-xs">
                   {(() => {
@@ -1298,7 +1431,9 @@ function RealTimeUsers() {
                       const isOwnRow = currentUserId && Number(currentUserId) === u.userid;
                       // Only Super Admin can manage users, or users can edit their own account
                       const canEdit = canManage || isOwnRow;
-                      
+                      // <Button size="sm" aria-label={`Edit ${u.email ?? "user"}`} startIcon={<PencilIcon />} onClick={() => openEdit(u)} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+                      //   <span className="sr-only">Edit</span>
+                      // </Button>
                       if (canEdit) {
                         return (
                           <>
@@ -1330,6 +1465,17 @@ function RealTimeUsers() {
           </tbody>
         </table>
       </SyncedTableScroll>
+
+      {totalPages > 1 && (
+        <div className="p-4 flex items-center justify-end">
+          <Pagination
+            currentPage={pageSafe}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(Math.max(1, Math.min(p, totalPages)))}
+          />
+        </div>
+      )}
+
       {/* Edit User Modal with UserForm */}
       {editUserId && (
         <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
