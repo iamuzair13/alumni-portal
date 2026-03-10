@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { PencilIcon, TrashBinIcon } from "@/icons";
 import { Modal } from "@/components/ui/modal";
 import { useModal } from "@/hooks/useModal";
-import { canModify, isSuperAdminUser } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, isSuperAdminUser } from "@/lib/alumniProfile";
 import { organizationKeys, useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-organization";
 
 // ERP Record type for comparison
@@ -535,6 +535,7 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
   const session = useSession();
   const router = useRouter();
   const isSuperAdmin = isSuperAdminUser(session.data?.user);
+  const canViewPassword = isAdminUser(session.data?.user) || isSuperAdmin;
   const canSendCredentials = canModify(session.data?.user);
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
@@ -1157,16 +1158,18 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
           <CompactField label="Primary Contact" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} />
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
           <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
-          <CompactField
-            label="Password"
-            value={safePasswordValue}
-            isEditing={isFieldEditing("password")}
-            readOnly={readOnly || !isSuperAdmin}
-            register={register}
-            name="password"
-            type="password"
-            onEdit={isSuperAdmin && !readOnly ? () => startEditingField("password") : undefined}
-          />
+          {canViewPassword && (
+            <CompactField
+              label="Password"
+              value={safePasswordValue}
+              isEditing={isFieldEditing("password")}
+              readOnly={readOnly || !isSuperAdmin}
+              register={register}
+              name="password"
+              type="password"
+              onEdit={isSuperAdmin && !readOnly ? () => startEditingField("password") : undefined}
+            />
+          )}
           {canSendCredentials && data.alumniid && data.alumniid > 0 && (
             <div className="flex items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-700/50">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Credentials:</span>

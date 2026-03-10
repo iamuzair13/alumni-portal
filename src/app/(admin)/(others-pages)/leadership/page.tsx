@@ -1177,7 +1177,7 @@ export default function LeadershipPage() {
                               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leadership Application Details</div>
                               <div className="mt-1 h-px bg-gray-200 dark:bg-gray-800" />
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                <div className="truncate"><span className="font-medium">Applicant Name:</span> {item.name || "-"}</div>
+                                <div className="truncate"><span className="font-medium">Application Type:</span> {item.type === "chapter" ? "Chapter" : "Association"}</div>
                                 <div className="truncate"><span className="font-medium">Role Applied For:</span> {item.position || "-"}</div>
                                 <div className="truncate"><span className="font-medium">Application Date:</span> {item.createdAt ? String(item.createdAt) : "-"}</div>
                                 <div>

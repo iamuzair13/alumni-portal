@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
-import { canModify, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { canModify, isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -94,12 +94,15 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const isOwner = isOwnerBySapid || isOwnerByRegNo || isOwnerByEmail;
     const canAccess = canModify(session.user); // Checks for both admin and superadmin
+    const isAdmin = isAdminUser(session.user);
     const isSuperAdmin = isSuperAdminUser(session.user);
     const isViewer = isViewerUser(session.user); // Checks for viewer users
+    const canViewPassword = isAdmin || isSuperAdmin;
     const isAdminOrViewer = canAccess || isViewer;
     
-    // SECURITY: For admin/viewer users, check access filter
-    if (isAdminOrViewer) {
+    // SECURITY: Viewer users are constrained by access filter.
+    // Admin / Superadmin should be able to access all records regardless of access assignments.
+    if (isAdminOrViewer && !canAccess) {
       try {
         const { buildAccessFilterSQL } = await import("@/lib/userAccess");
         const accessFilter = await buildAccessFilterSQL(session, "");
@@ -190,6 +193,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       item: {
         alumniid: row.alumniid ?? null,
         alumniemail: row.alumniemail ?? null,
+        password: canViewPassword ? (row.password ?? null) : null,
         registrationno: row.registrationno ?? null,
         sapid: row.sapid ?? null,
         alumniname: row.alumniname ?? null,

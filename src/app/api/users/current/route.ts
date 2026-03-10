@@ -126,9 +126,22 @@ export async function PUT(req: Request) {
         const originalName = imageFile.name;
         const ext = originalName.split('.').pop() || 'jpg';
         const filename = `user-${currentUserId}-${timestamp}.${ext}`;
-        
-        // Ensure /public/images directory exists
-        const imagesDir = join(process.cwd(), "public", "images");
+
+        // Ensure /public/images directory exists (find real project root; cwd may differ in some deployments)
+        const cwd = process.cwd();
+        let projectRoot = cwd;
+        let currentPath = cwd;
+        for (let i = 0; i < 5; i++) {
+          if (existsSync(join(currentPath, "package.json")) || existsSync(join(currentPath, "next.config.mjs"))) {
+            projectRoot = currentPath;
+            break;
+          }
+          const parentPath = join(currentPath, "..");
+          if (parentPath === currentPath) break;
+          currentPath = parentPath;
+        }
+
+        const imagesDir = join(projectRoot, "public", "images");
         if (!existsSync(imagesDir)) {
           await mkdir(imagesDir, { recursive: true });
         }

@@ -195,17 +195,23 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
     return normalizeRoleDescription(s);
   }, [criteriaData]);
 
-  const officeTermGovernanceHtml = useMemo(() => {
+  const officeTermGovernanceRaw = useMemo(() => {
     const raw = (criteriaData as any)?.officeTermGovernanceHtml;
-    const s = String(raw ?? "").trim();
-    return s;
+    return String(raw ?? "").trim();
+  }, [criteriaData]);
+
+  const officeTermGovernanceHtml = useMemo(() => {
+    return normalizeRoleDescription(officeTermGovernanceRaw);
+  }, [officeTermGovernanceRaw]);
+
+  const codeOfEthicsRaw = useMemo(() => {
+    const raw = (criteriaData as any)?.codeOfEthics;
+    return String(raw ?? "").trim();
   }, [criteriaData]);
 
   const codeOfEthics = useMemo(() => {
-    const raw = (criteriaData as any)?.codeOfEthics;
-    const s = String(raw ?? "").trim();
-    return s;
-  }, [criteriaData]);
+    return normalizeRoleDescription(codeOfEthicsRaw);
+  }, [codeOfEthicsRaw]);
 
   const complianceDeclaration = useMemo(() => {
     const raw = (criteriaData as any)?.complianceDeclaration;
@@ -575,23 +581,20 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                   </div>
                 </details>
 
-                {officeTermGovernanceHtml ? (
+                {officeTermGovernanceRaw ? (
                   <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                     <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
-                    <div className="mt-2">
-                      <div
-                        className="prose prose-sm dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: officeTermGovernanceHtml }}
-                      />
+                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                      {officeTermGovernanceHtml || "No office term & related governance configured yet."}
                     </div>
                   </details>
                 ) : null}
 
-                {codeOfEthics ? (
+                {codeOfEthicsRaw ? (
                   <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                     <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
                     <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {codeOfEthics}
+                      {codeOfEthics || "No code of ethics configured yet."}
                     </div>
                   </details>
                 ) : null}
@@ -707,35 +710,9 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Compliance Declaration</div>
-                  {complianceDeclaration ? (
-                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {complianceDeclaration}
-                    </div>
-                  ) : (
-                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">No compliance declaration configured yet.</div>
-                  )}
-                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register("complianceAccepted", { required: true })}
-                      className="mt-1 h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-800 dark:text-gray-200">
-                      I have read and agree to the compliance declaration.
-                      <span className="text-rose-600"> *</span>
-                    </span>
-                  </label>
-                  {errors.complianceAccepted ? (
-                    <div className={errorText}>You must accept before submitting.</div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : null}
 
-          <div>
+              </div>
+                          <div>
             <label className={labelBase}>Additional Achievements</label>
             <textarea
               {...register("additionalAchievements")}
@@ -744,21 +721,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
-          
-
-          <button
-            type="submit"
-            disabled={isSubmitting || isUploadingFiles || !selectedRole}
-            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isUploadingFiles ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Application"}
-          </button>
-
-          <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+                        <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upload Documents</div>
             <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">Allowed: PDF, DOC, DOCX. Max size: 5MB per file.</div>
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -791,6 +754,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                 <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">Selected: {cvFile ? cvFile.name : "-"}</div>
                 {cvError ? <div className={errorText}>{cvError}</div> : null}
               </div>
+
 
               <div>
                 <label className={labelBase}>Supporting Document 1 (optional)</label>
@@ -851,6 +815,50 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
               </div>
             ) : null}
           </div>
+                          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Compliance Declaration</div>
+                  {complianceDeclaration ? (
+                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                      {complianceDeclaration}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">No compliance declaration configured yet.</div>
+                  )}
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("complianceAccepted", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and agree to the compliance declaration.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.complianceAccepted ? (
+                    <div className={errorText}>You must accept before submitting.</div>
+                  ) : null}
+                </div>
+            </div>
+            
+          ) : null}
+
+
+        </div>
+
+        {/* Submit Button */}
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
+          
+
+          <button
+            type="submit"
+            disabled={isSubmitting || isUploadingFiles || !selectedRole}
+            className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isUploadingFiles ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Application"}
+          </button>
+
+
         </div>
       </form>
     </div>

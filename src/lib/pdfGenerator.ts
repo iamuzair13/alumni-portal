@@ -442,6 +442,14 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
 
       const normalizeHtml = (html: string) => {
         return String(html || "")
+          .replace(/\u00a0/g, " ")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/&#160;/gi, " ")
+          .replace(/&amp;/gi, "&")
+          .replace(/&lt;/gi, "<")
+          .replace(/&gt;/gi, ">")
+          .replace(/&quot;/gi, "\"")
+          .replace(/&#39;/gi, "'")
           .replace(/\r\n/g, "\n")
           .replace(/<br\s*\/?\s*>/gi, "\n")
           .replace(/<\/?p\b[^>]*>/gi, "\n")
@@ -450,10 +458,12 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           .replace(/<li\b[^>]*>/gi, "\n• ")
           .replace(/<\/?(ul|ol)\b[^>]*>/gi, "\n")
           .replace(/<strong\b[^>]*>/gi, "**")
-          .replace(/<\/strong>/gi, "**")
+          .replace(/<\/?strong>/gi, "**")
           .replace(/<b\b[^>]*>/gi, "**")
-          .replace(/<\/b>/gi, "**")
+          .replace(/<\/?b>/gi, "**")
           .replace(/<[^>]+>/g, "")
+          .replace(/[ \t]{2,}/g, " ")
+          .replace(/\n[ \t]+/g, "\n")
           .replace(/\n{3,}/g, "\n\n")
           .trim();
       };
@@ -542,12 +552,10 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       y += 10;
       hLine(0, 10);
 
-      setTextStyle(12, true);
-      const applicantName = String(data.applicant.name || "-");
-      drawWrappedText(applicantName, margin, 12, true, maxWidth, 4);
+      
 
       const headerLeft: Array<{ label: string; value: string }> = [
-        { label: "SAP ID", value: String(data.applicant.sapId || data.applicant.registrationNo || "-") },
+        { label: "Application Type", value: data.leadershipType === "chapter" ? "Chapter" : "Association" },
         { label: "Role Applied For", value: String(data.position || "-") },
       ];
       const headerRight: Array<{ label: string; value: string }> = [
@@ -575,6 +583,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       hLine(0, 10);
 
       sectionTitle("Role Information");
+      drawWrappedText(`Application Type: ${data.leadershipType === "chapter" ? "Chapter" : "Association"}`, margin, 10.5, false, maxWidth, 4);
       drawWrappedText(`Role Title: ${String(data.position || "-")}`, margin, 10.5, false, maxWidth, 4);
       drawWrappedText(`Role Description: ${String(data.roleDescription || "-")}`, margin, 10.5, false, maxWidth, 8);
       drawRichTextBlock(String(data.officeTermGovernanceHtml || ""), maxWidth);
