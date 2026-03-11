@@ -37,6 +37,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const { data, isLoading, isError, error } = useAlumniProfile(sapId);
   const { data: fullDetails, isLoading: isLoadingFullDetails, isError: isFullDetailsError, error: fullDetailsError } = useAlumniFullDetails(sapId);
   const alumniIdForBadges = fullDetails?.alumniid ? Number(fullDetails.alumniid) : null;
+  const changeApproval = String(fullDetails?.change_approval ?? "").toLowerCase().trim();
   
   // Show error if API calls fail
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [dismissedChangeApproval, setDismissedChangeApproval] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
   const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
@@ -68,6 +70,29 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const completionPercentage = useMemo(() => {
     return calculateProfileCompletion(fullDetails);
   }, [fullDetails]);
+
+  useEffect(() => {
+    const storageKey = `change-approval-dismissed:${sapId}`;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      setDismissedChangeApproval(raw === "1");
+    } catch {
+      setDismissedChangeApproval(false);
+    }
+  }, [sapId]);
+
+  useEffect(() => {
+    // If status changes to pending, always show it again
+    if (changeApproval === "pending") {
+      setDismissedChangeApproval(false);
+      const storageKey = `change-approval-dismissed:${sapId}`;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    }
+  }, [changeApproval, sapId]);
 
   useEffect(() => {
     if (isLoading || isLoadingFullDetails) {
@@ -643,6 +668,57 @@ return (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </LoadingLink>
+              )}
+
+              {changeApproval === "pending" && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-amber-800">
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                  Change Approval Pending
+                </span>
+              )}
+
+              {changeApproval === "accepted" && !dismissedChangeApproval && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-emerald-800">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                  Change Approved
+                  <button
+                    type="button"
+                    className="ml-1 rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                    onClick={() => {
+                      setDismissedChangeApproval(true);
+                      const storageKey = `change-approval-dismissed:${sapId}`;
+                      try {
+                        localStorage.setItem(storageKey, "1");
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
+              )}
+
+              {changeApproval === "rejected" && !dismissedChangeApproval && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-rose-800">
+                  <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
+                  Change Rejected
+                  <button
+                    type="button"
+                    className="ml-1 rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100"
+                    onClick={() => {
+                      setDismissedChangeApproval(true);
+                      const storageKey = `change-approval-dismissed:${sapId}`;
+                      try {
+                        localStorage.setItem(storageKey, "1");
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </span>
               )}
             </div>
           </div>

@@ -189,7 +189,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
     
     // Return all fields from tbl_alumni
-    return NextResponse.json({ 
+    return NextResponse.json({
       item: {
         alumniid: row.alumniid ?? null,
         alumniemail: row.alumniemail ?? null,
@@ -221,7 +221,6 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         campusname: row.campusname ?? null,
         departmentname: row.departmentname ?? null,
         majorsubject: row.majorsubject ?? null,
-        // ID-based fields for faculty, department, program
         faculty: row.faculty ?? null,
         department: row.department ?? null,
         program: row.program ?? null,
@@ -255,28 +254,25 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         alumnistatus: row.alumnistatus ?? null,
         father_cnic: row.father_cnic ?? null,
         category: row.category ?? null,
-        // Higher Education fields
         degree_title: row.degree_title ?? null,
         higher_education_institute_name: row.higher_education_institute_name ?? null,
         higher_education_program: row.higher_education_program ?? null,
         higher_education_institute_country: row.higher_education_institute_country ?? null,
         higher_education_institute_city: row.higher_education_institute_city ?? null,
         is_scholarship: row.is_scholarship ?? null,
-        // Chapter and Association fields
         chapter: chapterDisplay,
         chapter1_id: chapter1Id,
         chapter2_id: chapter2Id,
         chapter3_id: chapter3Id,
         association: associationTitle,
         association_id: associationId,
-        // Consent fields
         alumni_consent_info: row.alumni_consent_info ?? null,
         alumni_consent_pic: row.alumni_consent_pic ?? null,
-      }
+        change_approval: row.change_approval ?? null,
+      },
     }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to fetch alumni details";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

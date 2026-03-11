@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 type EditableFieldProps = {
   label: string;
   value: unknown;
+  pendingValue?: unknown;
   fieldKey: string;
   onUpdate?: (key: string, value: unknown) => Promise<void>;
   onValueChange?: (key: string, value: unknown) => void;
@@ -20,6 +21,7 @@ type EditableFieldProps = {
 export default function EditableField({
   label,
   value,
+  pendingValue,
   fieldKey,
   onUpdate,
   onValueChange,
@@ -138,11 +140,30 @@ export default function EditableField({
     return strVal;
   };
 
+  const normalizeForCompare = (val: unknown): string => {
+    if (val === null || val === undefined) return "";
+    const s = String(val).trim();
+    return s;
+  };
+
+  const hasPending = pendingValue !== undefined && normalizeForCompare(pendingValue) !== normalizeForCompare(value);
+
   if (disabled) {
     return (
       <div className="flex flex-col">
         <span className="text-sm font-medium text-gray-500 mb-1">{label}</span>
-        <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
+        {hasPending ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base text-gray-500 break-words">{displayValue(value)}</span>
+            <span className="text-base text-gray-400">→</span>
+            <span className="text-base text-blue-700 break-words font-medium">{displayValue(pendingValue)}</span>
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              Pending Approval
+            </span>
+          </div>
+        ) : (
+          <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
+        )}
       </div>
     );
   }
@@ -164,7 +185,18 @@ export default function EditableField({
             </svg>
           </button>
         </div>
-        <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
+        {hasPending ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base text-gray-500 break-words">{displayValue(value)}</span>
+            <span className="text-base text-gray-400">→</span>
+            <span className="text-base text-blue-700 break-words font-medium">{displayValue(pendingValue)}</span>
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              Pending Approval
+            </span>
+          </div>
+        ) : (
+          <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
+        )}
       </div>
     );
   }

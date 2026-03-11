@@ -47,6 +47,7 @@ import { EmailHistoryModal } from "@/components/email/EmailHistoryModal";
 import { SendEmailButton } from "@/components/email/SendEmailButton";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import toast from "react-hot-toast";
+import { ChangeApprovalsTab } from "@/components/alumni/ChangeApprovalsTab";
 
  function formatRegistrationDate(v?: string | null): string {
    if (!v) return "-";
@@ -187,6 +188,7 @@ const STATUS_CLASS_MAP: Record<
 export const AlumniTabs: React.FC = () => {
   const router = useRouter();
   const [selected, setSelected] = useState<TabKey>("total");
+  const [underApprovalSubTab, setUnderApprovalSubTab] = useState<"new" | "change">("new");
   const { data: session } = useSession();
   
   // Refs for scroll synchronization
@@ -1441,6 +1443,31 @@ export const AlumniTabs: React.FC = () => {
     };
   }, [countsData, totalRecords]);
 
+  const { data: changeApprovalsCountData } = useQuery<{ changeApprovalCount: number }>(
+    {
+      queryKey: ["change-approvals", "count"],
+      queryFn: async ({ signal }) => {
+        const res = await fetch("/api/change-approvals/count", { signal, headers: { accept: "application/json" } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error((data as any)?.error ?? "Failed to load change approvals count");
+        return data as { changeApprovalCount: number };
+      },
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    }
+  );
+
+  const changeApprovalCount = useMemo(() => {
+    const n = Number(changeApprovalsCountData?.changeApprovalCount ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  }, [changeApprovalsCountData]);
+
+  const totalUnderApprovalCount = useMemo(() => {
+    return (counts.underApproval || 0) + changeApprovalCount;
+  }, [counts.underApproval, changeApprovalCount]);
+
   // Build dynamic status options based on verify statuses from DB, with fallback and counts
   const statusOptions: { value: string; label: string; count: number }[] = useMemo(() => {
     const opts: { value: string; label: string; count: number }[] = [];
@@ -2469,7 +2496,7 @@ export const AlumniTabs: React.FC = () => {
                 case "verified":
                   return counts.verified;
                 case "underApproval":
-                  return counts.underApproval;
+                  return totalUnderApprovalCount;
                 case "active":
                   return counts.active;
                 case "aPlus":
@@ -2592,6 +2619,37 @@ export const AlumniTabs: React.FC = () => {
 
         {/* Regular Alumni Tab Content */}
         <div style={{ display: selected !== "distinguished" ? "block" : "none" }}>
+        <>
+        {selected === "underApproval" && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setUnderApprovalSubTab("new")}
+              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                underApprovalSubTab === "new"
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
+              }`}
+            >
+              New Approvals ({(counts.underApproval || 0).toLocaleString()})
+            </button>
+            <button
+              type="button"
+              onClick={() => setUnderApprovalSubTab("change")}
+              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                underApprovalSubTab === "change"
+                  ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
+              }`}
+            >
+              Change Approvals ({changeApprovalCount.toLocaleString()})
+            </button>
+          </div>
+        )}
+
+        {selected === "underApproval" && underApprovalSubTab === "change" ? (
+          <ChangeApprovalsTab />
+        ) : (
         <>
         {/* Search and Filters Section */}
         <div className="rounded-2xl ">
@@ -5511,6 +5569,8 @@ export const AlumniTabs: React.FC = () => {
             )}
           </div>
         </div>
+        </>
+        )}
         </>
         </div>
       

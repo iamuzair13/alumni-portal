@@ -4,6 +4,23 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
 
+function parseJsonbRecord(v: unknown): Record<string, unknown> {
+  if (!v) return {};
+  if (typeof v === "object") return v as Record<string, unknown>;
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return {};
+    try {
+      const parsed = JSON.parse(s) as unknown;
+      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+      return {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
 export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
     const { sapid } = await ctx.params;
@@ -386,6 +403,139 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
         ok: true, 
         updated: { alumniid: Number(row.alumniid), sapid: String(row.sapid) },
         message: "No changes to update"
+      }, { status: 200 });
+    }
+
+    // Alumni change-approval workflow (do not apply updates immediately)
+    if (!isAdmin) {
+      const normalizeForCompare = (v: unknown): unknown => {
+        if (v === undefined || v === null) return null;
+        if (typeof v === "string") {
+          const t = v.trim();
+          return t.length === 0 ? null : t;
+        }
+        return v;
+      };
+
+      const currentAlumniRows = await sql/* sql */`
+        SELECT a.*
+        FROM public.tbl_alumni a
+        WHERE a.alumniid = ${alumniId}
+        LIMIT 1`;
+      if (!currentAlumniRows[0]) {
+        return NextResponse.json({ error: "Alumni not found" }, { status: 404 });
+      }
+      const currentAlumni = currentAlumniRows[0] as Record<string, unknown>;
+
+      const currentChapterRows = await sql/* sql */`
+        SELECT chapter1, chapter2, chapter3
+        FROM public.alumni_chapter
+        WHERE id = ${alumniId}
+        LIMIT 1`;
+      const currentChapters = (currentChapterRows[0] ?? { chapter1: null, chapter2: null, chapter3: null }) as {
+        chapter1: number | null;
+        chapter2: number | null;
+        chapter3: number | null;
+      };
+
+      const proposed: Record<string, unknown> = {};
+      for (const [k, v] of fieldsToUpdate) {
+        proposed[k] = v;
+      }
+
+      // Compare only submitted keys and keep only truly changed fields
+      const oldData: Record<string, unknown> = {};
+      const newData: Record<string, unknown> = {};
+
+      for (const [key, nextValRaw] of Object.entries(proposed)) {
+        if (key === "updated_at") continue;
+        if (key === "verify") continue;
+        if (key === "password") continue;
+        if (key === "image1" || key === "image2") continue;
+        if (key === "chapter1_id" || key === "chapter2_id" || key === "chapter3_id") {
+          const idx = key === "chapter1_id" ? "chapter1" : key === "chapter2_id" ? "chapter2" : "chapter3";
+          const currentVal = (currentChapters as any)[idx] as unknown;
+          const cur = normalizeForCompare(currentVal);
+          const nxt = normalizeForCompare(nextValRaw);
+          if (cur !== nxt) {
+            oldData[key] = currentVal;
+            newData[key] = nextValRaw;
+          }
+          continue;
+        }
+
+        const currentVal = currentAlumni[key];
+        const cur = normalizeForCompare(currentVal);
+        const nxt = normalizeForCompare(nextValRaw);
+        if (cur !== nxt) {
+          oldData[key] = currentVal ?? null;
+          newData[key] = nextValRaw;
+        }
+      }
+
+      if (Object.keys(newData).length === 0) {
+        return NextResponse.json({
+          ok: true,
+          updated: { alumniid: Number(row.alumniid), sapid: String(row.sapid) },
+          message: "No changes to submit",
+        }, { status: 200 });
+      }
+
+      await sql.begin(async (tx) => {
+        // Keep a single pending request per alumni; merge new changes into the existing pending one
+        const existingPending = await tx/* sql */`
+          SELECT id, old_data, new_data
+          FROM public.tbl_alumni_change_requests
+          WHERE alumni_id = ${alumniId} AND status = 'pending'
+          ORDER BY created_at DESC
+          LIMIT 1`;
+
+        const pendingRow = existingPending[0] as undefined | { id: number; old_data?: unknown; new_data?: unknown };
+
+        if (pendingRow?.id) {
+          const existingOld = parseJsonbRecord(pendingRow.old_data);
+          const existingNew = parseJsonbRecord(pendingRow.new_data);
+
+          // Preserve original old values; only add old values for newly introduced keys.
+          const mergedOld: Record<string, unknown> = { ...existingOld };
+          for (const [k, v] of Object.entries(oldData)) {
+            if (!(k in mergedOld)) mergedOld[k] = v;
+          }
+
+          // Always update the requested values for submitted keys.
+          const mergedNew: Record<string, unknown> = { ...existingNew, ...newData };
+
+          const oldDataJson = JSON.stringify(mergedOld);
+          const newDataJson = JSON.stringify(mergedNew);
+
+          await tx/* sql */`
+            UPDATE public.tbl_alumni_change_requests
+            SET old_data = ${oldDataJson}::jsonb,
+                new_data = ${newDataJson}::jsonb,
+                created_at = now(),
+                approved_by = NULL,
+                approved_at = NULL
+            WHERE id = ${pendingRow.id}`;
+        } else {
+          const oldDataJson = JSON.stringify(oldData);
+          const newDataJson = JSON.stringify(newData);
+
+          await tx/* sql */`
+            INSERT INTO public.tbl_alumni_change_requests (alumni_id, old_data, new_data, status)
+            VALUES (${alumniId}, ${oldDataJson}::jsonb, ${newDataJson}::jsonb, 'pending')`;
+        }
+
+        await tx/* sql */`
+          UPDATE public.tbl_alumni
+          SET change_approval = 'pending'
+          WHERE alumniid = ${alumniId}`;
+      });
+
+      return NextResponse.json({
+        ok: true,
+        updated: { alumniid: Number(row.alumniid), sapid: String(row.sapid) },
+        message: "Changes submitted for approval",
+        change_approval: "pending",
       }, { status: 200 });
     }
 

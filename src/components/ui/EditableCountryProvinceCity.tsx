@@ -288,20 +288,26 @@ type EditableCountryProvinceCityProps = {
   countryValue: unknown;
   provinceValue: unknown;
   cityValue: unknown;
+  pendingCountryValue?: unknown;
+  pendingProvinceValue?: unknown;
+  pendingCityValue?: unknown;
+  disabled?: boolean;
   onCountryChange: (key: string, value: unknown) => void;
   onProvinceChange: (key: string, value: unknown) => void;
   onCityChange: (key: string, value: unknown) => void;
-  disabled?: boolean;
 };
 
 export default function EditableCountryProvinceCity({
   countryValue,
   provinceValue,
   cityValue,
+  pendingCountryValue,
+  pendingProvinceValue,
+  pendingCityValue,
+  disabled = false,
   onCountryChange,
   onProvinceChange,
   onCityChange,
-  disabled = false,
 }: EditableCountryProvinceCityProps) {
   const selectedCountry = String(countryValue || "");
   const selectedProvince = String(provinceValue || "");
@@ -350,6 +356,7 @@ export default function EditableCountryProvinceCity({
       <EditableField
         label="Country"
         value={countryValue}
+        pendingValue={pendingCountryValue}
         fieldKey="country"
         onValueChange={onCountryChange}
         type="select"
@@ -362,6 +369,7 @@ export default function EditableCountryProvinceCity({
         <EditableField
           label="Province"
           value={provinceValue}
+          pendingValue={pendingProvinceValue}
           fieldKey="province"
           onValueChange={onProvinceChange}
           type="select"
@@ -375,6 +383,7 @@ export default function EditableCountryProvinceCity({
         <EditableField
           label="City"
           value={cityValue}
+          pendingValue={pendingCityValue}
           fieldKey="city"
           onValueChange={onCityChange}
           type="text"
@@ -386,6 +395,7 @@ export default function EditableCountryProvinceCity({
         <EditableField
           label="City"
           value={cityValue}
+          pendingValue={pendingCityValue}
           fieldKey="city"
           onValueChange={onCityChange}
           type="text"

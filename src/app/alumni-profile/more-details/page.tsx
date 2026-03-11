@@ -1,8 +1,9 @@
 "use client";
-import { Suspense, useState, useCallback, useEffect } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAlumniFullDetails, useUpdateAlumniFields } from "@/app/queries/alumni-profile";
+import { useQuery } from "@tanstack/react-query";
 import AppHeader from "@/layout/AppHeader";
 import Image from "next/image";
 import BackButton from "@/components/ui/BackButton";
@@ -41,6 +42,31 @@ function MoreDetailsContent() {
   const updateMutation = useUpdateAlumniFields(sapId || undefined);
   const [pendingChanges, setPendingChanges] = useState<Record<string, unknown>>({});
   const [isSavingAll, setIsSavingAll] = useState(false);
+
+  const pendingRequestQuery = useQuery<
+    { pending: boolean; request: null | { id: number; new_data: Record<string, unknown> } },
+    Error
+  >({
+    queryKey: ["alumni", "pending-change", sapId],
+    enabled: !!sapId && String((data as any)?.change_approval ?? "").toLowerCase().trim() === "pending",
+    queryFn: async ({ signal }) => {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/pending-change`, {
+        signal,
+        headers: { accept: "application/json" },
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to load pending change request");
+      return payload as { pending: boolean; request: null | { id: number; new_data: Record<string, unknown> } };
+    },
+    staleTime: 10 * 1000,
+    gcTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  const pendingServerNewData = (pendingRequestQuery.data?.request?.new_data ?? {}) as Record<string, unknown>;
+  const pendingDisplayMap = useMemo(() => {
+    return { ...pendingServerNewData, ...pendingChanges };
+  }, [pendingServerNewData, pendingChanges]);
 
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -399,7 +425,7 @@ function MoreDetailsContent() {
     const changesCount = Object.keys(pendingChanges).length;
     setIsSavingAll(true);
     try {
-      await updateMutation.mutateAsync(pendingChanges as Partial<NonNullable<typeof data>>);
+      const res = await updateMutation.mutateAsync(pendingChanges as Partial<NonNullable<typeof data>>);
       // Clear pending changes after successful save
       setPendingChanges({});
 
@@ -415,15 +441,29 @@ function MoreDetailsContent() {
 
       // Force refetch to ensure we have the latest from the database
       await refetch();
-      toast.success(`Saved ${changesCount} field${changesCount !== 1 ? "s" : ""} successfully`, {
-        duration: 3000,
-        style: {
-          background: '#d1fae5',
-          color: '#065f46',
-          padding: '12px',
-          borderRadius: '8px',
-        },
-      });
+
+      const approval = String((res as { change_approval?: string | null })?.change_approval ?? "").toLowerCase().trim();
+      if (approval === "pending") {
+        toast.success("Changes are under approval. Check status in profile.", {
+          duration: 4000,
+          style: {
+            background: '#fef3c7',
+            color: '#92400e',
+            padding: '12px',
+            borderRadius: '8px',
+          },
+        });
+      } else {
+        toast.success(`Saved ${changesCount} field${changesCount !== 1 ? "s" : ""} successfully`, {
+          duration: 3000,
+          style: {
+            background: '#d1fae5',
+            color: '#065f46',
+            padding: '12px',
+            borderRadius: '8px',
+          },
+        });
+      }
     } catch (error) {
       // Extract error message from the error
       let errorMessage = "Failed to save changes. Please try again.";
@@ -710,7 +750,10 @@ function MoreDetailsContent() {
   return (
     <>
       <AppHeader />
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ top: 80, zIndex: 100000 }}
+      />
       <div className="min-h-screen bg-gray-50">
         <PageBanner title="Profile Details" />
 
@@ -772,6 +815,9 @@ function MoreDetailsContent() {
                                   countryValue={data.country}
                                   provinceValue={data.province}
                                   cityValue={data.city}
+                                  pendingCountryValue={pendingDisplayMap.country}
+                                  pendingProvinceValue={pendingDisplayMap.province}
+                                  pendingCityValue={pendingDisplayMap.city}
                                   disabled={!editable}
                                   onCountryChange={(_, value) => handleFieldValueChange("country", value)}
                                   onProvinceChange={(_, value) => handleFieldValueChange("province", value)}
@@ -799,6 +845,7 @@ function MoreDetailsContent() {
                                   instituteCountryValue={data.higher_education_institute_country}
                                   instituteCityValue={data.higher_education_institute_city}
                                   scholarshipValue={data.is_scholarship}
+                                  pendingValues={pendingDisplayMap}
                                   disabled={!editable}
                                   onEmployeedChange={(_, value) => handleFieldValueChange("employeed", value)}
                                   onIndustryChange={(_, value) => handleFieldValueChange("industry", value)}
@@ -824,6 +871,7 @@ function MoreDetailsContent() {
                                 key={field.key}
                                 label={field.label}
                                 value={field.value}
+                                pendingValue={pendingDisplayMap[field.key]}
                                 fieldKey={field.key}
                                 type={field.type}
                                 options={field.options}

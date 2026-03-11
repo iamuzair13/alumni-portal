@@ -11,6 +11,9 @@ type AlumniChapterLeadershipFormValues = {
   post: string;
   additionalAchievements: string;
   planStrategy: string;
+  roleDescriptionAcknowledged: boolean;
+  officeGovernanceAcknowledged: boolean;
+  codeOfEthicsAcknowledged: boolean;
   complianceAccepted: boolean;
 };
 
@@ -130,6 +133,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
       post: "",
       additionalAchievements: "",
       planStrategy: "",
+      roleDescriptionAcknowledged: false,
+      officeGovernanceAcknowledged: false,
+      codeOfEthicsAcknowledged: false,
       complianceAccepted: false,
     },
     disabled: !isFormEnabled,
@@ -137,6 +143,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
   const post = watch("post");
   const planStrategy = watch("planStrategy");
+  const roleDescriptionAcknowledged = watch("roleDescriptionAcknowledged");
+  const officeGovernanceAcknowledged = watch("officeGovernanceAcknowledged");
+  const codeOfEthicsAcknowledged = watch("codeOfEthicsAcknowledged");
 
   const planMinLen = 50;
   const planMaxLen = 1000;
@@ -342,6 +351,11 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const onSubmit = async (data: AlumniChapterLeadershipFormValues) => {
     // Prevent double submission
     if (isSubmitting || isUploadingFiles) {
+      return;
+    }
+
+    if (!data.roleDescriptionAcknowledged || !data.officeGovernanceAcknowledged || !data.codeOfEthicsAcknowledged) {
+      toast.error("Please confirm that you have read and fully understood the Role Description, Office Governance, and Code of Ethics.");
       return;
     }
 
@@ -654,25 +668,63 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                   <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {criteriaLoading ? "Loading..." : roleDescription ? roleDescription : "No role description configured yet."}
                   </div>
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("roleDescriptionAcknowledged", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and fully understood the information.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.roleDescriptionAcknowledged ? (
+                    <div className={errorText}>You must confirm before submitting.</div>
+                  ) : null}
                 </details>
 
-                {officeTermGovernanceRaw ? (
-                  <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-                    <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
-                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {officeTermGovernanceHtml || "No office term & related governance configured yet."}
-                    </div>
-                  </details>
-                ) : null}
+                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
+                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {criteriaLoading ? "Loading..." : officeTermGovernanceHtml ? officeTermGovernanceHtml : "No office term & related governance configured yet."}
+                  </div>
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("officeGovernanceAcknowledged", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and fully understood the information.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.officeGovernanceAcknowledged ? (
+                    <div className={errorText}>You must confirm before submitting.</div>
+                  ) : null}
+                </details>
 
-                {codeOfEthicsRaw ? (
-                  <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                    <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
-                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {codeOfEthics || "No code of ethics configured yet."}
-                    </div>
-                  </details>
-                ) : null}
+                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
+                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {criteriaLoading ? "Loading..." : codeOfEthics ? codeOfEthics : "No code of ethics configured yet."}
+                  </div>
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("codeOfEthicsAcknowledged", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and fully understood the information.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.codeOfEthicsAcknowledged ? (
+                    <div className={errorText}>You must confirm before submitting.</div>
+                  ) : null}
+                </details>
 
                
 
@@ -853,7 +905,14 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
           <button
             type="submit"
-            disabled={isSubmitting || isUploadingFiles || !selectedPost}
+            disabled={
+              isSubmitting ||
+              isUploadingFiles ||
+              !selectedPost ||
+              !roleDescriptionAcknowledged ||
+              !officeGovernanceAcknowledged ||
+              !codeOfEthicsAcknowledged
+            }
             className="px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isUploadingFiles ? "Uploading..." : isSubmitting ? "Submitting..." : "Submit Application"}

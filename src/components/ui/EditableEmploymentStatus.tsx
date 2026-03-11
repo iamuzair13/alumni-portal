@@ -108,6 +108,7 @@ type EditableEmploymentStatusProps = {
   onInstituteCityChange?: (key: string, value: unknown) => void;
   onScholarshipChange?: (key: string, value: unknown) => void;
   disabled?: boolean;
+  pendingValues?: Record<string, unknown>;
 };
 
 export default function EditableEmploymentStatus({
@@ -147,6 +148,7 @@ export default function EditableEmploymentStatus({
   onInstituteCityChange,
   onScholarshipChange,
   disabled = false,
+  pendingValues,
 }: EditableEmploymentStatusProps) {
   // Map database value to display value for the select dropdown
   const displayValue = mapDbValueToDisplay(employeedValue);
@@ -180,6 +182,7 @@ export default function EditableEmploymentStatus({
       <EditableField
         label="Employment Status"
         value={displayValue}
+        pendingValue={pendingValues?.employeed}
         fieldKey="employeed"
         onValueChange={handleEmployeedChange}
         type="select"
@@ -195,6 +198,7 @@ export default function EditableEmploymentStatus({
               <EditableField
                 label="Sector *"
                 value={industryValue}
+                pendingValue={pendingValues?.industry}
                 fieldKey="industry"
                 onValueChange={onIndustryChange}
                 type="text"
@@ -225,6 +229,7 @@ export default function EditableEmploymentStatus({
             <EditableField
               label="Industry *"
               value={industryValue}
+              pendingValue={pendingValues?.industry}
               fieldKey="industry"
               onValueChange={onIndustryChange}
               type="text"
@@ -235,6 +240,7 @@ export default function EditableEmploymentStatus({
           <EditableField
             label={showSelfEmployedFields ? "Business Name *" : "Company Name *"}
             value={nameoforganizationValue}
+            pendingValue={pendingValues?.nameoforganization}
             fieldKey="nameoforganization"
             onValueChange={onOrganizationChange}
             type="text"
@@ -245,12 +251,23 @@ export default function EditableEmploymentStatus({
           <EditableField
             label="Current Designation *"
             value={designationValue}
+            pendingValue={pendingValues?.designation}
             fieldKey="designation"
             onValueChange={onDesignationChange}
             type="text"
             batchMode={true}
             disabled={disabled}
             placeholder="Enter your designation"
+          />
+          <EditableField
+            label="Total Years of Experience *"
+            value={totalyearsofexpereinceValue}
+            pendingValue={pendingValues?.totalyearsofexpereince}
+            fieldKey="totalyearsofexpereince"
+            onValueChange={onExperienceChange}
+            type="number"
+            batchMode={true}
+            disabled={disabled}
           />
           {/* Start of Career - date picker for Self-Employed, number for employed */}
           {showSelfEmployedFields ? (

@@ -89,6 +89,7 @@ export type AlumniFullDetails = {
   association_id: number | null;
   alumni_consent_info: boolean | null;
   alumni_consent_pic: boolean | null;
+  change_approval: string | null;
 };
 
 export async function getAlumniFullDetails(sapId: string): Promise<AlumniFullDetails> {
@@ -164,7 +165,10 @@ export function useUpdateAlumniProfile(sapId: string | undefined) {
 }
 
 // Update specific fields in alumni profile
-export async function updateAlumniFields(sapId: string, fields: Partial<AlumniFullDetails>): Promise<{ ok: boolean; updated: { alumniid: number; sapid: string } }> {
+export async function updateAlumniFields(
+  sapId: string,
+  fields: Partial<AlumniFullDetails>
+): Promise<{ ok: boolean; updated: { alumniid: number; sapid: string }; message?: string; change_approval?: string | null }> {
   const res = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/update-fields`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -177,7 +181,7 @@ export async function updateAlumniFields(sapId: string, fields: Partial<AlumniFu
     const error = new Error(JSON.stringify({ error: errorMessage, ...data }));
     throw error;
   }
-  return data as { ok: boolean; updated: { alumniid: number; sapid: string } };
+  return data as { ok: boolean; updated: { alumniid: number; sapid: string }; message?: string; change_approval?: string | null };
 }
 
 export function useUpdateAlumniFields(sapId: string | undefined) {
