@@ -309,6 +309,8 @@ export interface LeadershipApplicationPDFData {
     isMandatory: boolean;
     alumniConfirmed: boolean;
     adminConfirmed: boolean;
+    alumniResponse?: string | null;
+    adminResponse?: string | null;
   }>;
   additionalAchievements?: string | null;
   planStrategy?: string | null;
@@ -654,11 +656,12 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       } else {
         drawTableHeader();
         data.criteria.forEach((c) => {
-          const selected = c.alumniConfirmed ? "Yes" : "No";
+          const alumniResp = String(c.alumniResponse ?? "").toUpperCase();
+          const selected = alumniResp === "YES" || alumniResp === "NO" ? alumniResp : c.alumniConfirmed ? "YES" : "NO";
           const typeLabel = c.isMandatory ? "Mandatory" : "Optional";
           let prof = "—";
           if (!c.isMandatory) {
-            if (!c.alumniConfirmed) {
+            if (selected !== "YES") {
               prof = "-";
             } else {
               const rating = Number(proficiencyMap[String(c.id)] ?? 0);

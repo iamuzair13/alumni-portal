@@ -222,10 +222,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, role, criteriaIds, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
+    const { alumniId, role, criteriaIds, criteriaResponses, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
       alumniId?: number;
       role?: string;
       criteriaIds?: unknown;
+      criteriaResponses?: unknown;
       additionalAchievements?: unknown;
       planStrategy?: unknown;
       optionalCriteriaProficiency?: unknown;
@@ -249,15 +250,28 @@ export async function POST(request: NextRequest) {
     }
 
     const roleName = role === "vicePresident" ? "vice_president" : role;
-    const confirmedCriteriaIds = Array.isArray(criteriaIds)
-      ? Array.from(
-          new Set(
-            criteriaIds
-              .map((x) => Number(x))
-              .filter((n) => Number.isFinite(n) && n > 0)
-          )
-        )
+    const legacyConfirmedCriteriaIds = Array.isArray(criteriaIds)
+      ? Array.from(new Set(criteriaIds.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)))
       : [];
+
+    const normalizedResponses: Record<number, "YES" | "NO"> = {};
+    if (criteriaResponses && typeof criteriaResponses === "object" && !Array.isArray(criteriaResponses)) {
+      for (const [k, v] of Object.entries(criteriaResponses as Record<string, unknown>)) {
+        const id = Number(k);
+        const resp = String(v ?? "").toUpperCase();
+        if (!Number.isFinite(id) || id <= 0) continue;
+        if (resp !== "YES" && resp !== "NO") continue;
+        normalizedResponses[id] = resp as "YES" | "NO";
+      }
+    }
+
+    for (const id of legacyConfirmedCriteriaIds) {
+      if (!normalizedResponses[id]) normalizedResponses[id] = "YES";
+    }
+
+    const responseIds = Object.keys(normalizedResponses)
+      .map((k) => Number(k))
+      .filter((n) => Number.isFinite(n) && n > 0);
 
     const mandatoryRows = await sql/* sql */`
       SELECT c.id
@@ -268,12 +282,12 @@ export async function POST(request: NextRequest) {
         AND c.is_mandatory = true
     `;
     const mandatoryIds = (mandatoryRows ?? []).map((r: Record<string, unknown>) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
-    const missingMandatory = mandatoryIds.filter((id) => !confirmedCriteriaIds.includes(id));
+    const missingMandatory = mandatoryIds.filter((id) => {
+      const v = normalizedResponses[id];
+      return v !== "YES" && v !== "NO";
+    });
     if (missingMandatory.length > 0) {
-      return NextResponse.json(
-        { error: "Please confirm all mandatory criteria before submitting." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Please select YES or NO for all role criteria." }, { status: 400 });
     }
 
     // Map role values to display names
@@ -390,7 +404,9 @@ export async function POST(request: NextRequest) {
     
     const createdRecord = insertResult[0] as { id: number; status: string };
 
-    if (confirmedCriteriaIds.length > 0) {
+    if (responseIds.length > 0) {
+      const ids = responseIds;
+      const responses = ids.map((id) => normalizedResponses[id]);
       await sql/* sql */`
         INSERT INTO public.leadership_criteria_confirmations (
           leadership_type,
@@ -398,18 +414,21 @@ export async function POST(request: NextRequest) {
           criterion_id,
           actor_type,
           confirmed,
+          response,
           created_at
         )
         SELECT
           'association',
           ${Number(createdRecord.id)},
-          c.id,
+          u.criterion_id,
           'alumni',
-          true,
+          (u.response = 'YES'),
+          u.response,
           NOW()
-        FROM public.leadership_role_criteria c
-        WHERE c.id = ANY(${confirmedCriteriaIds}::bigint[])
-        ON CONFLICT (association_application_id, criterion_id, actor_type) DO NOTHING
+        FROM UNNEST(${ids}::bigint[], ${responses}::text[]) AS u(criterion_id, response)
+        JOIN public.leadership_role_criteria c ON c.id = u.criterion_id
+        ON CONFLICT (association_application_id, criterion_id, actor_type)
+        DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
       `;
     }
 

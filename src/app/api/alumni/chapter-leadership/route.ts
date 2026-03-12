@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       alumniId?: number | string;
       post?: string;
       criteriaIds?: number[];
+      criteriaResponses?: unknown;
       additionalAchievements?: string;
       planStrategy?: string;
       optionalCriteriaProficiency?: Record<string, unknown>;
@@ -89,15 +90,28 @@ export async function POST(request: NextRequest) {
     }
 
     const roleName = body.post === "vicePresident" ? "vice_president" : body.post;
-    const confirmedCriteriaIds = Array.isArray(body.criteriaIds)
-      ? Array.from(
-          new Set(
-            body.criteriaIds
-              .map((x) => Number(x))
-              .filter((n) => Number.isFinite(n) && n > 0)
-          )
-        )
+    const legacyConfirmedCriteriaIds = Array.isArray(body.criteriaIds)
+      ? Array.from(new Set(body.criteriaIds.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)))
       : [];
+
+    const normalizedResponses: Record<number, "YES" | "NO"> = {};
+    if (body.criteriaResponses && typeof body.criteriaResponses === "object" && !Array.isArray(body.criteriaResponses)) {
+      for (const [k, v] of Object.entries(body.criteriaResponses as Record<string, unknown>)) {
+        const id = Number(k);
+        const resp = String(v ?? "").toUpperCase();
+        if (!Number.isFinite(id) || id <= 0) continue;
+        if (resp !== "YES" && resp !== "NO") continue;
+        normalizedResponses[id] = resp as "YES" | "NO";
+      }
+    }
+
+    for (const id of legacyConfirmedCriteriaIds) {
+      if (!normalizedResponses[id]) normalizedResponses[id] = "YES";
+    }
+
+    const responseIds = Object.keys(normalizedResponses)
+      .map((k) => Number(k))
+      .filter((n) => Number.isFinite(n) && n > 0);
 
     const mandatoryRows = await sql/* sql */`
       SELECT c.id
@@ -108,12 +122,12 @@ export async function POST(request: NextRequest) {
         AND c.is_mandatory = true
     `;
     const mandatoryIds = (mandatoryRows ?? []).map((r: Record<string, unknown>) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
-    const missingMandatory = mandatoryIds.filter((id) => !confirmedCriteriaIds.includes(id));
+    const missingMandatory = mandatoryIds.filter((id) => {
+      const v = normalizedResponses[id];
+      return v !== "YES" && v !== "NO";
+    });
     if (missingMandatory.length > 0) {
-      return NextResponse.json(
-        { error: "Please confirm all mandatory criteria before submitting." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Please select YES or NO for all role criteria." }, { status: 400 });
     }
 
     // Map post values to display names
@@ -237,7 +251,9 @@ export async function POST(request: NextRequest) {
     
     const createdRecord = newChapterLeadership[0] as { id: number; status: string };
 
-    if (confirmedCriteriaIds.length > 0) {
+    if (responseIds.length > 0) {
+      const ids = responseIds;
+      const responses = ids.map((id) => normalizedResponses[id]);
       await sql/* sql */`
         INSERT INTO public.leadership_criteria_confirmations (
           leadership_type,
@@ -245,18 +261,21 @@ export async function POST(request: NextRequest) {
           criterion_id,
           actor_type,
           confirmed,
+          response,
           created_at
         )
         SELECT
           'chapter',
           ${Number(createdRecord.id)},
-          c.id,
+          u.criterion_id,
           'alumni',
-          true,
+          (u.response = 'YES'),
+          u.response,
           NOW()
-        FROM public.leadership_role_criteria c
-        WHERE c.id = ANY(${confirmedCriteriaIds}::bigint[])
-        ON CONFLICT (chapter_application_id, criterion_id, actor_type) DO NOTHING
+        FROM UNNEST(${ids}::bigint[], ${responses}::text[]) AS u(criterion_id, response)
+        JOIN public.leadership_role_criteria c ON c.id = u.criterion_id
+        ON CONFLICT (chapter_application_id, criterion_id, actor_type)
+        DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
       `;
     }
 

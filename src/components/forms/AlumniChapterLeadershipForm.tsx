@@ -81,6 +81,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [selectedPost, setSelectedPost] = useState<string>("");
   const [selectedCriteriaIds, setSelectedCriteriaIds] = useState<Set<number>>(new Set());
+  const [mandatoryCriteriaResponses, setMandatoryCriteriaResponses] = useState<Record<number, "YES" | "NO" | "">>({});
+  const [criteriaError, setCriteriaError] = useState<string | null>(null);
   const [optionalCriteriaProficiency, setOptionalCriteriaProficiency] = useState<Record<number, number>>({});
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [additionalFile1, setAdditionalFile1] = useState<File | null>(null);
@@ -155,6 +157,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   React.useEffect(() => {
     setSelectedPost(post || "");
     setSelectedCriteriaIds(new Set());
+    setMandatoryCriteriaResponses({});
+    setCriteriaError(null);
     setOptionalCriteriaProficiency({});
     setCvFile(null);
     setAdditionalFile1(null);
@@ -230,6 +234,14 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
   const mandatoryCriteriaIds = useMemo(() => {
     return criteriaItems.filter((c) => c.is_mandatory).map((c) => Number(c.id)).filter((n) => Number.isFinite(n) && n > 0);
+  }, [criteriaItems]);
+
+  const optionalCriteriaItems = useMemo(() => {
+    return criteriaItems.filter((c) => !c.is_mandatory);
+  }, [criteriaItems]);
+
+  const mandatoryCriteriaItems = useMemo(() => {
+    return criteriaItems.filter((c) => c.is_mandatory);
   }, [criteriaItems]);
 
   function starsText(value: number): string {
@@ -365,10 +377,23 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     }
 
     if (mandatoryCriteriaIds.length > 0) {
-      const missing = mandatoryCriteriaIds.filter((id) => !selectedCriteriaIds.has(id));
+      const missing = mandatoryCriteriaIds.filter((id) => {
+        const v = mandatoryCriteriaResponses[id];
+        return v !== "YES" && v !== "NO";
+      });
       if (missing.length > 0) {
-        toast.error("Please confirm all mandatory criteria.");
+        const msg = "Please select YES or NO for all role criteria.";
+        setCriteriaError(msg);
+        toast.error(msg);
         return;
+      }
+
+      const anyNo = mandatoryCriteriaIds.some((id) => mandatoryCriteriaResponses[id] === "NO");
+      if (anyNo) {
+        const confirmed = window.confirm(
+          "You selected NO for one or more mandatory role criteria. You can still submit, but your application may be rejected. Do you want to continue?"
+        );
+        if (!confirmed) return;
       }
     }
 
@@ -462,7 +487,19 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         body: JSON.stringify({
           alumniId: alumniIdNumber,
           post: data.post,
-          criteriaIds: Array.from(selectedCriteriaIds),
+          criteriaResponses: {
+            ...Object.fromEntries(
+              Object.entries(mandatoryCriteriaResponses)
+                .map(([k, v]) => {
+                  const id = Number(k);
+                  if (!Number.isFinite(id) || id <= 0) return null;
+                  if (v !== "YES" && v !== "NO") return null;
+                  return [String(id), v] as const;
+                })
+                .filter(Boolean) as Array<readonly [string, "YES" | "NO"]>
+            ),
+            ...Object.fromEntries(Array.from(selectedCriteriaIds).map((id) => [String(id), "YES" as const])),
+          },
           additionalAchievements: data.additionalAchievements,
           planStrategy: data.planStrategy,
           optionalCriteriaProficiency,
@@ -587,77 +624,140 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
           {selectedPost ? (
             <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Information</div>
-               <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                   <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Criteria</summary>
                   <div className="mt-2">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Mandatory criteria must be confirmed to submit.</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Mandatory criteria require a YES/NO selection.</p>
                       {criteriaLoading ? <div className="text-xs text-gray-500">Loading...</div> : null}
                     </div>
+
+                    {criteriaError ? <div className={errorText}>{criteriaError}</div> : null}
 
                     {criteriaItems.length === 0 && !criteriaLoading ? (
                       <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">No criteria configured yet.</div>
                     ) : (
                       <div className="mt-3 space-y-2">
-                        {criteriaItems.map((c) => {
-                          const id = Number(c.id);
-                          const checked = selectedCriteriaIds.has(id);
-                          return (
-                            <label
-                              key={id}
-                              className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  setSelectedCriteriaIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (e.target.checked) next.add(id);
-                                    else next.delete(id);
-                                    return next;
-                                  });
-
-                                  if (!e.target.checked && !c.is_mandatory) {
-                                    setOptionalCriteriaProficiency((prev) => {
-                                      const next = { ...prev };
-                                      delete next[id];
-                                      return next;
-                                    });
-                                  }
-                                }}
-                                className="mt-1 h-4 w-4 text-blue-600"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                  {c.is_mandatory ? (
-                                    <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
-                                  ) : (
-                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
-                                  )}
-                                </div>
-                                {c.description ? (
-                                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
-                                ) : null}
-
-                                {!c.is_mandatory && checked ? (
-                                  <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                                    <div className="text-xs font-semibold text-slate-700 mb-1">Proficiency (optional)</div>
-                                    <StarRating
-                                      value={Number(optionalCriteriaProficiency[id] || 0)}
-                                      onChange={(val) => {
-                                        setOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: val }));
-                                      }}
-                                      ariaLabel={`Proficiency rating for ${c.label}`}
-                                      sizeClassName="text-[18px]"
-                                    />
+                        {mandatoryCriteriaItems.length ? (
+                          <div className="rounded-lg border border-rose-200 bg-rose-50/40 px-3 py-3 space-y-2">
+                            <div className="text-xs font-semibold text-rose-700">Mandatory</div>
+                            {mandatoryCriteriaItems.map((c) => {
+                              const id = Number(c.id);
+                              const value = mandatoryCriteriaResponses[id] ?? "";
+                              return (
+                                <div
+                                  key={id}
+                                  className="rounded-lg border border-rose-200 bg-white/70 dark:bg-gray-900/30 px-3 py-2"
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                                        <span className="rounded-full bg-rose-100 text-rose-800 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
+                                      </div>
+                                      {c.description ? (
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
+                                      ) : null}
+                                    </div>
+                                    <div className="shrink-0">
+                                      <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "YES" ? "bg-emerald-600 text-white" : "text-gray-700"}`}>
+                                          <input
+                                            type="radio"
+                                            name={`mandatory-criteria-${id}`}
+                                            value="YES"
+                                            checked={value === "YES"}
+                                            onChange={() => {
+                                              setCriteriaError(null);
+                                              setMandatoryCriteriaResponses((prev) => ({ ...prev, [id]: "YES" }));
+                                            }}
+                                            className="sr-only"
+                                          />
+                                          YES
+                                        </label>
+                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "NO" ? "bg-rose-600 text-white" : "text-gray-700"}`}>
+                                          <input
+                                            type="radio"
+                                            name={`mandatory-criteria-${id}`}
+                                            value="NO"
+                                            checked={value === "NO"}
+                                            onChange={() => {
+                                              setCriteriaError(null);
+                                              setMandatoryCriteriaResponses((prev) => ({ ...prev, [id]: "NO" }));
+                                            }}
+                                            className="sr-only"
+                                          />
+                                          NO
+                                        </label>
+                                      </div>
+                                    </div>
                                   </div>
-                                ) : null}
-                              </div>
-                            </label>
-                          );
-                        })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
+                        {optionalCriteriaItems.length ? (
+                          <div className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-3 space-y-2">
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">Optional</div>
+                            {optionalCriteriaItems.map((c) => {
+                              const id = Number(c.id);
+                              const checked = selectedCriteriaIds.has(id);
+                              return (
+                                <label
+                                  key={id}
+                                  className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/30 px-3 py-2 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      setSelectedCriteriaIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (e.target.checked) next.add(id);
+                                        else next.delete(id);
+                                        return next;
+                                      });
+
+                                      if (!e.target.checked) {
+                                        setOptionalCriteriaProficiency((prev) => {
+                                          const next = { ...prev };
+                                          delete next[id];
+                                          return next;
+                                        });
+                                      }
+                                    }}
+                                    className="mt-1 h-4 w-4 text-blue-600"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                                      <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
+                                    </div>
+                                    {c.description ? (
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
+                                    ) : null}
+
+                                    {checked ? (
+                                      <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                        <div className="text-xs font-semibold text-slate-700 mb-1">Proficiency (optional)</div>
+                                        <StarRating
+                                          value={Number(optionalCriteriaProficiency[id] || 0)}
+                                          onChange={(val) => {
+                                            setOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: val }));
+                                          }}
+                                          ariaLabel={`Proficiency rating for ${c.label}`}
+                                          sizeClassName="text-[18px]"
+                                        />
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>

@@ -91,6 +91,8 @@ type ApplicationDetailsCriterion = {
   sort_order: number;
   alumni_confirmed: boolean;
   admin_confirmed: boolean;
+  alumni_response?: string | null;
+  admin_response?: string | null;
 };
 
 type ApplicationDetailsItem = LeadershipApplication & {
@@ -1249,8 +1251,12 @@ export default function LeadershipPage() {
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                   {(Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : []).map((c: ApplicationDetailsCriterion) => {
                                     const isMandatory = Boolean(c.is_mandatory);
-                                    const alumniYes = Boolean(c.alumni_confirmed);
-                                    const adminYes = Boolean(c.admin_confirmed);
+                                    const alumniRespRaw = String(c.alumni_response ?? "").toUpperCase();
+                                    const alumniResp = alumniRespRaw === "YES" || alumniRespRaw === "NO" ? alumniRespRaw : c.alumni_confirmed ? "YES" : "NO";
+                                    const adminRespRaw = String(c.admin_response ?? "").toUpperCase();
+                                    const adminResp = adminRespRaw === "YES" || adminRespRaw === "NO" ? adminRespRaw : c.admin_confirmed ? "YES" : "NO";
+                                    const alumniYes = alumniResp === "YES";
+                                    const adminYes = adminResp === "YES";
                                     const rating = profMap && typeof profMap === "object" ? Number(profMap[String(c.id)] ?? 0) : 0;
                                     const stars = !isMandatory && alumniYes && rating ? starsText(rating) : "";
                                     const label = !isMandatory && alumniYes && rating ? proficiencyLabel(rating) : "";
@@ -1277,7 +1283,7 @@ export default function LeadershipPage() {
                                         <td className="px-4 py-3">
                                           {alumniYes ? (
                                             <div className="text-gray-900 dark:text-gray-100">
-                                              <div className="font-semibold">✔ Yes</div>
+                                              <div className="font-semibold">✔ YES</div>
                                               {!isMandatory ? (
                                                 <div className="mt-1 text-xs text-gray-700 dark:text-gray-300">
                                                   {stars ? (
@@ -1292,11 +1298,11 @@ export default function LeadershipPage() {
                                               ) : null}
                                             </div>
                                           ) : (
-                                            <div className="font-semibold text-gray-500">No</div>
+                                            <div className="font-semibold text-gray-500">NO</div>
                                           )}
                                         </td>
                                         <td className="px-4 py-3">
-                                          <div className={`font-semibold ${adminYes ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}`}>{adminYes ? "✔ Yes" : "☐"}</div>
+                                          <div className={`font-semibold ${adminYes ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}`}>{adminYes ? "✔ YES" : "NO"}</div>
                                         </td>
                                       </tr>
                                     );

@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
             WHERE leadership_type = 'chapter'
               AND chapter_application_id = ${Number(applicationId)}
               AND actor_type = 'alumni'
-              AND confirmed = true
+              AND COALESCE(response, CASE WHEN confirmed = true THEN 'YES' ELSE NULL END) IN ('YES','NO')
           `;
           const alumniConfirmed = (alumniConfirmedRows ?? [])
             .map((r: Record<string, unknown>) => Number(r.criterion_id))
@@ -209,6 +209,7 @@ export async function POST(req: NextRequest) {
                 criterion_id,
                 actor_type,
                 confirmed,
+                response,
                 created_at
               )
               SELECT
@@ -217,10 +218,12 @@ export async function POST(req: NextRequest) {
                 c.id,
                 'admin',
                 true,
+                'YES',
                 NOW()
               FROM public.leadership_role_criteria c
               WHERE c.id = ANY(${confirmedAdminIds}::bigint[])
-              ON CONFLICT (chapter_application_id, criterion_id, actor_type) DO NOTHING
+              ON CONFLICT (chapter_application_id, criterion_id, actor_type)
+              DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
             `;
           }
         }

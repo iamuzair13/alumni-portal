@@ -133,7 +133,9 @@ export async function GET(req: NextRequest) {
           c.is_mandatory,
           c.sort_order,
           (al.confirmed = true) as alumni_confirmed,
-          (ad.confirmed = true) as admin_confirmed
+          (ad.confirmed = true) as admin_confirmed,
+          COALESCE(al.response, CASE WHEN al.confirmed = true THEN 'YES' ELSE NULL END) as alumni_response,
+          COALESCE(ad.response, CASE WHEN ad.confirmed = true THEN 'YES' ELSE NULL END) as admin_response
         FROM public.leadership_roles lr
         JOIN public.leadership_role_criteria c ON c.role_id = lr.id
         LEFT JOIN public.leadership_criteria_confirmations al
@@ -195,6 +197,8 @@ export async function GET(req: NextRequest) {
             sort_order: Number(c.sort_order ?? 0),
             alumni_confirmed: Boolean(c.alumni_confirmed),
             admin_confirmed: Boolean(c.admin_confirmed),
+            alumni_response: c.alumni_response ? String(c.alumni_response) : null,
+            admin_response: c.admin_response ? String(c.admin_response) : null,
           })),
         },
         { status: 200 }
@@ -269,7 +273,9 @@ export async function GET(req: NextRequest) {
         c.is_mandatory,
         c.sort_order,
         (al.confirmed = true) as alumni_confirmed,
-        (ad.confirmed = true) as admin_confirmed
+        (ad.confirmed = true) as admin_confirmed,
+        COALESCE(al.response, CASE WHEN al.confirmed = true THEN 'YES' ELSE NULL END) as alumni_response,
+        COALESCE(ad.response, CASE WHEN ad.confirmed = true THEN 'YES' ELSE NULL END) as admin_response
       FROM public.leadership_roles lr
       JOIN public.leadership_role_criteria c ON c.role_id = lr.id
       LEFT JOIN public.leadership_criteria_confirmations al
@@ -331,6 +337,8 @@ export async function GET(req: NextRequest) {
           sort_order: Number(c.sort_order ?? 0),
           alumni_confirmed: Boolean(c.alumni_confirmed),
           admin_confirmed: Boolean(c.admin_confirmed),
+          alumni_response: c.alumni_response ? String(c.alumni_response) : null,
+          admin_response: c.admin_response ? String(c.admin_response) : null,
         })),
       },
       { status: 200 }

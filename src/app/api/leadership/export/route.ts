@@ -98,25 +98,25 @@ export async function GET(req: Request) {
     // Export chapter leadership
     if (type === "all" || type === "chapter") {
       const chapterRows = await sql/* sql */`
-        WITH confirmed AS (
+        WITH responses AS (
           SELECT
             lcc.chapter_application_id AS application_id,
             lcc.actor_type,
             lrc.label,
-            lrc.sort_order
+            lrc.sort_order,
+            COALESCE(lcc.response, CASE WHEN lcc.confirmed = true THEN 'YES' ELSE 'NO' END) AS response
           FROM public.leadership_criteria_confirmations lcc
           JOIN public.leadership_role_criteria lrc ON lrc.id = lcc.criterion_id
           WHERE lcc.leadership_type = 'chapter'
             AND lcc.chapter_application_id IS NOT NULL
-            AND lcc.confirmed = true
         ),
         alumni_criteria AS (
           SELECT
             application_id,
-            STRING_AGG(label, ', ' ORDER BY sort_order) AS alumni_confirmed_criteria
+            STRING_AGG(label || ': ' || response, ', ' ORDER BY sort_order) AS alumni_confirmed_criteria
           FROM (
-            SELECT DISTINCT application_id, label, sort_order
-            FROM confirmed
+            SELECT DISTINCT application_id, label, sort_order, response
+            FROM responses
             WHERE actor_type = 'alumni'
           ) d
           GROUP BY application_id
@@ -124,10 +124,10 @@ export async function GET(req: Request) {
         admin_criteria AS (
           SELECT
             application_id,
-            STRING_AGG(label, ', ' ORDER BY sort_order) AS admin_confirmed_criteria
+            STRING_AGG(label || ': ' || response, ', ' ORDER BY sort_order) AS admin_confirmed_criteria
           FROM (
-            SELECT DISTINCT application_id, label, sort_order
-            FROM confirmed
+            SELECT DISTINCT application_id, label, sort_order, response
+            FROM responses
             WHERE actor_type = 'admin'
           ) d
           GROUP BY application_id
@@ -187,25 +187,25 @@ export async function GET(req: Request) {
     // Export association leadership
     if (type === "all" || type === "association") {
       const associationRows = await sql/* sql */`
-        WITH confirmed AS (
+        WITH responses AS (
           SELECT
             lcc.association_application_id AS application_id,
             lcc.actor_type,
             lrc.label,
-            lrc.sort_order
+            lrc.sort_order,
+            COALESCE(lcc.response, CASE WHEN lcc.confirmed = true THEN 'YES' ELSE 'NO' END) AS response
           FROM public.leadership_criteria_confirmations lcc
           JOIN public.leadership_role_criteria lrc ON lrc.id = lcc.criterion_id
           WHERE lcc.leadership_type = 'association'
             AND lcc.association_application_id IS NOT NULL
-            AND lcc.confirmed = true
         ),
         alumni_criteria AS (
           SELECT
             application_id,
-            STRING_AGG(label, ', ' ORDER BY sort_order) AS alumni_confirmed_criteria
+            STRING_AGG(label || ': ' || response, ', ' ORDER BY sort_order) AS alumni_confirmed_criteria
           FROM (
-            SELECT DISTINCT application_id, label, sort_order
-            FROM confirmed
+            SELECT DISTINCT application_id, label, sort_order, response
+            FROM responses
             WHERE actor_type = 'alumni'
           ) d
           GROUP BY application_id
@@ -213,10 +213,10 @@ export async function GET(req: Request) {
         admin_criteria AS (
           SELECT
             application_id,
-            STRING_AGG(label, ', ' ORDER BY sort_order) AS admin_confirmed_criteria
+            STRING_AGG(label || ': ' || response, ', ' ORDER BY sort_order) AS admin_confirmed_criteria
           FROM (
-            SELECT DISTINCT application_id, label, sort_order
-            FROM confirmed
+            SELECT DISTINCT application_id, label, sort_order, response
+            FROM responses
             WHERE actor_type = 'admin'
           ) d
           GROUP BY application_id
