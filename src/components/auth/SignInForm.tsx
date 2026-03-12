@@ -7,7 +7,6 @@ import Image from "next/image";
 import Alert from "@/components/ui/alert/Alert";
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
-import AlumniSqlForm from "@/components/forms/AlumniSqlForm";
 
 type FormErrors = { identifier?: string; password?: string };
 
@@ -24,10 +23,9 @@ export default function SignInForm() {
   const params = useSearchParams();
   const safeParams = params ?? new URLSearchParams();
   const router = useRouter();
-  const { isOpen, openModal, closeModal } = useModal();
+  const { isOpen: isForgotPasswordOpen, openModal: openForgotPassword, closeModal: closeForgotPassword } = useModal();
   
   // Forgot Password states
-  const { isOpen: isForgotPasswordOpen, openModal: openForgotPassword, closeModal: closeForgotPassword } = useModal();
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState<string | null>(null);
@@ -256,7 +254,11 @@ export default function SignInForm() {
             University of Lahore
           </h1>
           <h4 className="text-sm sm:text-base lg:text-lg text-white/90 mb-5 sm:mb-6">Your gateway to alumni connections & opportunities</h4>
-          <button type="button" onClick={openModal} className="w-full sm:w-auto bg-white text-green-700 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold text-base sm:text-lg hover:bg-gray-100 transition-colors shadow-lg">
+          <button
+            type="button"
+            onClick={() => router.push("/alumni-verification")}
+            className="w-full sm:w-auto bg-white text-green-700 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold text-base sm:text-lg hover:bg-gray-100 transition-colors shadow-lg"
+          >
             Register Alumni
           </button>
         </div>
@@ -271,87 +273,8 @@ export default function SignInForm() {
               <div>
                 <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Welcome !</h1>
                 <p className="text-xs sm:text-sm text-slate-600">Please Sign in to your portal</p>
-    </div>
-    <Modal isOpen={isOpen} onClose={closeModal} isFullscreen={true} showCloseButton={true}>
-      <div className="fixed inset-0 flex flex-col overflow-y-auto bg-white dark:bg-gray-900 p-4 sm:p-6">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="text-lg font-semibold text-slate-900">Alumni Registration</h2>
-        </div>
-        <div className="mt-4">
-          <AlumniSqlForm excludeAdminStep={true} onSuccess={closeModal} />
-        </div>
-      </div>
-    </Modal>
-
-    {/* Forgot Password Modal */}
-    <Modal isOpen={isForgotPasswordOpen} onClose={closeForgotPassword} isFullscreen={false} showCloseButton={true}>
-      <div className="w-full lg:w-1/2 max-w-md mx-auto bg-white rounded-2xl p-6">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">Reset Your Password</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Enter your email address and we&apos;ll send you a new password.
-          </p>
-        </div>
-
-        <form onSubmit={handleForgotPassword} className="space-y-4">
-          <div>
-            <label htmlFor="forgot-password-email" className="block text-sm font-medium text-slate-700">
-              Email Address
-            </label>
-            <input
-              id="forgot-password-email"
-              type="email"
-              placeholder="Enter your personal email"
-              required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-              value={forgotPasswordEmail}
-              onChange={(e) => setForgotPasswordEmail(e.target.value)}
-              disabled={forgotPasswordLoading}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Enter the email address registered in your personal email field
-            </p>
-          </div>
-
-          {forgotPasswordError && (
-            <div className="rounded-md bg-red-50 border border-red-200 p-3">
-              <p className="text-sm text-red-600">{forgotPasswordError}</p>
+              </div>
             </div>
-          )}
-
-          {forgotPasswordMessage && (
-            <div className="rounded-md bg-green-50 border border-green-200 p-3">
-              <p className="text-sm text-green-600">{forgotPasswordMessage}</p>
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={closeForgotPassword}
-              disabled={forgotPasswordLoading}
-              className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={forgotPasswordLoading}
-              className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {forgotPasswordLoading && (
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              )}
-              {forgotPasswordLoading ? "Sending..." : "Reset Password"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </Modal>
-    </div>
 
             <form className="mt-4 space-y-4" onSubmit={handleCredentials} aria-label="SAP ID, Registration Number, or Email sign in form">
               <div>
@@ -438,6 +361,75 @@ export default function SignInForm() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <Modal isOpen={isForgotPasswordOpen} onClose={closeForgotPassword} isFullscreen={false} showCloseButton={true}>
+        <div className="w-full lg:w-1/2 max-w-md mx-auto bg-white rounded-2xl p-6">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-slate-900">Reset Your Password</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Enter your email address and we&apos;ll send you a new password.
+            </p>
+          </div>
+
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div>
+              <label htmlFor="forgot-password-email" className="block text-sm font-medium text-slate-700">
+                Email Address
+              </label>
+              <input
+                id="forgot-password-email"
+                type="email"
+                placeholder="Enter your personal email"
+                required
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                value={forgotPasswordEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                disabled={forgotPasswordLoading}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Enter the email address registered in your personal email field
+              </p>
+            </div>
+
+            {forgotPasswordError && (
+              <div className="rounded-md bg-red-50 border border-red-200 p-3">
+                <p className="text-sm text-red-600">{forgotPasswordError}</p>
+              </div>
+            )}
+
+            {forgotPasswordMessage && (
+              <div className="rounded-md bg-green-50 border border-green-200 p-3">
+                <p className="text-sm text-green-600">{forgotPasswordMessage}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeForgotPassword}
+                disabled={forgotPasswordLoading}
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={forgotPasswordLoading}
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {forgotPasswordLoading && (
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {forgotPasswordLoading ? "Sending..." : "Reset Password"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </div>
   );
 }
