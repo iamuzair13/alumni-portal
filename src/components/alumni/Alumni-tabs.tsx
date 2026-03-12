@@ -1192,9 +1192,8 @@ export const AlumniTabs: React.FC = () => {
 
   // Reset page to 1 when tab changes or filter changes (but not when statusFilter recalculates with same value)
   useEffect(() => {
-
     setCurrentPage(1);
-  }, [selected, additionalFilter, masterFilters]); // Removed statusFilter since it's derived from selected and additionalFilter
+  }, [selected, additionalFilter, debouncedQuery, showAll, pageSize]);
 
   // React Query: fetch paginated list for table display with status filter and filters
   const {
@@ -1240,6 +1239,18 @@ export const AlumniTabs: React.FC = () => {
     apiSortBy,
     sortDirection
   );
+
+  useEffect(() => {
+    const firstId = (paginatedData?.items?.[0] as any)?.alumniid;
+    console.log("[AlumniTabs pagination]", {
+      currentPage,
+      responsePage: paginatedData?.page,
+      limit: paginatedData?.limit,
+      totalPages: paginatedData?.totalPages,
+      firstAlumniId: firstId,
+      itemsLen: paginatedData?.items?.length,
+    });
+  }, [currentPage, paginatedData?.page, paginatedData?.limit, paginatedData?.totalPages, paginatedData?.items]);
   
   // Debug logging - commented out to fix build issue
   // useEffect(() => {
@@ -1593,11 +1604,12 @@ export const AlumniTabs: React.FC = () => {
   // Reset page only when filters/tabs change, not when page changes
   useEffect(() => { 
     // Only reset if current page is invalid after filter/tab change
+    if (!paginatedData || isFetching) return;
     if (totalPages > 0 && currentPage > totalPages) {
       setCurrentPage(1);
     }
     setSelectedRowId(null); 
-  }, [selected, pageSize, debouncedQuery, totalPages]);
+  }, [selected, pageSize, debouncedQuery, totalPages, currentPage, paginatedData, isFetching]);
 
   // Clear selected checkboxes when the dataset meaningfully changes
   useEffect(() => {
@@ -5504,22 +5516,27 @@ export const AlumniTabs: React.FC = () => {
               </>
             )}
             {!showAll && (
-              <Pagination 
-                currentPage={currentPage} 
-                totalPages={totalPages} 
-                onPageChange={(p) => {
-                  const newPage = Math.max(1, Math.min(totalPages, p));
-                  setCurrentPage(newPage);
-                  // Scroll to top of table when page changes
-                  if (tableContainerRef.current) {
-                    tableContainerRef.current.scrollTop = 0;
-                  }
-                  // Also reset horizontal scroll
-                  if (topScrollbarRef.current) {
-                    topScrollbarRef.current.scrollLeft = 0;
-                  }
-                }} 
-              />
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Page {currentPage.toLocaleString()} of {totalPages.toLocaleString()}
+                </span>
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={totalPages} 
+                  onPageChange={(p) => {
+                    const newPage = Math.max(1, Math.min(totalPages, p));
+                    setCurrentPage(newPage);
+                    // Scroll to top of table when page changes
+                    if (tableContainerRef.current) {
+                      tableContainerRef.current.scrollTop = 0;
+                    }
+                    // Also reset horizontal scroll
+                    if (topScrollbarRef.current) {
+                      topScrollbarRef.current.scrollLeft = 0;
+                    }
+                  }} 
+                />
+              </div>
             )}
           </div>
         </div>

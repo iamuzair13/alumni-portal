@@ -254,6 +254,7 @@ export function useAlumniListPaginated(
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     refetchOnMount: false,
+    placeholderData: (prev) => prev,
   });
 }
 
