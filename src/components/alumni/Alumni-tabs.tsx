@@ -305,8 +305,32 @@ export const AlumniTabs: React.FC = () => {
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
   
   // Sorting state
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<string | null>("alumniid");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  const apiSortBy = useMemo(() => {
+    if (!sortField) return undefined;
+    switch (sortField) {
+      case "alumniid":
+        return "alumniid";
+      case "name":
+        return "alumniname";
+      case "sapId":
+        return "sapid";
+      case "email":
+        return "personalemail";
+      case "faculty":
+        return "facultyname";
+      case "department":
+        return "departmentname";
+      case "program":
+        return "degreetitle";
+      case "status":
+        return "verify";
+      default:
+        return undefined;
+    }
+  }, [sortField]);
   
   // State for expanded filter sections
   const [expandedFilters, setExpandedFilters] = useState<{
@@ -1212,7 +1236,9 @@ export const AlumniTabs: React.FC = () => {
     selectedRegNoStates.length > 0 ? selectedRegNoStates : undefined,
     selectedPersonalEmailStates.length > 0 ? selectedPersonalEmailStates : undefined,
     selectedContactNoStates.length > 0 ? selectedContactNoStates : undefined,
-    selectedCategories.length > 0 ? selectedCategories : undefined
+    selectedCategories.length > 0 ? selectedCategories : undefined,
+    apiSortBy,
+    sortDirection
   );
   
   // Debug logging - commented out to fix build issue
@@ -1464,10 +1490,6 @@ export const AlumniTabs: React.FC = () => {
     return Number.isFinite(n) ? n : 0;
   }, [changeApprovalsCountData]);
 
-  const totalUnderApprovalCount = useMemo(() => {
-    return (counts.underApproval || 0) + changeApprovalCount;
-  }, [counts.underApproval, changeApprovalCount]);
-
   // Build dynamic status options based on verify statuses from DB, with fallback and counts
   const statusOptions: { value: string; label: string; count: number }[] = useMemo(() => {
     const opts: { value: string; label: string; count: number }[] = [];
@@ -1533,96 +1555,12 @@ export const AlumniTabs: React.FC = () => {
 
   // Filter by tab only (search and status filtering are now handled server-side)
   // No client-side filtering needed - server already returns the correct filtered and paginated data
-  // Apply sorting to items
+  // No client-side sorting needed - server returns globally sorted and paginated data
   const filteredItems = useMemo(() => {
     // Since all filtering (search, status, active, category) is handled server-side,
     // we just return the items as-is from the server
-    
-    // Apply sorting if a sort field is selected
-    if (!sortField) {
     return items;
-    }
-    
-    const sorted = [...items].sort((a, b) => {
-      let aValue: string | number | null | undefined = "";
-      let bValue: string | number | null | undefined = "";
-      
-      switch (sortField) {
-        case "alumniid":
-          // Sort numerically by alumniid
-          aValue = a.alumniid ?? null;
-          bValue = b.alumniid ?? null;
-          // Handle null values - put them at the end
-          if (aValue === null && bValue === null) return 0;
-          if (aValue === null) return 1;
-          if (bValue === null) return -1;
-          // Compare as numbers
-          return sortDirection === "asc" 
-            ? (aValue as number) - (bValue as number)
-            : (bValue as number) - (aValue as number);
-        case "name":
-          // Use rawName if available, otherwise use name
-          aValue = (a.rawName || a.name || "").trim().toLowerCase();
-          bValue = (b.rawName || b.name || "").trim().toLowerCase();
-          break;
-        case "sapId":
-          // Sort by SAP ID first, then registration number, then ID
-          const aSapId = (a.sapId || "").trim().toLowerCase();
-          const bSapId = (b.sapId || "").trim().toLowerCase();
-          const aRegNo = (a.registrationNo || "").trim().toLowerCase();
-          const bRegNo = (b.registrationNo || "").trim().toLowerCase();
-          // Compare SAP ID first, if equal compare registration number
-          if (aSapId && bSapId) {
-            aValue = aSapId;
-            bValue = bSapId;
-          } else if (aSapId) {
-            aValue = aSapId;
-            bValue = bRegNo || aSapId; // Prefer SAP ID
-          } else if (bSapId) {
-            aValue = aRegNo || bSapId;
-            bValue = bSapId;
-          } else {
-            // Both don't have SAP ID, compare by registration number or ID
-            aValue = (aRegNo || a.id || "").trim().toLowerCase();
-            bValue = (bRegNo || b.id || "").trim().toLowerCase();
-          }
-          break;
-        case "email":
-          aValue = (a.email || "").trim().toLowerCase();
-          bValue = (b.email || "").trim().toLowerCase();
-          break;
-        case "faculty":
-          aValue = (a.faculty || "").trim().toLowerCase();
-          bValue = (b.faculty || "").trim().toLowerCase();
-          break;
-        case "department":
-          aValue = (a.department || "").trim().toLowerCase();
-          bValue = (b.department || "").trim().toLowerCase();
-          break;
-        case "program":
-          aValue = (a.program || "").trim().toLowerCase();
-          bValue = (b.program || "").trim().toLowerCase();
-          break;
-        case "status":
-          aValue = (a.verifyStatus || "").toLowerCase();
-          bValue = (b.verifyStatus || "").toLowerCase();
-          break;
-        default:
-          return 0;
-      }
-      
-      // Ensure values are strings for comparison
-      const aStr = String(aValue || "");
-      const bStr = String(bValue || "");
-      
-      // Compare values
-      if (aStr < bStr) return sortDirection === "asc" ? -1 : 1;
-      if (aStr > bStr) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-    
-    return sorted;
-  }, [items, selected, sortField, sortDirection]);
+  }, [items]);
 
   // Pagination derived values - use server-side pagination
   const total = totalRecords; // Use total from server
@@ -2496,7 +2434,7 @@ export const AlumniTabs: React.FC = () => {
                 case "verified":
                   return counts.verified;
                 case "underApproval":
-                  return totalUnderApprovalCount;
+                  return counts.underApproval;
                 case "active":
                   return counts.active;
                 case "aPlus":
@@ -2515,6 +2453,10 @@ export const AlumniTabs: React.FC = () => {
                   return 0;
               }
             })();
+
+            const underApprovalNewCount = counts.underApproval || 0;
+            const underApprovalChangeCount = changeApprovalCount;
+            const underApprovalLabel = `${underApprovalNewCount.toLocaleString()} | ${underApprovalChangeCount.toLocaleString()}`;
             
             const isSelected = selected === tab.key;
             const statusStyles = STATUS_CLASS_MAP[tab.key];
@@ -2544,7 +2486,7 @@ export const AlumniTabs: React.FC = () => {
                 role="tab"
                 aria-selected={isSelected}
                 aria-disabled={isDisabled}
-                aria-label={`${tab.label} (${statCount.toLocaleString()})`}
+                aria-label={`${tab.label} (${tab.key === "underApproval" ? underApprovalLabel : statCount.toLocaleString()})`}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowRight") {
@@ -2575,7 +2517,19 @@ export const AlumniTabs: React.FC = () => {
                   <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
                 ) : (
                   <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
-                    {statCount.toLocaleString()}
+                    {tab.key === "underApproval" ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-full border border-gray-200/60 bg-white/70 px-3 py-1 text-2xl font-extrabold leading-none text-gray-900 shadow-sm dark:border-gray-700/60 dark:bg-white/[0.06] dark:text-white">
+                          {underApprovalNewCount.toLocaleString()}
+                        </span>
+                        <span className="text-2xl font-extrabold opacity-50">|</span>
+                        <span className="inline-flex items-center rounded-full border border-gray-200/60 bg-white/70 px-3 py-1 text-2xl font-extrabold leading-none text-gray-900 shadow-sm dark:border-gray-700/60 dark:bg-white/[0.06] dark:text-white">
+                          {underApprovalChangeCount.toLocaleString()}
+                        </span>
+                      </span>
+                    ) : (
+                      statCount.toLocaleString()
+                    )}
                   </h3>
                 )}
               </button>

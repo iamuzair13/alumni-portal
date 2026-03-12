@@ -36,23 +36,29 @@ async function getAlumniChapters(searchParams: AlumniProfileSearchParams) {
     
     // Get SAP ID from session first, then from search params
     const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
+    const sessionRegNo = session?.user ? ((session.user as { registrationno?: string | null })?.registrationno ? String((session.user as { registrationno?: string | null }).registrationno).trim() : undefined) : undefined;
+    const sessionUserId = session?.user ? Number((session.user as { userId?: number | null }).userId) : NaN;
     const email = session?.user?.email ? String(session.user.email) : undefined;
     
     let alumniId: number | null = null;
     
     // Get alumni ID
-    if (sapid || sessionSapid) {
-      const sapIdToUse = sapid || sessionSapid;
-      if (sapIdToUse) {
-        const rows = await sql/* sql */`
-          SELECT alumniid FROM public.tbl_alumni 
-          WHERE sapid = ${sapIdToUse} 
-          LIMIT 1`;
-        if (rows[0]) {
-          alumniId = rows[0].alumniid;
-        }
+    if (Number.isFinite(sessionUserId) && sessionUserId > 0) {
+      alumniId = sessionUserId;
+    } else if (sapid || sessionSapid || sessionRegNo) {
+      const idToUse = (sapid || sessionSapid || sessionRegNo) as string;
+      const rows = await sql/* sql */`
+        SELECT alumniid FROM public.tbl_alumni
+        WHERE sapid = ${idToUse}
+           OR registrationno = ${idToUse}
+        LIMIT 1`;
+      if (rows[0]) {
+        alumniId = rows[0].alumniid;
       }
     } else if (email) {
+      if (!email.includes("@")) {
+        return { chapters: [], error: null };
+      }
       const rows = await sql/* sql */`
         SELECT alumniid FROM public.tbl_alumni 
         WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}

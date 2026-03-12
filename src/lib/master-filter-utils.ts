@@ -532,14 +532,14 @@ export function buildMasterFilterConditions(
           )`;
         } else if (normalized === "DUPLICATE") {
           return sql`(
-            sapid IS NOT NULL
-            AND TRIM(COALESCE(sapid, '')) != ''
-            AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
+            a.sapid IS NOT NULL
+            AND TRIM(COALESCE(a.sapid, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.sapid, ''))) != 'null'
             AND EXISTS (
               SELECT 1
               FROM public.tbl_alumni a2
-              WHERE a2.alumniid != alumniid
-                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) = LOWER(TRIM(COALESCE(sapid, '')))
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) = LOWER(TRIM(COALESCE(a.sapid, '')))
                 AND TRIM(COALESCE(a2.sapid, '')) != ''
                 AND LOWER(TRIM(COALESCE(a2.sapid, ''))) != 'null'
             )
@@ -575,14 +575,14 @@ export function buildMasterFilterConditions(
           )`;
         } else if (normalized === "DUPLICATE") {
           return sql`(
-            registrationno IS NOT NULL
-            AND TRIM(COALESCE(registrationno, '')) != ''
-            AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
+            a.registrationno IS NOT NULL
+            AND TRIM(COALESCE(a.registrationno, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.registrationno, ''))) != 'null'
             AND EXISTS (
               SELECT 1
               FROM public.tbl_alumni a2
-              WHERE a2.alumniid != alumniid
-                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) = LOWER(TRIM(COALESCE(registrationno, '')))
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) = LOWER(TRIM(COALESCE(a.registrationno, '')))
                 AND TRIM(COALESCE(a2.registrationno, '')) != ''
                 AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) != 'null'
             )
@@ -617,14 +617,14 @@ export function buildMasterFilterConditions(
           )`;
         } else if (normalized === "DUPLICATE") {
           return sql`(
-            personalemail IS NOT NULL
-            AND TRIM(COALESCE(personalemail, '')) != ''
-            AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+            a.personalemail IS NOT NULL
+            AND TRIM(COALESCE(a.personalemail, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.personalemail, ''))) != 'null'
             AND EXISTS (
               SELECT 1
               FROM public.tbl_alumni a2
-              WHERE a2.alumniid != alumniid
-                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) = LOWER(TRIM(COALESCE(personalemail, '')))
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) = LOWER(TRIM(COALESCE(a.personalemail, '')))
                 AND TRIM(COALESCE(a2.personalemail, '')) != ''
                 AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) != 'null'
             )
@@ -661,14 +661,14 @@ export function buildMasterFilterConditions(
           )`;
         } else if (normalized === "DUPLICATE") {
           return sql`(
-            contactno IS NOT NULL
-            AND TRIM(COALESCE(contactno, '')) != ''
-            AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
+            a.contactno IS NOT NULL
+            AND TRIM(COALESCE(a.contactno, '')) != ''
+            AND LOWER(TRIM(COALESCE(a.contactno, ''))) != 'null'
             AND EXISTS (
               SELECT 1
               FROM public.tbl_alumni a2
-              WHERE a2.alumniid != alumniid
-                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) = LOWER(TRIM(COALESCE(contactno, '')))
+              WHERE a2.alumniid != a.alumniid
+                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) = LOWER(TRIM(COALESCE(a.contactno, '')))
                 AND TRIM(COALESCE(a2.contactno, '')) != ''
                 AND LOWER(TRIM(COALESCE(a2.contactno, ''))) != 'null'
             )
@@ -695,5 +695,26 @@ export function buildMasterFilterConditions(
     combined = sql`${combined} AND ${filterConditions[i]}`;
   }
   return sql`AND ${combined}`;
+}
+
+export function buildAlumniPresenceBaseWhere(searchParams: URLSearchParams) {
+  const statusParams = searchParams.getAll("status");
+  const status = statusParams.length > 0 ? statusParams : (searchParams.get("status") || "");
+  const hasUnderApproval = Array.isArray(status)
+    ? status.includes("underApproval")
+    : status === "underApproval";
+
+  const hasSapIdStateFilter = searchParams.getAll("sapIdState").length > 0 || !!searchParams.get("sapIdState");
+  const hasRegNoStateFilter = searchParams.getAll("regNoState").length > 0 || !!searchParams.get("regNoState");
+  const hasPersonalEmailStateFilter =
+    searchParams.getAll("personalEmailState").length > 0 || !!searchParams.get("personalEmailState");
+  const hasContactNoStateFilter =
+    searchParams.getAll("contactNoState").length > 0 || !!searchParams.get("contactNoState");
+
+  if (hasUnderApproval || hasSapIdStateFilter || hasRegNoStateFilter || hasPersonalEmailStateFilter || hasContactNoStateFilter) {
+    return sql`1=1`;
+  }
+
+  return sql`(a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')`;
 }
 

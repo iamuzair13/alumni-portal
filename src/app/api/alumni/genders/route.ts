@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
-import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
+import { buildAlumniPresenceBaseWhere, buildMasterFilterConditions } from "@/lib/master-filter-utils";
 
 export async function GET(req: Request) {
   try {
@@ -13,6 +13,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const masterFilterConditions = buildMasterFilterConditions(searchParams, "gender");
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
 
     // Build access filter
     let accessFilterCondition = sql``;
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
         END as gender_value,
         COUNT(*) as count
       FROM public.tbl_alumni a
-      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+      WHERE ${baseWhere}
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 

@@ -204,8 +204,9 @@ export async function POST(req: Request) {
     await auth();
     const body = (await req.json()) as TblAlumniBody;
     
-    // NOTE: Duplicate checks based on email/SAP ID/Registration Number have been removed.
-    // Registration logic now depends ONLY on verify_status (see rules above).
+    // NOTE: Duplicate checks now only validate PRIMARY identifiers (SAP ID, Registration Number, CNIC/Passport).
+    // Personal email and contact numbers are allowed to be duplicated across multiple alumni records.
+    // Registration logic depends ONLY on verify_status (see rules above).
 
     // Server-side validation
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -327,22 +328,18 @@ export async function POST(req: Request) {
     // 2. If alumni exists and verify = 'underApproval'/'false'/null → Allow registration, overwrite, set verify = 'underApproval'
     // 3. If no alumni record exists → Create new record, set verify = 'underApproval'
     
-    // Check if alumni record already exists by ANY identifier:
-    // - SAP ID, Registration Number, CNIC/Passport, Phone Number, or Email (personal/university/official/alumni)
-    // If ANY identifier matches, we update the existing record
+    // Check if alumni record already exists by PRIMARY identifiers only:
+    // - SAP ID, Registration Number, CNIC/Passport (these are unique identifiers)
+    // Email and phone numbers are allowed to be duplicated
     let existingRecord: { 
       alumniid: number; 
       verify: string | null; 
       registrationno: string | null; 
       sapid: string | null;
       cnicpassport: string | null;
-      contactno: string | null;
-      personalemail: string | null;
-      universityemail: string | null;
-      officialemail: string | null;
     } | null = null;
     
-    // Build query conditions for all identifiers using sql fragments
+    // Build query conditions for PRIMARY identifiers only using sql fragments
     const conditions: ReturnType<typeof sql>[] = [];
     
     if (regNo) {
@@ -354,18 +351,6 @@ export async function POST(req: Request) {
     if (cnic) {
       conditions.push(sql`(cnicpassport = ${cnic} AND cnicpassport IS NOT NULL AND cnicpassport != '')`);
     }
-    if (phone) {
-      conditions.push(sql`(contactno = ${phone} AND contactno IS NOT NULL AND contactno != '')`);
-    }
-    if (personalEmail) {
-      conditions.push(sql`(LOWER(personalemail) = ${personalEmail} AND personalemail IS NOT NULL AND personalemail != '')`);
-    }
-    if (universityEmail) {
-      conditions.push(sql`(LOWER(universityemail) = ${universityEmail} AND universityemail IS NOT NULL AND universityemail != '')`);
-    }
-    if (officialEmail) {
-      conditions.push(sql`(LOWER(officialemail) = ${officialEmail} AND officialemail IS NOT NULL AND officialemail != '')`);
-    }
     
     // Check for existing record if we have at least one identifier
     if (conditions.length > 0) {
@@ -376,8 +361,7 @@ export async function POST(req: Request) {
       });
       
       const checkQuery = sql/* sql */`
-        SELECT alumniid, verify, registrationno, sapid, cnicpassport, contactno, 
-               personalemail, universityemail, officialemail
+        SELECT alumniid, verify, registrationno, sapid, cnicpassport
         FROM public.tbl_alumni 
         WHERE ${whereCondition}
         LIMIT 1
@@ -391,10 +375,6 @@ export async function POST(req: Request) {
           registrationno: string | null; 
           sapid: string | null;
           cnicpassport: string | null;
-          contactno: string | null;
-          personalemail: string | null;
-          universityemail: string | null;
-          officialemail: string | null;
         };
         
         // Determine which identifier matched
@@ -410,22 +390,6 @@ export async function POST(req: Request) {
         if (cnic && existingRecord.cnicpassport && 
             String(existingRecord.cnicpassport).trim().toLowerCase() === cnic.toLowerCase()) {
           matchedBy.push('cnicpassport');
-        }
-        if (phone && existingRecord.contactno && 
-            String(existingRecord.contactno).trim().toLowerCase() === phone.toLowerCase()) {
-          matchedBy.push('contactno');
-        }
-        if (personalEmail && existingRecord.personalemail && 
-            String(existingRecord.personalemail).trim().toLowerCase() === personalEmail) {
-          matchedBy.push('personalemail');
-        }
-        if (universityEmail && existingRecord.universityemail && 
-            String(existingRecord.universityemail).trim().toLowerCase() === universityEmail) {
-          matchedBy.push('universityemail');
-        }
-        if (officialEmail && existingRecord.officialemail && 
-            String(existingRecord.officialemail).trim().toLowerCase() === officialEmail) {
-          matchedBy.push('officialemail');
         }
 
       }
@@ -474,23 +438,15 @@ export async function POST(req: Request) {
         isUpdate = true;
         const existingAlumniId = existingRecord.alumniid;
         
-        // Preserve identifier fields: if incoming value is missing, keep the existing value
-        // This prevents losing any identifier when re-registering with only some identifiers
+        // Preserve PRIMARY identifier fields only: if incoming value is missing, keep the existing value
+        // Email and phone numbers are allowed to be updated (not preserved)
         const incomingRegNo = clean(body.registrationno);
         const incomingSapId = clean(body.sapid);
         const incomingCnic = clean(body.cnicpassport);
-        const incomingPhone = clean(body.contactno);
-        const incomingPersonalEmail = clean(body.personalemail);
-        const incomingUniversityEmail = clean(body.universityemail);
-        const incomingOfficialEmail = clean(body.officialemail);
         
         const preservedRegNo = incomingRegNo ?? existingRecord.registrationno;
         const preservedSapId = incomingSapId ?? existingRecord.sapid;
         const preservedCnic = incomingCnic ?? existingRecord.cnicpassport;
-        const preservedPhone = incomingPhone ?? existingRecord.contactno;
-        const preservedPersonalEmail = incomingPersonalEmail ?? existingRecord.personalemail;
-        const preservedUniversityEmail = incomingUniversityEmail ?? existingRecord.universityemail;
-        const preservedOfficialEmail = incomingOfficialEmail ?? existingRecord.officialemail;
 
         // Update existing record with new data, set verify = 'underApproval'
         const updateResult = await tx/* sql */`
@@ -501,10 +457,10 @@ export async function POST(req: Request) {
             registrationno = ${preservedRegNo},
             sapid = ${preservedSapId},
             cnicpassport = ${preservedCnic},
-            contactno = ${preservedPhone},
-            personalemail = ${preservedPersonalEmail},
-            universityemail = ${preservedUniversityEmail},
-            officialemail = ${preservedOfficialEmail},
+            contactno = ${clean(body.contactno)},
+            personalemail = ${clean(body.personalemail)},
+            universityemail = ${clean(body.universityemail)},
+            officialemail = ${clean(body.officialemail)},
             alumniname = ${clean(body.alumniname)},
             gender = ${clean(body.gender)},
             fathername = ${clean(body.fathername)},

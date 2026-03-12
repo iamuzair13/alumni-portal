@@ -287,6 +287,8 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 500); // Max 500 per page for performance
     const search = searchParams.get("search") || "";
+    const sortByParam = (searchParams.get("sortBy") || "").trim();
+    const sortOrderParam = (searchParams.get("sortOrder") || "").trim().toLowerCase();
     // Get all values for multi-select filters
     const statusParams = searchParams.getAll("status");
     const facultyParams = searchParams.getAll("faculty");
@@ -353,6 +355,24 @@ export async function GET(req: Request) {
     
     const getCountsOnly = searchParams.get("countsOnly") === "true";
     const offset = (page - 1) * limit;
+
+    const sortOrder = sortOrderParam === "asc" ? "ASC" : "DESC";
+    const sortBy = sortByParam || "alumniid";
+    const ALLOWED_SORTS: Record<string, (dir: "ASC" | "DESC") => string> = {
+      alumniid: (dir) => `a.alumniid ${dir}`,
+      sapid: (dir) => `a.sapid ${dir} NULLS LAST, a.registrationno ${dir} NULLS LAST, a.alumniid DESC`,
+      registrationno: (dir) => `a.registrationno ${dir} NULLS LAST, a.sapid ${dir} NULLS LAST, a.alumniid DESC`,
+      alumniname: (dir) => `LOWER(COALESCE(a.alumniname, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      personalemail: (dir) => `LOWER(COALESCE(a.personalemail, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      officialemail: (dir) => `LOWER(COALESCE(a.officialemail, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      facultyname: (dir) => `LOWER(COALESCE(f.faculty_name, a.facultyname, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      departmentname: (dir) => `LOWER(COALESCE(d.department_name, a.departmentname, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      degreetitle: (dir) => `LOWER(COALESCE(a.degreetitle, '')) ${dir} NULLS LAST, a.alumniid DESC`,
+      yearofending: (dir) => `a.yearofending ${dir} NULLS LAST, a.alumniid DESC`,
+      verify: (dir) => `LOWER(TRIM(COALESCE(a.verify, ''))) ${dir} NULLS LAST, a.alumniid DESC`,
+      createddatetime: (dir) => `a.createddatetime ${dir} NULLS LAST, a.alumniid DESC`,
+    };
+    const orderByClause = (ALLOWED_SORTS[sortBy] ?? ALLOWED_SORTS.alumniid)(sortOrder as "ASC" | "DESC");
     
     // Build access filter for admin/viewer users
     let accessFilter;
@@ -1487,7 +1507,7 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
           )
-        ORDER BY a.alumniid DESC
+        ORDER BY ${sql.unsafe(orderByClause)}
         LIMIT ${limit} OFFSET ${offset}`;
     } else {
       query = sql/* sql */`
@@ -1566,7 +1586,7 @@ export async function GET(req: Request) {
           ${personalEmailStateFilter}
           ${contactNoStateFilter}
           ${accessFilterCondition}
-      ORDER BY a.alumniid DESC
+      ORDER BY ${sql.unsafe(orderByClause)}
       LIMIT ${limit} OFFSET ${offset}`;
     }
 

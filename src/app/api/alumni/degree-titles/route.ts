@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
-import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
+import { buildAlumniPresenceBaseWhere, buildMasterFilterConditions } from "@/lib/master-filter-utils";
 
 export async function GET(req: Request) {
   try {
@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     // Since degree_title is a different column than programEnrolled (higher_education_program),
     // we don't have a corresponding excludeField, but we still apply other filters
     const masterFilterConditions = buildMasterFilterConditions(searchParams);
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
 
     // Build access filter
     let accessFilterCondition = sql``;
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
         END as degree_title_value,
         COUNT(*) as count
       FROM public.tbl_alumni a
-      WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+      WHERE ${baseWhere}
         ${accessFilterCondition}
         ${masterFilterConditions}
       GROUP BY 

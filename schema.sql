@@ -1141,3 +1141,28 @@ ALTER TABLE IF EXISTS public.chapter_leadership
 
 ALTER TABLE IF EXISTS public.tblalumniassociation
   ADD COLUMN IF NOT EXISTS additional_achievements TEXT;
+
+
+-- Table: public.temp_csv_alumni
+
+-- DROP TABLE IF EXISTS public.temp_csv_alumni;
+
+CREATE TABLE IF NOT EXISTS public.temp_csv_alumni
+(
+    sapid character varying(50) COLLATE pg_catalog."default",
+    alumniname character varying(255) COLLATE pg_catalog."default",
+    fathername character varying(255) COLLATE pg_catalog."default",
+    gender character varying(50) COLLATE pg_catalog."default",
+    contactno character varying(50) COLLATE pg_catalog."default",
+    personalemail character varying(255) COLLATE pg_catalog."default",
+    campusname character varying(255) COLLATE pg_catalog."default",
+    facultyname character varying(255) COLLATE pg_catalog."default",
+    departmentname character varying(255) COLLATE pg_catalog."default",
+    degreetitle character varying(255) COLLATE pg_catalog."default",
+    employeed character varying(255) COLLATE pg_catalog."default"
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.temp_csv_alumni
+    OWNER to postgres;

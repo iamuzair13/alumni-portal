@@ -78,7 +78,9 @@ export async function getAlumniList(
   regNoState?: string | string[],
   personalEmailState?: string | string[],
   contactNoState?: string | string[],
-  category?: string | string[]
+  category?: string | string[],
+  sortBy?: string,
+  sortOrder?: "asc" | "desc"
 ): Promise<AlumniListResponse> {
   const url = new URL("/api/alumni", typeof window !== "undefined" ? window.location.origin : "");
   if (search) {
@@ -149,6 +151,13 @@ export async function getAlumniList(
   addFilterParam("personalEmailState", personalEmailState);
   addFilterParam("contactNoState", contactNoState);
   addFilterParam("category", category);
+
+  if (sortBy) {
+    url.searchParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    url.searchParams.set("sortOrder", sortOrder);
+  }
   
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
@@ -195,10 +204,12 @@ export function useAlumniListPaginated(
   regNoState?: string | string[],
   personalEmailState?: string | string[],
   contactNoState?: string | string[],
-  category?: string | string[]
+  category?: string | string[],
+  sortBy?: string,
+  sortOrder?: "asc" | "desc"
 ) {
   return useQuery<AlumniListResponse, Error>({
-    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, category],
+    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, category, sortBy, sortOrder],
     queryFn: ({ signal }) => {
       return getAlumniList(
         signal,
@@ -233,7 +244,9 @@ export function useAlumniListPaginated(
         regNoState,
         personalEmailState,
         contactNoState,
-        category
+        category,
+        sortBy,
+        sortOrder
       );
     },
     staleTime: 5 * 60 * 1000,
