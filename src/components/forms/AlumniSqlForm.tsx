@@ -82,8 +82,9 @@ export type TblAlumniForm = {
   alumni_consent_info: boolean | null;
 };
 
-const inputBase = "mt-1 w-full rounded border border-neutral-300 p-2";
-const labelBase = "block text-sm text-neutral-800";
+const inputBase =
+  "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50";
+const labelBase = "block text-sm font-medium text-neutral-800";
 
 // List of all countries
 const allCountries = [
@@ -306,7 +307,7 @@ const citiesByProvinceRaw: Record<string, string[]> = {
     "Badin", "Bhiria", "Chachro", "Dadu", "Daharki", "Digri", "Ghotki", "Hala", "Hyderabad", "Islamkot",
     "Jacobabad", "Jamshoro", "Kandhkot", "Kandiaro", "Karachi", "Kashmore", "Khairpur", "Khairpur Nathan Shah",
     "Khipro", "Kot Ghulam Muhammad", "Kotri", "Kunri", "Larkana", "Matiari", "Mehrabpur", "Mirpur Khas",
-    "Mithi", "Moro", "Nagarparkar", "Naushahro Feroze", "Nawabshah", "Qazi Ahmad", "Rohri", "Sakrand",
+    "Mithi", "Moro", "Naushahro Feroze", "Nawabshah", "Qazi Ahmad", "Rohri", "Sakrand",
     "Samaro", "Sanghar", "Sehwan", "Shahdadpur", "Shikarpur", "Sukkur", "Tando Adam", "Tando Allahyar",
     "Tando Muhammad Khan", "Thatta", "Umerkot", "Vik"
   ],
@@ -1363,12 +1364,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="mt-6 bg-white px-4" aria-label="Alumni registration form">
+    <form
+      onSubmit={handleSubmit(handleFormSubmit)}
+      className="mx-auto mt-6 w-full max-w-6xl px-4 pb-10"
+      aria-label="Alumni registration form"
+    >
       <input type="hidden" value="Alumni" {...register("datasource")} />
       <input type="hidden" name="alumni" value="alumni" />
       {/* Notifications */}
       {(submitMsg || submitError || submitting) && (
-        <div className="mb-4 rounded-lg border p-4" aria-live="polite" aria-atomic="true">
+        <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" aria-live="polite" aria-atomic="true">
           {submitting && (
             <div className="flex items-center gap-2 text-sm text-neutral-600">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
@@ -1395,10 +1400,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       )}
 
       {/* Section 1: Personal Information */}
-      <section className="mb-6">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Personal Information</h2>
           <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className={labelBase}>
                 Registration No{' '}
@@ -1863,14 +1871,18 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 </p>
               )}
             </div>
-          </div>
-        </section>
+           </div>
+         </div>
+       </section>
 
       {/* Section 2: Academic Information */}
-      <section className="mb-6">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Academic Information</h2>
           <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className={labelBase}>Campus *</label>
               <select className={inputBase} {...register("campusname", { required: true })}>
@@ -1986,7 +1998,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       if (selectedId === "other") {
                         isTypingDepartmentOther.current = true;
                         setDepartmentOtherSelected(true);
-                        setValue("department", null, { shouldValidate: false, shouldDirty: false, shouldTouch: false });
+                        setValue("department", null, { shouldValidate: false, shouldDirty: false });
                         setTimeout(() => {
                           isTypingDepartmentOther.current = false;
                         }, 100);
@@ -2163,28 +2175,63 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.majorsubject && <p className="mt-1 text-xs text-red-600">{errors.majorsubject.message}</p>}
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
       {/* Section 3: Work Status */}
-      <section className="mb-6">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Occupation Details</h2>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="mt-2 flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Employed" {...register("employeed")} /> Employed
+                  <input
+                    type="radio"
+                    value="Employed"
+                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    {...register("employeed")}
+                  />
+                  Employed
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Self-Employed/Enterpreneur" {...register("employeed")} /> Self-Employed/Enterpreneur
+                  <input
+                    type="radio"
+                    value="Self-Employed/Enterpreneur"
+                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    {...register("employeed")}
+                  />
+                  Self-Employed/Enterpreneur
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Pursuing Higher Education" {...register("employeed")} /> Pursuing Higher Education
+                  <input
+                    type="radio"
+                    value="Pursuing Higher Education"
+                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    {...register("employeed")}
+                  />
+                  Pursuing Higher Education
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed(By Choice)" {...register("employeed")} /> Unemployed(By Choice)
+                  <input
+                    type="radio"
+                    value="Unemployed(By Choice)"
+                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    {...register("employeed")}
+                  />
+                  Unemployed(By Choice)
                 </label>
                 <label className="flex items-center gap-2 text-sm text-neutral-800">
-                  <input type="radio" value="Unemployed(Searching for job)" defaultChecked {...register("employeed")} /> Unemployed(Searching for job)
+                  <input
+                    type="radio"
+                    value="Unemployed(Searching for job)"
+                    defaultChecked
+                    className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    {...register("employeed")}
+                  />
+                  Unemployed(Searching for job)
                 </label>
               </div>
             </div>
@@ -2508,66 +2555,74 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             )}
 
             {/* Unemployed Fields - No additional fields needed as reason is in the radio button value */}
+            <div className="sm:col-span-2 lg:col-span-3 mt-4">
+              <label className={labelBase}>About Me (Optional)</label>
+              <textarea className={inputBase} {...register("aboutme")} />
+            </div>
           </div>
-          <div className="sm:col-span-2 lg:col-span-3 mt-4">
-            <label className={labelBase}>About Me (Optional)</label>
-            <textarea className={inputBase} {...register("aboutme")} />
-          </div>
-        </section>
+        </div>
+      </section>
 
       {/* Section 4: Social Links */}
-      <section className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-800">Social Links(Optional)</h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className={labelBase}>Facebook</label>
-            <input
-              type="url"
-              className={inputBase}
-              placeholder="https://facebook.com/yourprofile"
-              {...register("facebook", { maxLength: 200 })}
-            />
-            {errors.facebook && <p className="mt-1 text-xs text-red-600">{errors.facebook.message}</p>}
-          </div>
-          <div>
-            <label className={labelBase}>Instagram</label>
-            <input
-              type="url"
-              className={inputBase}
-              placeholder="https://instagram.com/yourprofile"
-              {...register("instagram", { maxLength: 200 })}
-            />
-            {errors.instagram && <p className="mt-1 text-xs text-red-600">{errors.instagram.message}</p>}
-          </div>
-          <div>
-            <label className={labelBase}>YouTube</label>
-            <input
-              type="url"
-              className={inputBase}
-              placeholder="https://youtube.com/@yourchannel"
-              {...register("youtube", { maxLength: 200 })}
-            />
-            {errors.youtube && <p className="mt-1 text-xs text-red-600">{errors.youtube.message}</p>}
-          </div>
-          <div>
-            <label className={labelBase}>LinkedIn</label>
-            <input
-              type="url"
-              className={inputBase}
-              placeholder="https://linkedin.com/in/yourprofile"
-              {...register("linkedin", { maxLength: 200 })}
-            />
-            {errors.linkedin && <p className="mt-1 text-xs text-red-600">{errors.linkedin.message}</p>}
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
+          <h2 className="text-lg font-semibold text-neutral-800">Social Links(Optional)</h2>
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className={labelBase}>Facebook</label>
+              <input
+                type="url"
+                className={inputBase}
+                placeholder="https://facebook.com/yourprofile"
+                {...register("facebook", { maxLength: 200 })}
+              />
+              {errors.facebook && <p className="mt-1 text-xs text-red-600">{errors.facebook.message}</p>}
+            </div>
+            <div>
+              <label className={labelBase}>Instagram</label>
+              <input
+                type="url"
+                className={inputBase}
+                placeholder="https://instagram.com/yourprofile"
+                {...register("instagram", { maxLength: 200 })}
+              />
+              {errors.instagram && <p className="mt-1 text-xs text-red-600">{errors.instagram.message}</p>}
+            </div>
+            <div>
+              <label className={labelBase}>YouTube</label>
+              <input
+                type="url"
+                className={inputBase}
+                placeholder="https://youtube.com/@yourchannel"
+                {...register("youtube", { maxLength: 200 })}
+              />
+              {errors.youtube && <p className="mt-1 text-xs text-red-600">{errors.youtube.message}</p>}
+            </div>
+            <div>
+              <label className={labelBase}>LinkedIn</label>
+              <input
+                type="url"
+                className={inputBase}
+                placeholder="https://linkedin.com/in/yourprofile"
+                {...register("linkedin", { maxLength: 200 })}
+              />
+              {errors.linkedin && <p className="mt-1 text-xs text-red-600">{errors.linkedin.message}</p>}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Section 5: Alumni Chapters */}
       {!excludeAdminStep && (
-      <section className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-800">Alumni Chapters</h2>
-        <p className="mt-1 text-xs text-neutral-600">Select up to 3 chapters to join (optional).</p>
-        <div className="mt-4 space-y-4">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
+          <h2 className="text-lg font-semibold text-neutral-800">Alumni Chapters</h2>
+          <p className="mt-1 text-xs text-neutral-600">Select up to 3 chapters to join (optional).</p>
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <div className="space-y-4">
           {isLoadingChapters ? (
             <div className="flex items-center justify-center py-4">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
@@ -2641,7 +2696,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
               {/* Selected Chapters Display */}
               {selectedChapters.length > 0 && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                <div className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
                   <p className="text-xs text-gray-600 mb-2">
                     Selected chapters ({selectedChapters.length}/3):
                   </p>
@@ -2652,7 +2707,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                       return (
                         <span
                           key={chapterId}
-                          className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800"
                         >
                           {chapter.name}
                           <button
@@ -2660,7 +2715,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                             onClick={() => {
                               setSelectedChapters(selectedChapters.filter(id => id !== chapterId));
                             }}
-                            className="ml-1 text-blue-600 hover:text-blue-800"
+                            className="rounded px-1 text-blue-700 hover:text-blue-900"
+                            aria-label={`Remove ${chapter.name}`}
                           >
                             ×
                           </button>
@@ -2672,15 +2728,19 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               )}
             </>
           )}
+          </div>
         </div>
       </section>
       )}
 
       {/* Section 6: Admin Section */}
       {!excludeAdminStep && (
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+          <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
+          </div>
+          <div className="px-4 py-5 sm:px-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className={labelBase}>Source</label>
               <select className={inputBase} {...register("datasource")}> 
@@ -2691,7 +2751,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" className="h-4 w-4" {...register("verify")} />
+              <input type="checkbox" className="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500" {...register("verify")} />
               <label className={labelBase}>Verify</label>
               <p className="ml-2 text-xs text-neutral-600">Stored as a string flag on server (Yes/No).</p>
             </div>
@@ -2716,7 +2776,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 
               </select>
             </div>
-          </div>
+             </div>
+           </div>
         </section>
       )}
 
@@ -2748,9 +2809,25 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       </section>
 
       {/* Submit and Reset Buttons */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60">Submit</button>
-        <button type="button" disabled={submitting} onClick={() => { reset(); setSelectedChapters([]); }} className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-neutral-800 hover:bg-neutral-50">Reset</button>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:opacity-60 sm:w-auto"
+        >
+          Submit
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => {
+            reset();
+            setSelectedChapters([]);
+          }}
+          className="inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 disabled:opacity-60 sm:w-auto"
+        >
+          Reset
+        </button>
       </div>
     </form>
   );
