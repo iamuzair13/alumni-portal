@@ -587,8 +587,6 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       sectionTitle("Role Information");
       drawWrappedText(`Application Type: ${data.leadershipType === "chapter" ? "Chapter" : "Association"}`, margin, 10.5, false, maxWidth, 4);
       drawWrappedText(`Role Title: ${String(data.position || "-")}`, margin, 10.5, false, maxWidth, 4);
-      drawWrappedText(`Role Description: ${String(data.roleDescription || "-")}`, margin, 10.5, false, maxWidth, 8);
-      drawRichTextBlock(String(data.officeTermGovernanceHtml || ""), maxWidth);
       hLine(0, 10);
 
       sectionTitle("Criteria");
@@ -680,24 +678,12 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       }
 
       hLine(0, 10);
-      sectionTitle("Role Plan / Strategy");
-      drawRichTextBlock(String(data.planStrategy || "No plan/strategy provided."), maxWidth);
-      hLine(0, 10);
+      sectionTitle("Additional Achievements");
+      drawRichTextBlock(String(data.additionalAchievements || "-"), maxWidth);
 
-      sectionTitle("Uploaded Documents");
-      const docs = Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : [];
-      if (!docs.length) {
-        drawWrappedText("No documents uploaded.", margin, 10.5, false, maxWidth, 10);
-      } else {
-        docs.forEach((d, i) => {
-          const url = String(d.url || "");
-          const name = url ? decodeURIComponent(url.split("?")[0].split("#")[0].split("/").pop() || url) : "";
-          const label = String(d.label || "Document");
-          const line = `${i + 1}. ${name || label}`;
-          drawWrappedText(line, margin, 10.5, false, maxWidth, 4);
-        });
-        y += 6;
-      }
+      hLine(0, 10);
+      sectionTitle("Role Plan / Strategy");
+      drawRichTextBlock(String(data.planStrategy || "-"), maxWidth);
 
       const footerY = pageHeight - 18;
       doc.setDrawColor(210, 210, 210);

@@ -343,50 +343,6 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
 
                     <div className="max-h-[75vh] overflow-y-auto pr-1 space-y-4">
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Personal Information</div>
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-700">
-                          <div><span className="font-medium">Full Name:</span> {item.name || "-"}</div>
-                          <div><span className="font-medium">SAP ID:</span> {item.sapId || "-"}</div>
-                          <div><span className="font-medium">Gender:</span> {item.gender || "-"}</div>
-                          <div><span className="font-medium">Faculty:</span> {item.faculty || "-"}</div>
-                          <div><span className="font-medium">Department:</span> {item.department || "-"}</div>
-                          <div><span className="font-medium">Program:</span> {item.program || "-"}</div>
-                          <div><span className="font-medium">Passing Year:</span> {item.passingYear ?? "-"}</div>
-                          <div><span className="font-medium">Email:</span> {item.email || "-"}</div>
-                          <div><span className="font-medium">Phone:</span> {item.phone || "-"}</div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Role Information</div>
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-xs font-semibold text-gray-600">Role Title</div>
-                            <div className="mt-1 text-sm text-gray-900 font-semibold">{item.position || "-"}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold text-gray-600">Application Type</div>
-                            <div className="mt-1 text-sm text-gray-900 font-semibold">{item.type === "chapter" ? "Chapter" : "Association"}</div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-xs font-semibold text-gray-600">Role Description</div>
-                            <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[300px] overflow-y-auto whitespace-pre-wrap">
-                              {String(item.roleDescription || "").trim() || "No role description configured."}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold text-gray-600">Office Term & Governance</div>
-                            <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[300px] overflow-y-auto">
-                              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: String(item.officeTermGovernanceHtml || "").trim() || "-" }} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                         <div className="text-sm font-semibold text-gray-900">Criteria</div>
                         <div className="mt-3 overflow-x-auto">
                           <table className="min-w-[760px] w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
@@ -452,34 +408,16 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                       </div>
 
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Plan / Strategy</div>
+                        <div className="text-sm font-semibold text-gray-900">Additional Achievements</div>
                         <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
-                          {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
+                          {String(item.additionalAchievements || "").trim() || "-"}
                         </div>
                       </div>
 
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Uploaded Documents</div>
-                        <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 overflow-hidden">
-                          {docs.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-gray-600 bg-gray-50">No documents found.</div>
-                          ) : (
-                            docs.map((d) => (
-                              <div key={d.key} className="flex items-center justify-between gap-3 px-4 py-3 bg-white">
-                                <div className="min-w-0">
-                                  <div className="font-medium text-gray-900 truncate">{d.label}</div>
-                                  <div className="text-xs text-gray-500 truncate">Size: -</div>
-                                </div>
-                                <a
-                                  href={d.url}
-                                  download
-                                  className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                                >
-                                  Download
-                                </a>
-                              </div>
-                            ))
-                          )}
+                        <div className="text-sm font-semibold text-gray-900">Plan / Strategy</div>
+                        <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
+                          {String(item.planStrategy || "").trim() || "-"}
                         </div>
                       </div>
                     </div>
