@@ -1385,7 +1385,10 @@ function ApplicationsTable({
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Role</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Status</TableCell>
             {isAdmin && (
-              <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">Actions</TableCell>
+              <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">
+                <span className="hidden sm:inline">Actions</span>
+                <span className="sm:hidden">Action</span>
+              </TableCell>
             )}
           </TableRow>
         </TableHeader>
@@ -1447,7 +1450,10 @@ function ApplicationsTable({
             </button>
           </TableCell>
           {isAdmin && (
-            <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">Actions</TableCell>
+            <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">
+              <span className="hidden sm:inline">Actions</span>
+              <span className="sm:hidden">Action</span>
+            </TableCell>
           )}
         </TableRow>
       </TableHeader>
@@ -1496,38 +1502,38 @@ function ApplicationsTable({
             </TableCell>
             {isAdmin && (
               <TableCell className="px-4 py-3 text-right sticky right-0 bg-white dark:bg-gray-800">
-                <div className="inline-flex gap-1">
+                <div className="flex flex-row flex-wrap gap-1">
                   <button
                     onClick={() => onViewApplication(app)}
                     disabled={processingIds.has(app.id)}
-                    className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
+                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
                     title="View"
                   >
-                    <EyeIcon className="h-4 w-4" />
+                    <EyeIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
                   <button
                     onClick={() => onAction("approve", app.id, app.type)}
                     disabled={processingIds.has(app.id)}
-                    className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
+                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
                     title="Approve"
                   >
-                    <CheckLineIcon className="h-4 w-4" />
+                    <CheckLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
                   <button
                     onClick={() => onAction("reject", app.id, app.type)}
                     disabled={processingIds.has(app.id)}
-                    className="p-1.5 rounded hover:bg-amber-50 text-amber-600 disabled:opacity-50"
+                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-amber-50 text-amber-600 disabled:opacity-50"
                     title="Reject"
                   >
-                    <CloseLineIcon className="h-4 w-4" />
+                    <CloseLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
                   <button
                     onClick={() => onAction("delete", app.id, app.type)}
                     disabled={processingIds.has(app.id)}
-                    className="p-1.5 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
+                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
                     title="Delete"
                   >
-                    <TrashBinIcon className="h-4 w-4" />
+                    <TrashBinIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
                 </div>
               </TableCell>

@@ -134,36 +134,36 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
 
   return (
     <div className={className}>
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-[#fbf7ee] to-[#f6f1e3] shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-4 border-b border-slate-200">
+      <div className="rounded-2xl border border-slate-200 bg-yellow-600 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-4 border-b border-slate-200 bg-white/50">
           <div className="min-w-0">
-            <h5 className="text-base sm:text-lg font-semibold text-slate-900">Leadership Applications</h5>
-            <div className="mt-1 text-xs text-slate-600">Track your submitted applications and their statuses</div>
+            <h5 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">Leadership Applications</h5>
+            <div className="mt-1 text-sm text-slate-700">Track your submitted applications and their statuses</div>
           </div>
           <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const nextDir = appsSortKey === "createdAt" ? (appsSortDir === "asc" ? "desc" : "asc") : "desc";
-              setAppsSortKey("createdAt");
-              setAppsSortDir(nextDir);
-            }}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-[#fbf7ee] hover:border-[#caa24a]"
-          >
-            Sort by Date
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const nextDir = appsSortKey === "status" ? (appsSortDir === "asc" ? "desc" : "asc") : "asc";
-              setAppsSortKey("status");
-              setAppsSortDir(nextDir);
-            }}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-[#fbf7ee] hover:border-[#caa24a]"
-          >
-            Sort by Status
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                const nextDir = appsSortKey === "createdAt" ? (appsSortDir === "asc" ? "desc" : "asc") : "desc";
+                setAppsSortKey("createdAt");
+                setAppsSortDir(nextDir);
+              }}
+              className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-[#fbf7ee] hover:border-[#caa24a] focus:outline-none focus:ring-2 focus:ring-[#caa24a]/40"
+            >
+              Sort by Date
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextDir = appsSortKey === "status" ? (appsSortDir === "asc" ? "desc" : "asc") : "asc";
+                setAppsSortKey("status");
+                setAppsSortDir(nextDir);
+              }}
+              className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-[#fbf7ee] hover:border-[#caa24a] focus:outline-none focus:ring-2 focus:ring-[#caa24a]/40"
+            >
+              Sort by Status
+            </button>
+          </div>
         </div>
 
         <div className="px-4 sm:px-5 pt-3">
