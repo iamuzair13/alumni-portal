@@ -5,37 +5,36 @@ import postgres from 'postgres'
 let sqlInstance: ReturnType<typeof postgres> | null = null;
 
 function initSql() {
-if (!process.env.DATABASE_URL) {
-    // During build time, return a mock that will throw at runtime
-    // This allows the build to complete without DATABASE_URL
-    if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
-      // Only throw in production if not on Vercel (which sets DATABASE_URL)
-  throw new Error('DATABASE_URL environment variable is not set')
-}
-    // For build time, create a connection that will fail gracefully
-    return postgres('postgresql://placeholder', {
-      max: 1,
-      idle_timeout: 1,
-      connect_timeout: 1,
-    });
+  if (sqlInstance) return sqlInstance;
+
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error('DATABASE_URL environment variable is not set');
   }
-  
-  if (!sqlInstance) {
-    sqlInstance = postgres(process.env.DATABASE_URL, {
-  max: 10,
-  idle_timeout: 20,
-      connect_timeout: 30, // Increased from 10 to 30 seconds
-      max_lifetime: 60 * 30, // 30 minutes
-      prepare: false, // Disable prepared statements for better connection handling
-    });
-  }
-  
+
+  sqlInstance = postgres(url, {
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 30, // Increased from 10 to 30 seconds
+    max_lifetime: 60 * 30, // 30 minutes
+    prepare: false, // Disable prepared statements for better connection handling
+  });
+
   return sqlInstance;
 }
 
 // Create a single connection pool with increased timeouts
 // Initialize lazily to prevent build-time errors
-export const sql = initSql();
+export const sql = new Proxy((() => {}) as unknown as ReturnType<typeof postgres>, {
+  apply(_target, _thisArg, argArray) {
+    const client = initSql() as any;
+    return client(...argArray);
+  },
+  get(_target, prop) {
+    const client = initSql() as any;
+    return client[prop];
+  },
+}) as unknown as ReturnType<typeof postgres>;
 
 /**
  * Retry a database operation with exponential backoff
