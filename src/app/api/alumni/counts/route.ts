@@ -1016,7 +1016,7 @@ export async function GET(req: Request) {
       hasPersonalEmailStateFilter ||
       hasContactNoStateFilter
       ? sql`1=1` 
-      : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
+      : sql`((sapid IS NOT NULL AND sapid != '') OR (registrationno IS NOT NULL AND registrationno != ''))`;
 
     // Verify field is now VARCHAR(10) - handle as string only
     let result;
@@ -1024,61 +1024,45 @@ export async function GET(req: Request) {
     if (searchTerm) {
       result = await retryDbOperation(async () => await sql/* sql */`
         SELECT 
-          COUNT(*) as total,
+          COUNT(DISTINCT a.alumniid) as total,
           -- Verified: verify = 'true' (string)
-          COUNT(CASE 
-            WHEN LOWER(COALESCE(a.verify, '')) = 'true' 
-            THEN 1 
-          END) as verified,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true') as verified,
           -- Unverified: verify = 'false' (string)
-          COUNT(CASE 
-            WHEN LOWER(COALESCE(a.verify, '')) = 'false' 
-            THEN 1 
-          END) as unverified,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'false') as unverified,
           -- Under Approval: verify = 'underApproval' (new registrations awaiting admin approval)
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval'
-            THEN 1 
-          END) as under_approval,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval') as under_approval,
           -- Active: has logged in
-          COUNT(CASE 
-            WHEN (a.lasttimelogin IS NOT NULL AND a.lasttimelogin != '') 
-            OR (a.logincount IS NOT NULL AND a.logincount > 0) 
-            THEN 1 
-          END) as active,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (a.lasttimelogin IS NOT NULL AND a.lasttimelogin != '')
+               OR (a.logincount IS NOT NULL AND a.logincount > 0)
+          ) as active,
           -- Inactive: never logged in
-          COUNT(CASE 
-            WHEN (a.lasttimelogin IS NULL OR a.lasttimelogin = '') 
-            AND (a.logincount IS NULL OR a.logincount = 0) 
-            THEN 1 
-          END) as inactive,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (a.lasttimelogin IS NULL OR a.lasttimelogin = '')
+              AND (a.logincount IS NULL OR a.logincount = 0)
+          ) as inactive,
           -- Category counts
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' 
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'a+'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
-            THEN 1 
-          END) as category_a_plus,
-          COUNT(CASE 
-            WHEN (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' 
-               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' 
+          ) as category_a_plus,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (LOWER(TRIM(COALESCE(a.category, ''))) = 'a'
+               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%'
                AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))
-            THEN 1 
-          END) as category_a,
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'b' 
+          ) as category_a,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'b'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
-            THEN 1 
-          END) as category_b,
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'c' 
+          ) as category_b,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'c'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
-            THEN 1 
-          END) as category_c,
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'd' 
+          ) as category_c,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
-            THEN 1 
-          END) as category_d
+          ) as category_d
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -1122,67 +1106,51 @@ export async function GET(req: Request) {
             OR LOWER(COALESCE(a.officialemail, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(f.faculty_name, a.facultyname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(d.department_name, a.departmentname, '')) LIKE ${searchTerm}
-            OR LOWER(COALESCE(a.degreetitle, '')) LIKE ${searchTerm}
+            OR LOWER(COALESCE(p.program_name, a.degreetitle, '')) LIKE ${searchTerm}
           )
       `);
     } else {
       result = await retryDbOperation(async () => await sql/* sql */`
         SELECT 
-          COUNT(*) as total,
+          COUNT(DISTINCT a.alumniid) as total,
           -- Verified: verify = 'true' (string)
-          COUNT(CASE 
-            WHEN LOWER(COALESCE(a.verify, '')) = 'true' 
-            THEN 1 
-          END) as verified,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true') as verified,
           -- Unverified: verify = 'false' (string)
-          COUNT(CASE 
-            WHEN LOWER(COALESCE(a.verify, '')) = 'false' 
-            THEN 1 
-          END) as unverified,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'false') as unverified,
           -- Under Approval: verify = 'underApproval' (new registrations awaiting admin approval)
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval'
-            THEN 1 
-          END) as under_approval,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval') as under_approval,
           -- Active: has logged in
-          COUNT(CASE 
-            WHEN (a.lasttimelogin IS NOT NULL AND a.lasttimelogin != '') 
-            OR (a.logincount IS NOT NULL AND a.logincount > 0) 
-            THEN 1 
-          END) as active,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (a.lasttimelogin IS NOT NULL AND a.lasttimelogin != '')
+               OR (a.logincount IS NOT NULL AND a.logincount > 0)
+          ) as active,
           -- Inactive: never logged in
-          COUNT(CASE 
-            WHEN (a.lasttimelogin IS NULL OR a.lasttimelogin = '') 
-            AND (a.logincount IS NULL OR a.logincount = 0) 
-            THEN 1 
-          END) as inactive,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (a.lasttimelogin IS NULL OR a.lasttimelogin = '')
+              AND (a.logincount IS NULL OR a.logincount = 0)
+          ) as inactive,
           -- Category counts
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'a+' 
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'a+'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
-            THEN 1 
-          END) as category_a_plus,
-          COUNT(CASE 
-            WHEN (LOWER(TRIM(COALESCE(a.category, ''))) = 'a' 
-               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%' 
+          ) as category_a_plus,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (LOWER(TRIM(COALESCE(a.category, ''))) = 'a'
+               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%'
                AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))
-            THEN 1 
-          END) as category_a,
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'b' 
+          ) as category_a,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'b'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
-            THEN 1 
-          END) as category_b,
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'c' 
+          ) as category_b,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'c'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
-            THEN 1 
-          END) as category_c,
-          COUNT(CASE 
-            WHEN LOWER(TRIM(COALESCE(a.category, ''))) = 'd' 
+          ) as category_c,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
                OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
-            THEN 1 
-          END) as category_d
+          ) as category_d
         FROM public.tbl_alumni a
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
@@ -1218,6 +1186,20 @@ export async function GET(req: Request) {
           ${contactNoStateFilter}
           ${accessFilterCondition}
       `);
+    }
+
+    if (process.env.DEBUG_ALUMNI_COUNTS === "1") {
+      const row = (Array.isArray(result) ? result[0] : null) as Record<string, unknown> | null;
+      console.log("[api/alumni/counts]", {
+        status,
+        search: search ? String(search).slice(0, 80) : "",
+        total: row?.total,
+        verified: row?.verified,
+        unverified: row?.unverified,
+        under_approval: row?.under_approval,
+        active: row?.active,
+        inactive: row?.inactive,
+      });
     }
 
     const accessForDistinguished = await buildIdBasedAccessFilterSQL(session, {

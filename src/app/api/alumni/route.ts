@@ -1057,13 +1057,14 @@ export async function GET(req: Request) {
             a.sapid IS NOT NULL
             AND TRIM(COALESCE(a.sapid, '')) != ''
             AND LOWER(TRIM(COALESCE(a.sapid, ''))) != 'null'
-            AND EXISTS (
-              SELECT 1
-              FROM public.tbl_alumni a2
-              WHERE a2.alumniid != a.alumniid
-                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) = LOWER(TRIM(COALESCE(a.sapid, '')))
-                AND TRIM(COALESCE(a2.sapid, '')) != ''
-                AND LOWER(TRIM(COALESCE(a2.sapid, ''))) != 'null'
+            AND LOWER(TRIM(COALESCE(a.sapid, ''))) IN (
+              SELECT LOWER(TRIM(COALESCE(sapid, '')))
+              FROM public.tbl_alumni
+              WHERE sapid IS NOT NULL
+                AND TRIM(COALESCE(sapid, '')) != ''
+                AND LOWER(TRIM(COALESCE(sapid, ''))) != 'null'
+              GROUP BY LOWER(TRIM(COALESCE(sapid, '')))
+              HAVING COUNT(*) > 1
             )
           )`;
         }
