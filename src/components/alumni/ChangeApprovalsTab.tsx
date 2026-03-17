@@ -198,73 +198,76 @@ export function ChangeApprovalsTab() {
       </div>
 
       <Modal isOpen={selectedRequestId !== null} onClose={() => setSelectedRequestId(null)} className="max-w-4xl">
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90">Change Comparison</h3>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {detail?.request?.alumni?.alumniname ? `${detail.request.alumni.alumniname} • ` : ""}
-                {detail?.request?.alumni?.sapid ?? detail?.request?.alumni?.registrationno ?? ""}
-              </p>
+        <div className="flex max-h-[80vh] flex-col">
+          <div className="p-6 overflow-y-auto">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white/90">Change Comparison</h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {detail?.request?.alumni?.alumniname ? `${detail.request.alumni.alumniname} • ` : ""}
+                  {detail?.request?.alumni?.sapid ?? detail?.request?.alumni?.registrationno ?? ""}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                disabled={!selectedRequestId || actionMutation.isPending}
-                onClick={() => selectedRequestId && actionMutation.mutate({ id: selectedRequestId, action: "reject" })}
-              >
-                Reject
-              </Button>
-              <Button
-                disabled={!selectedRequestId || actionMutation.isPending}
-                onClick={() => selectedRequestId && actionMutation.mutate({ id: selectedRequestId, action: "accept" })}
-              >
-                Accept
-              </Button>
+
+            <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <Table className="min-w-full">
+                <TableHeader className="bg-gray-50 dark:bg-gray-900/20">
+                  <TableRow>
+                    <TableCell isHeader className="px-4 py-3 text-start text-xs font-semibold text-gray-600 dark:text-gray-300">Field</TableCell>
+                    <TableCell isHeader className="px-4 py-3 text-start text-xs font-semibold text-gray-600 dark:text-gray-300">Current Value</TableCell>
+                    <TableCell isHeader className="px-4 py-3 text-start text-xs font-semibold text-gray-600 dark:text-gray-300">New Value</TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.06]">
+                  {detailQuery.isLoading && (
+                    <TableRow>
+                      <TableCell className="px-4 py-4 text-gray-600 dark:text-gray-400" colSpan={3}>Loading…</TableCell>
+                    </TableRow>
+                  )}
+                  {!detailQuery.isLoading && detailQuery.isError && (
+                    <TableRow>
+                      <TableCell className="px-4 py-4 text-red-600" colSpan={3}>{detailQuery.error?.message ?? "Failed"}</TableCell>
+                    </TableRow>
+                  )}
+                  {!detailQuery.isLoading && !detailQuery.isError && changes.length === 0 && (
+                    <TableRow>
+                      <TableCell className="px-4 py-4 text-gray-600 dark:text-gray-400" colSpan={3}>No changed fields.</TableCell>
+                    </TableRow>
+                  )}
+                  {changes.map((c) => (
+                    <TableRow key={c.field} className="bg-yellow-50/40 dark:bg-yellow-900/10">
+                      <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white/90">{c.field}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{c.oldValue || "-"}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 font-semibold">{c.newValue || "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
+
+            {actionMutation.isError && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+                {actionMutation.error instanceof Error ? actionMutation.error.message : "Action failed"}
+              </div>
+            )}
           </div>
 
-          <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <Table className="min-w-full">
-              <TableHeader className="bg-gray-50 dark:bg-gray-900/20">
-                <TableRow>
-                  <TableCell isHeader className="px-4 py-3 text-start text-xs font-semibold text-gray-600 dark:text-gray-300">Field</TableCell>
-                  <TableCell isHeader className="px-4 py-3 text-start text-xs font-semibold text-gray-600 dark:text-gray-300">Current Value</TableCell>
-                  <TableCell isHeader className="px-4 py-3 text-start text-xs font-semibold text-gray-600 dark:text-gray-300">New Value</TableCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.06]">
-                {detailQuery.isLoading && (
-                  <TableRow>
-                    <TableCell className="px-4 py-4 text-gray-600 dark:text-gray-400" colSpan={3}>Loading…</TableCell>
-                  </TableRow>
-                )}
-                {!detailQuery.isLoading && detailQuery.isError && (
-                  <TableRow>
-                    <TableCell className="px-4 py-4 text-red-600" colSpan={3}>{detailQuery.error?.message ?? "Failed"}</TableCell>
-                  </TableRow>
-                )}
-                {!detailQuery.isLoading && !detailQuery.isError && changes.length === 0 && (
-                  <TableRow>
-                    <TableCell className="px-4 py-4 text-gray-600 dark:text-gray-400" colSpan={3}>No changed fields.</TableCell>
-                  </TableRow>
-                )}
-                {changes.map((c) => (
-                  <TableRow key={c.field} className="bg-yellow-50/40 dark:bg-yellow-900/10">
-                    <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white/90">{c.field}</TableCell>
-                    <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{c.oldValue || "-"}</TableCell>
-                    <TableCell className="px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 font-semibold">{c.newValue || "-"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="px-6 pb-6 pt-4 flex items-center justify-end gap-2 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <Button
+              variant="outline"
+              disabled={!selectedRequestId || actionMutation.isPending}
+              onClick={() => selectedRequestId && actionMutation.mutate({ id: selectedRequestId, action: "reject" })}
+            >
+              Reject
+            </Button>
+            <Button
+              disabled={!selectedRequestId || actionMutation.isPending}
+              onClick={() => selectedRequestId && actionMutation.mutate({ id: selectedRequestId, action: "accept" })}
+            >
+              Accept
+            </Button>
           </div>
-
-          {actionMutation.isError && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
-              {actionMutation.error instanceof Error ? actionMutation.error.message : "Action failed"}
-            </div>
-          )}
         </div>
       </Modal>
     </div>
