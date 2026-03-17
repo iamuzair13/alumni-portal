@@ -268,6 +268,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const [additionalFilter, setAdditionalFilter] = useState<string[]>([]); // Array of selected statuses
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  const [locallyDeletedKeys, setLocallyDeletedKeys] = useState<Set<string>>(new Set());
   
   // Filter state for faculty, department, and program (cascading) - arrays for multi-select
   const [selectedFaculties, setSelectedFaculties] = useState<string[]>([]);
@@ -682,6 +683,7 @@ export const AlumniTabs: React.FC = () => {
   
   // Confirmation modal state
   const confirmModal = useModal();
+  const duplicatesModal = useModal();
   const emailHistoryModal = useModal();
   const [emailHistoryAlumniId, setEmailHistoryAlumniId] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<{
@@ -691,6 +693,19 @@ export const AlumniTabs: React.FC = () => {
     alumniId: number | null;
     email: string | null;
   } | null>(null);
+  const [pendingDuplicateGate, setPendingDuplicateGate] = useState<{
+    type: "verify" | "unverify";
+    targetKey: string;
+    name: string;
+    alumniId: number | null;
+    email: string | null;
+  } | null>(null);
+  const [duplicateSearch, setDuplicateSearch] = useState<string>("");
+  const [duplicateSortKey, setDuplicateSortKey] = useState<
+    "name" | "sapId" | "registrationNo" | "gender" | "verifyStatus"
+  >("name");
+  const [duplicateSortDir, setDuplicateSortDir] = useState<"asc" | "desc">("asc");
+  const [duplicateDeleteCount, setDuplicateDeleteCount] = useState<number>(0);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -1362,6 +1377,11 @@ export const AlumniTabs: React.FC = () => {
     
     for (let i = 0; i < sourceItems.length; i++) {
       const r = sourceItems[i];
+
+      const localKey = String(r.alumniid ?? (r.sapid?.trim() || r.registrationno?.trim() || ""));
+      if (locallyDeletedKeys.has(localKey)) {
+        continue;
+      }
       
       // Allow records with either sapid OR registrationno for all tabs
       // This includes "Under Approval" records that might have null sapid
@@ -1444,7 +1464,32 @@ export const AlumniTabs: React.FC = () => {
     
     // Trim array to actual size
     return result.slice(0, idx);
-  }, [paginatedData]);
+  }, [paginatedData, locallyDeletedKeys]);
+
+  const normalizeDupKey = useCallback((v: string | null | undefined): string => {
+    return String(v ?? "").trim().toLowerCase();
+  }, []);
+
+  const getItemLocalKey = useCallback((item: AlumniItem): string => {
+    return String(item.alumniid ?? item.id);
+  }, []);
+
+  const findDuplicatesFor = useCallback((target: AlumniItem, dataset: AlumniItem[]): AlumniItem[] => {
+    const sap = normalizeDupKey(target.sapId);
+    const reg = normalizeDupKey(target.registrationNo);
+    const targetKey = getItemLocalKey(target);
+    if (!sap && !reg) return [];
+
+    return dataset.filter((it) => {
+      const k = getItemLocalKey(it);
+      if (k === targetKey) return false;
+      const itSap = normalizeDupKey(it.sapId);
+      const itReg = normalizeDupKey(it.registrationNo);
+      const sapMatch = !!sap && !!itSap && itSap === sap;
+      const regMatch = !!reg && !!itReg && itReg === reg;
+      return sapMatch || regMatch;
+    });
+  }, [getItemLocalKey, normalizeDupKey]);
 
   // Use counts from server (lightweight query) - always use server data for real-time accuracy
   const counts = useMemo(() => {
@@ -2233,10 +2278,23 @@ export const AlumniTabs: React.FC = () => {
   // Open confirmation modal for verify
   const handleVerifyClick = useCallback(
     (sapid: string, name: string, alumniId: number | null, email: string | null) => {
+      const localKey = String(alumniId ?? sapid);
+      const target = items.find((x) => String(x.alumniid ?? x.id) === localKey);
+      const dups = target ? findDuplicatesFor(target, items) : [];
+      if (dups.length > 0) {
+        setPendingDuplicateGate({ type: "verify", targetKey: localKey, name, alumniId, email });
+        setDuplicateSearch("");
+        setDuplicateSortKey("name");
+        setDuplicateSortDir("asc");
+        setDuplicateDeleteCount(0);
+        duplicatesModal.openModal();
+        return;
+      }
+
       setPendingAction({ type: "verify", sapid, name, alumniId, email });
       confirmModal.openModal();
     },
-    [confirmModal]
+    [confirmModal, duplicatesModal, findDuplicatesFor, items]
   );
 
   // Execute verify after confirmation
@@ -2285,9 +2343,22 @@ export const AlumniTabs: React.FC = () => {
 
   // Open confirmation modal for unverify
   const handleUnverifyClick = useCallback((sapid: string, name: string, alumniId: number | null, email: string | null) => {
+    const localKey = String(alumniId ?? sapid);
+    const target = items.find((x) => String(x.alumniid ?? x.id) === localKey);
+    const dups = target ? findDuplicatesFor(target, items) : [];
+    if (dups.length > 0) {
+      setPendingDuplicateGate({ type: "unverify", targetKey: localKey, name, alumniId, email });
+      setDuplicateSearch("");
+      setDuplicateSortKey("name");
+      setDuplicateSortDir("asc");
+      setDuplicateDeleteCount(0);
+      duplicatesModal.openModal();
+      return;
+    }
+
     setPendingAction({ type: "unverify", sapid, name, alumniId, email });
     confirmModal.openModal();
-  }, [confirmModal]);
+  }, [confirmModal, duplicatesModal, findDuplicatesFor, items]);
 
   // Execute unverify after confirmation
   const handleUnverify = useCallback(async (identifier: string, alumniId: number | null): Promise<void> => {
@@ -2436,6 +2507,86 @@ export const AlumniTabs: React.FC = () => {
     const url = `/alumni-profile?sapid=${encodeURIComponent(sapid)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
+
+  const duplicateGateTarget = useMemo(() => {
+    if (!pendingDuplicateGate) return null;
+    return items.find((x) => String(x.alumniid ?? x.id) === pendingDuplicateGate.targetKey) ?? null;
+  }, [items, pendingDuplicateGate]);
+
+  const duplicateGateList = useMemo(() => {
+    if (!duplicateGateTarget) return [];
+    const raw = findDuplicatesFor(duplicateGateTarget, items);
+    const q = String(duplicateSearch || "").trim().toLowerCase();
+    const filtered = !q
+      ? raw
+      : raw.filter((it) => {
+          const hay = [it.name, it.sapId, it.registrationNo, it.gender, it.verifyStatus].map((x) => String(x ?? "")).join(" ").toLowerCase();
+          return hay.includes(q);
+        });
+
+    const dir = duplicateSortDir === "asc" ? 1 : -1;
+    const sorted = [...filtered].sort((a, b) => {
+      const va = ((): string => {
+        if (duplicateSortKey === "name") return String(a.name || "");
+        if (duplicateSortKey === "sapId") return String(a.sapId || "");
+        if (duplicateSortKey === "registrationNo") return String(a.registrationNo || "");
+        if (duplicateSortKey === "gender") return String(a.gender || "");
+        return String(a.verifyStatus || "");
+      })();
+      const vb = ((): string => {
+        if (duplicateSortKey === "name") return String(b.name || "");
+        if (duplicateSortKey === "sapId") return String(b.sapId || "");
+        if (duplicateSortKey === "registrationNo") return String(b.registrationNo || "");
+        if (duplicateSortKey === "gender") return String(b.gender || "");
+        return String(b.verifyStatus || "");
+      })();
+      return va.localeCompare(vb) * dir;
+    });
+
+    return sorted;
+  }, [duplicateGateTarget, duplicateSearch, duplicateSortDir, duplicateSortKey, findDuplicatesFor, items]);
+
+  const handleLocalDeleteDuplicate = useCallback((item: AlumniItem) => {
+    const k = String(item.alumniid ?? item.id);
+    const ok = typeof window === "undefined" ? false : window.confirm(`Delete duplicate record for ${item.name || "this alumni"}? This is frontend-only and will not affect the backend.`);
+    if (!ok) return;
+
+    setLocallyDeletedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(k);
+      return next;
+    });
+    setDuplicateDeleteCount((n) => n + 1);
+    setActionMessage("Duplicate removed from the current view. You can now proceed once duplicates are resolved.");
+  }, []);
+
+  const handleProceedAfterDuplicateResolution = useCallback(() => {
+    if (!pendingDuplicateGate) return;
+    if (!duplicateGateTarget) return;
+    const remaining = findDuplicatesFor(duplicateGateTarget, items);
+    if (remaining.length > 0) {
+      setActionError("You must delete at least one duplicate and resolve duplicates before proceeding.");
+      return;
+    }
+    if (duplicateDeleteCount < 1) {
+      setActionError("Delete at least one duplicate record before proceeding.");
+      return;
+    }
+
+    duplicatesModal.closeModal();
+    setPendingDuplicateGate(null);
+    setDuplicateSearch("");
+    setDuplicateDeleteCount(0);
+
+    setPendingAction({
+      type: pendingDuplicateGate.type,
+      sapid: String(pendingDuplicateGate.alumniId ?? pendingDuplicateGate.targetKey),
+      name: pendingDuplicateGate.name,
+      alumniId: pendingDuplicateGate.alumniId,
+      email: pendingDuplicateGate.email ?? null,
+    });
+    confirmModal.openModal();
+  }, [confirmModal, duplicateDeleteCount, duplicateGateTarget, duplicatesModal, findDuplicatesFor, items, pendingDuplicateGate]);
 
   // Helper function to render a tab button
   const renderTabButton = (tab: { key: TabKey; label: string }, idx: number, allTabs: { key: TabKey; label: string }[]) => {
@@ -5546,6 +5697,147 @@ export const AlumniTabs: React.FC = () => {
         </div>
       
       {/* Confirmation Modal */}
+      {duplicatesModal.isOpen && pendingDuplicateGate && duplicateGateTarget && (
+        <Modal
+          isOpen={duplicatesModal.isOpen}
+          onClose={() => {
+            duplicatesModal.closeModal();
+            setPendingDuplicateGate(null);
+            setDuplicateSearch("");
+            setDuplicateDeleteCount(0);
+          }}
+          className="max-w-6xl mx-auto"
+          showCloseButton={true}
+        >
+          <div className="p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    Duplicate Records Detected
+                  </h3>
+                  <p className="text-sm text-rose-700 dark:text-rose-300 font-semibold mt-1">
+                    You can’t proceed with {pendingDuplicateGate.type === "verify" ? "verify" : "unverify"} until you delete duplicates.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center mr-14">
+                  <input
+                    value={duplicateSearch}
+                    onChange={(e) => setDuplicateSearch(e.target.value)}
+                    placeholder="Search duplicates..."
+                    className="w-full sm:w-72 px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+                  />
+                  <select
+                    value={duplicateSortKey}
+                    onChange={(e) => setDuplicateSortKey(e.target.value as any)}
+                    className="px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200"
+                  >
+                    <option value="name">Sort: Name</option>
+                    <option value="sapId">Sort: SAPID</option>
+                    <option value="registrationNo">Sort: Reg No</option>
+                    <option value="gender">Sort: Gender</option>
+                    <option value="verifyStatus">Sort: Verify Status</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                    className="px-3 py-2 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
+                  >
+                    {duplicateSortDir === "asc" ? "Asc" : "Desc"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div className="lg:col-span-1 rounded-2xl border border-blue-200/60 bg-blue-50/60 dark:bg-blue-900/10 dark:border-blue-800/40 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 mb-2">
+                    Current Record
+                  </div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {duplicateGateTarget.name || "-"}
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <div className="truncate"><span className="font-bold">SAPID:</span> {duplicateGateTarget.sapId || "-"}</div>
+                    <div className="truncate"><span className="font-bold">Reg No:</span> {duplicateGateTarget.registrationNo || "-"}</div>
+                    <div className="truncate"><span className="font-bold">Gender:</span> {duplicateGateTarget.gender || "-"}</div>
+                    <div className="truncate"><span className="font-bold">Status:</span> {duplicateGateTarget.verifyStatus || "-"}</div>
+                  </div>
+                </div>
+                <div className="lg:col-span-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/30 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40 flex items-center justify-between">
+                    <div className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                      Duplicates ({duplicateGateList.length})
+                    </div>
+                    <div className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                      Deleted in this session: {duplicateDeleteCount}
+                    </div>
+                  </div>
+                  <div className="max-h-[55vh] overflow-auto">
+                    <Table>
+                      <TableHeader >
+                        <TableRow>
+                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Full Name</TableCell>
+                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">SAPID</TableCell>
+                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Reg No</TableCell>
+                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Gender</TableCell>
+                          <TableCell className="font-bold text-xs uppercase tracking-wider text-gray-600 dark:text-gray-400">Verify</TableCell>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {duplicateGateList.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="px-4 py-10 text-center text-sm text-gray-600 dark:text-gray-400">
+                              No duplicates found in the currently loaded dataset.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          duplicateGateList.map((it) => (
+                            <TableRow key={String(it.alumniid ?? it.id)} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                              <TableCell className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {it.name || "-"}
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{it.sapId || "-"}</TableCell>
+                              <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{it.registrationNo || "-"}</TableCell>
+                              <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{it.gender || "-"}</TableCell>
+                              <TableCell className="px-4 py-3">
+                                <Badge
+                                  size="sm"
+                                  color={
+                                    it.verifyStatus === "verified"
+                                      ? "success"
+                                      : it.verifyStatus === "unverified"
+                                      ? "error"
+                                      : "warning"
+                                  }
+                                >
+                                  {it.verifyStatus === "verified"
+                                    ? "Verified"
+                                    : it.verifyStatus === "unverified"
+                                    ? "Unverified"
+                                    : "Under Approval"}
+                                </Badge>
+                              </TableCell>
+                             
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  Requirement: delete at least one duplicate before proceeding.
+                </div>
+                
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {confirmModal.isOpen && pendingAction && (
         <Modal
           isOpen={confirmModal.isOpen}

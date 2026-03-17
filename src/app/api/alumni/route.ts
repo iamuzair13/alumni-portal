@@ -1098,13 +1098,14 @@ export async function GET(req: Request) {
             a.registrationno IS NOT NULL
             AND TRIM(COALESCE(a.registrationno, '')) != ''
             AND LOWER(TRIM(COALESCE(a.registrationno, ''))) != 'null'
-            AND EXISTS (
-              SELECT 1
-              FROM public.tbl_alumni a2
-              WHERE a2.alumniid != a.alumniid
-                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) = LOWER(TRIM(COALESCE(a.registrationno, '')))
-                AND TRIM(COALESCE(a2.registrationno, '')) != ''
-                AND LOWER(TRIM(COALESCE(a2.registrationno, ''))) != 'null'
+            AND LOWER(TRIM(COALESCE(a.registrationno, ''))) IN (
+              SELECT LOWER(TRIM(COALESCE(registrationno, '')))
+              FROM public.tbl_alumni
+              WHERE registrationno IS NOT NULL
+                AND TRIM(COALESCE(registrationno, '')) != ''
+                AND LOWER(TRIM(COALESCE(registrationno, ''))) != 'null'
+              GROUP BY LOWER(TRIM(COALESCE(registrationno, '')))
+              HAVING COUNT(*) > 1
             )
           )`;
         }
@@ -1138,13 +1139,14 @@ export async function GET(req: Request) {
             a.personalemail IS NOT NULL
             AND TRIM(COALESCE(a.personalemail, '')) != ''
             AND LOWER(TRIM(COALESCE(a.personalemail, ''))) != 'null'
-            AND EXISTS (
-              SELECT 1
-              FROM public.tbl_alumni a2
-              WHERE a2.alumniid != a.alumniid
-                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) = LOWER(TRIM(COALESCE(a.personalemail, '')))
-                AND TRIM(COALESCE(a2.personalemail, '')) != ''
-                AND LOWER(TRIM(COALESCE(a2.personalemail, ''))) != 'null'
+            AND LOWER(TRIM(COALESCE(a.personalemail, ''))) IN (
+              SELECT LOWER(TRIM(COALESCE(personalemail, '')))
+              FROM public.tbl_alumni
+              WHERE personalemail IS NOT NULL
+                AND TRIM(COALESCE(personalemail, '')) != ''
+                AND LOWER(TRIM(COALESCE(personalemail, ''))) != 'null'
+              GROUP BY LOWER(TRIM(COALESCE(personalemail, '')))
+              HAVING COUNT(*) > 1
             )
           )`;
         }
@@ -1180,13 +1182,14 @@ export async function GET(req: Request) {
             a.contactno IS NOT NULL
             AND TRIM(COALESCE(a.contactno, '')) != ''
             AND LOWER(TRIM(COALESCE(a.contactno, ''))) != 'null'
-            AND EXISTS (
-              SELECT 1
-              FROM public.tbl_alumni a2
-              WHERE a2.alumniid != a.alumniid
-                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) = LOWER(TRIM(COALESCE(a.contactno, '')))
-                AND TRIM(COALESCE(a2.contactno, '')) != ''
-                AND LOWER(TRIM(COALESCE(a2.contactno, ''))) != 'null'
+            AND LOWER(TRIM(COALESCE(a.contactno, ''))) IN (
+              SELECT LOWER(TRIM(COALESCE(contactno, '')))
+              FROM public.tbl_alumni
+              WHERE contactno IS NOT NULL
+                AND TRIM(COALESCE(contactno, '')) != ''
+                AND LOWER(TRIM(COALESCE(contactno, ''))) != 'null'
+              GROUP BY LOWER(TRIM(COALESCE(contactno, '')))
+              HAVING COUNT(*) > 1
             )
           )`;
         }
