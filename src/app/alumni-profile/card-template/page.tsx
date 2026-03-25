@@ -370,7 +370,7 @@ export default function Home() {
             <div 
               className="relative overflow-hidden rounded-lg"
               style={{
-                width: "8.5cm",
+                width: "8.7cm",
                 height: "5.2cm",
               }}
             >
@@ -387,7 +387,7 @@ export default function Home() {
               {/* Student Name, Department, Faculty */}
               <div className="absolute left-[6%] right-[45%] top-[25%] flex flex-col gap-1 text-[#0f7a3a]">
                 <span className="text-[11px] font-semibold leading-tight tracking-tight">
-                  {formData.studentName || "Shan Muhammad"}
+                  {formData.studentName || "Student Name"}
                 </span>
                 <span className="text-[9px] font-semibold leading-tight">
                   {formData.department || "Department of Computer Science"}

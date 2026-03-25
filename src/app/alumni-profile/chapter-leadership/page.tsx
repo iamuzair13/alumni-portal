@@ -104,11 +104,9 @@ export default async function ChapterLeadershipPage({ searchParams }: { searchPa
               <BackButton />
             </div>
             <div className="mb-7 max-w-4xl mx-auto">
-              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-2">
-                Chapter Leadership Positions
-              </h2>
+              
               <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                Interested in taking on a leadership role in your chapter? Apply for a leadership position to help organize events, coordinate activities, and represent your chapter. This is optional and separate from your chapter membership.
+                Interested in taking on a leadership role in your chapter? Apply for a leadership position!
               </p>
             </div>
             <AlumniChapterLeadershipForm alumniId={alumniId} />

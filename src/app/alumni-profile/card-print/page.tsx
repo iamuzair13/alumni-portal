@@ -7,13 +7,13 @@ import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
 import { computeValidityISOFromAppliedAt, formatCardValidityMonthYear } from "@/lib/cardValidity";
+import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
 
 const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "500", "700"],
 });
 
-// Images from public folder
 const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
 const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
 const backTemplate = "/images/cards/alumni-card-back.jpeg";
@@ -51,21 +51,7 @@ function CardPrintPageContent() {
   const backSideRef = useRef<HTMLDivElement>(null);
   const sapBarcodeRef = useRef<SVGSVGElement>(null);
   const regBarcodeRef = useRef<SVGSVGElement>(null);
-  const alumniInfoRef = useRef<HTMLDivElement>(null);
   const hasAutoDownloadedRef = useRef(false);
-
-  const infoTextClass = (() => {
-    const g = String(cardData?.gender ?? "").trim().toLowerCase();
-    const isMale = g === "male" || g === "m";
-    return isMale ? "text-[#0f7a3a]" : "text-white";
-  })();
-
-  const getFrontTemplate = () => {
-    const g = String(cardData?.gender ?? "").trim().toLowerCase();
-    if (g === "female" || g === "f") return femaleFrontTemplate;
-    if (g === "male" || g === "m") return maleFrontTemplate;
-    return maleFrontTemplate;
-  };
 
   // Fetch alumni data
   useEffect(() => {
@@ -196,10 +182,15 @@ function CardPrintPageContent() {
     });
   };
 
+  const getFrontTemplateForPreload = useCallback(() => {
+    const g = String(cardData?.gender ?? "").trim().toLowerCase();
+    if (g === "female" || g === "f") return femaleFrontTemplate;
+    if (g === "male" || g === "m") return maleFrontTemplate;
+    return maleFrontTemplate;
+  }, [cardData?.gender]);
+
   const handleDownloadPDF = useCallback(async () => {
     if (!frontSideRef.current || !backSideRef.current || isGenerating || !cardData) return;
-
-    let originalAlumniTransform: string | null = null;
 
     try {
       setIsGenerating(true);
@@ -218,15 +209,10 @@ function CardPrintPageContent() {
 
       // Ensure images are loaded before rasterizing
       await Promise.all([
-        preloadImage(getFrontTemplate()),
+        preloadImage(getFrontTemplateForPreload()),
         preloadImage(backTemplate),
         preloadImage(getPhotoUrl()),
       ]);
-
-      if (alumniInfoRef.current) {
-        originalAlumniTransform = alumniInfoRef.current.style.transform;
-        alumniInfoRef.current.style.transform = "translateY(-6px)";
-      }
 
       // Capture front side
       const frontRect = frontSideRef.current.getBoundingClientRect();
@@ -277,12 +263,9 @@ function CardPrintPageContent() {
       const filename = `${(cardData.studentName || "alumni-card").replace(/\s+/g, "-")}.pdf`;
       pdf.save(filename.toLowerCase());
     } finally {
-      if (alumniInfoRef.current) {
-        alumniInfoRef.current.style.transform = originalAlumniTransform ?? "";
-      }
       setIsGenerating(false);
     }
-  }, [cardData, isGenerating]);
+  }, [cardData, getFrontTemplateForPreload, isGenerating]);
 
   useEffect(() => {
     if (!autoDownload || !cardData) return;
@@ -373,65 +356,20 @@ function CardPrintPageContent() {
           className="flex flex-col items-center gap-10 bg-white p-10 rounded-lg shadow-lg"
         >
           {/* Front Side */}
-          <div 
-            ref={frontSideRef} 
-            className="relative overflow-hidden rounded-lg"
-            style={{
-              width: "322px",
-              height: "197px",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getFrontTemplate()}
-              alt="Alumni card front template"
-              className="w-full h-full object-cover"
-              style={{
-                borderRadius: "8px",
-              }}
+          <div ref={frontSideRef}>
+            <AlumniCardTemplate
+              studentName={cardData.studentName}
+              department={cardData.department}
+              faculty={cardData.faculty}
+              campus={cardData.campus ?? null}
+              passingYear={cardData.passingYear ?? null}
+              alumniId={cardData.alumniId}
+              gender={cardData.gender ?? null}
+              cnicPassport={cardData.cnicPassport ?? null}
+              validity={cardData.validity ?? undefined}
+              photoUrl={cardData.photoUrl ?? null}
+              cardImage={cardData.cardImage ?? null}
             />
-
-            {/* Student Name */}
-            <div className={`absolute left-[7%] right-[45%] top-[31%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start`}>
-              <span className={"text-[12px] leading-tight tracking-tight"}>
-                {cardData.studentName || "Alumni Name"}
-              </span>
-            </div>
-
-            {/* Alumni ID, Campus, Validity */}
-            <div
-              ref={alumniInfoRef}
-              className={`absolute top-[44%] left-[23%] flex flex-col justify-start items-start gap-0.1 ${infoTextClass}`}
-            >
-              <span className="text-[11px] font-medium">{cardData.cnicPassport || "Passport"}</span>
-              <span className="text-[10px] font-medium">{cardData.alumniId || "UOL-AL-0000"}</span>
-              <span className="text-[10px] font-medium">{cardData.campus || "Campus"}</span>
-              <span className="text-[10px] font-medium">{formattedValidity() || "Validity"}</span>
-            </div>
-
-            {/* Department | Passing Year and Faculty */}
-            <div className={`absolute left-[7%] bottom-[10%] right-[35%] ${infoTextClass} flex flex-col justify-start items-start`}>
-              <div className="text-[8px] font-medium leading-tight ">
-                {cardData.department || "Department"}
-                {cardData.passingYear ? ` | ${cardData.passingYear}` : ""}
-              </div>
-              <div className="text-[8px] font-medium leading-tight opacity-95">
-                {cardData.faculty || "Faculty"}
-              </div>
-            </div>
-
-            {/* Photo */}
-            <div className="absolute right-[14%] top-[28%] flex  w-[20%] items-center justify-center overflow-hidden rounded-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={getPhotoUrl()}
-                alt={cardData.studentName || "Student"}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/images/person.jpg";
-                }}
-              />
-            </div>
           </div>
 
           {/* Back Side */}

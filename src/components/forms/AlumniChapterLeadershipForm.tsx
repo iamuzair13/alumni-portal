@@ -582,9 +582,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
       <div className="mb-6">
         <LeadershipApplicationsTracker alumniId={alumniIdNumber} />
       </div>
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Chapter Leadership</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400">Apply for a leadership position in your chapter.</p>
-
+    
       <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="space-y-6">
           {/* Post Selection - Radio Buttons */}
