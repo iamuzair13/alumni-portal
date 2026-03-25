@@ -410,11 +410,11 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         const n = Number(value);
         if (!Number.isFinite(n) || n < 1) return "";
         const m = Math.min(5, Math.max(1, Math.round(n)));
-        if (m === 1) return "Very Poor";
-        if (m === 2) return "Poor";
-        if (m === 3) return "Fair";
-        if (m === 4) return "Good";
-        return "Excellent";
+        if (m === 1) return "Beginner";
+        if (m === 2) return "Basic";
+        if (m === 3) return "Intermediate";
+        if (m === 4) return "Advanced";
+        return "Expert";
       };
 
       const proficiencyMap = (() => {
@@ -582,11 +582,6 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           { label: "Passing Year", value: data.applicant.passingYear ? String(data.applicant.passingYear) : "-" },
         ]
       );
-      hLine(0, 10);
-
-      sectionTitle("Role Information");
-      drawWrappedText(`Application Type: ${data.leadershipType === "chapter" ? "Chapter" : "Association"}`, margin, 10.5, false, maxWidth, 4);
-      drawWrappedText(`Role Title: ${String(data.position || "-")}`, margin, 10.5, false, maxWidth, 4);
       hLine(0, 10);
 
       sectionTitle("Criteria");

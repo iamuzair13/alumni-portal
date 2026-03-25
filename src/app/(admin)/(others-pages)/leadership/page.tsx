@@ -152,11 +152,11 @@ function proficiencyLabel(value: number | null | undefined): string {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 1) return "";
   const m = Math.min(5, Math.max(1, Math.round(n)));
-  if (m === 1) return "Very Poor";
-  if (m === 2) return "Poor";
-  if (m === 3) return "Fair";
-  if (m === 4) return "Good";
-  return "Excellent";
+  if (m === 1) return "Beginner";
+  if (m === 2) return "Basic";
+  if (m === 3) return "Intermediate";
+  if (m === 4) return "Advanced";
+  return "Expert";
 }
 
 function starsText(value: number | null | undefined): string {

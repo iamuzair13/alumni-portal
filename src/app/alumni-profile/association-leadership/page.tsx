@@ -125,11 +125,9 @@ export default async function AssociationLeadershipPage({ searchParams }: { sear
               <BackButton />
             </div>
             <div className="mb-7 max-w-4xl mx-auto">
-              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-2">
-                Association Leadership Positions
-              </h2>
+            
               <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-                Take on a leadership role in the Alumni Association to organize events, coordinate activities, and represent the UOL community. This is optional and separate from your association membership.
+                Take on a leadership role in the Alumni Association to organize events, coordinate activities.
               </p>
             </div>
             <AlumniAssociationForm alumniId={alumniId} />

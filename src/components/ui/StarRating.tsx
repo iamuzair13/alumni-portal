@@ -4,11 +4,11 @@ import React, { useMemo, useState } from "react";
 import { FaStar } from "react-icons/fa";
 
 export const PROFICIENCY_LABELS: Record<number, string> = {
-  1: "Very Poor",
-  2: "Poor",
-  3: "Fair",
-  4: "Good",
-  5: "Excellent",
+  1: "Beginner",
+  2: "Basic",
+  3: "Intermediate",
+  4: "Advanced",
+  5: "Expert",
 };
 
 export function proficiencyLabel(value: number | null | undefined): string {

@@ -582,14 +582,12 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
       <div className="mb-6">
         <LeadershipApplicationsTracker alumniId={alumniIdNumber} />
       </div>
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Alumni Association</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400">Apply for a leadership role in the Alumni Association.</p>
-
+      
       <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="space-y-6">
           {/* Role Selection - Radio Buttons */}
           <div>
-            <label className={`${labelBase} text-base font-semibold`}>
+            <label className={`${labelBase} text-[18px] font-semibold`}>
               Apply for the role <span className="text-rose-600">*</span>
             </label>
             <div className="space-y-3 mt-3">
@@ -625,6 +623,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
             <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Information</div>
               <div className="mt-3 space-y-3">
+                
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                   <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Description</summary>
                   <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
@@ -645,49 +644,6 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     <div className={errorText}>You must confirm before submitting.</div>
                   ) : null}
                 </details>
-
-                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
-                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {criteriaLoading ? "Loading..." : officeTermGovernanceHtml ? officeTermGovernanceHtml : "No office term & related governance configured yet."}
-                  </div>
-                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register("officeGovernanceAcknowledged", { required: true })}
-                      className="mt-1 h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-800 dark:text-gray-200">
-                      I have read and fully understood the information.
-                      <span className="text-rose-600"> *</span>
-                    </span>
-                  </label>
-                  {errors.officeGovernanceAcknowledged ? (
-                    <div className={errorText}>You must confirm before submitting.</div>
-                  ) : null}
-                </details>
-
-                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
-                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {criteriaLoading ? "Loading..." : codeOfEthics ? codeOfEthics : "No code of ethics configured yet."}
-                  </div>
-                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register("codeOfEthicsAcknowledged", { required: true })}
-                      className="mt-1 h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-800 dark:text-gray-200">
-                      I have read and fully understood the information.
-                      <span className="text-rose-600"> *</span>
-                    </span>
-                  </label>
-                  {errors.codeOfEthicsAcknowledged ? (
-                    <div className={errorText}>You must confirm before submitting.</div>
-                  ) : null}
-                </details>
-
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                   <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Criteria</summary>
                   <div className="mt-2">
@@ -826,6 +782,48 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     )}
                   </div>
                 </details>
+                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
+                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {criteriaLoading ? "Loading..." : officeTermGovernanceHtml ? officeTermGovernanceHtml : "No office term & related governance configured yet."}
+                  </div>
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("officeGovernanceAcknowledged", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and fully understood the information.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.officeGovernanceAcknowledged ? (
+                    <div className={errorText}>You must confirm before submitting.</div>
+                  ) : null}
+                </details>
+
+                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
+                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {criteriaLoading ? "Loading..." : codeOfEthics ? codeOfEthics : "No code of ethics configured yet."}
+                  </div>
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("codeOfEthicsAcknowledged", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and fully understood the information.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.codeOfEthicsAcknowledged ? (
+                    <div className={errorText}>You must confirm before submitting.</div>
+                  ) : null}
+                </details>
+
 
                 <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                   <div className="flex items-start justify-between gap-3">

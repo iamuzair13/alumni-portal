@@ -587,7 +587,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         <div className="space-y-6">
           {/* Post Selection - Radio Buttons */}
           <div>
-            <label className={`${labelBase} text-base font-semibold`}>
+            <label className={`${labelBase} text-[18px] font-semibold`}>
               Apply for the post <span className="text-rose-600">*</span>
             </label>
             <div className="space-y-3 mt-3">
@@ -618,9 +618,29 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
             </div>
             {errors.post && <span className={errorText}>{errors.post.message}</span>}
           </div>
-
+              <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Description</summary>
+                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {criteriaLoading ? "Loading..." : roleDescription ? roleDescription : "No role description configured yet."}
+                  </div>
+                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register("roleDescriptionAcknowledged", { required: true })}
+                      className="mt-1 h-4 w-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                      I have read and fully understood the information.
+                      <span className="text-rose-600"> *</span>
+                    </span>
+                  </label>
+                  {errors.roleDescriptionAcknowledged ? (
+                    <div className={errorText}>You must confirm before submitting.</div>
+                  ) : null}
+                </details>
           {selectedPost ? (
             <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+              
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Information</div>
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                   <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Criteria</summary>
@@ -761,26 +781,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                   </div>
                 </details>
               <div className="mt-3 space-y-3">
-                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Description</summary>
-                  <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {criteriaLoading ? "Loading..." : roleDescription ? roleDescription : "No role description configured yet."}
-                  </div>
-                  <label className="mt-3 flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register("roleDescriptionAcknowledged", { required: true })}
-                      className="mt-1 h-4 w-4 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-800 dark:text-gray-200">
-                      I have read and fully understood the information.
-                      <span className="text-rose-600"> *</span>
-                    </span>
-                  </label>
-                  {errors.roleDescriptionAcknowledged ? (
-                    <div className={errorText}>You must confirm before submitting.</div>
-                  ) : null}
-                </details>
+                
 
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                   <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
@@ -860,9 +861,18 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                     Optional. If provided, aim for {planMinLen}-{planMaxLen} characters.
                   </div>
                 </div>
-
+ <div>
+            <label className={labelBase}>Additional Achievements</label>
+            <textarea
+              {...register("additionalAchievements")}
+              rows={5}
+              placeholder="Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role."
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
                 <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+            
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upload Documents</div>
             <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">Allowed: PDF, DOC, DOCX. Max size: 5MB per file.</div>
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -956,15 +966,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
             ) : null}
                 </div>
               </div>
-              <div>
-            <label className={labelBase}>Additional Achievements</label>
-            <textarea
-              {...register("additionalAchievements")}
-              rows={5}
-              placeholder="Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role."
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+             
                           <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                   <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Compliance Declaration</div>
                   {complianceDeclaration ? (
