@@ -58,6 +58,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
   const [showSocialForm, setShowSocialForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
   const [dismissedChangeApproval, setDismissedChangeApproval] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
@@ -116,6 +117,7 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     ""
   ).trim();
   const avatar = useMemo(() => {
+    if (avatarOverride) return avatarOverride;
     // If image error occurred, always use fallback
     if (imageError) return "/images/person.jpg";
     // If empty or falsy, return default image
@@ -128,18 +130,18 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
     // Normalize image path for Next.js Image component
     // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
-    // Images are stored in /public/images/(imagename.extention)
+    // In production, uploaded images are served via /api/uploads/images/<filename>
     if (!imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
-      // If it's just a filename, prepend the images directory
+      // If it's just a filename, serve it via uploads API route
       if (!imagePath.includes("/")) {
-        imagePath = `/images/${imagePath}`;
+        imagePath = `/api/uploads/images/${imagePath}`;
       } else {
         // If it's a relative path without leading slash, add it
         imagePath = `/${imagePath}`;
       }
     }
     return imagePath;
-  }, [rawAvatar, imageError]);
+  }, [rawAvatar, imageError, avatarOverride]);
   
   // Reset image error when avatar changes
   useEffect(() => {
@@ -147,6 +149,15 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
       setImageError(false);
     }
   }, [rawAvatar]);
+
+  // Clear any manual override once the underlying DB value changes (refetch completed)
+  useEffect(() => {
+    if (!avatarOverride) return;
+    const normalizedOverride = avatarOverride.split("?")[0];
+    if (normalizedOverride && rawAvatar && normalizedOverride.endsWith(`/${rawAvatar}`)) {
+      setAvatarOverride(null);
+    }
+  }, [avatarOverride, rawAvatar]);
   const faculty = String(fullDetails?.facultyname ?? data?.faculty ?? "").trim();
   const dept = String(fullDetails?.departmentname ?? data?.department ?? "").trim();
   const program = String(fullDetails?.degreetitle ?? data?.program ?? "").trim();
@@ -265,6 +276,15 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
           borderRadius: '8px',
         },
       });
+
+      // Immediately swap the displayed image to the returned path/filename.
+      // Add cache busting to avoid stale browser/Next.js image cache.
+      const returnedPath = String(result?.imagePath || result?.image || "").trim();
+      if (returnedPath) {
+        const normalized = returnedPath.startsWith("/") ? returnedPath : `/images/${returnedPath}`;
+        setImageError(false);
+        setAvatarOverride(`${normalized}?t=${Date.now()}`);
+      }
 
       // Invalidate and refetch the profile data to show the updated image
       await queryClient.invalidateQueries({ queryKey: alumniProfileKey(sapId) });

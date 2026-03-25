@@ -157,7 +157,7 @@ function CardPrintPageContent() {
         if (cardImg.startsWith("/") || cardImg.startsWith("http")) {
           return cardImg;
         }
-        return `/images/${cardImg}`;
+        return `/api/uploads/images/${cardImg}`;
       }
     }
     if (cardData?.photoUrl) {
@@ -166,7 +166,7 @@ function CardPrintPageContent() {
         if (photo.startsWith("/") || photo.startsWith("http")) {
           return photo;
         }
-        return `/images/${photo}`;
+        return `/api/uploads/images/${photo}`;
       }
     }
     return "/images/person.jpg";

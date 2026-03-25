@@ -69,8 +69,8 @@ export default function AlumniCardTemplate({
       return imagePath;
     }
     if (!imagePath.includes("/")) {
-      // Images are now stored directly in /images/
-      return `/images/${imagePath}`;
+      // Uploaded images are served via API route
+      return `/api/uploads/images/${imagePath}`;
     }
     return imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
   };
