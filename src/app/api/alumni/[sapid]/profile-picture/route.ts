@@ -326,7 +326,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
     // Image path will be "/images" as per requirement, but we store just the filename
     await sql/* sql */`
       UPDATE public.tbl_alumni 
-      SET image1 = ${filename}, image2 = ${filename}, alumni_consent_pic = ${consentPicValue}
+      SET image1 = ${filename},
+          image2 = ${filename},
+          alumni_consent_pic = ${consentPicValue},
+          change_approval = CASE
+            WHEN LOWER(COALESCE(change_approval, '')) = 'rejected' THEN NULL
+            ELSE change_approval
+          END
       WHERE alumniid = ${alumni.alumniid}`;
 
     // Return the full path for immediate display

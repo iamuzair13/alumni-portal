@@ -321,6 +321,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
 
   const handleExportToExcel = useCallback(() => {
     const exportColumnKeys: string[] = [
+      "SR.No",
       "SAP ID",
       "Registration No",
       "Full Name",
@@ -388,6 +389,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
       }
 
       return allItems.map((item) => ({
+        "SR.No": item.alumniId || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationNo || "",
         "Full Name": item.name || "",

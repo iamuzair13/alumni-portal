@@ -16,6 +16,9 @@ export type LeadershipApplicationTrace = {
   position: string;
   status: string;
   additionalAchievements?: string | null;
+  cvFileUrl?: string | null;
+  additionalFile1Url?: string | null;
+  additionalFile2Url?: string | null;
   createdAt: string;
 };
 

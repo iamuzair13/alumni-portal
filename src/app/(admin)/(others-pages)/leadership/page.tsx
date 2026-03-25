@@ -53,6 +53,7 @@ type LeadershipMember = {
   position: string;
   createdAt: string;
   chapters?: string[];
+  selectedByAdmin?: string | null;
 };
 
 type LeadershipApplication = {
@@ -69,6 +70,9 @@ type LeadershipApplication = {
   position: string;
   status?: string;
   additionalAchievements?: string | null;
+  cvFileUrl?: string | null;
+  additionalFile1Url?: string | null;
+  additionalFile2Url?: string | null;
   createdAt: string;
 };
 
@@ -175,6 +179,19 @@ function documentsFromItem(item: unknown) {
   if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
   if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
   return docs;
+}
+
+function fileNameFromUrl(url: string): string {
+  try {
+    const u = String(url || "").trim();
+    if (!u) return "";
+    const path = u.split("?")[0].split("#")[0];
+    const parts = path.split("/").filter(Boolean);
+    const last = parts[parts.length - 1] || "";
+    return last ? decodeURIComponent(last) : "";
+  } catch {
+    return "";
+  }
 }
 
 async function fetchApplicationCounts(input: {
@@ -447,7 +464,7 @@ export default function LeadershipPage() {
     if (action === "approve" && isAdmin && mandatoryCriteriaIds.length > 0) {
       const missing = mandatoryCriteriaIds.filter((id) => !adminCriteriaIds.has(id));
       if (missing.length > 0) {
-        toast.error("Please confirm all mandatory criteria before approving.");
+        toast.error("Please check the mandatory critaria");
         return;
       }
     }
@@ -1084,6 +1101,10 @@ export default function LeadershipPage() {
                     expandedMemberId={expandedMemberId}
                     onExpand={setExpandedMemberId}
                     onDelete={handleMemberDelete}
+                    onViewApplication={(app) => {
+                      setSelectedViewApp({ type: app.type, applicationId: app.id });
+                      viewModal.openModal();
+                    }}
                     processingIds={processingIds}
                   />
                 )}
@@ -1323,7 +1344,7 @@ export default function LeadershipPage() {
                           </div>
 
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Plan / Strategy</div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Please tell your plan or strategy to achieve the role and responsibility assigned to you.</div>
                             <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                               {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
                             </div>
@@ -1478,6 +1499,22 @@ function ApplicationsTable({
                   </button>
                 ) : null}
               </div>
+              {(() => {
+                const docs = documentsFromItem(app);
+                if (!docs.length) return null;
+                return (
+                  <div className="mt-1 space-y-0.5">
+                    {docs.map((d) => {
+                      const name = fileNameFromUrl(d.url) || d.label;
+                      return (
+                        <div key={d.key} className="text-[11px] text-gray-600 dark:text-gray-400 truncate">
+                          {d.label}: {name}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <a href={app.email ? `mailto:${app.email}` : "#"} className="lg:hidden block text-xs text-blue-600 truncate">{app.email || ""}</a>
             </TableCell>
             <TableCell className="px-4 py-3 text-sm hidden lg:table-cell">
@@ -1553,6 +1590,7 @@ function MembersTable({
   expandedMemberId,
   onExpand,
   onDelete,
+  onViewApplication,
   processingIds,
 }: {
   members: LeadershipMember[];
@@ -1562,6 +1600,7 @@ function MembersTable({
   expandedMemberId: number | null;
   onExpand: (id: number | null) => void;
   onDelete: (id: number, type: "chapter" | "association") => Promise<void>;
+  onViewApplication: (app: { type: "chapter" | "association"; id: number }) => void;
   processingIds: Set<number>;
 }) {
   if (loading) {
@@ -1574,6 +1613,7 @@ function MembersTable({
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Name</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Email</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Position</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden xl:table-cell">Selected by Admin</TableCell>
             {isAdmin && (
               <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">Actions</TableCell>
             )}
@@ -1587,6 +1627,7 @@ function MembersTable({
               <TableCell className="px-4 py-4"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 hidden lg:table-cell"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 hidden xl:table-cell"><div className="h-4 w-44 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               {isAdmin && (
                 <TableCell className="px-4 py-4 sticky right-0 bg-white dark:bg-gray-800"><div className="h-8 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" /></TableCell>
               )}
@@ -1615,6 +1656,7 @@ function MembersTable({
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Name</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Email</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Position</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden xl:table-cell">Selected by Admin</TableCell>
           {isAdmin && (
             <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">Actions</TableCell>
           )}
@@ -1647,22 +1689,37 @@ function MembersTable({
                 <a href={member.email ? `mailto:${member.email}` : "#"} className="text-blue-600 hover:underline truncate block">{member.email || "-"}</a>
               </TableCell>
               <TableCell className="px-4 py-3 text-sm truncate">{member.position}</TableCell>
+              <TableCell className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300 hidden xl:table-cell">
+                <span className="line-clamp-2">
+                  {String(member.selectedByAdmin || "").trim() || "-"}
+                </span>
+              </TableCell>
               {isAdmin && (
                 <TableCell className="px-4 py-3 text-right sticky right-0 bg-white dark:bg-gray-800">
-                  <button
-                    onClick={() => onDelete(member.id, type)}
-                    disabled={processingIds.has(member.id)}
-                    className="p-1.5 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
-                    title="Delete"
-                  >
-                    <TrashBinIcon className="h-4 w-4" />
-                  </button>
+                  <div className="flex flex-row flex-wrap justify-end gap-1">
+                    <button
+                      onClick={() => onViewApplication({ type, id: member.id })}
+                      disabled={processingIds.has(member.id)}
+                      className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
+                      title="View"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(member.id, type)}
+                      disabled={processingIds.has(member.id)}
+                      className="p-1.5 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
+                      title="Delete"
+                    >
+                      <TrashBinIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 </TableCell>
               )}
             </TableRow>
             {expandedMemberId === member.id && (
               <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
-                <TableCell colSpan={isAdmin ? 6 : 5} className="px-4 py-4">
+                <TableCell colSpan={isAdmin ? 7 : 6} className="px-4 py-4">
                   <div className="w-full overflow-hidden">
                     <AlumniExpandableDetails sapId={member.sapId || member.registrationno || ""} onClose={() => onExpand(null)} />
                   </div>

@@ -1956,6 +1956,7 @@ export const AlumniTabs: React.FC = () => {
       // Map ALL fields to Excel format
       return allItems.map((item: Record<string, unknown>) => ({
         // Basic Information
+        "SR.No": item.alumniid || "",
         "SAP ID": item.sapid || "",
         "Registration No": item.registrationno || "",
         "Full Name": item.alumniname || "",
@@ -2092,6 +2093,7 @@ export const AlumniTabs: React.FC = () => {
 
     // Define column options
     const columns: ColumnOption[] = [
+        { key: "SR.No", label: "SR.No", defaultSelected: true },
         { key: "SAP ID", label: "SAP ID", defaultSelected: true },
         { key: "Registration No", label: "Registration No", defaultSelected: true },
         { key: "Full Name", label: "Full Name", defaultSelected: true },

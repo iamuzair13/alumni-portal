@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
       position: string;
       createdAt: string;
       chapters?: string[];
+      selectedByAdmin?: string | null;
     }> = [];
 
     if (type === "chapter") {
@@ -48,6 +49,17 @@ export async function GET(req: NextRequest) {
       const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
 
       const rows = await sql/* sql */`
+        WITH admin_criteria AS (
+          SELECT
+            lcc.chapter_application_id AS application_id,
+            STRING_AGG(lrc.label || ': ' || COALESCE(lcc.response, CASE WHEN lcc.confirmed = true THEN 'YES' ELSE 'NO' END), ', ' ORDER BY lrc.sort_order) AS admin_confirmed_criteria
+          FROM public.leadership_criteria_confirmations lcc
+          JOIN public.leadership_role_criteria lrc ON lrc.id = lcc.criterion_id
+          WHERE lcc.leadership_type = 'chapter'
+            AND lcc.chapter_application_id IS NOT NULL
+            AND lcc.actor_type = 'admin'
+          GROUP BY lcc.chapter_application_id
+        )
         SELECT 
           a.alumniid,
           a.sapid,
@@ -68,7 +80,8 @@ export async function GET(req: NextRequest) {
           ac.chapter3,
           COALESCE(c1.national_chapter, c1.international_chapter) as chapter1_name,
           COALESCE(c2.national_chapter, c2.international_chapter) as chapter2_name,
-          COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name
+          COALESCE(c3.national_chapter, c3.international_chapter) as chapter3_name,
+          admin_criteria.admin_confirmed_criteria
         FROM public.tbl_alumni a
         JOIN public.chapter_leadership cl ON cl.id = a.chapter_leadership
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -78,6 +91,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
         LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
         LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
+        LEFT JOIN admin_criteria ON admin_criteria.application_id = cl.id
         WHERE a.chapter_leadership IS NOT NULL
           AND cl.status = 'approved'
           ${accessFilterCondition}
@@ -111,6 +125,7 @@ export async function GET(req: NextRequest) {
           position: r.post ? String(r.post) : "",
           createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : new Date().toISOString(),
           chapters,
+          selectedByAdmin: r.admin_confirmed_criteria ? String(r.admin_confirmed_criteria) : null,
         });
       }
     } else if (type === "association") {
@@ -126,6 +141,17 @@ export async function GET(req: NextRequest) {
       const chapterCondition = chapter ? sql` AND assoc.title ILIKE ${`%${chapter}%`}` : sql``;
 
       const rows = await sql/* sql */`
+        WITH admin_criteria AS (
+          SELECT
+            lcc.association_application_id AS application_id,
+            STRING_AGG(lrc.label || ': ' || COALESCE(lcc.response, CASE WHEN lcc.confirmed = true THEN 'YES' ELSE 'NO' END), ', ' ORDER BY lrc.sort_order) AS admin_confirmed_criteria
+          FROM public.leadership_criteria_confirmations lcc
+          JOIN public.leadership_role_criteria lrc ON lrc.id = lcc.criterion_id
+          WHERE lcc.leadership_type = 'association'
+            AND lcc.association_application_id IS NOT NULL
+            AND lcc.actor_type = 'admin'
+          GROUP BY lcc.association_application_id
+        )
         SELECT 
           a.alumniid,
           a.sapid,
@@ -141,13 +167,15 @@ export async function GET(req: NextRequest) {
           ass.id as leadership_id,
           ass.q3 as role,
           ass.createddatetime,
-          assoc.title as association_title
+          assoc.title as association_title,
+          admin_criteria.admin_confirmed_criteria
         FROM public.tbl_alumni a
         JOIN public.tblalumniassociation ass ON ass.id = a.association_job
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
         LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+        LEFT JOIN admin_criteria ON admin_criteria.application_id = ass.id
         WHERE a.association_job IS NOT NULL
           AND ass.status = 'approved'
           ${accessFilterCondition}
@@ -168,6 +196,7 @@ export async function GET(req: NextRequest) {
         program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
         position: r.role ? String(r.role) : "",
         createdAt: r.createddatetime ? new Date(r.createddatetime as string).toISOString() : new Date().toISOString(),
+        selectedByAdmin: r.admin_confirmed_criteria ? String(r.admin_confirmed_criteria) : null,
       }));
     }
     

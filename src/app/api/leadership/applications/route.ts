@@ -100,6 +100,9 @@ export async function GET(req: NextRequest) {
       position: string;
       status: string;
       additionalAchievements?: string | null;
+      cvFileUrl?: string | null;
+      additionalFile1Url?: string | null;
+      additionalFile2Url?: string | null;
       createdAt: string;
     }> = [];
 
@@ -170,6 +173,9 @@ export async function GET(req: NextRequest) {
           cl.created_at,
           cl.status,
           cl.additional_achievements,
+          cl.cv_file_url,
+          cl.additional_file1_url,
+          cl.additional_file2_url,
           a.alumniid,
           a.sapid,
           a.alumniname,
@@ -221,6 +227,9 @@ export async function GET(req: NextRequest) {
           position: r.post ? String(r.post) : "",
           status: r.status ? String(r.status) : "",
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
+          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
+          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
+          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : new Date().toISOString(),
         });
       });
@@ -235,6 +244,9 @@ export async function GET(req: NextRequest) {
           ass.createddatetime,
           ass.status,
           ass.additional_achievements,
+          ass.cv_file_url,
+          ass.additional_file1_url,
+          ass.additional_file2_url,
           a.alumniid,
           a.sapid,
           a.alumniname,
@@ -286,6 +298,9 @@ export async function GET(req: NextRequest) {
           position: r.role ? String(r.role) : "",
           status: r.status ? String(r.status) : "",
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
+          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
+          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
+          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           createdAt: r.createddatetime ? new Date(r.createddatetime as string).toISOString() : new Date().toISOString(),
         });
       });

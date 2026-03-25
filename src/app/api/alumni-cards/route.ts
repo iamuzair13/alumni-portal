@@ -140,6 +140,15 @@ export async function POST(req: Request) {
             createdat = public.tblcard.createdat,
             validity_date = EXCLUDED.validity_date
         RETURNING cardid`;
+
+      await sql/* sql */`
+        UPDATE public.tbl_alumni
+        SET change_approval = CASE
+          WHEN LOWER(COALESCE(change_approval, '')) = 'rejected' THEN NULL
+          ELSE change_approval
+        END
+        WHERE alumniid = ${alumniId}
+      `;
       
       // Send email notification for new applications
       if (isNewApplication) {
@@ -266,6 +275,15 @@ export async function POST(req: Request) {
           cardaddress = EXCLUDED.cardaddress,
           validity_date = EXCLUDED.validity_date
       RETURNING cardid`;
+
+    await sql/* sql */`
+      UPDATE public.tbl_alumni
+      SET change_approval = CASE
+        WHEN LOWER(COALESCE(change_approval, '')) = 'rejected' THEN NULL
+        ELSE change_approval
+      END
+      WHERE alumniid = ${alumniId}
+    `;
     
     // Send email notification for new applications
     if (isNewApplication) {
