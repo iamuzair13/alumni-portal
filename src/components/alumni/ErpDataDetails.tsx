@@ -11,7 +11,7 @@ type ErpDataDetailsProps = {
   alumniData?: Record<string, unknown> | null;
 };
 
-// Comparison result type
+// Comparison result typeA
 type ComparisonResult = "same" | "minor" | "major" | "no_data";
 
 // Helper function to normalize values for comparison
@@ -65,6 +65,7 @@ const getAlumniFieldValue = (label: string, alumniData: Record<string, unknown> 
     "Father Name": "fathername",
     "CNIC/Passport": "cnicpassport",
     "Mobile": "contactno",
+    "Primary Contact": "contactno",
     "Home Address": "address",
     "Home Country": "country",
     "Department": "departmentname",
@@ -358,15 +359,31 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
       </div>
 
       <div className="space-y-1 text-xs">
-        {/* Personal Information */}
         <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Mandatory</h4>
         </div>
+
         <CompactField label="Sap No" value={data?.SapNo || null} comparisonStatus={getComparisonStatus("Sap No", data?.SapNo)} />
-        <CompactField label="Registration No" value={data?.Mrno || null} comparisonStatus={getComparisonStatus("Registration No", data?.Mrno)} />
         <CompactField label="Full Name" value={data?.Name || null} comparisonStatus={getComparisonStatus("Full Name", data?.Name)} />
         <CompactField label="Father Name" value={data?.Fname || null} comparisonStatus={getComparisonStatus("Father Name", data?.Fname)} />
         <CompactField label="CNIC/Passport" value={data?.Cnic || null} comparisonStatus={getComparisonStatus("CNIC/Passport", data?.Cnic)} />
+        <CompactField label="Primary Contact" value={data?.Mobile || null} comparisonStatus={getComparisonStatus("Primary Contact", data?.Mobile)} />
+        <CompactField label="Personal Email" value={null} />
+        <CompactField label="Faculty" value={null} />
+        <CompactField label="Department" value={data?.DeptName || null} comparisonStatus={getComparisonStatus("Department", data?.DeptName)} />
+        <CompactField label="Program" value={data?.DegrTitle || null} comparisonStatus={getComparisonStatus("Program", data?.DegrTitle)} />
+        <CompactField label="Campus" value={null} />
+        <CompactField label="Passing Out Year" value={null} />
+
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
+        </div>
+
+        {/* Personal Information */}
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
+        </div>
+        <CompactField label="Registration No" value={data?.Mrno || null} comparisonStatus={getComparisonStatus("Registration No", data?.Mrno)} />
         <CompactField label="Gender" value={null} />
         <CompactField label="Date of Birth" value={null} />
         <CompactField label="Marital Status" value={null} />
@@ -375,9 +392,7 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
         </div>
-        <CompactField label="Mobile" value={data?.Mobile || null} comparisonStatus={getComparisonStatus("Mobile", data?.Mobile)} />
         <CompactField label="Secondary Contact" value={null} />
-        <CompactField label="Personal Email" value={null} />
         <CompactField label="Password" value={null} />
         <CompactField label="Home Address" value={data?.Address || null} comparisonStatus={getComparisonStatus("Home Address", data?.Address)} />
         <CompactField label="Home Country" value={data?.Nationality || null} comparisonStatus={getComparisonStatus("Home Country", data?.Nationality)} />
@@ -386,14 +401,9 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
 
         {/* Academic Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic (Additional)</h4>
         </div>
-        <CompactField label="Faculty" value={null} />
-        <CompactField label="Department" value={data?.DeptName || null} comparisonStatus={getComparisonStatus("Department", data?.DeptName)} />
-        <CompactField label="Program" value={data?.DegrTitle || null} comparisonStatus={getComparisonStatus("Program", data?.DegrTitle)} />
-        <CompactField label="Campus" value={null} />
         <CompactField label="Admission Year" value={null} />
-        <CompactField label="Passing Out Year" value={null} />
         <CompactField label="CGPA" value={null} />
         <CompactField label="Major Subject" value={null} />
 

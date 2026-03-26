@@ -231,9 +231,12 @@ export const AlumniTabs: React.FC = () => {
     registrationNo?: string | null;
     name: string;
     email?: string | null;
+    personalEmail?: string | null;
     createdDateTime?: string | null;
     mobile?: string | null;
     primaryContact?: string | null;
+    fatherName?: string | null;
+    cnicOrPassport?: string | null;
     gender?: string | null;
     campus?: string | null;
     homeCountry?: string | null;
@@ -242,6 +245,7 @@ export const AlumniTabs: React.FC = () => {
     faculty?: string | null;
     department?: string | null;
     program?: string | null;
+    passingOutYear?: number | string | null;
     occupationStatus?: string | null;
     workCountry?: string | null;
     workCity?: string | null;
@@ -684,8 +688,15 @@ export const AlumniTabs: React.FC = () => {
   // Confirmation modal state
   const confirmModal = useModal();
   const duplicatesModal = useModal();
+  const incompleteProfileModal = useModal();
   const emailHistoryModal = useModal();
   const [emailHistoryAlumniId, setEmailHistoryAlumniId] = useState<number | null>(null);
+  const [incompleteFields, setIncompleteFields] = useState<Array<{ key: string; label: string }>>([]);
+  const [incompleteTarget, setIncompleteTarget] = useState<AlumniItem | null>(null);
+  const [incompleteHighlightKeys, setIncompleteHighlightKeys] = useState<string[]>([]);
+
+  const [expandedHighlightRowId, setExpandedHighlightRowId] = useState<number | null>(null);
+  const [expandedHighlightKeys, setExpandedHighlightKeys] = useState<string[]>([]);
   const [pendingAction, setPendingAction] = useState<{
     type: "verify" | "unverify" | "delete";
     sapid: string;
@@ -1433,17 +1444,27 @@ export const AlumniTabs: React.FC = () => {
         registrationNo: r.registrationno ?? null,
         name: r.alumniname ?? "",
         email: r.personalemail ?? r.officialemail ?? null,
+        personalEmail: r.personalemail ?? null,
         createdDateTime: (r as unknown as { createddatetime?: string | null }).createddatetime ?? null,
         mobile: r.contactno ?? null,
-        primaryContact: (r as unknown as { contactno1?: string | null }).contactno1 ?? null,
+        primaryContact: (r as unknown as { contactno?: string | null }).contactno ?? r.contactno ?? null,
+        fatherName:
+          (r as unknown as { fathername?: string | null }).fathername ??
+          (r as unknown as { father_name?: string | null }).father_name ??
+          null,
+        cnicOrPassport:
+          (r as unknown as { cnicpassport?: string | null }).cnicpassport ??
+          (r as unknown as { cnic_passport?: string | null }).cnic_passport ??
+          null,
         gender: (r as unknown as { gender?: string | null }).gender ?? null,
         campus: r.campusname ?? null,
         homeCountry: r.country ?? null,
-        homeProvince: (r as unknown as { province?: string | null }).province ?? null,
+        homeProvince: r.province ?? null,
         homeCity: r.city ?? null,
         faculty: r.facultyname ?? null,
         department: r.departmentname ?? null,
         program: r.degreetitle ?? null,
+        passingOutYear: (r as unknown as { yearofending?: number | string | null }).yearofending ?? null,
         occupationStatus: (r as unknown as { employeed?: string | null }).employeed ?? null,
         workCountry: (r as unknown as { work_country?: string | null }).work_country ?? null,
         workCity: (r as unknown as { work_city?: string | null }).work_city ?? null,
@@ -1469,6 +1490,49 @@ export const AlumniTabs: React.FC = () => {
   const normalizeDupKey = useCallback((v: string | null | undefined): string => {
     return String(v ?? "").trim().toLowerCase();
   }, []);
+
+  const isMissingRequiredValue = useCallback((value: unknown) => {
+    if (value === null || value === undefined) return true;
+    if (typeof value === "string") return value.trim() === "";
+    if (typeof value === "number") return !Number.isFinite(value);
+    return String(value).trim() === "";
+  }, []);
+
+  const getMissingRequiredFields = useCallback(
+    (alumni: AlumniItem) => {
+      const requiredFields = [
+        { key: "sapId", label: "SAP ID" },
+        { key: "name", label: "Full Name" },
+        { key: "fatherName", label: "Father Name" },
+        { key: "cnicOrPassport", label: "CNIC/Passport" },
+        { key: "primaryContact", label: "Phone Number" },
+        { key: "personalEmail", label: "Personal Email" },
+        { key: "faculty", label: "Faculty (Association)" },
+        { key: "department", label: "Department" },
+        { key: "program", label: "Program" },
+        { key: "campus", label: "Campus" },
+        { key: "passingOutYear", label: "Passing Out Year" },
+      ] as const;
+
+      return requiredFields.filter((field) => {
+        const raw = alumni as unknown as Record<string, unknown>;
+        const value = (() => {
+          switch (field.key) {
+            case "fatherName":
+              return raw.fatherName ?? raw.fathername ?? raw.father_name ?? null;
+            case "cnicOrPassport":
+              return raw.cnicOrPassport ?? raw.cnicpassport ?? raw.cnic_passport ?? null;
+            case "primaryContact":
+              return raw.primaryContact ?? raw.mobile ?? raw.contactno ?? null;
+            default:
+              return raw[field.key];
+          }
+        })();
+        return isMissingRequiredValue(value);
+      });
+    },
+    [isMissingRequiredValue]
+  );
 
   const getItemLocalKey = useCallback((item: AlumniItem): string => {
     return String(item.alumniid ?? item.id);
@@ -2282,6 +2346,49 @@ export const AlumniTabs: React.FC = () => {
     (sapid: string, name: string, alumniId: number | null, email: string | null) => {
       const localKey = String(alumniId ?? sapid);
       const target = items.find((x) => String(x.alumniid ?? x.id) === localKey);
+
+      if (target) {
+        const missing = getMissingRequiredFields(target);
+        if (missing.length > 0) {
+          setIncompleteFields(missing.map((m) => ({ key: m.key, label: m.label })));
+          setIncompleteTarget(target);
+          setIncompleteHighlightKeys(
+            missing
+              .map((m) => {
+                switch (m.key) {
+                  case "sapId":
+                    return "sapid";
+                  case "name":
+                    return "alumniname";
+                  case "fatherName":
+                    return "fathername";
+                  case "cnicOrPassport":
+                    return "cnicpassport";
+                  case "primaryContact":
+                    return "contactno";
+                  case "personalEmail":
+                    return "personalemail";
+                  case "faculty":
+                    return "faculty";
+                  case "department":
+                    return "department";
+                  case "program":
+                    return "program";
+                  case "campus":
+                    return "campusname";
+                  case "passingOutYear":
+                    return "yearofending";
+                  default:
+                    return null;
+                }
+              })
+              .filter((x): x is Exclude<typeof x, null> => x !== null)
+          );
+          incompleteProfileModal.openModal();
+          return;
+        }
+      }
+
       const dups = target ? findDuplicatesFor(target, items) : [];
       if (dups.length > 0) {
         setPendingDuplicateGate({ type: "verify", targetKey: localKey, name, alumniId, email });
@@ -2296,7 +2403,7 @@ export const AlumniTabs: React.FC = () => {
       setPendingAction({ type: "verify", sapid, name, alumniId, email });
       confirmModal.openModal();
     },
-    [confirmModal, duplicatesModal, findDuplicatesFor, items]
+    [confirmModal, duplicatesModal, findDuplicatesFor, getMissingRequiredFields, incompleteProfileModal, items]
   );
 
   // Execute verify after confirmation
@@ -5578,7 +5685,20 @@ export const AlumniTabs: React.FC = () => {
                           <TableCell colSpan={11} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start ">
-                                <AlumniExpandableDetails sapId={String(alum.alumniid ?? alum.id)} onClose={() => setExpandedRowId(null)} readOnly={!canModify(session?.user)} />
+                                <AlumniExpandableDetails
+                                  sapId={String(alum.alumniid ?? alum.id)}
+                                  onClose={() => {
+                                    setExpandedRowId(null);
+                                    setExpandedHighlightRowId(null);
+                                    setExpandedHighlightKeys([]);
+                                  }}
+                                  readOnly={!canModify(session?.user)}
+                                  highlightMissingFields={
+                                    expandedHighlightRowId && alum.alumniid === expandedHighlightRowId
+                                      ? expandedHighlightKeys
+                                      : undefined
+                                  }
+                                />
                                 <ErpDataDetails sapId={alum.sapId || undefined} registrationNo={alum.registrationNo || undefined} onClose={() => setExpandedRowId(null)} />
                               </div>
                             </div>
@@ -5963,6 +6083,87 @@ export const AlumniTabs: React.FC = () => {
                     {pendingAction.type === "delete" && "Delete"}
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {incompleteProfileModal.isOpen && (
+        <Modal
+          isOpen={incompleteProfileModal.isOpen}
+          onClose={() => {
+            incompleteProfileModal.closeModal();
+            setIncompleteFields([]);
+            setIncompleteTarget(null);
+            setIncompleteHighlightKeys([]);
+          }}
+          className="max-w-lg mx-auto"
+          showCloseButton={true}
+        >
+          <div className="p-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-rose-100 dark:bg-rose-900/30">
+                <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Incomplete Alumni Profile</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  The following required fields must be completed before verification:
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/10 p-4">
+              <div className="space-y-2">
+                {incompleteFields.length === 0 ? (
+                  <div className="text-sm text-rose-800 dark:text-rose-200">-</div>
+                ) : (
+                  incompleteFields.map((f) => (
+                    <div key={f.key} className="flex items-center justify-between gap-3 rounded-lg bg-white/70 dark:bg-gray-900/20 border border-rose-200 dark:border-rose-900/40 px-3 py-2">
+                      <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">{f.label}</div>
+                      <div className="text-xs font-semibold text-rose-700 dark:text-rose-300">Missing</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-3 text-sm text-rose-800 dark:text-rose-200">
+                Please complete these fields before approving.
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  incompleteProfileModal.closeModal();
+                  setIncompleteFields([]);
+                  setIncompleteTarget(null);
+                  setIncompleteHighlightKeys([]);
+                }}
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const rowId = incompleteTarget?.alumniid ?? null;
+                  if (!rowId) return;
+
+                  setExpandedHighlightRowId(rowId);
+                  setExpandedHighlightKeys(incompleteHighlightKeys);
+                  setExpandedRowId(rowId);
+
+                  incompleteProfileModal.closeModal();
+                }}
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500"
+              >
+                Go to Edit
               </button>
             </div>
           </div>

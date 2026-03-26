@@ -7,7 +7,9 @@ export type AlumniListItem = {
   sapid: string;
   alumniname: string;
   gender?: string | null;
+  fathername?: string | null;
   maritalstatus?: string | null;
+  cnicpassport?: string | null;
   facultyname: string | null;
   campusname: string | null;
   departmentname: string | null;

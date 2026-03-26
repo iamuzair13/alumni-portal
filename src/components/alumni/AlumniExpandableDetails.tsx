@@ -155,6 +155,7 @@ type AlumniExpandableDetailsProps = {
   sapId: string;
   onClose: () => void;
   readOnly?: boolean;
+  highlightMissingFields?: string[];
 };
 
 type AlumniFullData = {
@@ -257,7 +258,8 @@ const CompactField: React.FC<{
   options?: { value: string; label: string }[];
   onEdit?: () => void;
   comparisonStatus?: ComparisonResult;
-}> = ({ label, value, isEditing = false, readOnly = false, register, name, type = "text", options, onEdit, comparisonStatus }) => {
+  highlightMissing?: boolean;
+}> = ({ label, value, isEditing = false, readOnly = false, register, name, type = "text", options, onEdit, comparisonStatus, highlightMissing = false }) => {
   // If readOnly is true, always show as display (not editing)
   const effectiveIsEditing = readOnly ? false : isEditing;
   const displayValue = formatValue(value);
@@ -283,12 +285,23 @@ const CompactField: React.FC<{
   
   if (!effectiveIsEditing) {
     return (
-      <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0 flex items-center gap-1.5">
+      <div
+        data-field-name={name || undefined}
+        className={`flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 ${
+          highlightMissing ? "bg-rose-50/70 dark:bg-rose-900/10" : ""
+        }`}
+      >
+        <span className={`text-xs font-medium min-w-[140px] flex-shrink-0 flex items-center gap-1.5 ${
+          highlightMissing ? "text-rose-700 dark:text-rose-300" : "text-gray-500 dark:text-gray-400"
+        }`}>
           {label}:
           {getIndicator()}
         </span>
-        <span className="text-xs text-gray-900 dark:text-gray-100 flex-1 break-words">{displayValue}</span>
+        <span className={`text-xs flex-1 break-words ${
+          highlightMissing ? "text-rose-700 dark:text-rose-200 font-semibold" : "text-gray-900 dark:text-gray-100"
+        }`}>
+          {displayValue}
+        </span>
         {!readOnly && onEdit && (
           <button
             type="button"
@@ -305,8 +318,15 @@ const CompactField: React.FC<{
 
   if (type === "select" && options) {
     return (
-      <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</label>
+      <div
+        data-field-name={name || undefined}
+        className={`flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 ${
+          highlightMissing ? "bg-rose-50/70 dark:bg-rose-900/10" : ""
+        }`}
+      >
+        <label className={`text-xs font-medium min-w-[140px] flex-shrink-0 ${
+          highlightMissing ? "text-rose-700 dark:text-rose-300" : "text-gray-500 dark:text-gray-400"
+        }`}>{label}:</label>
         <select
           {...(register && name ? register(name) : {})}
           disabled={readOnly}
@@ -322,8 +342,15 @@ const CompactField: React.FC<{
 
   if (type === "textarea") {
     return (
-      <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0 pt-1">{label}:</label>
+      <div
+        data-field-name={name || undefined}
+        className={`flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 ${
+          highlightMissing ? "bg-rose-50/70 dark:bg-rose-900/10" : ""
+        }`}
+      >
+        <label className={`text-xs font-medium min-w-[140px] flex-shrink-0 pt-1 ${
+          highlightMissing ? "text-rose-700 dark:text-rose-300" : "text-gray-500 dark:text-gray-400"
+        }`}>{label}:</label>
         <textarea
           {...(register && name ? register(name) : {})}
           rows={2}
@@ -340,8 +367,15 @@ const CompactField: React.FC<{
     // For password fields, show actual value (visible)
     const displayValue = formatValue(value);
     return (
-      <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</label>
+      <div
+        data-field-name={name || undefined}
+        className={`flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 ${
+          highlightMissing ? "bg-rose-50/70 dark:bg-rose-900/10" : ""
+        }`}
+      >
+        <label className={`text-xs font-medium min-w-[140px] flex-shrink-0 ${
+          highlightMissing ? "text-rose-700 dark:text-rose-300" : "text-gray-500 dark:text-gray-400"
+        }`}>{label}:</label>
         {effectiveIsEditing ? (
           <input
             type="text"
@@ -367,8 +401,15 @@ const CompactField: React.FC<{
   }
   
   return (
-    <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">{label}:</label>
+    <div
+      data-field-name={name || undefined}
+      className={`flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 ${
+        highlightMissing ? "bg-rose-50/70 dark:bg-rose-900/10" : ""
+      }`}
+    >
+      <label className={`text-xs font-medium min-w-[140px] flex-shrink-0 ${
+        highlightMissing ? "text-rose-700 dark:text-rose-300" : "text-gray-500 dark:text-gray-400"
+      }`}>{label}:</label>
       <input
         type={type}
         {...(register && name ? register(name) : {})}
@@ -530,7 +571,7 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
   }
 }
 
-function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: string; onClose: () => void; readOnly?: boolean }) {
+function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMissingFields = [] }: AlumniExpandableDetailsProps) {
   const queryClient = useQueryClient();
   const session = useSession();
   const router = useRouter();
@@ -781,6 +822,45 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
 
     return data.departmentname;
   }, [data, allDepartments]);
+
+  const isMissingRequiredValue = useMemo(() => {
+    return (value: unknown) => {
+      if (value === null || value === undefined) return true;
+      if (typeof value === "string") return value.trim() === "";
+      if (typeof value === "number") return !Number.isFinite(value);
+      return String(value).trim() === "";
+    };
+  }, []);
+
+  const requiredMissingMap = useMemo(() => {
+    if (!data) return new Set<string>();
+
+    const missing = new Set<string>();
+    if (isMissingRequiredValue(data.sapid)) missing.add("sapid");
+    if (isMissingRequiredValue(data.alumniname)) missing.add("alumniname");
+    if (isMissingRequiredValue(data.fathername)) missing.add("fathername");
+    if (isMissingRequiredValue(data.cnicpassport)) missing.add("cnicpassport");
+    if (isMissingRequiredValue(data.contactno)) missing.add("contactno");
+    if (isMissingRequiredValue(data.personalemail)) missing.add("personalemail");
+    if (isMissingRequiredValue(displayFacultyName) && isMissingRequiredValue(data.faculty)) missing.add("faculty");
+    if (isMissingRequiredValue(displayDepartmentName) && isMissingRequiredValue(data.department)) missing.add("department");
+    if (isMissingRequiredValue(data.program) && isMissingRequiredValue(data.degreetitle)) missing.add("program");
+    if (isMissingRequiredValue(data.campusname)) missing.add("campusname");
+    if (isMissingRequiredValue(data.yearofending)) missing.add("yearofending");
+
+    return missing;
+  }, [data, displayDepartmentName, displayFacultyName, isMissingRequiredValue]);
+
+  useEffect(() => {
+    if (!highlightMissingFields || highlightMissingFields.length === 0) return;
+    const first = highlightMissingFields.find((k) => requiredMissingMap.has(k));
+    if (!first) return;
+
+    const el = document.querySelector(`[data-field-name="${first}"]`);
+    if (el && "scrollIntoView" in el) {
+      (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightMissingFields, requiredMissingMap]);
 
   // Province options based on selected country
   const provinceOptions = useMemo(() => {
@@ -1130,15 +1210,191 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
 
       <form onSubmit={handleSubmit(onSubmit)} className="overflow-x-hidden">
         <div className="space-y-1 text-xs">
-          {/* Personal Information */}
           <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Mandatory</h4>
+              <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-900/40 rounded-full px-2 py-0.5">Required for verification</span>
+            </div>
+          </div>
+
+          <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} comparisonStatus={getComparisonStatus("Sap No", data.sapid)} highlightMissing={requiredMissingMap.has("sapid")} />
+          <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} comparisonStatus={getComparisonStatus("Full Name", data.alumniname)} highlightMissing={requiredMissingMap.has("alumniname")} />
+          <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} comparisonStatus={getComparisonStatus("Father Name", data.fathername)} highlightMissing={requiredMissingMap.has("fathername")} />
+          <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} comparisonStatus={getComparisonStatus("CNIC/Passport", data.cnicpassport)} highlightMissing={requiredMissingMap.has("cnicpassport")} />
+          <CompactField label="Primary Contact" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} highlightMissing={requiredMissingMap.has("contactno")} />
+          <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} highlightMissing={requiredMissingMap.has("personalemail")} />
+
+          {!isFieldEditing("faculty") || readOnly ? (
+            <CompactField 
+              label="Faculty" 
+              value={facultiesLoading ? "Loading..." : displayFacultyName} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("faculty")}
+              highlightMissing={requiredMissingMap.has("faculty")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
+              <select
+                {...register("faculty", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    const facultyId = value ? Number(value) : null;
+                    setValue("faculty", facultyId);
+                    setValue("department", null);
+                    setValue("program", null);
+                    setValue("departmentname", null);
+                    setValue("degreetitle", null);
+                    // Update facultyname from selected faculty
+                    if (facultyId) {
+                      const selectedFaculty = allFaculties.find(f => f.id === facultyId);
+                      if (selectedFaculty) {
+                        setValue("facultyname", selectedFaculty.faculty_name);
+                      }
+                    } else {
+                      setValue("facultyname", null);
+                    }
+                  }
+                })}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select Faculty</option>
+                {allFaculties.map((faculty) => (
+                  <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {!isFieldEditing("department") || readOnly ? (
+            <CompactField 
+              label="Department" 
+              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("department")}
+              comparisonStatus={getComparisonStatus("Department", displayDepartmentName)}
+              highlightMissing={requiredMissingMap.has("department")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
+              <select
+                {...register("department", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    const departmentId = value ? Number(value) : null;
+                    setValue("department", departmentId);
+                    setValue("program", null);
+                    setValue("degreetitle", null);
+                    // Update departmentname from selected department
+                    if (departmentId) {
+                      const selectedDepartment = allDepartments.find(d => d.id === departmentId);
+                      if (selectedDepartment) {
+                        setValue("departmentname", selectedDepartment.department_name);
+                      }
+                    } else {
+                      setValue("departmentname", null);
+                    }
+                  }
+                })}
+                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
+                {allDepartments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {!isFieldEditing("program") || readOnly ? (
+            <CompactField 
+              label="Program" 
+              value={programsLoading ? "Loading..." : (allPrograms.find(p => p.id === data?.program)?.program_name || data?.degreetitle || "-")} 
+              isEditing={false} 
+              readOnly={readOnly}
+              onEdit={() => startEditingField("program")}
+              comparisonStatus={getComparisonStatus("Program", allPrograms.find(p => p.id === data?.program)?.program_name || data?.degreetitle)}
+              highlightMissing={requiredMissingMap.has("program")}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Program:</label>
+              <select
+                {...register("program", { 
+                  valueAsNumber: true,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    const programId = value ? Number(value) : null;
+                    setValue("program", programId);
+                    // Update degreetitle from selected program
+                    if (programId) {
+                      const selectedProgram = allPrograms.find(p => p.id === programId);
+                      if (selectedProgram) {
+                        setValue("degreetitle", selectedProgram.program_name);
+                      }
+                    } else {
+                      setValue("degreetitle", null);
+                    }
+                  }
+                })}
+                disabled={readOnly || !selectedDepartmentId || allPrograms.length === 0}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedDepartmentId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">{!selectedDepartmentId ? "Select Department First" : "Select Program"}</option>
+                {allPrograms.map((program) => (
+                  <option key={program.id} value={program.id}>{program.program_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <CompactField label="Campus" value={data.campusname} isEditing={isFieldEditing("campusname")} readOnly={readOnly} register={register} name="campusname" type="select" options={[
+            { value: "", label: "Select" },
+            { value: "Lahore", label: "Lahore" },
+            { value: "Sargodha", label: "Sargodha" },
+            { value: "Islamabad", label: "Islamabad" },
+            { value: "Pakpattan", label: "Pakpattan" }
+          ]} onEdit={() => startEditingField("campusname")} highlightMissing={requiredMissingMap.has("campusname")} />
+
+          {!isFieldEditing("yearofending") || readOnly ? (
+            <CompactField label="Passing Out Year" value={data.yearofending} isEditing={false} readOnly={readOnly} onEdit={() => startEditingField("yearofending")} highlightMissing={requiredMissingMap.has("yearofending")} />
+          ) : (
+            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Passing Out Year:</label>
+              <select
+                {...register("yearofending", { valueAsNumber: true })}
+                disabled={readOnly}
+                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+              >
+                <option value="">Select</option>
+                {Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => {
+                  const year = 2000 + i;
+                  return <option key={year} value={year}>{year}</option>;
+                })}
+              </select>
+            </div>
+          )}
+
+         
+          <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Additional</h4>
+              <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-full px-2 py-0.5">All other fields</span>
+            </div>
+          </div>
+
+          <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
           </div>
-          <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} comparisonStatus={getComparisonStatus("Sap No", data.sapid)} />
+
           <CompactField label="Registration No" value={data.registrationno} isEditing={isFieldEditing("registrationno")} readOnly={readOnly} register={register} name="registrationno" onEdit={() => startEditingField("registrationno")} comparisonStatus={getComparisonStatus("Registration No", data.registrationno)} />
-          <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} comparisonStatus={getComparisonStatus("Full Name", data.alumniname)} />
-          <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} comparisonStatus={getComparisonStatus("Father Name", data.fathername)} />
-          <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} comparisonStatus={getComparisonStatus("CNIC/Passport", data.cnicpassport)} />
           <CompactField label="Gender" value={data.gender} isEditing={isFieldEditing("gender")} readOnly={readOnly} register={register} name="gender" type="select" options={[
             { value: "", label: "Select" },
             { value: "Male", label: "Male" },
@@ -1151,60 +1407,11 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
             { value: "Un-Married", label: "Un-Married" }
           ]} onEdit={() => startEditingField("maritalstatus")} />
 
-          {/* Contact Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
           </div>
-          <CompactField label="Primary Contact" value={data.contactno} isEditing={isFieldEditing("contactno")} readOnly={readOnly} register={register} name="contactno" onEdit={() => startEditingField("contactno")} comparisonStatus={getComparisonStatus("Mobile", data.contactno)} />
+
           <CompactField label="Secondary Contact" value={data.contactno1} isEditing={isFieldEditing("contactno1")} readOnly={readOnly} register={register} name="contactno1" onEdit={() => startEditingField("contactno1")} />
-          <CompactField label="Personal Email" value={data.personalemail} isEditing={isFieldEditing("personalemail")} readOnly={readOnly} register={register} name="personalemail" type="email" onEdit={() => startEditingField("personalemail")} />
-          {canViewPassword && (
-            <CompactField
-              label="Password"
-              value={safePasswordValue}
-              isEditing={isFieldEditing("password")}
-              readOnly={readOnly || !isSuperAdmin}
-              register={register}
-              name="password"
-              type="password"
-              onEdit={isSuperAdmin && !readOnly ? () => startEditingField("password") : undefined}
-            />
-          )}
-          {canSendCredentials && data.alumniid && data.alumniid > 0 && (
-            <div className="flex items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-700/50">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Credentials:</span>
-              <button
-                type="button"
-                disabled={isSendingCredentials}
-                onClick={async () => {
-                  if (isSendingCredentials) return;
-                  setIsSendingCredentials(true);
-                  try {
-                    const res = await fetch("/api/send-credentials", {
-                      method: "POST",
-                      headers: { "content-type": "application/json" },
-                      body: JSON.stringify({ alumniId: data.alumniid }),
-                    });
-                    const j = await res.json().catch(() => ({}));
-                    if (!res.ok || (j && j.ok === false)) {
-                      throw new Error((j as any)?.error || `Failed (${res.status})`);
-                    }
-                    toast.success("Credentials email sent");
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "Failed to send credentials";
-                    toast.error(msg);
-                  } finally {
-                    setIsSendingCredentials(false);
-                  }
-                }}
-                className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium bg-[#183D32] text-white hover:bg-[#183D32]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSendingCredentials ? "Sending..." : "Send Credentials"}
-              </button>
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">Sends a temporary password to the alumni email</span>
-            </div>
-          )}
-         
           <CompactField label="Home Address" value={data.address} isEditing={isFieldEditing("address")} readOnly={readOnly} register={register} name="address" type="textarea" onEdit={() => startEditingField("address")} comparisonStatus={getComparisonStatus("Home Address", data.address)} />
           
           {/* Country Field */}
@@ -1324,147 +1531,8 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
 
           {/* Academic Information */}
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic</h4>
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic (Additional)</h4>
           </div>
-          
-          {/* Faculty Field */}
-          {!isFieldEditing("faculty") || readOnly ? (
-            <CompactField 
-              label="Faculty" 
-              value={facultiesLoading ? "Loading..." : displayFacultyName} 
-              isEditing={false} 
-              readOnly={readOnly}
-              onEdit={() => startEditingField("faculty")}
-            />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Faculty:</label>
-              <select
-                {...register("faculty", { 
-                  valueAsNumber: true,
-                  onChange: (e) => {
-                    const value = e.target.value;
-                    const facultyId = value ? Number(value) : null;
-                    setValue("faculty", facultyId);
-                    setValue("department", null);
-                    setValue("program", null);
-                    setValue("departmentname", null);
-                    setValue("degreetitle", null);
-                    // Update facultyname from selected faculty
-                    if (facultyId) {
-                      const selectedFaculty = allFaculties.find(f => f.id === facultyId);
-                      if (selectedFaculty) {
-                        setValue("facultyname", selectedFaculty.faculty_name);
-                      }
-                    } else {
-                      setValue("facultyname", null);
-                    }
-                  }
-                })}
-                disabled={readOnly}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">Select Faculty</option>
-                {allFaculties.map((faculty) => (
-                  <option key={faculty.id} value={faculty.id}>{faculty.faculty_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Department Field */}
-          {!isFieldEditing("department") || readOnly ? (
-            <CompactField 
-              label="Department" 
-              value={departmentsLoading ? "Loading..." : displayDepartmentName} 
-              isEditing={false} 
-              readOnly={readOnly}
-              onEdit={() => startEditingField("department")}
-              comparisonStatus={getComparisonStatus("Department", displayDepartmentName)}
-            />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Department:</label>
-              <select
-                {...register("department", { 
-                  valueAsNumber: true,
-                  onChange: (e) => {
-                    const value = e.target.value;
-                    const departmentId = value ? Number(value) : null;
-                    setValue("department", departmentId);
-                    setValue("program", null);
-                    setValue("degreetitle", null);
-                    // Update departmentname from selected department
-                    if (departmentId) {
-                      const selectedDepartment = allDepartments.find(d => d.id === departmentId);
-                      if (selectedDepartment) {
-                        setValue("departmentname", selectedDepartment.department_name);
-                      }
-                    } else {
-                      setValue("departmentname", null);
-                    }
-                  }
-                })}
-                disabled={readOnly || !selectedFacultyId || allDepartments.length === 0}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedFacultyId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">{!selectedFacultyId ? "Select Faculty First" : "Select Department"}</option>
-                {allDepartments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          {/* Program Field */}
-          {!isFieldEditing("program") || readOnly ? (
-            <CompactField 
-              label="Program" 
-              value={programsLoading ? "Loading..." : (allPrograms.find(p => p.id === data?.program)?.program_name || data?.degreetitle || "-")} 
-              isEditing={false} 
-              readOnly={readOnly}
-              onEdit={() => startEditingField("program")}
-              comparisonStatus={getComparisonStatus("Program", allPrograms.find(p => p.id === data?.program)?.program_name || data?.degreetitle)}
-            />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Program:</label>
-              <select
-                {...register("program", { 
-                  valueAsNumber: true,
-                  onChange: (e) => {
-                    const value = e.target.value;
-                    const programId = value ? Number(value) : null;
-                    setValue("program", programId);
-                    // Update degreetitle from selected program
-                    if (programId) {
-                      const selectedProgram = allPrograms.find(p => p.id === programId);
-                      if (selectedProgram) {
-                        setValue("degreetitle", selectedProgram.program_name);
-                      }
-                    } else {
-                      setValue("degreetitle", null);
-                    }
-                  }
-                })}
-                disabled={readOnly || !selectedDepartmentId || allPrograms.length === 0}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly || !selectedDepartmentId ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">{!selectedDepartmentId ? "Select Department First" : "Select Program"}</option>
-                {allPrograms.map((program) => (
-                  <option key={program.id} value={program.id}>{program.program_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <CompactField label="Campus" value={data.campusname} isEditing={isFieldEditing("campusname")} readOnly={readOnly} register={register} name="campusname" type="select" options={[
-            { value: "", label: "Select" },
-            { value: "Lahore", label: "Lahore" },
-            { value: "Sargodha", label: "Sargodha" },
-            { value: "Islamabad", label: "Islamabad" },
-            { value: "Pakpattan", label: "Pakpattan" }
-          ]} onEdit={() => startEditingField("campusname")} />
           {!isFieldEditing("yearofstarting") || readOnly ? (
             <CompactField label="Admission Year" value={data.yearofstarting} isEditing={false} readOnly={readOnly} onEdit={() => startEditingField("yearofstarting")} />
           ) : (
@@ -1478,24 +1546,6 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
                 <option value="">Select</option>
                 {Array.from({ length: new Date().getFullYear() - 1997 }, (_, i) => {
                   const year = 1998 + i;
-                  return <option key={year} value={year}>{year}</option>;
-                })}
-              </select>
-            </div>
-          )}
-          {!isFieldEditing("yearofending") || readOnly ? (
-            <CompactField label="Passing Out Year" value={data.yearofending} isEditing={false} readOnly={readOnly} onEdit={() => startEditingField("yearofending")} />
-          ) : (
-            <div className="flex items-center gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Passing Out Year:</label>
-              <select
-                {...register("yearofending", { valueAsNumber: true })}
-                disabled={readOnly}
-                className={`flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
-              >
-                <option value="">Select</option>
-                {Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => {
-                  const year = 2000 + i;
                   return <option key={year} value={year}>{year}</option>;
                 })}
               </select>
@@ -1688,10 +1738,6 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
             </div>
           )}
 
-          {/* Additional Information */}
-          <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
-          </div>
           <CompactField label="About Me" value={data.aboutme} isEditing={isFieldEditing("aboutme")} readOnly={readOnly} register={register} name="aboutme" type="textarea" onEdit={() => startEditingField("aboutme")} />
 
           {/* Social Links */}
@@ -1707,12 +1753,53 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false }: { sapId: 
           <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">System</h4>
           </div>
-          <CompactField label="Verification Status" value={data.verify || "Not Set"} isEditing={isFieldEditing("verify")} readOnly={readOnly} register={register} name="verify" type="select" options={[
-            { value: "", label: "Select" },
-            { value: "Verified", label: "Verified" },
-            { value: "Unverified", label: "Unverified" },
-            { value: "On-Hold", label: "On-Hold" }
-          ]} onEdit={() => startEditingField("verify")} />
+                    {canSendCredentials && data.alumniid && data.alumniid > 0 && (
+            <div className="flex items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-700/50">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Credentials:</span>
+              <button
+                type="button"
+                disabled={isSendingCredentials}
+                onClick={async () => {
+                  if (isSendingCredentials) return;
+                  setIsSendingCredentials(true);
+                  try {
+                    const res = await fetch("/api/send-credentials", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ alumniId: data.alumniid }),
+                    });
+                    const j = await res.json().catch(() => ({}));
+                    if (!res.ok || (j && j.ok === false)) {
+                      throw new Error((j as any)?.error || `Failed (${res.status})`);
+                    }
+                    toast.success("Credentials email sent");
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "Failed to send credentials";
+                    toast.error(msg);
+                  } finally {
+                    setIsSendingCredentials(false);
+                  }
+                }}
+                className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium bg-[#183D32] text-white hover:bg-[#183D32]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSendingCredentials ? "Sending..." : "Send Credentials"}
+              </button>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">Sends a temporary password to the alumni email</span>
+            </div>
+          )}
+                    {canViewPassword && (
+            <CompactField
+              label="Alumni Password"
+              value={safePasswordValue}
+              isEditing={isFieldEditing("password")}
+              readOnly={readOnly || !isSuperAdmin}
+              register={register}
+              name="password"
+              type="password"
+              onEdit={isSuperAdmin && !readOnly ? () => startEditingField("password") : undefined}
+            />
+          )}
+
           <CompactField label="Last Login" value={formatDateTimeDisplay(data.lasttimelogin) || "Never"} isEditing={false} readOnly={true} />
           <CompactField label="Login Count" value={data.logincount || 0} isEditing={isFieldEditing("logincount")} readOnly={readOnly} register={register} name="logincount" type="number" onEdit={() => startEditingField("logincount")} />
           <CompactField label="Alumni Status" value={data.alumnistatus} isEditing={isFieldEditing("alumnistatus")} readOnly={readOnly} register={register} name="alumnistatus" type="select" options={[
