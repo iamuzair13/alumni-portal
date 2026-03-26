@@ -222,9 +222,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, role, criteriaIds, criteriaResponses, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
+    const { alumniId, role, associationId, criteriaIds, criteriaResponses, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
       alumniId?: number;
       role?: string;
+      associationId?: number | string | null;
       criteriaIds?: unknown;
       criteriaResponses?: unknown;
       additionalAchievements?: unknown;
@@ -241,6 +242,12 @@ export async function POST(request: NextRequest) {
 
     if (!role) {
       return NextResponse.json({ error: "Role is required" }, { status: 400 });
+    }
+
+    const associationIdNumRaw = associationId === null || associationId === undefined ? null : Number(associationId);
+    const associationIdNum = associationIdNumRaw && Number.isFinite(associationIdNumRaw) && associationIdNumRaw > 0 ? associationIdNumRaw : null;
+    if (!associationIdNum) {
+      return NextResponse.json({ error: "Only one leadership category can be selected." }, { status: 400 });
     }
 
     // Validate role
@@ -376,6 +383,7 @@ export async function POST(request: NextRequest) {
         createddatetime,
         status,
         alumni_id,
+        association_id,
         additional_achievements,
         plan_strategy,
         optional_criteria_proficiency,
@@ -388,6 +396,7 @@ export async function POST(request: NextRequest) {
         NOW(),
         'pending',
         ${alumniIdNum},
+        ${associationIdNum},
         ${additionalAchievementsValue},
         ${planStrategyValue},
         ${optionalCriteriaProficiencyValue ? JSON.stringify(optionalCriteriaProficiencyValue) : null},

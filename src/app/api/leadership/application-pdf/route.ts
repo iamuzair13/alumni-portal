@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
         SELECT 
           cl.id as application_id,
           cl.post,
+          cl.chapter_id,
           cl.status,
           cl.created_at,
           cl.updated_at,
@@ -90,6 +91,8 @@ export async function GET(req: NextRequest) {
           cl.cv_file_url,
           cl.additional_file1_url,
           cl.additional_file2_url,
+          ch.national_chapter,
+          ch.international_chapter,
           a.alumniid,
           a.sapid,
           a.registrationno,
@@ -110,6 +113,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
+        LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         WHERE cl.id = ${applicationId}
           ${isAlumni && sessionAlumniId ? sql` AND cl.alumniid = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
@@ -143,6 +147,7 @@ export async function GET(req: NextRequest) {
         SELECT 
           ass.id as application_id,
           ass.q3 as role,
+          ass.association_id,
           ass.status,
           ass.createddatetime,
           ass.additional_achievements,
@@ -151,6 +156,7 @@ export async function GET(req: NextRequest) {
           ass.cv_file_url,
           ass.additional_file1_url,
           ass.additional_file2_url,
+          fac.faculty_name as association_name,
           a.alumniid,
           a.sapid,
           a.registrationno,
@@ -171,6 +177,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
+        LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
         WHERE ass.id = ${applicationId}
           ${isAlumni && sessionAlumniId ? sql` AND ass.alumni_id = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
@@ -242,6 +249,14 @@ export async function GET(req: NextRequest) {
 
     const pdf = await generateLeadershipApplicationPDF({
       leadershipType: type,
+      categoryType:
+        type === "chapter"
+          ? ((item.national_chapter ? "national" : item.international_chapter ? "international" : null) as any)
+          : ("association" as any),
+      categoryName:
+        type === "chapter"
+          ? (item.national_chapter ? String(item.national_chapter) : item.international_chapter ? String(item.international_chapter) : null)
+          : (item.association_name ? String(item.association_name) : null),
       status: String(item.status ?? "pending"),
       position,
       applicant: {

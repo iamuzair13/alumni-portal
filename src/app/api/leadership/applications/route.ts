@@ -99,6 +99,8 @@ export async function GET(req: NextRequest) {
       type: "chapter" | "association";
       position: string;
       status: string;
+      categoryType?: "national" | "international" | "association" | null;
+      categoryName?: string | null;
       additionalAchievements?: string | null;
       cvFileUrl?: string | null;
       additionalFile1Url?: string | null;
@@ -170,12 +172,15 @@ export async function GET(req: NextRequest) {
         SELECT 
           cl.id as leadership_id,
           cl.post,
+          cl.chapter_id,
           cl.created_at,
           cl.status,
           cl.additional_achievements,
           cl.cv_file_url,
           cl.additional_file1_url,
           cl.additional_file2_url,
+          ch.national_chapter,
+          ch.international_chapter,
           a.alumniid,
           a.sapid,
           a.alumniname,
@@ -192,6 +197,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
+        LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         WHERE 1=1
           ${statusCondition}
           ${searchCondition}
@@ -213,6 +219,10 @@ export async function GET(req: NextRequest) {
       }
 
       chapterRows.forEach((r: Record<string, unknown>) => {
+        const national = r.national_chapter ? String(r.national_chapter) : "";
+        const international = r.international_chapter ? String(r.international_chapter) : "";
+        const chapterCategoryType = national ? "national" : international ? "international" : null;
+        const chapterCategoryName = national || international || null;
         applications.push({
           id: Number(r.leadership_id),
           alumniId: Number(r.alumniid),
@@ -226,6 +236,8 @@ export async function GET(req: NextRequest) {
           type: "chapter",
           position: r.post ? String(r.post) : "",
           status: r.status ? String(r.status) : "",
+          categoryType: chapterCategoryType,
+          categoryName: chapterCategoryName,
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
           cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
           additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
@@ -241,12 +253,14 @@ export async function GET(req: NextRequest) {
         SELECT 
           ass.id as leadership_id,
           ass.q3 as role,
+          ass.association_id,
           ass.createddatetime,
           ass.status,
           ass.additional_achievements,
           ass.cv_file_url,
           ass.additional_file1_url,
           ass.additional_file2_url,
+          fac.faculty_name as association_name,
           a.alumniid,
           a.sapid,
           a.alumniname,
@@ -263,6 +277,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
+        LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
         WHERE 1=1
           ${assocStatusCondition}
           ${searchCondition}
@@ -284,6 +299,7 @@ export async function GET(req: NextRequest) {
       }
 
       associationRows.forEach((r: Record<string, unknown>) => {
+        const assocName = r.association_name ? String(r.association_name) : null;
         applications.push({
           id: Number(r.leadership_id),
           alumniId: Number(r.alumniid),
@@ -297,6 +313,8 @@ export async function GET(req: NextRequest) {
           type: "association",
           position: r.role ? String(r.role) : "",
           status: r.status ? String(r.status) : "",
+          categoryType: "association",
+          categoryName: assocName,
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
           cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
           additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,

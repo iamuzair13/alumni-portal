@@ -286,6 +286,8 @@ export interface UpskillApplicationData {
 
 export interface LeadershipApplicationPDFData {
   leadershipType: "chapter" | "association";
+  categoryType?: "national" | "international" | "association" | null;
+  categoryName?: string | null;
   status: string;
   position: string;
   applicant: {
@@ -558,6 +560,18 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
 
       const headerLeft: Array<{ label: string; value: string }> = [
         { label: "Application Type", value: data.leadershipType === "chapter" ? "Chapter" : "Association" },
+        {
+          label: "Selected Category",
+          value: (() => {
+            const t = String(data.categoryType || "").toLowerCase();
+            const name = String(data.categoryName || "").trim();
+            if (!name) return "-";
+            if (t === "national") return `National Chapter - ${name}`;
+            if (t === "international") return `International Chapter - ${name}`;
+            if (t === "association") return `Association - ${name}`;
+            return name;
+          })(),
+        },
         { label: "Role Applied For", value: String(data.position || "-") },
       ];
       const headerRight: Array<{ label: string; value: string }> = [
@@ -584,6 +598,34 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       );
       hLine(0, 10);
 
+      sectionTitle("Uploaded Documents");
+
+      const fileNameFromUrlPdf = (url: string) => {
+        try {
+          const u = String(url || "").trim();
+          if (!u) return "";
+          const path = u.split("?")[0].split("#")[0];
+          const parts = path.split("/").filter(Boolean);
+          const last = parts[parts.length - 1] || "";
+          return last ? decodeURIComponent(last) : "";
+        } catch {
+          return "";
+        }
+      };
+
+      const uploaded = Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : [];
+      if (!uploaded.length) {
+        drawWrappedText("-", margin, 10.5, false, maxWidth, 6);
+      } else {
+        uploaded.forEach((d) => {
+          const label = String(d.label || "Document");
+          const fileName = fileNameFromUrlPdf(String(d.url || ""));
+          const value = fileName || String(d.url || "-");
+          drawWrappedText(`${label}: ${value}`, margin, 10.5, false, maxWidth, 4);
+        });
+      }
+
+      hLine(0, 10);
       sectionTitle("Criteria");
       const tableColW = {
         req: maxWidth * 0.42,
@@ -667,7 +709,9 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
               prof = "-";
             } else {
               const rating = Number(proficiencyMap[String(c.id)] ?? 0);
-              prof = rating ? `${"★".repeat(Math.min(5, Math.max(0, rating)))}${"☆".repeat(5 - Math.min(5, Math.max(0, rating)))}` : "-";
+              // Stars can render as garbled characters in some environments/fonts.
+              // Show the proficiency label instead.
+              prof = rating ? ratingLabel(rating) || "-" : "-";
             }
           }
           drawTableRow({

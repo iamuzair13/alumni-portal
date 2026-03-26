@@ -190,7 +190,6 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Role</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Status</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-700">Submitted</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-700">Additional Achievements</th>
                   <th className="text-right px-4 py-3 font-semibold text-gray-700">Actions</th>
                 </tr>
                   </thead>
@@ -222,11 +221,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-700">{formatDate(app.createdAt)}</td>
-                      <td className="px-4 py-3 text-gray-700">
-                        <div className="max-w-[420px]">
-                          <div className="line-clamp-2 break-words">{String(app.additionalAchievements || "-")}</div>
-                        </div>
-                      </td>
+                      
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"

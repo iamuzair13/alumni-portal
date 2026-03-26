@@ -137,6 +137,12 @@ export async function GET(req: Request) {
           cl.id::bigint AS application_id,
           cl.status::text AS status,
           cl.post::text AS position,
+          CASE
+            WHEN ch.national_chapter IS NOT NULL AND TRIM(COALESCE(ch.national_chapter, '')) <> '' THEN 'national'
+            WHEN ch.international_chapter IS NOT NULL AND TRIM(COALESCE(ch.international_chapter, '')) <> '' THEN 'international'
+            ELSE NULL
+          END::text AS category_type,
+          COALESCE(NULLIF(TRIM(COALESCE(ch.national_chapter, '')), ''), NULLIF(TRIM(COALESCE(ch.international_chapter, '')), ''), NULL)::text AS category_name,
           cl.additional_achievements::text AS additional_achievements,
           cl.rejection_reason::text AS rejection_reason,
           cl.created_at::timestamptz AS created_at,
@@ -161,6 +167,7 @@ export async function GET(req: Request) {
         FROM public.chapter_leadership cl
         JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
         LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
@@ -226,6 +233,8 @@ export async function GET(req: Request) {
           ass.id::int AS application_id,
           ass.status::text AS status,
           ass.q3::text AS position,
+          'association'::text AS category_type,
+          fac.faculty_name::text AS category_name,
           ass.additional_achievements::text AS additional_achievements,
           NULL::text AS rejection_reason,
           ass.createddatetime::timestamp without time zone AS created_at,
@@ -250,6 +259,7 @@ export async function GET(req: Request) {
         FROM public.tblalumniassociation ass
         JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+        LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
         LEFT JOIN public.alumni_chapter ac ON ac.id = a.alumniid
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
         LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2

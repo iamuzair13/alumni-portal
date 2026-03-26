@@ -15,6 +15,8 @@ export type LeadershipApplicationTrace = {
   type: "chapter" | "association";
   position: string;
   status: string;
+  categoryType?: "national" | "international" | "association" | null;
+  categoryName?: string | null;
   additionalAchievements?: string | null;
   cvFileUrl?: string | null;
   additionalFile1Url?: string | null;

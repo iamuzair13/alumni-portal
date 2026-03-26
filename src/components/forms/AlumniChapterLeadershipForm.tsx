@@ -17,6 +17,12 @@ type AlumniChapterLeadershipFormValues = {
   complianceAccepted: boolean;
 };
 
+type ChapterOption = {
+  id: number;
+  name: string;
+  type: "national" | "international";
+};
+
 type RoleCriterion = {
   id: number;
   label: string;
@@ -80,6 +86,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [selectedPost, setSelectedPost] = useState<string>("");
+  const [selectedNationalChapterId, setSelectedNationalChapterId] = useState<number | null>(null);
+  const [selectedInternationalChapterId, setSelectedInternationalChapterId] = useState<number | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [selectedCriteriaIds, setSelectedCriteriaIds] = useState<Set<number>>(new Set());
   const [mandatoryCriteriaResponses, setMandatoryCriteriaResponses] = useState<Record<number, "YES" | "NO" | "">>({});
   const [criteriaError, setCriteriaError] = useState<string | null>(null);
@@ -125,6 +134,28 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
   const isFormEnabled = settings?.chapter_leadership ?? true;
 
+  const { data: chaptersData } = useQuery({
+    queryKey: ["chapters-list"],
+    queryFn: async () => {
+      const res = await fetch("/api/chapters/list", { headers: { accept: "application/json" } });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((json as any)?.error || "Failed to load chapters");
+      const items = (json as any)?.chapters;
+      return (Array.isArray(items) ? items : []) as ChapterOption[];
+    },
+    enabled: isFormEnabled,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const nationalChapters = useMemo(() => {
+    return (chaptersData ?? []).filter((c) => c.type === "national" && Number.isFinite(Number(c.id)));
+  }, [chaptersData]);
+
+  const internationalChapters = useMemo(() => {
+    return (chaptersData ?? []).filter((c) => c.type === "international" && Number.isFinite(Number(c.id)));
+  }, [chaptersData]);
+
   const {
     register,
     handleSubmit,
@@ -156,6 +187,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   // Update selectedPost when form value changes
   React.useEffect(() => {
     setSelectedPost(post || "");
+    setSelectedNationalChapterId(null);
+    setSelectedInternationalChapterId(null);
+    setCategoryError(null);
     setSelectedCriteriaIds(new Set());
     setMandatoryCriteriaResponses({});
     setCriteriaError(null);
@@ -415,6 +449,21 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
       return;
     }
 
+    const chapterId =
+      (selectedNationalChapterId && Number.isFinite(selectedNationalChapterId) && selectedNationalChapterId > 0
+        ? selectedNationalChapterId
+        : null) ??
+      (selectedInternationalChapterId && Number.isFinite(selectedInternationalChapterId) && selectedInternationalChapterId > 0
+        ? selectedInternationalChapterId
+        : null);
+
+    if (!chapterId) {
+      const msg = "Please select exactly one chapter category (national or international).";
+      setCategoryError(msg);
+      toast.error(msg);
+      return;
+    }
+
     try {
       if (!cvFile) {
         setCvError("CV upload is required");
@@ -487,6 +536,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         body: JSON.stringify({
           alumniId: alumniIdNumber,
           post: data.post,
+          chapterId,
           criteriaResponses: {
             ...Object.fromEntries(
               Object.entries(mandatoryCriteriaResponses)
@@ -617,6 +667,55 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
               ))}
             </div>
             {errors.post && <span className={errorText}>{errors.post.message}</span>}
+          </div>
+
+          <div>
+            <label className={labelBase}>
+              National Chapter
+            </label>
+            <select
+              value={selectedNationalChapterId ? String(selectedNationalChapterId) : ""}
+              onChange={(e) => {
+                setCategoryError(null);
+                const raw = String(e.target.value || "").trim();
+                const id = raw ? Number(raw) : null;
+                setSelectedNationalChapterId(id && Number.isFinite(id) && id > 0 ? id : null);
+                if (raw) setSelectedInternationalChapterId(null);
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a national chapter</option>
+              {nationalChapters.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelBase}>
+              International Chapter
+            </label>
+            <select
+              value={selectedInternationalChapterId ? String(selectedInternationalChapterId) : ""}
+              onChange={(e) => {
+                setCategoryError(null);
+                const raw = String(e.target.value || "").trim();
+                const id = raw ? Number(raw) : null;
+                setSelectedInternationalChapterId(id && Number.isFinite(id) && id > 0 ? id : null);
+                if (raw) setSelectedNationalChapterId(null);
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select an international chapter</option>
+              {internationalChapters.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {categoryError ? <div className={errorText}>{categoryError}</div> : null}
           </div>
               <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
                   <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Description</summary>

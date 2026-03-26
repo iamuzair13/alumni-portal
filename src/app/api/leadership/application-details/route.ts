@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
-import { isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
+import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
 
 function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
   const s = String(position || "").toLowerCase();
@@ -59,14 +59,29 @@ export async function GET(req: NextRequest) {
 
     const isSuperAdmin = isSuperAdminUser(session?.user);
     const isAdmin = isAdminUser(session?.user);
-    const shouldApplyFilter = !isSuperAdmin && !isAdmin;
-    const accessFilter = shouldApplyFilter ? await buildAccessFilterSQL(session, "") : { sql: null, hasFilter: false };
+    const isViewer = isViewerUser(session?.user);
+    const isStaff = isSuperAdmin || isAdmin || isViewer;
+    const isAlumni = !isStaff;
+
+    const sessionAlumniIdRaw = (session.user as { userId?: number | null })?.userId;
+    const sessionAlumniId =
+      sessionAlumniIdRaw && Number.isFinite(Number(sessionAlumniIdRaw)) ? Number(sessionAlumniIdRaw) : null;
+
+    if (isAlumni && (!sessionAlumniId || sessionAlumniId <= 0)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const shouldApplyFilter = !isAlumni && !isSuperAdmin && !isAdmin;
+    const accessFilter = shouldApplyFilter
+      ? await buildAccessFilterSQL(session, "")
+      : { sql: null, hasFilter: false };
 
     if (type === "chapter") {
       const rows = await sql/* sql */`
         SELECT 
           cl.id as application_id,
           cl.post,
+          cl.chapter_id,
           cl.status,
           cl.created_at,
           cl.updated_at,
@@ -77,6 +92,8 @@ export async function GET(req: NextRequest) {
           cl.cv_file_url,
           cl.additional_file1_url,
           cl.additional_file2_url,
+          ch.national_chapter,
+          ch.international_chapter,
           a.alumniid,
           a.sapid,
           a.registrationno,
@@ -97,7 +114,9 @@ export async function GET(req: NextRequest) {
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
+        LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         WHERE cl.id = ${applicationId}
+          ${isAlumni && sessionAlumniId ? sql` AND cl.alumniid = ${sessionAlumniId}` : sql``}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter
@@ -161,6 +180,8 @@ export async function GET(req: NextRequest) {
             type: "chapter",
             id: Number(r.application_id),
             alumniId: Number(r.alumniid),
+            categoryType: r.national_chapter ? "national" : r.international_chapter ? "international" : null,
+            categoryName: r.national_chapter ? String(r.national_chapter) : r.international_chapter ? String(r.international_chapter) : null,
             sapId: String(r.sapid ?? ""),
             registrationNo: r.registrationno ? String(r.registrationno) : null,
             name: String(r.alumniname ?? ""),
@@ -177,6 +198,9 @@ export async function GET(req: NextRequest) {
             program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
             position,
             status: r.status ? String(r.status) : "pending",
+            cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
+            additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
+            additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
             additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
             planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
             optionalCriteriaProficiency,
@@ -204,6 +228,7 @@ export async function GET(req: NextRequest) {
       SELECT 
         ass.id as application_id,
         ass.q3 as role,
+        ass.association_id,
         ass.status,
         ass.createddatetime,
         ass.additional_achievements,
@@ -212,6 +237,7 @@ export async function GET(req: NextRequest) {
         ass.cv_file_url,
         ass.additional_file1_url,
         ass.additional_file2_url,
+        fac.faculty_name as association_name,
         a.alumniid,
         a.sapid,
         a.registrationno,
@@ -232,7 +258,9 @@ export async function GET(req: NextRequest) {
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       LEFT JOIN public.tbl_departments d ON d.id = a.department
       LEFT JOIN public.tbl_programs p ON p.id = a.program
+      LEFT JOIN public.tbl_faculties fac ON fac.id = ass.association_id
       WHERE ass.id = ${applicationId}
+        ${isAlumni && sessionAlumniId ? sql` AND ass.alumni_id = ${sessionAlumniId}` : sql``}
         ${accessFilter.hasFilter && accessFilter.sql
           ? sql` AND EXISTS (
               SELECT 1 FROM public.tbl_alumni a_filter
@@ -296,6 +324,8 @@ export async function GET(req: NextRequest) {
           type: "association",
           id: Number(r.application_id),
           alumniId: Number(r.alumniid),
+          categoryType: "association",
+          categoryName: r.association_name ? String(r.association_name) : null,
           sapId: String(r.sapid ?? ""),
           registrationNo: r.registrationno ? String(r.registrationno) : null,
           name: String(r.alumniname ?? ""),
@@ -312,6 +342,9 @@ export async function GET(req: NextRequest) {
           program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
           position,
           status: r.status ? String(r.status) : "pending",
+          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
+          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
+          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
           planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
           optionalCriteriaProficiency,
@@ -335,6 +368,11 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch application details";
+    console.error("[leadership][application-details] failed", {
+      message: msg,
+      stack: err instanceof Error ? err.stack : undefined,
+      err,
+    });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

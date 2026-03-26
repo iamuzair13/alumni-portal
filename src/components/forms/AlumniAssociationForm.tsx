@@ -17,6 +17,11 @@ type AlumniAssociationFormValues = {
   complianceAccepted: boolean;
 };
 
+type AssociationOption = {
+  id: number;
+  name: string;
+};
+
 type RoleCriterion = {
   id: number;
   label: string;
@@ -80,6 +85,8 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [selectedAssociationId, setSelectedAssociationId] = useState<number | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [selectedCriteriaIds, setSelectedCriteriaIds] = useState<Set<number>>(new Set());
   const [mandatoryCriteriaResponses, setMandatoryCriteriaResponses] = useState<Record<number, "YES" | "NO" | "">>({});
   const [criteriaError, setCriteriaError] = useState<string | null>(null);
@@ -125,6 +132,23 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
 
   const isFormEnabled = settings?.association_leadership ?? true;
 
+  const { data: associationsData } = useQuery({
+    queryKey: ["associations-list"],
+    queryFn: async () => {
+      const res = await fetch("/api/public/org-datasets", { headers: { accept: "application/json" } });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((json as any)?.error || "Failed to load associations");
+      const faculties = (json as any)?.faculties;
+      const items = Array.isArray(faculties) ? faculties : [];
+      return items
+        .map((f: any) => ({ id: Number(f.id), name: String(f.faculty_name ?? "") }))
+        .filter((x: AssociationOption) => Number.isFinite(x.id) && x.id > 0 && String(x.name).trim());
+    },
+    enabled: isFormEnabled,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   const {
     register,
     handleSubmit,
@@ -156,6 +180,8 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
   // Update selectedRole when form value changes
   React.useEffect(() => {
     setSelectedRole(role || "");
+    setSelectedAssociationId(null);
+    setCategoryError(null);
     setSelectedCriteriaIds(new Set());
     setMandatoryCriteriaResponses({});
     setCriteriaError(null);
@@ -415,6 +441,14 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
       return;
     }
 
+    const associationId = selectedAssociationId && Number.isFinite(selectedAssociationId) && selectedAssociationId > 0 ? selectedAssociationId : null;
+    if (!associationId) {
+      const msg = "Only one leadership category can be selected.";
+      setCategoryError(msg);
+      toast.error(msg);
+      return;
+    }
+
     try {
       if (!cvFile) {
         setCvError("CV upload is required");
@@ -487,6 +521,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
         body: JSON.stringify({
           alumniId: alumniIdNumber,
           role: data.role,
+          associationId,
           criteriaResponses: {
             ...Object.fromEntries(
               Object.entries(mandatoryCriteriaResponses)
@@ -617,6 +652,30 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
               ))}
             </div>
             {errors.role && <span className={errorText}>{errors.role.message}</span>}
+          </div>
+
+          <div>
+            <label className={labelBase}>
+              Association <span className="text-rose-600">*</span>
+            </label>
+            <select
+              value={selectedAssociationId ? String(selectedAssociationId) : ""}
+              onChange={(e) => {
+                setCategoryError(null);
+                const raw = String(e.target.value || "").trim();
+                const id = raw ? Number(raw) : null;
+                setSelectedAssociationId(id && Number.isFinite(id) && id > 0 ? id : null);
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select an association</option>
+              {(associationsData ?? []).map((a) => (
+                <option key={a.id} value={String(a.id)}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            {categoryError ? <div className={errorText}>{categoryError}</div> : null}
           </div>
 
           {selectedRole ? (

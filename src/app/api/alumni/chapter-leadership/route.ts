@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as {
       alumniId?: number | string;
       post?: string;
+      chapterId?: number | string | null;
       criteriaIds?: number[];
       criteriaResponses?: unknown;
       additionalAchievements?: string;
@@ -81,6 +82,12 @@ export async function POST(request: NextRequest) {
 
     if (!body.post) {
       return NextResponse.json({ error: "Post is required" }, { status: 400 });
+    }
+
+    const chapterIdNumRaw = body.chapterId === null || body.chapterId === undefined ? null : Number(body.chapterId);
+    const chapterIdNum = chapterIdNumRaw && Number.isFinite(chapterIdNumRaw) && chapterIdNumRaw > 0 ? chapterIdNumRaw : null;
+    if (!chapterIdNum) {
+      return NextResponse.json({ error: "Only one leadership category can be selected." }, { status: 400 });
     }
 
     // Validate post
@@ -222,6 +229,7 @@ export async function POST(request: NextRequest) {
         status,
         updated_at,
         alumniid,
+        chapter_id,
         additional_achievements,
         plan_strategy,
         optional_criteria_proficiency,
@@ -235,6 +243,7 @@ export async function POST(request: NextRequest) {
         'pending',
         NOW(),
         ${alumniIdNum},
+        ${chapterIdNum},
         ${additionalAchievementsValue},
         ${planStrategyValue},
         ${optionalCriteriaProficiency ? JSON.stringify(optionalCriteriaProficiency) : null},
