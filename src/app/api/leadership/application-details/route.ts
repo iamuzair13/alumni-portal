@@ -173,6 +173,8 @@ export async function GET(req: NextRequest) {
       `;
 
       const optionalCriteriaProficiency = normalizeOptionalCriteriaProficiency(r.optional_criteria_proficiency ?? null);
+      const roleDescription = roleRow?.role_description ? String(roleRow.role_description) : null;
+      const officeTermGovernanceHtml = roleRow?.office_term_governance_html ? String(roleRow.office_term_governance_html) : null;
 
       return NextResponse.json(
         {
@@ -203,6 +205,8 @@ export async function GET(req: NextRequest) {
             additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
             additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
             planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
+            roleDescription,
+            officeTermGovernanceHtml,
             optionalCriteriaProficiency,
             createdAt: r.created_at ?? null,
             updatedAt: r.updated_at ?? null,
@@ -317,6 +321,8 @@ export async function GET(req: NextRequest) {
     `;
 
     const optionalCriteriaProficiency = normalizeOptionalCriteriaProficiency(r.optional_criteria_proficiency ?? null);
+    const roleDescription = roleRow?.role_description ? String(roleRow.role_description) : null;
+    const officeTermGovernanceHtml = roleRow?.office_term_governance_html ? String(roleRow.office_term_governance_html) : null;
 
     return NextResponse.json(
       {
@@ -347,6 +353,8 @@ export async function GET(req: NextRequest) {
           additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
           planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
+          roleDescription,
+          officeTermGovernanceHtml,
           optionalCriteriaProficiency,
           createdAt: r.createddatetime ?? null,
           updatedAt: null,

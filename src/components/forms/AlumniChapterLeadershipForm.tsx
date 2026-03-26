@@ -717,8 +717,13 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
             </select>
             {categoryError ? <div className={errorText}>{categoryError}</div> : null}
           </div>
-              <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Description</summary>
+
+            
+          {selectedPost ? (
+            
+            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+                <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
+                  <summary className="cursor-pointer text-[18px] font-medium text-gray-900 dark:text-gray-100">Role Description</summary>
                   <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {criteriaLoading ? "Loading..." : roleDescription ? roleDescription : "No role description configured yet."}
                   </div>
@@ -737,12 +742,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                     <div className={errorText}>You must confirm before submitting.</div>
                   ) : null}
                 </details>
-          {selectedPost ? (
-            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
-              
-              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Information</div>
+              <div className="text-[18px] font-semibold text-gray-900 dark:text-gray-100 mt-4">Role Information</div>
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Role Criteria</summary>
+                  <summary className="cursor-pointer text-[18px] font-medium text-gray-900 dark:text-gray-100">Role Criteria</summary>
                   <div className="mt-2">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-xs text-gray-600 dark:text-gray-400">Mandatory criteria require a YES/NO selection.</p>
@@ -817,7 +819,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
                         {optionalCriteriaItems.length ? (
                           <div className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-3 space-y-2">
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">Optional</div>
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">Optional <span className="text-gray-500 text-xs">(How do you rate yourself on the scale of 1 to 5?)</span></div>
                             {optionalCriteriaItems.map((c) => {
                               const id = Number(c.id);
                               const checked = selectedCriteriaIds.has(id);
@@ -883,7 +885,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                 
 
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
+                  <summary className="cursor-pointer text-[18px] font-medium text-gray-900 dark:text-gray-100">Office Term & Related Governance</summary>
                   <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {criteriaLoading ? "Loading..." : officeTermGovernanceHtml ? officeTermGovernanceHtml : "No office term & related governance configured yet."}
                   </div>
@@ -904,7 +906,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                 </details>
 
                 <details className="rounded-lg border border-gray-200 dark:border-gray-800 p-3" open>
-                  <summary className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
+                  <summary className="cursor-pointer text-[18px] font-medium text-gray-900 dark:text-gray-100">Code of Ethics</summary>
                   <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {criteriaLoading ? "Loading..." : codeOfEthics ? codeOfEthics : "No code of ethics configured yet."}
                   </div>
@@ -929,7 +931,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                 <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Please tell your plan or strategy to achieve the role and responsibility assigned to you.
+                      Please tell your plan or strategy to achieve the responsibility assigned to you.
                     </div>
                     <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500"}`}>
                       {planLen} / {planMaxLen}

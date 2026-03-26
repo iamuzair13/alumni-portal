@@ -887,7 +887,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                 <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Please tell your plan or strategy to achieve the role and responsibility assigned to you.
+                      Please tell your plan or strategy to achieve the responsibility assigned to you.
                     </div>
                     <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500"}`}>
                       {planLen} / {planMaxLen}

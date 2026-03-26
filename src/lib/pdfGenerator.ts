@@ -598,33 +598,8 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       );
       hLine(0, 10);
 
-      sectionTitle("Uploaded Documents");
-
-      const fileNameFromUrlPdf = (url: string) => {
-        try {
-          const u = String(url || "").trim();
-          if (!u) return "";
-          const path = u.split("?")[0].split("#")[0];
-          const parts = path.split("/").filter(Boolean);
-          const last = parts[parts.length - 1] || "";
-          return last ? decodeURIComponent(last) : "";
-        } catch {
-          return "";
-        }
-      };
-
-      const uploaded = Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : [];
-      if (!uploaded.length) {
-        drawWrappedText("-", margin, 10.5, false, maxWidth, 6);
-      } else {
-        uploaded.forEach((d) => {
-          const label = String(d.label || "Document");
-          const fileName = fileNameFromUrlPdf(String(d.url || ""));
-          const value = fileName || String(d.url || "-");
-          drawWrappedText(`${label}: ${value}`, margin, 10.5, false, maxWidth, 4);
-        });
-      }
-
+      sectionTitle("Role Description");
+      drawRichTextBlock(String(data.roleDescription || "-"), maxWidth);
       hLine(0, 10);
       sectionTitle("Criteria");
       const tableColW = {
@@ -669,7 +644,12 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         const typeLines = doc.splitTextToSize(cells.type, tableColW.type - 4);
         const alumniLines = doc.splitTextToSize(cells.alumni, tableColW.alumni - 4);
         const adminLines = doc.splitTextToSize(cells.admin, tableColW.admin - 4);
-        const profLines = doc.splitTextToSize(cells.prof, tableColW.prof - 4);
+        const profRaw = String(cells.prof ?? "");
+        const [profStarsRaw, ...profLabelParts] = profRaw.split("\n");
+        const profLabelRaw = profLabelParts.join("\n");
+        const profStarsLines = doc.splitTextToSize(profStarsRaw || "", tableColW.prof - 4);
+        const profLabelLines = doc.splitTextToSize(profLabelRaw || "", tableColW.prof - 4);
+        const profLines = [...profStarsLines, ...profLabelLines].filter((l) => String(l).length > 0);
         const lines = Math.max(reqLines.length, typeLines.length, alumniLines.length, adminLines.length, profLines.length, 1);
         const rowH = lines * textHeight(tableFont) + 6;
         if (y + rowH > pageBottomY()) {
@@ -689,7 +669,22 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         doc.text(typeLines, tableX.type + 2, y + 5, { maxWidth: tableColW.type - 4 });
         doc.text(alumniLines, tableX.alumni + 2, y + 5, { maxWidth: tableColW.alumni - 4 });
         doc.text(adminLines, tableX.admin + 2, y + 5, { maxWidth: tableColW.admin - 4 });
-        doc.text(profLines, tableX.prof + 2, y + 5, { maxWidth: tableColW.prof - 4 });
+        // Proficiency: render stars (first line) in yellow, label (second line) in black.
+        const profX = tableX.prof + 2;
+        let profY = y + 5;
+        if (profStarsLines.length) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(15.5);
+          doc.setTextColor(255, 193, 7);
+          doc.text(profStarsLines, profX, profY, { maxWidth: tableColW.prof - 4 });
+          profY += profStarsLines.length * textHeight(tableFont);
+        }
+        if (profLabelLines.length) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          doc.setTextColor(0, 0, 0);
+          doc.text(profLabelLines, profX, profY, { maxWidth: tableColW.prof - 4 });
+        }
         y += rowH;
       };
 
@@ -709,9 +704,14 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
               prof = "-";
             } else {
               const rating = Number(proficiencyMap[String(c.id)] ?? 0);
-              // Stars can render as garbled characters in some environments/fonts.
-              // Show the proficiency label instead.
-              prof = rating ? ratingLabel(rating) || "-" : "-";
+              const safeRating = Number.isFinite(rating) ? Math.min(5, Math.max(0, Math.round(rating))) : 0;
+              if (!safeRating) {
+                prof = "Not Provided";
+              } else {
+                const stars = Array.from({ length: safeRating }).map(() => "*").join(" ");
+                const label = ratingLabel(safeRating) || "";
+                prof = label ? `${stars}\n${label}` : stars;
+              }
             }
           }
           drawTableRow({
@@ -730,8 +730,35 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       drawRichTextBlock(String(data.additionalAchievements || "-"), maxWidth);
 
       hLine(0, 10);
-      sectionTitle("Please tell your plan or strategy to achieve the role and responsibility assigned to you.");
+      sectionTitle("Please tell your plan or strategy to achieve the responsibility assigned to you.");
       drawRichTextBlock(String(data.planStrategy || "-"), maxWidth);
+
+       sectionTitle("Uploaded Documents");
+
+      const fileNameFromUrlPdf = (url: string) => {
+        try {
+          const u = String(url || "").trim();
+          if (!u) return "";
+          const path = u.split("?")[0].split("#")[0];
+          const parts = path.split("/").filter(Boolean);
+          const last = parts[parts.length - 1] || "";
+          return last ? decodeURIComponent(last) : "";
+        } catch {
+          return "";
+        }
+      };
+
+      const uploaded = Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : [];
+      if (!uploaded.length) {
+        drawWrappedText("-", margin, 10.5, false, maxWidth, 6);
+      } else {
+        uploaded.forEach((d) => {
+          const label = String(d.label || "Document");
+          const fileName = fileNameFromUrlPdf(String(d.url || ""));
+          const value = fileName || String(d.url || "-");
+          drawWrappedText(`${label}: ${value}`, margin, 10.5, false, maxWidth, 4);
+        });
+      }
 
       const footerY = pageHeight - 18;
       doc.setDrawColor(210, 210, 210);

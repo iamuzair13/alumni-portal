@@ -111,6 +111,8 @@ type ViewDetailsItem = ApplicationDetailsItem & {
   phone?: string | null;
   planStrategy?: string | null;
   optionalCriteriaProficiency?: Record<string, number | null> | null;
+  roleDescription?: string | null;
+  officeTermGovernanceHtml?: string | null;
   cvFileUrl?: string | null;
   additionalFile1Url?: string | null;
   additionalFile2Url?: string | null;
@@ -1261,6 +1263,13 @@ export default function LeadershipPage() {
                               </div>
                             </div>
 
+                            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Description</div>
+                              <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
+                                {String(item.roleDescription || "").trim() || "-"}
+                              </div>
+                            </div>
+
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
                             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Criteria</div>
                             <div className="mt-3 overflow-x-auto">
@@ -1347,6 +1356,35 @@ export default function LeadershipPage() {
                             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Please tell your plan or strategy to achieve the role and responsibility assigned to you.</div>
                             <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                               {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Uploaded Documents</div>
+                            <div className="mt-3 space-y-2">
+                              {docs.length === 0 ? (
+                                <div className="text-sm text-gray-600 dark:text-gray-400">-</div>
+                              ) : (
+                                docs.map((d) => {
+                                  const name = fileNameFromUrl(d.url) || "-";
+                                  return (
+                                    <div key={d.key} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2">
+                                      <div className="min-w-0">
+                                        <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">{d.label}</div>
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 break-all">{name}</div>
+                                      </div>
+                                      <a
+                                        href={d.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+                                      >
+                                        View
+                                      </a>
+                                    </div>
+                                  );
+                                })
+                              )}
                             </div>
                           </div>
 
