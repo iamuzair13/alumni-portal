@@ -2899,7 +2899,7 @@ export const AlumniTabs: React.FC = () => {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search by name, SAP ID, registration no, email, faculty, department, or program..."
+                    placeholder="Search by SR.No, name, SAP ID, registration no, email, faculty, department, or program..."
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
                 />
                 </div>

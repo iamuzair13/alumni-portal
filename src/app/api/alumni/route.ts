@@ -1280,7 +1280,8 @@ export async function GET(req: Request) {
               ${mrNoFilter}
               ${accessFilterCondition}
               AND (
-                LOWER(a.sapid) LIKE ${searchTermForCount}
+                LOWER(CAST(a.alumniid AS TEXT)) LIKE ${searchTermForCount}
+                OR LOWER(a.sapid) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTermForCount}
                 OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTermForCount}
@@ -1504,7 +1505,8 @@ export async function GET(req: Request) {
           ${contactNoStateFilter}
           ${accessFilterCondition}
           AND (
-            LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
+            LOWER(CAST(a.alumniid AS TEXT)) LIKE ${searchTerm}
+            OR LOWER(COALESCE(a.sapid, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.registrationno, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.alumniname, '')) LIKE ${searchTerm}
             OR LOWER(COALESCE(a.personalemail, '')) LIKE ${searchTerm}
