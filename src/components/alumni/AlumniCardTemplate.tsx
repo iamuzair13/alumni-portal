@@ -163,7 +163,7 @@ export default function AlumniCardTemplate({
         </div>
 
         {/* Alumni ID and Validity */}
-        <div className={`absolute top-[42%] left-[25%] flex flex-col gap-[3px] justify-start items-start ${infoTextClass}`}>
+        <div className={`absolute top-[43%] left-[25%] flex flex-col gap-[3px] justify-start items-start ${infoTextClass}`}>
           <div className="h-[14px] text-[10px] font-medium leading-[14px]">
             {cnicPassport || "CNIC/Passport Missing"}
           </div>
