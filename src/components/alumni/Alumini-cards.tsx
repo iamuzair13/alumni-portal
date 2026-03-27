@@ -33,6 +33,7 @@ type AlumniCardItem = {
   status: CardStatus;
   createdAt: string;
   registrationno?: string | null;
+  cardaddress?: string | null;
 };
 
 type ActionKey = "view" | "verify" | "decline" | "suspend" | "delete";
@@ -72,6 +73,7 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
     status: mapDbStatusToUI(applicant.status),
     createdAt: applicant.createdat || new Date().toISOString(),
     registrationno: rawRegNo || null,
+    cardaddress: applicant.cardaddress ?? null,
   };
 }
 

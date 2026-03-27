@@ -173,6 +173,7 @@ export type AlumniListItem = AlumniCardItem & {
   organization?: string;
   designation?: string;
   workCity?: string;
+  cardaddress?: string | null;
 };
 
 export type AlumniCardListProps = {
@@ -382,6 +383,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           createdAt: String(r.createdat ?? ""),
           department: String(r.departmentname ?? ""),
           registrationno: rawRegNo || null,
+          cardaddress: r.cardaddress ?? null,
         };
       }) as AlumniListItem[];
     }
@@ -1374,7 +1376,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
-      <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
         <div className="flex-1 w-full sm:max-w-lg">
           <label htmlFor="alumni-card-table-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
             Search Alumni Cards
@@ -1496,6 +1498,13 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </div>
                     </div>
                   </TableCell>
+                  {/* card delivary address */}
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[220px] hidden lg:table-cell"
+                  >
+                    <span>Delivery Address</span>
+                  </TableCell>
                   <TableCell 
                     isHeader 
                     className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden lg:table-cell"
@@ -1566,6 +1575,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
                       <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                        <div className="h-5 w-56 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
                         <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
                       <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
@@ -1589,7 +1601,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={10}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={11}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1607,7 +1619,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={10}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={11}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1674,6 +1686,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                           </a>
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          <div className="max-w-[320px] whitespace-normal break-words leading-snug">
+                            {alum.cardaddress && String(alum.cardaddress).trim() ? String(alum.cardaddress) : "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
                           {formatApplicationDate(alum.createdAt)}
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-start">
@@ -1701,7 +1718,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </TableRow>
                       {expandedRowId === alum.id && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={10} className="px-0 py-6">
+                          <TableCell colSpan={11} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex ">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canEdit} />

@@ -66,6 +66,7 @@ export async function GET(request: Request) {
         COALESCE(f.faculty_name, a.facultyname) as facultyname,
         COALESCE(d.department_name, a.departmentname) as departmentname,
         COALESCE(p.program_name, a.degreetitle) as degreetitle,
+        c.cardaddress,
         c.status,
         c.createdat
       FROM public.tblcard c
