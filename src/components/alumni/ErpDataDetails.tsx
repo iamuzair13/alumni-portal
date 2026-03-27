@@ -97,20 +97,47 @@ type ErpRecord = {
 // Helper to format field value
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined || value === "") return "-";
-  return String(value);
+
+  const str = String(value);
+  const trimmed = str.trim();
+  if (!trimmed) return "-";
+
+  // Format common ERP date format: YYYYMMDD
+  if (/^\d{8}$/.test(trimmed)) {
+    const yyyy = trimmed.slice(0, 4);
+    const mm = trimmed.slice(4, 6);
+    const dd = trimmed.slice(6, 8);
+    const d = new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(d);
+    }
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "[object]";
+    }
+  }
+
+  return str;
 };
 
 // Helper to format field label (convert camelCase/PascalCase to readable format)
 const formatLabel = (key: string): string => {
-  // Skip metadata and nested objects
-  if (key === "__metadata" || key === "torel" || key.startsWith("__")) {
-    return "";
-  }
-  
   // Handle common abbreviations and special cases
   const labelMap: Record<string, string> = {
+    "Campus": "Campus",
+    "Gbdat": "Date of Birth",
+    "AdmAyear": "Admission Year",
     "DegrTitle": "Degree Title",
     "DeptName": "Department Name",
+    "Gesch": "Gender",
     "SapNo": "SAP Number",
     "Mrno": "MR Number",
     "Fname": "Father Name",
@@ -140,7 +167,7 @@ const formatLabel = (key: string): string => {
 // Compact field component (read-only for ERP data)
 const CompactField: React.FC<{
   label: string;
-  value: string | number | null | undefined;
+  value: unknown;
   comparisonStatus?: ComparisonResult;
 }> = ({ label, value, comparisonStatus }) => {
   const displayValue = formatValue(value);
@@ -345,6 +372,32 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
     );
   }
 
+  const shownKeys = new Set<string>([
+    "SapNo",
+    "Name",
+    "Fname",
+    "Cnic",
+    "Mobile",
+    "DeptName",
+    "DegrTitle",
+    "Campus",
+    "AdmAyear",
+    "Gbdat",
+    "Gesch",
+    "Mrno",
+    "Address",
+    "Nationality",
+    "Doc",
+    "Regligion",
+  ]);
+
+  const topLevelEntries = Object.entries(data as Record<string, unknown>);
+  const displayableEntries = topLevelEntries
+    .filter(([key]) => !key.startsWith("__"))
+    .filter(([key]) => key !== "torel")
+    .filter(([key]) => key !== "__metadata")
+    .filter(([key]) => !shownKeys.has(key));
+
   return (
     <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700 p-3 overflow-x-hidden max-w-xl w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
@@ -368,12 +421,10 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <CompactField label="Father Name" value={data?.Fname || null} comparisonStatus={getComparisonStatus("Father Name", data?.Fname)} />
         <CompactField label="CNIC/Passport" value={data?.Cnic || null} comparisonStatus={getComparisonStatus("CNIC/Passport", data?.Cnic)} />
         <CompactField label="Primary Contact" value={data?.Mobile || null} comparisonStatus={getComparisonStatus("Primary Contact", data?.Mobile)} />
-        <CompactField label="Personal Email" value={null} />
-        <CompactField label="Faculty" value={null} />
         <CompactField label="Department" value={data?.DeptName || null} comparisonStatus={getComparisonStatus("Department", data?.DeptName)} />
         <CompactField label="Program" value={data?.DegrTitle || null} comparisonStatus={getComparisonStatus("Program", data?.DegrTitle)} />
-        <CompactField label="Campus" value={null} />
-        <CompactField label="Passing Out Year" value={null} />
+        <CompactField label="Campus" value={(data as Record<string, unknown>)?.Campus as string | null} />
+        <CompactField label="Admission Year" value={(data as Record<string, unknown>)?.AdmAyear as string | null} />
 
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
@@ -384,28 +435,22 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
         </div>
         <CompactField label="Registration No" value={data?.Mrno || null} comparisonStatus={getComparisonStatus("Registration No", data?.Mrno)} />
-        <CompactField label="Gender" value={null} />
-        <CompactField label="Date of Birth" value={null} />
-        <CompactField label="Marital Status" value={null} />
+        <CompactField label="Gender" value={(data as Record<string, unknown>)?.Gesch as string | null} />
+        <CompactField label="Date of Birth" value={(data as Record<string, unknown>)?.Gbdat as string | null} />
+        <CompactField label="Religion" value={(data as Record<string, unknown>)?.Regligion as string | null} />
 
         {/* Contact Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
         </div>
-        <CompactField label="Secondary Contact" value={null} />
-        <CompactField label="Password" value={null} />
         <CompactField label="Home Address" value={data?.Address || null} comparisonStatus={getComparisonStatus("Home Address", data?.Address)} />
         <CompactField label="Home Country" value={data?.Nationality || null} comparisonStatus={getComparisonStatus("Home Country", data?.Nationality)} />
-        <CompactField label="Home Province (Pak only)" value={null} />
-        <CompactField label="Home City" value={null} />
 
         {/* Academic Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic (Additional)</h4>
         </div>
-        <CompactField label="Admission Year" value={null} />
-        <CompactField label="CGPA" value={null} />
-        <CompactField label="Major Subject" value={null} />
+        <CompactField label="Date of Completion" value={data?.Doc || null} />
 
         {/* Professional Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
@@ -442,7 +487,38 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
         </div>
-        <CompactField label="About Me" value={null} />
+        {displayableEntries.length > 0 && (
+          <>
+            <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">All ERP Fields</h4>
+            </div>
+            {displayableEntries
+              .slice()
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, value]) => {
+                const label = formatLabel(key) || key;
+                return <CompactField key={key} label={label} value={value} />;
+              })}
+          </>
+        )}
+
+        {(data as ErpRecord)?.__metadata !== undefined && (
+          <>
+            <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Metadata</h4>
+            </div>
+            <CompactField label="__metadata" value={(data as ErpRecord).__metadata} />
+          </>
+        )}
+
+        {(data as ErpRecord)?.torel !== undefined && (
+          <>
+            <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+              <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Deferred Links</h4>
+            </div>
+            <CompactField label="torel" value={(data as ErpRecord).torel} />
+          </>
+        )}
 
         {/* Social Links */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
