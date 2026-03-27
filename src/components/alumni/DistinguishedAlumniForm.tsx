@@ -18,7 +18,7 @@ import { useFaculties, useDepartments, usePrograms } from "@/app/queries/fetch-o
 
 // Normalize image path - if it's not a full URL, assume it's in /images/
 function normalizeImagePath(image: string | null | undefined): string {
-  if (!image) return "/images/placeholder-avatar.png";
+  if (!image) return "/images/placeholder-avatar.webp";
   
   // If it's already a full URL (http/https), use it as-is
   if (image.startsWith("http://") || image.startsWith("https://")) {
@@ -737,7 +737,7 @@ export const DistinguishedAlumniForm: React.FC<DistinguishedAlumniFormProps> = (
                       alt="Preview"
                       className="h-32 w-32 object-cover rounded-lg border border-gray-300"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/images/placeholder-avatar.png";
+                        (e.target as HTMLImageElement).src = "/images/placeholder-avatar.webp";
                       }}
                     />
                     {imageFile && (

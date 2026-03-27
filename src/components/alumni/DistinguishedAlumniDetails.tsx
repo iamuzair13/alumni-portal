@@ -31,7 +31,7 @@ function sanitizeHtml(input: string): string {
 
 // Normalize image path - if it's not a full URL, assume it's in /images/
 function normalizeImagePath(image: string | null | undefined): string {
-  if (!image) return "/images/placeholder-avatar.png";
+  if (!image) return "/images/placeholder-avatar.webp";
   
   // If it's already a full URL (http/https), use it as-is
   if (image.startsWith("http://") || image.startsWith("https://")) {
@@ -115,7 +115,7 @@ export const DistinguishedAlumniDetails: React.FC<DistinguishedAlumniDetailsProp
       <div className="p-6 lg:p-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-6 mb-6">
           <img
-            src={imageError ? "/images/placeholder-avatar.png" : imagePath}
+            src={imageError ? "/images/placeholder-avatar.webp" : imagePath}
             alt={item.name}
             onError={() => setImageError(true)}
             className="w-32 h-32 object-cover rounded-lg border border-gray-300 dark:border-gray-600 flex-shrink-0"

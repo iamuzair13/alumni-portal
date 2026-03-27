@@ -55,7 +55,7 @@ function stripHtml(input: string): string {
 
 // Normalize image path - if it's not a full URL, assume it's in /images/
 function normalizeImagePath(image: string | null | undefined): string {
-  if (!image) return "/images/placeholder-avatar.png";
+  if (!image) return "/images/placeholder-avatar.webp";
   
   // If it's already a full URL (http/https), use it as-is
   if (image.startsWith("http://") || image.startsWith("https://")) {
@@ -401,7 +401,7 @@ export const DistinguishedAlumniTab: React.FC<DistinguishedAlumniTabProps> = ({ 
                         alt={item.name}
                         className="h-16 w-16 object-cover rounded-lg"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "/images/placeholder-avatar.png";
+                          (e.target as HTMLImageElement).src = "/images/placeholder-avatar.webp";
                         }}
                       />
                     </TableCell>
