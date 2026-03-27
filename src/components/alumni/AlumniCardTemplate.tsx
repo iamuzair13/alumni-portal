@@ -141,7 +141,7 @@ export default function AlumniCardTemplate({
       <div 
         className="relative overflow-hidden rounded-lg shadow-md"
         style={{
-          width: "323.26px",
+          width: "326.26px",
           height: "212.03px",
         }}
       >
