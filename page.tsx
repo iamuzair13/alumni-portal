@@ -6,7 +6,7 @@ import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
 
-import backTemplate from "./card-layout/alumni-card-back.jpg";
+import backTemplate from "./card-layout/UOL-Alumni-Card-Artworks-Revised-Curve-png-back.png";
 import frontTemplate from "./card-layout/alumni-card-front.jpg";
 
 type FormState = {

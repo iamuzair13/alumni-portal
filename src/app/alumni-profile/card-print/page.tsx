@@ -16,7 +16,7 @@ const roboto = Roboto({
 
 const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
 const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
-const backTemplate = "/images/cards/alumni-card-back.jpeg";
+const backTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-back.png";
 
 type AlumniCardData = {
   studentName: string;

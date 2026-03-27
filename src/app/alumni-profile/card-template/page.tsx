@@ -8,7 +8,7 @@ import jsPDF from "jspdf";
 
 // Images from public folder - using /images/card/ as specified
 const frontTemplate = "/images/cards/alumni-card-front.jpg";
-const backTemplate = "/images/cards/alumni-card-back.jpg";
+const backTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-back.png";
 
 type FormState = {
   studentName: string;

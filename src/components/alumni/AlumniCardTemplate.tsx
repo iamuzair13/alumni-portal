@@ -10,8 +10,8 @@ const roboto = Roboto({
 });
 
 // Images from public folder are referenced as URL strings
-const maleFrontTemplate = "/images/cards/alumni-card-male.jpeg";
-const femaleFrontTemplate = "/images/cards/alumni-card-female.jpeg";
+const maleFrontTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-04.png";
+const femaleFrontTemplate = "/images/cards/UOL-Alumni-Card-Artworks-Revised-Curve-png-04.png";
 
 type AlumniCardTemplateProps = {
   studentName: string;
@@ -45,7 +45,7 @@ export default function AlumniCardTemplate({
   const infoTextClass = useMemo(() => {
     const g = String(gender ?? "").trim().toLowerCase();
     const isMale = g === "male" || g === "m";
-    return isMale ? "text-[#163D30]" : "text-white";
+    return isMale ? "text-[#163D30]" : "text-[#163D30]";
   }, [gender]);
 
   const frontTemplate = useMemo(() => {
@@ -141,8 +141,8 @@ export default function AlumniCardTemplate({
       <div 
         className="relative overflow-hidden rounded-lg shadow-md"
         style={{
-          width: "322px",
-          height: "205px",
+          width: "321.26px",
+          height: "212.03px",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,14 +156,14 @@ export default function AlumniCardTemplate({
         />
 
         {/* Student Name, Department, Faculty */}
-        <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass} flex flex-col justify-start items-start   w-full`}>
+        <div className={`absolute left-[7%] right-[45%] top-[33%] flex flex-col gap-0.5 ${infoTextClass}  justify-start items-start   w-full`}>
           <span className="text-[11px] font-bold  leading-tight tracking-tight">
             {studentName || "Alumni Name"}
           </span>
         </div>
 
         {/* Alumni ID and Validity */}
-        <div className={`absolute top-[42%] left-[23%] flex flex-col justify-start items-start ${infoTextClass}`}>
+        <div className={`absolute top-[42%] left-[25%] flex flex-col gap-[3px] justify-start items-start ${infoTextClass}`}>
           <div className="h-[14px] text-[10px] font-medium leading-[14px]">
             {cnicPassport || "CNIC/Passport Missing"}
           </div>
@@ -178,7 +178,7 @@ export default function AlumniCardTemplate({
           </div>
         </div>
 
-        <div className={`absolute left-[7%] bottom-[10%] right-[35%] ${infoTextClass} flex flex-col justify-start items-start`}>
+        <div className={`absolute left-[7%] w-full bottom-[10%] right-[35%] ${infoTextClass} flex flex-col justify-start items-start`}>
           <div className="text-[8px] font-medium leading-tight ">
             {department || "Department"}
             {passingYear ? ` | ${passingYear}` : ""}
