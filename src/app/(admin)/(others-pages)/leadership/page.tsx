@@ -22,6 +22,9 @@ type RoleCriterion = {
   label: string;
   description: string | null;
   is_mandatory: boolean;
+  has_textbox?: boolean;
+  textbox_label?: string | null;
+  is_textbox_required?: boolean;
   sort_order: number;
 };
 
@@ -259,6 +262,7 @@ export default function LeadershipPage() {
   const [processingIds, setProcessingIds] = useState<Set<number>>(new Set());
   const [expandedMemberId, setExpandedMemberId] = useState<number | null>(null);
   const [adminCriteriaIds, setAdminCriteriaIds] = useState<Set<number>>(new Set());
+  const [adminOptionalCriteriaProficiency, setAdminOptionalCriteriaProficiency] = useState<Record<number, number>>({});
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -341,6 +345,33 @@ export default function LeadershipPage() {
     refetchOnWindowFocus: false,
   });
 
+  // For the approve modal, we also need alumni textbox responses (they come from application-details, not criteria config).
+  const { data: approveDetailsData, isLoading: approveDetailsLoading } = useQuery({
+    queryKey: ["leadership-approve-details", pendingAction?.type, pendingAction?.applicationId],
+    queryFn: async () => {
+      if (!pendingAction) throw new Error("Missing application");
+      if (pendingAction.action !== "approve") return { item: null, criteria: [] as ApplicationDetailsCriterion[] };
+      return fetchApplicationDetails({ type: pendingAction.type, applicationId: pendingAction.applicationId });
+    },
+    enabled: confirmModal.isOpen && !!pendingAction && pendingAction.action === "approve" && isAdmin,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  const approveTextboxByCriterionId = useMemo(() => {
+    const items = Array.isArray(approveDetailsData?.criteria) ? approveDetailsData?.criteria : [];
+    const m = new Map<number, { textboxLabel?: string | null; alumniText?: string | null }>();
+    (items || []).forEach((c) => {
+      const id = Number((c as any)?.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      m.set(id, {
+        textboxLabel: (c as any)?.textbox_label ? String((c as any).textbox_label) : null,
+        alumniText: (c as any)?.alumni_text_response ? String((c as any).alumni_text_response) : null,
+      });
+    });
+    return m;
+  }, [approveDetailsData]);
+
   const criteriaItems = useMemo(() => {
     const items = criteriaData?.items ?? [];
     return Array.isArray(items) ? items : [];
@@ -356,9 +387,11 @@ export default function LeadershipPage() {
   useEffect(() => {
     if (!confirmModal.isOpen) {
       setAdminCriteriaIds(new Set());
+      setAdminOptionalCriteriaProficiency({});
       return;
     }
     setAdminCriteriaIds(new Set());
+    setAdminOptionalCriteriaProficiency({});
   }, [confirmModal.isOpen, pendingAction?.applicationId]);
 
   // Fetch chapter members
@@ -469,11 +502,35 @@ export default function LeadershipPage() {
     if (!pendingAction) return;
     const { action, applicationId, type } = pendingAction;
 
+    if (action === "approve" && isAdmin && criteriaLoading) {
+      toast.error("Please wait for criteria to load.");
+      return;
+    }
+
     if (action === "approve" && isAdmin && mandatoryCriteriaIds.length > 0) {
       const missing = mandatoryCriteriaIds.filter((id) => !adminCriteriaIds.has(id));
       if (missing.length > 0) {
         toast.error("Please check the mandatory critaria");
         return;
+      }
+    }
+
+    if (action === "approve" && isAdmin) {
+      const optionalCriteriaIds = criteriaItems
+        .filter((c) => !c.is_mandatory)
+        .map((c) => Number(c.id))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
+      if (optionalCriteriaIds.length > 0) {
+        const missingRating = optionalCriteriaIds.some((id) => {
+          const r = Number(adminOptionalCriteriaProficiency[id] ?? 0);
+          return !Number.isFinite(r) || r < 1 || r > 5;
+        });
+
+        if (missingRating) {
+          toast.error("Please select a proficiency rating (1-5) for all optional criteria.");
+          return;
+        }
       }
     }
 
@@ -487,7 +544,12 @@ export default function LeadershipPage() {
           action,
           applicationId,
           type,
-          ...(action === "approve" ? { adminCriteriaIds: Array.from(adminCriteriaIds) } : {}),
+          ...(action === "approve"
+            ? {
+                adminCriteriaIds: Array.from(adminCriteriaIds),
+                optionalCriteriaProficiency: adminOptionalCriteriaProficiency,
+              }
+            : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -505,6 +567,7 @@ export default function LeadershipPage() {
       queryClient.invalidateQueries({ queryKey: ["leadership-members"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["leadership-counts"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["leadership-application-counts"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["leadership-application-details"], exact: false });
       await refetchApplications();
       confirmModal.closeModal();
       setPendingAction(null);
@@ -911,7 +974,7 @@ export default function LeadershipPage() {
                       <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Criteria Confirmation</div>
                       <div className="text-xs text-gray-600 dark:text-gray-400">Mandatory criteria must be confirmed to approve.</div>
                     </div>
-                    {criteriaLoading ? (
+                    {criteriaLoading || approveDetailsLoading ? (
                       <div className="text-xs text-gray-500">Loading...</div>
                     ) : null}
                   </div>
@@ -922,37 +985,120 @@ export default function LeadershipPage() {
                     <div className="mt-3 space-y-2">
                       {criteriaItems.map((c) => {
                         const id = Number(c.id);
-                        const checked = adminCriteriaIds.has(id);
-                        return (
-                          <label key={id} className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-3 py-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                setAdminCriteriaIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (e.target.checked) next.add(id);
-                                  else next.delete(id);
-                                  return next;
-                                });
-                              }}
-                              className="mt-1 h-4 w-4 text-blue-600"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                {c.is_mandatory ? (
-                                  <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
-                                ) : (
-                                  <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
-                                )}
+                        const currentRating = Number(adminOptionalCriteriaProficiency[id] ?? 0);
+                            if (c.is_mandatory) {
+                              const checked = adminCriteriaIds.has(id);
+                              const tb = approveTextboxByCriterionId.get(id) ?? null;
+                              const tbLabel = String(tb?.textboxLabel || c.textbox_label || "Response");
+                              const tbValue =
+                                tb?.alumniText && String(tb.alumniText).trim()
+                                  ? String(tb.alumniText)
+                                  : "No response provided";
+                              return (
+                                <label
+                                  key={id}
+                                  className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-3 py-2 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      setAdminCriteriaIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (e.target.checked) next.add(id);
+                                        else next.delete(id);
+                                        return next;
+                                      });
+                                    }}
+                                    className="mt-1 h-4 w-4 text-blue-600"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                                      <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">
+                                        Mandatory
+                                      </span>
+                                      <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">
+                                        Has Textbox: {Boolean(c.has_textbox) ? "Yes" : "No"}
+                                      </span>
+                                    </div>
+                                    {c.description ? <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div> : null}
+                                    {c.has_textbox ? (
+                                      <div className="mt-2">
+                                        <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">{tbLabel}:</div>
+                                        <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                                          {tbValue}
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </label>
+                              );
+                            }
+
+                            // Optional criteria: align with the alumni form (only star rating selection)
+                            const tb = approveTextboxByCriterionId.get(id) ?? null;
+                            const tbLabel = String(tb?.textboxLabel || c.textbox_label || "Response");
+                            const tbValue =
+                              tb?.alumniText && String(tb.alumniText).trim()
+                                ? String(tb.alumniText)
+                                : "No response provided";
+                            return (
+                              <div
+                                key={id}
+                                className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-3 py-2"
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">
+                                      Optional
+                                    </span>
+                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">
+                                      Has Textbox: {Boolean(c.has_textbox) ? "Yes" : "No"}
+                                    </span>
+                                  </div>
+                                  {c.description ? <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div> : null}
+                                  {c.has_textbox ? (
+                                    <div className="mt-2">
+                                      <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">{tbLabel}:</div>
+                                      <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                                        {tbValue}
+                                      </div>
+                                    </div>
+                                  ) : null}
+
+                                  <div className="mt-3">
+                                    <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                      Admin proficiency (1-5)
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {[1, 2, 3, 4, 5].map((star) => {
+                                        const active = star <= currentRating;
+                                        return (
+                                          <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setAdminOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: star }))}
+                                            className={`select-none rounded-md border px-2 py-1 text-xs font-semibold ${
+                                              active
+                                                ? "border-amber-300 bg-amber-50 text-amber-800"
+                                                : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                                            }`}
+                                            aria-label={`Set rating to ${star}`}
+                                          >
+                                            {active ? "★" : "☆"} {star}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                      {currentRating ? `Selected: ${currentRating}` : "No rating"}
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                              {c.description ? (
-                                <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
-                              ) : null}
-                            </div>
-                          </label>
-                        );
+                            );
                       })}
                     </div>
                   )}

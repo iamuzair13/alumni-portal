@@ -29,11 +29,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, applicationId, type, adminCriteriaIds } = body as {
+    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency } = body as {
       action?: "approve" | "reject" | "delete";
       applicationId?: number;
       type?: "chapter" | "association";
       adminCriteriaIds?: unknown;
+      optionalCriteriaProficiency?: unknown;
     }; // action: "approve" | "reject" | "delete", type: "chapter" | "association"
     // rejectionReason is accessed from body.rejectionReason when needed
 
@@ -52,6 +53,35 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    const optionalCriteriaProficiencyObj =
+      optionalCriteriaProficiency && typeof optionalCriteriaProficiency === "object"
+        ? (optionalCriteriaProficiency as Record<string, unknown>)
+        : null;
+
+    const normalizedOptionalCriteriaProficiency = optionalCriteriaProficiencyObj
+      ? Object.fromEntries(
+          Object.entries(optionalCriteriaProficiencyObj)
+            .map(([k, v]) => {
+              const id = Number(k);
+              const rating = Number(v);
+              if (!Number.isFinite(id) || id <= 0) return null;
+              if (!Number.isFinite(rating) || rating < 1) return null;
+              const normalized = Math.min(5, Math.max(1, Math.round(rating)));
+              return [String(id), normalized] as const;
+            })
+            .filter(Boolean) as Array<readonly [string, number]>
+        )
+      : null;
+
+    const hasOptionalCriteriaProficiencyField = typeof optionalCriteriaProficiency !== "undefined";
+    const optionalCriteriaProficiencyJson = hasOptionalCriteriaProficiencyField
+      ? normalizedOptionalCriteriaProficiency && Object.keys(normalizedOptionalCriteriaProficiency).length > 0
+        ? JSON.stringify(normalizedOptionalCriteriaProficiency)
+        : null
+      : undefined;
+
+    const optionalCriteriaProficiencyJsonValue = optionalCriteriaProficiencyJson ?? null;
 
     if (type === "chapter") {
       // First, verify the application exists
@@ -163,6 +193,14 @@ export async function POST(req: NextRequest) {
             )
           : [];
 
+        const optionalRatedCriterionIds = normalizedOptionalCriteriaProficiency
+          ? Object.keys(normalizedOptionalCriteriaProficiency)
+              .map((k) => Number(k))
+              .filter((n) => Number.isFinite(n) && n > 0)
+          : [];
+
+        const adminIdsToConfirm = Array.from(new Set([...confirmedAdminIds, ...optionalRatedCriterionIds]));
+
         const mandatoryRows = await sql/* sql */`
           SELECT c.id
           FROM public.leadership_roles r
@@ -201,7 +239,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          if (confirmedAdminIds.length > 0) {
+          if (adminIdsToConfirm.length > 0) {
             await sql/* sql */`
               INSERT INTO public.leadership_criteria_confirmations (
                 leadership_type,
@@ -221,7 +259,7 @@ export async function POST(req: NextRequest) {
                 'YES',
                 NOW()
               FROM public.leadership_role_criteria c
-              WHERE c.id = ANY(${confirmedAdminIds}::bigint[])
+              WHERE c.id = ANY(${adminIdsToConfirm}::bigint[])
               ON CONFLICT (chapter_application_id, criterion_id, actor_type)
               DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
             `;
@@ -234,6 +272,7 @@ export async function POST(req: NextRequest) {
           SET status = 'approved',
               updated_at = NOW(),
               rejection_reason = NULL
+              ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
           WHERE id = ${Number(applicationId)}
         `;
 
@@ -393,6 +432,14 @@ export async function POST(req: NextRequest) {
             )
           : [];
 
+        const optionalRatedCriterionIds = normalizedOptionalCriteriaProficiency
+          ? Object.keys(normalizedOptionalCriteriaProficiency)
+              .map((k) => Number(k))
+              .filter((n) => Number.isFinite(n) && n > 0)
+          : [];
+
+        const adminIdsToConfirm = Array.from(new Set([...confirmedAdminIds, ...optionalRatedCriterionIds]));
+
         const mandatoryRows = await sql/* sql */`
           SELECT c.id
           FROM public.leadership_roles r
@@ -431,7 +478,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          if (confirmedAdminIds.length > 0) {
+          if (adminIdsToConfirm.length > 0) {
             await sql/* sql */`
               INSERT INTO public.leadership_criteria_confirmations (
                 leadership_type,
@@ -449,7 +496,7 @@ export async function POST(req: NextRequest) {
                 true,
                 NOW()
               FROM public.leadership_role_criteria c
-              WHERE c.id = ANY(${confirmedAdminIds}::bigint[])
+              WHERE c.id = ANY(${adminIdsToConfirm}::bigint[])
               ON CONFLICT (association_application_id, criterion_id, actor_type) DO NOTHING
             `;
           }
@@ -460,6 +507,7 @@ export async function POST(req: NextRequest) {
         await sql/* sql */`
           UPDATE public.tblalumniassociation
           SET status = 'approved'
+          ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
           WHERE id = ${Number(applicationId)}
         `;
 

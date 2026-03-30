@@ -1015,11 +1015,11 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                   </div>
                 </div>
  <div>
-            <label className={labelBase}>Additional Achievements</label>
+            <label className={labelBase}>Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.</label>
             <textarea
               {...register("additionalAchievements")}
               rows={5}
-              placeholder="Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role."
+              placeholder="Write your additional achievements here..."
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

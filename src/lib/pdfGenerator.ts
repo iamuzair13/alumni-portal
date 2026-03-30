@@ -753,7 +753,16 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
               }
             }
           }
-          const criterionText = String(c.label || "-") + (c.description ? `\n${String(c.description)}` : "");
+          const criterionText = (() => {
+            const base = String(c.label || "-") + (c.description ? `\n${String(c.description)}` : "");
+            if (!c.hasTextbox) return base;
+            const response =
+              c.alumniTextResponse && String(c.alumniTextResponse).trim()
+                ? String(c.alumniTextResponse)
+                : "No response provided";
+            const label = String(c.textboxLabel || "Response");
+            return `${base}\nHas Textbox: Yes\n${label}: ${response}`;
+          })();
           drawTableRow({
             // "Type" column now also contains criterion text (label + description),
             // since the dedicated "Requirement" column was removed.
