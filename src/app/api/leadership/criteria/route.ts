@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     const sortOrder = Number.isFinite(body.sortOrder as number) ? Number(body.sortOrder) : 0;
     const criterionScoreRaw = (body as any).criterionScore;
     const criterionScoreNum = Number(criterionScoreRaw);
-    const criterionScore = Number.isFinite(criterionScoreNum) ? Math.trunc(criterionScoreNum) : NaN;
+    const criterionScore = Number.isFinite(criterionScoreNum) ? criterionScoreNum : NaN;
     const textboxLabel =
       body.textboxLabel === undefined || body.textboxLabel === null
         ? null
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!Number.isFinite(criterionScore) || criterionScore < 1) {
-      return NextResponse.json({ error: "Criterion score is required and must be a positive integer" }, { status: 400 });
+      return NextResponse.json({ error: "Criterion score is required and must be >= 1" }, { status: 400 });
     }
 
     const roleRows = await sql/* sql */`
@@ -250,9 +250,9 @@ export async function PUT(req: NextRequest) {
 
     const setScore = Object.prototype.hasOwnProperty.call(body, "criterionScore");
     const scoreValueRaw = setScore ? Number((body as any).criterionScore) : NaN;
-    const scoreValue = Number.isFinite(scoreValueRaw) ? Math.trunc(scoreValueRaw) : NaN;
+    const scoreValue = Number.isFinite(scoreValueRaw) ? scoreValueRaw : NaN;
     if (setScore && (!Number.isFinite(scoreValue) || scoreValue < 1)) {
-      return NextResponse.json({ error: "Criterion score must be a positive integer" }, { status: 400 });
+      return NextResponse.json({ error: "Criterion score must be >= 1" }, { status: 400 });
     }
 
     const rows = await sql/* sql */`

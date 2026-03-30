@@ -1455,7 +1455,7 @@ export default function LeadershipPage() {
                                     const stars = !isMandatory && alumniYes && rating ? starsText(rating) : "";
                                     const label = !isMandatory && alumniYes && rating ? proficiencyLabel(rating) : "";
 
-                                    const marks = Number.isFinite(Number((c as any).criterion_score)) ? Math.trunc(Number((c as any).criterion_score)) : null;
+                                    const marks = Number.isFinite(Number((c as any).criterion_score)) ? Number((c as any).criterion_score) : null;
                                     const obtained = (() => {
                                       if (marks === null) return null;
                                       if (isMandatory) return null;
@@ -1463,7 +1463,7 @@ export default function LeadershipPage() {
                                       const r = Number(rating);
                                       if (!Number.isFinite(r) || r < 1) return null;
                                       const safe = Math.min(5, Math.max(1, Math.round(r)));
-                                      return Math.round((safe / 5) * marks);
+                                      return Math.round(((safe / 5) * marks) * 100) / 100;
                                     })();
 
                                     return (

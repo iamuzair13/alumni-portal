@@ -300,7 +300,7 @@ export async function GET(req: NextRequest) {
         label: String(c.label ?? ""),
         description: c.description ? String(c.description) : null,
         isMandatory: Boolean(c.is_mandatory),
-        criterionScore: Number.isFinite(Number(c.criterion_score)) ? Math.trunc(Number(c.criterion_score)) : null,
+        criterionScore: Number.isFinite(Number(c.criterion_score)) ? Number(c.criterion_score) : null,
         hasTextbox: Boolean(c.has_textbox),
         textboxLabel: c.textbox_label ? String(c.textbox_label) : null,
         alumniConfirmed: Boolean(c.alumni_confirmed),

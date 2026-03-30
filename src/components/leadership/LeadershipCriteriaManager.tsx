@@ -46,7 +46,7 @@ export default function LeadershipCriteriaManager(props: {
   setCriteriaDraft: React.Dispatch<React.SetStateAction<CriteriaDraft>>;
 
   createLeadershipCriterion: (input: { type: LeadershipType; role: LeadershipRoleName } & CriteriaDraft) => Promise<unknown>;
-  updateLeadershipCriterion: (input: CriteriaDraft) => Promise<unknown>;
+  updateLeadershipCriterion: (input: { id: number } & Partial<Omit<CriteriaDraft, "id">>) => Promise<unknown>;
   deleteLeadershipCriterion: (id: number) => Promise<unknown>;
 
   invalidateCriteriaQueries: () => void;
@@ -126,7 +126,7 @@ export default function LeadershipCriteriaManager(props: {
 
       sortedCriteria.forEach((c, idx) => {
         const mandatoryLabel = c.is_mandatory ? "Mandatory" : "Optional";
-        const marksLabel = Number.isFinite(Number(c.criterion_score)) ? String(Math.trunc(Number(c.criterion_score))) : "N/A";
+        const marksLabel = Number.isFinite(Number(c.criterion_score)) ? String(Number(c.criterion_score)) : "N/A";
         addWrappedText(
           `${idx + 1}. ${c.label} (${mandatoryLabel}) [Sort: ${c.sort_order}] [Marks: ${marksLabel}]`,
           { fontSize: 12, bold: true, spacing: 4 }
@@ -211,7 +211,7 @@ export default function LeadershipCriteriaManager(props: {
                             textboxLabel: String((c as any).textbox_label ?? "Explanation") || "Explanation",
                             isTextboxRequired: Boolean((c as any).is_textbox_required),
                             sortOrder: Number(c.sort_order ?? 0),
-                            criterionScore: Number.isFinite(Number((c as any).criterion_score)) ? Math.trunc(Number((c as any).criterion_score)) : 1,
+                            criterionScore: Number.isFinite(Number((c as any).criterion_score)) ? Number((c as any).criterion_score) : 1,
                           });
                         }}
                         className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700"
@@ -232,9 +232,6 @@ export default function LeadershipCriteriaManager(props: {
                                 textboxLabel: String((c as any).textbox_label ?? "Explanation") || "Explanation",
                                 isTextboxRequired: Boolean((c as any).is_textbox_required ?? false),
                                 sortOrder: Number(c.sort_order ?? 0),
-                                criterionScore: Number.isFinite(Number((c as any).criterion_score))
-                                  ? Math.trunc(Number((c as any).criterion_score))
-                                  : 1,
                               });
                               pushToast("success", "Textbox added");
                               invalidateCriteriaQueries();
@@ -426,13 +423,13 @@ export default function LeadershipCriteriaManager(props: {
               <input
                 type="number"
                 min={1}
-                step={1}
+                step={0.1}
                 inputMode="numeric"
                 value={criteriaDraft.criterionScore}
                 onChange={(e) => {
                   const v = e.target.value;
                   const n = Number(v);
-                  setCriteriaDraft((p) => ({ ...p, criterionScore: Number.isFinite(n) ? Math.trunc(n) : 0 }));
+                  setCriteriaDraft((p) => ({ ...p, criterionScore: Number.isFinite(n) ? n : 0 }));
                 }}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                 placeholder="Enter marks (e.g., 20)"
@@ -516,9 +513,11 @@ export default function LeadershipCriteriaManager(props: {
                 }
 
                 const scoreNum = Number(criteriaDraft.criterionScore);
-                const score = Number.isFinite(scoreNum) ? Math.trunc(scoreNum) : NaN;
-                if (!Number.isFinite(score) || score < 1) {
-                  pushToast("error", "Criterion score is required and must be a positive integer");
+                const score = Number.isFinite(scoreNum) ? scoreNum : NaN;
+                // Criterion score is required for create, but should not block textbox-only edits.
+                // For edits: if score is invalid/empty, we simply don't send criterionScore (backend keeps existing value).
+                if (!criteriaEditingId && (!Number.isFinite(score) || score < 1)) {
+                  pushToast("error", "Criterion score is required and must be >= 1");
                   return;
                 }
 
@@ -533,7 +532,7 @@ export default function LeadershipCriteriaManager(props: {
                       textboxLabel: criteriaDraft.textboxLabel,
                       isTextboxRequired: criteriaDraft.isTextboxRequired,
                       sortOrder: criteriaDraft.sortOrder,
-                      criterionScore: score,
+                      ...(Number.isFinite(score) && score >= 1 ? { criterionScore: score } : {}),
                     });
                     pushToast("success", "Updated");
                   } else {

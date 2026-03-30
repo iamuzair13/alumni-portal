@@ -122,21 +122,25 @@ async function createLeadershipCriterion(input: { type: LeadershipType; role: Le
   return data as { item: RoleCriterion };
 }
 
-async function updateLeadershipCriterion(input: CriteriaDraft) {
+async function updateLeadershipCriterion(input: { id: number } & Partial<Omit<CriteriaDraft, "id">>) {
+  const idNum = Number(input.id);
+  if (!Number.isFinite(idNum) || idNum <= 0) throw new Error("Invalid criterion id");
+
+  const body: Record<string, unknown> = { id: idNum };
+
+  if (Object.prototype.hasOwnProperty.call(input, "label")) body.label = input.label;
+  if (Object.prototype.hasOwnProperty.call(input, "description")) body.description = input.description;
+  if (Object.prototype.hasOwnProperty.call(input, "isMandatory")) body.isMandatory = input.isMandatory;
+  if (Object.prototype.hasOwnProperty.call(input, "hasTextbox")) body.hasTextbox = input.hasTextbox;
+  if (Object.prototype.hasOwnProperty.call(input, "textboxLabel")) body.textboxLabel = input.textboxLabel ?? null;
+  if (Object.prototype.hasOwnProperty.call(input, "isTextboxRequired")) body.isTextboxRequired = input.isTextboxRequired;
+  if (Object.prototype.hasOwnProperty.call(input, "sortOrder")) body.sortOrder = input.sortOrder;
+  if (Object.prototype.hasOwnProperty.call(input, "criterionScore")) body.criterionScore = input.criterionScore;
+
   const res = await fetch("/api/leadership/criteria", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id: input.id,
-      label: input.label,
-      description: input.description,
-      isMandatory: input.isMandatory,
-      hasTextbox: input.hasTextbox,
-      textboxLabel: input.textboxLabel || null,
-      isTextboxRequired: input.isTextboxRequired,
-      sortOrder: input.sortOrder,
-      criterionScore: input.criterionScore,
-    }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((data as any).error || "Failed to update criterion");
