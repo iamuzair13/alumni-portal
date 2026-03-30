@@ -67,6 +67,8 @@ type LeadershipApplication = {
   department: string | null;
   program: string | null;
   type: "chapter" | "association";
+  categoryType?: string | null;
+  categoryName?: string | null; // Chapter name (national/international) or Association title
   position: string;
   status?: string;
   additionalAchievements?: string | null;
@@ -93,10 +95,14 @@ type ApplicationDetailsCriterion = {
   description: string | null;
   is_mandatory: boolean;
   sort_order: number;
+  criterion_score?: number | null;
   alumni_confirmed: boolean;
   admin_confirmed: boolean;
   alumni_response?: string | null;
   admin_response?: string | null;
+  has_textbox?: boolean;
+  textbox_label?: string | null;
+  alumni_text_response?: string | null;
 };
 
 type ApplicationDetailsItem = LeadershipApplication & {
@@ -1205,7 +1211,14 @@ export default function LeadershipPage() {
                               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leadership Application Details</div>
                               <div className="mt-1 h-px bg-gray-200 dark:bg-gray-800" />
                               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                <div className="truncate"><span className="font-medium">Application Type:</span> {item.type === "chapter" ? "Chapter" : "Association"}</div>
+                                <div className="truncate">
+                                  <span className="font-medium">Application Type:</span>{" "}
+                                  {item.type === "chapter" ? "Chapter" : "Association"}
+                                </div>
+                                <div className="truncate">
+                                  <span className="font-medium">Chapter/Association Name:</span>{" "}
+                                  {String(item.categoryName || "-")}
+                                </div>
                                 <div className="truncate"><span className="font-medium">Role Applied For:</span> {item.position || "-"}</div>
                                 <div className="truncate"><span className="font-medium">Application Date:</span> {item.createdAt ? String(item.createdAt) : "-"}</div>
                                 <div>
@@ -1277,6 +1290,8 @@ export default function LeadershipPage() {
                                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10">
                                   <tr className="border-b border-gray-200 dark:border-gray-700">
                                     <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200">Requirement</th>
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[110px]">Marks</th>
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[140px]">Score</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Alumni</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Admin</th>
                                   </tr>
@@ -1294,6 +1309,17 @@ export default function LeadershipPage() {
                                     const stars = !isMandatory && alumniYes && rating ? starsText(rating) : "";
                                     const label = !isMandatory && alumniYes && rating ? proficiencyLabel(rating) : "";
 
+                                    const marks = Number.isFinite(Number((c as any).criterion_score)) ? Math.trunc(Number((c as any).criterion_score)) : null;
+                                    const obtained = (() => {
+                                      if (marks === null) return null;
+                                      if (isMandatory) return null;
+                                      if (!alumniYes) return 0;
+                                      const r = Number(rating);
+                                      if (!Number.isFinite(r) || r < 1) return null;
+                                      const safe = Math.min(5, Math.max(1, Math.round(r)));
+                                      return Math.round((safe / 5) * marks);
+                                    })();
+
                                     return (
                                       <tr key={c.id} className="bg-white dark:bg-transparent">
                                         <td className="px-4 py-3">
@@ -1310,8 +1336,34 @@ export default function LeadershipPage() {
                                             <div className="min-w-0">
                                               <div className="font-semibold text-gray-900 dark:text-gray-100 break-words">{c.label}</div>
                                               {c.description ? <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 break-words">{c.description}</div> : null}
+                                              {c.has_textbox ? (
+                                                <div className="mt-2">
+                                                  <div className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">
+                                                    {String(c.textbox_label || "Response")}:{" "}
+                                                  </div>
+                                                  <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                                                    {c.alumni_text_response && String(c.alumni_text_response).trim()
+                                                      ? String(c.alumni_text_response)
+                                                      : "No response provided"}
+                                                  </div>
+                                                </div>
+                                              ) : null}
                                             </div>
                                           </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          <div className="font-semibold text-gray-900 dark:text-gray-100">{marks === null ? "N/A" : String(marks)}</div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          {marks === null ? (
+                                            <div className="font-semibold text-gray-500">N/A</div>
+                                          ) : isMandatory ? (
+                                            <div className="font-semibold text-gray-500">-</div>
+                                          ) : obtained === null ? (
+                                            <div className="font-semibold text-gray-500">-</div>
+                                          ) : (
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100">{`${obtained}/${marks}`}</div>
+                                          )}
                                         </td>
                                         <td className="px-4 py-3">
                                           {alumniYes ? (
@@ -1353,7 +1405,7 @@ export default function LeadershipPage() {
                           </div>
 
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Please tell your plan or strategy to achieve the role and responsibility assigned to you.</div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role</div>
                             <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                               {String(item.planStrategy || "").trim() || "No plan/strategy provided."}
                             </div>
@@ -1434,17 +1486,17 @@ function ApplicationsTable({
 
   if (loading) {
     return (
-      <Table className="min-w-full">
+      <Table className="min-w-full w-full table-fixed">
         <TableHeader className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
           <TableRow className="border-b border-gray-200 dark:border-gray-700">
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">SAP / Reg No</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Name</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Email</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Type</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Role</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">Status</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[170px]">SAP / Reg No</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[360px]">Name</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">Type</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[220px]">Role</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Status</TableCell>
             {isAdmin && (
-              <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">
+              <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[120px]">
                 <span className="hidden sm:inline">Actions</span>
                 <span className="sm:hidden">Action</span>
               </TableCell>
@@ -1454,13 +1506,13 @@ function ApplicationsTable({
         <TableBody>
           {Array.from({ length: 5 }).map((_, i) => (
             <TableRow key={`skeleton-${i}`}>
-              <TableCell className="px-4 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4 hidden lg:table-cell"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
-              <TableCell className="px-4 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[170px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[360px]"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 hidden lg:table-cell w-[220px]"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[240px]"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[220px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               {isAdmin && (
-                <TableCell className="px-4 py-4 sticky right-0 bg-white dark:bg-gray-800"><div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" /></TableCell>
+                <TableCell className="px-4 py-4 sticky right-0 bg-white dark:bg-gray-800 w-[120px]"><div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" /></TableCell>
               )}
             </TableRow>
           ))}
@@ -1479,37 +1531,37 @@ function ApplicationsTable({
   }
 
   return (
-    <Table className="min-w-full">
+    <Table className="min-w-full w-full table-fixed">
       <TableHeader className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
         <TableRow className="border-b border-gray-200 dark:border-gray-700">
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[170px]">
             <button type="button" onClick={() => onSort("sapId")} className="hover:underline">
               SAP / Reg No{sortIndicator("sapId")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[360px]">
             <button type="button" onClick={() => onSort("name")} className="hover:underline">
               Name{sortIndicator("name")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Email</TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">
             <button type="button" onClick={() => onSort("type")} className="hover:underline">
               Type{sortIndicator("type")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[220px]">
             <button type="button" onClick={() => onSort("position")} className="hover:underline">
               Role{sortIndicator("position")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300">
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">
             <button type="button" onClick={() => onSort("status")} className="hover:underline">
               Status{sortIndicator("status")}
             </button>
           </TableCell>
           {isAdmin && (
-            <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50">
+            <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[120px]">
               <span className="hidden sm:inline">Actions</span>
               <span className="sm:hidden">Action</span>
             </TableCell>
@@ -1519,50 +1571,67 @@ function ApplicationsTable({
       <TableBody>
         {applications.map((app) => (
           <TableRow key={`${app.type}-${app.id}`} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-            <TableCell className="px-4 py-3 text-sm">
-              <span className="font-mono text-xs">{identifierText(app)}</span>
+            <TableCell className="px-4 py-3 text-sm w-[170px]">
+              <span className="font-mono text-xs truncate block min-w-0 max-w-full">{identifierText(app)}</span>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{app.name || "-"}</span>
-                {String(app.additionalAchievements || "").trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => onViewAdditionalAchievements(app)}
-                    className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 hover:bg-emerald-100"
-                    title="View additional achievements"
-                  >
-                    <EyeIcon className="h-3.5 w-3.5" />
-                    Has Additional Achievements
-                  </button>
-                ) : null}
+            <TableCell className="px-4 py-3 text-sm w-[360px]">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="font-medium truncate block min-w-0 max-w-full">{app.name || "-"}</span>
+                  {String(app.additionalAchievements || "").trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => onViewAdditionalAchievements(app)}
+                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 hover:bg-emerald-100"
+                      title="View additional achievements"
+                    >
+                      <EyeIcon className="h-3.5 w-3.5" />
+                      Has Additional Achievements
+                    </button>
+                  ) : null}
+                </div>
+                {(() => {
+                  const docs = documentsFromItem(app);
+                  if (!docs.length) return null;
+                  return (
+                    <div className="mt-1 space-y-0.5">
+                      {docs.map((d) => {
+                        const name = fileNameFromUrl(d.url) || d.label;
+                        return (
+                          <div key={d.key} className="flex items-center gap-2 min-w-0">
+                            <span className="shrink-0 text-[11px] text-gray-600 dark:text-gray-400 font-semibold">{d.label}:</span>
+                            <span className="min-w-0 truncate text-[11px] text-gray-600 dark:text-gray-400 block">{name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                <a
+                  href={app.email ? `mailto:${app.email}` : "#"}
+                  className="lg:hidden block text-xs text-blue-600 truncate min-w-0 max-w-full"
+                >
+                  {app.email || ""}
+                </a>
               </div>
-              {(() => {
-                const docs = documentsFromItem(app);
-                if (!docs.length) return null;
-                return (
-                  <div className="mt-1 space-y-0.5">
-                    {docs.map((d) => {
-                      const name = fileNameFromUrl(d.url) || d.label;
-                      return (
-                        <div key={d.key} className="text-[11px] text-gray-600 dark:text-gray-400 truncate">
-                          {d.label}: {name}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-              <a href={app.email ? `mailto:${app.email}` : "#"} className="lg:hidden block text-xs text-blue-600 truncate">{app.email || ""}</a>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm hidden lg:table-cell">
-              <a href={app.email ? `mailto:${app.email}` : "#"} className="text-blue-600 hover:underline truncate block">{app.email || "-"}</a>
+            <TableCell className="px-4 py-3 text-sm hidden lg:table-cell w-[220px]">
+              <a
+                href={app.email ? `mailto:${app.email}` : "#"}
+                className="text-blue-600 hover:underline truncate block min-w-0 max-w-full"
+              >
+                {app.email || "-"}
+              </a>
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm">{app.type === "chapter" ? "Chapter" : "Association"}</TableCell>
-            <TableCell className="px-4 py-3 text-sm">
+            <TableCell className="px-4 py-3 text-sm w-[240px]">
+              <div className="truncate min-w-0">
+                {app.type === "chapter" ? "Chapter" : "Association"} - {String(app.categoryName || "-")}
+              </div>
+            </TableCell>
+            <TableCell className="px-4 py-3 text-sm w-[220px]">
               <LeadershipRoleBadge type={app.type} position={app.position} />
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm">
+            <TableCell className="px-4 py-3 text-sm w-[160px]">
               <span
                 className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
                   String(app.status || "").toLowerCase() === "approved"
@@ -1576,7 +1645,7 @@ function ApplicationsTable({
               </span>
             </TableCell>
             {isAdmin && (
-              <TableCell className="px-4 py-3 text-right sticky right-0 bg-white dark:bg-gray-800">
+              <TableCell className="px-4 py-3 text-right sticky right-0 bg-white dark:bg-gray-800 w-[120px]">
                 <div className="flex flex-row flex-wrap gap-1">
                   <button
                     onClick={() => onViewApplication(app)}

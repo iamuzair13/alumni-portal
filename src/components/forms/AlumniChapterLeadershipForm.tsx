@@ -28,6 +28,9 @@ type RoleCriterion = {
   label: string;
   description: string | null;
   is_mandatory: boolean;
+  has_textbox?: boolean;
+  textbox_label?: string | null;
+  is_textbox_required?: boolean;
   sort_order: number;
 };
 
@@ -89,10 +92,10 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const [selectedNationalChapterId, setSelectedNationalChapterId] = useState<number | null>(null);
   const [selectedInternationalChapterId, setSelectedInternationalChapterId] = useState<number | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
-  const [selectedCriteriaIds, setSelectedCriteriaIds] = useState<Set<number>>(new Set());
   const [mandatoryCriteriaResponses, setMandatoryCriteriaResponses] = useState<Record<number, "YES" | "NO" | "">>({});
   const [criteriaError, setCriteriaError] = useState<string | null>(null);
   const [optionalCriteriaProficiency, setOptionalCriteriaProficiency] = useState<Record<number, number>>({});
+  const [textboxResponses, setTextboxResponses] = useState<Record<number, string>>({});
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [additionalFile1, setAdditionalFile1] = useState<File | null>(null);
   const [additionalFile2, setAdditionalFile2] = useState<File | null>(null);
@@ -190,10 +193,10 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     setSelectedNationalChapterId(null);
     setSelectedInternationalChapterId(null);
     setCategoryError(null);
-    setSelectedCriteriaIds(new Set());
     setMandatoryCriteriaResponses({});
     setCriteriaError(null);
     setOptionalCriteriaProficiency({});
+    setTextboxResponses({});
     setCvFile(null);
     setAdditionalFile1(null);
     setAdditionalFile2(null);
@@ -278,6 +281,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     return criteriaItems.filter((c) => c.is_mandatory);
   }, [criteriaItems]);
 
+  const textboxMaxLen = 500;
+
   function starsText(value: number): string {
     const n = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
     return "★".repeat(n) + "☆".repeat(5 - n);
@@ -287,34 +292,22 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     try {
       const applicantId = String(parseInt(alumniId, 10) || "").trim();
       const position = selectedPost ? selectedPost : "-";
-      const selected = criteriaItems
-        .filter((c) => selectedCriteriaIds.has(Number(c.id)))
+      const selected = optionalCriteriaItems
         .map((c) => ({
           id: Number(c.id),
           label: String(c.label || ""),
-          isMandatory: Boolean(c.is_mandatory),
-        }));
+        }))
+        .filter((c) => Number.isFinite(c.id) && c.id > 0);
 
       const rowsHtml = selected
         .map((c) => {
-          if (c.isMandatory) {
-            return `
-              <div class="row">
-                <div class="label">${c.label}</div>
-                <div class="value"><span class="pill pill-mandatory">Mandatory</span></div>
-              </div>
-            `;
-          }
           const rating = Number(optionalCriteriaProficiency[c.id] || 0);
           const label = proficiencyLabel(rating) || "-";
           const stars = rating ? starsText(rating) : "-";
           return `
             <div class="row">
-              <div class="label">${c.label}</div>
-              <div class="value">
-                <div><span class="pill pill-optional">Optional</span></div>
-                <div class="sub">Proficiency: <span class="stars">${stars}</span> <span class="muted">(${label})</span></div>
-              </div>
+              <div class="label">${String(c.label || "").replace(/</g, "&lt;")}</div>
+              <div class="value">${stars} <span class="muted">(${label})</span></div>
             </div>
           `;
         })
@@ -411,23 +404,40 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     }
 
     if (mandatoryCriteriaIds.length > 0) {
-      const missing = mandatoryCriteriaIds.filter((id) => {
-        const v = mandatoryCriteriaResponses[id];
-        return v !== "YES" && v !== "NO";
-      });
-      if (missing.length > 0) {
-        const msg = "Please select YES or NO for all role criteria.";
-        setCriteriaError(msg);
-        toast.error(msg);
+      const missing = mandatoryCriteriaIds.some((id) => !mandatoryCriteriaResponses[id]);
+      if (missing) {
+        setCriteriaError("Please answer all mandatory criteria (YES/NO).");
         return;
       }
+    }
 
-      const anyNo = mandatoryCriteriaIds.some((id) => mandatoryCriteriaResponses[id] === "NO");
-      if (anyNo) {
-        const confirmed = window.confirm(
-          "You selected NO for one or more mandatory role criteria. You can still submit, but your application may be rejected. Do you want to continue?"
-        );
-        if (!confirmed) return;
+    const requiredTextboxCriteriaItems = criteriaItems.filter((c) => c.has_textbox && c.is_textbox_required);
+    if (requiredTextboxCriteriaItems.length > 0) {
+      const missingRequiredText = requiredTextboxCriteriaItems.some((c) => {
+        const id = Number(c.id);
+        const txt = String(textboxResponses[id] || "").trim();
+        if (txt) return false;
+        // For mandatory criteria, only require textbox when alumni chose YES.
+        if (c.is_mandatory) return mandatoryCriteriaResponses[id] === "YES";
+        // For optional criteria, alumni is always answering (confirmed) when applying.
+        return true;
+      });
+
+      if (missingRequiredText) {
+        setCriteriaError("Please provide responses for all required textbox criteria.");
+        return;
+      }
+    }
+
+    if (optionalCriteriaItems.length > 0) {
+      const missingRating = optionalCriteriaItems.some((c) => {
+        const id = Number(c.id);
+        const rating = Number(optionalCriteriaProficiency[id] || 0);
+        return !Number.isFinite(id) || id <= 0 || !Number.isFinite(rating) || rating < 1 || rating > 5;
+      });
+      if (missingRating) {
+        setCriteriaError("Please select a proficiency rating (1-5) for all optional criteria.");
+        return;
       }
     }
 
@@ -536,7 +546,9 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         body: JSON.stringify({
           alumniId: alumniIdNumber,
           post: data.post,
-          chapterId,
+          chapterId: selectedNationalChapterId || selectedInternationalChapterId,
+          category: selectedNationalChapterId ? "national" : "international",
+          mandatoryCriteriaResponses,
           criteriaResponses: {
             ...Object.fromEntries(
               Object.entries(mandatoryCriteriaResponses)
@@ -548,8 +560,25 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                 })
                 .filter(Boolean) as Array<readonly [string, "YES" | "NO"]>
             ),
-            ...Object.fromEntries(Array.from(selectedCriteriaIds).map((id) => [String(id), "YES" as const])),
+            ...Object.fromEntries(
+              optionalCriteriaItems
+                .map((c) => Number(c.id))
+                .filter((id) => Number.isFinite(id) && id > 0)
+                .map((id) => [String(id), "YES" as const])
+            ),
           },
+          textboxResponses: Object.fromEntries(
+            criteriaItems
+              .filter((c) => c.has_textbox)
+              .map((c) => {
+                const id = Number(c.id);
+                if (!Number.isFinite(id) || id <= 0) return null;
+                const txt = String(textboxResponses[id] || "").trim();
+                if (!txt) return null;
+                return [String(id), txt] as const;
+              })
+              .filter(Boolean) as Array<readonly [string, string]>
+          ),
           additionalAchievements: data.additionalAchievements,
           planStrategy: data.planStrategy,
           optionalCriteriaProficiency,
@@ -759,7 +788,6 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                       <div className="mt-3 space-y-2">
                         {mandatoryCriteriaItems.length ? (
                           <div className="rounded-lg border border-rose-200 bg-rose-50/40 px-3 py-3 space-y-2">
-                            <div className="text-xs font-semibold text-rose-700">Mandatory</div>
                             {mandatoryCriteriaItems.map((c) => {
                               const id = Number(c.id);
                               const value = mandatoryCriteriaResponses[id] ?? "";
@@ -772,7 +800,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                        <span className="rounded-full bg-rose-100 text-rose-800 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
+                                        <span className="rounded-full text-rose-800 text-[15px] font-semibold">*</span>
                                       </div>
                                       {c.description ? (
                                         <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
@@ -811,6 +839,29 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                                       </div>
                                     </div>
                                   </div>
+                                {c.has_textbox ? (
+                                  <div className="mt-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                        {String(c.textbox_label || "Response")}{c.is_textbox_required ? <span className="text-rose-600"> *</span> : null}
+                                      </div>
+                                      <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                        {String(textboxResponses[id] || "").length} / {textboxMaxLen}
+                                      </div>
+                                    </div>
+                                    <textarea
+                                      value={textboxResponses[id] || ""}
+                                      onChange={(e) => {
+                                        setCriteriaError(null);
+                                        const next = String(e.target.value || "").slice(0, textboxMaxLen);
+                                        setTextboxResponses((prev) => ({ ...prev, [id]: next }));
+                                      }}
+                                      rows={3}
+                                      placeholder="Enter your response..."
+                                      className="mt-2 w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                                    />
+                                  </div>
+                                ) : null}
                                 </div>
                               );
                             })}
@@ -819,60 +870,61 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
 
                         {optionalCriteriaItems.length ? (
                           <div className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-3 space-y-2">
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">Optional <span className="text-gray-500 text-xs">(How do you rate yourself on the scale of 1 to 5?)</span></div>
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">How would you rate yourself on the following using a scale of 1 to 5? For rating 4 star or above, please provide a brief justification</div>
                             {optionalCriteriaItems.map((c) => {
                               const id = Number(c.id);
-                              const checked = selectedCriteriaIds.has(id);
                               return (
-                                <label
+                                <div
                                   key={id}
-                                  className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/30 px-3 py-2 cursor-pointer"
+                                  className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/30 px-3 py-2"
                                 >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={(e) => {
-                                      setSelectedCriteriaIds((prev) => {
-                                        const next = new Set(prev);
-                                        if (e.target.checked) next.add(id);
-                                        else next.delete(id);
-                                        return next;
-                                      });
-
-                                      if (!e.target.checked) {
-                                        setOptionalCriteriaProficiency((prev) => {
-                                          const next = { ...prev };
-                                          delete next[id];
-                                          return next;
-                                        });
-                                      }
-                                    }}
-                                    className="mt-1 h-4 w-4 text-blue-600"
-                                  />
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                      <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
+                                        <span className="rounded-full text-rose-800   text-[15px] font-semibold">*</span>
+
                                     </div>
                                     {c.description ? (
                                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
                                     ) : null}
 
-                                    {checked ? (
-                                      <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                                        <div className="text-xs font-semibold text-slate-700 mb-1">Proficiency (optional)</div>
-                                        <StarRating
-                                          value={Number(optionalCriteriaProficiency[id] || 0)}
-                                          onChange={(val) => {
-                                            setOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: val }));
+                                    <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                      <div className="text-xs font-semibold text-slate-700 mb-1">Proficiency</div>
+                                      <StarRating
+                                        value={Number(optionalCriteriaProficiency[id] || 0)}
+                                        onChange={(val) => {
+                                          setCriteriaError(null);
+                                          setOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: val }));
+                                        }}
+                                        ariaLabel={`Proficiency rating for ${c.label}`}
+                                        sizeClassName="text-[18px]"
+                                      />
+                                    </div>
+                                    {c.has_textbox ? (
+                                      <div className="mt-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                            {String(c.textbox_label || "Response")}{c.is_textbox_required ? <span className="text-rose-600"> *</span> : null}
+                                          </div>
+                                          <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                            {String(textboxResponses[id] || "").length} / {textboxMaxLen}
+                                          </div>
+                                        </div>
+                                        <textarea
+                                          value={textboxResponses[id] || ""}
+                                          onChange={(e) => {
+                                            setCriteriaError(null);
+                                            const next = String(e.target.value || "").slice(0, textboxMaxLen);
+                                            setTextboxResponses((prev) => ({ ...prev, [id]: next }));
                                           }}
-                                          ariaLabel={`Proficiency rating for ${c.label}`}
-                                          sizeClassName="text-[18px]"
+                                          rows={3}
+                                          placeholder="Enter your response..."
+                                          className="mt-2 w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                         />
                                       </div>
                                     ) : null}
                                   </div>
-                                </label>
+                                </div>
                               );
                             })}
                           </div>
@@ -931,7 +983,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
                 <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Please tell your plan or strategy to achieve the responsibility assigned to you.
+                      Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
                     </div>
                     <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500"}`}>
                       {planLen} / {planMaxLen}

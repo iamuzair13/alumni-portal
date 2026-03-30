@@ -38,7 +38,11 @@ type RoleCriterion = {
   label: string;
   description: string | null;
   is_mandatory: boolean;
+  has_textbox?: boolean;
+  textbox_label?: string | null;
+  is_textbox_required?: boolean;
   sort_order: number;
+  criterion_score?: number | null;
 };
 
 type CriteriaDraft = {
@@ -46,7 +50,11 @@ type CriteriaDraft = {
   label: string;
   description: string;
   isMandatory: boolean;
+  hasTextbox: boolean;
+  textboxLabel: string;
+  isTextboxRequired: boolean;
   sortOrder: number;
+  criterionScore: number;
 };
 
 function roleLabel(role: LeadershipRoleName): string {
@@ -102,7 +110,11 @@ async function createLeadershipCriterion(input: { type: LeadershipType; role: Le
       label: input.label,
       description: input.description ? input.description : null,
       isMandatory: input.isMandatory,
+      hasTextbox: input.hasTextbox,
+      textboxLabel: input.textboxLabel || null,
+      isTextboxRequired: input.isTextboxRequired,
       sortOrder: input.sortOrder,
+      criterionScore: input.criterionScore,
     }),
   });
   const data = await res.json().catch(() => ({}));
@@ -119,7 +131,11 @@ async function updateLeadershipCriterion(input: CriteriaDraft) {
       label: input.label,
       description: input.description,
       isMandatory: input.isMandatory,
+      hasTextbox: input.hasTextbox,
+      textboxLabel: input.textboxLabel || null,
+      isTextboxRequired: input.isTextboxRequired,
       sortOrder: input.sortOrder,
+      criterionScore: input.criterionScore,
     }),
   });
   const data = await res.json().catch(() => ({}));
@@ -280,7 +296,11 @@ function SetupPageContent() {
     label: "",
     description: "",
     isMandatory: false,
+    hasTextbox: false,
+    textboxLabel: "Explanation",
+    isTextboxRequired: false,
     sortOrder: 0,
+    criterionScore: 1,
   });
 
   const [criteriaEditingId, setCriteriaEditingId] = useState<number | null>(null);
@@ -980,7 +1000,7 @@ function SetupPageContent() {
                     onChange={(e) => {
                       setCriteriaType(e.target.value as LeadershipType);
                       setCriteriaEditingId(null);
-                      setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
+                      setCriteriaDraft({ label: "", description: "", isMandatory: false, hasTextbox: false, textboxLabel: "Explanation", isTextboxRequired: false, sortOrder: 0, criterionScore: 1 });
                     }}
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                   >
@@ -992,7 +1012,7 @@ function SetupPageContent() {
                     onChange={(e) => {
                       setCriteriaRole(e.target.value as LeadershipRoleName);
                       setCriteriaEditingId(null);
-                      setCriteriaDraft({ label: "", description: "", isMandatory: false, sortOrder: 0 });
+                      setCriteriaDraft({ label: "", description: "", isMandatory: false, hasTextbox: false, textboxLabel: "Explanation", isTextboxRequired: false, sortOrder: 0, criterionScore: 1 });
                     }}
                     className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                   >

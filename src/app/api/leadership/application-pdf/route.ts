@@ -218,10 +218,15 @@ export async function GET(req: NextRequest) {
         c.description,
         c.is_mandatory,
         c.sort_order,
+        c.criterion_score,
+        c.has_textbox,
+        c.textbox_label,
+        c.is_textbox_required,
         (al.confirmed = true) as alumni_confirmed,
         (ad.confirmed = true) as admin_confirmed,
         COALESCE(al.response, CASE WHEN al.confirmed = true THEN 'YES' ELSE NULL END) as alumni_response,
-        COALESCE(ad.response, CASE WHEN ad.confirmed = true THEN 'YES' ELSE NULL END) as admin_response
+        COALESCE(ad.response, CASE WHEN ad.confirmed = true THEN 'YES' ELSE NULL END) as admin_response,
+        al.text_response as alumni_text_response
       FROM public.leadership_roles lr
       JOIN public.leadership_role_criteria c ON c.role_id = lr.id
       LEFT JOIN public.leadership_criteria_confirmations al
@@ -295,10 +300,14 @@ export async function GET(req: NextRequest) {
         label: String(c.label ?? ""),
         description: c.description ? String(c.description) : null,
         isMandatory: Boolean(c.is_mandatory),
+        criterionScore: Number.isFinite(Number(c.criterion_score)) ? Math.trunc(Number(c.criterion_score)) : null,
+        hasTextbox: Boolean(c.has_textbox),
+        textboxLabel: c.textbox_label ? String(c.textbox_label) : null,
         alumniConfirmed: Boolean(c.alumni_confirmed),
         adminConfirmed: Boolean(c.admin_confirmed),
         alumniResponse: c.alumni_response ? String(c.alumni_response) : null,
         adminResponse: c.admin_response ? String(c.admin_response) : null,
+        alumniTextResponse: c.alumni_text_response ? String(c.alumni_text_response) : null,
       })),
       optionalCriteriaProficiency: normalizeOptionalCriteriaProficiency(item.optional_criteria_proficiency ?? null),
     });

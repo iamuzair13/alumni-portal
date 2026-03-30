@@ -222,12 +222,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { alumniId, role, associationId, criteriaIds, criteriaResponses, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
+    const { alumniId, role, associationId, criteriaIds, criteriaResponses, textboxResponses, additionalAchievements, planStrategy, optionalCriteriaProficiency, cvFileUrl, additionalFile1Url, additionalFile2Url } = body as {
       alumniId?: number;
       role?: string;
       associationId?: number | string | null;
       criteriaIds?: unknown;
       criteriaResponses?: unknown;
+      textboxResponses?: Record<string, unknown>;
       additionalAchievements?: unknown;
       planStrategy?: unknown;
       optionalCriteriaProficiency?: unknown;
@@ -276,6 +277,18 @@ export async function POST(request: NextRequest) {
       if (!normalizedResponses[id]) normalizedResponses[id] = "YES";
     }
 
+    const normalizedTextboxResponses: Record<number, string> = {};
+    if (textboxResponses && typeof textboxResponses === "object" && !Array.isArray(textboxResponses)) {
+      for (const [k, v] of Object.entries(textboxResponses as Record<string, unknown>)) {
+        const id = Number(k);
+        if (!Number.isFinite(id) || id <= 0) continue;
+        const raw = String(v ?? "");
+        const trimmed = raw.trim().slice(0, 500);
+        if (!trimmed) continue;
+        normalizedTextboxResponses[id] = trimmed;
+      }
+    }
+
     const responseIds = Object.keys(normalizedResponses)
       .map((k) => Number(k))
       .filter((n) => Number.isFinite(n) && n > 0);
@@ -295,6 +308,41 @@ export async function POST(request: NextRequest) {
     });
     if (missingMandatory.length > 0) {
       return NextResponse.json({ error: "Please select YES or NO for all role criteria." }, { status: 400 });
+    }
+
+    // Server-side validation for required textbox criteria
+    if (responseIds.length > 0) {
+      const criteriaConfig = await sql/* sql */`
+        SELECT
+          id,
+          has_textbox,
+          is_textbox_required
+        FROM public.leadership_role_criteria
+        WHERE id = ANY(${responseIds}::bigint[])
+      `;
+
+      const hasTextboxById = new Map<number, boolean>();
+      const isTextboxRequiredById = new Map<number, boolean>();
+      (criteriaConfig ?? []).forEach((row: Record<string, unknown>) => {
+        const id = Number(row.id);
+        if (!Number.isFinite(id) || id <= 0) return;
+        hasTextboxById.set(id, Boolean(row.has_textbox));
+        isTextboxRequiredById.set(id, Boolean(row.is_textbox_required));
+      });
+
+      for (const id of responseIds) {
+        const needs = hasTextboxById.get(id) === true && isTextboxRequiredById.get(id) === true;
+        if (!needs) continue;
+
+        const resp = normalizedResponses[id];
+        const shouldRequire = resp === "YES"; // optional criteria are always YES
+        if (!shouldRequire) continue;
+
+        const txt = normalizedTextboxResponses[id];
+        if (!txt || !String(txt).trim()) {
+          return NextResponse.json({ error: "Please provide responses for all required textbox criteria." }, { status: 400 });
+        }
+      }
     }
 
     // Map role values to display names
@@ -416,6 +464,25 @@ export async function POST(request: NextRequest) {
     if (responseIds.length > 0) {
       const ids = responseIds;
       const responses = ids.map((id) => normalizedResponses[id]);
+      const criteriaConfig = await sql/* sql */`
+        SELECT id, has_textbox
+        FROM public.leadership_role_criteria
+        WHERE id = ANY(${ids}::bigint[])
+      `;
+
+      const hasTextboxById = new Map<number, boolean>();
+      (criteriaConfig ?? []).forEach((row: Record<string, unknown>) => {
+        const id = Number(row.id);
+        if (!Number.isFinite(id) || id <= 0) return;
+        hasTextboxById.set(id, Boolean(row.has_textbox));
+      });
+
+      const textResponses = ids.map((id) => {
+        if (!hasTextboxById.get(id)) return null;
+        const txt = normalizedTextboxResponses[id];
+        return txt ? String(txt) : null;
+      });
+
       await sql/* sql */`
         INSERT INTO public.leadership_criteria_confirmations (
           leadership_type,
@@ -424,6 +491,7 @@ export async function POST(request: NextRequest) {
           actor_type,
           confirmed,
           response,
+          text_response,
           created_at
         )
         SELECT
@@ -433,11 +501,19 @@ export async function POST(request: NextRequest) {
           'alumni',
           (u.response = 'YES'),
           u.response,
+          u.text_response,
           NOW()
-        FROM UNNEST(${ids}::bigint[], ${responses}::text[]) AS u(criterion_id, response)
+        FROM UNNEST(${ids}::bigint[], ${responses}::text[], ${textResponses}::text[]) AS u(
+          criterion_id,
+          response,
+          text_response
+        )
         JOIN public.leadership_role_criteria c ON c.id = u.criterion_id
         ON CONFLICT (association_application_id, criterion_id, actor_type)
-        DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
+        DO UPDATE SET
+          confirmed = EXCLUDED.confirmed,
+          response = EXCLUDED.response,
+          text_response = EXCLUDED.text_response
       `;
     }
 

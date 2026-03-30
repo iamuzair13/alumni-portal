@@ -110,9 +110,14 @@ CREATE TABLE IF NOT EXISTS public.leadership_role_criteria (
   description TEXT,
   is_mandatory BOOLEAN NOT NULL DEFAULT false,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  criterion_score INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.leadership_role_criteria
+  ADD CONSTRAINT leadership_role_criteria_score_chk
+  CHECK (criterion_score IS NULL OR criterion_score >= 1) NOT VALID;
 
 CREATE INDEX IF NOT EXISTS idx_leadership_role_criteria_role_id ON public.leadership_role_criteria(role_id);
 

@@ -309,10 +309,14 @@ export interface LeadershipApplicationPDFData {
     label: string;
     description?: string | null;
     isMandatory: boolean;
+    criterionScore?: number | null;
+    hasTextbox?: boolean;
+    textboxLabel?: string | null;
     alumniConfirmed: boolean;
     adminConfirmed: boolean;
     alumniResponse?: string | null;
     adminResponse?: string | null;
+    alumniTextResponse?: string | null;
   }>;
   additionalAchievements?: string | null;
   planStrategy?: string | null;
@@ -368,13 +372,22 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       };
 
       const sectionTitle = (title: string) => {
-        ensureSpace(18);
-        setTextStyle(12, true);
-        doc.text(title, margin, y);
-        y += 8;
+        const fontSize = 12;
+        const rightPadding = 10;
+        const maxW = maxWidth - rightPadding;
+        setTextStyle(fontSize, true);
+        const lines = doc.splitTextToSize(String(title ?? ""), Math.max(10, maxW));
+        const titleH = Math.max(1, lines.length) * textHeight(fontSize);
+
+        // total needed height: title block + gap + underline + bottom gap
+        const needed = titleH + 4 + 2 + 10;
+        ensureSpace(needed);
+
+        doc.text(lines, margin, y, { maxWidth: maxW });
+        y += titleH + 4;
         doc.setDrawColor(0, 102, 51);
         doc.setLineWidth(0.4);
-        doc.line(margin, y, pageWidth - margin, y);
+        doc.line(margin, y, pageWidth - margin - rightPadding, y);
         y += 10;
       };
 
@@ -472,7 +485,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           .trim();
       };
 
-      const drawInlineBoldLine = (line: string, x: number, fontSize: number, maxW: number) => {
+      const drawInlineBoldLine = (line: string, x: number, fontSize: number, maxW: number, baseBold: boolean = false) => {
         const parts = String(line || "").split("**");
         const outLines: Array<Array<{ t: string; b: boolean }>> = [[]];
         let bold = false;
@@ -494,7 +507,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         const lines: Array<Array<{ t: string; b: boolean }>> = [[]];
         let curW = 0;
         for (const w of words) {
-          setTextStyle(fontSize, w.b);
+          setTextStyle(fontSize, baseBold || w.b);
           const wW = doc.getTextWidth(w.t);
           if (curW + wW > maxW && lines[lines.length - 1].length > 0) {
             lines.push([]);
@@ -508,7 +521,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         for (const ln of lines) {
           let xPos = x;
           for (const w of ln) {
-            setTextStyle(fontSize, w.b);
+            setTextStyle(fontSize, baseBold || w.b);
             doc.text(w.t, xPos, y);
             xPos += doc.getTextWidth(w.t);
           }
@@ -517,10 +530,10 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         y += 2;
       };
 
-      const drawRichTextBlock = (htmlOrText: string, maxW: number) => {
+      const drawRichTextBlock = (htmlOrText: string, maxW: number, fontSize: number = 10.5, baseBold: boolean = false) => {
         const txt = normalizeHtml(htmlOrText);
         if (!txt) {
-          drawWrappedText("-", margin, 10.5, false, maxW, 6);
+          drawWrappedText("-", margin, fontSize, baseBold, maxW, 6);
           return;
         }
         const lines = txt.split("\n");
@@ -530,7 +543,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
             y += 4;
             continue;
           }
-          drawInlineBoldLine(line, margin, 10.5, maxW);
+          drawInlineBoldLine(line, margin, fontSize, maxW, baseBold);
         }
         y += 2;
       };
@@ -603,18 +616,20 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       hLine(0, 10);
       sectionTitle("Criteria");
       const tableColW = {
-        req: maxWidth * 0.42,
-        type: maxWidth * 0.16,
-        alumni: maxWidth * 0.12,
-        admin: maxWidth * 0.12,
-        prof: maxWidth * 0.18,
+        // Remove "Requirement" column; redistribute widths across remaining columns.
+        // Original ratios summed to 1.0. We drop req (0.37) and normalize the rest.
+        type: maxWidth * (0.13 / 0.63),
+        alumni: maxWidth * (0.10 / 0.63),
+        admin: maxWidth * (0.10 / 0.63),
+        prof: maxWidth * (0.18 / 0.63),
+        marks: maxWidth * (0.12 / 0.63),
       };
       const tableX = {
-        req: margin,
-        type: margin + tableColW.req,
-        alumni: margin + tableColW.req + tableColW.type,
-        admin: margin + tableColW.req + tableColW.type + tableColW.alumni,
-        prof: margin + tableColW.req + tableColW.type + tableColW.alumni + tableColW.admin,
+        type: margin,
+        alumni: margin + tableColW.type,
+        admin: margin + tableColW.type + tableColW.alumni,
+        prof: margin + tableColW.type + tableColW.alumni + tableColW.admin,
+        marks: margin + tableColW.type + tableColW.alumni + tableColW.admin + tableColW.prof,
       };
       const tableFont = 9.5;
 
@@ -626,31 +641,31 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         const headerH = 10;
         doc.rect(margin, y, maxWidth, headerH, "F");
         doc.rect(margin, y, maxWidth, headerH);
-        doc.line(tableX.type, y, tableX.type, y + headerH);
         doc.line(tableX.alumni, y, tableX.alumni, y + headerH);
         doc.line(tableX.admin, y, tableX.admin, y + headerH);
         doc.line(tableX.prof, y, tableX.prof, y + headerH);
+        doc.line(tableX.marks, y, tableX.marks, y + headerH);
         setTextStyle(tableFont, true);
-        doc.text("Requirement", tableX.req + 2, y + 7);
         doc.text("Type", tableX.type + 2, y + 7);
         doc.text("Alumni", tableX.alumni + 2, y + 7);
         doc.text("Admin", tableX.admin + 2, y + 7);
         doc.text("Proficiency", tableX.prof + 2, y + 7);
+        doc.text("Marks", tableX.marks + 2, y + 7);
         y += headerH;
       };
 
-      const drawTableRow = (cells: { req: string; type: string; alumni: string; admin: string; prof: string }) => {
-        const reqLines = doc.splitTextToSize(cells.req, tableColW.req - 4);
+      const drawTableRow = (cells: { type: string; alumni: string; admin: string; prof: string; marks: string }) => {
         const typeLines = doc.splitTextToSize(cells.type, tableColW.type - 4);
         const alumniLines = doc.splitTextToSize(cells.alumni, tableColW.alumni - 4);
         const adminLines = doc.splitTextToSize(cells.admin, tableColW.admin - 4);
+        const marksLines = doc.splitTextToSize(cells.marks, tableColW.marks - 4);
         const profRaw = String(cells.prof ?? "");
         const [profStarsRaw, ...profLabelParts] = profRaw.split("\n");
         const profLabelRaw = profLabelParts.join("\n");
         const profStarsLines = doc.splitTextToSize(profStarsRaw || "", tableColW.prof - 4);
         const profLabelLines = doc.splitTextToSize(profLabelRaw || "", tableColW.prof - 4);
         const profLines = [...profStarsLines, ...profLabelLines].filter((l) => String(l).length > 0);
-        const lines = Math.max(reqLines.length, typeLines.length, alumniLines.length, adminLines.length, profLines.length, 1);
+        const lines = Math.max(typeLines.length, alumniLines.length, adminLines.length, profLines.length, marksLines.length, 1);
         const rowH = lines * textHeight(tableFont) + 6;
         if (y + rowH > pageBottomY()) {
           doc.addPage();
@@ -660,12 +675,11 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         doc.setDrawColor(220, 220, 220);
         doc.setLineWidth(0.2);
         doc.rect(margin, y, maxWidth, rowH);
-        doc.line(tableX.type, y, tableX.type, y + rowH);
         doc.line(tableX.alumni, y, tableX.alumni, y + rowH);
         doc.line(tableX.admin, y, tableX.admin, y + rowH);
         doc.line(tableX.prof, y, tableX.prof, y + rowH);
+        doc.line(tableX.marks, y, tableX.marks, y + rowH);
         setTextStyle(tableFont, false);
-        doc.text(reqLines, tableX.req + 2, y + 5, { maxWidth: tableColW.req - 4 });
         doc.text(typeLines, tableX.type + 2, y + 5, { maxWidth: tableColW.type - 4 });
         doc.text(alumniLines, tableX.alumni + 2, y + 5, { maxWidth: tableColW.alumni - 4 });
         doc.text(adminLines, tableX.admin + 2, y + 5, { maxWidth: tableColW.admin - 4 });
@@ -685,6 +699,10 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           doc.setTextColor(0, 0, 0);
           doc.text(profLabelLines, profX, profY, { maxWidth: tableColW.prof - 4 });
         }
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text(marksLines, tableX.marks + 2, y + 5, { maxWidth: tableColW.marks - 4 });
         y += rowH;
       };
 
@@ -692,12 +710,33 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         drawWrappedText("No criteria found.", margin, 10.5, false, maxWidth, 10);
       } else {
         drawTableHeader();
+        let totalMarks = 0;
+        let totalObtained = 0;
+        let totalsAvailable = false;
+
         data.criteria.forEach((c) => {
           const alumniResp = String(c.alumniResponse ?? "").toUpperCase();
           const alumniSelected = alumniResp === "YES" || alumniResp === "NO" ? alumniResp : c.alumniConfirmed ? "YES" : "NO";
           const adminResp = String(c.adminResponse ?? "").toUpperCase();
           const adminSelected = adminResp === "YES" || adminResp === "NO" ? adminResp : c.adminConfirmed ? "YES" : "NO";
           const typeLabel = c.isMandatory ? "Mandatory" : "Optional";
+          const marksRaw = c.criterionScore;
+          const marksNum = Number.isFinite(Number(marksRaw)) ? Math.trunc(Number(marksRaw)) : NaN;
+          const marksCell = Number.isFinite(marksNum) && marksNum >= 1 ? String(marksNum) : "N/A";
+
+          if (Number.isFinite(marksNum) && marksNum >= 1) {
+            totalsAvailable = true;
+            totalMarks += marksNum;
+          }
+
+          if (!c.isMandatory && alumniSelected === "YES" && Number.isFinite(marksNum) && marksNum >= 1) {
+            const rating = Number(proficiencyMap[String(c.id)] ?? 0);
+            const safeRating = Number.isFinite(rating) ? Math.min(5, Math.max(0, Math.round(rating))) : 0;
+            if (safeRating >= 1) {
+              totalObtained += Math.round((safeRating / 5) * marksNum);
+            }
+          }
+
           let prof = "—";
           if (!c.isMandatory) {
             if (alumniSelected !== "YES") {
@@ -714,15 +753,65 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
               }
             }
           }
+          const criterionText = String(c.label || "-") + (c.description ? `\n${String(c.description)}` : "");
           drawTableRow({
-            req: String(c.label || "-") + (c.description ? `\n${String(c.description)}` : ""),
-            type: typeLabel,
+            // "Type" column now also contains criterion text (label + description),
+            // since the dedicated "Requirement" column was removed.
+            type: `${typeLabel}\n${criterionText}`,
             alumni: alumniSelected,
             admin: adminSelected,
             prof,
+            marks: marksCell,
           });
         });
         y += 10;
+
+        if (totalsAvailable) {
+          setTextStyle(10.5, true);
+          doc.text(`Total: ${String(totalObtained)} / ${String(totalMarks)}`, margin, y);
+          y += 10;
+        }
+      }
+
+      // Optional textbox responses per criterion (alumni qualitative responses)
+      const textboxCriteria = (data.criteria || []).filter((c) => c.hasTextbox);
+      if (textboxCriteria.length) {
+        hLine(0, 10);
+        sectionTitle("Criterion Responses");
+        textboxCriteria.forEach((c, idx) => {
+          if (idx > 0) hLine(0, 8);
+
+          sectionTitle(`Criteria: ${String(c.label || "-")}`);
+
+          const marksRaw = c.criterionScore;
+          const marksNum = Number.isFinite(Number(marksRaw)) ? Math.trunc(Number(marksRaw)) : null;
+
+          const profId = String(c.id);
+          const ratingRaw = proficiencyMap[String(profId)] ?? 0;
+          const ratingNum = Number(ratingRaw);
+          const safeRating = Number.isFinite(ratingNum) ? Math.min(5, Math.max(0, Math.round(ratingNum))) : 0;
+
+          const profText = c.isMandatory
+            ? "-"
+            : safeRating
+              ? (() => {
+                  const stars = Array.from({ length: safeRating }).map(() => "*").join(" ");
+                  const label = ratingLabel(safeRating) || "";
+                  return label ? `${stars} (${label})` : stars;
+                })()
+              : "Not Provided";
+
+          drawWrappedText(`Proficiency: ${profText}`, margin, 10.5, true, maxWidth, 3);
+          drawWrappedText(`Marks: ${marksNum !== null ? String(marksNum) : "N/A"}`, margin, 10.5, true, maxWidth, 6);
+
+          const responseText =
+            c.alumniTextResponse && String(c.alumniTextResponse).trim()
+              ? String(c.alumniTextResponse)
+              : "No response provided";
+
+          drawWrappedText(`${String(c.textboxLabel || "Response")}:`, margin, 10.5, true, maxWidth, 2);
+          drawRichTextBlock(responseText, maxWidth, 10.5, false);
+        });
       }
 
       hLine(0, 10);
@@ -730,8 +819,8 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       drawRichTextBlock(String(data.additionalAchievements || "-"), maxWidth);
 
       hLine(0, 10);
-      sectionTitle("Please tell your plan or strategy to achieve the responsibility assigned to you.");
-      drawRichTextBlock(String(data.planStrategy || "-"), maxWidth);
+      sectionTitle("Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role");
+      drawRichTextBlock(String(data.planStrategy || "-"), maxWidth, 9, true);
 
        sectionTitle("Uploaded Documents");
 
