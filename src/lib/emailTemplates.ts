@@ -214,11 +214,11 @@ export function generateAdminActionEmail(input: {
   }
 
   if (input.actionType === EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_ACK) {
-    const subject = "Your Application for Association Leadership Role";
+    const subject = "Your Application for Chapter Leadership Role";
     const body = `
-      <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for your application to join the Alumni Association as {ROLE}.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application has been received and is currently under review by the Alumni Office. We will contact you soon with updates regarding your application.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.</p>
+      <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for your application for the role of <strong>{ROLE}</strong> with the UOL Alumni Chapter.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application has been received and is currently under review by the Office of Alumni Relations. We will contact you soon with updates regarding your application.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest in serving your chapter and helping to strengthen the UOL alumni network.</p>
       ${extraBodyHtml}
     `;
     return { subject, html: createEmailTemplate(subject, greeting, body, footerRegards()) };

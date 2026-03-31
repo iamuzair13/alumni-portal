@@ -159,6 +159,7 @@ export async function GET(req: NextRequest) {
           (ad.confirmed = true) as admin_confirmed,
           COALESCE(al.response, CASE WHEN al.confirmed = true THEN 'YES' ELSE NULL END) as alumni_response,
           COALESCE(ad.response, CASE WHEN ad.confirmed = true THEN 'YES' ELSE NULL END) as admin_response,
+          ad.obtained_marks as obtained_marks,
           al.text_response as alumni_text_response
         FROM public.leadership_roles lr
         JOIN public.leadership_role_criteria c ON c.role_id = lr.id
@@ -230,6 +231,7 @@ export async function GET(req: NextRequest) {
             admin_confirmed: Boolean(c.admin_confirmed),
             alumni_response: c.alumni_response ? String(c.alumni_response) : null,
             admin_response: c.admin_response ? String(c.admin_response) : null,
+              obtained_marks: Number.isFinite(Number(c.obtained_marks)) ? Number(c.obtained_marks) : null,
               alumni_text_response: c.alumni_text_response ? String(c.alumni_text_response) : null,
           })),
         },
@@ -316,6 +318,7 @@ export async function GET(req: NextRequest) {
         (ad.confirmed = true) as admin_confirmed,
         COALESCE(al.response, CASE WHEN al.confirmed = true THEN 'YES' ELSE NULL END) as alumni_response,
         COALESCE(ad.response, CASE WHEN ad.confirmed = true THEN 'YES' ELSE NULL END) as admin_response,
+        ad.obtained_marks as obtained_marks,
         al.text_response as alumni_text_response
       FROM public.leadership_roles lr
       JOIN public.leadership_role_criteria c ON c.role_id = lr.id
@@ -387,6 +390,7 @@ export async function GET(req: NextRequest) {
           admin_confirmed: Boolean(c.admin_confirmed),
           alumni_response: c.alumni_response ? String(c.alumni_response) : null,
           admin_response: c.admin_response ? String(c.admin_response) : null,
+          obtained_marks: Number.isFinite(Number(c.obtained_marks)) ? Number(c.obtained_marks) : null,
         alumni_text_response: c.alumni_text_response ? String(c.alumni_text_response) : null,
         })),
       },

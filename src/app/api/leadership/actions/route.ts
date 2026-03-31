@@ -3,6 +3,20 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { normalizeObtainedMark } from "@/lib/leadershipMarks";
+
+function parseCriterionObtainedMarks(raw: unknown): Record<number, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<number, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const id = Number(k);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    const n = Number(v);
+    if (!Number.isFinite(n)) continue;
+    out[id] = normalizeObtainedMark(n);
+  }
+  return out;
+}
 
 // Approve, reject, or delete leadership applications
 export async function POST(req: NextRequest) {
@@ -29,12 +43,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency } = body as {
+    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency, criterionObtainedMarks: criterionObtainedMarksBody } = body as {
       action?: "approve" | "reject" | "delete";
       applicationId?: number;
       type?: "chapter" | "association";
       adminCriteriaIds?: unknown;
       optionalCriteriaProficiency?: unknown;
+      criterionObtainedMarks?: unknown;
     }; // action: "approve" | "reject" | "delete", type: "chapter" | "association"
     // rejectionReason is accessed from body.rejectionReason when needed
 
@@ -201,6 +216,46 @@ export async function POST(req: NextRequest) {
 
         const adminIdsToConfirm = Array.from(new Set([...confirmedAdminIds, ...optionalRatedCriterionIds]));
 
+        const scoreRowsChapter = await sql/* sql */`
+          SELECT c.id, c.criterion_score
+          FROM public.leadership_roles r
+          JOIN public.leadership_role_criteria c ON c.role_id = r.id
+          WHERE r.leadership_type = 'chapter'
+            AND r.role_name = ${roleName}
+        `;
+        const criterionScoreByIdChapter = new Map<number, number>();
+        for (const row of scoreRowsChapter ?? []) {
+          const rec = row as Record<string, unknown>;
+          const id = Number(rec.id);
+          if (!Number.isFinite(id) || id <= 0) continue;
+          const cs = Number(rec.criterion_score);
+          criterionScoreByIdChapter.set(id, Number.isFinite(cs) ? cs : NaN);
+        }
+
+        const criterionObtainedMarks = parseCriterionObtainedMarks(criterionObtainedMarksBody);
+
+        for (const cid of adminIdsToConfirm) {
+          const maxScore = criterionScoreByIdChapter.get(cid) ?? NaN;
+          if (Number.isFinite(maxScore) && maxScore >= 1) {
+            const m = criterionObtainedMarks[cid];
+            if (m === undefined) {
+              return NextResponse.json(
+                {
+                  error:
+                    "Cannot approve: enter obtained marks for each scored criterion (from 0 up to the criterion maximum).",
+                },
+                { status: 400 }
+              );
+            }
+            if (m < 0 || m > maxScore) {
+              return NextResponse.json(
+                { error: `Cannot approve: obtained marks must be between 0 and ${maxScore} for each criterion.` },
+                { status: 400 }
+              );
+            }
+          }
+        }
+
         const mandatoryRows = await sql/* sql */`
           SELECT c.id
           FROM public.leadership_roles r
@@ -238,32 +293,47 @@ export async function POST(req: NextRequest) {
               { status: 400 }
             );
           }
+        }
 
-          if (adminIdsToConfirm.length > 0) {
-            await sql/* sql */`
-              INSERT INTO public.leadership_criteria_confirmations (
-                leadership_type,
-                chapter_application_id,
-                criterion_id,
-                actor_type,
-                confirmed,
-                response,
-                created_at
-              )
-              SELECT
-                'chapter',
-                ${Number(applicationId)},
-                c.id,
-                'admin',
-                true,
-                'YES',
-                NOW()
-              FROM public.leadership_role_criteria c
-              WHERE c.id = ANY(${adminIdsToConfirm}::bigint[])
-              ON CONFLICT (chapter_application_id, criterion_id, actor_type)
-              DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
-            `;
-          }
+        if (adminIdsToConfirm.length > 0) {
+          await sql/* sql */`
+            INSERT INTO public.leadership_criteria_confirmations (
+              leadership_type,
+              chapter_application_id,
+              criterion_id,
+              actor_type,
+              confirmed,
+              response,
+              created_at
+            )
+            SELECT
+              'chapter',
+              ${Number(applicationId)},
+              c.id,
+              'admin',
+              true,
+              'YES',
+              NOW()
+            FROM public.leadership_role_criteria c
+            WHERE c.id = ANY(${adminIdsToConfirm}::bigint[])
+            ON CONFLICT (chapter_application_id, criterion_id, actor_type)
+            DO UPDATE SET confirmed = EXCLUDED.confirmed, response = EXCLUDED.response
+          `;
+        }
+
+        for (const cid of adminIdsToConfirm) {
+          const maxScore = criterionScoreByIdChapter.get(cid) ?? NaN;
+          if (!Number.isFinite(maxScore) || maxScore < 1) continue;
+          const m = criterionObtainedMarks[cid];
+          if (!Number.isFinite(m)) continue;
+          await sql/* sql */`
+            UPDATE public.leadership_criteria_confirmations
+            SET obtained_marks = ${m}
+            WHERE leadership_type = 'chapter'
+              AND chapter_application_id = ${Number(applicationId)}
+              AND criterion_id = ${cid}
+              AND actor_type = 'admin'
+          `;
         }
 
         // Update status to 'approved' and link to tbl_alumni
@@ -440,6 +510,46 @@ export async function POST(req: NextRequest) {
 
         const adminIdsToConfirm = Array.from(new Set([...confirmedAdminIds, ...optionalRatedCriterionIds]));
 
+        const scoreRowsAssoc = await sql/* sql */`
+          SELECT c.id, c.criterion_score
+          FROM public.leadership_roles r
+          JOIN public.leadership_role_criteria c ON c.role_id = r.id
+          WHERE r.leadership_type = 'association'
+            AND r.role_name = ${roleName}
+        `;
+        const criterionScoreByIdAssoc = new Map<number, number>();
+        for (const row of scoreRowsAssoc ?? []) {
+          const rec = row as Record<string, unknown>;
+          const id = Number(rec.id);
+          if (!Number.isFinite(id) || id <= 0) continue;
+          const cs = Number(rec.criterion_score);
+          criterionScoreByIdAssoc.set(id, Number.isFinite(cs) ? cs : NaN);
+        }
+
+        const criterionObtainedMarksAssoc = parseCriterionObtainedMarks(criterionObtainedMarksBody);
+
+        for (const cid of adminIdsToConfirm) {
+          const maxScore = criterionScoreByIdAssoc.get(cid) ?? NaN;
+          if (Number.isFinite(maxScore) && maxScore >= 1) {
+            const m = criterionObtainedMarksAssoc[cid];
+            if (m === undefined) {
+              return NextResponse.json(
+                {
+                  error:
+                    "Cannot approve: enter obtained marks for each scored criterion (from 0 up to the criterion maximum).",
+                },
+                { status: 400 }
+              );
+            }
+            if (m < 0 || m > maxScore) {
+              return NextResponse.json(
+                { error: `Cannot approve: obtained marks must be between 0 and ${maxScore} for each criterion.` },
+                { status: 400 }
+              );
+            }
+          }
+        }
+
         const mandatoryRows = await sql/* sql */`
           SELECT c.id
           FROM public.leadership_roles r
@@ -477,29 +587,45 @@ export async function POST(req: NextRequest) {
               { status: 400 }
             );
           }
+        }
 
-          if (adminIdsToConfirm.length > 0) {
-            await sql/* sql */`
-              INSERT INTO public.leadership_criteria_confirmations (
-                leadership_type,
-                association_application_id,
-                criterion_id,
-                actor_type,
-                confirmed,
-                created_at
-              )
-              SELECT
-                'association',
-                ${Number(applicationId)},
-                c.id,
-                'admin',
-                true,
-                NOW()
-              FROM public.leadership_role_criteria c
-              WHERE c.id = ANY(${adminIdsToConfirm}::bigint[])
-              ON CONFLICT (association_application_id, criterion_id, actor_type) DO NOTHING
-            `;
-          }
+        if (adminIdsToConfirm.length > 0) {
+          await sql/* sql */`
+            INSERT INTO public.leadership_criteria_confirmations (
+              leadership_type,
+              association_application_id,
+              criterion_id,
+              actor_type,
+              confirmed,
+              created_at
+            )
+            SELECT
+              'association',
+              ${Number(applicationId)},
+              c.id,
+              'admin',
+              true,
+              NOW()
+            FROM public.leadership_role_criteria c
+            WHERE c.id = ANY(${adminIdsToConfirm}::bigint[])
+            ON CONFLICT (association_application_id, criterion_id, actor_type)
+            DO UPDATE SET confirmed = EXCLUDED.confirmed
+          `;
+        }
+
+        for (const cid of adminIdsToConfirm) {
+          const maxScore = criterionScoreByIdAssoc.get(cid) ?? NaN;
+          if (!Number.isFinite(maxScore) || maxScore < 1) continue;
+          const m = criterionObtainedMarksAssoc[cid];
+          if (!Number.isFinite(m)) continue;
+          await sql/* sql */`
+            UPDATE public.leadership_criteria_confirmations
+            SET obtained_marks = ${m}
+            WHERE leadership_type = 'association'
+              AND association_application_id = ${Number(applicationId)}
+              AND criterion_id = ${cid}
+              AND actor_type = 'admin'
+          `;
         }
 
         // Update status to 'approved' and link to tbl_alumni

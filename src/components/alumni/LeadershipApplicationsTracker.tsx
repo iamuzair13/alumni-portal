@@ -307,7 +307,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                      <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 ">
                         <button
                           type="button"
                           onClick={openPdfDownload}
@@ -361,9 +361,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                                   <tr key={c.id} className="bg-white">
                                     <td className="px-4 py-3">
                                       <div className="flex items-start gap-2">
-                                        <span className={`mt-0.5 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${isMandatory ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-gray-100 text-gray-700 border-gray-200"}`}>
-                                          {isMandatory ? "Mandatory" : "Optional"}
-                                        </span>
+                                       
                                         <div className="min-w-0">
                                           <div className="font-semibold text-gray-900 break-words">{c.label}</div>
                                           {c.description ? <div className="mt-0.5 text-xs text-gray-600 break-words">{c.description}</div> : null}

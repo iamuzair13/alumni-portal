@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS public.leadership_criteria_confirmations (
   actor_type TEXT NOT NULL CHECK (actor_type IN ('alumni','admin')),
   confirmed BOOLEAN NOT NULL DEFAULT true,
   response TEXT,
+  obtained_marks NUMERIC(12, 4),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (chapter_application_id, criterion_id, actor_type),
   UNIQUE (association_application_id, criterion_id, actor_type)
@@ -1126,6 +1127,7 @@ CREATE TABLE IF NOT EXISTS public.leadership_criteria_confirmations (
   criterion_id BIGINT NOT NULL REFERENCES public.leadership_role_criteria(id) ON DELETE CASCADE,
   actor_type TEXT NOT NULL CHECK (actor_type IN ('alumni','admin')),
   confirmed BOOLEAN NOT NULL DEFAULT true,
+  obtained_marks NUMERIC(12, 4),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (chapter_application_id, criterion_id, actor_type),
   UNIQUE (association_application_id, criterion_id, actor_type)

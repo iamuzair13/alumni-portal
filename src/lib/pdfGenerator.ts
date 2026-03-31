@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -317,6 +318,7 @@ export interface LeadershipApplicationPDFData {
     alumniResponse?: string | null;
     adminResponse?: string | null;
     alumniTextResponse?: string | null;
+    obtainedMarks?: number | null;
   }>;
   additionalAchievements?: string | null;
   planStrategy?: string | null;
@@ -574,7 +576,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       const headerLeft: Array<{ label: string; value: string }> = [
         { label: "Application Type", value: data.leadershipType === "chapter" ? "Chapter" : "Association" },
         {
-          label: "Selected Category",
+          label: "Chapter/Association Name",
           value: (() => {
             const t = String(data.categoryType || "").toLowerCase();
             const name = String(data.categoryName || "").trim();
@@ -598,15 +600,16 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       fieldPairGrid(
         [
           { label: "Full Name", value: String(data.applicant.name || "-") },
-          { label: "SAP ID", value: String(data.applicant.sapId || "-") },
           { label: "Gender", value: String(data.applicant.gender || "-") },
-          { label: "Email", value: String(data.applicant.email || "-") },
+          { label: "Department", value: String(data.applicant.department || "-") },
+          { label: "Passing Year", value: data.applicant.passingYear ? String(data.applicant.passingYear) : "-" },
+          { label: "Phone", value: String(data.applicant.phone || "-") },
         ],
         [
+          { label: "SAP ID", value: String(data.applicant.sapId || "-") },
           { label: "Faculty", value: String(data.applicant.faculty || "-") },
-          { label: "Department", value: String(data.applicant.department || "-") },
           { label: "Program", value: String(data.applicant.program || "-") },
-          { label: "Passing Year", value: data.applicant.passingYear ? String(data.applicant.passingYear) : "-" },
+          { label: "Email", value: String(data.applicant.email || "-") },
         ]
       );
       hLine(0, 10);
@@ -615,21 +618,20 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       drawRichTextBlock(String(data.roleDescription || "-"), maxWidth);
       hLine(0, 10);
       sectionTitle("Criteria");
+      const applicationApproved = String(data.status || "").toLowerCase() === "approved";
       const tableColW = {
-        // Remove "Requirement" column; redistribute widths across remaining columns.
-        // Original ratios summed to 1.0. We drop req (0.37) and normalize the rest.
-        type: maxWidth * (0.13 / 0.63),
-        alumni: maxWidth * (0.10 / 0.63),
-        admin: maxWidth * (0.10 / 0.63),
-        prof: maxWidth * (0.18 / 0.63),
-        marks: maxWidth * (0.12 / 0.63),
+        req: maxWidth * 0.42,
+        marks: maxWidth * 0.11,
+        obtained: maxWidth * 0.13,
+        alumni: maxWidth * 0.19,
+        admin: maxWidth * 0.15,
       };
       const tableX = {
-        type: margin,
-        alumni: margin + tableColW.type,
-        admin: margin + tableColW.type + tableColW.alumni,
-        prof: margin + tableColW.type + tableColW.alumni + tableColW.admin,
-        marks: margin + tableColW.type + tableColW.alumni + tableColW.admin + tableColW.prof,
+        req: margin,
+        marks: margin + tableColW.req,
+        obtained: margin + tableColW.req + tableColW.marks,
+        alumni: margin + tableColW.req + tableColW.marks + tableColW.obtained,
+        admin: margin + tableColW.req + tableColW.marks + tableColW.obtained + tableColW.alumni,
       };
       const tableFont = 9.5;
 
@@ -641,31 +643,33 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         const headerH = 10;
         doc.rect(margin, y, maxWidth, headerH, "F");
         doc.rect(margin, y, maxWidth, headerH);
+        doc.line(tableX.marks, y, tableX.marks, y + headerH);
+        doc.line(tableX.obtained, y, tableX.obtained, y + headerH);
         doc.line(tableX.alumni, y, tableX.alumni, y + headerH);
         doc.line(tableX.admin, y, tableX.admin, y + headerH);
-        doc.line(tableX.prof, y, tableX.prof, y + headerH);
-        doc.line(tableX.marks, y, tableX.marks, y + headerH);
         setTextStyle(tableFont, true);
-        doc.text("Type", tableX.type + 2, y + 7);
+        doc.text("Requirement", tableX.req + 2, y + 7);
+        doc.text("Marks", tableX.marks + 2, y + 7);
+        doc.text("Obtained", tableX.obtained + 2, y + 7);
         doc.text("Alumni", tableX.alumni + 2, y + 7);
         doc.text("Admin", tableX.admin + 2, y + 7);
-        doc.text("Proficiency", tableX.prof + 2, y + 7);
-        doc.text("Marks", tableX.marks + 2, y + 7);
         y += headerH;
       };
 
-      const drawTableRow = (cells: { type: string; alumni: string; admin: string; prof: string; marks: string }) => {
-        const typeLines = doc.splitTextToSize(cells.type, tableColW.type - 4);
+      const drawTableRow = (cells: { req: string; marks: string; obtained: string; alumni: string; admin: string }) => {
+        const reqLines = doc.splitTextToSize(cells.req, tableColW.req - 4);
+        const marksLines = doc.splitTextToSize(cells.marks, tableColW.marks - 4);
+        const obtainedLines = doc.splitTextToSize(cells.obtained, tableColW.obtained - 4);
         const alumniLines = doc.splitTextToSize(cells.alumni, tableColW.alumni - 4);
         const adminLines = doc.splitTextToSize(cells.admin, tableColW.admin - 4);
-        const marksLines = doc.splitTextToSize(cells.marks, tableColW.marks - 4);
-        const profRaw = String(cells.prof ?? "");
-        const [profStarsRaw, ...profLabelParts] = profRaw.split("\n");
-        const profLabelRaw = profLabelParts.join("\n");
-        const profStarsLines = doc.splitTextToSize(profStarsRaw || "", tableColW.prof - 4);
-        const profLabelLines = doc.splitTextToSize(profLabelRaw || "", tableColW.prof - 4);
-        const profLines = [...profStarsLines, ...profLabelLines].filter((l) => String(l).length > 0);
-        const lines = Math.max(typeLines.length, alumniLines.length, adminLines.length, profLines.length, marksLines.length, 1);
+        const lines = Math.max(
+          reqLines.length,
+          marksLines.length,
+          obtainedLines.length,
+          alumniLines.length,
+          adminLines.length,
+          1
+        );
         const rowH = lines * textHeight(tableFont) + 6;
         if (y + rowH > pageBottomY()) {
           doc.addPage();
@@ -675,34 +679,16 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         doc.setDrawColor(220, 220, 220);
         doc.setLineWidth(0.2);
         doc.rect(margin, y, maxWidth, rowH);
+        doc.line(tableX.marks, y, tableX.marks, y + rowH);
+        doc.line(tableX.obtained, y, tableX.obtained, y + rowH);
         doc.line(tableX.alumni, y, tableX.alumni, y + rowH);
         doc.line(tableX.admin, y, tableX.admin, y + rowH);
-        doc.line(tableX.prof, y, tableX.prof, y + rowH);
-        doc.line(tableX.marks, y, tableX.marks, y + rowH);
         setTextStyle(tableFont, false);
-        doc.text(typeLines, tableX.type + 2, y + 5, { maxWidth: tableColW.type - 4 });
+        doc.text(reqLines, tableX.req + 2, y + 5, { maxWidth: tableColW.req - 4 });
+        doc.text(marksLines, tableX.marks + 2, y + 5, { maxWidth: tableColW.marks - 4 });
+        doc.text(obtainedLines, tableX.obtained + 2, y + 5, { maxWidth: tableColW.obtained - 4 });
         doc.text(alumniLines, tableX.alumni + 2, y + 5, { maxWidth: tableColW.alumni - 4 });
         doc.text(adminLines, tableX.admin + 2, y + 5, { maxWidth: tableColW.admin - 4 });
-        // Proficiency: render stars (first line) in yellow, label (second line) in black.
-        const profX = tableX.prof + 2;
-        let profY = y + 5;
-        if (profStarsLines.length) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(15.5);
-          doc.setTextColor(255, 193, 7);
-          doc.text(profStarsLines, profX, profY, { maxWidth: tableColW.prof - 4 });
-          profY += profStarsLines.length * textHeight(tableFont);
-        }
-        if (profLabelLines.length) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9.5);
-          doc.setTextColor(0, 0, 0);
-          doc.text(profLabelLines, profX, profY, { maxWidth: tableColW.prof - 4 });
-        }
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(0, 0, 0);
-        doc.text(marksLines, tableX.marks + 2, y + 5, { maxWidth: tableColW.marks - 4 });
         y += rowH;
       };
 
@@ -712,47 +698,44 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         drawTableHeader();
         let totalMarks = 0;
         let totalObtained = 0;
-        let totalsAvailable = false;
 
         data.criteria.forEach((c) => {
           const alumniResp = String(c.alumniResponse ?? "").toUpperCase();
           const alumniSelected = alumniResp === "YES" || alumniResp === "NO" ? alumniResp : c.alumniConfirmed ? "YES" : "NO";
           const adminResp = String(c.adminResponse ?? "").toUpperCase();
           const adminSelected = adminResp === "YES" || adminResp === "NO" ? adminResp : c.adminConfirmed ? "YES" : "NO";
-          const typeLabel = c.isMandatory ? "Mandatory" : "Optional";
           const marksRaw = c.criterionScore;
           const marksNum = Number.isFinite(Number(marksRaw)) ? Math.trunc(Number(marksRaw)) : NaN;
           const marksCell = Number.isFinite(marksNum) && marksNum >= 1 ? String(marksNum) : "N/A";
 
-          if (Number.isFinite(marksNum) && marksNum >= 1) {
-            totalsAvailable = true;
+          const obtainedStored = c.obtainedMarks;
+          const obtainedCell =
+            !applicationApproved
+              ? "—"
+              : Number.isFinite(Number(obtainedStored))
+                ? formatObtainedMarkDisplay(Number(obtainedStored))
+                : "—";
+
+          if (applicationApproved && Number.isFinite(marksNum) && marksNum >= 1) {
             totalMarks += marksNum;
+            if (Number.isFinite(Number(obtainedStored))) {
+              totalObtained += Number(obtainedStored);
+            }
           }
 
-          if (!c.isMandatory && alumniSelected === "YES" && Number.isFinite(marksNum) && marksNum >= 1) {
+          let alumniCell = alumniSelected;
+          if (alumniSelected === "YES" && !c.isMandatory) {
             const rating = Number(proficiencyMap[String(c.id)] ?? 0);
             const safeRating = Number.isFinite(rating) ? Math.min(5, Math.max(0, Math.round(rating))) : 0;
             if (safeRating >= 1) {
-              totalObtained += Math.round((safeRating / 5) * marksNum);
+              const stars = Array.from({ length: safeRating }).map(() => "*").join(" ");
+              const label = ratingLabel(safeRating) || "";
+              alumniCell = label ? `YES\n${stars}\n${label}` : `YES\n${stars}`;
+            } else {
+              alumniCell = "YES\nNo rating";
             }
           }
 
-          let prof = "—";
-          if (!c.isMandatory) {
-            if (alumniSelected !== "YES") {
-              prof = "-";
-            } else {
-              const rating = Number(proficiencyMap[String(c.id)] ?? 0);
-              const safeRating = Number.isFinite(rating) ? Math.min(5, Math.max(0, Math.round(rating))) : 0;
-              if (!safeRating) {
-                prof = "Not Provided";
-              } else {
-                const stars = Array.from({ length: safeRating }).map(() => "*").join(" ");
-                const label = ratingLabel(safeRating) || "";
-                prof = label ? `${stars}\n${label}` : stars;
-              }
-            }
-          }
           const criterionText = (() => {
             const base = String(c.label || "-") + (c.description ? `\n${String(c.description)}` : "");
             if (!c.hasTextbox) return base;
@@ -761,70 +744,32 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
                 ? String(c.alumniTextResponse)
                 : "No response provided";
             const label = String(c.textboxLabel || "Response");
-            return `${base}\nHas Textbox: Yes\n${label}: ${response}`;
+            return `${base}\n${label}: ${response}`;
           })();
+
           drawTableRow({
-            // "Type" column now also contains criterion text (label + description),
-            // since the dedicated "Requirement" column was removed.
-            type: `${typeLabel}\n${criterionText}`,
-            alumni: alumniSelected,
-            admin: adminSelected,
-            prof,
+            req: criterionText,
             marks: marksCell,
+            obtained: obtainedCell,
+            alumni: alumniCell,
+            admin: adminSelected,
           });
         });
         y += 10;
 
-        if (totalsAvailable) {
+        if (applicationApproved && totalMarks > 0) {
           setTextStyle(10.5, true);
-          doc.text(`Total: ${String(totalObtained)} / ${String(totalMarks)}`, margin, y);
+          doc.text(
+            `Total obtained marks: ${formatObtainedMarkDisplay(totalObtained)} / ${String(totalMarks)}`,
+            margin,
+            y
+          );
           y += 10;
         }
       }
 
-      // Optional textbox responses per criterion (alumni qualitative responses)
-      const textboxCriteria = (data.criteria || []).filter((c) => c.hasTextbox);
-      if (textboxCriteria.length) {
-        hLine(0, 10);
-        sectionTitle("Criterion Responses");
-        textboxCriteria.forEach((c, idx) => {
-          if (idx > 0) hLine(0, 8);
-
-          sectionTitle(`Criteria: ${String(c.label || "-")}`);
-
-          const marksRaw = c.criterionScore;
-          const marksNum = Number.isFinite(Number(marksRaw)) ? Math.trunc(Number(marksRaw)) : null;
-
-          const profId = String(c.id);
-          const ratingRaw = proficiencyMap[String(profId)] ?? 0;
-          const ratingNum = Number(ratingRaw);
-          const safeRating = Number.isFinite(ratingNum) ? Math.min(5, Math.max(0, Math.round(ratingNum))) : 0;
-
-          const profText = c.isMandatory
-            ? "-"
-            : safeRating
-              ? (() => {
-                  const stars = Array.from({ length: safeRating }).map(() => "*").join(" ");
-                  const label = ratingLabel(safeRating) || "";
-                  return label ? `${stars} (${label})` : stars;
-                })()
-              : "Not Provided";
-
-          drawWrappedText(`Proficiency: ${profText}`, margin, 10.5, true, maxWidth, 3);
-          drawWrappedText(`Marks: ${marksNum !== null ? String(marksNum) : "N/A"}`, margin, 10.5, true, maxWidth, 6);
-
-          const responseText =
-            c.alumniTextResponse && String(c.alumniTextResponse).trim()
-              ? String(c.alumniTextResponse)
-              : "No response provided";
-
-          drawWrappedText(`${String(c.textboxLabel || "Response")}:`, margin, 10.5, true, maxWidth, 2);
-          drawRichTextBlock(responseText, maxWidth, 10.5, false);
-        });
-      }
-
       hLine(0, 10);
-      sectionTitle("Additional Achievements");
+      sectionTitle("Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.");
       drawRichTextBlock(String(data.additionalAchievements || "-"), maxWidth);
 
       hLine(0, 10);
