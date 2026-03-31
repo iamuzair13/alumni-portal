@@ -1,4 +1,5 @@
 import { sql } from "@/lib/dbconnect";
+import type { AnalyticsPeriod } from "@/lib/analytics/types";
 
 export type AlumniTrendPoint = {
   period: string;
@@ -26,12 +27,16 @@ export type AlumniTrendFilter =
   | "C"
   | "D";
 
-export async function getAlumniTrends(period: "monthly" | "yearly" = "monthly"): Promise<AlumniTrendPoint[]> {
+export async function getAlumniTrends(period: AnalyticsPeriod = "monthly"): Promise<AlumniTrendPoint[]> {
   // Use tbl_alumni.todaydate as the creation timestamp for trends
   const bucketExpr =
     period === "yearly"
       ? sql`to_char(todaydate, 'YYYY')`
-      : sql`to_char(todaydate, 'YYYY-MM')`;
+      : period === "monthly"
+        ? sql`to_char(todaydate, 'YYYY-MM')`
+        : period === "weekly"
+          ? sql`to_char(date_trunc('week', todaydate), 'IYYY-"W"IW')`
+          : sql`to_char(todaydate, 'YYYY-MM-DD')`;
 
   const rows = await sql<{
     period: string;

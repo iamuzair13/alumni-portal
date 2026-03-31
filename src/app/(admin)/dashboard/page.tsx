@@ -26,7 +26,7 @@ export default async function Dashboard() {
 
   return (
     <div className="space-y-2">
-      <header className="rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm sticky top-0 z-30 backdrop-blur-sm dark:border-gray-800 dark:bg-white/[0.04] sm:p-6">
+      {/* <header className="rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm sticky top-0 z-30 backdrop-blur-sm dark:border-gray-800 dark:bg-white/[0.04] sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">
@@ -71,7 +71,7 @@ export default async function Dashboard() {
             </Link>
           </div>
         </div>
-      </header>
+      </header> */}
 
       <div className="grid grid-cols-12">
         <div className="col-span-12 xl:col-span-12">

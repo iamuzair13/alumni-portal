@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getAlumniTrends } from "@/services/dashboardService";
-
-type PeriodParam = "monthly" | "yearly";
+import type { AnalyticsPeriod } from "@/lib/analytics/types";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +12,10 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const periodRaw = (searchParams.get("period") || "monthly").toLowerCase();
-    const period: PeriodParam = periodRaw === "yearly" ? "yearly" : "monthly";
+    const allowed: AnalyticsPeriod[] = ["daily", "weekly", "monthly", "yearly"];
+    const period: AnalyticsPeriod = allowed.includes(periodRaw as AnalyticsPeriod)
+      ? (periodRaw as AnalyticsPeriod)
+      : "monthly";
 
     const data = await getAlumniTrends(period);
     return NextResponse.json(data, { status: 200 });

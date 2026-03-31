@@ -12,9 +12,10 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { AlumniTrendFilter, AlumniTrendPoint } from "@/services/dashboardService";
+import type { AnalyticsPeriod } from "@/lib/analytics/types";
 
 type Props = {
-  initialPeriod?: "monthly" | "yearly";
+  period: AnalyticsPeriod;
 };
 
 const FILTER_OPTIONS: { value: AlumniTrendFilter | "all"; label: string }[] = [
@@ -43,8 +44,7 @@ const LINES: { key: keyof AlumniTrendPoint; label: string; color: string }[] = [
   { key: "D", label: "D Category", color: "#F97316" },
 ];
 
-export default function AlumniTrendsChart({ initialPeriod = "monthly" }: Props) {
-  const [period, setPeriod] = useState<"monthly" | "yearly">(initialPeriod);
+export default function AlumniTrendsChart({ period }: Props) {
   const [filter, setFilter] = useState<AlumniTrendFilter | "all">("all");
   const [data, setData] = useState<AlumniTrendPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +64,22 @@ export default function AlumniTrendsChart({ initialPeriod = "monthly" }: Props) 
           throw new Error(body?.error || "Failed to load alumni trends");
         }
         const json = (await res.json()) as AlumniTrendPoint[];
-        if (!cancelled) setData(json);
+        if (!cancelled) {
+          const normalized = json.map((p) => ({
+            period: p.period,
+            total: Number(p.total ?? 0),
+            verified: Number(p.verified ?? 0),
+            unverified: Number(p.unverified ?? 0),
+            active: Number(p.active ?? 0),
+            distinguished: Number(p.distinguished ?? 0),
+            A_plus: Number(p.A_plus ?? 0),
+            A: Number(p.A ?? 0),
+            B: Number(p.B ?? 0),
+            C: Number(p.C ?? 0),
+            D: Number(p.D ?? 0),
+          }));
+          setData(normalized);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load alumni trends");
       } finally {
@@ -99,14 +114,6 @@ export default function AlumniTrendsChart({ initialPeriod = "monthly" }: Props) 
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select
-            className="h-9 rounded-lg border border-gray-300 bg-transparent px-3 text-xs shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value === "yearly" ? "yearly" : "monthly")}
-          >
-            <option value="monthly">Monthly</option>
-            <option value="yearly">Yearly</option>
-          </select>
           <select
             className="h-9 rounded-lg border border-gray-300 bg-transparent px-3 text-xs shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
             value={filter}

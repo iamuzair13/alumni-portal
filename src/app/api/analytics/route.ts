@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
     });
 
     if (module === "dashboard") {
-      const res = await getDashboardAnalytics(period);
+      // For the default dashboard, return Alumni (All) analytics instead of the combined union
+      const res = await getModuleAnalytics("alumni", period);
       return NextResponse.json(res, { status: 200 });
     }
 
