@@ -1683,7 +1683,8 @@ export default function LeadershipPage() {
                           </div>
 
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Additional Achievements</div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                            </div>
                             <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm text-gray-800 dark:text-gray-200 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                               {String(item.additionalAchievements || "").trim() || "No additional achievements provided."}
                             </div>

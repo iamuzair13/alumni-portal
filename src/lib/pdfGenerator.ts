@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { formatObtainedMarkDisplay } from "@/lib/leadershipMarks";
+import { formatObtainedMarkDisplay, normalizeObtainedMark } from "@/lib/leadershipMarks";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -705,8 +705,9 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           const adminResp = String(c.adminResponse ?? "").toUpperCase();
           const adminSelected = adminResp === "YES" || adminResp === "NO" ? adminResp : c.adminConfirmed ? "YES" : "NO";
           const marksRaw = c.criterionScore;
-          const marksNum = Number.isFinite(Number(marksRaw)) ? Math.trunc(Number(marksRaw)) : NaN;
-          const marksCell = Number.isFinite(marksNum) && marksNum >= 1 ? String(marksNum) : "N/A";
+          const marksNum = Number.isFinite(Number(marksRaw)) ? normalizeObtainedMark(Number(marksRaw)) : NaN;
+          const marksCell =
+            Number.isFinite(marksNum) && marksNum > 0 ? formatObtainedMarkDisplay(marksNum) : "N/A";
 
           const obtainedStored = c.obtainedMarks;
           const obtainedCell =
@@ -716,10 +717,10 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
                 ? formatObtainedMarkDisplay(Number(obtainedStored))
                 : "—";
 
-          if (applicationApproved && Number.isFinite(marksNum) && marksNum >= 1) {
+          if (applicationApproved && Number.isFinite(marksNum) && marksNum > 0) {
             totalMarks += marksNum;
             if (Number.isFinite(Number(obtainedStored))) {
-              totalObtained += Number(obtainedStored);
+              totalObtained += normalizeObtainedMark(Number(obtainedStored));
             }
           }
 
@@ -760,7 +761,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         if (applicationApproved && totalMarks > 0) {
           setTextStyle(10.5, true);
           doc.text(
-            `Total obtained marks: ${formatObtainedMarkDisplay(totalObtained)} / ${String(totalMarks)}`,
+            `Total obtained marks: ${formatObtainedMarkDisplay(totalObtained)} / Total marks: ${formatObtainedMarkDisplay(totalMarks)}`,
             margin,
             y
           );

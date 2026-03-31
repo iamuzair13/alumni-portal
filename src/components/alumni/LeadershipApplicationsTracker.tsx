@@ -401,14 +401,15 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                       </div>
 
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Additional Achievements</div>
+                        <div className="text-sm font-semibold text-gray-900">Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                        </div>
                         <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                           {String(item.additionalAchievements || "").trim() || "-"}
                         </div>
                       </div>
 
                       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="text-sm font-semibold text-gray-900">Plan / Strategy</div>
+                        <div className="text-sm font-semibold text-gray-900">Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role</div>
                         <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                           {String(item.planStrategy || "").trim() || "-"}
                         </div>
