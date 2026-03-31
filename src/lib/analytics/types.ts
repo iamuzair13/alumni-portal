@@ -2,6 +2,7 @@ export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
 export type AnalyticsModule =
   | "dashboard"
+  | "alumni"
   | "alumni_cards"
   | "alumni_talks"
   | "alumni_chapters"

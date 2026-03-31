@@ -16,6 +16,7 @@ export type ModuleSource =
     };
 
 export const MODULES: ReadonlyArray<Exclude<AnalyticsModule, "dashboard">> = [
+  "alumni",
   "alumni_cards",
   "alumni_talks",
   "alumni_chapters",
@@ -27,6 +28,11 @@ export const MODULES: ReadonlyArray<Exclude<AnalyticsModule, "dashboard">> = [
 ] as const;
 
 export const moduleRegistry: Record<Exclude<AnalyticsModule, "dashboard">, ModuleSource> = {
+  alumni: {
+    kind: "table",
+    table: { schema: "public", table: "tbl_alumni" },
+    timestampColumn: "todaydate",
+  },
   jobs: {
     kind: "table",
     table: { schema: "public", table: "tbljobs" },
