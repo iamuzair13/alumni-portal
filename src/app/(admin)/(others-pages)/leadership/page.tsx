@@ -1312,6 +1312,20 @@ export default function LeadershipPage() {
                       alumniName: pendingAction.name || "Alumni",
                     });
 
+                    const roleName = String(pendingAction.position || "{ROLE}");
+                    const orgName = (() => {
+                      const details = approveDetailsData?.item as ViewDetailsItem | undefined;
+                      const cat = details?.categoryName || "";
+                      if (pendingAction.type === "chapter") {
+                        return cat ? cat : "your selected chapter";
+                      }
+                      return cat ? cat : "the Alumni Association";
+                    })();
+
+                    const emailBody = tpl.html
+                      .replaceAll("{ROLE}", roleName)
+                      .replaceAll("{ORG}", orgName);
+
                     return (
                       <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
                         <div>
@@ -1323,7 +1337,7 @@ export default function LeadershipPage() {
                           recipientEmail={recipientEmail}
                           actionType={actionType}
                           initialSubject={tpl.subject}
-                          initialBody={tpl.html}
+                          initialBody={emailBody}
                           disabled={processingIds.has(pendingAction.applicationId)}
                         />
                       </div>

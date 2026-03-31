@@ -235,6 +235,40 @@ export function generateAdminActionEmail(input: {
     return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations") };
   }
 
+  if (input.actionType === EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_APPROVED) {
+    const subject = "Your Chapter Leadership Application Has Been Approved";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">
+        Congratulations! Your application for the role of <strong>{ROLE}</strong> in <strong>{ORG}</strong> has been approved.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        We’re excited to have you move forward in the process. Our team will be in touch with you soon to provide detailed information on the next steps and explain how everything will work.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Please keep an eye out for further updates.
+      </p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
+  }
+
+  if (input.actionType === EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_APPROVED) {
+    const subject = "Your Association Leadership Application Has Been Approved";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">
+        Congratulations! Your application for the role of <strong>{ROLE}</strong> in <strong>{ORG}</strong> has been approved.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        We’re excited to have you move forward in the process. Our team will be in touch with you soon to provide detailed information on the next steps and explain how everything will work.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Please keep an eye out for further updates.
+      </p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
+  }
+
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_SCHOLARSHIP_RECEIVED) {
     const subject = "Scholarship Application (Self / Kinship) – Received";
     const body = `
