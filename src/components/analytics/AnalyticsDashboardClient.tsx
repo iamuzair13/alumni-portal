@@ -11,6 +11,7 @@ import BarChartComponent from "./BarChartComponent";
 import PieChartComponent from "./PieChartComponent";
 
 const moduleLabel: Record<Exclude<AnalyticsModule, "dashboard">, string> = {
+  alumni: "Alumni (All)",
   alumni_cards: "Alumni Cards",
   alumni_talks: "Alumni Talks",
   alumni_chapters: "Alumni Chapters",
