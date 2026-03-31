@@ -987,9 +987,9 @@ export default function LeadershipPage() {
               }
             }}
             showCloseButton={true}
-            className="max-w-3xl"
+            className="max-w-[1080px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8"
           >
-            <div className="flex max-h-[80vh] flex-col">
+            <div className="flex max-h-[80vh] flex-col ">
               <div className="p-6 overflow-y-auto">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {pendingAction.action === "approve"
@@ -1023,7 +1023,7 @@ export default function LeadershipPage() {
                     <div>
                       <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Criteria Confirmation &amp; Marks</div>
                       <div className="text-xs text-gray-600 dark:text-gray-400">
-                        Confirm mandatory items, set proficiency for optional items, and enter obtained marks (0 up to each criterion&apos;s maximum) before approving.
+                        Confirm mandatory criteria, select proficiency for optional criteria, and assign obtained marks (0 up to each criterion&apos;s maximum).
                       </div>
                     </div>
                     {criteriaLoading || approveDetailsLoading ? (
@@ -1034,76 +1034,173 @@ export default function LeadershipPage() {
                   {criteriaItems.length === 0 && !criteriaLoading ? (
                     <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">No criteria configured for this role.</div>
                   ) : (
-                    <div className="mt-3 space-y-2">
-                      {criteriaItems.map((c) => {
-                        const id = Number(c.id);
-                        const currentRating = Number(adminOptionalCriteriaProficiency[id] ?? 0);
-                            if (c.is_mandatory) {
-                              const checked = adminCriteriaIds.has(id);
-                              const maxScore = Number((c as RoleCriterion).criterion_score);
-                              const hasScored = Number.isFinite(maxScore) && maxScore >= 1;
-                              const tb = approveTextboxByCriterionId.get(id) ?? null;
-                              const tbLabel = String(tb?.textboxLabel || c.textbox_label || "Response");
-                              const tbValue =
-                                tb?.alumniText && String(tb.alumniText).trim()
-                                  ? String(tb.alumniText)
-                                  : "No response provided";
-                              return (
-                                <div
-                                  key={id}
-                                  className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-3 py-2"
-                                >
-                                  <label className="mt-1 flex cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={(e) => {
-                                        const on = e.target.checked;
-                                        setAdminCriteriaIds((prev) => {
-                                          const next = new Set(prev);
-                                          if (on) next.add(id);
-                                          else next.delete(id);
-                                          return next;
-                                        });
-                                        setAdminCriterionObtainedMarks((prev) => {
-                                          const next = { ...prev };
-                                          if (on && hasScored) next[id] = maxScore;
-                                          else delete next[id];
-                                          return next;
-                                        });
-                                      }}
-                                      className="h-4 w-4 text-blue-600"
-                                    />
-                                  </label>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                      <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">
-                                        Mandatory
-                                      </span>
-                                      {hasScored ? (
-                                        <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold">
-                                          Max marks: {maxScore}
-                                        </span>
-                                      ) : null}
-                                      <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">
-                                        Has Textbox: {Boolean(c.has_textbox) ? "Yes" : "No"}
-                                      </span>
-                                    </div>
-                                    {c.description ? <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div> : null}
-                                    {c.has_textbox ? (
-                                      <div className="mt-2">
-                                        <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">{tbLabel}:</div>
-                                        <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
-                                          {tbValue}
+                    <div className="mt-3 overflow-x-auto [transform:rotateX(180deg)]">
+                      {(() => {
+                        const items = criteriaItems || [];
+                        const profMap =
+                          approveDetailsData?.item && typeof (approveDetailsData.item as unknown as ViewDetailsItem).optionalCriteriaProficiency === "object"
+                            ? (((approveDetailsData.item as unknown as ViewDetailsItem).optionalCriteriaProficiency ??
+                                null) as Record<string, number | null> | null)
+                            : null;
+
+                        const optionalRatedIds = items
+                          .filter((c) => !c.is_mandatory)
+                          .map((c) => Number(c.id))
+                          .filter((id) => {
+                            const r = Number(adminOptionalCriteriaProficiency[id] ?? 0);
+                            return Number.isFinite(r) && r >= 1 && r <= 5;
+                          });
+                        const adminIdsToConfirm = new Set<number>([...adminCriteriaIds, ...optionalRatedIds]);
+
+                        const totalMarks = items.reduce((sum, c) => {
+                          const id = Number(c.id);
+                          if (!adminIdsToConfirm.has(id)) return sum;
+                          const m = Number((c as RoleCriterion).criterion_score);
+                          return Number.isFinite(m) && m > 0 ? sum + m : sum;
+                        }, 0);
+                        const totalObtained = items.reduce((sum, c) => {
+                          const id = Number(c.id);
+                          if (!adminIdsToConfirm.has(id)) return sum;
+                          const m = Number((c as RoleCriterion).criterion_score);
+                          if (!Number.isFinite(m) || m <= 0) return sum;
+                          const om = Number(adminCriterionObtainedMarks[id]);
+                          return Number.isFinite(om) ? sum + om : sum;
+                        }, 0);
+
+                        return (
+                          <div className="[transform:rotateX(180deg)]">
+                          <table className="min-w-[920px] w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900/10">
+                            <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10">
+                              <tr className="border-b border-gray-200 dark:border-gray-700">
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200">Requirement</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[110px]">Marks</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Obtained Marks</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[210px]">Alumni</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                              {items.map((c) => {
+                                const id = Number(c.id);
+                                const isMandatory = Boolean(c.is_mandatory);
+                                const maxScore = Number((c as RoleCriterion).criterion_score);
+                                const hasScored = Number.isFinite(maxScore) && maxScore > 0;
+
+                                const checked = isMandatory ? adminCriteriaIds.has(id) : false;
+                                const currentRating = !isMandatory ? Number(adminOptionalCriteriaProficiency[id] ?? 0) : 0;
+                                const isSelected = isMandatory ? checked : Number.isFinite(currentRating) && currentRating >= 1 && currentRating <= 5;
+
+                                const tb = approveTextboxByCriterionId.get(id) ?? null;
+                                const tbLabel = String(tb?.textboxLabel || c.textbox_label || "Response");
+                                const tbValue =
+                                  tb?.alumniText && String(tb.alumniText).trim()
+                                    ? String(tb.alumniText)
+                                    : "No response provided";
+
+                                const alumniRespRaw =
+                                  approveDetailsData?.criteria?.find((x) => Number((x as any).id) === id) ?? null;
+                                const alumniYes = (() => {
+                                  if (!alumniRespRaw) return false;
+                                  const resp = String((alumniRespRaw as any).alumni_response ?? "").toUpperCase();
+                                  const normalized = resp === "YES" || resp === "NO" ? resp : (alumniRespRaw as any).alumni_confirmed ? "YES" : "NO";
+                                  return normalized === "YES";
+                                })();
+
+                                const alumniRating = !isMandatory && profMap ? Number(profMap[String(id)] ?? 0) : 0;
+                                const alumniStars = !isMandatory && Number.isFinite(alumniRating) && alumniRating >= 1 ? starsText(alumniRating) : "";
+                                const alumniLabel = !isMandatory && Number.isFinite(alumniRating) && alumniRating >= 1 ? proficiencyLabel(alumniRating) : "";
+
+                                return (
+                                  <tr key={id} className="bg-white dark:bg-transparent">
+                                    <td className="px-4 py-3 align-top">
+                                      <div className="flex items-start gap-2">
+                                        {isMandatory ? (
+                                          <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={(e) => {
+                                              const on = e.target.checked;
+                                              setAdminCriteriaIds((prev) => {
+                                                const next = new Set(prev);
+                                                if (on) next.add(id);
+                                                else next.delete(id);
+                                                return next;
+                                              });
+                                              setAdminCriterionObtainedMarks((prev) => {
+                                                const next = { ...prev };
+                                                if (!hasScored) return next;
+                                                if (on) next[id] = maxScore;
+                                                else delete next[id];
+                                                return next;
+                                              });
+                                            }}
+                                            className="mt-1 h-4 w-4 text-blue-600"
+                                            aria-label="Confirm mandatory criterion"
+                                          />
+                                        ) : null}
+
+                                        <div className="min-w-0">
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100 break-words">{c.label}</div>
+                                            
+                                          </div>
+                                          {c.description ? <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 break-words">{c.description}</div> : null}
+                                          {c.has_textbox ? (
+                                            <div className="mt-2">
+                                              <div className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">{tbLabel}:</div>
+                                              <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                                                {tbValue}
+                                              </div>
+                                            </div>
+                                          ) : null}
+
+                                          {!isMandatory ? (
+                                            <div className="mt-3">
+                                              <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                                Admin proficiency (1-5)
+                                              </div>
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                {[1, 2, 3, 4, 5].map((star) => {
+                                                  const active = star <= currentRating;
+                                                  return (
+                                                    <button
+                                                      key={star}
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setAdminOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: star }));
+                                                        if (hasScored) {
+                                                          const suggested = (star / 5) * maxScore;
+                                                          setAdminCriterionObtainedMarks((prev) => ({ ...prev, [id]: clampObtainedMark(suggested, maxScore) }));
+                                                        }
+                                                      }}
+                                                      className={`select-none rounded-md border px-2 py-1 text-xs font-semibold ${
+                                                        active
+                                                          ? "border-amber-300 bg-amber-50 text-amber-800"
+                                                          : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                                                      }`}
+                                                      aria-label={`Set rating to ${star}`}
+                                                    >
+                                                      {active ? "★" : "☆"} {star}
+                                                    </button>
+                                                  );
+                                                })}
+                                              </div>
+                                              <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                                {currentRating ? `Selected: ${currentRating}` : "No rating"}
+                                              </div>
+                                            </div>
+                                          ) : null}
                                         </div>
                                       </div>
-                                    ) : null}
-                                    {checked && hasScored ? (
-                                      <div className="mt-3">
-                                        <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                                          Obtained marks (0–{maxScore})
-                                        </label>
+                                    </td>
+
+                                    <td className="px-4 py-3 align-top font-semibold text-gray-900 dark:text-gray-100">
+                                      {hasScored ? formatObtainedMarkDisplay(maxScore) : "N/A"}
+                                    </td>
+
+                                    <td className="px-4 py-3 align-top">
+                                      {!isSelected || !hasScored ? (
+                                        <div className="font-semibold text-gray-500">—</div>
+                                      ) : (
                                         <input
                                           type="number"
                                           min={0}
@@ -1122,132 +1219,67 @@ export default function LeadershipPage() {
                                             }
                                             const num = Number(v);
                                             if (!Number.isFinite(num)) return;
-                                            setAdminCriterionObtainedMarks((p) => ({
-                                              ...p,
-                                              [id]: clampObtainedMark(num, maxScore),
-                                            }));
+                                            setAdminCriterionObtainedMarks((p) => ({ ...p, [id]: clampObtainedMark(num, maxScore) }));
                                           }}
                                           className="w-full max-w-[160px] rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
                                         />
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              );
-                            }
+                                      )}
+                                    </td>
 
-                            // Optional criteria: align with the alumni form (only star rating selection)
-                            const maxScoreOpt = Number((c as RoleCriterion).criterion_score);
-                            const hasScoredOpt = Number.isFinite(maxScoreOpt) && maxScoreOpt >= 1;
-                            const tb = approveTextboxByCriterionId.get(id) ?? null;
-                            const tbLabel = String(tb?.textboxLabel || c.textbox_label || "Response");
-                            const tbValue =
-                              tb?.alumniText && String(tb.alumniText).trim()
-                                ? String(tb.alumniText)
-                                : "No response provided";
-                            return (
-                              <div
-                                key={id}
-                                className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 px-3 py-2"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">
-                                      Optional
-                                    </span>
-                                    {hasScoredOpt ? (
-                                      <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold">
-                                        Max marks: {maxScoreOpt}
-                                      </span>
-                                    ) : null}
-                                    <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">
-                                      Has Textbox: {Boolean(c.has_textbox) ? "Yes" : "No"}
-                                    </span>
-                                  </div>
-                                  {c.description ? <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div> : null}
-                                  {c.has_textbox ? (
-                                    <div className="mt-2">
-                                      <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">{tbLabel}:</div>
-                                      <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
-                                        {tbValue}
-                                      </div>
-                                    </div>
-                                  ) : null}
+                                    <td className="px-4 py-3 align-top">
+                                      {alumniYes ? (
+                                        <div className="text-gray-900 dark:text-gray-100">
+                                          <div className="font-semibold">✔ YES</div>
+                                          {!isMandatory ? (
+                                            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300">
+                                              {alumniStars ? (
+                                                <span>
+                                                  <span className="font-semibold text-amber-700">{alumniStars}</span>
+                                                  {alumniLabel ? ` (${alumniLabel})` : ""}
+                                                </span>
+                                              ) : (
+                                                <span className="text-gray-500">No rating</span>
+                                              )}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      ) : (
+                                        <div className="text-gray-900 dark:text-gray-100">
+                                          <div className="font-semibold text-gray-500">NO</div>
+                                          {!isMandatory ? (
+                                            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300">
+                                              {alumniStars ? (
+                                                <span>
+                                                  <span className="font-semibold text-amber-700">{alumniStars}</span>
+                                                  {alumniLabel ? ` (${alumniLabel})` : ""}
+                                                </span>
+                                              ) : (
+                                                <span className="text-gray-500">No rating</span>
+                                              )}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
 
-                                  <div className="mt-3">
-                                    <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                                      Admin proficiency (1-5)
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {[1, 2, 3, 4, 5].map((star) => {
-                                        const active = star <= currentRating;
-                                        return (
-                                          <button
-                                            key={star}
-                                            type="button"
-                                            onClick={() => {
-                                              setAdminOptionalCriteriaProficiency((prev) => ({ ...prev, [id]: star }));
-                                              if (hasScoredOpt) {
-                                                const suggested = (star / 5) * maxScoreOpt;
-                                                setAdminCriterionObtainedMarks((prev) => ({
-                                                  ...prev,
-                                                  [id]: clampObtainedMark(suggested, maxScoreOpt),
-                                                }));
-                                              }
-                                            }}
-                                            className={`select-none rounded-md border px-2 py-1 text-xs font-semibold ${
-                                              active
-                                                ? "border-amber-300 bg-amber-50 text-amber-800"
-                                                : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
-                                            }`}
-                                            aria-label={`Set rating to ${star}`}
-                                          >
-                                            {active ? "★" : "☆"} {star}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                    <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                      {currentRating ? `Selected: ${currentRating}` : "No rating"}
-                                    </div>
-                                    {Number.isFinite(currentRating) && currentRating >= 1 && hasScoredOpt ? (
-                                      <div className="mt-3">
-                                        <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                                          Obtained marks (0–{maxScoreOpt})
-                                        </label>
-                                        <input
-                                          type="number"
-                                          min={0}
-                                          max={maxScoreOpt}
-                                          step="any"
-                                          value={adminCriterionObtainedMarks[id] ?? ""}
-                                          onChange={(ev) => {
-                                            const v = ev.target.value;
-                                            if (v === "") {
-                                              setAdminCriterionObtainedMarks((p) => {
-                                                const n = { ...p };
-                                                delete n[id];
-                                                return n;
-                                              });
-                                              return;
-                                            }
-                                            const num = Number(v);
-                                            if (!Number.isFinite(num)) return;
-                                            setAdminCriterionObtainedMarks((p) => ({
-                                              ...p,
-                                              [id]: clampObtainedMark(num, maxScoreOpt),
-                                            }));
-                                          }}
-                                          className="w-full max-w-[160px] rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
-                                        />
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                      })}
+                              <tr className="bg-gray-50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Result</td>
+                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                  {totalMarks > 0 ? formatObtainedMarkDisplay(totalMarks) : "-"}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                  {totalMarks > 0 ? formatObtainedMarkDisplay(totalObtained) : "-"}
+                                </td>
+                                <td className="px-4 py-3" />
+                              </tr>
+                            </tbody>
+                          </table>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1579,7 +1611,8 @@ export default function LeadershipPage() {
 
                           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-6 shadow-sm">
                             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Criteria</div>
-                            <div className="mt-3 overflow-x-auto">
+                            <div className="mt-3 overflow-x-auto [transform:rotateX(180deg)]">
+                              <div className="[transform:rotateX(180deg)]">
                               <table className="min-w-[820px] w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10">
                                   <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -1587,18 +1620,30 @@ export default function LeadershipPage() {
                                     <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[100px]">Marks</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[140px]">Obtained Marks</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Alumni</th>
-                                    <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Admin</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                  {(Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : []).map((c: ApplicationDetailsCriterion) => {
+                                  {(() => {
+                                    const items = Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : [];
+                                    const showObtained = statusLower === "approved";
+                                    const totalMarks = items.reduce((sum, c) => {
+                                      const m = Number((c as ApplicationDetailsCriterion).criterion_score);
+                                      return Number.isFinite(m) && m > 0 ? sum + m : sum;
+                                    }, 0);
+                                    const totalObtained = showObtained
+                                      ? items.reduce((sum, c) => {
+                                          const om = Number((c as ApplicationDetailsCriterion).obtained_marks);
+                                          return Number.isFinite(om) && om >= 0 ? sum + om : sum;
+                                        }, 0)
+                                      : 0;
+
+                                    return (
+                                      <>
+                                        {items.map((c: ApplicationDetailsCriterion) => {
                                     const isMandatory = Boolean(c.is_mandatory);
                                     const alumniRespRaw = String(c.alumni_response ?? "").toUpperCase();
                                     const alumniResp = alumniRespRaw === "YES" || alumniRespRaw === "NO" ? alumniRespRaw : c.alumni_confirmed ? "YES" : "NO";
-                                    const adminRespRaw = String(c.admin_response ?? "").toUpperCase();
-                                    const adminResp = adminRespRaw === "YES" || adminRespRaw === "NO" ? adminRespRaw : c.admin_confirmed ? "YES" : "NO";
                                     const alumniYes = alumniResp === "YES";
-                                    const adminYes = adminResp === "YES";
                                     const rating = profMap && typeof profMap === "object" ? Number(profMap[String(c.id)] ?? 0) : 0;
                                     const stars = !isMandatory && alumniYes && rating ? starsText(rating) : "";
                                     const label = !isMandatory && alumniYes && rating ? proficiencyLabel(rating) : "";
@@ -1609,7 +1654,6 @@ export default function LeadershipPage() {
                                     const storedObtained = Number.isFinite(Number((c as ApplicationDetailsCriterion).obtained_marks))
                                       ? Number((c as ApplicationDetailsCriterion).obtained_marks)
                                       : null;
-                                    const showObtained = statusLower === "approved";
 
                                     return (
                                       <tr key={c.id} className="bg-white dark:bg-transparent">
@@ -1671,14 +1715,26 @@ export default function LeadershipPage() {
                                             <div className="font-semibold text-gray-500">NO</div>
                                           )}
                                         </td>
-                                        <td className="px-4 py-3">
-                                          <div className={`font-semibold ${adminYes ? "text-gray-900 dark:text-gray-100" : "text-gray-500"}`}>{adminYes ? "✔ YES" : "NO"}</div>
-                                        </td>
                                       </tr>
                                     );
-                                  })}
+                                        })}
+
+                                        <tr className="bg-gray-50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Result</td>
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                            {totalMarks > 0 ? formatObtainedMarkDisplay(totalMarks) : "-"}
+                                          </td>
+                                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                            {showObtained && totalMarks > 0 ? formatObtainedMarkDisplay(totalObtained) : "—"}
+                                          </td>
+                                          <td className="px-4 py-3" />
+                                        </tr>
+                                      </>
+                                    );
+                                  })()}
                                 </tbody>
                               </table>
+                              </div>
                             </div>
                           </div>
 

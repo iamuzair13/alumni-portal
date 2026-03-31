@@ -620,18 +620,16 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       sectionTitle("Criteria");
       const applicationApproved = String(data.status || "").toLowerCase() === "approved";
       const tableColW = {
-        req: maxWidth * 0.42,
-        marks: maxWidth * 0.11,
-        obtained: maxWidth * 0.13,
-        alumni: maxWidth * 0.19,
-        admin: maxWidth * 0.15,
+        req: maxWidth * 0.50,
+        marks: maxWidth * 0.14,
+        obtained: maxWidth * 0.16,
+        alumni: maxWidth * 0.20,
       };
       const tableX = {
         req: margin,
         marks: margin + tableColW.req,
         obtained: margin + tableColW.req + tableColW.marks,
         alumni: margin + tableColW.req + tableColW.marks + tableColW.obtained,
-        admin: margin + tableColW.req + tableColW.marks + tableColW.obtained + tableColW.alumni,
       };
       const tableFont = 9.5;
 
@@ -646,28 +644,24 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         doc.line(tableX.marks, y, tableX.marks, y + headerH);
         doc.line(tableX.obtained, y, tableX.obtained, y + headerH);
         doc.line(tableX.alumni, y, tableX.alumni, y + headerH);
-        doc.line(tableX.admin, y, tableX.admin, y + headerH);
         setTextStyle(tableFont, true);
         doc.text("Requirement", tableX.req + 2, y + 7);
         doc.text("Marks", tableX.marks + 2, y + 7);
         doc.text("Obtained", tableX.obtained + 2, y + 7);
         doc.text("Alumni", tableX.alumni + 2, y + 7);
-        doc.text("Admin", tableX.admin + 2, y + 7);
         y += headerH;
       };
 
-      const drawTableRow = (cells: { req: string; marks: string; obtained: string; alumni: string; admin: string }) => {
+      const drawTableRow = (cells: { req: string; marks: string; obtained: string; alumni: string }) => {
         const reqLines = doc.splitTextToSize(cells.req, tableColW.req - 4);
         const marksLines = doc.splitTextToSize(cells.marks, tableColW.marks - 4);
         const obtainedLines = doc.splitTextToSize(cells.obtained, tableColW.obtained - 4);
         const alumniLines = doc.splitTextToSize(cells.alumni, tableColW.alumni - 4);
-        const adminLines = doc.splitTextToSize(cells.admin, tableColW.admin - 4);
         const lines = Math.max(
           reqLines.length,
           marksLines.length,
           obtainedLines.length,
           alumniLines.length,
-          adminLines.length,
           1
         );
         const rowH = lines * textHeight(tableFont) + 6;
@@ -682,13 +676,11 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         doc.line(tableX.marks, y, tableX.marks, y + rowH);
         doc.line(tableX.obtained, y, tableX.obtained, y + rowH);
         doc.line(tableX.alumni, y, tableX.alumni, y + rowH);
-        doc.line(tableX.admin, y, tableX.admin, y + rowH);
         setTextStyle(tableFont, false);
         doc.text(reqLines, tableX.req + 2, y + 5, { maxWidth: tableColW.req - 4 });
         doc.text(marksLines, tableX.marks + 2, y + 5, { maxWidth: tableColW.marks - 4 });
         doc.text(obtainedLines, tableX.obtained + 2, y + 5, { maxWidth: tableColW.obtained - 4 });
         doc.text(alumniLines, tableX.alumni + 2, y + 5, { maxWidth: tableColW.alumni - 4 });
-        doc.text(adminLines, tableX.admin + 2, y + 5, { maxWidth: tableColW.admin - 4 });
         y += rowH;
       };
 
@@ -702,8 +694,6 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         data.criteria.forEach((c) => {
           const alumniResp = String(c.alumniResponse ?? "").toUpperCase();
           const alumniSelected = alumniResp === "YES" || alumniResp === "NO" ? alumniResp : c.alumniConfirmed ? "YES" : "NO";
-          const adminResp = String(c.adminResponse ?? "").toUpperCase();
-          const adminSelected = adminResp === "YES" || adminResp === "NO" ? adminResp : c.adminConfirmed ? "YES" : "NO";
           const marksRaw = c.criterionScore;
           const marksNum = Number.isFinite(Number(marksRaw)) ? normalizeObtainedMark(Number(marksRaw)) : NaN;
           const marksCell =
@@ -717,9 +707,9 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
                 ? formatObtainedMarkDisplay(Number(obtainedStored))
                 : "—";
 
-          if (applicationApproved && Number.isFinite(marksNum) && marksNum > 0) {
+          if (Number.isFinite(marksNum) && marksNum > 0) {
             totalMarks += marksNum;
-            if (Number.isFinite(Number(obtainedStored))) {
+            if (applicationApproved && Number.isFinite(Number(obtainedStored))) {
               totalObtained += normalizeObtainedMark(Number(obtainedStored));
             }
           }
@@ -753,15 +743,15 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
             marks: marksCell,
             obtained: obtainedCell,
             alumni: alumniCell,
-            admin: adminSelected,
           });
         });
         y += 10;
 
-        if (applicationApproved && totalMarks > 0) {
+        if (totalMarks > 0) {
+          ensureSpace(14);
           setTextStyle(10.5, true);
           doc.text(
-            `Total obtained marks: ${formatObtainedMarkDisplay(totalObtained)} / Total marks: ${formatObtainedMarkDisplay(totalMarks)}`,
+            `Result — Total marks: ${formatObtainedMarkDisplay(totalMarks)} | Total obtained marks: ${applicationApproved ? formatObtainedMarkDisplay(totalObtained) : "—"}`,
             margin,
             y
           );
