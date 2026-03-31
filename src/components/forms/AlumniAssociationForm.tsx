@@ -417,14 +417,6 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
         toast.error(msg);
         return;
       }
-
-      const anyNo = mandatoryCriteriaIds.some((id) => mandatoryCriteriaResponses[id] === "NO");
-      if (anyNo) {
-        const confirmed = window.confirm(
-          "You selected NO for one or more mandatory role criteria. You can still submit, but your application may be rejected. Do you want to continue?"
-        );
-        if (!confirmed) return;
-      }
     }
 
     const requiredTextboxCriteriaItems = criteriaItems.filter((c) => c.has_textbox && c.is_textbox_required);
