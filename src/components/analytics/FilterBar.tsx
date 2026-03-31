@@ -4,8 +4,7 @@ import React from "react";
 import type { AnalyticsModule, AnalyticsPeriod } from "@/lib/analytics/types";
 
 const moduleOptions: Array<{ value: AnalyticsModule; label: string }> = [
-  { value: "dashboard", label: "Dashboard (All)" },
-  { value: "alumni", label: "Alumni (All)" },
+  { value: "dashboard", label: "Alumni (All)" },
   { value: "alumni_cards", label: "Alumni Cards" },
   { value: "alumni_talks", label: "Alumni Talks" },
   { value: "alumni_chapters", label: "Alumni Chapters" },

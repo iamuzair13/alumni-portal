@@ -9,6 +9,7 @@ import SummaryCards from "./SummaryCards";
 import LineChartComponent from "./LineChartComponent";
 import BarChartComponent from "./BarChartComponent";
 import PieChartComponent from "./PieChartComponent";
+import AlumniTrendsChart from "@/components/dashboard/AlumniTrendsChart";
 
 const moduleLabel: Record<Exclude<AnalyticsModule, "dashboard">, string> = {
   alumni: "Alumni (All)",
@@ -111,6 +112,8 @@ export default function AnalyticsDashboardClient() {
               data={pie.series}
             />
           ) : null}
+
+          {isDashboard ? <AlumniTrendsChart /> : null}
 
           {!data?.total ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
