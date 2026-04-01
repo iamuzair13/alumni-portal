@@ -26,6 +26,7 @@ import { useModal } from "@/hooks/useModal";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapLink from "@tiptap/extension-link";
@@ -697,7 +698,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
             if (data.images && Array.isArray(data.images)) {
               data.images.forEach((img: string, idx: number) => {
                 if (img) {
-                  existingPreviewUrls[idx + 1] = `/images/${img}`;
+                  existingPreviewUrls[idx + 1] = uploadsImageUrl(img);
                 }
               });
             }

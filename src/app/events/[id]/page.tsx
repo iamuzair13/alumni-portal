@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 import { useQuery } from "@tanstack/react-query";
 
 type EventDetail = {
@@ -55,6 +56,16 @@ export default function EventDetailPage() {
   const id = params?.id as string;
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [brokenImageKeys, setBrokenImageKeys] = useState<Set<string>>(() => new Set());
+
+  const markImageBroken = (filename: string) => {
+    setBrokenImageKeys((prev) => {
+      if (prev.has(filename)) return prev;
+      const next = new Set(prev);
+      next.add(filename);
+      return next;
+    });
+  };
 
   const {
     data: event,
@@ -77,6 +88,10 @@ export default function EventDetailPage() {
       setSelectedImageIndex(0);
     }
   }, [images.length]);
+
+  useEffect(() => {
+    setBrokenImageKeys(new Set());
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -135,6 +150,8 @@ export default function EventDetailPage() {
 
   const mainImage = images[selectedImageIndex] || images[0];
   const hasMultipleImages = images.length > 1;
+  const mainImageSrc = mainImage ? uploadsImageUrl(mainImage) : "";
+  const mainImageBroken = mainImage ? brokenImageKeys.has(mainImage) : true;
 
   return (
     <>
@@ -265,17 +282,21 @@ export default function EventDetailPage() {
                         className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:border-blue-500 transition-all duration-200"
                         onClick={() => hasMultipleImages && setIsImageModalOpen(true)}
                       >
+                        {mainImageBroken || !mainImageSrc ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500 text-sm p-4 text-center">
+                            Image unavailable
+                          </div>
+                        ) : (
                         <Image
-                          src={`/images/${mainImage}`}
+                          src={mainImageSrc}
                           alt={`${event.title} - Image ${selectedImageIndex + 1}`}
                           fill
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, 400px"
                           priority
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
-                          }}
+                          onError={() => markImageBroken(mainImage)}
                         />
+                        )}
                         {hasMultipleImages && (
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -306,9 +327,12 @@ export default function EventDetailPage() {
                   {/* Thumbnail Gallery */}
                   {hasMultipleImages && images.length > 1 && (
                     <div className="grid grid-cols-4 gap-2">
-                      {images.map((image, idx) => (
+                      {images.map((image, idx) => {
+                        const thumbSrc = uploadsImageUrl(image);
+                        const thumbBroken = brokenImageKeys.has(image);
+                        return (
                         <button
-                          key={idx}
+                          key={`${image}-${idx}`}
                           onClick={() => setSelectedImageIndex(idx)}
                           className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                             selectedImageIndex === idx
@@ -316,18 +340,23 @@ export default function EventDetailPage() {
                               : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                           }`}
                         >
+                          {thumbBroken || !thumbSrc ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-[10px] text-gray-500">
+                              —
+                            </div>
+                          ) : (
                           <Image
-                            src={`/images/${image}`}
+                            src={thumbSrc}
                             alt={`Thumbnail ${idx + 1}`}
                             fill
                             className="object-cover"
                             sizes="(max-width: 768px) 25vw, 100px"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "https://via.placeholder.com/100?text=Error";
-                            }}
+                            onError={() => markImageBroken(image)}
                           />
+                          )}
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -355,17 +384,21 @@ export default function EventDetailPage() {
             </button>
             
             <div className="relative w-full h-[90vh]">
+              {mainImageBroken || !mainImageSrc ? (
+                <div className="flex h-full items-center justify-center text-white/80">
+                  Image unavailable
+                </div>
+              ) : (
               <Image
-                src={`/images/${mainImage}`}
+                src={mainImageSrc}
                 alt={`${event.title} - Full View`}
                 fill
                 className="object-contain"
                 sizes="100vw"
                 priority
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://via.placeholder.com/800x600?text=Image+Not+Found";
-                }}
+                onError={() => markImageBroken(mainImage)}
               />
+              )}
             </div>
 
             {hasMultipleImages && (
