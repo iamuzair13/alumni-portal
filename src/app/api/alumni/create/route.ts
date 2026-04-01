@@ -67,7 +67,7 @@ async function validateCnicPassportAgainstErp(input: {
     const sapId = input.sapId ? String(input.sapId).trim() : "";
     const cnicOrPassport = input.cnicOrPassport ? String(input.cnicOrPassport).trim() : "";
 
-    // Edge case: if both registrationNo and sapId are missing, allow submission
+    // Without ERP keys we cannot compare; caller must require at least one of Registration # / SAP ID.
     if (!registrationNo && !sapId) return true;
 
     // If user did not provide CNIC/Passport (should be required elsewhere), allow submission here
@@ -215,19 +215,13 @@ export async function POST(req: Request) {
     const regNo = body.registrationno ? String(body.registrationno).trim() : "";
     const sapId = body.sapid ? String(body.sapid).trim() : "";
     const cnic = body.cnicpassport ? String(body.cnicpassport).trim() : "";
-    const phone = body.contactno ? String(body.contactno).trim() : "";
-    const personalEmail = body.personalemail ? String(body.personalemail).trim().toLowerCase() : "";
-    const universityEmail = body.universityemail ? String(body.universityemail).trim().toLowerCase() : "";
-    const officialEmail = body.officialemail ? String(body.officialemail).trim().toLowerCase() : "";
-    
-    // Check that at least one identifier is provided
-    // Identifiers: SAP ID, Registration No, CNIC, Phone, or Email (any of: personal, university, official)
-    // alumniemail is admin-assigned and is not used for public/alumni registration matching.
-    const hasIdentifier = regNo || sapId || cnic || phone || personalEmail || universityEmail || officialEmail;
-    if (!hasIdentifier) {
-      return NextResponse.json({ 
-        error: "At least one identifier is required: Registration #, SAP ID, CNIC/Passport, Phone Number, or Email" 
-      }, { status: 400 });
+
+    // Business rule: at least one of Registration # or SAP ID (matches form copy: provide at least one).
+    if (!regNo && !sapId) {
+      return NextResponse.json(
+        { error: "Either Registration Number or SAP ID is required." },
+        { status: 400 }
+      );
     }
     
     const required: Array<[keyof TblAlumniBody, string]> = [
@@ -427,6 +421,24 @@ export async function POST(req: Request) {
       // We'll modify the INSERT to be an UPDATE when existingRecord is found
     } else {
 
+    }
+
+    // Updates must not leave both Registration # and SAP ID empty (merged incoming + existing).
+    if (existingRecord) {
+      const incomingRegNo = clean(body.registrationno);
+      const incomingSapId = clean(body.sapid);
+      const preservedRegNo = incomingRegNo ?? existingRecord.registrationno;
+      const preservedSapId = incomingSapId ?? existingRecord.sapid;
+      const hasPreservedReg =
+        preservedRegNo != null && String(preservedRegNo).trim() !== "";
+      const hasPreservedSap =
+        preservedSapId != null && String(preservedSapId).trim() !== "";
+      if (!hasPreservedReg && !hasPreservedSap) {
+        return NextResponse.json(
+          { error: "Either Registration Number or SAP ID is required." },
+          { status: 400 }
+        );
+      }
     }
 
     // Track whether this is an update or insert for proper response status
