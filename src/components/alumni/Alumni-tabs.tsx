@@ -1393,21 +1393,26 @@ export const AlumniTabs: React.FC = () => {
       if (locallyDeletedKeys.has(localKey)) {
         continue;
       }
-      
-      // Allow records with either sapid OR registrationno for all tabs
-      // This includes "Under Approval" records that might have null sapid
-      if ((!r.sapid || !r.sapid.trim()) && (!r.registrationno || !r.registrationno.trim())) {
-        // Skip only if both sapid and registrationno are missing
+
+      const verifyStrEarly = String(r.verify ?? "").toLowerCase().trim();
+      const isUnderApprovalRow = verifyStrEarly === "underapproval";
+
+      // Skip incomplete rows unless they are pending approval (API can return those without sapid/regno).
+      if (
+        (!r.sapid || !r.sapid.trim()) &&
+        (!r.registrationno || !r.registrationno.trim()) &&
+        !isUnderApprovalRow
+      ) {
         continue;
       }
-      
+
       // Optimize verification status check (handle string, boolean, or null)
       // Handle verify='underApproval' as "underApproval"
       const verifyRaw = r.verify;
       let verifyStatus: "verified" | "unverified" | "underApproval";
       let verified: boolean;
-      
-      const verifyStr = String(verifyRaw ?? "").toLowerCase().trim();
+
+      const verifyStr = verifyStrEarly;
       if (verifyStr === "true") {
         verifyStatus = "verified";
         verified = true;
@@ -1560,20 +1565,24 @@ export const AlumniTabs: React.FC = () => {
     // Always use server counts if available (real-time data)
     if (countsData) {
       const category = countsData.category || { aPlus: 0, a: 0, b: 0, c: 0, d: 0, distinguished: 0 };
+      const n = (v: unknown) => {
+        const x = Number(v);
+        return Number.isFinite(x) ? x : 0;
+      };
       return {
-        total: countsData.total || 0,
-        verified: countsData.verified || 0,
-        unverified: countsData.unverified || 0,
-        underApproval: countsData.underApproval || 0,
-        active: countsData.active || 0,
-        inactive: countsData.inactive || 0,
+        total: n(countsData.total),
+        verified: n(countsData.verified),
+        unverified: n(countsData.unverified),
+        underApproval: n(countsData.underApproval),
+        active: n(countsData.active),
+        inactive: n(countsData.inactive),
         category: {
-          aPlus: category.aPlus || 0,
-          a: category.a || 0,
-          b: category.b || 0,
-          c: category.c || 0,
-          d: category.d || 0,
-          distinguished: category.distinguished || 0,
+          aPlus: n(category.aPlus),
+          a: n(category.a),
+          b: n(category.b),
+          c: n(category.c),
+          d: n(category.d),
+          distinguished: n(category.distinguished),
         },
       };
     }

@@ -1006,17 +1006,16 @@ export async function GET(req: Request) {
     }
 
     // Build base WHERE clause: allow NULL values when filters are active
-    const hasUnderApproval = Array.isArray(status) 
-      ? status.includes("underApproval")
-      : status === "underApproval";
-    const baseWhere =
-      hasUnderApproval ||
+    // Pending registrations (verify = underApproval) may lack sapid and registrationno; they must still
+    // be included in aggregates and match list/count behavior across tabs (no +1 only when Under Approval is selected).
+    const needsUnrestrictedBase =
       hasSapIdStateFilter ||
       hasRegNoStateFilter ||
       hasPersonalEmailStateFilter ||
-      hasContactNoStateFilter
-      ? sql`1=1` 
-      : sql`((sapid IS NOT NULL AND sapid != '') OR (registrationno IS NOT NULL AND registrationno != ''))`;
+      hasContactNoStateFilter;
+    const baseWhere = needsUnrestrictedBase
+      ? sql`1=1`
+      : sql`((sapid IS NOT NULL AND sapid != '') OR (registrationno IS NOT NULL AND registrationno != '') OR (LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'))`;
 
     // Verify field is now VARCHAR(10) - handle as string only
     let result;

@@ -700,10 +700,6 @@ export function buildMasterFilterConditions(
 export function buildAlumniPresenceBaseWhere(searchParams: URLSearchParams) {
   const statusParams = searchParams.getAll("status");
   const status = statusParams.length > 0 ? statusParams : (searchParams.get("status") || "");
-  const hasUnderApproval = Array.isArray(status)
-    ? status.includes("underApproval")
-    : status === "underApproval";
-
   const hasSapIdStateFilter = searchParams.getAll("sapIdState").length > 0 || !!searchParams.get("sapIdState");
   const hasRegNoStateFilter = searchParams.getAll("regNoState").length > 0 || !!searchParams.get("regNoState");
   const hasPersonalEmailStateFilter =
@@ -711,10 +707,10 @@ export function buildAlumniPresenceBaseWhere(searchParams: URLSearchParams) {
   const hasContactNoStateFilter =
     searchParams.getAll("contactNoState").length > 0 || !!searchParams.get("contactNoState");
 
-  if (hasUnderApproval || hasSapIdStateFilter || hasRegNoStateFilter || hasPersonalEmailStateFilter || hasContactNoStateFilter) {
+  if (hasSapIdStateFilter || hasRegNoStateFilter || hasPersonalEmailStateFilter || hasContactNoStateFilter) {
     return sql`1=1`;
   }
 
-  return sql`(a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')`;
+  return sql`((a.sapid IS NOT NULL AND a.sapid != '') OR (a.registrationno IS NOT NULL AND a.registrationno != '') OR (LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval'))`;
 }
 

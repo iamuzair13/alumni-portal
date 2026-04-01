@@ -1412,17 +1412,15 @@ export async function GET(req: Request) {
     // Build query with optional search and status filter
     let query;
     // Base WHERE clause: require either sapid OR registrationno (except for underApproval which we handle separately)
-    const hasUnderApproval = Array.isArray(status) 
-      ? status.includes("underApproval")
-      : status === "underApproval";
-    const baseWhere =
-      hasUnderApproval ||
+    // Include under-approval rows that may not yet have sapid/registrationno (same scope as counts API).
+    const needsUnrestrictedBase =
       hasSapIdStateFilter ||
       hasRegNoStateFilter ||
       hasPersonalEmailStateFilter ||
-      hasContactNoStateFilter
-      ? sql`1=1` 
-      : sql`(sapid IS NOT NULL AND sapid != '' OR registrationno IS NOT NULL AND registrationno != '')`;
+      hasContactNoStateFilter;
+    const baseWhere = needsUnrestrictedBase
+      ? sql`1=1`
+      : sql`((sapid IS NOT NULL AND sapid != '') OR (registrationno IS NOT NULL AND registrationno != '') OR (LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'))`;
     
     if (search && search.trim()) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;
