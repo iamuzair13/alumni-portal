@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
+import Pagination from "@/components/tables/Pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { TrashBinIcon, CheckLineIcon, CloseLineIcon, DownloadIcon, PlusIcon, EyeIcon } from "@/icons";
 import { canModify } from "@/lib/alumniProfile";
@@ -276,6 +277,10 @@ export default function LeadershipPage() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  useEffect(() => {
+    setAppPage(1);
+  }, [applicationTypeFilter, applicationStatusTab, applicationRoleFilter, hasAdditionalAchievementsFilter]);
+
   const confirmModal = useModal();
   const achievementsModal = useModal();
   const [selectedAchievementsApp, setSelectedAchievementsApp] = useState<LeadershipApplication | null>(null);
@@ -290,6 +295,7 @@ export default function LeadershipPage() {
         alumniId?: number;
         name?: string;
         email?: string;
+        categoryName?: string | null;
       }
     | null
   >(null);
@@ -499,6 +505,7 @@ export default function LeadershipPage() {
       alumniId: app?.alumniId,
       name: app?.name,
       email: app?.email,
+      categoryName: app?.categoryName,
     });
     confirmModal.openModal();
     return;
@@ -787,10 +794,16 @@ export default function LeadershipPage() {
     return sorted;
   }, [applicationsData, sortDir, sortKey]);
 
+  const applicationsTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredApplications.length / pageSize)),
+    [filteredApplications.length, pageSize]
+  );
+  const appPageSafe = Math.min(appPage, applicationsTotalPages);
+
   const pagedApplications = useMemo(() => {
-    const start = (appPage - 1) * pageSize;
+    const start = (appPageSafe - 1) * pageSize;
     return filteredApplications.slice(start, start + pageSize);
-  }, [filteredApplications, appPage]);
+  }, [filteredApplications, appPageSafe, pageSize]);
 
   const uniqueFaculties = useMemo(() => {
     const allData = selectedTab === "applications" ? applicationsData : membersData;
@@ -1315,7 +1328,7 @@ export default function LeadershipPage() {
                     const roleName = String(pendingAction.position || "{ROLE}");
                     const orgName = (() => {
                       const details = approveDetailsData?.item as ViewDetailsItem | undefined;
-                      const cat = details?.categoryName || "";
+                      const cat = details?.categoryName || pendingAction.categoryName || "";
                       if (pendingAction.type === "chapter") {
                         return cat ? cat : "your selected chapter";
                       }
@@ -1457,6 +1470,29 @@ export default function LeadershipPage() {
                   />
                 )}
               </SyncedTableScroll>
+              {selectedTab === "applications" && !applicationsLoading && filteredApplications.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 py-4 bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {(() => {
+                      const start = (appPageSafe - 1) * pageSize + 1;
+                      const end = Math.min(appPageSafe * pageSize, filteredApplications.length);
+                      return `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${filteredApplications.length.toLocaleString()}`;
+                    })()}
+                  </span>
+                  {applicationsTotalPages > 1 && (
+                    <Pagination
+                      currentPage={appPageSafe}
+                      totalPages={applicationsTotalPages}
+                      onPageChange={(p) => {
+                        const next = Math.max(1, Math.min(p, applicationsTotalPages));
+                        setAppPage(next);
+                        const scrollEl = document.querySelector(".max-w-7xl .custom-scrollbar");
+                        if (scrollEl) scrollEl.scrollTop = 0;
+                      }}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {achievementsModal.isOpen && selectedAchievementsApp && (

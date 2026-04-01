@@ -269,6 +269,40 @@ export function generateAdminActionEmail(input: {
     return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
   }
 
+  if (input.actionType === EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_NOT_APPROVED) {
+    const subject = "Chapter Leadership Application — Not Approved";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">
+        We regret to inform you that your application for <strong>{ROLE}</strong> of <strong>{ORG}</strong> has not been approved at this time. After careful review, we found that it does not fully meet the required criteria.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Please don't be discouraged! We welcome you to submit a revised application in the future once you feel it better represents your skills and potential when the position will be vacant.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Thank you for your interest, and we wish you the very best of luck in your future endeavours.
+      </p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
+  }
+
+  if (input.actionType === EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_NOT_APPROVED) {
+    const subject = "Association Leadership Application — Not Approved";
+    const body = `
+      <p style="margin: 0; color: #333333; font-size: 16px;">
+        We regret to inform you that your application for <strong>{ROLE}</strong> of <strong>{ORG}</strong> has not been approved at this time. After careful review, we found that it does not fully meet the required criteria.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Please don't be discouraged! We welcome you to submit a revised application in the future once you feel it better represents your skills and potential when the position will be vacant.
+      </p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">
+        Thank you for your interest, and we wish you the very best of luck in your future endeavours.
+      </p>
+      ${extraBodyHtml}
+    `;
+    return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
+  }
+
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_SCHOLARSHIP_RECEIVED) {
     const subject = "Scholarship Application (Self / Kinship) – Received";
     const body = `
