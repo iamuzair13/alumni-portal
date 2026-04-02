@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import Pagination from "@/components/tables/Pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { TrashBinIcon, CheckLineIcon, CloseLineIcon, DownloadIcon, PlusIcon, EyeIcon } from "@/icons";
+import { TrashBinIcon, CheckLineIcon, CloseLineIcon, DownloadIcon, PlusIcon, EyeIcon, CheckCircleIcon } from "@/icons";
 import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
@@ -84,13 +84,14 @@ type LeadershipApplication = {
   createdAt: string;
 };
 
-type ApplicationStatusTab = "all" | "pending" | "approved" | "rejected";
+type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected";
 type RoleFilter = "all" | "president" | "vice_president" | "coordinator";
 type SortKey = "createdAt" | "name" | "sapId" | "type" | "position" | "status";
 
 type ApplicationCounts = {
   all: number;
   pending: number;
+  assessed: number;
   approved: number;
   rejected: number;
 };
@@ -209,6 +210,17 @@ function fileNameFromUrl(url: string): string {
   }
 }
 
+function downloadDocumentUrl(url: string, filenameHint?: string) {
+  const name = (filenameHint && String(filenameHint).trim()) || fileNameFromUrl(url) || "document";
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 async function fetchApplicationCounts(input: {
   type?: "all" | "chapter" | "association";
   role?: RoleFilter;
@@ -224,7 +236,7 @@ async function fetchApplicationCounts(input: {
   const res = await fetch(`/api/leadership/application-counts?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch application counts");
   const data = await res.json();
-  return (data.counts || { all: 0, pending: 0, approved: 0, rejected: 0 }) as ApplicationCounts;
+  return (data.counts || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 }) as ApplicationCounts;
 }
 
 async function fetchApplicationDetails(input: { type: "chapter" | "association"; applicationId: number }) {
@@ -268,6 +280,8 @@ export default function LeadershipPage() {
   const [adminCriteriaIds, setAdminCriteriaIds] = useState<Set<number>>(new Set());
   const [adminOptionalCriteriaProficiency, setAdminOptionalCriteriaProficiency] = useState<Record<number, number>>({});
   const [adminCriterionObtainedMarks, setAdminCriterionObtainedMarks] = useState<Record<number, number>>({});
+  const [assessmentRemarks, setAssessmentRemarks] = useState<string>("");
+  const [unapprovalRemarks, setUnapprovalRemarks] = useState<string>("");
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -282,13 +296,14 @@ export default function LeadershipPage() {
   }, [applicationTypeFilter, applicationStatusTab, applicationRoleFilter, hasAdditionalAchievementsFilter]);
 
   const confirmModal = useModal();
+  const secondaryConfirmModal = useModal();
   const achievementsModal = useModal();
   const [selectedAchievementsApp, setSelectedAchievementsApp] = useState<LeadershipApplication | null>(null);
   const viewModal = useModal();
   const [selectedViewApp, setSelectedViewApp] = useState<{ type: "chapter" | "association"; applicationId: number } | null>(null);
   const [pendingAction, setPendingAction] = useState<
     | {
-        action: "approve" | "reject" | "delete";
+        action: "assessment" | "approve" | "unapprove" | "delete";
         applicationId: number;
         type: "chapter" | "association";
         position?: string;
@@ -341,7 +356,7 @@ export default function LeadershipPage() {
     queryKey: ["leadership-criteria", pendingAction?.type, pendingAction?.applicationId],
     queryFn: async () => {
       if (!pendingAction) return { items: [] as RoleCriterion[] };
-      if (pendingAction.action !== "approve") return { items: [] as RoleCriterion[] };
+      if (pendingAction.action !== "approve" && pendingAction.action !== "assessment") return { items: [] as RoleCriterion[] };
       const type = pendingAction.type;
       const role = inferRoleNameFromPosition(pendingAction.position ?? "");
       const res = await fetch(`/api/leadership/criteria?type=${encodeURIComponent(type)}&role=${encodeURIComponent(role)}`, {
@@ -350,7 +365,7 @@ export default function LeadershipPage() {
       if (!res.ok) throw new Error("Failed to load criteria");
       return (await res.json()) as { items: RoleCriterion[] };
     },
-    enabled: confirmModal.isOpen && !!pendingAction && pendingAction.action === "approve" && isAdmin,
+    enabled: confirmModal.isOpen && !!pendingAction && (pendingAction.action === "approve" || pendingAction.action === "assessment") && isAdmin,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -360,10 +375,10 @@ export default function LeadershipPage() {
     queryKey: ["leadership-approve-details", pendingAction?.type, pendingAction?.applicationId],
     queryFn: async () => {
       if (!pendingAction) throw new Error("Missing application");
-      if (pendingAction.action !== "approve") return { item: null, criteria: [] as ApplicationDetailsCriterion[] };
+      if (pendingAction.action !== "approve" && pendingAction.action !== "assessment") return { item: null, criteria: [] as ApplicationDetailsCriterion[] };
       return fetchApplicationDetails({ type: pendingAction.type, applicationId: pendingAction.applicationId });
     },
-    enabled: confirmModal.isOpen && !!pendingAction && pendingAction.action === "approve" && isAdmin,
+    enabled: confirmModal.isOpen && !!pendingAction && (pendingAction.action === "approve" || pendingAction.action === "assessment") && isAdmin,
     staleTime: 0,
     refetchOnWindowFocus: false,
   });
@@ -399,11 +414,15 @@ export default function LeadershipPage() {
       setAdminCriteriaIds(new Set());
       setAdminOptionalCriteriaProficiency({});
       setAdminCriterionObtainedMarks({});
+      setAssessmentRemarks("");
+      setUnapprovalRemarks("");
       return;
     }
     setAdminCriteriaIds(new Set());
     setAdminOptionalCriteriaProficiency({});
     setAdminCriterionObtainedMarks({});
+    setAssessmentRemarks("");
+    setUnapprovalRemarks("");
   }, [confirmModal.isOpen, pendingAction?.applicationId]);
 
   // Fetch chapter members
@@ -489,7 +508,11 @@ export default function LeadershipPage() {
     confirmModal.openModal();
   };
 
-  const handleAction = async (action: "approve" | "reject" | "delete", applicationId: number, type: "chapter" | "association") => {
+  const handleAction = async (
+    action: "assessment" | "approve" | "unapprove" | "delete",
+    applicationId: number,
+    type: "chapter" | "association"
+  ) => {
     if (!isAdmin) {
       toast.error("Only admins can perform this action");
       return;
@@ -515,12 +538,17 @@ export default function LeadershipPage() {
     if (!pendingAction) return;
     const { action, applicationId, type } = pendingAction;
 
-    if (action === "approve" && isAdmin && criteriaLoading) {
+    if (action === "assessment" && isAdmin && criteriaLoading) {
       toast.error("Please wait for criteria to load.");
       return;
     }
 
-    if (action === "approve" && isAdmin && mandatoryCriteriaIds.length > 0) {
+    if (action === "assessment" && isAdmin && !criteriaLoading && criteriaItems.length === 0) {
+      toast.error("No criteria configured for this role.");
+      return;
+    }
+
+    if (action === "assessment" && isAdmin && mandatoryCriteriaIds.length > 0) {
       const missing = mandatoryCriteriaIds.filter((id) => !adminCriteriaIds.has(id));
       if (missing.length > 0) {
         toast.error("Please check the mandatory critaria");
@@ -528,7 +556,7 @@ export default function LeadershipPage() {
       }
     }
 
-    if (action === "approve" && isAdmin) {
+    if (action === "assessment" && isAdmin) {
       const optionalCriteriaIds = criteriaItems
         .filter((c) => !c.is_mandatory)
         .map((c) => Number(c.id))
@@ -600,13 +628,15 @@ export default function LeadershipPage() {
           action,
           applicationId,
           type,
-          ...(action === "approve"
+          ...(action === "assessment"
             ? {
                 adminCriteriaIds: Array.from(adminCriteriaIds),
                 optionalCriteriaProficiency: adminOptionalCriteriaProficiency,
                 criterionObtainedMarks: criterionObtainedMarksPayload,
+                assessmentRemarks,
               }
             : {}),
+          ...(action === "unapprove" ? { unapprovalRemarks } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -618,7 +648,17 @@ export default function LeadershipPage() {
         throw new Error(err || "Failed to perform action");
       }
 
-      toast.success(`Application ${action}d successfully`);
+      const successText =
+        action === "assessment"
+          ? "assessed"
+          : action === "approve"
+            ? "approved"
+            : action === "unapprove"
+              ? "marked as not approved"
+              : action === "delete"
+                ? "deleted"
+                : `${action}d`;
+      toast.success(`Application ${successText} successfully`);
 
       queryClient.invalidateQueries({ queryKey: ["leadership-applications"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["leadership-members"], exact: false });
@@ -627,10 +667,12 @@ export default function LeadershipPage() {
       queryClient.invalidateQueries({ queryKey: ["leadership-application-details"], exact: false });
       await refetchApplications();
       confirmModal.closeModal();
+      secondaryConfirmModal.closeModal();
       setPendingAction(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed";
       toast.error(msg);
+      secondaryConfirmModal.closeModal();
     } finally {
       setProcessingIds((prev) => {
         const next = new Set(prev);
@@ -821,10 +863,10 @@ export default function LeadershipPage() {
 
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-gray-900/50 overflow-x-hidden">
-      <div className="w-full max-w-full">
+      <div className="w-full max-w-[1230px] mx-auto flex flex-col justify-start">
         {/* Tabs Section */}
         <div className="w-full px-4 py-4">
-          <div className="max-w-7xl mx-auto">
+          <div className=" mx-auto">
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {TABS.map((tab) => {
                 const isSelected = selectedTab === tab.key;
@@ -868,7 +910,7 @@ export default function LeadershipPage() {
 
         {/* Search and Filters */}
         <div className="w-full px-4 py-2">
-          <div className="max-w-7xl mx-auto">
+          <div className="mx-auto">
             <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
@@ -921,12 +963,22 @@ export default function LeadershipPage() {
                     {([
                       { key: "all", label: "All" },
                       { key: "pending", label: "Pending" },
+                      { key: "assessed", label: "Assessed" },
                       { key: "approved", label: "Approved" },
                       { key: "rejected", label: "Not Approved" },
                     ] as Array<{ key: ApplicationStatusTab; label: string }>).map((t) => {
                       const active = applicationStatusTab === t.key;
-                      const counts = applicationCountsData || { all: 0, pending: 0, approved: 0, rejected: 0 };
-                      const countVal = t.key === "all" ? counts.all : t.key === "pending" ? counts.pending : t.key === "approved" ? counts.approved : counts.rejected;
+                      const counts = applicationCountsData || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 };
+                      const countVal =
+                        t.key === "all"
+                          ? counts.all
+                          : t.key === "pending"
+                            ? counts.pending
+                            : t.key === "assessed"
+                              ? counts.assessed
+                              : t.key === "approved"
+                                ? counts.approved
+                                : counts.rejected;
                       return (
                         <button
                           key={t.key}
@@ -1005,11 +1057,13 @@ export default function LeadershipPage() {
             <div className="flex max-h-[80vh] flex-col ">
               <div className="p-6 overflow-y-auto">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {pendingAction.action === "approve"
-                  ? "Approve Leadership Application"
-                  : pendingAction.action === "reject"
-                    ? "Not Approve Leadership Application"
-                    : "Delete Leadership Member"}
+                {pendingAction.action === "assessment"
+                  ? "Assess Leadership Application"
+                  : pendingAction.action === "approve"
+                    ? "Approve Leadership Application"
+                    : pendingAction.action === "unapprove"
+                      ? "Unapprove Leadership Application"
+                      : "Delete Leadership Member"}
               </h3>
 
               <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
@@ -1017,7 +1071,13 @@ export default function LeadershipPage() {
                   <>Are you sure you want to delete this record? This action cannot be undone.</>
                 ) : (
                   <>
-                    Are you sure you want to {pendingAction.action === "approve" ? "approve" : "mark as not approved"} the{" "}
+                    Are you sure you want to{" "}
+                    {pendingAction.action === "assessment"
+                      ? "assess"
+                      : pendingAction.action === "approve"
+                        ? "approve"
+                        : "mark as not approved"}{" "}
+                    the{" "}
                     <strong>{pendingAction.type === "chapter" ? "chapter" : "association"}</strong> leadership application
                     {pendingAction.name ? (
                       <>
@@ -1030,7 +1090,7 @@ export default function LeadershipPage() {
                 )}
               </p>
 
-              {pendingAction.action === "approve" && isAdmin && (
+              {pendingAction.action === "assessment" && isAdmin && (
                 <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1082,7 +1142,7 @@ export default function LeadershipPage() {
 
                         return (
                           <div className="[transform:rotateX(180deg)]">
-                          <table className="min-w-[920px] w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900/10">
+                          <table className="min-w-[920px] w-[1150px]  text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900/10">
                             <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10">
                               <tr className="border-b border-gray-200 dark:border-gray-700">
                                 <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200">Requirement</th>
@@ -1248,7 +1308,7 @@ export default function LeadershipPage() {
                                               {alumniStars ? (
                                                 <span>
                                                   <span className="font-semibold text-amber-700">{alumniStars}</span>
-                                                  {alumniLabel ? ` (${alumniLabel})` : ""}
+                                                  {alumniLabel ? ` (${alumniLabel} - ${alumniRating})` : ""}
                                                 </span>
                                               ) : (
                                                 <span className="text-gray-500">No rating</span>
@@ -1264,7 +1324,7 @@ export default function LeadershipPage() {
                                               {alumniStars ? (
                                                 <span>
                                                   <span className="font-semibold text-amber-700">{alumniStars}</span>
-                                                  {alumniLabel ? ` (${alumniLabel})` : ""}
+                                                  {alumniLabel ? ` (${alumniLabel} - ${alumniRating})` : ""}
                                                 </span>
                                               ) : (
                                                 <span className="text-gray-500">No rating</span>
@@ -1298,7 +1358,35 @@ export default function LeadershipPage() {
                 </div>
               )}
 
-              {pendingAction.action !== "delete" && (
+              {pendingAction.action === "assessment" && isAdmin && (
+                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Assessment Remarks (optional)</div>
+                  <div className="mt-2">
+                    <textarea
+                      value={assessmentRemarks}
+                      onChange={(e) => setAssessmentRemarks(e.target.value)}
+                      placeholder="Add any remarks for the assessment (optional)."
+                      className="w-full min-h-[110px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {pendingAction.action === "unapprove" && (
+                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Unapproval Remarks (optional)</div>
+                  <div className="mt-2">
+                    <textarea
+                      value={unapprovalRemarks}
+                      onChange={(e) => setUnapprovalRemarks(e.target.value)}
+                      placeholder="Add any remarks for unapproval (optional)."
+                      className="w-full min-h-[110px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {pendingAction.action === "approve" && (
                 <div className="mt-5">
                   {(() => {
                     const alumniId = pendingAction.alumniId;
@@ -1312,13 +1400,7 @@ export default function LeadershipPage() {
                     }
 
                     const actionType =
-                      pendingAction.type === "chapter"
-                        ? pendingAction.action === "approve"
-                          ? EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_APPROVED
-                          : EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_NOT_APPROVED
-                        : pendingAction.action === "approve"
-                          ? EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_APPROVED
-                          : EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_NOT_APPROVED;
+                      pendingAction.type === "chapter" ? EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_APPROVED : EMAIL_ACTION_TYPE.ASSOCIATION_LEADERSHIP_APPROVED;
 
                     const tpl = generateAdminActionEmail({
                       actionType,
@@ -1377,7 +1459,12 @@ export default function LeadershipPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={executePendingAction}
+                  onClick={() => {
+                    if (!processingIds.has(pendingAction.applicationId)) {
+                      secondaryConfirmModal.openModal();
+                      toast("Please confirm in the next dialog to proceed.");
+                    }
+                  }}
                   disabled={processingIds.has(pendingAction.applicationId)}
                   className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
@@ -1388,9 +1475,53 @@ export default function LeadershipPage() {
           </Modal>
         )}
 
+        {secondaryConfirmModal.isOpen && pendingAction && (
+          <Modal
+            isOpen={secondaryConfirmModal.isOpen}
+            onClose={() => {
+              secondaryConfirmModal.closeModal();
+            }}
+            showCloseButton={true}
+            className="max-w-xl"
+          >
+            <div className="p-6">
+              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Confirm {pendingAction.action === "assessment" ? "Assessment" : pendingAction.action === "approve" ? "Approval" : pendingAction.action === "unapprove" ? "Unapproval" : "Deletion"}
+              </div>
+              <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                This will update the application status accordingly. You can close this dialog to review your input.
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => secondaryConfirmModal.closeModal()}
+                  disabled={processingIds.has(pendingAction.applicationId)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!processingIds.has(pendingAction.applicationId)) {
+                      executePendingAction();
+                      toast("Submitting..."); // immediate feedback
+                    }
+                  }}
+                  disabled={processingIds.has(pendingAction.applicationId)}
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Proceed
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
         {/* Table Section */}
         <div className="w-full px-4 pb-8">
-          <div className="max-w-7xl mx-auto">
+          <div className="mx-auto">
             <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-800/50">
               <SyncedTableScroll minWidth={800} maxHeight={750}>
                 {selectedTab === "applications" ? (
@@ -1558,22 +1689,13 @@ export default function LeadershipPage() {
                       const statusBadge =
                         statusLower === "approved"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : statusLower === "assessed"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
                           : statusLower === "rejected"
                             ? "bg-rose-50 text-rose-700 border-rose-200"
                             : "bg-amber-50 text-amber-700 border-amber-200";
 
                       const docs = documentsFromItem(item);
-                      const downloadAllDocs = () => {
-                        docs.forEach((d) => {
-                          const a = document.createElement("a");
-                          a.href = d.url;
-                          a.download = "";
-                          a.rel = "noopener noreferrer";
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        });
-                      };
 
                       const profMap =
                         item?.optionalCriteriaProficiency && typeof item.optionalCriteriaProficiency === "object"
@@ -1599,7 +1721,13 @@ export default function LeadershipPage() {
                                 <div className="truncate"><span className="font-medium">Application Date:</span> {item.createdAt ? String(item.createdAt) : "-"}</div>
                                 <div>
                                   <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadge}`}>
-                                    {statusLower === "rejected" ? "Not Approved" : statusText}
+                                    {statusLower === "rejected"
+                                      ? "Not Approved"
+                                      : statusLower === "assessed"
+                                        ? "Assessed"
+                                        : statusLower === "approved"
+                                          ? "Approved"
+                                          : "Pending"}
                                   </span>
                                 </div>
                               </div>
@@ -1613,15 +1741,6 @@ export default function LeadershipPage() {
                               >
                                 <DownloadIcon className="h-4 w-4" />
                                 Download PDF
-                              </button>
-                              <button
-                                type="button"
-                                onClick={downloadAllDocs}
-                                disabled={docs.length === 0}
-                                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/40 disabled:opacity-50"
-                              >
-                                <DownloadIcon className="h-4 w-4" />
-                                Download Documents
                               </button>
                               <button
                                 type="button"
@@ -1675,7 +1794,7 @@ export default function LeadershipPage() {
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                   {(() => {
                                     const items = Array.isArray(viewDetailsData.criteria) ? viewDetailsData.criteria : [];
-                                    const showObtained = statusLower === "approved";
+                                    const showObtained = statusLower === "approved" || statusLower === "assessed";
                                     const totalMarks = items.reduce((sum, c) => {
                                       const m = Number((c as ApplicationDetailsCriterion).criterion_score);
                                       return Number.isFinite(m) && m > 0 ? sum + m : sum;
@@ -1812,19 +1931,28 @@ export default function LeadershipPage() {
                                 docs.map((d) => {
                                   const name = fileNameFromUrl(d.url) || "-";
                                   return (
-                                    <div key={d.key} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2">
+                                    <div key={d.key} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2">
                                       <div className="min-w-0">
                                         <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">{d.label}</div>
                                         <div className="text-xs text-gray-600 dark:text-gray-400 break-all">{name}</div>
                                       </div>
-                                      <a
-                                        href={d.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline"
-                                      >
-                                        View
-                                      </a>
+                                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                        <a
+                                          href={d.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        >
+                                          View
+                                        </a>
+                                        <button
+                                          type="button"
+                                          onClick={() => downloadDocumentUrl(d.url, name !== "-" ? name : undefined)}
+                                          className="inline-flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-1.5 text-xs font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        >
+                                          Download
+                                        </button>
+                                      </div>
                                     </div>
                                   );
                                 })
@@ -1863,7 +1991,7 @@ function ApplicationsTable({
   applications: LeadershipApplication[];
   loading: boolean;
   isAdmin: boolean;
-  onAction: (action: "approve" | "reject" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
+  onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
   onViewAdditionalAchievements: (app: LeadershipApplication) => void;
   onViewApplication: (app: LeadershipApplication) => void;
   processingIds: Set<number>;
@@ -2028,12 +2156,20 @@ function ApplicationsTable({
                 className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
                   String(app.status || "").toLowerCase() === "approved"
                     ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                    : String(app.status || "").toLowerCase() === "rejected"
-                      ? "bg-rose-50 text-rose-800 border-rose-200"
-                      : "bg-amber-50 text-amber-800 border-amber-200"
+                    : String(app.status || "").toLowerCase() === "assessed"
+                      ? "bg-blue-50 text-blue-800 border-blue-200"
+                      : String(app.status || "").toLowerCase() === "rejected"
+                        ? "bg-rose-50 text-rose-800 border-rose-200"
+                        : "bg-amber-50 text-amber-800 border-amber-200"
                 }`}
               >
-                {String(app.status || "pending").toLowerCase() === "rejected" ? "Not Approved" : String(app.status || "pending")}
+                {(() => {
+                  const s = String(app.status || "pending").toLowerCase();
+                  if (s === "rejected") return "Not Approved";
+                  if (s === "assessed") return "Assessed";
+                  if (s === "approved") return "Approved";
+                  return "Pending";
+                })()}
               </span>
             </TableCell>
             {isAdmin && (
@@ -2047,22 +2183,36 @@ function ApplicationsTable({
                   >
                     <EyeIcon className="h-5 w-5 sm:h-4 sm:w-4" />
                   </button>
-                  <button
-                    onClick={() => onAction("approve", app.id, app.type)}
-                    disabled={processingIds.has(app.id)}
-                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
-                    title="Approve"
-                  >
-                    <CheckLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </button>
-                  <button
-                    onClick={() => onAction("reject", app.id, app.type)}
-                    disabled={processingIds.has(app.id)}
-                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-amber-50 text-amber-600 disabled:opacity-50"
-                    title="Reject"
-                  >
-                    <CloseLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </button>
+                  {String(app.status || "pending").toLowerCase() === "pending" && (
+                    <button
+                      onClick={() => onAction("assessment", app.id, app.type)}
+                      disabled={processingIds.has(app.id)}
+                      className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
+                      title="Assessment"
+                    >
+                      <CheckCircleIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                    </button>
+                  )}
+                  {String(app.status || "pending").toLowerCase() === "assessed" && (
+                    <>
+                      <button
+                        onClick={() => onAction("approve", app.id, app.type)}
+                        disabled={processingIds.has(app.id)}
+                        className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
+                        title="Approve"
+                      >
+                        <CheckLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                      <button
+                        onClick={() => onAction("unapprove", app.id, app.type)}
+                        disabled={processingIds.has(app.id)}
+                        className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
+                        title="Unapprove"
+                      >
+                        <CloseLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => onAction("delete", app.id, app.type)}
                     disabled={processingIds.has(app.id)}

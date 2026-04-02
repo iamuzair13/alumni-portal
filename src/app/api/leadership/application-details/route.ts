@@ -77,6 +77,38 @@ export async function GET(req: NextRequest) {
       : { sql: null, hasFilter: false };
 
     if (type === "chapter") {
+      const [hasAssessmentRemarksCol, hasAssessedByCol, hasAssessedAtCol] = await Promise.all([
+        sql/* sql */`
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'chapter_leadership'
+            AND column_name = 'assessment_remarks'
+          LIMIT 1
+        `,
+        sql/* sql */`
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'chapter_leadership'
+            AND column_name = 'assessed_by'
+          LIMIT 1
+        `,
+        sql/* sql */`
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'chapter_leadership'
+            AND column_name = 'assessed_at'
+          LIMIT 1
+        `,
+      ]);
+
+      const canSelectAssessmentFields = Boolean(hasAssessmentRemarksCol?.[0]) && Boolean(hasAssessedByCol?.[0]) && Boolean(hasAssessedAtCol?.[0]);
+      const chapterAssessmentSelect = canSelectAssessmentFields
+        ? sql`cl.assessment_remarks as assessment_remarks, cl.assessed_by as assessed_by, cl.assessed_at as assessed_at,`
+        : sql`NULL::text as assessment_remarks, NULL::integer as assessed_by, NULL::timestamptz as assessed_at,`;
+
       const rows = await sql/* sql */`
         SELECT 
           cl.id as application_id,
@@ -86,6 +118,7 @@ export async function GET(req: NextRequest) {
           cl.created_at,
           cl.updated_at,
           cl.rejection_reason,
+          ${chapterAssessmentSelect}
           cl.additional_achievements,
           cl.plan_strategy,
           cl.optional_criteria_proficiency,
@@ -217,6 +250,9 @@ export async function GET(req: NextRequest) {
             createdAt: r.created_at ?? null,
             updatedAt: r.updated_at ?? null,
             rejectionReason: r.rejection_reason ? String(r.rejection_reason) : null,
+            assessmentRemarks: r.assessment_remarks ? String(r.assessment_remarks) : null,
+            assessedBy: Number.isFinite(Number(r.assessed_by)) ? Number(r.assessed_by) : null,
+            assessedAt: r.assessed_at ?? null,
           },
           criteria: (criteriaRows || []).map((c: Record<string, unknown>) => ({
             id: Number(c.id),
@@ -239,12 +275,60 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const [hasAssocRejectionReasonCol, hasAssocAssessmentRemarksCol, hasAssocAssessedByCol, hasAssocAssessedAtCol] = await Promise.all([
+      sql/* sql */`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tblalumniassociation'
+          AND column_name = 'rejection_reason'
+        LIMIT 1
+      `,
+      sql/* sql */`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tblalumniassociation'
+          AND column_name = 'assessment_remarks'
+        LIMIT 1
+      `,
+      sql/* sql */`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tblalumniassociation'
+          AND column_name = 'assessed_by'
+        LIMIT 1
+      `,
+      sql/* sql */`
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tblalumniassociation'
+          AND column_name = 'assessed_at'
+        LIMIT 1
+      `,
+    ]);
+
+    const canSelectAssocAssessmentFields =
+      Boolean(hasAssocAssessmentRemarksCol?.[0]) && Boolean(hasAssocAssessedByCol?.[0]) && Boolean(hasAssocAssessedAtCol?.[0]);
+
+    const assocAssessmentSelect = canSelectAssocAssessmentFields
+      ? sql`ass.assessment_remarks as assessment_remarks, ass.assessed_by as assessed_by, ass.assessed_at as assessed_at,`
+      : sql`NULL::text as assessment_remarks, NULL::integer as assessed_by, NULL::timestamp as assessed_at,`;
+
+    const assocRejectionReasonSelect = hasAssocRejectionReasonCol?.[0]
+      ? sql`ass.rejection_reason as rejection_reason,`
+      : sql`NULL::text as rejection_reason,`;
+
     const rows = await sql/* sql */`
       SELECT 
         ass.id as application_id,
         ass.q3 as role,
         ass.association_id,
         ass.status,
+        ${assocRejectionReasonSelect}
+        ${assocAssessmentSelect}
         ass.createddatetime,
         ass.additional_achievements,
         ass.plan_strategy,
@@ -375,7 +459,10 @@ export async function GET(req: NextRequest) {
           optionalCriteriaProficiency,
           createdAt: r.createddatetime ?? null,
           updatedAt: null,
-          rejectionReason: null,
+          rejectionReason: r.rejection_reason ? String(r.rejection_reason) : null,
+          assessmentRemarks: r.assessment_remarks ? String(r.assessment_remarks) : null,
+          assessedBy: Number.isFinite(Number(r.assessed_by)) ? Number(r.assessed_by) : null,
+          assessedAt: r.assessed_at ?? null,
         },
         criteria: (criteriaRows || []).map((c: Record<string, unknown>) => ({
           id: Number(c.id),

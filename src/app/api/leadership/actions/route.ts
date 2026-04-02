@@ -43,15 +43,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency, criterionObtainedMarks: criterionObtainedMarksBody } = body as {
-      action?: "approve" | "reject" | "delete";
+    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency, criterionObtainedMarks: criterionObtainedMarksBody, assessmentRemarks, unapprovalRemarks } = body as {
+      action?: "assessment" | "approve" | "unapprove" | "delete" | "reject";
       applicationId?: number;
       type?: "chapter" | "association";
       adminCriteriaIds?: unknown;
       optionalCriteriaProficiency?: unknown;
       criterionObtainedMarks?: unknown;
+      assessmentRemarks?: unknown;
+      unapprovalRemarks?: unknown;
     }; // action: "approve" | "reject" | "delete", type: "chapter" | "association"
-    // rejectionReason is accessed from body.rejectionReason when needed
+    // For backward compatibility, some clients may still send `rejectionReason`.
 
     if (!action || !applicationId || !type) {
       await logAdminAction({
@@ -98,10 +100,14 @@ export async function POST(req: NextRequest) {
 
     const optionalCriteriaProficiencyJsonValue = optionalCriteriaProficiencyJson ?? null;
 
+    const assessmentRemarksValue = typeof assessmentRemarks === "string" ? assessmentRemarks.trim() : null;
+    const unapprovalRemarksValue = typeof unapprovalRemarks === "string" ? unapprovalRemarks.trim() : null;
+    const adminUserId = (session.user as any)?.userId ?? (session.user as any)?.id ?? null;
+
     if (type === "chapter") {
       // First, verify the application exists
       const appRecord = await sql/* sql */`
-        SELECT id, post FROM public.chapter_leadership
+        SELECT id, post, status FROM public.chapter_leadership
         WHERE id = ${Number(applicationId)}
         LIMIT 1
       `;
@@ -190,7 +196,50 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
-      if (action === "approve") {
+      if (action === "approve" || action === "assessment") {
+        const currentStatus = String((appRecord[0] as { status?: unknown })?.status ?? "pending").toLowerCase();
+
+        // Approve only after assessment is completed.
+        if (action === "approve") {
+          if (currentStatus !== "assessed") {
+            return NextResponse.json({ error: "Cannot approve: application must be assessed first." }, { status: 400 });
+          }
+
+          await sql/* sql */`
+            UPDATE public.chapter_leadership
+            SET status = 'approved',
+                updated_at = NOW(),
+                rejection_reason = NULL
+            WHERE id = ${Number(applicationId)}
+          `;
+
+          // Link to tbl_alumni (only if not already linked)
+          await sql/* sql */`
+            UPDATE public.tbl_alumni
+            SET chapter_leadership = ${Number(applicationId)}
+            WHERE alumniid = ${alumniId}
+              AND (chapter_leadership IS NULL OR chapter_leadership != ${Number(applicationId)})
+          `;
+
+          await logAdminAction({
+            session,
+            req,
+            input: {
+              action: "leadership.approve",
+              entityType: "chapter_leadership",
+              entityId: Number(applicationId),
+              metadata: { type: "chapter", alumniId },
+            },
+          });
+
+          return NextResponse.json({ success: true, message: "Application approved successfully" });
+        }
+
+        // Assessment only allowed for pending applications.
+        if (currentStatus !== "pending") {
+          return NextResponse.json({ error: "Cannot assess: application must be pending." }, { status: 400 });
+        }
+
         const roleText = String((appRecord[0] as { post?: unknown }).post ?? "");
         const roleName = roleText.toLowerCase().includes("vice")
           ? "vice_president"
@@ -223,6 +272,11 @@ export async function POST(req: NextRequest) {
           WHERE r.leadership_type = 'chapter'
             AND r.role_name = ${roleName}
         `;
+
+        if (!scoreRowsChapter || (Array.isArray(scoreRowsChapter) && scoreRowsChapter.length === 0)) {
+          return NextResponse.json({ error: "Cannot assess: no criteria configured for this role." }, { status: 400 });
+        }
+
         const criterionScoreByIdChapter = new Map<number, number>();
         for (const row of scoreRowsChapter ?? []) {
           const rec = row as Record<string, unknown>;
@@ -336,40 +390,82 @@ export async function POST(req: NextRequest) {
           `;
         }
 
-        // Update status to 'approved' and link to tbl_alumni
-        await sql/* sql */`
-          UPDATE public.chapter_leadership
-          SET status = 'approved',
-              updated_at = NOW(),
-              rejection_reason = NULL
-              ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
-          WHERE id = ${Number(applicationId)}
-        `;
+        // Update status to 'assessed'
+        // Backward compatibility: assessment_remarks/assessed_* columns may not exist yet.
+        const [hasAssessmentRemarksCol, hasAssessedByCol, hasAssessedAtCol] = await Promise.all([
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'chapter_leadership'
+              AND column_name = 'assessment_remarks'
+            LIMIT 1
+          `,
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'chapter_leadership'
+              AND column_name = 'assessed_by'
+            LIMIT 1
+          `,
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'chapter_leadership'
+              AND column_name = 'assessed_at'
+            LIMIT 1
+          `,
+        ]);
 
-        // Link to tbl_alumni (only if not already linked)
-        await sql/* sql */`
-          UPDATE public.tbl_alumni
-          SET chapter_leadership = ${Number(applicationId)}
-          WHERE alumniid = ${alumniId}
-            AND (chapter_leadership IS NULL OR chapter_leadership != ${Number(applicationId)})
-        `;
+        const canStoreAssessmentFields = Boolean(hasAssessmentRemarksCol?.[0]) && Boolean(hasAssessedByCol?.[0]) && Boolean(hasAssessedAtCol?.[0]);
+
+        if (canStoreAssessmentFields) {
+          await sql/* sql */`
+            UPDATE public.chapter_leadership
+            SET status = 'assessed',
+                updated_at = NOW(),
+                rejection_reason = NULL,
+                assessment_remarks = ${assessmentRemarksValue},
+                assessed_by = ${adminUserId},
+                assessed_at = NOW()
+                ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
+            WHERE id = ${Number(applicationId)}
+          `;
+        } else {
+          await sql/* sql */`
+            UPDATE public.chapter_leadership
+            SET status = 'assessed',
+                updated_at = NOW(),
+                rejection_reason = NULL
+                ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
+            WHERE id = ${Number(applicationId)}
+          `;
+        }
 
         await logAdminAction({
           session,
           req,
           input: {
-            action: "leadership.approve",
+            action: "leadership.assess",
             entityType: "chapter_leadership",
             entityId: Number(applicationId),
             metadata: { type: "chapter", alumniId },
           },
         });
 
-        return NextResponse.json({ success: true, message: "Application approved successfully" });
-      } else if (action === "reject") {
-        // Get rejection reason from body if provided (body was already parsed above)
-        const rejectionReason = body.rejectionReason || null;
-        
+        return NextResponse.json({ success: true, message: "Application assessed successfully" });
+      } else if (action === "unapprove" || action === "reject") {
+        // Only assessed applications can be unapproved.
+        const currentStatus = String((appRecord[0] as { status?: unknown })?.status ?? "pending").toLowerCase();
+        if (currentStatus !== "assessed") {
+          return NextResponse.json({ error: "Cannot unapprove: application must be assessed first." }, { status: 400 });
+        }
+
+        const rejectionReason =
+          unapprovalRemarksValue ?? (typeof body.rejectionReason === "string" ? body.rejectionReason.trim() : null);
+
         // Update status to 'rejected' (do NOT link to tbl_alumni)
         await sql/* sql */`
           UPDATE public.chapter_leadership
@@ -383,19 +479,19 @@ export async function POST(req: NextRequest) {
           session,
           req,
           input: {
-            action: "leadership.reject",
+            action: "leadership.unapprove",
             entityType: "chapter_leadership",
             entityId: Number(applicationId),
             metadata: { type: "chapter", alumniId, rejectionReason },
           },
         });
 
-        return NextResponse.json({ success: true, message: "Application rejected successfully" });
+        return NextResponse.json({ success: true, message: "Application unapproved successfully" });
       }
     } else if (type === "association") {
       // First, verify the application exists
       const appRecord = await sql/* sql */`
-        SELECT id, q3 FROM public.tblalumniassociation
+        SELECT id, q3, status FROM public.tblalumniassociation
         WHERE id = ${Number(applicationId)}
         LIMIT 1
       `;
@@ -484,7 +580,49 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
       }
 
-      if (action === "approve") {
+      if (action === "approve" || action === "assessment") {
+        const currentStatus = String((appRecord[0] as { status?: unknown })?.status ?? "pending").toLowerCase();
+
+        // Approve only after assessment is completed.
+        if (action === "approve") {
+          if (currentStatus !== "assessed") {
+            return NextResponse.json({ error: "Cannot approve: application must be assessed first." }, { status: 400 });
+          }
+
+          await sql/* sql */`
+            UPDATE public.tblalumniassociation
+            SET status = 'approved',
+                rejection_reason = NULL
+            WHERE id = ${Number(applicationId)}
+          `;
+
+          // Link to tbl_alumni (only if not already linked)
+          await sql/* sql */`
+            UPDATE public.tbl_alumni
+            SET association_job = ${Number(applicationId)}
+            WHERE alumniid = ${alumniId}
+              AND (association_job IS NULL OR association_job != ${Number(applicationId)})
+          `;
+
+          await logAdminAction({
+            session,
+            req,
+            input: {
+              action: "leadership.approve",
+              entityType: "tblalumniassociation",
+              entityId: Number(applicationId),
+              metadata: { type: "association", alumniId },
+            },
+          });
+
+          return NextResponse.json({ success: true, message: "Application approved successfully" });
+        }
+
+        // Assessment only allowed for pending applications.
+        if (currentStatus !== "pending") {
+          return NextResponse.json({ error: "Cannot assess: application must be pending." }, { status: 400 });
+        }
+
         const roleText = String((appRecord[0] as { q3?: unknown }).q3 ?? "");
         const roleName = roleText.toLowerCase().includes("vice")
           ? "vice_president"
@@ -517,6 +655,11 @@ export async function POST(req: NextRequest) {
           WHERE r.leadership_type = 'association'
             AND r.role_name = ${roleName}
         `;
+
+        if (!scoreRowsAssoc || (Array.isArray(scoreRowsAssoc) && scoreRowsAssoc.length === 0)) {
+          return NextResponse.json({ error: "Cannot assess: no criteria configured for this role." }, { status: 400 });
+        }
+
         const criterionScoreByIdAssoc = new Map<number, number>();
         for (const row of scoreRowsAssoc ?? []) {
           const rec = row as Record<string, unknown>;
@@ -628,56 +771,127 @@ export async function POST(req: NextRequest) {
           `;
         }
 
-        // Update status to 'approved' and link to tbl_alumni
-        // Note: tblalumniassociation doesn't have updated_at or rejection_reason in schema
-        await sql/* sql */`
-          UPDATE public.tblalumniassociation
-          SET status = 'approved'
-          ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
-          WHERE id = ${Number(applicationId)}
-        `;
+        // Update status to 'assessed'
+        // Backward compatibility: assessment_remarks/assessed_* and rejection_reason columns may not exist yet.
+        const [hasAssocAssessmentRemarksCol, hasAssocAssessedByCol, hasAssocAssessedAtCol, hasAssocRejectionReasonCol] = await Promise.all([
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'tblalumniassociation'
+              AND column_name = 'assessment_remarks'
+            LIMIT 1
+          `,
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'tblalumniassociation'
+              AND column_name = 'assessed_by'
+            LIMIT 1
+          `,
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'tblalumniassociation'
+              AND column_name = 'assessed_at'
+            LIMIT 1
+          `,
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'tblalumniassociation'
+              AND column_name = 'rejection_reason'
+            LIMIT 1
+          `,
+        ]);
 
-        // Link to tbl_alumni (only if not already linked)
-        await sql/* sql */`
-          UPDATE public.tbl_alumni
-          SET association_job = ${Number(applicationId)}
-          WHERE alumniid = ${alumniId}
-            AND (association_job IS NULL OR association_job != ${Number(applicationId)})
-        `;
+        const canStoreAssessmentFields = Boolean(hasAssocAssessmentRemarksCol?.[0]) && Boolean(hasAssocAssessedByCol?.[0]) && Boolean(hasAssocAssessedAtCol?.[0]);
+
+        if (canStoreAssessmentFields) {
+          await sql/* sql */`
+            UPDATE public.tblalumniassociation
+            SET status = 'assessed'
+                ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
+                ${hasAssocRejectionReasonCol?.[0] ? sql`, rejection_reason = NULL` : sql``}
+                , assessment_remarks = ${assessmentRemarksValue},
+                assessed_by = ${adminUserId},
+                assessed_at = NOW()
+            WHERE id = ${Number(applicationId)}
+          `;
+        } else {
+          await sql/* sql */`
+            UPDATE public.tblalumniassociation
+            SET status = 'assessed'
+                ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
+                ${hasAssocRejectionReasonCol?.[0] ? sql`, rejection_reason = NULL` : sql``}
+            WHERE id = ${Number(applicationId)}
+          `;
+        }
 
         await logAdminAction({
           session,
           req,
           input: {
-            action: "leadership.approve",
+            action: "leadership.assess",
             entityType: "tblalumniassociation",
             entityId: Number(applicationId),
             metadata: { type: "association", alumniId },
           },
         });
 
-        return NextResponse.json({ success: true, message: "Application approved successfully" });
-      } else if (action === "reject") {
+        return NextResponse.json({ success: true, message: "Application assessed successfully" });
+      } else if (action === "unapprove" || action === "reject") {
+        // Only assessed applications can be unapproved.
+        const currentStatus = String((appRecord[0] as { status?: unknown })?.status ?? "pending").toLowerCase();
+        if (currentStatus !== "assessed") {
+          return NextResponse.json({ error: "Cannot unapprove: application must be assessed first." }, { status: 400 });
+        }
+
+        const rejectionReason =
+          unapprovalRemarksValue ?? (typeof body.rejectionReason === "string" ? body.rejectionReason.trim() : null);
+
         // Update status to 'rejected' (do NOT link to tbl_alumni)
-        // Note: tblalumniassociation doesn't have rejection_reason or updated_at in schema
-        await sql/* sql */`
-          UPDATE public.tblalumniassociation
-          SET status = 'rejected'
-          WHERE id = ${Number(applicationId)}
-        `;
+        const [hasAssocRejectionReasonCol] = await Promise.all([
+          sql/* sql */`
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'tblalumniassociation'
+              AND column_name = 'rejection_reason'
+            LIMIT 1
+          `,
+        ]);
+
+        if (hasAssocRejectionReasonCol?.[0]) {
+          await sql/* sql */`
+            UPDATE public.tblalumniassociation
+            SET status = 'rejected',
+                rejection_reason = ${rejectionReason}
+            WHERE id = ${Number(applicationId)}
+          `;
+        } else {
+          await sql/* sql */`
+            UPDATE public.tblalumniassociation
+            SET status = 'rejected'
+            WHERE id = ${Number(applicationId)}
+          `;
+        }
 
         await logAdminAction({
           session,
           req,
           input: {
-            action: "leadership.reject",
+            action: "leadership.unapprove",
             entityType: "tblalumniassociation",
             entityId: Number(applicationId),
-            metadata: { type: "association", alumniId },
+            metadata: { type: "association", alumniId, rejectionReason },
           },
         });
 
-        return NextResponse.json({ success: true, message: "Application rejected successfully" });
+        return NextResponse.json({ success: true, message: "Application unapproved successfully" });
       }
     }
 

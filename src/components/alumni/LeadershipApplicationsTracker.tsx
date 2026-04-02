@@ -44,6 +44,41 @@ async function fetchApplicationDetails(input: ViewApp) {
   return data as any;
 }
 
+function documentsFromItem(item: any) {
+  const docs: Array<{ key: string; label: string; url: string }> = [];
+  const cv = String(item?.cvFileUrl || "").trim();
+  const f1 = String(item?.additionalFile1Url || "").trim();
+  const f2 = String(item?.additionalFile2Url || "").trim();
+  if (cv) docs.push({ key: "cv", label: "CV", url: cv });
+  if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
+  if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
+  return docs;
+}
+
+function fileNameFromUrl(url: string): string {
+  try {
+    const u = String(url || "").trim();
+    if (!u) return "";
+    const path = u.split("?")[0].split("#")[0];
+    const parts = path.split("/").filter(Boolean);
+    const last = parts[parts.length - 1] || "";
+    return last ? decodeURIComponent(last) : "";
+  } catch {
+    return "";
+  }
+}
+
+function downloadDocumentUrl(url: string, filenameHint?: string) {
+  const name = (filenameHint && String(filenameHint).trim()) || fileNameFromUrl(url) || "document";
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 export default function LeadershipApplicationsTracker({ alumniId, className }: Props) {
   const enabled = Number.isFinite(alumniId) && Number(alumniId) > 0;
   const { data: leadershipApplications, isLoading: leadershipAppsLoading } = useLeadershipApplications(
@@ -121,17 +156,6 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
     window.open(`/api/leadership/application-pdf?${params.toString()}`, "_blank", "noopener,noreferrer");
   }
 
-  function documentsFromItem(item: any) {
-    const docs: Array<{ key: string; label: string; url: string }> = [];
-    const cv = String(item?.cvFileUrl || "").trim();
-    const f1 = String(item?.additionalFile1Url || "").trim();
-    const f2 = String(item?.additionalFile2Url || "").trim();
-    if (cv) docs.push({ key: "cv", label: "CV", url: cv });
-    if (f1) docs.push({ key: "file1", label: "Additional Document 1", url: f1 });
-    if (f2) docs.push({ key: "file2", label: "Additional Document 2", url: f2 });
-    return docs;
-  }
-
   return (
     <div className={className}>
       <div className="rounded-2xl border border-slate-200 bg-yellow-600 shadow-sm">
@@ -200,6 +224,8 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                   const badgeClass =
                     statusLower === "approved"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : statusLower === "assessed"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
                       : statusLower === "rejected"
                         ? "bg-rose-50 text-rose-700 border-rose-200"
                         : "bg-amber-50 text-amber-700 border-amber-200";
@@ -217,7 +243,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full border text-xs font-semibold ${badgeClass}`}>
-                          {statusLower === "rejected" ? "Not Approved" : statusText}
+                          {statusLower === "rejected" ? "Not Approved" : statusLower === "assessed" ? "Assessed" : statusText}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-700">{formatDate(app.createdAt)}</td>
@@ -270,22 +296,13 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                 const statusBadge =
                   statusLower === "approved"
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : statusLower === "assessed"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
                     : statusLower === "rejected"
                       ? "bg-rose-50 text-rose-700 border-rose-200"
                       : "bg-amber-50 text-amber-700 border-amber-200";
 
                 const docs = documentsFromItem(item);
-                const downloadAllDocs = () => {
-                  docs.forEach((d) => {
-                    const a = document.createElement("a");
-                    a.href = d.url;
-                    a.download = "";
-                    a.rel = "noopener noreferrer";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  });
-                };
 
                 const profMap = item?.optionalCriteriaProficiency && typeof item.optionalCriteriaProficiency === "object" ? item.optionalCriteriaProficiency : null;
 
@@ -301,7 +318,7 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                           <div className="truncate"><span className="font-medium">Application Date:</span> {item.createdAt ? String(item.createdAt) : "-"}</div>
                           <div>
                             <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadge}`}>
-                              {statusLower === "rejected" ? "Not Approved" : statusText}
+                              {statusLower === "rejected" ? "Not Approved" : statusLower === "assessed" ? "Assessed" : statusText}
                             </span>
                           </div>
                         </div>
@@ -314,14 +331,6 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                         >
                           Download PDF
-                        </button>
-                        <button
-                          type="button"
-                          onClick={downloadAllDocs}
-                          disabled={docs.length === 0}
-                          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Download Documents
                         </button>
                         <button
                           type="button"
@@ -412,6 +421,47 @@ export default function LeadershipApplicationsTracker({ alumniId, className }: P
                         <div className="text-sm font-semibold text-gray-900">Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role</div>
                         <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 max-h-[250px] overflow-y-auto whitespace-pre-wrap">
                           {String(item.planStrategy || "").trim() || "-"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="text-sm font-semibold text-gray-900">Uploaded Documents</div>
+                        <div className="mt-3 space-y-2">
+                          {docs.length === 0 ? (
+                            <div className="text-sm text-gray-600">-</div>
+                          ) : (
+                            docs.map((d) => {
+                              const name = fileNameFromUrl(d.url) || "-";
+                              return (
+                                <div
+                                  key={d.key}
+                                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-semibold text-gray-900">{d.label}</div>
+                                    <div className="text-xs text-gray-600 break-all">{name}</div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                    <a
+                                      href={d.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
+                                    >
+                                      View
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => downloadDocumentUrl(d.url, name !== "-" ? name : undefined)}
+                                      className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
+                                    >
+                                      Download
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     </div>

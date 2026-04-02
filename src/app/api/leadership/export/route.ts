@@ -19,14 +19,14 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "all"; // "chapter", "association", "all"
-    const status = searchParams.get("status") || "all"; // "all", "approved", "pending", "rejected"
+    const status = searchParams.get("status") || "all"; // "all", "approved", "assessed", "pending", "rejected"
     const role = searchParams.get("role") || "all"; // "all", "president", "vice_president", "coordinator"
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
     const faculty = String(searchParams.get("faculty") || "").trim();
     const chapter = String(searchParams.get("chapter") || "").trim();
 
-    const statusValues = new Set(["all", "approved", "pending", "rejected"]);
+    const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
     if (!statusValues.has(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }

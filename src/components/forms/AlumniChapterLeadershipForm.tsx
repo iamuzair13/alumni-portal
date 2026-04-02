@@ -89,8 +89,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [selectedPost, setSelectedPost] = useState<string>("");
-  const [selectedNationalChapterId, setSelectedNationalChapterId] = useState<number | null>(null);
-  const [selectedInternationalChapterId, setSelectedInternationalChapterId] = useState<number | null>(null);
+  const [chapterScope, setChapterScope] = useState<"national" | "international" | null>(null);
+  const [selectedChapterId, setSelectedChapterId] = useState<number | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [mandatoryCriteriaResponses, setMandatoryCriteriaResponses] = useState<Record<number, "YES" | "NO" | "">>({});
   const [criteriaError, setCriteriaError] = useState<string | null>(null);
@@ -159,6 +159,12 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     return (chaptersData ?? []).filter((c) => c.type === "international" && Number.isFinite(Number(c.id)));
   }, [chaptersData]);
 
+  const chaptersForSelectedScope = useMemo(() => {
+    if (chapterScope === "national") return nationalChapters;
+    if (chapterScope === "international") return internationalChapters;
+    return [];
+  }, [chapterScope, nationalChapters, internationalChapters]);
+
   const {
     register,
     handleSubmit,
@@ -190,8 +196,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
   // Update selectedPost when form value changes
   React.useEffect(() => {
     setSelectedPost(post || "");
-    setSelectedNationalChapterId(null);
-    setSelectedInternationalChapterId(null);
+    setChapterScope(null);
+    setSelectedChapterId(null);
     setCategoryError(null);
     setMandatoryCriteriaResponses({});
     setCriteriaError(null);
@@ -460,15 +466,10 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     }
 
     const chapterId =
-      (selectedNationalChapterId && Number.isFinite(selectedNationalChapterId) && selectedNationalChapterId > 0
-        ? selectedNationalChapterId
-        : null) ??
-      (selectedInternationalChapterId && Number.isFinite(selectedInternationalChapterId) && selectedInternationalChapterId > 0
-        ? selectedInternationalChapterId
-        : null);
+      selectedChapterId && Number.isFinite(selectedChapterId) && selectedChapterId > 0 ? selectedChapterId : null;
 
-    if (!chapterId) {
-      const msg = "Please select exactly one chapter category (national or international).";
+    if (!chapterScope || !chapterId) {
+      const msg = "Please select National or International and choose a chapter.";
       setCategoryError(msg);
       toast.error(msg);
       return;
@@ -546,8 +547,8 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
         body: JSON.stringify({
           alumniId: alumniIdNumber,
           post: data.post,
-          chapterId: selectedNationalChapterId || selectedInternationalChapterId,
-          category: selectedNationalChapterId ? "national" : "international",
+          chapterId,
+          category: chapterScope,
           mandatoryCriteriaResponses,
           criteriaResponses: {
             ...Object.fromEntries(
@@ -664,6 +665,67 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
     
       <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="space-y-6">
+          {/* Chapter Selection - Dropdown */}
+          <div>
+            <label className={`${labelBase} text-[18px] font-semibold`}>
+              Chapter type <span className="text-rose-600">*</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              {[
+                { value: "national" as const, label: "National", disabled: nationalChapters.length === 0 },
+                { value: "international" as const, label: "International", disabled: internationalChapters.length === 0 },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start p-4 border-2 rounded-lg transition-all ${
+                    opt.disabled
+                      ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                      : chapterScope === opt.value
+                        ? "border-blue-500 bg-blue-50 cursor-pointer"
+                        : "border-gray-200 bg-white hover:border-gray-300 cursor-pointer"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="chapterScope"
+                    value={opt.value}
+                    checked={chapterScope === opt.value}
+                    disabled={opt.disabled}
+                    onChange={() => {
+                      setCategoryError(null);
+                      setChapterScope(opt.value);
+                      setSelectedChapterId(null);
+                    }}
+                    className="mt-1 mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 disabled:opacity-50"
+                  />
+                  <span className="text-base font-semibold text-gray-900">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+            <label className={`${labelBase} mt-4`}>Chapter</label>
+            <select
+              value={selectedChapterId ? String(selectedChapterId) : ""}
+              disabled={!chapterScope}
+              onChange={(e) => {
+                setCategoryError(null);
+                const raw = String(e.target.value || "").trim();
+                const id = raw ? Number(raw) : null;
+                setSelectedChapterId(id && Number.isFinite(id) && id > 0 ? id : null);
+              }}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            >
+              <option value="">
+                {chapterScope ? "Select a chapter" : "Select National or International first"}
+              </option>
+              {chaptersForSelectedScope.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {categoryError ? <div className={errorText}>{categoryError}</div> : null}
+          </div>
+
           {/* Post Selection - Radio Buttons */}
           <div>
             <label className={`${labelBase} text-[18px] font-semibold`}>
@@ -698,55 +760,7 @@ export default function AlumniChapterLeadershipForm({ alumniId }: Props) {
             {errors.post && <span className={errorText}>{errors.post.message}</span>}
           </div>
 
-          <div>
-            <label className={labelBase}>
-              National Chapter
-            </label>
-            <select
-              value={selectedNationalChapterId ? String(selectedNationalChapterId) : ""}
-              onChange={(e) => {
-                setCategoryError(null);
-                const raw = String(e.target.value || "").trim();
-                const id = raw ? Number(raw) : null;
-                setSelectedNationalChapterId(id && Number.isFinite(id) && id > 0 ? id : null);
-                if (raw) setSelectedInternationalChapterId(null);
-              }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select a national chapter</option>
-              {nationalChapters.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className={labelBase}>
-              International Chapter
-            </label>
-            <select
-              value={selectedInternationalChapterId ? String(selectedInternationalChapterId) : ""}
-              onChange={(e) => {
-                setCategoryError(null);
-                const raw = String(e.target.value || "").trim();
-                const id = raw ? Number(raw) : null;
-                setSelectedInternationalChapterId(id && Number.isFinite(id) && id > 0 ? id : null);
-                if (raw) setSelectedNationalChapterId(null);
-              }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select an international chapter</option>
-              {internationalChapters.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {categoryError ? <div className={errorText}>{categoryError}</div> : null}
-          </div>
-
+          
             
           {selectedPost ? (
             

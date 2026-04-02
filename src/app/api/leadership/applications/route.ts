@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const type = searchParams.get("type") || "all"; // "chapter", "association", "all"
-    const status = searchParams.get("status") || "pending"; // "all", "approved", "pending", "rejected"
+    const status = searchParams.get("status") || "pending"; // "all", "approved", "assessed", "pending", "rejected"
     const role = searchParams.get("role") || "all"; // "all", "president", "vice_president", "coordinator"
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const alumniIdParam = alumniIdParamRaw ? Number(alumniIdParamRaw) : null;
     const alumniId = alumniIdParam && Number.isFinite(alumniIdParam) && alumniIdParam > 0 ? alumniIdParam : null;
 
-    const statusValues = new Set(["all", "approved", "pending", "rejected"]);
+    const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
     if (!statusValues.has(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }

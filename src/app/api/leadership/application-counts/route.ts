@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
     const counts = {
       all: 0,
       pending: 0,
+      assessed: 0,
       approved: 0,
       rejected: 0,
     };
@@ -113,6 +114,7 @@ export async function GET(req: NextRequest) {
         const s = String(r.status ?? "pending").toLowerCase();
         const c = Number(r.count ?? 0);
         if (s === "approved") counts.approved += c;
+        else if (s === "assessed") counts.assessed += c;
         else if (s === "rejected") counts.rejected += c;
         else counts.pending += c;
       }
@@ -141,12 +143,13 @@ export async function GET(req: NextRequest) {
         const s = String(r.status ?? "pending").toLowerCase();
         const c = Number(r.count ?? 0);
         if (s === "approved") counts.approved += c;
+        else if (s === "assessed") counts.assessed += c;
         else if (s === "rejected") counts.rejected += c;
         else counts.pending += c;
       }
     }
 
-    counts.all = counts.pending + counts.approved + counts.rejected;
+    counts.all = counts.pending + counts.assessed + counts.approved + counts.rejected;
 
     return NextResponse.json({ counts }, { status: 200 });
   } catch (err) {

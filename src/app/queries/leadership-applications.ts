@@ -26,7 +26,7 @@ export type LeadershipApplicationTrace = {
 
 export type LeadershipApplicationsQueryInput = {
   type?: "all" | "chapter" | "association";
-  status?: "all" | "pending" | "approved" | "rejected";
+  status?: "all" | "pending" | "assessed" | "approved" | "rejected";
   role?: "all" | "president" | "vice_president" | "coordinator";
   search?: string;
   hasAdditionalAchievements?: boolean;
