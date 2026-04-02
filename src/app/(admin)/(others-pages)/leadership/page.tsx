@@ -1733,7 +1733,7 @@ export default function LeadershipPage() {
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                            <div className="flex flex-wrap mr-12 items-center justify-start lg:justify-end gap-2">
                               <button
                                 type="button"
                                 onClick={handleDownloadApplicationPDF}
@@ -1742,16 +1742,7 @@ export default function LeadershipPage() {
                                 <DownloadIcon className="h-4 w-4" />
                                 Download PDF
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  viewModal.closeModal();
-                                  setSelectedViewApp(null);
-                                }}
-                                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/40"
-                              >
-                                Close
-                              </button>
+
                             </div>
                           </div>
 
