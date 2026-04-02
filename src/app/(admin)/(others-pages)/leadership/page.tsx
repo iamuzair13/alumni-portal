@@ -862,8 +862,15 @@ export default function LeadershipPage() {
   const applicationsCount = Number(applicationCountsData?.all ?? applicationsData?.length ?? 0);
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-gray-900/50 overflow-x-hidden">
-      <div className="w-full max-w-[1230px] mx-auto flex flex-col justify-start">
+    <div className="min-h-screen w-full bg-slate-200 dark:bg-gray-900/50 overflow-x-hidden">
+      {/* add appropria title and description here */}
+      <div className="w-full max-w-[1230px] border-b border-gray-200 dark:border-gray-700 bg-white rounded-t-lg mt-4 mx-auto flex flex-col justify-start ">
+        <div className="px-4 py-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Leadership Applications</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Manage leadership applications for chapters and associations.</p>
+        </div>
+      </div>
+      <div className="w-full max-w-[1230px] bg-white rounded-b-lg  mx-auto flex flex-col justify-start ">
         {/* Tabs Section */}
         <div className="w-full px-4 py-4">
           <div className=" mx-auto">
