@@ -846,7 +846,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
 
                         {optionalCriteriaItems.length ? (
                           <div className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-3 space-y-2">
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">How would you rate yourself on the following using a scale of 1 to 5? For rating 4 star or above, please provide a brief justification</div>
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">How would you rate yourself on the following using a scale of 1 to 5? For rating 4 star or above, please provide a brief explaination</div>
 
                             {optionalCriteriaItems.map((c) => {
                               const id = Number(c.id);
