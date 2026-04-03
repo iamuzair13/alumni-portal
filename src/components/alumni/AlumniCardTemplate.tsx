@@ -25,6 +25,8 @@ type AlumniCardTemplateProps = {
   validity?: string; // Format: YYYY-MM or MM/YYYY
   photoUrl?: string | null; // Profile/thumbnail image filename or path
   cardImage?: string | null; // Dedicated card image filename or path
+  /** Appended to resolved image URLs (e.g. Date.now()) so PDF export bypasses browser cache */
+  imageSrcCacheBust?: string | number | null;
 };
 
 export default function AlumniCardTemplate({
@@ -39,6 +41,7 @@ export default function AlumniCardTemplate({
   validity,
   photoUrl,
   cardImage,
+  imageSrcCacheBust,
 }: AlumniCardTemplateProps) {
   const [imageIndex, setImageIndex] = useState(0);
 
@@ -76,6 +79,15 @@ export default function AlumniCardTemplate({
   };
 
   const imageCandidates = useMemo(() => {
+    const addBust = (url: string) => {
+      if (imageSrcCacheBust === undefined || imageSrcCacheBust === null || imageSrcCacheBust === "") {
+        return url;
+      }
+      if (url.startsWith("data:")) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}t=${encodeURIComponent(String(imageSrcCacheBust))}`;
+    };
+
     const candidates: string[] = [];
     
     // Priority 1: Check "card" directory and "card_image" column in tblcard
@@ -84,7 +96,7 @@ export default function AlumniCardTemplate({
     if (cardImageStr && cardImageStr.toLowerCase() !== "null" && cardImageStr.toLowerCase() !== "undefined") {
       const cardImg = normalizeImagePath(cardImageStr);
       if (cardImg) {
-        candidates.push(cardImg); // /images/alumni-images/card/{cardImage}
+        candidates.push(addBust(cardImg)); // /images/alumni-images/card/{cardImage}
       }
     }
     
@@ -94,12 +106,12 @@ export default function AlumniCardTemplate({
     if (photoUrlStr && photoUrlStr.toLowerCase() !== "null" && photoUrlStr.toLowerCase() !== "undefined") {
       const thumbnail = normalizeImagePath(photoUrlStr);
       if (thumbnail) {
-        candidates.push(thumbnail); // /images/alumni-images/thumbnail/{photoUrl}
+        candidates.push(addBust(thumbnail)); // /images/alumni-images/thumbnail/{photoUrl}
       }
     }
     
     // Priority 3: Fallback image (always include)
-    candidates.push("/images/person.jpg");
+    candidates.push(addBust("/images/person.jpg"));
     
     // Debug logging (remove in production if needed)
     if (typeof window !== "undefined") {
@@ -107,7 +119,7 @@ export default function AlumniCardTemplate({
     }
     
     return candidates;
-  }, [cardImage, photoUrl]);
+  }, [cardImage, photoUrl, imageSrcCacheBust]);
 
   useEffect(() => {
     setImageIndex(0);
@@ -193,6 +205,7 @@ export default function AlumniCardTemplate({
         <div className="absolute right-[12%] top-[24%] flex  w-[25%] items-center justify-center overflow-hidden rounded-sm bg-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            data-testid="alumni-card-photo"
             key={`${activeImageSrc}-${imageIndex}`}
             src={activeImageSrc}
             alt={studentName || "Alumni"}

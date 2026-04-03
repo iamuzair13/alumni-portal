@@ -27,6 +27,7 @@ import NewslettersCard from "@/components/alumni/NewslettersCard";
 import BenefitCard from "@/components/ui/BenefitCard";
 import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
 import { formatCardValidityMonthYear } from "@/lib/cardValidity";
+import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 
 type Profile = {
   alumniname: string | null;
@@ -409,13 +410,8 @@ let cardImageFile: string | null = null;
     }
   }
 
-  // Card template images: prefer thumbnail/profile image first, then dedicated card image
-  const profileImageFilename = (() => {
-    if (p?.image1 && p.image1.trim() && p.image1.trim().toLowerCase() !== "null") {
-      return p.image1.trim();
-    }
-    return undefined;
-  })();
+  // Card template profile slot: latest alumni photo (tbl_alumni.image2, then image1)
+  const profileImageFilename = pickAlumniProfilePhotoFilename(p?.image2, p?.image1) ?? undefined;
   const cardTemplateImageFilename = (() => {
     const raw = (cardImageFile ?? cardPicture) ?? null;
     if (raw && raw.trim() && raw.trim().toLowerCase() !== "null") {

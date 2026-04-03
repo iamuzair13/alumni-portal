@@ -22,7 +22,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     // Fetch card data (by SAP ID or registration number)
     const rows = await sql/* sql */`
       SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold, c.validity_date,
-             a.sapid, a.personalemail, a.officialemail, a.universityemail
+             a.sapid, a.personalemail, a.officialemail, a.universityemail,
+             a.image1 AS alumni_image1, a.image2 AS alumni_image2
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
       WHERE TRIM(COALESCE(a.sapid, '')) = ${normalizedSapid}
@@ -42,21 +43,33 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Return card data without sensitive fields from alumni table
-    return NextResponse.json({ 
-      card: {
-        cardid: r.cardid,
-        alumniid: r.alumniid,
-        cnicno: r.cnicno,
-        cardaddress: r.cardaddress,
-        status: r.status,
-        cardpicture: r.cardpicture,
-        card_image: r.card_image,
-        createdat: r.createdat,
-        reason_onhold: r.reason_onhold,
-        validity_date: r.validity_date,
+    const rr = r as typeof r & { alumni_image1?: string | null; alumni_image2?: string | null };
+
+    // Return card data without sensitive fields from alumni table; include fresh profile filenames for PDF/UI
+    return NextResponse.json(
+      {
+        card: {
+          cardid: r.cardid,
+          alumniid: r.alumniid,
+          cnicno: r.cnicno,
+          cardaddress: r.cardaddress,
+          status: r.status,
+          cardpicture: r.cardpicture,
+          card_image: r.card_image,
+          createdat: r.createdat,
+          reason_onhold: r.reason_onhold,
+          validity_date: r.validity_date,
+        },
+        alumni_profile: {
+          image1: rr.alumni_image1 ?? null,
+          image2: rr.alumni_image2 ?? null,
+        },
+      },
+      {
+        status: 200,
+        headers: { "Cache-Control": "no-store" },
       }
-    }, { status: 200 });
+    );
   } catch {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }

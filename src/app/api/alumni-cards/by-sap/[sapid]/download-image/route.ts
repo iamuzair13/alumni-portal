@@ -51,17 +51,14 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const data = rows[0];
     
-    // When admin downloads, pick image from tbl_alumni (image1 or image2)
-    // Priority: image1 > image2
+    // When admin downloads, pick image from tbl_alumni (align with profile / PDF: most recent first)
+    // Priority: image2 > image1
     let imageName: string | null = null;
-    
-    // First priority: Check tbl_alumni.image1
-    if (data.image1 && String(data.image1).trim() !== "" && String(data.image1).toLowerCase() !== "null") {
-      imageName = String(data.image1).trim();
-    } 
-    // Second priority: Check tbl_alumni.image2
-    else if (data.image2 && String(data.image2).trim() !== "" && String(data.image2).toLowerCase() !== "null") {
+
+    if (data.image2 && String(data.image2).trim() !== "" && String(data.image2).toLowerCase() !== "null") {
       imageName = String(data.image2).trim();
+    } else if (data.image1 && String(data.image1).trim() !== "" && String(data.image1).toLowerCase() !== "null") {
+      imageName = String(data.image1).trim();
     }
     
     // If no image found in tbl_alumni, return error

@@ -10,6 +10,8 @@ type Props = {
   cardRef: React.RefObject<HTMLDivElement | null>;
   studentName: string;
   disabled?: boolean;
+  /** Run after loading state starts — e.g. refetch alumni photo and update parent state before html2canvas */
+  beforeExport?: () => Promise<void>;
   // Customization options
   cardData?: {
     studentName: string;
@@ -23,7 +25,7 @@ type Props = {
   };
 };
 
-export default function AlumniCardPDFExport({ cardRef, studentName, disabled = false, cardData }: Props) {
+export default function AlumniCardPDFExport({ cardRef, studentName, disabled = false, beforeExport, cardData }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleExportPDF = async () => {
@@ -32,6 +34,21 @@ export default function AlumniCardPDFExport({ cardRef, studentName, disabled = f
     try {
       setIsGenerating(true);
       const loadingToast = toast.loading("Generating PDF...");
+
+      await beforeExport?.();
+
+      const photoEl = cardRef.current?.querySelector('[data-testid="alumni-card-photo"]') as HTMLImageElement | null;
+      if (photoEl && (!photoEl.complete || photoEl.naturalHeight === 0)) {
+        await new Promise<void>((resolve) => {
+          const t = window.setTimeout(() => resolve(), 10000);
+          const done = () => {
+            window.clearTimeout(t);
+            resolve();
+          };
+          photoEl.addEventListener("load", done, { once: true });
+          photoEl.addEventListener("error", done, { once: true });
+        });
+      }
 
       // Get card data from ref or props
       // Extract data from the card element or use provided cardData

@@ -82,6 +82,8 @@ type LeadershipApplication = {
   additionalFile1Url?: string | null;
   additionalFile2Url?: string | null;
   createdAt: string;
+  /** Sum of admin entered obtained marks (scored criteria); null if none recorded */
+  obtainedMarksTotal?: number | null;
 };
 
 type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected";
@@ -2010,6 +2012,7 @@ function ApplicationsTable({
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[170px]">SAP / Reg No</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[360px]">Name</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[110px]">Obtained marks</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">Type</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[220px]">Role</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Status</TableCell>
@@ -2027,8 +2030,10 @@ function ApplicationsTable({
               <TableCell className="px-4 py-4 w-[170px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[360px]"><div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 hidden lg:table-cell w-[220px]"><div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[110px]"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[240px]"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[220px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[160px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               {isAdmin && (
                 <TableCell className="px-4 py-4 sticky right-0 bg-white dark:bg-gray-800 w-[120px]"><div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" /></TableCell>
               )}
@@ -2063,6 +2068,7 @@ function ApplicationsTable({
             </button>
           </TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[110px]">Obtained marks</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">
             <button type="button" onClick={() => onSort("type")} className="hover:underline">
               Type{sortIndicator("type")}
@@ -2131,6 +2137,12 @@ function ApplicationsTable({
                 >
                   {app.email || ""}
                 </a>
+                {app.obtainedMarksTotal != null && Number.isFinite(app.obtainedMarksTotal) ? (
+                  <div className="lg:hidden mt-1 text-xs text-gray-700 dark:text-gray-300">
+                    <span className="font-semibold text-gray-600 dark:text-gray-400">Obtained marks:</span>{" "}
+                    {formatObtainedMarkDisplay(app.obtainedMarksTotal)}
+                  </div>
+                ) : null}
               </div>
             </TableCell>
             <TableCell className="px-4 py-3 text-sm hidden lg:table-cell w-[220px]">
@@ -2140,6 +2152,13 @@ function ApplicationsTable({
               >
                 {app.email || "-"}
               </a>
+            </TableCell>
+            <TableCell className="px-4 py-3 text-sm w-[110px] tabular-nums">
+              {app.obtainedMarksTotal != null && Number.isFinite(app.obtainedMarksTotal) ? (
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatObtainedMarkDisplay(app.obtainedMarksTotal)}</span>
+              ) : (
+                <span className="text-gray-400 dark:text-gray-500">—</span>
+              )}
             </TableCell>
             <TableCell className="px-4 py-3 text-sm w-[240px]">
               <div className="truncate min-w-0">

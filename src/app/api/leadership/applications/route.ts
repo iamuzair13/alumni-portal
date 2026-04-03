@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
       additionalFile1Url?: string | null;
       additionalFile2Url?: string | null;
       createdAt: string;
+      obtainedMarksTotal?: number | null;
     }> = [];
 
     const statusCondition = status !== "all" ? sql` AND cl.status = ${status}` : sql``;
@@ -191,7 +192,14 @@ export async function GET(req: NextRequest) {
           a.personalemail,
           a.officialemail,
           a.universityemail,
-          a.registrationno
+          a.registrationno,
+          (
+            SELECT SUM(lcc.obtained_marks)
+            FROM public.leadership_criteria_confirmations lcc
+            WHERE lcc.leadership_type = 'chapter'
+              AND lcc.chapter_application_id = cl.id
+              AND lcc.actor_type = 'admin'
+          ) AS total_obtained_marks
         FROM public.chapter_leadership cl
         LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -243,6 +251,12 @@ export async function GET(req: NextRequest) {
           additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
           additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : new Date().toISOString(),
+          obtainedMarksTotal: (() => {
+            const v = r.total_obtained_marks;
+            if (v == null || v === "") return null;
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+          })(),
         });
       });
     }
@@ -271,7 +285,14 @@ export async function GET(req: NextRequest) {
           a.personalemail,
           a.officialemail,
           a.universityemail,
-          a.registrationno
+          a.registrationno,
+          (
+            SELECT SUM(lcc.obtained_marks)
+            FROM public.leadership_criteria_confirmations lcc
+            WHERE lcc.leadership_type = 'association'
+              AND lcc.association_application_id = ass.id
+              AND lcc.actor_type = 'admin'
+          ) AS total_obtained_marks
         FROM public.tblalumniassociation ass
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -320,6 +341,12 @@ export async function GET(req: NextRequest) {
           additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
           additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
           createdAt: r.createddatetime ? new Date(r.createddatetime as string).toISOString() : new Date().toISOString(),
+          obtainedMarksTotal: (() => {
+            const v = r.total_obtained_marks;
+            if (v == null || v === "") return null;
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+          })(),
         });
       });
     }
