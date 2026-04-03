@@ -11,7 +11,7 @@ type ErpDataDetailsProps = {
   alumniData?: Record<string, unknown> | null;
 };
 
-// Comparison result typeA
+// Comparison result type
 type ComparisonResult = "same" | "minor" | "major" | "no_data";
 
 // Helper function to normalize values for comparison
@@ -54,10 +54,10 @@ const compareValues = (alumniValue: unknown, erpValue: unknown): ComparisonResul
   return "major";
 };
 
-// Map field labels to Alumni data field names
+// Map field labels to Alumni data field names (aligned with AlumniExpandableDetails comparison labels)
 const getAlumniFieldValue = (label: string, alumniData: Record<string, unknown> | null | undefined): unknown => {
   if (!alumniData) return null;
-  
+
   const fieldMap: Record<string, string> = {
     "Sap No": "sapid",
     "Registration No": "registrationno",
@@ -66,15 +66,36 @@ const getAlumniFieldValue = (label: string, alumniData: Record<string, unknown> 
     "CNIC/Passport": "cnicpassport",
     "Mobile": "contactno",
     "Primary Contact": "contactno",
-    "Home Address": "address",
-    "Home Country": "country",
+    "Personal Email": "personalemail",
+    "Faculty": "facultyname",
     "Department": "departmentname",
     "Program": "degreetitle",
+    "Passing Out Year": "yearofending",
+    "Home Address": "address",
+    "Home Country": "country",
+    "Secondary Contact": "contactno1",
+    "Home Province": "province",
+    "Home City": "city",
+    "Date of Birth": "dateofbirth",
+    "Marital Status": "maritalstatus",
+    "Admission Year": "yearofstarting",
+    "CGPA": "cgpa",
+    "Major Subject": "majorsubject",
   };
-  
+
   const alumniField = fieldMap[label];
   return alumniField ? alumniData[alumniField] : null;
 };
+
+/** ERP Doc YYYYMMDD → passing-out year for alignment with Alumni "Passing Out Year" */
+function erpPassingOutYearFromDoc(doc: unknown): number | null {
+  const trimmed = String(doc ?? "").trim();
+  if (/^\d{8}$/.test(trimmed)) {
+    const y = Number(trimmed.slice(0, 4));
+    return Number.isFinite(y) ? y : null;
+  }
+  return null;
+}
 
 type ErpRecord = {
   DegrTitle?: string | null;
@@ -387,7 +408,6 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
     "Mrno",
     "Address",
     "Nationality",
-    "Doc",
     "Regligion",
   ]);
 
@@ -412,47 +432,65 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
       </div>
 
       <div className="space-y-1 text-xs">
+        {/* Order and section headers match AlumniExpandableDetails one-to-one */}
         <div className="pt-1 pb-1 border-b border-gray-200 dark:border-gray-700">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Mandatory</h4>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Mandatory</h4>
+            <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-full px-2 py-0.5">
+              From ERP
+            </span>
+          </div>
         </div>
 
         <CompactField label="Sap No" value={data?.SapNo || null} comparisonStatus={getComparisonStatus("Sap No", data?.SapNo)} />
         <CompactField label="Full Name" value={data?.Name || null} comparisonStatus={getComparisonStatus("Full Name", data?.Name)} />
         <CompactField label="Father Name" value={data?.Fname || null} comparisonStatus={getComparisonStatus("Father Name", data?.Fname)} />
         <CompactField label="CNIC/Passport" value={data?.Cnic || null} comparisonStatus={getComparisonStatus("CNIC/Passport", data?.Cnic)} />
-        <CompactField label="Primary Contact" value={data?.Mobile || null} comparisonStatus={getComparisonStatus("Primary Contact", data?.Mobile)} />
+        <CompactField label="Primary Contact" value={data?.Mobile || null} comparisonStatus={getComparisonStatus("Mobile", data?.Mobile)} />
+        <CompactField label="Personal Email" value={null} comparisonStatus={getComparisonStatus("Personal Email", null)} />
+        <CompactField label="Faculty" value={null} comparisonStatus={getComparisonStatus("Faculty", null)} />
         <CompactField label="Department" value={data?.DeptName || null} comparisonStatus={getComparisonStatus("Department", data?.DeptName)} />
         <CompactField label="Program" value={data?.DegrTitle || null} comparisonStatus={getComparisonStatus("Program", data?.DegrTitle)} />
         <CompactField label="Campus" value={(data as Record<string, unknown>)?.Campus as string | null} />
-        <CompactField label="Admission Year" value={(data as Record<string, unknown>)?.AdmAyear as string | null} />
+        <CompactField
+          label="Passing Out Year"
+          value={erpPassingOutYearFromDoc(data?.Doc)}
+          comparisonStatus={getComparisonStatus("Passing Out Year", erpPassingOutYearFromDoc(data?.Doc))}
+        />
 
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Additional</h4>
+            <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-full px-2 py-0.5">
+              All other fields
+            </span>
+          </div>
         </div>
 
-        {/* Personal Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
         </div>
         <CompactField label="Registration No" value={data?.Mrno || null} comparisonStatus={getComparisonStatus("Registration No", data?.Mrno)} />
         <CompactField label="Gender" value={(data as Record<string, unknown>)?.Gesch as string | null} />
-        <CompactField label="Date of Birth" value={(data as Record<string, unknown>)?.Gbdat as string | null} />
-        <CompactField label="Religion" value={(data as Record<string, unknown>)?.Regligion as string | null} />
+        <CompactField label="Date of Birth" value={(data as Record<string, unknown>)?.Gbdat as string | null} comparisonStatus={getComparisonStatus("Date of Birth", (data as Record<string, unknown>)?.Gbdat)} />
+        <CompactField label="Marital Status" value={null} />
 
-        {/* Contact Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Contact</h4>
         </div>
+        <CompactField label="Secondary Contact" value={null} />
         <CompactField label="Home Address" value={data?.Address || null} comparisonStatus={getComparisonStatus("Home Address", data?.Address)} />
         <CompactField label="Home Country" value={data?.Nationality || null} comparisonStatus={getComparisonStatus("Home Country", data?.Nationality)} />
+        <CompactField label="Home Province" value={null} />
+        <CompactField label="Home City" value={null} />
 
-        {/* Academic Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Academic (Additional)</h4>
         </div>
-        <CompactField label="Date of Completion" value={data?.Doc || null} />
+        <CompactField label="Admission Year" value={(data as Record<string, unknown>)?.AdmAyear as string | null} comparisonStatus={getComparisonStatus("Admission Year", (data as Record<string, unknown>)?.AdmAyear)} />
+        <CompactField label="CGPA" value={null} />
+        <CompactField label="Major Subject" value={null} />
 
-        {/* Professional Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Occupation</h4>
         </div>
@@ -466,7 +504,6 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <CompactField label="Work Phone" value={null} />
         <CompactField label="Work Email" value={null} />
 
-        {/* Higher Education Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Higher Education</h4>
         </div>
@@ -476,17 +513,41 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <CompactField label="Institution Country" value={null} />
         <CompactField label="Institution City" value={null} />
 
-        {/* Chapter and Association Information */}
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Chapter & Association</h4>
         </div>
-        <CompactField label="Chapter" value={null} />
+        <CompactField label="Chapter 1" value={null} />
+        <CompactField label="Chapter 2" value={null} />
+        <CompactField label="Chapter 3" value={null} />
         <CompactField label="Association" value={null} />
 
-        {/* Additional Information */}
+        <CompactField label="About Me" value={null} />
+
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Additional</h4>
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Social Links</h4>
         </div>
+        <CompactField label="Facebook" value={null} />
+        <CompactField label="Instagram" value={null} />
+        <CompactField label="YouTube" value={null} />
+        <CompactField label="LinkedIn" value={null} />
+
+        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">System</h4>
+        </div>
+        <div className="flex items-center gap-2 py-2 border-b border-gray-100 dark:border-gray-700/50">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 min-w-[140px] flex-shrink-0">Credentials:</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+        </div>
+        <CompactField label="Alumni Password" value={null} />
+        <CompactField label="Last Login" value={null} />
+        <CompactField label="Login Count" value={null} />
+        <CompactField label="Alumni Status" value={null} />
+        <CompactField label="Alumni Category" value={null} />
+        <CompactField label="Allowed to use information Officially" value={null} />
+        <CompactField label="Last Updated" value={null} />
+        <CompactField label="Created Date" value={null} />
+        <CompactField label="Photo Usage Consent" value={null} />
+
         {displayableEntries.length > 0 && (
           <>
             <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
@@ -519,26 +580,6 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
             <CompactField label="torel" value={(data as ErpRecord).torel} />
           </>
         )}
-
-        {/* Social Links */}
-        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Social Links</h4>
-        </div>
-        <CompactField label="Facebook" value={null} />
-        <CompactField label="Instagram" value={null} />
-        <CompactField label="YouTube" value={null} />
-        <CompactField label="LinkedIn" value={null} />
-
-        {/* System Information */}
-        <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
-          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">System</h4>
-        </div>
-        <CompactField label="Verification Status" value={null} />
-        <CompactField label="Last Login" value={null} />
-        <CompactField label="Login Count" value={null} />
-        <CompactField label="Alumni Status" value={null} />
-        <CompactField label="Alumni Category" value={null} />
-        <CompactField label="Created Date" value={null} />
       </div>
     </div>
   );
