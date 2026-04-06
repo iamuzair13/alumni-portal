@@ -10,6 +10,10 @@ import { Modal } from "@/components/ui/modal";
 
 type FormErrors = { identifier?: string; password?: string };
 
+/** Shown when the server rejects sign-in without a specific error code (e.g. invalid credentials). */
+const CREDENTIALS_NOT_VERIFIED_MESSAGE =
+  "Sign-in failed. Please check your SAP ID/Registration number and your password. If you have forgotten your password, use Forgot Password next to the password field.";
+
 export default function SignInForm() {
   const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +88,7 @@ export default function SignInForm() {
         else if (err === "USER_NOT_STAFF") setErrorMessage("Not an admin account");
         else if (err === "RATE_LIMITED") setErrorMessage("Too many attempts. Try again later.");
         else if (err === "DB_CONNECTION_ERROR") setErrorMessage("Server error. Please try again later.");
-        else setErrorMessage("Sign-in failed");
+        else setErrorMessage(CREDENTIALS_NOT_VERIFIED_MESSAGE);
         setIsLoading(false);
         return;
       }
@@ -173,7 +177,7 @@ export default function SignInForm() {
         setIsVerifying(false);
       }
     } catch {
-      setErrorMessage("Sign-in failed");
+      setErrorMessage(CREDENTIALS_NOT_VERIFIED_MESSAGE);
     } finally {
       setIsLoading(false);
     }

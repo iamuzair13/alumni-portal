@@ -91,10 +91,12 @@ function resolveProfileImageUrlForPreload(photoUrl: string | null | undefined, c
   let path: string;
   if (!raw || raw.toLowerCase() === "null" || raw.toLowerCase() === "undefined") {
     path = "/images/person.jpg";
+  } else if (raw.startsWith("/api/uploads/images/")) {
+    path = `/images/${raw.slice("/api/uploads/images/".length)}`;
   } else if (raw.startsWith("/") || raw.startsWith("http://") || raw.startsWith("https://")) {
     path = raw;
   } else {
-    path = `/api/uploads/images/${raw}`;
+    path = `/images/${raw}`;
   }
   if (cacheBust && !path.startsWith("data:")) {
     return `${path}${path.includes("?") ? "&" : "?"}t=${cacheBust}`;

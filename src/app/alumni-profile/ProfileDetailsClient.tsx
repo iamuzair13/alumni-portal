@@ -128,15 +128,13 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     let imagePath = rawAvatar.replace(/\/tumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
-    // Normalize image path for Next.js Image component
-    // Next.js requires paths to start with "/" or be absolute URLs (http:// or https://)
-    // In production, uploaded images are served via /api/uploads/images/<filename>
+    if (imagePath.startsWith("/api/uploads/images/")) {
+      imagePath = `/images/${imagePath.slice("/api/uploads/images/".length)}`;
+    }
     if (!imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
-      // If it's just a filename, serve it via uploads API route
       if (!imagePath.includes("/")) {
-        imagePath = `/api/uploads/images/${imagePath}`;
+        imagePath = `/images/${imagePath}`;
       } else {
-        // If it's a relative path without leading slash, add it
         imagePath = `/${imagePath}`;
       }
     }

@@ -211,28 +211,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
       projectRoot = cwd;
     }
     
-    // Allow override via environment variable (useful for Plesk)
-    const customUploadPath = process.env.UPLOAD_DIR || process.env.IMAGES_UPLOAD_DIR;
-    let uploadsDir: string;
-    
-    if (customUploadPath) {
-      uploadsDir = customUploadPath.startsWith("/") 
-        ? customUploadPath 
-        : join(projectRoot, customUploadPath);
-
-    } else {
-      // Standard Next.js path - use project root
-      uploadsDir = join(projectRoot, "public", "images");
-      
-      // Verify that public directory exists (Next.js requirement)
-      const publicDir = join(projectRoot, "public");
-      if (!existsSync(publicDir)) {
-
-
-      } else {
-
-      }
-    }
+    const uploadsDir = join(projectRoot, "public", "images");
 
     // Check if directory exists
     const dirExists = existsSync(uploadsDir);
@@ -335,10 +314,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           END
       WHERE alumniid = ${alumni.alumniid}`;
 
-    // Return the full path for immediate display
-    // NOTE: In production, runtime-written files under /public may not be served by the host.
-    // Serve via API route that reads from the upload directory.
-    const imagePath = `/api/uploads/images/${filename}`;
+    const imagePath = `/images/${filename}`;
     const duration = Date.now() - startTime;
 
 

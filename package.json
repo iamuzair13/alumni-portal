@@ -18,7 +18,8 @@
     "fetch-erp-update-alumni": "tsx scripts/fetch-erp-update-alumni.ts",
     "count-matched-alumni": "tsx scripts/count-matched-alumni.ts",
     "compare-csv-erp": "tsx scripts/compare-csv-erp.ts",
-    "import-form-data-with-erp": "tsx scripts/import-form-data-with-erp.ts"
+    "import-form-data-with-erp": "tsx scripts/import-form-data-with-erp.ts",
+    "migrate-copy-uploads-to-images": "tsx scripts/copy-uploads-to-public-images.ts"
   },
   "dependencies": {
     "@bprogress/core": "^1.3.4",

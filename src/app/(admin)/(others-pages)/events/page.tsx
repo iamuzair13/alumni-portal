@@ -589,7 +589,10 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
   const queryClient = useQueryClient();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
+  /** Existing images from API (stable URLs via uploadsImageUrl) */
+  const [serverPreviewUrls, setServerPreviewUrls] = useState<Record<number, string>>({});
+  /** Object URLs for newly selected files — kept separate so choosing one slot does not wipe other previews */
+  const [filePreviewUrls, setFilePreviewUrls] = useState<Record<number, string>>({});
   const [chapters, setChapters] = useState<Array<{ id: number; name: string; type: string }>>([]);
   const [associations, setAssociations] = useState<Array<{ id: number; title: string }>>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -668,6 +671,17 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
     };
   }, [descriptionEditor]);
 
+  // Clear edit previews when switching create ↔ edit or event id (revoke blobs first)
+  useEffect(() => {
+    setFilePreviewUrls((prev) => {
+      Object.values(prev).forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
+      return {};
+    });
+    setServerPreviewUrls({});
+  }, [eventId]);
+
   // Fetch event data if editing
   useEffect(() => {
     if (eventId) {
@@ -702,7 +716,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
                 }
               });
             }
-            setPreviewUrls(existingPreviewUrls);
+            setServerPreviewUrls(existingPreviewUrls);
           }
         })
         .catch((err) => {
@@ -774,17 +788,16 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
   useEffect(() => {
     const urls: Record<number, string> = {};
     const images = [image1, image2, image3, image4, image5];
-    
+
     images.forEach((img, idx) => {
       if (img && img instanceof File) {
-        const url = URL.createObjectURL(img);
-        urls[idx + 1] = url;
+        urls[idx + 1] = URL.createObjectURL(img);
       }
     });
 
-    setPreviewUrls(urls);
+    setFilePreviewUrls(urls);
     return () => {
-      Object.values(urls).forEach(url => URL.revokeObjectURL(url));
+      Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
     };
   }, [image1, image2, image3, image4, image5]);
 
@@ -847,13 +860,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
       setServerMsg(successMsg);
       toast.success(successMsg);
       reset();
-      Object.keys(previewUrls).forEach(key => {
-        const url = previewUrls[parseInt(key)];
-        if (url && url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
-      setPreviewUrls({});
+      setServerPreviewUrls({});
       
       // Invalidate queries to refresh the list
       await queryClient.invalidateQueries({ queryKey: eventsKey });
@@ -872,12 +879,6 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
       setServerError(msg);
       toast.error(msg);
     }
-  };
-
-  const handleImageChange = (imageNum: 1 | 2 | 3 | 4 | 5, file: File | null) => {
-    const fieldName = `image${imageNum}` as keyof EventFormValues;
-    setValue(fieldName, file);
-    setServerError(null);
   };
 
   return (
@@ -1192,29 +1193,36 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
                 <Controller
                   name={`image${num}` as keyof EventFormValues}
                   control={control}
-                  render={() => (
-                    <>
-                      <input
-                        id={`image${num}`}
-                        type="file"
-                        accept="image/png,image/jpeg,image/jpg"
-                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          handleImageChange(num as 1 | 2 | 3 | 4 | 5, file);
-                        }}
-                      />
-                      {previewUrls[num] && (
-                        <div className="mt-2">
-                          <img
-                            src={previewUrls[num]}
-                            alt={`Preview ${num}`}
-                            className="h-24 w-full rounded-lg object-cover border border-gray-200 dark:border-gray-700"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
+                  render={({ field: { onChange, onBlur, name, ref } }) => {
+                    const previewSrc = filePreviewUrls[num] || serverPreviewUrls[num];
+                    return (
+                      <>
+                        <input
+                          ref={ref}
+                          name={name}
+                          id={`image${num}`}
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg"
+                          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                          onBlur={onBlur}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            onChange(file);
+                            setServerError(null);
+                          }}
+                        />
+                        {previewSrc ? (
+                          <div className="mt-2">
+                            <img
+                              src={previewSrc}
+                              alt={`Preview ${num}`}
+                              className="h-24 w-full rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                            />
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  }}
                 />
                 {errors[`image${num}` as keyof EventFormValues] && (
                   <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">
@@ -1234,10 +1242,31 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
           disabled={isSubmitting}
           onClick={() => {
             reset();
-            Object.keys(previewUrls).forEach(key => URL.revokeObjectURL(previewUrls[parseInt(key)]));
-            setPreviewUrls({});
+            Object.values(filePreviewUrls).forEach((url) => {
+              if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+            });
+            setFilePreviewUrls({});
             setServerMsg(null);
             setServerError(null);
+            if (eventId) {
+              void fetch(`/api/events/${eventId}`)
+                .then(async (res) => {
+                  if (!res.ok) return;
+                  const data = await res.json();
+                  const existingPreviewUrls: Record<number, string> = {};
+                  if (data.images && Array.isArray(data.images)) {
+                    data.images.forEach((img: string, idx: number) => {
+                      if (img) existingPreviewUrls[idx + 1] = uploadsImageUrl(img);
+                    });
+                  }
+                  setServerPreviewUrls(existingPreviewUrls);
+                })
+                .catch(() => {
+                  /* ignore */
+                });
+            } else {
+              setServerPreviewUrls({});
+            }
           }}
           className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
         >

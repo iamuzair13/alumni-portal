@@ -44,16 +44,7 @@ export async function GET(
       currentPath = parentPath;
     }
 
-    const customUploadPath = process.env.UPLOAD_DIR || process.env.IMAGES_UPLOAD_DIR;
-    let uploadsDir: string;
-    
-    if (customUploadPath) {
-      uploadsDir = customUploadPath.startsWith("/") 
-        ? customUploadPath 
-        : join(projectRoot, customUploadPath);
-    } else {
-      uploadsDir = join(projectRoot, "public", "images");
-    }
+    const uploadsDir = join(projectRoot, "public", "images");
 
     const filePath = join(uploadsDir, filename);
     

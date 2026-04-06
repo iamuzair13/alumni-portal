@@ -4,6 +4,11 @@ import { auth } from "@/lib/auth";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import {
+  asImageUploadPart,
+  assertEventImageBlob,
+  extensionForEventImage,
+} from "@/lib/formDataImagePart";
 
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
   try {
@@ -209,12 +214,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       5: existingEvent[0].image5,
     };
 
-    const imageFiles: Record<number, File | null> = {
-      1: (formData.get("image1") as File | null) || null,
-      2: (formData.get("image2") as File | null) || null,
-      3: (formData.get("image3") as File | null) || null,
-      4: (formData.get("image4") as File | null) || null,
-      5: (formData.get("image5") as File | null) || null,
+    const imageFiles: Record<number, (Blob & { name?: string }) | null> = {
+      1: asImageUploadPart(formData.get("image1")),
+      2: asImageUploadPart(formData.get("image2")),
+      3: asImageUploadPart(formData.get("image3")),
+      4: asImageUploadPart(formData.get("image4")),
+      5: asImageUploadPart(formData.get("image5")),
     };
 
     const savedImages: Record<number, string> = {};
@@ -233,22 +238,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       // Process each image
       for (const [num, file] of Object.entries(imageFiles)) {
         const imageNum = parseInt(num);
-        if (file && file instanceof File) {
+        if (file) {
           // New image uploaded - save it
-          const extension = file.name.split(".").pop() || "jpg";
+          assertEventImageBlob(file, `image${imageNum}`);
+          const extension = extensionForEventImage(file);
           const filename = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
           
-          // Validate file
-          const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-          if (!allowedTypes.includes(file.type)) {
-            throw new Error(`Invalid file type for image${imageNum}. Only JPEG and PNG are allowed.`);
-          }
-
-          const maxSize = 5 * 1024 * 1024; // 5MB
-          if (file.size > maxSize) {
-            throw new Error(`Image${imageNum} exceeds 5MB size limit.`);
-          }
-
           // Save new file
           const filePath = join(uploadsDir, filename);
           const bytes = await file.arrayBuffer();

@@ -35,11 +35,6 @@ function resolveUploadsDir(): string {
     currentPath = parentPath;
   }
 
-  const customUploadPath = process.env.UPLOAD_DIR || process.env.IMAGES_UPLOAD_DIR;
-  if (customUploadPath) {
-    return customUploadPath.startsWith("/") ? customUploadPath : join(projectRoot, customUploadPath);
-  }
-
   return join(projectRoot, "public", "images");
 }
 

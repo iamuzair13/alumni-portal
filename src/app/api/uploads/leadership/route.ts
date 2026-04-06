@@ -51,7 +51,7 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
   const baseNoExt = safeOriginal.replace(/\.[^.]+$/, "");
   const filename = `${prefix}-${slot}-${timestamp}-${randomSuffix}-${baseNoExt}${ext}`.slice(0, 180);
 
-  const uploadsDir = join(process.cwd(), "public", "uploads", "leadership");
+  const uploadsDir = join(process.cwd(), "public", "images");
   if (!existsSync(uploadsDir)) {
     await mkdir(uploadsDir, { recursive: true });
   }
@@ -63,7 +63,7 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
 
   return {
     filename,
-    url: `/uploads/leadership/${filename}`,
+    url: `/images/${filename}`,
     size: file.size,
     type: file.type,
   };

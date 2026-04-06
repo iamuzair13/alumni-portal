@@ -4,6 +4,11 @@ import { auth } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import {
+  asImageUploadPart,
+  assertEventImageBlob,
+  extensionForEventImage,
+} from "@/lib/formDataImagePart";
 
 type EventListItem = {
   id: string;
@@ -194,8 +199,8 @@ export async function POST(req: Request) {
     }
 
     // Validate image1 is required
-    const image1File = formData.get("image1") as File | null;
-    if (!image1File || !(image1File instanceof File)) {
+    const image1File = asImageUploadPart(formData.get("image1"));
+    if (!image1File) {
       return NextResponse.json({ error: "Image 1 is required" }, { status: 400 });
     }
 
@@ -204,12 +209,12 @@ export async function POST(req: Request) {
     const randomSuffix = Math.random().toString(36).substring(2, 8);
 
     // Save images first (since image1 is required)
-    const imageFiles: Record<number, File | null> = {
+    const imageFiles: Record<number, (Blob & { name?: string }) | null> = {
       1: image1File,
-      2: (formData.get("image2") as File | null) || null,
-      3: (formData.get("image3") as File | null) || null,
-      4: (formData.get("image4") as File | null) || null,
-      5: (formData.get("image5") as File | null) || null,
+      2: asImageUploadPart(formData.get("image2")),
+      3: asImageUploadPart(formData.get("image3")),
+      4: asImageUploadPart(formData.get("image4")),
+      5: asImageUploadPart(formData.get("image5")),
     };
 
     const savedImages: Record<number, string> = {};
@@ -218,22 +223,11 @@ export async function POST(req: Request) {
       // Save all images first with unique filenames
       for (const [num, file] of Object.entries(imageFiles)) {
         const imageNum = parseInt(num);
-        if (file && file instanceof File) {
-          // Generate unique filename
-          const extension = file.name.split(".").pop() || "jpg";
+        if (file) {
+          assertEventImageBlob(file, `image${imageNum}`);
+          const extension = extensionForEventImage(file);
           const filename = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
           
-          // Validate and save file
-          const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-          if (!allowedTypes.includes(file.type)) {
-            throw new Error(`Invalid file type for image${imageNum}. Only JPEG and PNG are allowed.`);
-          }
-
-          const maxSize = 5 * 1024 * 1024; // 5MB
-          if (file.size > maxSize) {
-            throw new Error(`Image${imageNum} exceeds 5MB size limit.`);
-          }
-
           // Create uploads directory if it doesn't exist
           const uploadsDir = join(process.cwd(), "public", "images");
           if (!existsSync(uploadsDir)) {
