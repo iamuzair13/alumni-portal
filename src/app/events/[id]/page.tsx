@@ -294,6 +294,7 @@ export default function EventDetailPage() {
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, 400px"
                           priority
+                          unoptimized
                           onError={() => markImageBroken(mainImage)}
                         />
                         )}
@@ -351,6 +352,7 @@ export default function EventDetailPage() {
                             fill
                             className="object-cover"
                             sizes="(max-width: 768px) 25vw, 100px"
+                            unoptimized
                             onError={() => markImageBroken(image)}
                           />
                           )}
@@ -396,6 +398,7 @@ export default function EventDetailPage() {
                 className="object-contain"
                 sizes="100vw"
                 priority
+                unoptimized
                 onError={() => markImageBroken(mainImage)}
               />
               )}

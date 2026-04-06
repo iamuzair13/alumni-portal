@@ -9,6 +9,7 @@ import {
   assertEventImageBlob,
   extensionForEventImage,
 } from "@/lib/formDataImagePart";
+import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
 
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
   try {
@@ -80,13 +81,17 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // Collect all images
+    // Collect all images (filenames only; normalize legacy path-stored values)
     const images: string[] = [];
-    if (r.image1) images.push(r.image1);
-    if (r.image2) images.push(r.image2);
-    if (r.image3) images.push(r.image3);
-    if (r.image4) images.push(r.image4);
-    if (r.image5) images.push(r.image5);
+    const pushImg = (v: string | null) => {
+      const n = normalizePublicImageFilename(v);
+      if (n) images.push(n);
+    };
+    pushImg(r.image1);
+    pushImg(r.image2);
+    pushImg(r.image3);
+    pushImg(r.image4);
+    pushImg(r.image5);
 
     const result = {
       id: String(r.id ?? ""),
@@ -257,8 +262,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
             imagesToDelete.push(existingImages[imageNum as keyof typeof existingImages]!);
           }
         } else {
-          // No new image - preserve existing
-          savedImages[imageNum] = existingImages[imageNum as keyof typeof existingImages] || "";
+          // No new image - preserve existing (store basename only)
+          const prev = existingImages[imageNum as keyof typeof existingImages];
+          savedImages[imageNum] = normalizePublicImageFilename(prev) || "";
         }
       }
 
@@ -320,11 +326,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         return NextResponse.json({ error: "Failed to update event" }, { status: 500 });
       }
 
-      // Delete old images that were replaced
+      // Delete old images that were replaced (disk files use basename under public/images)
       for (const oldImage of imagesToDelete) {
-        if (oldImage) {
+        const base = normalizePublicImageFilename(oldImage);
+        if (base) {
           try {
-            await unlink(join(uploadsDir, oldImage));
+            await unlink(join(uploadsDir, base));
           } catch {
             // Ignore deletion errors (file might not exist)
           }

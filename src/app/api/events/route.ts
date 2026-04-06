@@ -9,6 +9,7 @@ import {
   assertEventImageBlob,
   extensionForEventImage,
 } from "@/lib/formDataImagePart";
+import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
 
 type EventListItem = {
   id: string;
@@ -102,7 +103,7 @@ export async function GET() {
       const title = String(r.title ?? "");
       const venue = ""; // not present in schema
       const shortDescription = String(r.shortdescription ?? "");
-      const imageUrl = String(r.image1 ?? "");
+      const imageUrl = normalizePublicImageFilename(r.image1) || "";
       const category = String(r.category ?? "");
       const type = r.type ? String(r.type) : undefined;
       const startTimeUTC = toUtcIso(r.fromdate, r.eventtime);
