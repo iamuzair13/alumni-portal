@@ -5,6 +5,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
 import { canModify, isViewerUser } from "@/lib/alumniProfile";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
 export async function POST(req: Request, ctx: { params: Promise<{ sapid: string }> }) {
   const startTime = Date.now();
@@ -314,7 +315,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ sapid: string 
           END
       WHERE alumniid = ${alumni.alumniid}`;
 
-    const imagePath = `/images/${filename}`;
+    const imagePath = uploadsImageUrl(filename);
     const duration = Date.now() - startTime;
 
 

@@ -6,6 +6,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCurrentUserImage } from "@/app/queries/alumni-profile";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
 export default function UserDropdown() {
   const { data: session, status } = useSession();
@@ -44,14 +45,13 @@ export default function UserDropdown() {
       imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
       imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
       
-      // Normalize image path for Next.js Image component
-      if (imagePath.startsWith("/api/uploads/images/")) {
-        imagePath = `/images/${imagePath.slice("/api/uploads/images/".length)}`;
-      }
-      if (!imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
-        if (!imagePath.includes("/")) {
-          imagePath = `/images/${imagePath}`;
-        } else {
+      // Runtime uploads are served via API (see uploadsImageUrl); plain /images/* may 404 on production.
+      if (!imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
+        if (!imagePath.startsWith("/") && !imagePath.includes("/")) {
+          imagePath = uploadsImageUrl(imagePath);
+        } else if (/^\/images\/[^/]+$/u.test(imagePath)) {
+          imagePath = uploadsImageUrl(imagePath);
+        } else if (!imagePath.startsWith("/")) {
           imagePath = `/${imagePath}`;
         }
       }

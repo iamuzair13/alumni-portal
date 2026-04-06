@@ -12,6 +12,7 @@ import { isViewerUser } from "@/lib/alumniProfile";
 import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import ApprovedLeadershipBadges from "@/components/alumni/ApprovedLeadershipBadges";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
 type LeadershipInfo = {
   type: "chapter" | "association" | null;
@@ -128,13 +129,12 @@ export default function ProfileDetailsClient({ sapId, chapters = [], isVerified 
     let imagePath = rawAvatar.replace(/\/tumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
-    if (imagePath.startsWith("/api/uploads/images/")) {
-      imagePath = `/images/${imagePath.slice("/api/uploads/images/".length)}`;
-    }
-    if (!imagePath.startsWith("/") && !imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
-      if (!imagePath.includes("/")) {
-        imagePath = `/images/${imagePath}`;
-      } else {
+    if (!imagePath.startsWith("http://") && !imagePath.startsWith("https://")) {
+      if (!imagePath.startsWith("/") && !imagePath.includes("/")) {
+        imagePath = uploadsImageUrl(imagePath);
+      } else if (/^\/images\/[^/]+$/u.test(imagePath)) {
+        imagePath = uploadsImageUrl(imagePath);
+      } else if (!imagePath.startsWith("/")) {
         imagePath = `/${imagePath}`;
       }
     }

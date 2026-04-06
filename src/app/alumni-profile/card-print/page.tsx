@@ -9,6 +9,7 @@ import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
 import { computeValidityISOFromAppliedAt } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
 
 const roboto = Roboto({
@@ -90,13 +91,17 @@ function resolveProfileImageUrlForPreload(photoUrl: string | null | undefined, c
   const raw = String(photoUrl ?? "").trim();
   let path: string;
   if (!raw || raw.toLowerCase() === "null" || raw.toLowerCase() === "undefined") {
-    path = "/images/person.jpg";
+    path = uploadsImageUrl("person.jpg");
+  } else if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    path = raw;
   } else if (raw.startsWith("/api/uploads/images/")) {
-    path = `/images/${raw.slice("/api/uploads/images/".length)}`;
-  } else if (raw.startsWith("/") || raw.startsWith("http://") || raw.startsWith("https://")) {
+    path = raw;
+  } else if (/^\/images\/[^/]+$/u.test(raw)) {
+    path = uploadsImageUrl(raw);
+  } else if (raw.startsWith("/")) {
     path = raw;
   } else {
-    path = `/images/${raw}`;
+    path = uploadsImageUrl(raw);
   }
   if (cacheBust && !path.startsWith("data:")) {
     return `${path}${path.includes("?") ? "&" : "?"}t=${cacheBust}`;

@@ -3,6 +3,7 @@
 import { Roboto } from "next/font/google";
 import { useState, useMemo, useEffect } from "react";
 import { formatCardValidityMonthYear } from "@/lib/cardValidity";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -68,14 +69,17 @@ export default function AlumniCardTemplate({
     imagePath = imagePath.replace(/\/tumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/thumbnail\//g, "/");
     imagePath = imagePath.replace(/\/alumni-images\/card\//g, "/");
-    if (imagePath.startsWith("/api/uploads/images/")) {
-      return `/images/${imagePath.slice("/api/uploads/images/".length)}`;
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
     }
-    if (imagePath.startsWith("/") || imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    if (imagePath.startsWith("/api/uploads/images/")) {
       return imagePath;
     }
     if (!imagePath.includes("/")) {
-      return `/images/${imagePath}`;
+      return uploadsImageUrl(imagePath);
+    }
+    if (/^\/images\/[^/]+$/u.test(imagePath)) {
+      return uploadsImageUrl(imagePath);
     }
     return imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
   };

@@ -75,7 +75,7 @@ export async function GET(
       permissions: stats.mode.toString(8),
       readable: true,
       firstBytes: Array.from(fileContent.slice(0, 10)).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' '),
-      expectedUrl: `/images/${filename}`
+      expectedUrl: `/api/uploads/images/${encodeURIComponent(filename)}`
     }, { status: 200 });
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));

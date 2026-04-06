@@ -28,8 +28,14 @@ export function normalizePublicImageFilename(raw: string | null | undefined): st
   return s.trim();
 }
 
+/**
+ * Public URL for files stored under `public/images`.
+ * Uses the API route so uploads work on production (immutable deploys / CDN) where plain `/images/*`
+ * static files only include the build-time `public` folder, not runtime writes.
+ */
 export function uploadsImageUrl(filename: string): string {
   const f = normalizePublicImageFilename(filename);
   if (!f) return "";
-  return `/images/${encodeURIComponent(f)}`;
+  return `/api/uploads/images/${encodeURIComponent(f)}`;
 }
+
