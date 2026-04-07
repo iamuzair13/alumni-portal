@@ -34,6 +34,9 @@ type AlumniCardItem = {
   createdAt: string;
   registrationno?: string | null;
   cardaddress?: string | null;
+  deliveryCity?: string | null;
+  deliveryStreetNo?: string | null;
+  deliveryHouseNo?: string | null;
 };
 
 type ActionKey = "view" | "verify" | "decline" | "suspend" | "delete";
@@ -74,6 +77,9 @@ function convertToAlumniCardItem(applicant: CardApplicant): AlumniCardItem & { d
     createdAt: applicant.createdat || new Date().toISOString(),
     registrationno: rawRegNo || null,
     cardaddress: applicant.cardaddress ?? null,
+    deliveryCity: applicant.delivery_city ?? null,
+    deliveryStreetNo: applicant.delivery_street_no ?? null,
+    deliveryHouseNo: applicant.delivery_house_no ?? null,
   };
 }
 

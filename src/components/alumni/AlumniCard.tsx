@@ -21,6 +21,7 @@ import {
   getStatusLabel,
   normalizeDbStatus 
 } from "@/lib/card-status-config";
+import { formatCardDeliveryAddressLine } from "@/lib/cardDeliveryAddress";
 
 export type AlumniCardItem = {
   id: string;
@@ -174,6 +175,9 @@ export type AlumniListItem = AlumniCardItem & {
   designation?: string;
   workCity?: string;
   cardaddress?: string | null;
+  deliveryCity?: string | null;
+  deliveryStreetNo?: string | null;
+  deliveryHouseNo?: string | null;
 };
 
 export type AlumniCardListProps = {
@@ -384,6 +388,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           department: String(r.departmentname ?? ""),
           registrationno: rawRegNo || null,
           cardaddress: r.cardaddress ?? null,
+          deliveryCity: (r as { delivery_city?: string | null }).delivery_city ?? null,
+          deliveryStreetNo: (r as { delivery_street_no?: string | null }).delivery_street_no ?? null,
+          deliveryHouseNo: (r as { delivery_house_no?: string | null }).delivery_house_no ?? null,
         };
       }) as AlumniListItem[];
     }
@@ -1498,10 +1505,15 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </div>
                     </div>
                   </TableCell>
-                  {/* card delivary address */}
                   <TableCell 
                     isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[220px] hidden lg:table-cell"
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] hidden lg:table-cell"
+                  >
+                    <span>Home Address</span>
+                  </TableCell>
+                  <TableCell 
+                    isHeader 
+                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] hidden lg:table-cell"
                   >
                     <span>Delivery Address</span>
                   </TableCell>
@@ -1578,6 +1590,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         <div className="h-5 w-56 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
                       <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
+                        <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
+                      </TableCell>
+                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
                         <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
                       </TableCell>
                       <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
@@ -1601,7 +1616,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && effectiveError && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={11}>
+                    <TableCell className="px-6 py-16 text-center" colSpan={12}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                           <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1619,7 +1634,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
                   <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={11}>
+                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={12}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                           <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1686,8 +1701,17 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                           </a>
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                          <div className="max-w-[320px] whitespace-normal break-words leading-snug">
+                          <div className="max-w-[280px] whitespace-normal break-words leading-snug">
                             {alum.cardaddress && String(alum.cardaddress).trim() ? String(alum.cardaddress) : "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
+                          <div className="max-w-[280px] whitespace-normal break-words leading-snug">
+                            {formatCardDeliveryAddressLine(
+                              alum.deliveryCity,
+                              alum.deliveryStreetNo,
+                              alum.deliveryHouseNo
+                            ) || "-"}
                           </div>
                         </TableCell>
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
@@ -1718,7 +1742,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </TableRow>
                       {expandedRowId === alum.id && (
                         <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={11} className="px-0 py-6">
+                          <TableCell colSpan={12} className="px-0 py-6">
                             <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
                               <div className="w-full max-w-full overflow-x-hidden flex ">
                                 <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canEdit} />

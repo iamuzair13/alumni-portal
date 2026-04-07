@@ -8,6 +8,9 @@ export type CardData = {
   alumniid: number;
   cnicno: string | null;
   cardaddress: string | null;
+  delivery_city?: string | null;
+  delivery_street_no?: string | null;
+  delivery_house_no?: string | null;
   status: string | null; // Database values: "Pending", "Process", "Active", "Delivered", "Onhold"
   cardpicture: string | null;
   card_image: string | null;

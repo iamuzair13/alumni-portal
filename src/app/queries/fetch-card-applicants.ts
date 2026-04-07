@@ -12,6 +12,9 @@ export type CardApplicant = {
   departmentname: string | null;
   degreetitle: string | null;
   cardaddress: string | null;
+  delivery_city: string | null;
+  delivery_street_no: string | null;
+  delivery_house_no: string | null;
   status: string | null;
   createdat: string | null;
 };

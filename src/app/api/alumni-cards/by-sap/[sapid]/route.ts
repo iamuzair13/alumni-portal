@@ -21,7 +21,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
 
     // Fetch card data (by SAP ID or registration number)
     const rows = await sql/* sql */`
-      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold, c.validity_date,
+      SELECT c.cardid, c.alumniid, c.cnicno, c.cardaddress, c.delivery_city, c.delivery_street_no, c.delivery_house_no, c.status, c.cardpicture, c.card_image, c.createdat, c.reason_onhold, c.validity_date,
              a.sapid, a.personalemail, a.officialemail, a.universityemail,
              a.image1 AS alumni_image1, a.image2 AS alumni_image2
       FROM public.tblcard c
@@ -53,6 +53,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
           alumniid: r.alumniid,
           cnicno: r.cnicno,
           cardaddress: r.cardaddress,
+          delivery_city: (r as { delivery_city?: unknown }).delivery_city ?? null,
+          delivery_street_no: (r as { delivery_street_no?: unknown }).delivery_street_no ?? null,
+          delivery_house_no: (r as { delivery_house_no?: unknown }).delivery_house_no ?? null,
           status: r.status,
           cardpicture: r.cardpicture,
           card_image: r.card_image,

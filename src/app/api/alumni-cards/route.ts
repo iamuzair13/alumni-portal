@@ -101,6 +101,16 @@ export async function POST(req: Request) {
       }
       const cnicno = String(body?.cnicno || "");
       const cardaddress = String(body?.cardaddress || "");
+      const isCollectJson = !cardaddress || cardaddress === "Collect from Campus";
+      const deliveryCityJson = isCollectJson
+        ? null
+        : String((body as { delivery_city?: unknown })?.delivery_city ?? "").trim() || null;
+      const deliveryStreetNoJson = isCollectJson
+        ? null
+        : String((body as { delivery_street_no?: unknown })?.delivery_street_no ?? "").trim() || null;
+      const deliveryHouseNoJson = isCollectJson
+        ? null
+        : String((body as { delivery_house_no?: unknown })?.delivery_house_no ?? "").trim() || null;
       const cardpicture = String(body?.cardpicture || "profile").slice(0, 50);
       const validityDateStr = body?.validity_date ? String(body.validity_date) : null;
       // Calculate validity date (3 years from application date) if not provided
@@ -127,10 +137,19 @@ export async function POST(req: Request) {
       if (status === "Deliver" && (!cardaddress || cardaddress.trim().length < 10)) {
         return NextResponse.json({ error: "Address is required and must be at least 10 characters when delivery is selected" }, { status: 400 });
       }
+      if (
+        !isCollectJson &&
+        (!deliveryCityJson || !deliveryStreetNoJson || !deliveryHouseNoJson)
+      ) {
+        return NextResponse.json(
+          { error: "City, street number, and house number are required when delivery to address is selected" },
+          { status: 400 }
+        );
+      }
 
       const rows = await sql/* sql */`
-        INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat, validity_date)
-        VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW(), ${validityDate})
+        INSERT INTO public.tblcard (alumniid, cnicno, cardaddress, status, cardpicture, card_image, createdat, validity_date, delivery_city, delivery_street_no, delivery_house_no)
+        VALUES (${alumniId}, ${cnicno}, ${cardaddress}, ${status}, ${cardpicture}, ${cardpicture}, NOW(), ${validityDate}, ${deliveryCityJson}, ${deliveryStreetNoJson}, ${deliveryHouseNoJson})
         ON CONFLICT (alumniid) DO UPDATE
         SET cnicno = EXCLUDED.cnicno,
             cardaddress = EXCLUDED.cardaddress,
@@ -138,7 +157,10 @@ export async function POST(req: Request) {
             cardpicture = EXCLUDED.cardpicture,
             card_image = EXCLUDED.card_image,
             createdat = public.tblcard.createdat,
-            validity_date = EXCLUDED.validity_date
+            validity_date = EXCLUDED.validity_date,
+            delivery_city = EXCLUDED.delivery_city,
+            delivery_street_no = EXCLUDED.delivery_street_no,
+            delivery_house_no = EXCLUDED.delivery_house_no
         RETURNING cardid`;
 
       await sql/* sql */`
@@ -233,7 +255,32 @@ export async function POST(req: Request) {
     const image = formData.get("image");
     const comment = String(formData.get("comment") || "").trim() || null;
     const cardaddress = String(formData.get("cardaddress") || "").trim() || null;
+    const isCollect = !cardaddress || cardaddress === "Collect from Campus";
+    const deliveryCity = isCollect
+      ? null
+      : String(formData.get("delivery_city") || "").trim() || null;
+    const deliveryStreetNo = isCollect
+      ? null
+      : String(formData.get("delivery_street_no") || "").trim() || null;
+    const deliveryHouseNo = isCollect
+      ? null
+      : String(formData.get("delivery_house_no") || "").trim() || null;
     const validityDateStr = formData.get("validity_date") ? String(formData.get("validity_date")) : null;
+
+    if (!isCollect) {
+      if (!cardaddress || cardaddress.length < 10) {
+        return NextResponse.json(
+          { error: "Home address is required and must be at least 10 characters when delivery is selected" },
+          { status: 400 }
+        );
+      }
+      if (!deliveryCity || !deliveryStreetNo || !deliveryHouseNo) {
+        return NextResponse.json(
+          { error: "City, street number, and house number are required when delivery to your address is selected" },
+          { status: 400 }
+        );
+      }
+    }
     
     // Calculate validity date (3 years from application date) if not provided
     let validityDate: string | null = validityDateStr;
@@ -264,8 +311,8 @@ export async function POST(req: Request) {
 
     // When updating card image, if status is "Onhold", automatically change to "UnderReview"
     const rows = await sql/* sql */`
-      INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date)
-      VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate})
+      INSERT INTO public.tblcard (alumniid, status, cardpicture, card_image, createdat, comment, cardaddress, validity_date, delivery_city, delivery_street_no, delivery_house_no)
+      VALUES (${alumniId}, ${status}, ${storedFilename}, ${storedFilename}, NOW(), ${comment}, ${cardaddress}, ${validityDate}, ${deliveryCity}, ${deliveryStreetNo}, ${deliveryHouseNo})
       ON CONFLICT (alumniid) DO UPDATE
       SET status = public.tblcard.status,
           cardpicture = EXCLUDED.cardpicture,
@@ -273,7 +320,10 @@ export async function POST(req: Request) {
           createdat = NOW(),
           comment = EXCLUDED.comment,
           cardaddress = EXCLUDED.cardaddress,
-          validity_date = EXCLUDED.validity_date
+          validity_date = EXCLUDED.validity_date,
+          delivery_city = EXCLUDED.delivery_city,
+          delivery_street_no = EXCLUDED.delivery_street_no,
+          delivery_house_no = EXCLUDED.delivery_house_no
       RETURNING cardid`;
 
     await sql/* sql */`

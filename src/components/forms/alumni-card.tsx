@@ -26,16 +26,30 @@ const schema = z.object({
   addressPreference: z.enum(["Collect", "Deliver"], {
     message: "Please select an address preference",
   }),
-  address: z.string().optional(),
+  homeAddress: z.string().optional(),
+  deliveryCity: z.string().optional(),
+  deliveryStreetNo: z.string().optional(),
+  deliveryHouseNo: z.string().optional(),
 }).refine((data) => {
-  // Address is required only when preference is "Deliver"
   if (data.addressPreference === "Deliver") {
-    return data.address && data.address.trim().length >= 10;
+    return Boolean(data.homeAddress && data.homeAddress.trim().length >= 10);
   }
   return true;
 }, {
-  message: "Address is required and must be at least 10 characters when delivery is selected",
-  path: ["address"],
+  message: "Home address is required and must be at least 10 characters when delivery is selected",
+  path: ["homeAddress"],
+}).refine((data) => {
+  if (data.addressPreference === "Deliver") {
+    return (
+      Boolean(String(data.deliveryCity ?? "").trim()) &&
+      Boolean(String(data.deliveryStreetNo ?? "").trim()) &&
+      Boolean(String(data.deliveryHouseNo ?? "").trim())
+    );
+  }
+  return true;
+}, {
+  message: "City, street number, and house number are required when delivery is selected",
+  path: ["deliveryCity"],
 });
 
 type FormVals = z.infer<typeof schema>;
@@ -107,7 +121,15 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   const [fetchedCnicPassport, setFetchedCnicPassport] = useState<string>("");
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue, watch } = useForm<FormVals>({
     resolver: zodResolver(schema),
-    defaultValues: { confirmation: false, comment: "", addressPreference: "Collect", address: "" },
+    defaultValues: {
+      confirmation: false,
+      comment: "",
+      addressPreference: "Collect",
+      homeAddress: "",
+      deliveryCity: "",
+      deliveryStreetNo: "",
+      deliveryHouseNo: "",
+    },
     mode: "onChange",
   });
 
@@ -146,22 +168,25 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
     }
   }, [alumniDetailsQuery.data]);
 
-  // Auto-populate address when preference changes to "Deliver"
+  // Auto-populate home address when preference changes to "Deliver"
   useEffect(() => {
     if (addressPreference !== "Deliver") return;
-    const currentAddress = watch("address");
-    if (currentAddress && currentAddress.trim() !== "") return;
+    const current = watch("homeAddress");
+    if (current && current.trim() !== "") return;
     const alumni = (alumniDetailsQuery.data as any)?.item;
     if (alumni?.address && String(alumni.address).trim()) {
-      setValue("address", String(alumni.address).trim());
+      setValue("homeAddress", String(alumni.address).trim());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressPreference, alumniDetailsQuery.data, sapId, setValue]);
 
-  // Clear address when preference changes to "Collect"
+  // Clear address fields when preference changes to "Collect"
   React.useEffect(() => {
     if (addressPreference === "Collect") {
-      setValue("address", "");
+      setValue("homeAddress", "");
+      setValue("deliveryCity", "");
+      setValue("deliveryStreetNo", "");
+      setValue("deliveryHouseNo", "");
     }
   }, [addressPreference, setValue]);
 
@@ -189,9 +214,12 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       if (vals.comment) {
         formData.append("comment", vals.comment);
       }
-      // Save address preference: if "Deliver" is selected, save the address, otherwise save "Collect from Campus"
-      if (vals.addressPreference === "Deliver" && vals.address) {
-        formData.append("cardaddress", vals.address);
+      // cardaddress = home address; structured delivery when mailing to address
+      if (vals.addressPreference === "Deliver" && vals.homeAddress) {
+        formData.append("cardaddress", vals.homeAddress.trim());
+        formData.append("delivery_city", String(vals.deliveryCity ?? "").trim());
+        formData.append("delivery_street_no", String(vals.deliveryStreetNo ?? "").trim());
+        formData.append("delivery_house_no", String(vals.deliveryHouseNo ?? "").trim());
       } else {
         formData.append("cardaddress", "Collect from Campus");
       }
@@ -237,7 +265,10 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setValue("confirmation", false);
       setValue("comment", "");
       setValue("addressPreference", "Collect");
-      setValue("address", "");
+      setValue("homeAddress", "");
+      setValue("deliveryCity", "");
+      setValue("deliveryStreetNo", "");
+      setValue("deliveryHouseNo", "");
       
       // Navigate back to profile page
       setTimeout(() => {
@@ -364,23 +395,62 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       </div>
 
       {addressPreference === "Deliver" && (
-        <div>
-          <label className={labelBase} htmlFor="address">
-            Delivery Address
-            <span className="text-red-600 ml-1">*</span>
-          </label>
-          <p className="text-xs text-blue-700 mb-2">Please make sure that provided address is correct for delivery at this address.</p>
-          <div className="relative flex items-center mt-4">
-            <textarea
-              id="address"
-              {...register("address")}
-              className={inputBase}
-              rows={3}
-              placeholder="Enter your complete delivery address..."
-              aria-label="Delivery address"
-            />
+        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+          
+          <div>
+            <div className={labelBase}>Delivery Address</div>
+            <p className="text-xs text-gray-600 mb-2">Where the physical card should be sent (house, street, city).</p>
+           
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryCity">
+                  City<span className="text-red-600 ml-0.5">*</span>
+                </label>
+                <input
+                  id="deliveryCity"
+                  type="text"
+                  {...register("deliveryCity")}
+                  className={`${inputBase} mt-1`}
+                  placeholder="City"
+                  aria-label="Delivery city"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryStreetNo">
+                  Street No.<span className="text-red-600 ml-0.5">*</span>
+                </label>
+                <input
+                  id="deliveryStreetNo"
+                  type="text"
+                  {...register("deliveryStreetNo")}
+                  className={`${inputBase} mt-1`}
+                  placeholder="Street number"
+                  aria-label="Street number"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-slate-800 block mt-2 sm:mt-0" htmlFor="deliveryHouseNo">
+                  House Number<span className="text-red-600 ml-0.5">*</span>
+                </label>
+                <input
+                  id="deliveryHouseNo"
+                  type="text"
+                  {...register("deliveryHouseNo")}
+                  className={`${inputBase} mt-1`}
+                  placeholder="House number"
+                  aria-label="House number"
+                />
+              </div>
+            </div>
+            {(errors.deliveryCity || errors.deliveryStreetNo || errors.deliveryHouseNo) && (
+              <p className="text-xs text-red-600 mt-1">
+                {errors.deliveryCity?.message ||
+                  errors.deliveryStreetNo?.message ||
+                  errors.deliveryHouseNo?.message ||
+                  "City, street number, and house number are required."}
+              </p>
+            )}
           </div>
-          {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address.message}</p>}
         </div>
       )}
 
