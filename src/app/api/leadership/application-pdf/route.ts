@@ -4,6 +4,7 @@ import { canModify, isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { sql } from "@/lib/dbconnect";
 import { generateLeadershipApplicationPDF } from "@/lib/pdfGenerator";
+import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
 
 function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
   const s = String(position || "").toLowerCase();
@@ -292,10 +293,16 @@ export async function GET(req: NextRequest) {
       updatedAt: item.updated_at ? String(item.updated_at) : null,
       rejectionReason: item.rejection_reason ? String(item.rejection_reason) : null,
       uploadedDocuments: [
-        item.cv_file_url ? { label: "CV", url: String(item.cv_file_url) } : null,
-        item.additional_file1_url ? { label: "Supporting Document 1", url: String(item.additional_file1_url) } : null,
-        item.additional_file2_url ? { label: "Supporting Document 2", url: String(item.additional_file2_url) } : null,
-      ].filter(Boolean) as Array<{ label: string; url: string }>,
+        item.cv_file_url
+          ? { label: "CV", url: publicUploadsUrlFromStored(String(item.cv_file_url)) ?? "" }
+          : null,
+        item.additional_file1_url
+          ? { label: "Supporting Document 1", url: publicUploadsUrlFromStored(String(item.additional_file1_url)) ?? "" }
+          : null,
+        item.additional_file2_url
+          ? { label: "Supporting Document 2", url: publicUploadsUrlFromStored(String(item.additional_file2_url)) ?? "" }
+          : null,
+      ].filter((d): d is { label: string; url: string } => Boolean(d?.url)),
       criteria: (criteriaRows || []).map((c: Record<string, unknown>) => ({
         id: Number(c.id ?? 0),
         label: String(c.label ?? ""),

@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isSuperAdminUser, isAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
 
 // Get all pending leadership applications
 export async function GET(req: NextRequest) {
@@ -247,9 +248,9 @@ export async function GET(req: NextRequest) {
           categoryType: chapterCategoryType,
           categoryName: chapterCategoryName,
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
-          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
-          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
-          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
+          cvFileUrl: publicUploadsUrlFromStored(r.cv_file_url ? String(r.cv_file_url) : null),
+          additionalFile1Url: publicUploadsUrlFromStored(r.additional_file1_url ? String(r.additional_file1_url) : null),
+          additionalFile2Url: publicUploadsUrlFromStored(r.additional_file2_url ? String(r.additional_file2_url) : null),
           createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : new Date().toISOString(),
           obtainedMarksTotal: (() => {
             const v = r.total_obtained_marks;
@@ -337,9 +338,9 @@ export async function GET(req: NextRequest) {
           categoryType: "association",
           categoryName: assocName,
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
-          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
-          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
-          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
+          cvFileUrl: publicUploadsUrlFromStored(r.cv_file_url ? String(r.cv_file_url) : null),
+          additionalFile1Url: publicUploadsUrlFromStored(r.additional_file1_url ? String(r.additional_file1_url) : null),
+          additionalFile2Url: publicUploadsUrlFromStored(r.additional_file2_url ? String(r.additional_file2_url) : null),
           createdAt: r.createddatetime ? new Date(r.createddatetime as string).toISOString() : new Date().toISOString(),
           obtainedMarksTotal: (() => {
             const v = r.total_obtained_marks;

@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join, extname } from "path";
 import { existsSync } from "fs";
 import { auth } from "@/lib/auth";
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -63,7 +64,7 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
 
   return {
     filename,
-    url: `/images/${filename}`,
+    url: uploadsImageUrl(filename),
     size: file.size,
     type: file.type,
   };

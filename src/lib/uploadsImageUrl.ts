@@ -39,3 +39,11 @@ export function uploadsImageUrl(filename: string): string {
   return `/api/uploads/images/${encodeURIComponent(f)}`;
 }
 
+/** Public URL for a stored value (e.g. `/images/<file>` from the DB). Returns null if empty. */
+export function publicUploadsUrlFromStored(raw: string | null | undefined): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const url = uploadsImageUrl(s);
+  return url || null;
+}
+

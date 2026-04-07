@@ -9,6 +9,11 @@ function contentTypeFromFilename(filename: string): string {
   if (ext === ".png") return "image/png";
   if (ext === ".gif") return "image/gif";
   if (ext === ".webp") return "image/webp";
+  if (ext === ".pdf") return "application/pdf";
+  if (ext === ".docx") {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (ext === ".doc") return "application/msword";
   return "application/octet-stream";
 }
 

@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
 
 function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
   const s = String(position || "").toLowerCase();
@@ -239,9 +240,9 @@ export async function GET(req: NextRequest) {
             program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
             position,
             status: r.status ? String(r.status) : "pending",
-            cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
-            additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
-            additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
+            cvFileUrl: publicUploadsUrlFromStored(r.cv_file_url ? String(r.cv_file_url) : null),
+            additionalFile1Url: publicUploadsUrlFromStored(r.additional_file1_url ? String(r.additional_file1_url) : null),
+            additionalFile2Url: publicUploadsUrlFromStored(r.additional_file2_url ? String(r.additional_file2_url) : null),
             additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
             planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
             roleDescription,
@@ -449,9 +450,9 @@ export async function GET(req: NextRequest) {
           program: r.program_name ? String(r.program_name) : (r.degreetitle ? String(r.degreetitle) : null),
           position,
           status: r.status ? String(r.status) : "pending",
-          cvFileUrl: r.cv_file_url ? String(r.cv_file_url) : null,
-          additionalFile1Url: r.additional_file1_url ? String(r.additional_file1_url) : null,
-          additionalFile2Url: r.additional_file2_url ? String(r.additional_file2_url) : null,
+          cvFileUrl: publicUploadsUrlFromStored(r.cv_file_url ? String(r.cv_file_url) : null),
+          additionalFile1Url: publicUploadsUrlFromStored(r.additional_file1_url ? String(r.additional_file1_url) : null),
+          additionalFile2Url: publicUploadsUrlFromStored(r.additional_file2_url ? String(r.additional_file2_url) : null),
           additionalAchievements: r.additional_achievements ? String(r.additional_achievements) : null,
           planStrategy: r.plan_strategy ? String(r.plan_strategy) : null,
           roleDescription,
