@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { writeFile, mkdir } from "fs/promises";
+import { join, extname } from "path";
+import { existsSync } from "fs";
 
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
@@ -21,6 +24,67 @@ type Payload = {
   fatherCnic?: string | null;
 };
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+]);
+
+function sanitizeFilename(name: string): string {
+  const base = String(name || "file")
+    .replace(/\\/g, "_")
+    .replace(/\//g, "_")
+    .replace(/\.+/g, ".")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  return base.length > 120 ? base.slice(-120) : base;
+}
+
+function safeExt(file: File): string {
+  const byName = extname(file.name || "").toLowerCase();
+  if (byName === ".pdf") return ".pdf";
+  if (file.type === "application/pdf") return ".pdf";
+  return "";
+}
+
+async function saveFileToUploads(opts: { file: File; prefix: string; slot: string }) {
+  const { file, prefix, slot } = opts;
+
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    throw new Error("Unsupported file type. Only PDF is allowed.");
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("File size exceeds 5MB limit");
+  }
+
+  const timestamp = Date.now();
+  const randomSuffix = Math.random().toString(36).slice(2, 9);
+  const ext = safeExt(file);
+  if (!ext) throw new Error("Unsupported file extension");
+
+  const safeOriginal = sanitizeFilename(file.name);
+  const baseNoExt = safeOriginal.replace(/\.[^.]+$/, "");
+  const filename = `${prefix}-${slot}-${timestamp}-${randomSuffix}-${baseNoExt}${ext}`.slice(0, 180);
+
+  const uploadsDir = join(process.cwd(), "public", "images");
+  if (!existsSync(uploadsDir)) {
+    await mkdir(uploadsDir, { recursive: true });
+  }
+
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const filePath = join(uploadsDir, filename);
+  await writeFile(filePath, buffer);
+
+  return {
+    filename,
+    // Store a public path under /images since runtime files are written to public/images
+    url: `/images/${encodeURIComponent(filename)}`,
+    size: file.size,
+    type: file.type,
+  };
+}
+
 export async function POST(
   req: NextRequest,
   ctx: { params: Promise<{ sapid: string }> }
@@ -37,10 +101,81 @@ export async function POST(
       return NextResponse.json({ error: "Invalid SAP ID" }, { status: 400 });
     }
 
-    const payload = (await req.json()) as Payload;
-    const discountType = String(payload.discountType || "").trim();
-    const applyingFor = String(payload.applyingFor || "").trim();
-    const degreeTitle = String(payload.degreeTitle || "").trim();
+    const contentType = req.headers.get("content-type") || "";
+    const isMultipart = contentType.includes("multipart/form-data");
+
+    let payload: Payload = {};
+    let discountType = "";
+    let applyingFor = "";
+    let degreeTitle = "";
+
+    let mastersDetails: Record<string, unknown> | null = null;
+    let uploadedDocuments: Array<{ label: string; url: string; filename: string; type: string; size: number }> | null =
+      null;
+
+    if (isMultipart) {
+      const formData = await req.formData();
+      discountType = String(formData.get("discountType") || "").trim();
+      applyingFor = String(formData.get("applyingFor") || "").trim();
+      degreeTitle = String(formData.get("degreeTitle") || "").trim();
+
+      if (discountType === "masters-phd") {
+        const admissionFacultyId = String(formData.get("admissionFacultyId") || "").trim();
+        const admissionDepartmentId = String(formData.get("admissionDepartmentId") || "").trim();
+        const admissionProgramId = String(formData.get("admissionProgramId") || "").trim();
+        const admissionCampus = String(formData.get("admissionCampus") || "").trim();
+        const admissionSession = String(formData.get("admissionSession") || "").trim();
+        const admissionStatus = String(formData.get("admissionStatus") || "").trim();
+        const declarationAccepted = String(formData.get("declarationAccepted") || "").trim();
+
+        mastersDetails = {
+          admissionFacultyId,
+          admissionDepartmentId,
+          admissionProgramId,
+          admissionCampus,
+          admissionSession,
+          admissionStatus,
+          declarationAccepted: declarationAccepted === "true",
+        };
+
+        const requiredFiles: Array<{ key: string; label: string; slot: string }> = [
+          { key: "docAdmissionLetter", label: "Copy of Admission Letter (PhD – UOL)", slot: "admission-letter" },
+          { key: "docTranscripts", label: "Academic Transcripts and Certificates", slot: "transcripts" },
+          { key: "docAlumniProof", label: "Alumni Proof (Degree / Transcript)", slot: "alumni-proof" },
+          { key: "docCv", label: "Curriculum Vitae (CV)", slot: "cv" },
+          { key: "docCnic", label: "CNIC Copy", slot: "cnic" },
+        ];
+
+        const prefix = `scholarship-${normalizedSapid}`;
+        const uploaded: Array<{ label: string; url: string; filename: string; type: string; size: number }> = [];
+
+        for (const rf of requiredFiles) {
+          const f = formData.get(rf.key) as File | null;
+          if (!f || f.size <= 0) {
+            return NextResponse.json({ error: `${rf.label} file is required` }, { status: 400 });
+          }
+          const saved = await saveFileToUploads({ file: f, prefix, slot: rf.slot });
+          uploaded.push({ label: rf.label, url: saved.url, filename: saved.filename, type: saved.type, size: saved.size });
+        }
+
+        const otherFile = formData.get("docOther") as File | null;
+        const otherText = String(formData.get("docOtherText") || "").trim();
+        if (otherFile && otherFile.size > 0) {
+          if (!otherText) {
+            return NextResponse.json({ error: "Other document description is required" }, { status: 400 });
+          }
+          const saved = await saveFileToUploads({ file: otherFile, prefix, slot: "other" });
+          uploaded.push({ label: `Other: ${otherText}`, url: saved.url, filename: saved.filename, type: saved.type, size: saved.size });
+        }
+
+        uploadedDocuments = uploaded;
+      }
+    } else {
+      payload = (await req.json()) as Payload;
+      discountType = String(payload.discountType || "").trim();
+      applyingFor = String(payload.applyingFor || "").trim();
+      degreeTitle = String(payload.degreeTitle || "").trim();
+    }
 
     if (!discountType || !applyingFor || !degreeTitle) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -126,8 +261,11 @@ export async function POST(
         kinship_firstname,
         kinship_lastname,
         kinship_cnic,
+        discount_type,
         apply_for,
         degree_title,
+        masters_details,
+        uploaded_documents,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -135,10 +273,25 @@ export async function POST(
         ${kinshipFirstName},
         ${kinshipLastName},
         ${kinshipCnic},
+        ${discountType},
         ${applyingFor},
         ${degreeTitle},
+        ${mastersDetails ? JSON.stringify(mastersDetails) : null},
+        ${uploadedDocuments ? JSON.stringify(uploadedDocuments) : null},
         'pending'
       )
+      ON CONFLICT (id) DO UPDATE SET
+        created_at = EXCLUDED.created_at,
+        kinship_firstname = EXCLUDED.kinship_firstname,
+        kinship_lastname = EXCLUDED.kinship_lastname,
+        kinship_cnic = EXCLUDED.kinship_cnic,
+        discount_type = EXCLUDED.discount_type,
+        apply_for = EXCLUDED.apply_for,
+        degree_title = EXCLUDED.degree_title,
+        masters_details = EXCLUDED.masters_details,
+        uploaded_documents = EXCLUDED.uploaded_documents,
+        status = 'pending',
+        reason = NULL
     `;
 
     const alumniName = String(alumni.alumniname || "Alumni").trim() || "Alumni";

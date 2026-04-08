@@ -31,7 +31,7 @@ function ScholarshipApplicationContent() {
   }, [sapId]);
   
   const { data, isLoading } = useAlumniFullDetails(sapId || undefined);
-  
+
   const [formData, setFormData] = useState({
     discountType: "",
     applyingFor: "",
@@ -42,6 +42,149 @@ function ScholarshipApplicationContent() {
     kinshipCnic: "",
     fatherCnic: "",
   });
+
+  // Masters/PhD Discount specific state
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgError, setOrgError] = useState<string | null>(null);
+  const [faculties, setFaculties] = useState<Array<{ id: number; name: string }>>([]);
+  const [departments, setDepartments] = useState<
+    Array<{ id: number; name: string; facultyId: number }>
+  >([]);
+  const [programs, setPrograms] = useState<
+    Array<{ id: number; name: string; departmentId: number }>
+  >([]);
+
+  // Admission details (new admission)
+  const [admissionFacultyId, setAdmissionFacultyId] = useState<number | "">("");
+  const [admissionDepartmentId, setAdmissionDepartmentId] = useState<number | "">("");
+  const [admissionProgramId, setAdmissionProgramId] = useState<number | "">("");
+  const [admissionCampus, setAdmissionCampus] = useState("");
+  const [admissionSession, setAdmissionSession] = useState("");
+  const [admissionStatus, setAdmissionStatus] = useState<"confirmed" | "pending" | "">("");
+
+  // Attached documents (file uploads)
+  const [docAdmissionLetterFile, setDocAdmissionLetterFile] = useState<File | null>(null);
+  const [docTranscriptsFile, setDocTranscriptsFile] = useState<File | null>(null);
+  const [docAlumniProofFile, setDocAlumniProofFile] = useState<File | null>(null);
+  const [docCvFile, setDocCvFile] = useState<File | null>(null);
+  const [docCnicFile, setDocCnicFile] = useState<File | null>(null);
+  const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
+  const [docOtherText, setDocOtherText] = useState("");
+
+  // Declaration
+  const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
+
+  // Load organization datasets only when needed (Masters/PhD Discount)
+  useEffect(() => {
+    if (formData.discountType !== "masters-phd") {
+      return;
+    }
+    if (faculties.length > 0 || orgLoading) {
+      return;
+    }
+
+    let cancelled = false;
+    async function loadOrg() {
+      setOrgLoading(true);
+      setOrgError(null);
+      try {
+        const res = await fetch("/api/public/org-datasets", {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Failed to load faculties/departments/programs (${res.status})`);
+        }
+        const j = (await res.json()) as {
+          faculties?: Array<{ id: number; faculty_name?: string }>;
+          departments?: Array<{ id: number; department_name?: string; faculty_id: number }>;
+          programs?: Array<{ id: number; program_name?: string; department_id: number }>;
+        };
+        if (cancelled) return;
+
+        const mappedFaculties =
+          j.faculties?.map((f) => ({
+            id: Number(f.id),
+            name: String((f as any).faculty_name ?? "").trim(),
+          })) ?? [];
+        const mappedDepartments =
+          j.departments?.map((d) => ({
+            id: Number(d.id),
+            name: String((d as any).department_name ?? "").trim(),
+            facultyId: Number((d as any).faculty_id),
+          })) ?? [];
+        const mappedPrograms =
+          j.programs?.map((p) => ({
+            id: Number(p.id),
+            name: String((p as any).program_name ?? "").trim(),
+            departmentId: Number((p as any).department_id),
+          })) ?? [];
+
+        setFaculties(
+          mappedFaculties.filter(
+            (f) => Number.isFinite(f.id) && f.id > 0 && f.name.length > 0,
+          ),
+        );
+        setDepartments(
+          mappedDepartments.filter(
+            (d) =>
+              Number.isFinite(d.id) &&
+              d.id > 0 &&
+              d.name.length > 0 &&
+              Number.isFinite(d.facultyId) &&
+              d.facultyId > 0,
+          ),
+        );
+        setPrograms(
+          mappedPrograms.filter(
+            (p) =>
+              Number.isFinite(p.id) &&
+              p.id > 0 &&
+              p.name.length > 0 &&
+              Number.isFinite(p.departmentId) &&
+              p.departmentId > 0,
+          ),
+        );
+
+      } catch (err) {
+        if (cancelled) return;
+        const msg =
+          err instanceof Error ? err.message : "Failed to load faculties/departments/programs";
+        setOrgError(msg);
+      } finally {
+        if (!cancelled) {
+          setOrgLoading(false);
+        }
+      }
+    }
+
+    loadOrg();
+    return () => {
+      cancelled = true;
+    };
+    // We intentionally exclude dependencies to avoid reloading unnecessarily
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.discountType]);
+
+  const admissionDepartmentsForFaculty =
+    typeof admissionFacultyId === "number"
+      ? departments.filter((d) => d.facultyId === admissionFacultyId)
+      : [];
+
+  const admissionProgramsForDepartment =
+    typeof admissionDepartmentId === "number"
+      ? programs.filter((p) => p.departmentId === admissionDepartmentId)
+      : [];
+
+  const currentYear = new Date().getFullYear();
+  const sessionOptions = Array.from({ length: 6 }).map((_, idx) =>
+    String(currentYear + idx),
+  );
+
+  const missing = (v: unknown): string => {
+    const s = String(v ?? "").trim();
+    return s ? s : "Data is missing";
+  };
 
   // Initialize fatherCnic when data loads
   useEffect(() => {
@@ -82,8 +225,108 @@ function ScholarshipApplicationContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.discountType || !formData.applyingFor || !formData.degreeTitle) {
-      toast.error("Please fill in all required fields", {
+    if (!formData.discountType || !formData.applyingFor) {
+      toast.error(
+        !formData.discountType
+          ? "Please select a discount type."
+          : "Please select “Applying For” (Masters/PhD) at the top of the form.",
+        {
+        duration: 4000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          padding: '12px',
+          borderRadius: '8px',
+        },
+        }
+      );
+      return;
+    }
+
+    // Additional validation for Masters/PhD Discount
+    if (formData.discountType === "masters-phd") {
+      // Ensure org data is ready
+      if (orgLoading || faculties.length === 0) {
+        toast.error("Please wait while options are loading. Try again in a moment.", {
+          duration: 4000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+          },
+        });
+        return;
+      }
+
+      if (
+        !admissionFacultyId ||
+        !admissionDepartmentId ||
+        !admissionProgramId ||
+        !admissionCampus ||
+        !admissionSession ||
+        !admissionStatus
+      ) {
+        toast.error("Please complete all Masters/PhD Discount sections before submitting.", {
+          duration: 5000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+          },
+        });
+        return;
+      }
+
+      if (
+        !docAdmissionLetterFile ||
+        !docTranscriptsFile ||
+        !docAlumniProofFile ||
+        !docCvFile ||
+        !docCnicFile
+      ) {
+        toast.error("Please upload all required documents before submitting.", {
+          duration: 5000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+          },
+        });
+        return;
+      }
+
+      if (docOtherFile && !docOtherText.trim()) {
+        toast.error("Please specify 'Other' document name/description.", {
+          duration: 4000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+          },
+        });
+        return;
+      }
+
+      if (!mastersDeclarationAccepted) {
+        toast.error("You must accept the declaration to proceed.", {
+          duration: 4000,
+          style: {
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+          },
+        });
+        return;
+      }
+    }
+
+    if (formData.discountType === "kinship" && (!formData.kinshipRelation || !formData.kinshipFirstName || !formData.kinshipLastName || !formData.kinshipCnic)) {
+      toast.error("Please provide all kinship details (relation, first name, last name, and CNIC)", {
         duration: 4000,
         style: {
           background: '#fee2e2',
@@ -95,14 +338,23 @@ function ScholarshipApplicationContent() {
       return;
     }
 
-    if (formData.discountType === "kinship" && (!formData.kinshipRelation || !formData.kinshipFirstName || !formData.kinshipLastName || !formData.kinshipCnic)) {
-      toast.error("Please provide all kinship details (relation, first name, last name, and CNIC)", {
+    // Compute degree title for Masters/PhD Discount from selected admission program
+    let degreeTitleToSend = (formData.degreeTitle || "").trim();
+    if (formData.discountType === "masters-phd") {
+      const selectedProgram = programs.find(
+        (p) => typeof admissionProgramId === "number" && p.id === admissionProgramId,
+      );
+      if (selectedProgram) {
+        degreeTitleToSend = selectedProgram.name;
+      }
+    } else if (!degreeTitleToSend) {
+      toast.error("Degree title is required.", {
         duration: 4000,
         style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          padding: '12px',
-          borderRadius: '8px',
+          background: "#fee2e2",
+          color: "#991b1b",
+          padding: "12px",
+          borderRadius: "8px",
         },
       });
       return;
@@ -123,20 +375,49 @@ function ScholarshipApplicationContent() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/alumni/${encodeURIComponent(sapId)}/scholarship-application`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          discountType: formData.discountType,
-          applyingFor: formData.applyingFor,
-          degreeTitle: formData.degreeTitle,
-          kinshipRelation: formData.kinshipRelation || null,
-          kinshipFirstName: formData.kinshipFirstName || null,
-          kinshipLastName: formData.kinshipLastName || null,
-          kinshipCnic: formData.kinshipCnic || null,
-          fatherCnic: formData.fatherCnic || null,
-        }),
-      });
+      const url = `/api/alumni/${encodeURIComponent(sapId)}/scholarship-application`;
+      const response =
+        formData.discountType === "masters-phd"
+          ? await (async () => {
+              const fd = new FormData();
+              fd.set("discountType", formData.discountType);
+              fd.set("applyingFor", formData.applyingFor);
+              fd.set("degreeTitle", degreeTitleToSend);
+
+              fd.set("admissionFacultyId", String(admissionFacultyId));
+              fd.set("admissionDepartmentId", String(admissionDepartmentId));
+              fd.set("admissionProgramId", String(admissionProgramId));
+              fd.set("admissionCampus", admissionCampus);
+              fd.set("admissionSession", admissionSession);
+              fd.set("admissionStatus", admissionStatus);
+
+              fd.set("docAdmissionLetter", docAdmissionLetterFile as File);
+              fd.set("docTranscripts", docTranscriptsFile as File);
+              fd.set("docAlumniProof", docAlumniProofFile as File);
+              fd.set("docCv", docCvFile as File);
+              fd.set("docCnic", docCnicFile as File);
+              if (docOtherFile) {
+                fd.set("docOther", docOtherFile);
+                fd.set("docOtherText", docOtherText.trim());
+              }
+              fd.set("declarationAccepted", mastersDeclarationAccepted ? "true" : "false");
+
+              return fetch(url, { method: "POST", body: fd });
+            })()
+          : await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                discountType: formData.discountType,
+                applyingFor: formData.applyingFor,
+                degreeTitle: degreeTitleToSend,
+                kinshipRelation: formData.kinshipRelation || null,
+                kinshipFirstName: formData.kinshipFirstName || null,
+                kinshipLastName: formData.kinshipLastName || null,
+                kinshipCnic: formData.kinshipCnic || null,
+                fatherCnic: formData.fatherCnic || null,
+              }),
+            });
 
       const result = await response.json();
 
@@ -208,6 +489,22 @@ function ScholarshipApplicationContent() {
         kinshipCnic: "",
         fatherCnic: data?.father_cnic || "",
       });
+
+      // Reset Masters/PhD uploads & declaration
+      setAdmissionFacultyId("");
+      setAdmissionDepartmentId("");
+      setAdmissionProgramId("");
+      setAdmissionCampus("");
+      setAdmissionSession("");
+      setAdmissionStatus("");
+      setDocAdmissionLetterFile(null);
+      setDocTranscriptsFile(null);
+      setDocAlumniProofFile(null);
+      setDocCvFile(null);
+      setDocCnicFile(null);
+      setDocOtherFile(null);
+      setDocOtherText("");
+      setMastersDeclarationAccepted(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
         duration: 4000,
@@ -311,25 +608,511 @@ function ScholarshipApplicationContent() {
                   </select>
                 </div>
 
-                {formData.discountType && (
-                  <div className="sm:col-span-2">
-                    <label htmlFor="applyingFor" className="mb-2 text-sm text-slate-900 font-medium block">
-                      Applying For <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="applyingFor"
-                      value={formData.applyingFor}
-                      onChange={(e) => setFormData({ ...formData, applyingFor: e.target.value })}
-                      className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                      required
-                    >
-                      <option value="">Select Program</option>
-                      {currentOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                
+
+                {/* Masters/PhD Discount detailed form */}
+                {formData.discountType === "masters-phd" && (
+                  <div className="sm:col-span-2 space-y-6 mt-4">
+                    {/* 1. Applicant Information */}
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        1. Applicant Information
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Name of Candidate
+                          </label>
+                          <input
+                            type="text"
+                            value={missing(data?.alumniname)}
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Father&apos;s / Guardian&apos;s Name
+                          </label>
+                          <input
+                            type="text"
+                            value={missing((data as any)?.fathername)}
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            SAP Code
+                          </label>
+                          <input
+                            type="text"
+                            value={missing(data?.sapid)}
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Registration No.
+                          </label>
+                          <input
+                            type="text"
+                            value={missing(data?.registrationno)}
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Year of Graduation
+                          </label>
+                          <input
+                            type="text"
+                            value={missing((data as any)?.yearofending)}
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Contact Number
+                          </label>
+                          <input
+                            type="text"
+                            value={missing((data as any)?.contactno)}
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Email Address
+                          </label>
+                          <input
+                            type="text"
+                            value={
+                              missing(
+                                data?.personalemail ||
+                                  data?.universityemail ||
+                                  data?.officialemail ||
+                                  data?.alumniemail,
+                              )
+                            }
+                            readOnly
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <p className="mb-2 text-sm text-slate-900 font-medium">
+                          Program Completed at UOL
+                        </p>
+                        <div className="grid sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="mb-1 text-xs font-medium text-slate-900 block">
+                              Faculty
+                            </label>
+                            <input
+                              type="text"
+                              value={missing((data as any)?.facultyname)}
+                              readOnly
+                              className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          </div>
+                          <div>
+                            <label className="mb-1 text-xs font-medium text-slate-900 block">
+                              Department
+                            </label>
+                            <input
+                              type="text"
+                              value={missing((data as any)?.departmentname)}
+                              readOnly
+                              className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          </div>
+                          <div>
+                            <label className="mb-1 text-xs font-medium text-slate-900 block">
+                              Program
+                            </label>
+                            <input
+                              type="text"
+                              value={missing((data as any)?.degreetitle)}
+                              readOnly
+                              className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Admission Details */}
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        2. Admission Details
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2">
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Applying For (Masters/PhD) <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formData.applyingFor}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, applyingFor: e.target.value }))}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            required
+                          >
+                            <option value="">Select</option>
+                            <option value="Masters">Masters (50% discount)</option>
+                            <option value="PhD">PhD (25% discount)</option>
+                          </select>
+                          <p className="mt-1 text-xs text-gray-500">
+                            This is the same “Applying For” value shown at the top of the form.
+                          </p>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <div className="grid sm:grid-cols-3 gap-4">
+                            <div>
+                              <label className="mb-1 text-xs font-medium text-slate-900 block">
+                                Faculty
+                              </label>
+                              <select
+                                className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md"
+                                value={admissionFacultyId || ""}
+                                onChange={(e) => {
+                                  const v = e.target.value ? Number(e.target.value) : "";
+                                  setAdmissionFacultyId(v);
+                                  setAdmissionDepartmentId("");
+                                  setAdmissionProgramId("");
+                                }}
+                                disabled={orgLoading}
+                              >
+                                <option value="">
+                                  {orgLoading ? "Loading..." : "Select"}
+                                </option>
+                                {faculties.map((f) => (
+                                  <option key={f.id} value={f.id}>
+                                    {f.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-1 text-xs font-medium text-slate-900 block">
+                                Department
+                              </label>
+                              <select
+                                className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md"
+                                value={admissionDepartmentId || ""}
+                                onChange={(e) => {
+                                  const v = e.target.value ? Number(e.target.value) : "";
+                                  setAdmissionDepartmentId(v);
+                                  setAdmissionProgramId("");
+                                }}
+                                disabled={
+                                  orgLoading ||
+                                  typeof admissionFacultyId !== "number" ||
+                                  admissionDepartmentsForFaculty.length === 0
+                                }
+                              >
+                                <option value="">
+                                  {typeof admissionFacultyId !== "number"
+                                    ? "Select faculty first"
+                                    : admissionDepartmentsForFaculty.length === 0
+                                    ? "No departments"
+                                    : "Select"}
+                                </option>
+                                {admissionDepartmentsForFaculty.map((d) => (
+                                  <option key={d.id} value={d.id}>
+                                    {d.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-1 text-xs font-medium text-slate-900 block">
+                                Program Applied For
+                              </label>
+                              <select
+                                className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md"
+                                value={admissionProgramId || ""}
+                                onChange={(e) => {
+                                  const v = e.target.value ? Number(e.target.value) : "";
+                                  setAdmissionProgramId(v);
+                                  // Auto-set Applying For for Masters/PhD based on program name if not chosen yet.
+                                  if (formData.discountType === "masters-phd" && (!formData.applyingFor || !formData.applyingFor.trim())) {
+                                    const selected = programs.find((p) => p.id === v);
+                                    const nm = String(selected?.name ?? "").toLowerCase();
+                                    const inferred = nm.includes("phd") ? "PhD" : nm ? "Masters" : "";
+                                    if (inferred) {
+                                      setFormData((prev) => ({ ...prev, applyingFor: inferred }));
+                                    }
+                                  }
+                                }}
+                                disabled={
+                                  orgLoading ||
+                                  typeof admissionDepartmentId !== "number" ||
+                                  admissionProgramsForDepartment.length === 0
+                                }
+                              >
+                                <option value="">
+                                  {typeof admissionDepartmentId !== "number"
+                                    ? "Select department first"
+                                    : admissionProgramsForDepartment.length === 0
+                                    ? "No programs"
+                                    : "Select"}
+                                </option>
+                                {admissionProgramsForDepartment.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Campus (if applicable)
+                          </label>
+                          <select
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            value={admissionCampus}
+                            onChange={(e) => setAdmissionCampus(e.target.value)}
+                          >
+                            <option value="">Select</option>
+                            <option value="Lahore">Lahore</option>
+                            <option value="Sargodha">Sargodha</option>
+                            <option value="Islamabad">Islamabad</option>
+                            <option value="Pakpattan">Pakpattan</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Session / Intake
+                          </label>
+                          <select
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            value={admissionSession}
+                            onChange={(e) => setAdmissionSession(e.target.value)}
+                          >
+                            <option value="">Select</option>
+                            {sessionOptions.map((y) => (
+                              <option key={y} value={y}>
+                                {y}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Admission Status
+                          </label>
+                          <div className="flex items-center gap-6">
+                            <label className="inline-flex items-center gap-2 text-sm text-slate-900">
+                              <input
+                                type="radio"
+                                name="admissionStatus"
+                                value="confirmed"
+                                checked={admissionStatus === "confirmed"}
+                                onChange={() => setAdmissionStatus("confirmed")}
+                                className="h-4 w-4 text-blue-600 border-gray-300"
+                              />
+                              <span>Confirmed</span>
+                            </label>
+                            <label className="inline-flex items-center gap-2 text-sm text-slate-900">
+                              <input
+                                type="radio"
+                                name="admissionStatus"
+                                value="pending"
+                                checked={admissionStatus === "pending"}
+                                onChange={() => setAdmissionStatus("pending")}
+                                className="h-4 w-4 text-blue-600 border-gray-300"
+                              />
+                              <span>Pending</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. List of Attached Documents */}
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        3. List of Attached Documents (PDF Files Only)
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Copy of Admission Letter (PhD – UOL) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocAdmissionLetterFile(null);
+                                return;
+                              }
+                              setDocAdmissionLetterFile(f);
+                            }}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Academic Transcripts and Certificates <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocTranscriptsFile(null);
+                                return;
+                              }
+                              setDocTranscriptsFile(f);
+                            }}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Alumni Proof (Degree / Transcript) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocAlumniProofFile(null);
+                                return;
+                              }
+                              setDocAlumniProofFile(f);
+                            }}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Curriculum Vitae (CV) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocCvFile(null);
+                                return;
+                              }
+                              setDocCvFile(f);
+                            }}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            CNIC Copy <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocCnicFile(null);
+                                return;
+                              }
+                              setDocCnicFile(f);
+                            }}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">
+                            Other (Please specify)
+                          </label>
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] ?? null;
+                              if (f && f.type !== "application/pdf") {
+                                toast.error("Only PDF files are allowed.");
+                                e.currentTarget.value = "";
+                                setDocOtherFile(null);
+                                return;
+                              }
+                              setDocOtherFile(f);
+                            }}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
+                          />
+                          <input
+                            type="text"
+                            value={docOtherText}
+                            onChange={(e) => setDocOtherText(e.target.value)}
+                            className="mt-2 px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            placeholder="Specify other document (if uploaded)"
+                            disabled={!docOtherFile}
+                          />
+                        </div>
+                        
+                      </div>
+                    </div>
+
+                    {/* 4. Declaration */}
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
+                        4. Declaration
+                      </h2>
+                      <p className="text-sm text-slate-900 mb-3">
+                        I hereby declare that all information provided is true and correct.
+                        I understand that the discount is subject to approval and institutional
+                        policies of The University of Lahore.
+                      </p>
+                      <label className="flex items-start gap-3 text-sm text-slate-900 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                          checked={mastersDeclarationAccepted}
+                          onChange={(e) => setMastersDeclarationAccepted(e.target.checked)}
+                        />
+                        <span>I have read and agree to the above declaration.</span>
+                      </label>
+                    </div>
                   </div>
                 )}
 
@@ -434,20 +1217,22 @@ function ScholarshipApplicationContent() {
                   </>
                 )}
 
-                <div className="sm:col-span-2">
-                  <label htmlFor="degreeTitle" className="mb-2 text-sm text-slate-900 font-medium block">
-                    Degree Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="degreeTitle"
-                    value={formData.degreeTitle}
-                    onChange={(e) => setFormData({ ...formData, degreeTitle: e.target.value })}
-                    className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                    required
-                    placeholder="Enter degree title"
-                  />
-                </div>
+                {formData.discountType !== "masters-phd" && (
+                  <div className="sm:col-span-2">
+                    <label htmlFor="degreeTitle" className="mb-2 text-sm text-slate-900 font-medium block">
+                      Degree Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="degreeTitle"
+                      value={formData.degreeTitle}
+                      onChange={(e) => setFormData({ ...formData, degreeTitle: e.target.value })}
+                      className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                      required
+                      placeholder="Enter degree title"
+                    />
+                  </div>
+                )}
               </div>
 
               <button

@@ -34,7 +34,9 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_memberships
     OWNER to postgres;
--- Table: public.alumni_scholarships
+-- Table: public.alumni_
+
+ rships
 
 -- DROP TABLE IF EXISTS public.alumni_scholarships;
 
@@ -45,8 +47,11 @@ CREATE TABLE IF NOT EXISTS public.alumni_scholarships
     kinship_firstname text COLLATE pg_catalog."default",
     kinship_lastname text COLLATE pg_catalog."default",
     kinship_cnic text COLLATE pg_catalog."default",
+    discount_type text COLLATE pg_catalog."default",
     apply_for text COLLATE pg_catalog."default",
     degree_title text COLLATE pg_catalog."default",
+    masters_details jsonb,
+    uploaded_documents jsonb,
     status text COLLATE pg_catalog."default",
     reason text COLLATE pg_catalog."default",
   CONSTRAINT alumni_scholarships_pkey PRIMARY KEY (id),

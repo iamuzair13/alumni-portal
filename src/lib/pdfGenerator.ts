@@ -25,12 +25,199 @@ export interface ScholarshipApplicationData {
   kinshipName?: string | null; // Keep for backward compatibility
 }
 
+export interface ScholarshipLetterPDFData {
+  dateFormatted: string;
+  studentName: string;
+  scholarshipType: string;
+  applyingFor: string;
+  previousDegree: string;
+  cgpaLastDegree: string;
+  requestedDiscount: string;
+  documentsAttached: string[];
+  sapCode: string;
+}
+
  export interface MembershipApplicationData {
    alumniName: string;
    membershipType: string;
    gymMembershipMonth?: string | null;
    swimmingPoolMembershipMonth?: string | null;
  }
+
+export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 45;
+      const maxWidth = pageWidth - 2 * margin;
+      let y = margin;
+
+      const pageBottomY = () => pageHeight - margin;
+      const ensureSpace = (needed: number) => {
+        if (y + needed <= pageBottomY()) return;
+        doc.addPage();
+        y = margin;
+      };
+
+      const logoBase64 = getLogoBase64();
+      if (logoBase64) {
+        try {
+          const logoWidth = 40;
+          const logoHeight = 20;
+          const logoX = pageWidth - margin - logoWidth;
+          const logoY = margin;
+          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
+          y = logoY + logoHeight + 15;
+        } catch {
+          y = margin + 10;
+        }
+      } else {
+        y = margin + 10;
+      }
+
+      doc.setDrawColor(0, 102, 51);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 15;
+
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 102, 51);
+      doc.text("Alumni Scholarship Application", margin, y);
+      y += 10;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      const dateText = `Date: ${data.dateFormatted}`;
+      const dateWidth = doc.getTextWidth(dateText);
+      doc.text(dateText, pageWidth - margin - dateWidth, y);
+      y += 18;
+
+      const addText = (text: string, fontSize = 12, isBold = false, spacing = 6) => {
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", isBold ? "bold" : "normal");
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        ensureSpace(lines.length * (fontSize * 0.42) + spacing + 2);
+        doc.text(lines, margin, y, { maxWidth });
+        y += lines.length * (fontSize * 0.42) + spacing;
+      };
+
+      addText("Dear Competent Authority,", 12, false, 8);
+      addText(
+        `I, (${data.studentName}), an alumnus of the University of Lahore, am applying for the Scholarship detailed below:`,
+        12,
+        false,
+        10
+      );
+
+      const addField = (label: string, value: string) => {
+        // label is bold, value wraps with indentation
+        const fontSize = 12;
+        const labelText = `${label} `;
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        const labelW = doc.getTextWidth(labelText);
+        const x = margin;
+        const valueX = margin + Math.min(labelW, 140);
+        const valueMaxW = pageWidth - margin - valueX;
+
+        const valueStr = String(value || "-");
+        const valueLines = doc.splitTextToSize(valueStr, valueMaxW);
+        const rowH = Math.max(1, valueLines.length) * (fontSize * 0.42) + 6;
+        ensureSpace(rowH + 2);
+
+        doc.text(labelText, x, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(valueLines, valueX, y, { maxWidth: valueMaxW });
+        y += rowH;
+      };
+
+      addField("Applying for:", data.applyingFor);
+      addField("Previous Degree:", data.previousDegree);
+      addField("CGPA last degree:", data.cgpaLastDegree);
+      addField("Discount Type:", data.requestedDiscount);
+
+      addText("Documents Attached:", 12, true, 4);
+      if (!data.documentsAttached.length) {
+        addText("-", 12, false, 8);
+      } else {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        const bulletIndent = 10;
+        for (const line of data.documentsAttached) {
+          const lines = doc.splitTextToSize(`- ${line}`, maxWidth - bulletIndent);
+          ensureSpace(lines.length * (12 * 0.42) + 6);
+          doc.text(lines, margin + bulletIndent, y, { maxWidth: maxWidth - bulletIndent });
+          y += lines.length * (12 * 0.42) + 3;
+        }
+        y += 6;
+      }
+
+      addField("SAP Code:", data.sapCode);
+
+      addText("Kindly grant your approval for the above request.", 12, false, 10);
+      addText("Yours sincerely,", 12, false, 6);
+      addText(`(${data.studentName})`, 12, true, 10);
+
+      // Signature blocks (always placed after content; page-break if needed)
+      const sigNeeded = 90;
+      ensureSpace(sigNeeded);
+
+      const top = y + 6;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(margin, top, pageWidth - margin, top);
+
+      const colGap = 14;
+      const colW = (maxWidth - 2 * colGap) / 3;
+      const colsX = [margin, margin + colW + colGap, margin + 2 * (colW + colGap)];
+
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+
+      const rowTitleY = top + 14;
+      const lineY = rowTitleY + 18;
+      const nameY = lineY + 8;
+
+      const blocks = [
+        { title: "Reviewed By:", name: "ARO" },
+        { title: "Confirmed By:", name: "HOD" },
+        { title: "Confirmed By:", name: "Admission Cell" },
+      ];
+
+      blocks.forEach((b, idx) => {
+        const x = colsX[idx];
+        doc.setFont("helvetica", "bold");
+        doc.text(b.title, x, rowTitleY);
+        doc.setFont("helvetica", "normal");
+        doc.setDrawColor(120, 120, 120);
+        doc.line(x, lineY, x + colW, lineY);
+        doc.text(b.name, x, nameY);
+      });
+
+      // Approved by centered
+      const approvedTitleY = nameY + 22;
+      doc.setFont("helvetica", "bold");
+      doc.text("Approved By:", margin, approvedTitleY);
+      doc.setFont("helvetica", "normal");
+      const approvedLineY = approvedTitleY + 20;
+      doc.line(margin, approvedLineY, pageWidth - margin - 70, approvedLineY);
+      doc.text("Competent Authority", margin, approvedLineY + 8);
+
+      y = approvedLineY + 18;
+
+      const pdfOutput = doc.output("arraybuffer");
+      resolve(Buffer.from(pdfOutput));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
 
 export function generateScholarshipPDF(data: ScholarshipApplicationData): Promise<Buffer> {
   return new Promise((resolve, reject) => {

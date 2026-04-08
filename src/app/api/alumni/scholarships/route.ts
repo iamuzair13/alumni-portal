@@ -12,15 +12,16 @@ type RawRow = {
   personalemail: string | null;
   officialemail: string | null;
   universityemail: string | null;
-  facultyname: string | null;
-  departmentname: string | null;
-  degreetitle: string | null;
+  faculty_name: string | null;
+  department_name: string | null;
+  program_name: string | null;
   created_at: string | null;
   kinship_firstname: string | null;
   kinship_lastname: string | null;
   kinship_cnic: string | null;
   apply_for: string | null;
   degree_title: string | null;
+  discount_type: string | null;
   status: string | null;
   reason: string | null;
 };
@@ -93,19 +94,23 @@ export async function GET(request: NextRequest) {
         a.personalemail,
         a.officialemail,
         a.universityemail,
-        a.facultyname,
-        a.departmentname,
-        a.degreetitle,
+        COALESCE(NULLIF(TRIM(a.facultyname), ''), f.faculty_name) AS faculty_name,
+        COALESCE(NULLIF(TRIM(a.departmentname), ''), d.department_name) AS department_name,
+        COALESCE(NULLIF(TRIM(a.degreetitle), ''), p.program_name) AS program_name,
         asch.created_at,
         asch.kinship_firstname,
         asch.kinship_lastname,
         asch.kinship_cnic,
         asch.apply_for,
         asch.degree_title,
+        asch.discount_type,
         COALESCE(asch.status, 'pending') AS status,
         asch.reason
       FROM public.alumni_scholarships asch
       JOIN public.tbl_alumni a ON a.alumniid = asch.id
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE 1=1
         ${accessFilterCondition}
         ${searchCondition}
@@ -123,15 +128,16 @@ export async function GET(request: NextRequest) {
       name: r.alumniname ?? "",
       contactno: r.contactno ?? null,
       email: r.personalemail || r.officialemail || r.universityemail || null,
-      faculty: r.facultyname ?? null,
-      department: r.departmentname ?? null,
-      program: r.degreetitle ?? null,
+      faculty: r.faculty_name ?? null,
+      department: r.department_name ?? null,
+      program: r.program_name ?? null,
       createdAt: r.created_at,
       kinshipFirstName: r.kinship_firstname ?? null,
       kinshipLastName: r.kinship_lastname ?? null,
       kinshipCnic: r.kinship_cnic ?? null,
       applyFor: r.apply_for ?? null,
       scholarshipDegreeTitle: r.degree_title ?? null,
+      discountType: r.discount_type ?? null,
       status: (r.status ?? "pending").toLowerCase(),
       rejectionReason: r.reason ?? null,
     }));
