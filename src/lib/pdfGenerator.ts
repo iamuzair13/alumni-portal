@@ -5,13 +5,20 @@ import { join } from "path";
 
 // Helper function to get logo as base64
 function getLogoBase64(): string {
-  try {
-    const logoPath = join(process.cwd(), "public", "images", "logo", "logo.png");
-    const logoBuffer = readFileSync(logoPath);
-    return `data:image/png;base64,${logoBuffer.toString("base64")}`;
-  } catch {
-    return "";
+  // Keep PDF logo source aligned with app header branding.
+  const candidates = [
+    join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-01.png"),
+    join(process.cwd(), "public", "images", "logo", "logo.png"),
+  ];
+  for (const logoPath of candidates) {
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      return `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } catch {
+      // try next candidate
+    }
   }
+  return "";
 }
 
 export interface ScholarshipApplicationData {
@@ -64,9 +71,10 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       const logoBase64 = getLogoBase64();
       if (logoBase64) {
         try {
-          const logoWidth = 40;
-          const logoHeight = 20;
-          const logoX = pageWidth - margin - logoWidth;
+          // Keep logo visible like app header branding
+          const logoWidth = 56;
+          const logoHeight = 28;
+          const logoX = margin;
           const logoY = margin;
           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
           y = logoY + logoHeight + 15;
@@ -141,22 +149,6 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       addField("Previous Degree:", data.previousDegree);
       addField("CGPA last degree:", data.cgpaLastDegree);
       addField("Discount Type:", data.requestedDiscount);
-
-      addText("Documents Attached:", 12, true, 4);
-      if (!data.documentsAttached.length) {
-        addText("-", 12, false, 8);
-      } else {
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        const bulletIndent = 10;
-        for (const line of data.documentsAttached) {
-          const lines = doc.splitTextToSize(`- ${line}`, maxWidth - bulletIndent);
-          ensureSpace(lines.length * (12 * 0.42) + 6);
-          doc.text(lines, margin + bulletIndent, y, { maxWidth: maxWidth - bulletIndent });
-          y += lines.length * (12 * 0.42) + 3;
-        }
-        y += 6;
-      }
 
       addField("SAP Code:", data.sapCode);
 
