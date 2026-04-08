@@ -50,6 +50,21 @@ type ScholarshipResponse = {
   };
 };
 
+type ScholarshipApplicationLetter = {
+  title: string;
+  dateFormatted: string;
+  status: string;
+  studentName: string;
+  scholarshipType: string;
+  applyingFor: string;
+  previousDegree: string;
+  cgpaLastDegree: string;
+  requestedDiscount: string;
+  documentsAttached: string[];
+  uploadedDocuments?: Array<{ label: string; filename: string; url: string }>;
+  sapCode: string;
+};
+
 async function getAlumniScholarships(
   page: number,
   limit: number,
@@ -108,6 +123,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
     alumniId: number;
     email: string;
     pdfUrl: string;
+    application: ScholarshipApplicationLetter | null;
   } | null>(null);
   const applicationPreviewModal = useModal();
   const [isLoadingApplicationPreview, setIsLoadingApplicationPreview] = useState(false);
@@ -236,8 +252,17 @@ export const AlumniScholarshipsTab: React.FC = () => {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Failed to fetch application preview (${res.status})`);
       }
-      const data = (await res.json()) as { email: string; pdfUrl: string };
-      setApplicationPreview({ alumniId, email: data.email || "-", pdfUrl: data.pdfUrl });
+      const data = (await res.json()) as {
+        email: string;
+        pdfUrl: string;
+        application?: ScholarshipApplicationLetter;
+      };
+      setApplicationPreview({
+        alumniId,
+        email: data.email || "-",
+        pdfUrl: data.pdfUrl,
+        application: data.application ?? null,
+      });
       applicationPreviewModal.openModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -1027,31 +1052,25 @@ export const AlumniScholarshipsTab: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Application Preview
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-12">
                 {applicationPreview?.pdfUrl && (
                   <button
                     type="button"
                     onClick={() => {
-                      window.open(applicationPreview.pdfUrl, "_blank", "noopener,noreferrer");
+                      const latestLetterPdf = `/api/alumni/scholarships/${applicationPreview.alumniId}?mode=letter-pdf&download=1`;
+                      const link = document.createElement("a");
+                      link.href = latestLetterPdf;
+                      link.download = `Scholarship_Application_Form_${applicationPreview.alumniId}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     }}
                     className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    Print / Download
+                    Download
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isLoadingApplicationPreview) {
-                      applicationPreviewModal.closeModal();
-                      setApplicationPreview(null);
-                      setApplicationPreviewError(null);
-                    }
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Close
-                </button>
+                
               </div>
             </div>
 
@@ -1064,17 +1083,54 @@ export const AlumniScholarshipsTab: React.FC = () => {
             )}
 
             {!isLoadingApplicationPreview && !applicationPreviewError && applicationPreview && (
-              <div className="space-y-4">
+              <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
                 <div className="text-sm text-gray-700 dark:text-gray-300">
                   <span className="font-semibold">Email:</span> {applicationPreview.email || "-"}
                 </div>
-                <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
-                  <iframe
-                    title={`scholarship-application-${applicationPreview.alumniId}`}
-                    src={applicationPreview.pdfUrl}
-                    className="w-full h-[70vh]"
-                  />
-                </div>
+
+                {applicationPreview.application ? (
+                  <div className="rounded-lg border border-gray-200 bg-white p-6 sm:p-8 text-gray-900 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 border-b border-gray-200 pb-4 mb-6">
+                      <h4 className="text-lg font-bold text-center sm:text-left flex-1">
+                        {applicationPreview.application.title}
+                      </h4>
+                      <div className="text-sm text-gray-700 whitespace-nowrap">
+                        Date: {applicationPreview.application.dateFormatted}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:gap-2">
+                        <div className="font-semibold text-gray-800 sm:min-w-[220px]">Applying for:</div>
+                        <div className="text-gray-900">{applicationPreview.application.applyingFor}</div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:gap-2">
+                        <div className="font-semibold text-gray-800 sm:min-w-[220px]">Previous Degree:</div>
+                        <div className="text-gray-900">{applicationPreview.application.previousDegree}</div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:gap-2">
+                        <div className="font-semibold text-gray-800 sm:min-w-[220px]">CGPA last degree:</div>
+                        <div className="text-gray-900">{applicationPreview.application.cgpaLastDegree}</div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:gap-2">
+                        <div className="font-semibold text-gray-800 sm:min-w-[220px]">Discount Type:</div>
+                        <div className="text-gray-900">{applicationPreview.application.requestedDiscount}</div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:gap-2">
+                        <div className="font-semibold text-gray-800 sm:min-w-[220px]">SAP Code:</div>
+                        <div className="text-gray-900 font-mono">{applicationPreview.application.sapCode}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
+                    <iframe
+                      title={`scholarship-application-${applicationPreview.alumniId}`}
+                      src={`/api/alumni/scholarships/${applicationPreview.alumniId}?mode=letter-pdf`}
+                      className="w-full h-[70vh]"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -122,6 +122,17 @@ export async function GET(request: NextRequest) {
     const rows = rawRows as unknown as RawRow[];
 
     const items = rows.map((r) => ({
+      // Show % along with Masters/PhD selection in table list
+      applyFor:
+        String(r.discount_type || "").trim().toLowerCase() === "masters-phd"
+          ? (() => {
+              const base = String(r.apply_for || "").trim();
+              if (!base) return null;
+              return base.toLowerCase().includes("phd")
+                ? `${base} (25% discount)`
+                : `${base} (50% discount)`;
+            })()
+          : r.apply_for ?? null,
       alumniId: r.alumniid,
       sapid: r.sapid ?? "",
       registrationNo: r.registrationno ?? null,
@@ -135,7 +146,6 @@ export async function GET(request: NextRequest) {
       kinshipFirstName: r.kinship_firstname ?? null,
       kinshipLastName: r.kinship_lastname ?? null,
       kinshipCnic: r.kinship_cnic ?? null,
-      applyFor: r.apply_for ?? null,
       scholarshipDegreeTitle: r.degree_title ?? null,
       discountType: r.discount_type ?? null,
       status: (r.status ?? "pending").toLowerCase(),
