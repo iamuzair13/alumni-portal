@@ -1,49 +1,9 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import { join } from "path";
 import { sendAlumniCardApplicationReceivedEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
-
-const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
-const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-
-function sanitizeSapId(input: string | null | undefined): string {
-  if (!input) return "alumni";
-  const cleaned = input.replace(/[^a-zA-Z0-9]/g, "");
-  const suffix = cleaned.slice(-10);
-  return suffix || "alumni";
-}
-
-function buildFilename(sapId: string, extension: string) {
-  const safeSap = sanitizeSapId(sapId);
-  return `${safeSap}-${Date.now()}.${extension}`;
-}
-
-async function ensureCardDirExists() {
-  if (!existsSync(CARD_UPLOAD_DIR)) {
-    await mkdir(CARD_UPLOAD_DIR, { recursive: true });
-  }
-}
-
-async function saveCardImage(file: File, sapId: string) {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new Error("Invalid file type. Only JPEG, PNG, and GIF images are allowed.");
-  }
-  if (file.size > MAX_SIZE) {
-    throw new Error("File size exceeds 5MB limit.");
-  }
-
-  await ensureCardDirExists();
-  const extension = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const filename = buildFilename(sapId, extension);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(join(CARD_UPLOAD_DIR, filename), buffer);
-  return filename;
-}
+import { saveAlumniCardImage, validateAlumniCardImage } from "@/lib/alumniCardImage";
 
 export async function POST(req: Request) {
   try {
@@ -294,7 +254,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Profile image is required" }, { status: 400 });
     }
 
-    const storedFilename = await saveCardImage(image, sapId || String(alumniId));
+    const fileValidation = validateAlumniCardImage(image);
+    if (!fileValidation.ok) {
+      return NextResponse.json({ error: fileValidation.error }, { status: 400 });
+    }
+
+    const storedFilename = await saveAlumniCardImage(image, sapId || String(alumniId));
 
     // Check if this is a new application (no existing record)
     const existingCard = await sql/* sql */`

@@ -6,6 +6,7 @@ import { logAdminAction } from "@/lib/adminActivityLog";
 import { unlink } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { pickCardImageWithFallback } from "@/lib/alumniCardImage";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -44,6 +45,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
 
     const rr = r as typeof r & { alumni_image1?: string | null; alumni_image2?: string | null };
+    const resolvedCardImage = pickCardImageWithFallback(
+      r.card_image as string | null | undefined,
+      r.cardpicture as string | null | undefined,
+      rr.alumni_image2,
+      rr.alumni_image1
+    );
 
     // Return card data without sensitive fields from alumni table; include fresh profile filenames for PDF/UI
     return NextResponse.json(
@@ -58,7 +65,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
           delivery_house_no: (r as { delivery_house_no?: unknown }).delivery_house_no ?? null,
           status: r.status,
           cardpicture: r.cardpicture,
-          card_image: r.card_image,
+          card_image: resolvedCardImage,
+          card_image_raw: r.card_image,
           createdat: r.createdat,
           reason_onhold: r.reason_onhold,
           validity_date: r.validity_date,

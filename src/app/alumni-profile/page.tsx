@@ -22,12 +22,14 @@ import PageBanner from "@/components/ui/PageBanner";
 import AlumniCardClient from "@/components/alumni/AlumniCardClient";
 import AlumniCardExpiryClient from "@/components/alumni/AlumniCardExpiryClient";
 import SubmitRevisionButton from "@/components/alumni/SubmitRevisionButton";
+import UpdateAlumniCardPictureButton from "@/components/alumni/UpdateAlumniCardPictureButton";
 import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSection";
 import NewslettersCard from "@/components/alumni/NewslettersCard";
 import BenefitCard from "@/components/ui/BenefitCard";
 import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
 import { formatCardValidityMonthYear } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
+import { pickCardImageWithFallback } from "@/lib/alumniCardImage";
 
 type Profile = {
   alumniname: string | null;
@@ -370,7 +372,16 @@ let cardImageFile: string | null = null;
       if (sapId) {
         // Preload validation now uses sapid/registrationno to check existing tblcard association
         const cr = await sql/* sql */`
-          SELECT c.status, c.cardpicture, c.card_image, c.reason_onhold, c.comment, c.validity_date FROM public.tblcard c
+          SELECT
+            c.status,
+            c.cardpicture,
+            c.card_image,
+            c.reason_onhold,
+            c.comment,
+            c.validity_date,
+            a.image2 as alumni_image2,
+            a.image1 as alumni_image1
+          FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE TRIM(COALESCE(a.sapid, '')) = ${sapId}
              OR TRIM(COALESCE(a.registrationno, '')) = ${sapId}
@@ -413,11 +424,13 @@ let cardImageFile: string | null = null;
   // Card template profile slot: latest alumni photo (tbl_alumni.image2, then image1)
   const profileImageFilename = pickAlumniProfilePhotoFilename(p?.image2, p?.image1) ?? undefined;
   const cardTemplateImageFilename = (() => {
-    const raw = (cardImageFile ?? cardPicture) ?? null;
-    if (raw && raw.trim() && raw.trim().toLowerCase() !== "null") {
-      return raw.trim();
-    }
-    return undefined;
+    const raw = pickCardImageWithFallback(
+      cardImageFile,
+      cardPicture,
+      p?.image2 ?? null,
+      p?.image1 ?? null
+    );
+    return raw ?? undefined;
   })();
 
   // Use validity_date from database if available, otherwise calculate from yearofending (add 5 years as default validity)
@@ -896,6 +909,9 @@ let cardImageFile: string | null = null;
                               {!!sapId && (
                                 <SubmitRevisionButton sapId={sapId} />
                               )}
+                              {!!sapId && (
+                                <UpdateAlumniCardPictureButton sapId={sapId} />
+                              )}
                               <button
                                 type="button"
                                 className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors"
@@ -926,6 +942,11 @@ let cardImageFile: string | null = null;
                             </Link>
                             )
                           ) : null}
+                          {!isViewer && (cardStatus === "under-review") && !!sapId && (
+                            <div className="mt-2 sm:mt-3">
+                              <UpdateAlumniCardPictureButton sapId={sapId} />
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
