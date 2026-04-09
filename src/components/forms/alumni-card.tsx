@@ -15,6 +15,7 @@ type Props = {
   sapId: string;
   faculty: string;
   department: string;
+  cnicPassport?: string;
 };
 
 const schema = z.object({
@@ -108,7 +109,7 @@ async function validatePassportLikeImage(file: File): Promise<{ ok: boolean; err
   }
 }
 
-export default function AlumniCardForm({ alumniId, name, faculty, department, sapId }: Props) {
+export default function AlumniCardForm({ alumniId, name, faculty, department, sapId, cnicPassport = "" }: Props) {
   const router = useRouter();
   const [fileError, setFileError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -164,7 +165,12 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       if (alumni.alumniname) setFetchedName(alumni.alumniname);
       if (alumni.facultyname) setFetchedFaculty(alumni.facultyname);
       if (alumni.departmentname) setFetchedDepartment(alumni.departmentname);
-      if (alumni.cnicpassport) setFetchedCnicPassport(String(alumni.cnicpassport));
+      const cnicValue =
+        (alumni as { cnicpassport?: unknown; cnicPassport?: unknown; cnicOrPassport?: unknown }).cnicpassport ??
+        (alumni as { cnicpassport?: unknown; cnicPassport?: unknown; cnicOrPassport?: unknown }).cnicPassport ??
+        (alumni as { cnicpassport?: unknown; cnicPassport?: unknown; cnicOrPassport?: unknown }).cnicOrPassport ??
+        "";
+      setFetchedCnicPassport(String(cnicValue ?? "").trim());
     }
   }, [alumniDetailsQuery.data]);
 
@@ -195,6 +201,17 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
   validityDate.setFullYear(validityDate.getFullYear() + 3);
   const validityDateStr = validityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const validityDateISO = validityDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  const cnicFromQuery = (() => {
+    const alumni = (alumniDetailsQuery.data as any)?.item;
+    if (!alumni) return "";
+    const cnicValue =
+      (alumni as { cnicpassport?: unknown; cnicPassport?: unknown; cnicOrPassport?: unknown }).cnicpassport ??
+      (alumni as { cnicpassport?: unknown; cnicPassport?: unknown; cnicOrPassport?: unknown }).cnicPassport ??
+      (alumni as { cnicpassport?: unknown; cnicPassport?: unknown; cnicOrPassport?: unknown }).cnicOrPassport ??
+      "";
+    return String(cnicValue ?? "").trim();
+  })();
+  const cnicDisplayValue = cnicFromQuery || fetchedCnicPassport || String(cnicPassport || "").trim();
 
   
 
@@ -335,7 +352,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
         <div>
           <label className={labelBase} htmlFor="cnic">CNIC/Passport</label>
           <div className="relative flex items-center">
-            <input id="cnic" className={inputBase} value={fetchedCnicPassport || ""} readOnly aria-label="CNIC/Passport" />
+            <input id="cnic" className={inputBase} value={cnicDisplayValue} readOnly aria-label="CNIC/Passport" />
           </div>
           <p className="text-xs text-blue-700 mt-1">Please make sure that your CNIC/Passport is correct. It will be used for verification and Alumni card issuance.</p>
         </div>

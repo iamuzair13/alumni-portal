@@ -78,6 +78,7 @@ function CardApplicationContent() {
   const name = data.alumniname || "";
   const faculty = data.facultyname || "";
   const department = data.departmentname || "";
+  const cnicPassport = data.cnicpassport || "";
 
   return (
     <>
@@ -96,6 +97,7 @@ function CardApplicationContent() {
                 sapId={sapId}
                 faculty={faculty}
                 department={department}
+                cnicPassport={cnicPassport}
               />
             </div>
           </div>
