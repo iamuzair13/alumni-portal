@@ -6,7 +6,7 @@ import { logAdminAction } from "@/lib/adminActivityLog";
 import { unlink } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { pickCardImageWithFallback } from "@/lib/alumniCardImage";
+import { getCardImageCandidates, resolvePreferredCardImage } from "@/lib/alumniCardImage";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -45,12 +45,18 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
 
     const rr = r as typeof r & { alumni_image1?: string | null; alumni_image2?: string | null };
-    const resolvedCardImage = pickCardImageWithFallback(
-      r.card_image as string | null | undefined,
-      r.cardpicture as string | null | undefined,
-      rr.alumni_image2,
-      rr.alumni_image1
-    );
+    const cardImageCandidates = getCardImageCandidates({
+      cardImage: r.card_image,
+      cardPicture: r.cardpicture,
+      alumniImage2: rr.alumni_image2,
+      alumniImage1: rr.alumni_image1,
+    });
+    const resolvedCardImage = resolvePreferredCardImage({
+      cardImage: r.card_image,
+      cardPicture: r.cardpicture,
+      alumniImage2: rr.alumni_image2,
+      alumniImage1: rr.alumni_image1,
+    });
 
     // Return card data without sensitive fields from alumni table; include fresh profile filenames for PDF/UI
     return NextResponse.json(
@@ -64,9 +70,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
           delivery_street_no: (r as { delivery_street_no?: unknown }).delivery_street_no ?? null,
           delivery_house_no: (r as { delivery_house_no?: unknown }).delivery_house_no ?? null,
           status: r.status,
-          cardpicture: r.cardpicture,
-          card_image: resolvedCardImage,
-          card_image_raw: r.card_image,
+          cardpicture: resolvedCardImage ?? r.cardpicture,
+          card_image: resolvedCardImage ?? r.card_image,
+          image_candidates: cardImageCandidates,
           createdat: r.createdat,
           reason_onhold: r.reason_onhold,
           validity_date: r.validity_date,

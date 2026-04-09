@@ -29,7 +29,7 @@ import BenefitCard from "@/components/ui/BenefitCard";
 import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
 import { formatCardValidityMonthYear } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
-import { pickCardImageWithFallback } from "@/lib/alumniCardImage";
+import { resolvePreferredCardImage } from "@/lib/alumniCardImage";
 
 type Profile = {
   alumniname: string | null;
@@ -372,24 +372,20 @@ let cardImageFile: string | null = null;
       if (sapId) {
         // Preload validation now uses sapid/registrationno to check existing tblcard association
         const cr = await sql/* sql */`
-          SELECT
-            c.status,
-            c.cardpicture,
-            c.card_image,
-            c.reason_onhold,
-            c.comment,
-            c.validity_date,
-            a.image2 as alumni_image2,
-            a.image1 as alumni_image1
-          FROM public.tblcard c
+          SELECT c.status, c.cardpicture, c.card_image, c.reason_onhold, c.comment, c.validity_date, a.image1 AS alumni_image1, a.image2 AS alumni_image2 FROM public.tblcard c
           JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
           WHERE TRIM(COALESCE(a.sapid, '')) = ${sapId}
              OR TRIM(COALESCE(a.registrationno, '')) = ${sapId}
           ORDER BY c.cardid DESC LIMIT 1`;
         const rawStatus = cr[0]?.status ? String(cr[0].status).trim() : "";
         const upperStatus = rawStatus.toUpperCase();
-        cardPicture = cr[0]?.cardpicture ?? null;
-        cardImageFile = cr[0]?.card_image ?? null;
+        cardPicture = resolvePreferredCardImage({
+          cardPicture: cr[0]?.cardpicture ?? null,
+          cardImage: cr[0]?.card_image ?? null,
+          alumniImage2: (cr[0] as { alumni_image2?: string | null } | undefined)?.alumni_image2 ?? null,
+          alumniImage1: (cr[0] as { alumni_image1?: string | null } | undefined)?.alumni_image1 ?? null,
+        });
+        cardImageFile = cardPicture;
         reasonOnhold = cr[0]?.reason_onhold ?? null;
         cardComment = cr[0]?.comment ?? null;
         validityDate = cr[0]?.validity_date ? String(cr[0].validity_date) : null;
@@ -424,13 +420,11 @@ let cardImageFile: string | null = null;
   // Card template profile slot: latest alumni photo (tbl_alumni.image2, then image1)
   const profileImageFilename = pickAlumniProfilePhotoFilename(p?.image2, p?.image1) ?? undefined;
   const cardTemplateImageFilename = (() => {
-    const raw = pickCardImageWithFallback(
-      cardImageFile,
-      cardPicture,
-      p?.image2 ?? null,
-      p?.image1 ?? null
-    );
-    return raw ?? undefined;
+    const raw = (cardImageFile ?? cardPicture) ?? null;
+    if (raw && raw.trim() && raw.trim().toLowerCase() !== "null") {
+      return raw.trim();
+    }
+    return undefined;
   })();
 
   // Use validity_date from database if available, otherwise calculate from yearofending (add 5 years as default validity)
@@ -879,14 +873,21 @@ let cardImageFile: string | null = null;
                               )}
                             </div>
                             {cardStatus === "under-review" ? (
-                            <button
-                              type="button"
-                              disabled
-                              aria-disabled
-                              className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
-                            >
-                              Under review
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                disabled
+                                aria-disabled
+                                className="mt-2 sm:mt-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-gray-300 cursor-not-allowed"
+                              >
+                                Under review
+                              </button>
+                              {!isViewer && !!sapId && (
+                                <div className="mt-2 sm:mt-3">
+                                  <UpdateAlumniCardPictureButton sapId={sapId} />
+                                </div>
+                              )}
+                            </>
                           ) : cardStatus === "inprocess" ? (
                             <button
                               type="button"
@@ -909,7 +910,7 @@ let cardImageFile: string | null = null;
                               {!!sapId && (
                                 <SubmitRevisionButton sapId={sapId} />
                               )}
-                              {!!sapId && (
+                              {!isViewer && !!sapId && (
                                 <UpdateAlumniCardPictureButton sapId={sapId} />
                               )}
                               <button
@@ -942,11 +943,6 @@ let cardImageFile: string | null = null;
                             </Link>
                             )
                           ) : null}
-                          {!isViewer && (cardStatus === "under-review") && !!sapId && (
-                            <div className="mt-2 sm:mt-3">
-                              <UpdateAlumniCardPictureButton sapId={sapId} />
-                            </div>
-                          )}
                         </>
                       )}
                     </div>

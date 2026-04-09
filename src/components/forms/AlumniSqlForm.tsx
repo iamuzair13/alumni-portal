@@ -1528,7 +1528,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               {errors.contactno && <p className="mt-1 text-xs text-red-600">Mobile number is required</p>}
             </div>
             <div>
-              <label className={labelBase}>Secondary Contact No.</label>
+              <label className={labelBase}>Secondary Contact No. (Optional)</label>
               <Controller
                 name="contactno1"
                 control={control}

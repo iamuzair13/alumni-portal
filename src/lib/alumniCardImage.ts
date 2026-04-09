@@ -1,83 +1,68 @@
-import { existsSync } from "fs";
-import { mkdir, unlink, writeFile } from "fs/promises";
-import { join } from "path";
+import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
 
-export const ALUMNI_CARD_ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png"] as const;
-export const ALUMNI_CARD_MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
+type CardImageInputs = {
+  cardImage?: string | null;
+  cardPicture?: string | null;
+  alumniImage2?: string | null;
+  alumniImage1?: string | null;
+};
 
-function sanitizeIdentifier(input: string | null | undefined): string {
-  const cleaned = String(input ?? "")
+function clean(raw: string | null | undefined): string {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  const lowered = value.toLowerCase();
+  if (lowered === "null" || lowered === "undefined") return "";
+  return value;
+}
+
+function dedupe(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of values) {
+    if (!v) continue;
+    const key = v.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Retrieval priority:
+ * 1) tblcard.card_image / cardpicture
+ * 2) tbl_alumni.image2 / image1
+ * 3) legacy stored paths (kept as-is)
+ */
+export function getCardImageCandidates(input: CardImageInputs): string[] {
+  const cardImage = clean(input.cardImage);
+  const cardPicture = clean(input.cardPicture);
+  const alumniImage2 = clean(input.alumniImage2);
+  const alumniImage1 = clean(input.alumniImage1);
+
+  const priority = [cardImage, cardPicture, alumniImage2, alumniImage1];
+  const normalized = priority
+    .map((value) => {
+      if (!value) return "";
+      if (value.startsWith("http://") || value.startsWith("https://")) return value;
+      const normalizedFilename = normalizePublicImageFilename(value);
+      return normalizedFilename || value;
+    })
+    .filter(Boolean);
+
+  return dedupe(normalized);
+}
+
+export function resolvePreferredCardImage(input: CardImageInputs): string | null {
+  const candidates = getCardImageCandidates(input);
+  return candidates[0] ?? null;
+}
+
+export function isCardPictureUpdateAllowed(statusRaw: string | null | undefined): boolean {
+  const normalized = String(statusRaw ?? "")
     .trim()
-    .replace(/[^a-zA-Z0-9_-]/g, "");
-  return cleaned || "alumni";
-}
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-");
 
-function normalizeExtension(file: File): string {
-  const extFromName = String(file.name || "").split(".").pop()?.toLowerCase();
-  if (extFromName === "jpeg") return "jpg";
-  if (extFromName === "jpg" || extFromName === "png") return extFromName;
-  const mime = String(file.type || "").toLowerCase();
-  if (mime.includes("png")) return "png";
-  return "jpg";
-}
-
-function isSafeImageFilename(filename: string | null | undefined): boolean {
-  const value = String(filename ?? "").trim();
-  if (!value) return false;
-  return /^[a-zA-Z0-9_.-]+$/.test(value);
-}
-
-export function validateAlumniCardImage(file: File): { ok: true } | { ok: false; error: string } {
-  if (!ALUMNI_CARD_ALLOWED_MIME_TYPES.includes(file.type as (typeof ALUMNI_CARD_ALLOWED_MIME_TYPES)[number])) {
-    return { ok: false, error: "Invalid file type. Only JPG and PNG images are allowed." };
-  }
-  if (file.size > ALUMNI_CARD_MAX_FILE_SIZE) {
-    return { ok: false, error: "File size exceeds 2MB limit." };
-  }
-  if (file.size <= 0) {
-    return { ok: false, error: "Uploaded file is empty." };
-  }
-  return { ok: true };
-}
-
-export async function saveAlumniCardImage(file: File, identifier: string): Promise<string> {
-  if (!existsSync(CARD_UPLOAD_DIR)) {
-    await mkdir(CARD_UPLOAD_DIR, { recursive: true });
-  }
-
-  const extension = normalizeExtension(file);
-  const safeIdentifier = sanitizeIdentifier(identifier);
-  const filename = `${safeIdentifier}-${Date.now()}.${extension}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(join(CARD_UPLOAD_DIR, filename), buffer);
-  return filename;
-}
-
-export async function tryDeleteAlumniCardImage(filename: string | null | undefined): Promise<void> {
-  const clean = String(filename ?? "").trim();
-  if (!isSafeImageFilename(clean)) return;
-  const filePath = join(CARD_UPLOAD_DIR, clean);
-  if (!existsSync(filePath)) return;
-  try {
-    await unlink(filePath);
-  } catch {
-    // best effort cleanup
-  }
-}
-
-export function pickCardImageWithFallback(
-  cardImage: string | null | undefined,
-  cardPicture: string | null | undefined,
-  alumniImage2: string | null | undefined,
-  alumniImage1: string | null | undefined
-): string | null {
-  const candidates = [cardImage, cardPicture, alumniImage2, alumniImage1];
-  for (const candidate of candidates) {
-    const value = String(candidate ?? "").trim();
-    if (value && value.toLowerCase() !== "null" && value.toLowerCase() !== "undefined") {
-      return value;
-    }
-  }
-  return null;
+  return normalized === "underreview" || normalized === "under-review" || normalized === "onhold" || normalized === "on-hold";
 }

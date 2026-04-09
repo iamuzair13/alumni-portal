@@ -1,88 +1,91 @@
 "use client";
 
-import React from "react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { cardStatusKey } from "@/app/queries/fetch-card-status";
 
 type Props = {
   sapId: string;
 };
 
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
-const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_SIZE = 5 * 1024 * 1024;
+
+function validateImage(file: File | null): string | null {
+  if (!file) return "Please choose an image file.";
+  if (!ALLOWED_TYPES.includes(file.type)) return "Only JPG, JPEG, and PNG images are allowed.";
+  if (file.size > MAX_SIZE) return "Image size must be 5MB or less.";
+  return null;
+}
 
 export default function UpdateAlumniCardPictureButton({ sapId }: Props) {
-  const [uploading, setUploading] = React.useState(false);
-  const fileRef = React.useRef<HTMLInputElement>(null);
-  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [uploading, setUploading] = useState(false);
 
-  const onPick = () => {
+  const onOpenPicker = () => {
     if (uploading) return;
-    fileRef.current?.click();
+    fileInputRef.current?.click();
   };
 
-  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const onFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.currentTarget.value = "";
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Only JPG and PNG images are allowed.");
-      e.currentTarget.value = "";
+    const validationError = validateImage(file);
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
-    if (file.size > MAX_SIZE) {
-      toast.error("File size must be 2MB or less.");
-      e.currentTarget.value = "";
-      return;
-    }
+
+    const formData = new FormData();
+    formData.append("image", file as File);
 
     setUploading(true);
     const loading = toast.loading("Updating alumni card picture...");
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-
       const res = await fetch(`/api/alumni-cards/by-sap/${encodeURIComponent(sapId)}/image`, {
         method: "PATCH",
         body: formData,
       });
-      const json = await res.json().catch(() => ({}));
+
+      const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json?.error || "Failed to update alumni card picture.");
+        throw new Error(payload?.error || `Failed (${res.status})`);
       }
 
       toast.dismiss(loading);
       toast.success("Alumni card picture updated successfully.");
-      await qc.invalidateQueries({ queryKey: cardStatusKey(sapId), exact: true });
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       toast.dismiss(loading);
-      toast.error(err instanceof Error ? err.message : "Failed to update alumni card picture.");
+      toast.error(err instanceof Error ? err.message : "Failed to update card picture.");
     } finally {
       setUploading(false);
-      e.currentTarget.value = "";
     }
   };
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onPick}
-        disabled={uploading}
-        className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-white text-xs sm:text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-      >
-        {uploading ? "Updating..." : "Update Alumni Card Picture"}
-      </button>
       <input
-        ref={fileRef}
+        ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/jpg,image/png"
         className="hidden"
         onChange={onFileChange}
-        disabled={uploading}
       />
+      <button
+        type="button"
+        onClick={onOpenPicker}
+        disabled={uploading}
+        className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 w-full rounded-lg text-white text-xs sm:text-sm font-medium transition-colors ${
+          uploading
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-[#183D32] hover:bg-[#0e241d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#183D32]"
+        }`}
+      >
+        {uploading ? "Updating..." : "Update Alumni Card Picture"}
+      </button>
     </>
   );
 }

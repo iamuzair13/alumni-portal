@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
+import { resolvePreferredCardImage } from "@/lib/alumniCardImage";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -51,15 +52,14 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     
     const data = rows[0];
     
-    // When admin downloads, pick image from tbl_alumni (align with profile / PDF: most recent first)
-    // Priority: image2 > image1
-    let imageName: string | null = null;
-
-    if (data.image2 && String(data.image2).trim() !== "" && String(data.image2).toLowerCase() !== "null") {
-      imageName = String(data.image2).trim();
-    } else if (data.image1 && String(data.image1).trim() !== "" && String(data.image1).toLowerCase() !== "null") {
-      imageName = String(data.image1).trim();
-    }
+    // Backward-compatible fallback:
+    // 1) tblcard image, 2) tbl_alumni image, 3) legacy path values
+    const imageName = resolvePreferredCardImage({
+      cardImage: data.card_image,
+      cardPicture: data.cardpicture,
+      alumniImage2: data.image2,
+      alumniImage1: data.image1,
+    });
     
     // If no image found in tbl_alumni, return error
     if (!imageName) {
@@ -74,8 +74,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
       ? `${String(data.registrationno).trim()}.jpg`
       : "alumni-image.jpg";
     
-    // Save the image filename from tbl_alumni to tblcard (keep original filename, don't rename)
-    // This is the ONLY place where tblcard image should be updated
+    // Keep tblcard synced with resolved picture for legacy records.
     try {
       const alumniId = data.alumniid;
       const originalImageFilename = imageName; // Keep the original filename from tbl_alumni

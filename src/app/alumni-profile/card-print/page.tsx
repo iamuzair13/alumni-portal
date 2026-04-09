@@ -59,15 +59,37 @@ async function fetchCardPrintPayload(sapId: string): Promise<AlumniCardData> {
     // Card row is optional (validity / dates only; photo comes from tbl_alumni)
   }
 
+  const profileFilename = pickAlumniProfilePhotoFilename(alumni.image2, alumni.image1);
+
   let validity: string | null = null;
   let appliedAt: string | null = null;
   if (cardRes?.ok) {
     const cardJson = await cardRes.json();
     appliedAt = cardJson.card?.createdat || null;
     validity = cardJson.card?.validity_date || computeValidityISOFromAppliedAt(appliedAt) || null;
+    const resolvedCardImage =
+      cardJson.card?.card_image ||
+      cardJson.card?.cardpicture ||
+      null;
+    if (resolvedCardImage) {
+      return {
+        studentName: alumni.alumniname || "",
+        department: alumni.departmentname || "",
+        faculty: alumni.facultyname || "",
+        alumniId: alumni.sapid || alumni.registrationno || "UOL-AL-0000",
+        campus: alumni.campusname || null,
+        passingYear: alumni.yearofending ?? null,
+        gender: alumni.gender || null,
+        sapId: alumni.sapid || null,
+        registrationNo: alumni.registrationno || null,
+        validity,
+        appliedAt,
+        photoUrl: profileFilename,
+        cardImage: resolvedCardImage,
+        cnicPassport: alumni.cnicpassport || null,
+      };
+    }
   }
-
-  const profileFilename = pickAlumniProfilePhotoFilename(alumni.image2, alumni.image1);
 
   return {
     studentName: alumni.alumniname || "",
