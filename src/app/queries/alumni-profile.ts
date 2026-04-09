@@ -43,6 +43,7 @@ export type AlumniFullDetails = {
   program: number | null;
   industry: string | null;
   employeed: string | null;
+  occupation_transition_timing: string | null;
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;

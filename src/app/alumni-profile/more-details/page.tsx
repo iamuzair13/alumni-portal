@@ -276,152 +276,6 @@ function MoreDetailsContent() {
       }
     }
 
-    // Validate: If employment status requires fields, validate them
-    const employmentStatusChanged = pendingChanges.employeed !== undefined;
-    const currentEmploymentStatus = employmentStatusChanged 
-      ? pendingChanges.employeed 
-      : (data?.employeed ?? null);
-    
-    // Get current values (use pending changes if available, otherwise use data)
-    const getValue = (key: string) => {
-      // Special handling for startOfCareer - it's stored as totalyearsofexpereince
-      if (key === "startOfCareer") {
-        // Check if startOfCareer is explicitly in pendingChanges
-        if ("startOfCareer" in pendingChanges) {
-          return pendingChanges.startOfCareer;
-        }
-        // Otherwise, calculate from totalyearsofexpereince
-        const totalYears = pendingChanges.totalyearsofexpereince !== undefined 
-          ? pendingChanges.totalyearsofexpereince 
-          : (data?.totalyearsofexpereince ?? null);
-        if (totalYears) {
-          const years = Number(totalYears);
-          if (!isNaN(years) && years > 0) {
-            return new Date().getFullYear() - years;
-          }
-        }
-        // Check if startOfCareer exists in data
-        const startOfCareer = (data as Record<string, unknown>).startOfCareer;
-        if (startOfCareer) {
-          if (typeof startOfCareer === "number") return startOfCareer;
-          if (typeof startOfCareer === "string") {
-            const year = new Date(startOfCareer).getFullYear();
-            return isNaN(year) ? null : year;
-          }
-        }
-        return null;
-      }
-      
-      // Check pendingChanges first (user's current edits)
-      // Use 'in' operator to check if key exists, even if value is empty string
-      if (key in pendingChanges) {
-        const pendingValue = pendingChanges[key];
-        // Return the actual value as-is (including empty strings)
-        // We'll validate empty strings in the validation check below
-        return pendingValue;
-      }
-      // Fall back to data from API
-      const dataValue = (data as Record<string, unknown>)?.[key];
-      return dataValue ?? null;
-    };
-    
-    // Check employment status (handle both DB values and display values)
-    const employmentStatusLower = String(currentEmploymentStatus || "").toLowerCase();
-    const isEmployedOrBusiness = employmentStatusLower === "employed" || employmentStatusLower === "employed/business";
-    const isSelfEmployed = employmentStatusLower === "self-emplo" || employmentStatusLower === "self-employed" || employmentStatusLower === "self-employed/enterpreneur";
-    const isPursuingHigherEd = employmentStatusLower === "pursuing higher education" || employmentStatusLower === "highered";
-    
-    // Both "Employed/Business" and "Self-Employed" require the same fields
-    if (isEmployedOrBusiness || isSelfEmployed) {
-      const requiredFields = [
-        { key: "industry", label: "Sector" },
-        { key: "nameoforganization", label: "Company Name" },
-        { key: "designation", label: "Designation" },
-        { key: "startOfCareer", label: "Start of Career" },
-        { key: "organization_address", label: "Company Address" },
-        { key: "work_country", label: "Work Country" },
-        { key: "work_city", label: "Work City" },
-        { key: "officialemail", label: "Work Email" },
-        { key: "officialnumber", label: "Work Phone" },
-      ];
-
-      const missingFields: string[] = [];
-      
-      for (const field of requiredFields) {
-        const value = getValue(field.key);
-        // Check if value is null, undefined, or empty string (after trimming)
-        // For startOfCareer (number), also check if it's 0 or NaN
-        let isEmpty = value === null || 
-                      value === undefined || 
-                      (typeof value === "string" && value.trim() === "");
-        if (field.key === "startOfCareer") {
-          // For start of career, check if it's a valid year
-          const year = typeof value === "number" ? value : (typeof value === "string" ? Number(value) : null);
-          isEmpty = year === null || isNaN(year) || year <= 1900 || year > new Date().getFullYear();
-        }
-        if (isEmpty) {
-          missingFields.push(field.label);
-        }
-      }
-
-      if (missingFields.length > 0) {
-        const fieldsList = missingFields.join(", ");
-        const statusLabel = isSelfEmployed ? "Self-Employed/Enterpreneur" : "Employed";
-        toast.error(
-          `When employment status is "${statusLabel}", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
-          {
-            duration: 6000,
-            style: {
-              background: '#fee2e2',
-              color: '#991b1b',
-              padding: '12px',
-              borderRadius: '8px',
-              maxWidth: '500px',
-            },
-          }
-        );
-        return;
-      }
-    }
-
-    // Validate: If employment status is "Pursuing Higher Education", all higher education fields are required
-    if (isPursuingHigherEd) {
-      const requiredFields = [
-        { key: "higher_education_institute_name", label: "Institute Name" },
-        { key: "higher_education_program", label: "Program" },
-        { key: "higher_education_institute_country", label: "Country" },
-        { key: "higher_education_institute_city", label: "City" },
-        { key: "is_scholarship", label: "Funding Source" },
-      ];
-
-      const missingFields: string[] = [];
-      
-      for (const field of requiredFields) {
-        const value = getValue(field.key);
-        if (!value || String(value).trim() === "") {
-          missingFields.push(field.label);
-        }
-      }
-
-      if (missingFields.length > 0) {
-        const fieldsList = missingFields.join(", ");
-        toast.error(
-          `When employment status is "Pursuing Higher Education", the following fields are required: ${fieldsList}. Please fill in all required fields before saving.`,
-          {
-            duration: 6000,
-            style: {
-              background: '#fee2e2',
-              color: '#991b1b',
-              padding: '12px',
-              borderRadius: '8px',
-              maxWidth: '500px',
-            },
-          }
-        );
-        return;
-      }
-    }
-
     const changesCount = Object.keys(pendingChanges).length;
     setIsSavingAll(true);
     try {
@@ -613,6 +467,13 @@ function MoreDetailsContent() {
     { value: "Unemployed(By Choice)", label: "Unemployed(By Choice)" },
     { value: "Unemployed(Searching for job)", label: "Unemployed(Searching for job)" },
   ];
+  const occupationTransitionTimingOptions = [
+    { value: "Before graduation", label: "Before graduation" },
+    { value: "Immediately after graduation", label: "Immediately after graduation" },
+    { value: "Within 3 months", label: "Within 3 months" },
+    { value: "Within 6 months", label: "Within 6 months" },
+    { value: "After 6 months", label: "After 6 months" },
+  ];
 
   type MoreDetailsField = {
     label: string;
@@ -672,30 +533,7 @@ function MoreDetailsContent() {
       title: "Employment Information",
       fields: [
         { label: "Employment Status", value: data.employeed, key: "employeed", editable: true, type: "select" as const, options: employmentStatusOptions, isSpecial: true },
-        { label: "Industry", value: data.industry, key: "industry", editable: true, isSpecial: true },
-        { label: "Company Name", value: data.nameoforganization, key: "nameoforganization", editable: true, isSpecial: true },
-        { label: "Designation", value: data.designation, key: "designation", editable: true, isSpecial: true },
-        { label: "Start of Career", value: (() => {
-          // Try to get startOfCareer from data, or calculate from total years of experience
-          const startOfCareer = (data as Record<string, unknown>).startOfCareer;
-          if (startOfCareer) {
-            if (typeof startOfCareer === "string") {
-              const year = new Date(startOfCareer).getFullYear();
-              return isNaN(year) ? null : year;
-            }
-            return typeof startOfCareer === "number" ? startOfCareer : null;
-          }
-          // Calculate from total years of experience if available
-          if (data.totalyearsofexpereince) {
-            const years = Number(data.totalyearsofexpereince);
-            if (!isNaN(years) && years > 0) {
-              return new Date().getFullYear() - years;
-            }
-          }
-          return null;
-        })(), key: "startOfCareer", editable: true, type: "number" as const, isSpecial: true },
-        // Work location fields are now handled by EditableEmploymentStatus component
-        // They are shown conditionally based on employment status
+       
       ],
     },
     {
@@ -835,6 +673,7 @@ function MoreDetailsContent() {
                                   nameoforganizationValue={data.nameoforganization}
                                   designationValue={data.designation}
                                   totalyearsofexpereinceValue={data.totalyearsofexpereince}
+                                  occupationTransitionTimingValue={data.occupation_transition_timing}
                                   organizationAddressValue={data.organization_address}
                                   workCountryValue={data.work_country}
                                   workCityValue={data.work_city}
@@ -852,6 +691,7 @@ function MoreDetailsContent() {
                                   onOrganizationChange={(_, value) => handleFieldValueChange("nameoforganization", value)}
                                   onDesignationChange={(_, value) => handleFieldValueChange("designation", value)}
                                   onExperienceChange={(_, value) => handleFieldValueChange("totalyearsofexpereince", value)}
+                                  onOccupationTransitionTimingChange={(_, value) => handleFieldValueChange("occupation_transition_timing", value)}
                                   onOrganizationAddressChange={(_, value) => handleFieldValueChange("organization_address", value)}
                                   onWorkCountryChange={(_, value) => handleFieldValueChange("work_country", value)}
                                   onWorkCityChange={(_, value) => handleFieldValueChange("work_city", value)}

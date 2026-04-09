@@ -226,6 +226,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
         program: row.program ?? null,
         industry: row.industry ?? null,
         employeed: row.employeed ?? null,
+        occupation_transition_timing: row.occupation_transition_timing ?? null,
         nameoforganization: row.nameoforganization ?? null,
         designation: row.designation ?? null,
         totalyearsofexpereince: row.totalyearsofexpereince ?? null,

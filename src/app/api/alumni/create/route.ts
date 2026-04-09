@@ -159,6 +159,7 @@ type TblAlumniBody = {
   majorsubject: string | null;
   industry: string | null;
   employeed: string | null;
+  occupation_transition_timing: string | null;
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
@@ -497,6 +498,7 @@ export async function POST(req: Request) {
             majorsubject = ${clean(body.majorsubject)},
             industry = ${clean(body.industry)},
             employeed = ${mapEmployeed(body.employeed)},
+            occupation_transition_timing = ${clean(body.occupation_transition_timing)},
             nameoforganization = ${clean(body.nameoforganization)},
             designation = ${clean(body.designation)},
             totalyearsofexpereince = ${truncateExperience(body.totalyearsofexpereince)},
@@ -585,6 +587,7 @@ export async function POST(req: Request) {
           majorsubject,
           industry,
           employeed,
+          occupation_transition_timing,
           nameoforganization,
           designation,
           totalyearsofexpereince,
@@ -650,6 +653,7 @@ export async function POST(req: Request) {
           ${clean(body.majorsubject)},
           ${clean(body.industry)},
           ${mapEmployeed(body.employeed)},
+          ${clean(body.occupation_transition_timing)},
           ${clean(body.nameoforganization)},
           ${clean(body.designation)},
           ${truncateExperience(body.totalyearsofexpereince)},

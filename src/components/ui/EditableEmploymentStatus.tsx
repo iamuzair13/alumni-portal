@@ -65,12 +65,21 @@ const scholarshipOptions = [
   { value: "self paid", label: "Self Paid" },
 ];
 
+const occupationTransitionTimingOptions = [
+  { value: "Before graduation", label: "Before graduation" },
+  { value: "Immediately after graduation", label: "Immediately after graduation" },
+  { value: "Within 3 months", label: "Within 3 months" },
+  { value: "Within 6 months", label: "Within 6 months" },
+  { value: "After 6 months", label: "After 6 months" },
+];
+
 type EditableEmploymentStatusProps = {
   employeedValue: unknown;
   industryValue: unknown;
   nameoforganizationValue: unknown;
   designationValue: unknown;
   totalyearsofexpereinceValue: unknown;
+  occupationTransitionTimingValue?: unknown;
   organizationAddressValue?: unknown;
   // Work location fields
   workCountryValue?: unknown;
@@ -91,6 +100,7 @@ type EditableEmploymentStatusProps = {
   onOrganizationChange: (key: string, value: unknown) => void;
   onDesignationChange: (key: string, value: unknown) => void;
   onExperienceChange: (key: string, value: unknown) => void;
+  onOccupationTransitionTimingChange?: (key: string, value: unknown) => void;
   onStartOfCareerChange?: (key: string, value: unknown) => void;
   onOrganizationAddressChange?: (key: string, value: unknown) => void;
   // Work location handlers
@@ -117,6 +127,7 @@ export default function EditableEmploymentStatus({
   nameoforganizationValue,
   designationValue,
   totalyearsofexpereinceValue,
+  occupationTransitionTimingValue,
   organizationAddressValue,
   workCountryValue,
   workCityValue,
@@ -134,6 +145,7 @@ export default function EditableEmploymentStatus({
   onOrganizationChange,
   onDesignationChange,
   onExperienceChange,
+  onOccupationTransitionTimingChange,
   onStartOfCareerChange,
   onOrganizationAddressChange,
   onWorkCountryChange,
@@ -192,6 +204,23 @@ export default function EditableEmploymentStatus({
       />
       {showEmploymentFields && (
         <>
+          {onOccupationTransitionTimingChange && (
+            <EditableField
+              label={
+                showSelfEmployedFields
+                  ? "How soon after graduation did you start your business or become self-employed? *"
+                  : "How soon after graduation did you secure your first job? *"
+              }
+              value={occupationTransitionTimingValue}
+              pendingValue={pendingValues?.occupation_transition_timing}
+              fieldKey="occupation_transition_timing"
+              onValueChange={onOccupationTransitionTimingChange}
+              type="select"
+              options={occupationTransitionTimingOptions}
+              batchMode={true}
+              disabled={disabled}
+            />
+          )}
           {/* Sector field - shown for both, but required for Self-Employed */}
           {showSelfEmployedFields ? (
             <>
@@ -360,14 +389,14 @@ export default function EditableEmploymentStatus({
           )}
           {onOrganizationAddressChange && (
             <EditableField
-              label={showSelfEmployedFields ? "Business Address *" : "Company Address *"}
+              label="Work Address *"
               value={organizationAddressValue}
               fieldKey="organization_address"
               onValueChange={onOrganizationAddressChange}
               type="textarea"
               batchMode={true}
               disabled={disabled}
-              placeholder={showSelfEmployedFields ? "Enter your business address" : "Enter company address"}
+              placeholder={showSelfEmployedFields ? "Enter your work/business address" : "Enter work address"}
             />
           )}
           {/* Self-Employed specific fields */}
@@ -375,50 +404,50 @@ export default function EditableEmploymentStatus({
             <>
               {onWorkEmailChange && (
                 <EditableField
-                  label="Business Email *"
+                  label="Work Email *"
                   value={workEmailValue}
                   fieldKey="officialemail"
                   onValueChange={onWorkEmailChange}
                   type="email"
                   batchMode={true}
                   disabled={disabled}
-                  placeholder="Enter your business email"
+                  placeholder="Enter work email"
                 />
               )}
               {onWorkPhoneChange && (
                 <EditableField
-                  label="Business Phone *"
+                  label="Work Phone *"
                   value={workPhoneValue}
                   fieldKey="officialnumber"
                   onValueChange={onWorkPhoneChange}
                   type="tel"
                   batchMode={true}
                   disabled={disabled}
-                  placeholder="Enter your business phone"
+                  placeholder="Enter work phone"
                 />
               )}
               {onWorkCityChange && (
                 <EditableField
-                  label="Business City *"
+                  label="Work City *"
                   value={workCityValue}
                   fieldKey="work_city"
                   onValueChange={onWorkCityChange}
                   type="text"
                   batchMode={true}
                   disabled={disabled}
-                  placeholder="Enter your business city"
+                  placeholder="Enter work city"
                 />
               )}
               {onWorkCountryChange && (
                 <EditableField
-                  label="Business Country *"
+                  label="Work Country *"
                   value={workCountryValue}
                   fieldKey="work_country"
                   onValueChange={onWorkCountryChange}
                   type="text"
                   batchMode={true}
                   disabled={disabled}
-                  placeholder="Select from list or type your country"
+                  placeholder="Select from list or type work country"
                 />
               )}
               {onAboutMeChange && (
@@ -488,6 +517,19 @@ export default function EditableEmploymentStatus({
       )}
       {isPursuingHigherEd && (
         <>
+          {onOccupationTransitionTimingChange && (
+            <EditableField
+              label="How soon after graduation did you enrol in a higher education program? *"
+              value={occupationTransitionTimingValue}
+              pendingValue={pendingValues?.occupation_transition_timing}
+              fieldKey="occupation_transition_timing"
+              onValueChange={onOccupationTransitionTimingChange}
+              type="select"
+              options={occupationTransitionTimingOptions}
+              batchMode={true}
+              disabled={disabled}
+            />
+          )}
           {onDegreeTitleChange && (
             <EditableField
               label="Degree Title *"

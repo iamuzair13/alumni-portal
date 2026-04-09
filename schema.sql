@@ -222,6 +222,7 @@ CREATE TABLE IF NOT EXISTS public.tbl_alumni
     majorsubject character varying(100) COLLATE pg_catalog."default",
     industry text COLLATE pg_catalog."default",
     employeed text COLLATE pg_catalog."default",
+    occupation_transition_timing text COLLATE pg_catalog."default",
     nameoforganization character varying(100) COLLATE pg_catalog."default",
     designation character varying(100) COLLATE pg_catalog."default",
     totalyearsofexpereince character varying(10) COLLATE pg_catalog."default",

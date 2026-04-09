@@ -48,6 +48,7 @@ export type TblAlumniForm = {
   majorsubject: string | null;
   industry: string | null;
   employeed: string | null;
+  occupation_transition_timing: string | null;
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
@@ -85,6 +86,13 @@ export type TblAlumniForm = {
 const inputBase =
   "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50";
 const labelBase = "block text-sm font-medium text-neutral-800";
+const occupationTransitionTimingOptions = [
+  "Before graduation",
+  "Immediately after graduation",
+  "Within 3 months",
+  "Within 6 months",
+  "After 6 months",
+] as const;
 
 // List of all countries
 const allCountries = [
@@ -442,6 +450,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       majorsubject: null,
       industry: null,
       employeed: "Unemployed(Searching for job)",
+      occupation_transition_timing: null,
       nameoforganization: null,
       designation: null,
       totalyearsofexpereince: null,
@@ -661,6 +670,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     (employeedVal || "").toLowerCase() === "employed/business" ||
     (employeedVal || "").toLowerCase() === "self-employed/enterpreneur";
   const isHigherEdStatus = (employeedVal || "").toLowerCase() === "pursuing higher education";
+  const isOccupationQuestionApplicable = isWorkStatus || isHigherEdStatus;
 
   useEffect(() => {
     if (isHigherEdStatus) {
@@ -686,6 +696,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       setValue("workCountry", null, { shouldValidate: false });
       setValue("totalyearsofexpereince", null, { shouldValidate: false });
       setValue("startOfCareer", null, { shouldValidate: false });
+      clearErrors(["occupation_transition_timing"]);
       return;
     }
 
@@ -719,6 +730,8 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       setValue("workCountry", null, { shouldValidate: false });
       setValue("totalyearsofexpereince", null, { shouldValidate: false });
       setValue("startOfCareer", null, { shouldValidate: false });
+      setValue("occupation_transition_timing", null, { shouldValidate: false });
+      clearErrors(["occupation_transition_timing"]);
     }
   }, [employeedVal, isWorkStatus, isHigherEdStatus, setValue, clearErrors]);
   
@@ -984,12 +997,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       (employeedVal || "").toLowerCase() === "employed/business" ||
       (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
     ) {
-      workFieldsToValidate.push("industry", "startOfCareer", "nameoforganization", "designation", "officialemail", "officialnumber", "organization_address", "workCity", "workCountry");
+      workFieldsToValidate.push("occupation_transition_timing", "industry", "startOfCareer", "nameoforganization", "designation", "officialemail", "officialnumber", "organization_address", "workCity", "workCountry");
     }
     
     // Validate higher education fields if pursuing higher education
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
       workFieldsToValidate.push(
+        "occupation_transition_timing",
         "highereducationinstitute",
         "highereducationprogram",
         "scholarship",
@@ -1010,6 +1024,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
     ) {
       const fields: Array<keyof TblAlumniForm> = [
+        "occupation_transition_timing",
         "industry",
         "startOfCareer",
         "nameoforganization",
@@ -1032,6 +1047,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     // Conditional: when pursuing higher education, validate required fields
     if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
       const fields: Array<keyof TblAlumniForm> = [
+        "occupation_transition_timing",
         "highereducationinstitute",
         "highereducationprogram",
         "scholarship",
@@ -2191,6 +2207,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input
                     type="radio"
                     value="Employed"
+                    defaultChecked
                     className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
                     {...register("employeed")}
                   />
@@ -2227,7 +2244,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <input
                     type="radio"
                     value="Unemployed(Searching for job)"
-                    defaultChecked
                     className="h-4 w-4 border-neutral-300 text-indigo-600 focus:ring-indigo-500"
                     {...register("employeed")}
                   />
@@ -2239,6 +2255,27 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             {/* Employed Fields */}
             {(((employeedVal || "").toLowerCase() === "employed" || (employeedVal || "").toLowerCase() === "employed/business") || (employeedVal || "").toLowerCase() === "self-employed/enterpreneur") && (
               <>
+                <div>
+                  <label className={labelBase}>
+                    {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
+                      ? "How soon after graduation did you start your business or become self-employed? *"
+                      : "How soon after graduation did you secure your first job? *"}
+                  </label>
+                  <select
+                    className={inputBase}
+                    {...register("occupation_transition_timing", { required: true })}
+                  >
+                    <option value="">Select</option>
+                    {occupationTransitionTimingOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.occupation_transition_timing && (
+                    <p className="mt-1 text-xs text-red-600">This field is required</p>
+                  )}
+                </div>
                 {/* Sector = industry */}
                 <div>
                   <label className={labelBase}>Sector *</label>
@@ -2474,6 +2511,23 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             {(employeedVal || "").toLowerCase() === "pursuing higher education" && (
               <>
                 <div>
+                  <label className={labelBase}>How soon after graduation did you enrol in a higher education program? *</label>
+                  <select
+                    className={inputBase}
+                    {...register("occupation_transition_timing", { required: true })}
+                  >
+                    <option value="">Select</option>
+                    {occupationTransitionTimingOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.occupation_transition_timing && (
+                    <p className="mt-1 text-xs text-red-600">This field is required</p>
+                  )}
+                </div>
+                <div>
                   <label className={labelBase}>Institution Name *</label>
                   <input type="text" className={inputBase} placeholder="e.g. University Name" {...register("highereducationinstitute", { required: true, maxLength: 200 })} />
                   {errors.highereducationinstitute && (
@@ -2555,6 +2609,9 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             )}
 
             {/* Unemployed Fields - No additional fields needed as reason is in the radio button value */}
+            {!isOccupationQuestionApplicable && (
+              <input type="hidden" value="" {...register("occupation_transition_timing")} />
+            )}
             <div className="sm:col-span-2 lg:col-span-3 mt-4">
               <label className={labelBase}>About Me (Optional)</label>
               <textarea className={inputBase} {...register("aboutme")} />

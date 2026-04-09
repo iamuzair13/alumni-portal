@@ -81,6 +81,7 @@ const getAlumniFieldValue = (label: string, alumniData: Record<string, unknown> 
     "Admission Year": "yearofstarting",
     "CGPA": "cgpa",
     "Major Subject": "majorsubject",
+    "Post-Graduation Transition": "occupation_transition_timing",
   };
 
   const alumniField = fieldMap[label];
@@ -495,6 +496,7 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Occupation</h4>
         </div>
         <CompactField label="Occupation Status" value={null} />
+        <CompactField label="Post-Graduation Transition" value={null} />
         <CompactField label="Current Organization" value={null} />
         <CompactField label="Current Designation" value={null} />
         <CompactField label="Sector" value={null} />

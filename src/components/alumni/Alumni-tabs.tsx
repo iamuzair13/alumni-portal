@@ -2074,6 +2074,7 @@ export const AlumniTabs: React.FC = () => {
           if (lower === "highered") return "Pursuing Higher Education";
           return v;
         })(),
+        "Post-Graduation Transition": item.occupation_transition_timing || "",
         "Organization": item.nameoforganization || "",
         "Designation": item.designation || "",
         "Total Years of Experience": item.totalyearsofexpereince || "",
@@ -2195,6 +2196,7 @@ export const AlumniTabs: React.FC = () => {
         { key: "Major Subject", label: "Major Subject", defaultSelected: false },
         { key: "Industry", label: "Sector", defaultSelected: false },
         { key: "Employment Status", label: "Employment Status", defaultSelected: false },
+        { key: "Post-Graduation Transition", label: "Post-Graduation Transition", defaultSelected: false },
         { key: "Organization", label: "Employer", defaultSelected: false },
         { key: "Designation", label: "Designation", defaultSelected: false },
         { key: "Total Years of Experience", label: "Total Years of Experience", defaultSelected: false },

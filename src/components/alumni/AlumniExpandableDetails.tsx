@@ -194,6 +194,7 @@ type AlumniFullData = {
   program: number | null;
   industry: string | null;
   employeed: string | null;
+  occupation_transition_timing: string | null;
   nameoforganization: string | null;
   designation: string | null;
   totalyearsofexpereince: string | null;
@@ -1566,6 +1567,24 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
             { value: "Unemployed(Searching for job)", label: "Unemployed (Searching for Job)" },
             { value: "Pursuing Higher Education", label: "Pursuing Higher Education" }
           ]} onEdit={() => startEditingField("employeed")} />
+          <CompactField
+            label="Post-Graduation Transition"
+            value={data.occupation_transition_timing}
+            isEditing={isFieldEditing("occupation_transition_timing")}
+            readOnly={readOnly}
+            register={register}
+            name="occupation_transition_timing"
+            type="select"
+            options={[
+              { value: "", label: "Select" },
+              { value: "Before graduation", label: "Before graduation" },
+              { value: "Immediately after graduation", label: "Immediately after graduation" },
+              { value: "Within 3 months", label: "Within 3 months" },
+              { value: "Within 6 months", label: "Within 6 months" },
+              { value: "After 6 months", label: "After 6 months" },
+            ]}
+            onEdit={() => startEditingField("occupation_transition_timing")}
+          />
           <CompactField label="Current Organization" value={data.nameoforganization} isEditing={isFieldEditing("nameoforganization")} readOnly={readOnly} register={register} name="nameoforganization" onEdit={() => startEditingField("nameoforganization")} />
           <CompactField label="Current Designation" value={data.designation} isEditing={isFieldEditing("designation")} readOnly={readOnly} register={register} name="designation" onEdit={() => startEditingField("designation")} />
           {!isFieldEditing("industry") || readOnly ? (

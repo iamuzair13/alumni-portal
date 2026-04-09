@@ -249,6 +249,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const addressVal = "address" in body ? cleanValue("address", body.address) : undefined;
     const cgpaVal = "cgpa" in body ? cleanValue("cgpa", body.cgpa) : undefined;
     const employeedVal = "employeed" in body ? cleanValue("employeed", body.employeed) : undefined;
+    const occupationTransitionTimingVal = "occupation_transition_timing" in body ? cleanValue("occupation_transition_timing", body.occupation_transition_timing) : undefined;
     const industryVal = "industry" in body ? cleanValue("industry", body.industry) : undefined;
     const nameoforganizationVal = "nameoforganization" in body ? cleanValue("nameoforganization", body.nameoforganization) : undefined;
     const designationVal = "designation" in body ? cleanValue("designation", body.designation) : undefined;
@@ -354,6 +355,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       address: addressVal,
       cgpa: cgpaVal,
       employeed: employeedVal,
+      occupation_transition_timing: occupationTransitionTimingVal,
       industry: industryVal,
       nameoforganization: nameoforganizationVal,
       designation: designationVal,
@@ -613,6 +615,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
       addUpdate("address", addressVal);
       addUpdate("cgpa", cgpaVal);
       addUpdate("employeed", employeedVal);
+      addUpdate("occupation_transition_timing", occupationTransitionTimingVal);
       addUpdate("industry", industryVal);
       addUpdate("nameoforganization", nameoforganizationVal);
       addUpdate("designation", designationVal);
