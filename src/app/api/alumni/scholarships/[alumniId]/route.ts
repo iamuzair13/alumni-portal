@@ -10,6 +10,40 @@ import {
   scholarshipTypeLabel,
 } from "@/lib/scholarshipLetter";
 
+type ScholarshipUploadedDocDb = {
+  label?: unknown;
+  url?: unknown;
+  filename?: unknown;
+  adminVerified?: unknown;
+};
+
+function parseUploadedDocumentsWithAdmin(raw: unknown): Array<{ label: string; url: string; filename?: string; adminVerified?: "YES" | "NO" | null }> {
+  // Keep backwards compatibility with existing parseUploadedDocuments(),
+  // but also extract any admin verification flags if present.
+  if (raw == null) return [];
+  let arr: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      arr = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return (arr as ScholarshipUploadedDocDb[])
+    .map((x) => {
+      if (!x || typeof x !== "object") return null;
+      const label = String((x as ScholarshipUploadedDocDb).label ?? "").trim() || "Document";
+      const url = String((x as ScholarshipUploadedDocDb).url ?? "").trim();
+      const filenameRaw = (x as ScholarshipUploadedDocDb).filename;
+      const filename = filenameRaw != null ? String(filenameRaw).trim() : undefined;
+      const v = String((x as ScholarshipUploadedDocDb).adminVerified ?? "").trim().toUpperCase();
+      const adminVerified = v === "YES" ? "YES" : v === "NO" ? "NO" : null;
+      return { label, url, filename: filename || undefined, adminVerified };
+    })
+    .filter(Boolean) as Array<{ label: string; url: string; filename?: string; adminVerified?: "YES" | "NO" | null }>;
+}
+
 async function resolveFacultyName(idStr: string | undefined): Promise<string | null> {
   if (!idStr || !/^\d+$/u.test(String(idStr).trim())) return null;
   const id = Number(String(idStr).trim());
@@ -78,11 +112,18 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         a.registrationno,
         a.cgpa,
         a.degreetitle,
+        COALESCE(NULLIF(TRIM(a.facultyname), ''), f.faculty_name) AS faculty_name,
+        COALESCE(NULLIF(TRIM(a.departmentname), ''), d.department_name) AS department_name,
+        COALESCE(NULLIF(TRIM(a.degreetitle), ''), p.program_name) AS program_name,
+        a.campusname,
         a.personalemail,
         a.universityemail,
         a.officialemail
       FROM public.alumni_scholarships asch
       JOIN public.tbl_alumni a ON a.alumniid = asch.id
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE asch.id = ${alumniIdNum}
       LIMIT 1
     `;
@@ -107,6 +148,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       registrationno: string | null;
       cgpa: number | null;
       degreetitle: string | null;
+      faculty_name: string | null;
+      department_name: string | null;
+      program_name: string | null;
+      campusname: string | null;
       personalemail: string | null;
       universityemail: string | null;
       officialemail: string | null;
@@ -161,6 +206,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     };
 
     const docItems = parseUploadedDocuments(app.uploaded_documents);
+    const docItemsWithAdmin = parseUploadedDocumentsWithAdmin(app.uploaded_documents);
     const uploadedDocuments =
       docItems.length > 0
         ? docItems
@@ -170,13 +216,25 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
                 fileNameFromUrl(String(d.url || ""));
               const url = String(d.url || "").trim();
               if (!filename && !url) return null;
+              const adminVerified =
+                docItemsWithAdmin.find((x) => x.label === String(d.label || "Document").trim())?.adminVerified ?? null;
               return {
                 label: String(d.label || "Document").trim() || "Document",
                 filename: filename || "",
                 url: url || "",
+                adminVerified,
               };
             })
-            .filter(Boolean)
+            .filter(
+              (
+                x
+              ): x is {
+                label: string;
+                filename: string;
+                url: string;
+                adminVerified: "YES" | "NO" | null;
+              } => x !== null
+            )
         : [];
     const documentsLines =
       docItems.length > 0
@@ -242,6 +300,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       uploadedDocuments,
       sapCode: String(app.sapid || "").trim() || "Data is missing",
       requestedProgramDegree: String(app.degree_title || "").trim() || "Data is missing",
+      faculty: String(app.faculty_name || "").trim() || "Data is missing",
+      department: String(app.department_name || "").trim() || "Data is missing",
+      program: String(app.program_name || "").trim() || "Data is missing",
+      campus: String(app.campusname || "").trim() || "Data is missing",
       kinship:
         hasKinship || app.kinship_cnic
           ? {
@@ -264,6 +326,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         requestedDiscount: applicationLetter.requestedDiscount,
         documentsAttached: applicationLetter.documentsAttached,
         sapCode: applicationLetter.sapCode,
+        requestedProgramDegree: applicationLetter.requestedProgramDegree,
+        faculty: applicationLetter.faculty,
+        department: applicationLetter.department,
+        program: applicationLetter.program,
+        campus: applicationLetter.campus,
+        uploadedDocuments: applicationLetter.uploadedDocuments,
       });
 
       return new NextResponse(new Uint8Array(pdfBuffer), {
@@ -312,8 +380,77 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { status, rejectionReason } = body;
+    const body = await request.json().catch(() => ({}));
+    const { status, rejectionReason, documentChecklist } = body as {
+      status?: string;
+      rejectionReason?: string;
+      documentChecklist?: Array<{ label: string; verified: "YES" | "NO" }>;
+    };
+
+    // Admin document checklist update (stored inside uploaded_documents JSONB; no schema changes)
+    if (Array.isArray(documentChecklist) && documentChecklist.length > 0) {
+      const normalizedChecklist = documentChecklist
+        .map((x) => {
+          const label = String(x?.label ?? "").trim();
+          const verified = String(x?.verified ?? "").trim().toUpperCase();
+          if (!label) return null;
+          if (verified !== "YES" && verified !== "NO") return null;
+          return { label, verified: verified as "YES" | "NO" };
+        })
+        .filter(Boolean) as Array<{ label: string; verified: "YES" | "NO" }>;
+
+      if (normalizedChecklist.length === 0) {
+        return NextResponse.json({ error: "Invalid documentChecklist payload" }, { status: 400 });
+      }
+
+      const rows = await sql/* sql */`
+        SELECT uploaded_documents
+        FROM public.alumni_scholarships
+        WHERE id = ${alumniIdNum}
+        LIMIT 1
+      `;
+      if (!rows[0]) return NextResponse.json({ error: "Application not found" }, { status: 404 });
+
+      const current = (rows[0] as { uploaded_documents: unknown }).uploaded_documents;
+      let arr: any[] = [];
+      if (current == null) arr = [];
+      else if (typeof current === "string") {
+        try {
+          const parsed = JSON.parse(current);
+          arr = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          arr = [];
+        }
+      } else if (Array.isArray(current)) {
+        arr = current as any[];
+      } else {
+        arr = [];
+      }
+
+      const byLabel = new Map<string, any>();
+      for (const it of arr) {
+        if (!it || typeof it !== "object") continue;
+        const l = String((it as any).label ?? "").trim();
+        if (l) byLabel.set(l, it);
+      }
+
+      for (const c of normalizedChecklist) {
+        const existing = byLabel.get(c.label);
+        if (existing && typeof existing === "object") {
+          (existing as any).adminVerified = c.verified;
+        } else {
+          arr.push({ label: c.label, url: "", filename: "", adminVerified: c.verified });
+        }
+      }
+
+      await sql/* sql */`
+        UPDATE public.alumni_scholarships
+        SET uploaded_documents = ${JSON.stringify(arr)}
+        WHERE id = ${alumniIdNum}
+      `;
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
 
     // Validate status
     const validStatuses = ["pending", "approved", "not-approved"];
@@ -384,9 +521,10 @@ export async function PATCH(
 
     // Update scholarship status and rejection reason
     if (status === "not-approved") {
+      const rejectionReasonText = typeof rejectionReason === "string" ? rejectionReason.trim() : "";
       await sql/* sql */`
         UPDATE public.alumni_scholarships
-        SET status = ${status}, reason = ${rejectionReason.trim()}
+        SET status = ${status}, reason = ${rejectionReasonText}
         WHERE id = ${alumniIdNum}
       `;
     } else {

@@ -4,12 +4,19 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 // Helper function to get logo as base64
-function getLogoBase64(): string {
+function getLogoBase64(variant: "light" | "dark" = "dark"): string {
   // Keep PDF logo source aligned with app header branding.
-  const candidates = [
-    join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-01.png"),
-    join(process.cwd(), "public", "images", "logo", "logo.png"),
+  const lightCandidates = [
+    // Prefer lightweight assets to avoid huge PDFs.
+    join(process.cwd(), "public", "images", "logo", "logo-white.png"),
+    join(process.cwd(), "public", "images", "logo", "UOL-LOGO-White.png"),
   ];
+  const darkCandidates = [
+    // Dark logos are usually not transparent here; use when a colored banner is not used.
+    join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-04.png"),
+    join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-01.png"),
+  ];
+  const candidates = variant === "light" ? [...lightCandidates, ...darkCandidates] : [...darkCandidates, ...lightCandidates];
   for (const logoPath of candidates) {
     try {
       const logoBuffer = readFileSync(logoPath);
@@ -42,6 +49,13 @@ export interface ScholarshipLetterPDFData {
   requestedDiscount: string;
   documentsAttached: string[];
   sapCode: string;
+  // Optional fields to support enhanced tabular layout
+  requestedProgramDegree?: string;
+  faculty?: string;
+  department?: string;
+  program?: string;
+  campus?: string;
+  uploadedDocuments?: Array<{ label: string; filename?: string; url?: string; adminVerified?: "YES" | "NO" | null }>;
 }
 
  export interface MembershipApplicationData {
@@ -54,7 +68,7 @@ export interface ScholarshipLetterPDFData {
 export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ compress: true });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 45;
@@ -68,27 +82,28 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         y = margin;
       };
 
-      const logoBase64 = getLogoBase64();
+      // Header band (fixes white-logo visibility + looks more polished)
+      const headerBandH = 44;
+      doc.setFillColor(0, 102, 51);
+      doc.rect(margin, y, maxWidth, headerBandH, "F");
+
+      const logoBase64 = getLogoBase64("light");
       if (logoBase64) {
         try {
-          // Keep logo visible like app header branding
-          const logoWidth = 56;
-          const logoHeight = 28;
-          const logoX = margin;
-          const logoY = margin;
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
-          y = logoY + logoHeight + 15;
+          const logoWidth = 70;
+          const logoHeight = 22;
+          const logoX = margin + 12;
+          const logoY = y + 11;
+          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight, "uol-logo", "FAST");
         } catch {
-          y = margin + 10;
+          // ignore logo errors
         }
-      } else {
-        y = margin + 10;
       }
 
-      doc.setDrawColor(0, 102, 51);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 15;
+     
+
+      y += headerBandH + 14;
+      doc.setTextColor(0, 0, 0);
 
       doc.setFontSize(18);
       doc.setFont("helvetica", "bold");
@@ -114,6 +129,171 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         y += lines.length * (fontSize * 0.42) + spacing;
       };
 
+      const textHeight = (fontSize: number) => fontSize * 0.42;
+
+      const sectionTitle = (title: string) => {
+        const fontSize = 12.5;
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 102, 51);
+        const lines = doc.splitTextToSize(String(title || ""), maxWidth);
+        const h = Math.max(1, lines.length) * textHeight(fontSize);
+        ensureSpace(h + 10);
+        doc.text(lines, margin, y, { maxWidth });
+        y += h + 4;
+        doc.setDrawColor(0, 102, 51);
+        doc.setLineWidth(0.35);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+        doc.setTextColor(0, 0, 0);
+      };
+
+      const drawTable = (rows: Array<{ label: string; value: string }>) => {
+        const labelW = Math.min(170, maxWidth * 0.38);
+        const valueW = maxWidth - labelW;
+        const fontSize = 10.5;
+        const padX = 6;
+        const padY = 4;
+        const borderColor: [number, number, number] = [220, 220, 220];
+        const headerFill: [number, number, number] = [245, 247, 250];
+
+        for (const r of rows) {
+          const label = String(r.label || "").trim();
+          const value = String(r.value || "-");
+          const labelLines = doc.splitTextToSize(label, labelW - padX * 2);
+          const valueLines = doc.splitTextToSize(value, valueW - padX * 2);
+          const lines = Math.max(labelLines.length, valueLines.length, 1);
+          const rowH = lines * textHeight(fontSize) + padY * 2;
+
+          if (y + rowH > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+          }
+
+          doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+          doc.setLineWidth(0.25);
+
+          // Left cell background for "label"
+          doc.setFillColor(headerFill[0], headerFill[1], headerFill[2]);
+          doc.rect(margin, y, labelW, rowH, "F");
+          doc.rect(margin, y, labelW, rowH);
+
+          // Right cell
+          doc.rect(margin + labelW, y, valueW, rowH);
+
+          doc.setFontSize(fontSize);
+          doc.setFont("helvetica", "bold");
+          doc.text(labelLines, margin + padX, y + padY + textHeight(fontSize), { maxWidth: labelW - padX * 2 });
+
+          doc.setFont("helvetica", "normal");
+          doc.text(valueLines, margin + labelW + padX, y + padY + textHeight(fontSize), {
+            maxWidth: valueW - padX * 2,
+          });
+
+          y += rowH;
+        }
+
+        y += 10;
+      };
+
+      const drawChecklist = (items: Array<{ label: string; verified: "YES" | "NO" | null }>) => {
+        const fontSize = 10;
+        const colLabelW = maxWidth * 0.72;
+        const colYNW = maxWidth - colLabelW;
+        const colYesW = colYNW / 2;
+        const colNoW = colYNW / 2;
+        const x0 = margin;
+        const x1 = margin + colLabelW;
+        const x2 = x1 + colYesW;
+        const boxSize = 9;
+        const boxPadLeft = 4;
+
+        const drawTick = (cx: number, cy: number) => {
+          // Robust checkmark (no special glyphs) to avoid PDF font issues.
+          // Draw a "✓" using two segments.
+          doc.setDrawColor(0, 102, 51);
+          doc.setLineCap(1); // round
+          doc.setLineJoin(1); // round
+          doc.setLineWidth(1.2);
+          doc.line(cx - 3.4, cy + 0.4, cx - 1.1, cy + 2.8);
+          doc.line(cx - 1.2, cy + 2.8, cx + 4.0, cy - 2.8);
+          doc.setLineWidth(0.25);
+          doc.setDrawColor(120, 120, 120);
+        };
+
+        const headerH = 10;
+        ensureSpace(headerH + 6);
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.25);
+        doc.setFillColor(245, 247, 250);
+        doc.rect(x0, y, maxWidth, headerH, "F");
+        doc.rect(x0, y, maxWidth, headerH);
+        doc.line(x1, y, x1, y + headerH);
+        doc.line(x2, y, x2, y + headerH);
+        doc.setFontSize(fontSize);
+        doc.setFont("helvetica", "bold");
+        doc.text("Document", x0 + 6, y + 7);
+        doc.text("Yes", x1 + 6, y + 7);
+        doc.text("No", x2 + 6, y + 7);
+        y += headerH;
+
+        const rowPadY = 4;
+        let zebra = false;
+        for (const it of items) {
+          const label = String(it.label || "Document");
+          const labelLines = doc.splitTextToSize(label, colLabelW - 12);
+          const rowH = Math.max(1, labelLines.length) * textHeight(fontSize) + rowPadY * 2;
+          if (y + rowH > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+
+            // repeat header
+            doc.setFillColor(245, 247, 250);
+            doc.rect(x0, y, maxWidth, headerH, "F");
+            doc.rect(x0, y, maxWidth, headerH);
+            doc.line(x1, y, x1, y + headerH);
+            doc.line(x2, y, x2, y + headerH);
+            doc.setFont("helvetica", "bold");
+            doc.text("Document", x0 + 6, y + 7);
+            doc.text("Yes", x1 + 6, y + 7);
+            doc.text("No", x2 + 6, y + 7);
+            y += headerH;
+          }
+
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.25);
+          if (zebra) {
+            doc.setFillColor(252, 252, 252);
+            doc.rect(x0, y, maxWidth, rowH, "F");
+          }
+          doc.rect(x0, y, maxWidth, rowH);
+          doc.line(x1, y, x1, y + rowH);
+          doc.line(x2, y, x2, y + rowH);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(fontSize);
+          doc.text(labelLines, x0 + 6, y + rowPadY + textHeight(fontSize), { maxWidth: colLabelW - 12 });
+
+          const v = it.verified;
+
+          // Draw "checkboxes" and mark with an X to avoid glyph rendering issues.
+          const midY = y + rowH / 2;
+          const yesBoxX = x1 + boxPadLeft;
+          const noBoxX = x2 + boxPadLeft;
+          doc.setDrawColor(120, 120, 120);
+          doc.setLineWidth(0.25);
+          doc.rect(yesBoxX, midY - boxSize / 2, boxSize, boxSize);
+          doc.rect(noBoxX, midY - boxSize / 2, boxSize, boxSize);
+          if (v === "YES") drawTick(yesBoxX + boxSize / 2, midY);
+          if (v === "NO") drawTick(noBoxX + boxSize / 2, midY);
+
+          y += rowH;
+          zebra = !zebra;
+        }
+
+        y += 12;
+      };
+
       addText("Dear Competent Authority,", 12, false, 8);
       addText(
         `I, (${data.studentName}), an alumnus of the University of Lahore, am applying for the Scholarship detailed below:`,
@@ -122,35 +302,35 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         10
       );
 
-      const addField = (label: string, value: string) => {
-        // label is bold, value wraps with indentation
-        const fontSize = 12;
-        const labelText = `${label} `;
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0);
-        const labelW = doc.getTextWidth(labelText);
-        const x = margin;
-        const valueX = margin + Math.min(labelW, 140);
-        const valueMaxW = pageWidth - margin - valueX;
+      sectionTitle("Current Application");
+      drawTable([
+        { label: "Selected Discount", value: data.requestedDiscount || "-" },
+        { label: "Applied For", value: data.applyingFor || "-" },
+        { label: "Program", value: String(data.requestedProgramDegree || "-") },
+        { label: "Department", value: String(data.department || "-") },
+        { label: "Faculty", value: String(data.faculty || "-") },
+      ]);
 
-        const valueStr = String(value || "-");
-        const valueLines = doc.splitTextToSize(valueStr, valueMaxW);
-        const rowH = Math.max(1, valueLines.length) * (fontSize * 0.42) + 6;
-        ensureSpace(rowH + 2);
+      sectionTitle("Previous Educational Background");
+      drawTable([
+        { label: "Program", value: data.previousDegree || "-" },
+        { label: "Department", value: String(data.department || "-") },
+        { label: "Faculty", value: String(data.faculty || "-") },
+        { label: "Campus", value: String(data.campus || "-") },
+        { label: "CGPA", value: data.cgpaLastDegree || "-" },
+      ]);
 
-        doc.text(labelText, x, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(valueLines, valueX, y, { maxWidth: valueMaxW });
-        y += rowH;
-      };
+      sectionTitle("Documents Checklist");
+      const checklistItems =
+        Array.isArray(data.uploadedDocuments) && data.uploadedDocuments.length
+          ? data.uploadedDocuments.map((d) => ({
+              label: String(d.label || "Document"),
+              verified: (d.adminVerified ?? null) as "YES" | "NO" | null,
+            }))
+          : (data.documentsAttached || []).map((line) => ({ label: String(line || "Document"), verified: null }));
+      drawChecklist(checklistItems);
 
-      addField("Applying for:", data.applyingFor);
-      addField("Previous Degree:", data.previousDegree);
-      addField("CGPA last degree:", data.cgpaLastDegree);
-      addField("Discount Type:", data.requestedDiscount);
-
-      addField("SAP Code:", data.sapCode);
+      drawTable([{ label: "SAP Code", value: data.sapCode || "-" }]);
 
       addText("Kindly grant your approval for the above request.", 12, false, 10);
       addText("Yours sincerely,", 12, false, 6);
@@ -214,7 +394,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
 export function generateScholarshipPDF(data: ScholarshipApplicationData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ compress: true });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 50;
@@ -229,7 +409,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
           const logoHeight = 20;
           const logoX = pageWidth - margin - logoWidth;
           const logoY = margin;
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
+          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight, "uol-logo", "FAST");
           yPosition = logoY + logoHeight + 15;
         } catch {
           yPosition = margin + 10;
@@ -322,6 +502,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100); // Gray
+  
       const footerText = "Office of Alumni Relations | University of Lahore";
       const footerWidth = doc.getTextWidth(footerText);
       doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
