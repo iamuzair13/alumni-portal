@@ -110,6 +110,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         a.alumniname,
         a.sapid,
         a.registrationno,
+        a.fathername,
+        a.dateofbirth,
+        a.cnicpassport,
         a.cgpa,
         a.degreetitle,
         COALESCE(NULLIF(TRIM(a.facultyname), ''), f.faculty_name) AS faculty_name,
@@ -146,6 +149,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       alumniname: string | null;
       sapid: string | null;
       registrationno: string | null;
+      fathername: string | null;
+      dateofbirth: string | null;
+      cnicpassport: string | null;
       cgpa: number | null;
       degreetitle: string | null;
       faculty_name: string | null;
@@ -269,6 +275,13 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       month: "long",
       day: "numeric",
     });
+    const dobFormatted = app.dateofbirth
+      ? new Date(app.dateofbirth).toLocaleDateString("en-PK", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "Data unavailable";
 
     const cgpaDisplay =
       app.cgpa != null && Number.isFinite(Number(app.cgpa))
@@ -304,6 +317,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       department: String(app.department_name || "").trim() || "Data is missing",
       program: String(app.program_name || "").trim() || "Data is missing",
       campus: String(app.campusname || "").trim() || "Data is missing",
+      fatherName: String(app.fathername || "").trim() || "Data unavailable",
+      dob: dobFormatted,
+      cnic: String(app.cnicpassport || "").trim() || "Data unavailable",
       kinship:
         hasKinship || app.kinship_cnic
           ? {
@@ -331,6 +347,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         department: applicationLetter.department,
         program: applicationLetter.program,
         campus: applicationLetter.campus,
+        fatherName: applicationLetter.fatherName,
+        dob: applicationLetter.dob,
+        cnic: applicationLetter.cnic,
         uploadedDocuments: applicationLetter.uploadedDocuments,
       });
 

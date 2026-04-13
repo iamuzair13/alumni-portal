@@ -55,6 +55,9 @@ export interface ScholarshipLetterPDFData {
   department?: string;
   program?: string;
   campus?: string;
+  fatherName?: string;
+  dob?: string;
+  cnic?: string;
   uploadedDocuments?: Array<{ label: string; filename?: string; url?: string; adminVerified?: "YES" | "NO" | null }>;
 }
 
@@ -70,318 +73,255 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
     try {
       const doc = new jsPDF({ compress: true });
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 45;
-      const maxWidth = pageWidth - 2 * margin;
+      const margin = 18;
+      const maxWidth = pageWidth - margin * 2;
+      const headerBandH = 18;
       let y = margin;
 
-      const pageBottomY = () => pageHeight - margin;
-      const ensureSpace = (needed: number) => {
-        if (y + needed <= pageBottomY()) return;
-        doc.addPage();
-        y = margin;
+      const clamp = (text: string | null | undefined) => {
+        const value = String(text || "").replace(/\s+/g, " ").trim();
+        return value || "Data unavailable";
       };
 
-      // Header band (fixes white-logo visibility + looks more polished)
-      const headerBandH = 44;
+      const uploadedLookup = new Map<string, "YES" | "NO" | null>();
+      (data.uploadedDocuments || []).forEach((d) => {
+        const label = String(d.label || "").trim().toLowerCase();
+        if (!label) return;
+        const v = d.adminVerified === "YES" ? "YES" : d.adminVerified === "NO" ? "NO" : null;
+        uploadedLookup.set(label, v);
+      });
+
+      const findChecklistValue = (keywords: string[]) => {
+        const matched = Array.from(uploadedLookup.entries()).find(([label]) =>
+          keywords.some((k) => label.includes(k))
+        );
+        if (!matched) return "Yes/No";
+        return matched[1] || "Yes/No";
+      };
+
+      // Keep logo treatment unchanged.
       doc.setFillColor(0, 102, 51);
       doc.rect(margin, y, maxWidth, headerBandH, "F");
-
       const logoBase64 = getLogoBase64("light");
       if (logoBase64) {
         try {
-          const logoWidth = 70;
-          const logoHeight = 22;
-          const logoX = margin + 12;
-          const logoY = y + 11;
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight, "uol-logo", "FAST");
+          doc.addImage(logoBase64, "PNG", margin + 4, y + 3, 52, 12, "uol-logo", "FAST");
         } catch {
-          // ignore logo errors
+          // ignore logo rendering failure
         }
       }
+      y += headerBandH + 4;
 
-     
-
-      y += headerBandH + 14;
-      doc.setTextColor(0, 0, 0);
-
-      doc.setFontSize(18);
+      doc.setFillColor(240, 248, 243);
+      doc.rect(margin, y, maxWidth, 8, "F");
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
       doc.setTextColor(0, 102, 51);
-      doc.text("Alumni Scholarship Application", margin, y);
-      y += 10;
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
+      doc.text("UNIVERSITY OF LAHORE - SCHOLARSHIP APPLICATION FORM", margin + 2, y + 5.4);
       doc.setTextColor(0, 0, 0);
-      const dateText = `Date: ${data.dateFormatted}`;
-      const dateWidth = doc.getTextWidth(dateText);
-      doc.text(dateText, pageWidth - margin - dateWidth, y);
-      y += 18;
+      y += 9;
 
-      const addText = (text: string, fontSize = 12, isBold = false, spacing = 6) => {
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", isBold ? "bold" : "normal");
-        doc.setTextColor(0, 0, 0);
-        const lines = doc.splitTextToSize(text, maxWidth);
-        ensureSpace(lines.length * (fontSize * 0.42) + spacing + 2);
-        doc.text(lines, margin, y, { maxWidth });
-        y += lines.length * (fontSize * 0.42) + spacing;
+      const outerX = margin;
+      const outerY = y;
+      const outerW = maxWidth;
+      const rowHeights = {
+        title: 9,
+        date: 8,
+        section: 8,
+        normal: 8,
+        docsHeader: 8,
+        docsRow: 8,
+        signatureLabel: 10,
+        signatureRole: 10,
       };
 
-      const textHeight = (fontSize: number) => fontSize * 0.42;
-
-      const sectionTitle = (title: string) => {
-        const fontSize = 12.5;
+      const c1 = outerW * 0.26;
+      const c2 = outerW * 0.24;
+      const c3 = outerW * 0.26;
+      const c4 = outerW - c1 - c2 - c3;
+      const x2 = outerX + c1;
+      const x3 = x2 + c2;
+      const x4 = x3 + c3;
+      const toCellLines = (text: string, width: number, bold = false, maxLines = 3) => {
+        let fontSize = 9;
+        const shown = clamp(text);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
         doc.setFontSize(fontSize);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 102, 51);
-        const lines = doc.splitTextToSize(String(title || ""), maxWidth);
-        const h = Math.max(1, lines.length) * textHeight(fontSize);
-        ensureSpace(h + 10);
-        doc.text(lines, margin, y, { maxWidth });
-        y += h + 4;
-        doc.setDrawColor(0, 102, 51);
-        doc.setLineWidth(0.35);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 8;
-        doc.setTextColor(0, 0, 0);
-      };
-
-      const drawTable = (rows: Array<{ label: string; value: string }>) => {
-        const labelW = Math.min(170, maxWidth * 0.38);
-        const valueW = maxWidth - labelW;
-        const fontSize = 10.5;
-        const padX = 6;
-        const padY = 4;
-        const borderColor: [number, number, number] = [220, 220, 220];
-        const headerFill: [number, number, number] = [245, 247, 250];
-
-        for (const r of rows) {
-          const label = String(r.label || "").trim();
-          const value = String(r.value || "-");
-          const labelLines = doc.splitTextToSize(label, labelW - padX * 2);
-          const valueLines = doc.splitTextToSize(value, valueW - padX * 2);
-          const lines = Math.max(labelLines.length, valueLines.length, 1);
-          const rowH = lines * textHeight(fontSize) + padY * 2;
-
-          if (y + rowH > pageHeight - margin) {
-            doc.addPage();
-            y = margin;
-          }
-
-          doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-          doc.setLineWidth(0.25);
-
-          // Left cell background for "label"
-          doc.setFillColor(headerFill[0], headerFill[1], headerFill[2]);
-          doc.rect(margin, y, labelW, rowH, "F");
-          doc.rect(margin, y, labelW, rowH);
-
-          // Right cell
-          doc.rect(margin + labelW, y, valueW, rowH);
-
+        let lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
+        while (lines.length > maxLines && fontSize > 7) {
+          fontSize -= 0.5;
           doc.setFontSize(fontSize);
-          doc.setFont("helvetica", "bold");
-          doc.text(labelLines, margin + padX, y + padY + textHeight(fontSize), { maxWidth: labelW - padX * 2 });
-
-          doc.setFont("helvetica", "normal");
-          doc.text(valueLines, margin + labelW + padX, y + padY + textHeight(fontSize), {
-            maxWidth: valueW - padX * 2,
-          });
-
-          y += rowH;
+          lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
         }
-
-        y += 10;
+        const shownLines = lines.slice(0, maxLines);
+        if (lines.length > maxLines) {
+          const last = shownLines[shownLines.length - 1] || "";
+          shownLines[shownLines.length - 1] = `${last.slice(0, Math.max(0, last.length - 2))}..`;
+        }
+        return { lines: shownLines as string[], fontSize };
       };
 
-      const drawChecklist = (items: Array<{ label: string; verified: "YES" | "NO" | null }>) => {
-        const fontSize = 10;
-        const colLabelW = maxWidth * 0.72;
-        const colYNW = maxWidth - colLabelW;
-        const colYesW = colYNW / 2;
-        const colNoW = colYNW / 2;
-        const x0 = margin;
-        const x1 = margin + colLabelW;
-        const x2 = x1 + colYesW;
-        const boxSize = 9;
-        const boxPadLeft = 4;
-
-        const drawTick = (cx: number, cy: number) => {
-          // Robust checkmark (no special glyphs) to avoid PDF font issues.
-          // Draw a "✓" using two segments.
-          doc.setDrawColor(0, 102, 51);
-          doc.setLineCap(1); // round
-          doc.setLineJoin(1); // round
-          doc.setLineWidth(1.2);
-          doc.line(cx - 3.4, cy + 0.4, cx - 1.1, cy + 2.8);
-          doc.line(cx - 1.2, cy + 2.8, cx + 4.0, cy - 2.8);
-          doc.setLineWidth(0.25);
-          doc.setDrawColor(120, 120, 120);
-        };
-
-        const headerH = 10;
-        ensureSpace(headerH + 6);
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.25);
-        doc.setFillColor(245, 247, 250);
-        doc.rect(x0, y, maxWidth, headerH, "F");
-        doc.rect(x0, y, maxWidth, headerH);
-        doc.line(x1, y, x1, y + headerH);
-        doc.line(x2, y, x2, y + headerH);
-        doc.setFontSize(fontSize);
-        doc.setFont("helvetica", "bold");
-        doc.text("Document", x0 + 6, y + 7);
-        doc.text("Yes", x1 + 6, y + 7);
-        doc.text("No", x2 + 6, y + 7);
-        y += headerH;
-
-        const rowPadY = 4;
-        let zebra = false;
-        for (const it of items) {
-          const label = String(it.label || "Document");
-          const labelLines = doc.splitTextToSize(label, colLabelW - 12);
-          const rowH = Math.max(1, labelLines.length) * textHeight(fontSize) + rowPadY * 2;
-          if (y + rowH > pageHeight - margin) {
-            doc.addPage();
-            y = margin;
-
-            // repeat header
-            doc.setFillColor(245, 247, 250);
-            doc.rect(x0, y, maxWidth, headerH, "F");
-            doc.rect(x0, y, maxWidth, headerH);
-            doc.line(x1, y, x1, y + headerH);
-            doc.line(x2, y, x2, y + headerH);
-            doc.setFont("helvetica", "bold");
-            doc.text("Document", x0 + 6, y + 7);
-            doc.text("Yes", x1 + 6, y + 7);
-            doc.text("No", x2 + 6, y + 7);
-            y += headerH;
-          }
-
-          doc.setDrawColor(220, 220, 220);
-          doc.setLineWidth(0.25);
-          if (zebra) {
-            doc.setFillColor(252, 252, 252);
-            doc.rect(x0, y, maxWidth, rowH, "F");
-          }
-          doc.rect(x0, y, maxWidth, rowH);
-          doc.line(x1, y, x1, y + rowH);
-          doc.line(x2, y, x2, y + rowH);
-
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(fontSize);
-          doc.text(labelLines, x0 + 6, y + rowPadY + textHeight(fontSize), { maxWidth: colLabelW - 12 });
-
-          const v = it.verified;
-
-          // Draw "checkboxes" and mark with an X to avoid glyph rendering issues.
-          const midY = y + rowH / 2;
-          const yesBoxX = x1 + boxPadLeft;
-          const noBoxX = x2 + boxPadLeft;
-          doc.setDrawColor(120, 120, 120);
-          doc.setLineWidth(0.25);
-          doc.rect(yesBoxX, midY - boxSize / 2, boxSize, boxSize);
-          doc.rect(noBoxX, midY - boxSize / 2, boxSize, boxSize);
-          if (v === "YES") drawTick(yesBoxX + boxSize / 2, midY);
-          if (v === "NO") drawTick(noBoxX + boxSize / 2, midY);
-
-          y += rowH;
-          zebra = !zebra;
+      const drawCellText = (
+        text: string,
+        x: number,
+        rowY: number,
+        w: number,
+        h: number,
+        bold = false,
+        center = false,
+        prepared?: { lines: string[]; fontSize: number }
+      ) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        if (center) {
+          doc.setFontSize(9);
+          const shown = clamp(text);
+          const tw = doc.getTextWidth(shown);
+          doc.text(shown, x + Math.max(1.5, (w - tw) / 2), rowY + h / 2 + 2.2);
+          return;
         }
-
-        y += 12;
+        const cell = prepared || toCellLines(text, w, bold, 3);
+        doc.setFontSize(cell.fontSize);
+        const lineH = cell.fontSize * 0.38;
+        const textBlockH = Math.max(1, cell.lines.length) * lineH;
+        const textY = rowY + Math.max(2.6, (h - textBlockH) / 2) + lineH;
+        doc.text(cell.lines, x + 1.5, textY, { maxWidth: w - 2.5 });
       };
 
-      addText("Dear Competent Authority,", 12, false, 8);
-      addText(
-        `I, (${data.studentName}), an alumnus of the University of Lahore, am applying for the Scholarship detailed below:`,
-        12,
-        false,
-        10
+      let rowY = outerY;
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.25);
+
+      // Title row
+      doc.rect(outerX, rowY, outerW, rowHeights.title);
+      drawCellText("Alumni Scholarship Application", outerX, rowY, outerW, rowHeights.title, true, true);
+      rowY += rowHeights.title;
+
+      // Date row
+      doc.rect(outerX, rowY, c1, rowHeights.date);
+      doc.rect(x2, rowY, outerW - c1, rowHeights.date);
+      drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
+      drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, true);
+      rowY += rowHeights.date;
+
+      const drawSectionHeader = (title: string) => {
+        doc.rect(outerX, rowY, outerW, rowHeights.section);
+        drawCellText(title, outerX, rowY, outerW, rowHeights.section, true);
+        rowY += rowHeights.section;
+      };
+
+      const drawFourColRow = (l1: string, v1: string, l2: string, v2: string) => {
+        const c1Lines = toCellLines(l1, c1, true, 2);
+        const c2Lines = toCellLines(v1, c2, false, 3);
+        const c3Lines = toCellLines(l2, c3, true, 2);
+        const c4Lines = toCellLines(v2, c4, false, 3);
+        const maxFont = Math.max(c1Lines.fontSize, c2Lines.fontSize, c3Lines.fontSize, c4Lines.fontSize);
+        const lineH = maxFont * 0.38;
+        const rowH =
+          Math.max(
+            c1Lines.lines.length,
+            c2Lines.lines.length,
+            c3Lines.lines.length,
+            c4Lines.lines.length,
+            1
+          ) *
+            lineH +
+          5;
+        const finalH = Math.max(rowHeights.normal, rowH);
+        doc.rect(outerX, rowY, c1, finalH);
+        doc.rect(x2, rowY, c2, finalH);
+        doc.rect(x3, rowY, c3, finalH);
+        doc.rect(x4, rowY, c4, finalH);
+        drawCellText(l1, outerX, rowY, c1, finalH, true, false, c1Lines);
+        drawCellText(v1, x2, rowY, c2, finalH, false, false, c2Lines);
+        drawCellText(l2, x3, rowY, c3, finalH, true, false, c3Lines);
+        drawCellText(v2, x4, rowY, c4, finalH, false, false, c4Lines);
+        rowY += finalH;
+      };
+
+      drawSectionHeader("Alumni Details");
+      drawFourColRow("Name:", data.studentName, "Father's Name:", data.fatherName || "Data unavailable");
+      drawFourColRow("DOB:", data.dob || "Data unavailable", "CNIC:", data.cnic || "Data unavailable");
+
+      drawSectionHeader("Program Applied For");
+      drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
+      drawFourColRow("Department:", data.department || "-", "Program:", data.requestedProgramDegree || "-");
+      drawFourColRow("Discount Category:", data.scholarshipType || "-", "Discount Type:", data.requestedDiscount || "-");
+
+      drawSectionHeader("Previous UOL Education Record");
+      drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
+      drawFourColRow("Department:", data.department || "-", "Program:", data.previousDegree || "-");
+      drawFourColRow("Sap ID:", data.sapCode || "-", "CGPA:", data.cgpaLastDegree || "-");
+      drawFourColRow("Passing Out Year:", "Data unavailable", "Admission Reference No/Applicant ID:", "Data unavailable");
+
+      drawSectionHeader("Documents Checklist");
+      const leftW = c1 + c2;
+      const rightW = c3 + c4;
+      doc.rect(outerX, rowY, leftW, rowHeights.docsHeader);
+      doc.rect(x3, rowY, rightW, rowHeights.docsHeader);
+      drawCellText("", outerX, rowY, leftW, rowHeights.docsHeader);
+      drawCellText("Academic Transcripts & Certificates", x3, rowY, rightW, rowHeights.docsHeader, true, true);
+      rowY += rowHeights.docsHeader;
+
+      const drawDocRow = (leftLabel: string, leftValue: string, rightLabel: string, rightValue: string) => {
+        const c1Lines = toCellLines(leftLabel, c1, true, 2);
+        const c2Lines = toCellLines(leftValue, c2, false, 3);
+        const c3Lines = toCellLines(rightLabel, c3, true, 2);
+        const c4Lines = toCellLines(rightValue, c4, false, 3);
+        const maxFont = Math.max(c1Lines.fontSize, c2Lines.fontSize, c3Lines.fontSize, c4Lines.fontSize);
+        const lineH = maxFont * 0.38;
+        const rowH =
+          Math.max(
+            c1Lines.lines.length,
+            c2Lines.lines.length,
+            c3Lines.lines.length,
+            c4Lines.lines.length,
+            1
+          ) *
+            lineH +
+          5;
+        const finalH = Math.max(rowHeights.docsRow, rowH);
+        doc.rect(outerX, rowY, c1, finalH);
+        doc.rect(x2, rowY, c2, finalH);
+        doc.rect(x3, rowY, c3, finalH);
+        doc.rect(x4, rowY, c4, finalH);
+        drawCellText(leftLabel, outerX, rowY, c1, finalH, true, false, c1Lines);
+        drawCellText(leftValue, x2, rowY, c2, finalH, false, false, c2Lines);
+        drawCellText(rightLabel, x3, rowY, c3, finalH, true, false, c3Lines);
+        drawCellText(rightValue, x4, rowY, c4, finalH, false, false, c4Lines);
+        rowY += finalH;
+      };
+
+      drawDocRow(
+        "Copy of Admission Letter:",
+        findChecklistValue(["admission letter"]),
+        "Academic Transcripts & Certificates:",
+        findChecklistValue(["transcripts", "certificate"])
       );
+      drawDocRow("Alumni Card:", findChecklistValue(["alumni card"]), "Curriculum Vitae (CV):", findChecklistValue(["curriculum vitae", "cv"]));
+      drawDocRow("CNIC Copy:", findChecklistValue(["cnic"]), "", "");
 
-      sectionTitle("Current Application");
-      drawTable([
-        { label: "Selected Discount", value: data.requestedDiscount || "-" },
-        { label: "Applied For", value: data.applyingFor || "-" },
-        { label: "Program", value: String(data.requestedProgramDegree || "-") },
-        { label: "Department", value: String(data.department || "-") },
-        { label: "Faculty", value: String(data.faculty || "-") },
-      ]);
+      // Signature block
+      doc.rect(outerX, rowY, leftW, rowHeights.signatureLabel);
+      doc.rect(x3, rowY, rightW, rowHeights.signatureLabel);
+      drawCellText("Reviewed By:__________", outerX, rowY, leftW, rowHeights.signatureLabel);
+      drawCellText("Approved By:__________", x3, rowY, rightW, rowHeights.signatureLabel);
+      rowY += rowHeights.signatureLabel;
 
-      sectionTitle("Previous Educational Background");
-      drawTable([
-        { label: "Program", value: data.previousDegree || "-" },
-        { label: "Department", value: String(data.department || "-") },
-        { label: "Faculty", value: String(data.faculty || "-") },
-        { label: "Campus", value: String(data.campus || "-") },
-        { label: "CGPA", value: data.cgpaLastDegree || "-" },
-      ]);
+      doc.rect(outerX, rowY, leftW, rowHeights.signatureRole);
+      doc.rect(x3, rowY, rightW, rowHeights.signatureRole);
+      drawCellText("ARO", outerX, rowY, leftW, rowHeights.signatureRole, true);
+      drawCellText("Competent Authority", x3, rowY, rightW, rowHeights.signatureRole, true);
+      rowY += rowHeights.signatureRole;
 
-      sectionTitle("Documents Checklist");
-      const checklistItems =
-        Array.isArray(data.uploadedDocuments) && data.uploadedDocuments.length
-          ? data.uploadedDocuments.map((d) => ({
-              label: String(d.label || "Document"),
-              verified: (d.adminVerified ?? null) as "YES" | "NO" | null,
-            }))
-          : (data.documentsAttached || []).map((line) => ({ label: String(line || "Document"), verified: null }));
-      drawChecklist(checklistItems);
+      doc.rect(outerX, outerY, outerW, rowY - outerY);
 
-      drawTable([{ label: "SAP Code", value: data.sapCode || "-" }]);
-
-      addText("Kindly grant your approval for the above request.", 12, false, 10);
-      addText("Yours sincerely,", 12, false, 6);
-      addText(`(${data.studentName})`, 12, true, 10);
-
-      // Signature blocks (always placed after content; page-break if needed)
-      const sigNeeded = 90;
-      ensureSpace(sigNeeded);
-
-      const top = y + 6;
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.line(margin, top, pageWidth - margin, top);
-
-      const colGap = 14;
-      const colW = (maxWidth - 2 * colGap) / 3;
-      const colsX = [margin, margin + colW + colGap, margin + 2 * (colW + colGap)];
-
-      doc.setFontSize(10);
-      doc.setTextColor(80, 80, 80);
-
-      const rowTitleY = top + 14;
-      const lineY = rowTitleY + 18;
-      const nameY = lineY + 8;
-
-      const blocks = [
-        { title: "Reviewed By:", name: "ARO" },
-        { title: "Confirmed By:", name: "HOD" },
-        { title: "Confirmed By:", name: "Admission Cell" },
-      ];
-
-      blocks.forEach((b, idx) => {
-        const x = colsX[idx];
-        doc.setFont("helvetica", "bold");
-        doc.text(b.title, x, rowTitleY);
-        doc.setFont("helvetica", "normal");
-        doc.setDrawColor(120, 120, 120);
-        doc.line(x, lineY, x + colW, lineY);
-        doc.text(b.name, x, nameY);
-      });
-
-      // Approved by centered
-      const approvedTitleY = nameY + 22;
-      doc.setFont("helvetica", "bold");
-      doc.text("Approved By:", margin, approvedTitleY);
-      doc.setFont("helvetica", "normal");
-      const approvedLineY = approvedTitleY + 20;
-      doc.line(margin, approvedLineY, pageWidth - margin - 70, approvedLineY);
-      doc.text("Competent Authority", margin, approvedLineY + 8);
-
-      y = approvedLineY + 18;
+      // Ensure no accidental second page is left around.
+      const pages = doc.getNumberOfPages();
+      if (pages > 1) {
+        for (let i = pages; i > 1; i -= 1) {
+          doc.deletePage(i);
+        }
+      }
 
       const pdfOutput = doc.output("arraybuffer");
       resolve(Buffer.from(pdfOutput));

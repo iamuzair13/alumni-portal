@@ -140,10 +140,12 @@ export async function POST(
 
         const requiredFiles: Array<{ key: string; label: string; slot: string }> = [
           { key: "docAdmissionLetter", label: "Copy of Admission Letter (PhD – UOL)", slot: "admission-letter" },
-          { key: "docTranscripts", label: "Academic Transcripts and Certificates", slot: "transcripts" },
-          { key: "docAlumniProof", label: "Alumni Proof (Degree / Transcript)", slot: "alumni-proof" },
-          { key: "docCv", label: "Curriculum Vitae (CV)", slot: "cv" },
+          { key: "docAlumniProof", label: "Alumni Card", slot: "alumni-card" },
           { key: "docCnic", label: "CNIC Copy", slot: "cnic" },
+        ];
+        const optionalFiles: Array<{ key: string; label: string; slot: string }> = [
+          { key: "docTranscripts", label: "Academic Transcripts and Certificates", slot: "transcripts" },
+          { key: "docCv", label: "Curriculum Vitae (CV)", slot: "cv" },
         ];
 
         const prefix = `scholarship-${normalizedSapid}`;
@@ -156,6 +158,18 @@ export async function POST(
           }
           const saved = await saveFileToUploads({ file: f, prefix, slot: rf.slot });
           uploaded.push({ label: rf.label, url: saved.url, filename: saved.filename, type: saved.type, size: saved.size });
+        }
+        for (const ofile of optionalFiles) {
+          const f = formData.get(ofile.key) as File | null;
+          if (!f || f.size <= 0) continue;
+          const saved = await saveFileToUploads({ file: f, prefix, slot: ofile.slot });
+          uploaded.push({
+            label: ofile.label,
+            url: saved.url,
+            filename: saved.filename,
+            type: saved.type,
+            size: saved.size,
+          });
         }
 
         const otherFile = formData.get("docOther") as File | null;

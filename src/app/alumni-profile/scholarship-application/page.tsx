@@ -279,13 +279,7 @@ function ScholarshipApplicationContent() {
         return;
       }
 
-      if (
-        !docAdmissionLetterFile ||
-        !docTranscriptsFile ||
-        !docAlumniProofFile ||
-        !docCvFile ||
-        !docCnicFile
-      ) {
+      if (!docAdmissionLetterFile || !docAlumniProofFile || !docCnicFile) {
         toast.error("Please upload all required documents before submitting.", {
           duration: 5000,
           style: {
@@ -392,10 +386,14 @@ function ScholarshipApplicationContent() {
               fd.set("admissionStatus", admissionStatus);
 
               fd.set("docAdmissionLetter", docAdmissionLetterFile as File);
-              fd.set("docTranscripts", docTranscriptsFile as File);
               fd.set("docAlumniProof", docAlumniProofFile as File);
-              fd.set("docCv", docCvFile as File);
               fd.set("docCnic", docCnicFile as File);
+              if (docTranscriptsFile) {
+                fd.set("docTranscripts", docTranscriptsFile);
+              }
+              if (docCvFile) {
+                fd.set("docCv", docCvFile);
+              }
               if (docOtherFile) {
                 fd.set("docOther", docOtherFile);
                 fd.set("docOtherText", docOtherText.trim());
@@ -979,7 +977,7 @@ function ScholarshipApplicationContent() {
                         </div>
                         <div>
                           <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Academic Transcripts and Certificates <span className="text-red-500">*</span>
+                            Academic Transcripts and Certificates <span className="text-gray-500">(Optional)</span>
                           </label>
                           <input
                             type="file"
@@ -995,12 +993,11 @@ function ScholarshipApplicationContent() {
                               setDocTranscriptsFile(f);
                             }}
                             className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
-                            required
                           />
                         </div>
                         <div>
                           <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Alumni Proof (Degree / Transcript) <span className="text-red-500">*</span>
+                            Alumni Card <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="file"
@@ -1021,7 +1018,7 @@ function ScholarshipApplicationContent() {
                         </div>
                         <div>
                           <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Curriculum Vitae (CV) <span className="text-red-500">*</span>
+                            Curriculum Vitae (CV) <span className="text-gray-500">(Optional)</span>
                           </label>
                           <input
                             type="file"
@@ -1037,7 +1034,6 @@ function ScholarshipApplicationContent() {
                               setDocCvFile(f);
                             }}
                             className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
-                            required
                           />
                         </div>
                         <div>
