@@ -226,7 +226,7 @@ export const AlumniAssociationTab: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Build master filters for dependent filter queries
+  // Master filters for counts, table, faculty & association option lists (cascaded filters)
   const masterFilters = useMemo(() => {
     const filters: MasterFilters = {};
     if (selectedFaculties.length > 0) {
@@ -239,9 +239,19 @@ export const AlumniAssociationTab: React.FC = () => {
     return filters;
   }, [selectedFaculties, selectedDepartments]);
 
+  // Department dropdown options: faculty only — if we include selectedDepartments, the query key
+  // changes on each click, options can flash empty, and the prune effect clears the selection.
+  const masterFiltersForDepartmentOptions = useMemo(() => {
+    const filters: MasterFilters = {};
+    if (selectedFaculties.length > 0) {
+      filters.faculty = selectedFaculties;
+    }
+    return filters;
+  }, [selectedFaculties]);
+
   // Fetch dynamic filter options with counts
   const { data: alumniFacultiesData } = useAlumniFaculties(masterFilters);
-  const { data: alumniDepartmentsData } = useAlumniDepartments(masterFilters);
+  const { data: alumniDepartmentsData } = useAlumniDepartments(masterFiltersForDepartmentOptions);
   const { data: alumniAssociationsData } = useAlumniAssociations(masterFilters);
 
   // Get filter options with counts
@@ -257,15 +267,17 @@ export const AlumniAssociationTab: React.FC = () => {
     return alumniAssociationsData?.associations || [];
   }, [alumniAssociationsData]);
 
-  // Reset department when faculty changes
+  // When faculty changes, drop departments that are not in the new faculty's list
   useEffect(() => {
     if (selectedFaculties.length === 0) {
       setSelectedDepartments([]);
-    } else {
-      // Remove departments that are no longer available
-      const availableDeptValues = departmentOptions.map(d => d.value);
-      setSelectedDepartments(prev => prev.filter(dept => availableDeptValues.includes(dept)));
+      return;
     }
+    if (departmentOptions.length === 0) {
+      return;
+    }
+    const availableDeptValues = departmentOptions.map((d) => d.value);
+    setSelectedDepartments((prev) => prev.filter((dept) => availableDeptValues.includes(dept)));
   }, [selectedFaculties, departmentOptions]);
   
   // Close dropdowns when clicking outside
