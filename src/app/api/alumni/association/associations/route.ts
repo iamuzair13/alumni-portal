@@ -23,12 +23,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Failed to build access filter" }, { status: 500 });
     }
 
-    // Get all active associations
+    // Associations are faculties: association_id on alumni references tbl_faculties.id
     const allAssociations = await sql/* sql */`
-      SELECT id, association_name
-      FROM public.tblassociation
-      WHERE is_active = true
-      ORDER BY association_name ASC
+      SELECT id, faculty_name AS association_name
+      FROM public.tbl_faculties
+      ORDER BY faculty_name ASC
     `;
 
     const associations = (allAssociations as unknown as Array<{ id: number; association_name: string }>);
@@ -41,7 +40,7 @@ export async function GET(req: Request) {
           SELECT COUNT(DISTINCT a.alumniid) as count
           FROM public.tbl_alumni a
           WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
-            AND a.association_id = ${association.id}
+            AND (a.association_id = ${association.id} OR a.faculty = ${association.id})
             ${accessFilterCondition}
             ${masterFilterConditions}
         `;

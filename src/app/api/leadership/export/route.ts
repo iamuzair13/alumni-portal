@@ -161,7 +161,7 @@ export async function GET(req: Request) {
           COALESCE(c1.national_chapter, c1.international_chapter)::text AS chapter1_name,
           COALESCE(c2.national_chapter, c2.international_chapter)::text AS chapter2_name,
           COALESCE(c3.national_chapter, c3.international_chapter)::text AS chapter3_name,
-          assoc.title::text AS association_title,
+          assoc.faculty_name::text AS association_title,
           alumni_criteria.alumni_confirmed_criteria::text AS alumni_confirmed_criteria,
           admin_criteria.admin_confirmed_criteria::text AS admin_confirmed_criteria
         FROM public.chapter_leadership cl
@@ -172,7 +172,7 @@ export async function GET(req: Request) {
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
         LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
         LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
-        LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+        LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
         LEFT JOIN alumni_criteria ON alumni_criteria.application_id = cl.id
         LEFT JOIN admin_criteria ON admin_criteria.application_id = cl.id
         WHERE 1=1
@@ -253,7 +253,7 @@ export async function GET(req: Request) {
           COALESCE(c1.national_chapter, c1.international_chapter)::text AS chapter1_name,
           COALESCE(c2.national_chapter, c2.international_chapter)::text AS chapter2_name,
           COALESCE(c3.national_chapter, c3.international_chapter)::text AS chapter3_name,
-          assoc.title::text AS association_title,
+          assoc.faculty_name::text AS association_title,
           alumni_criteria.alumni_confirmed_criteria::text AS alumni_confirmed_criteria,
           admin_criteria.admin_confirmed_criteria::text AS admin_confirmed_criteria
         FROM public.tblalumniassociation ass
@@ -264,7 +264,7 @@ export async function GET(req: Request) {
         LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
         LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
         LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
-        LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+        LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
         LEFT JOIN alumni_criteria ON alumni_criteria.application_id = ass.id
         LEFT JOIN admin_criteria ON admin_criteria.application_id = ass.id
         WHERE 1=1

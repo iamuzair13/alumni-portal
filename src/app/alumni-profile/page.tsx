@@ -551,8 +551,8 @@ let cardImageFile: string | null = null;
   if (alumniId) {
     try {
       const associationRows = await sql/* sql */`
-        SELECT a.title
-        FROM public.tbl_associations a
+        SELECT a.faculty_name AS title
+        FROM public.tbl_faculties a
         INNER JOIN public.tbl_alumni al ON al.association_id = a.id
         WHERE al.alumniid = ${alumniId}
         LIMIT 1`;

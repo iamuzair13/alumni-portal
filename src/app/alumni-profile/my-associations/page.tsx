@@ -75,14 +75,14 @@ async function getAlumniAssociation(searchParams: AlumniProfileSearchParams) {
     const associationRows = await sql/* sql */`
       SELECT 
         a.association_id,
-        assoc.title,
-        assoc.description,
-        assoc.dean,
-        assoc.phone,
-        assoc.email,
-        assoc.address
+        assoc.faculty_name AS title,
+        NULL::text AS description,
+        NULL::text AS dean,
+        NULL::text AS phone,
+        NULL::text AS email,
+        NULL::text AS address
       FROM public.tbl_alumni a
-      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+      LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
       WHERE a.alumniid = ${alumniId}
       LIMIT 1`;
     

@@ -9,8 +9,16 @@ export async function OPTIONS(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const result = await sql/* sql */`
-      SELECT *
-      FROM public.tbl_associations
+      SELECT
+        id,
+        faculty_name AS title,
+        NULL::text AS description,
+        NULL::text AS dean,
+        NULL::text AS phone,
+        NULL::text AS email,
+        NULL::text AS address,
+        created_at
+      FROM public.tbl_faculties
       ORDER BY id ASC
     `;
 

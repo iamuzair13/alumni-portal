@@ -139,12 +139,12 @@ export async function GET(req: Request) {
         c3.international_chapter as chapter3_international,
         -- Association data
         assoc.id as association_id_value,
-        assoc.title as association_title,
-        assoc.description as association_description,
-        assoc.dean as association_dean,
-        assoc.phone as association_phone,
-        assoc.email as association_email,
-        assoc.address as association_address
+        assoc.faculty_name as association_title,
+        NULL::text as association_description,
+        NULL::text as association_dean,
+        NULL::text as association_phone,
+        NULL::text as association_email,
+        NULL::text as association_address
       FROM public.tblcard c
       JOIN public.tbl_alumni a ON a.alumniid = c.alumniid
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -154,7 +154,7 @@ export async function GET(req: Request) {
       LEFT JOIN public.tblchapters c1 ON c1.id = ac.chapter1
       LEFT JOIN public.tblchapters c2 ON c2.id = ac.chapter2
       LEFT JOIN public.tblchapters c3 ON c3.id = ac.chapter3
-      LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+      LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
       WHERE 1=1
         ${accessFilterCondition}
         ${statusCondition}

@@ -181,7 +181,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     let associationTitle: string | null = null;
     if (associationId) {
       const associationRows = await sql/* sql */`
-        SELECT title FROM public.tbl_associations WHERE id = ${associationId} LIMIT 1
+        SELECT faculty_name AS title FROM public.tbl_faculties WHERE id = ${associationId} LIMIT 1
       `;
       if (associationRows[0]) {
         associationTitle = String(associationRows[0].title ?? null);

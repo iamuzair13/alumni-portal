@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
       
       const facultyCondition = faculty ? sql` AND f.faculty_name = ${faculty}` : sql``;
       
-      const chapterCondition = chapter ? sql` AND assoc.title ILIKE ${`%${chapter}%`}` : sql``;
+      const chapterCondition = chapter ? sql` AND assoc.faculty_name ILIKE ${`%${chapter}%`}` : sql``;
 
       const rows = await sql/* sql */`
         WITH admin_criteria AS (
@@ -167,14 +167,14 @@ export async function GET(req: NextRequest) {
           ass.id as leadership_id,
           ass.q3 as role,
           ass.createddatetime,
-          assoc.title as association_title,
+          assoc.faculty_name as association_title,
           admin_criteria.admin_confirmed_criteria
         FROM public.tbl_alumni a
         JOIN public.tblalumniassociation ass ON ass.id = a.association_job
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
         LEFT JOIN public.tbl_departments d ON d.id = a.department
         LEFT JOIN public.tbl_programs p ON p.id = a.program
-        LEFT JOIN public.tbl_associations assoc ON assoc.id = a.association_id
+        LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
         LEFT JOIN admin_criteria ON admin_criteria.application_id = ass.id
         WHERE a.association_job IS NOT NULL
           AND ass.status = 'approved'

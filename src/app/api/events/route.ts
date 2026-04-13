@@ -92,10 +92,10 @@ export async function GET() {
           WHEN c.international_chapter IS NOT NULL THEN 'international'
           ELSE NULL
         END as chapter_type,
-        a.title as association_title
+        a.faculty_name as association_title
       FROM public.tbl_events e
       LEFT JOIN public.tblchapters c ON e.chapter_id = c.id
-      LEFT JOIN public.tbl_associations a ON e.association_id = a.id
+      LEFT JOIN public.tbl_faculties a ON e.association_id = a.id
       ORDER BY e.fromdate DESC
       LIMIT 200` as EventRow[];
     const items = rows.map((r): EventListItem => {

@@ -990,18 +990,15 @@ export async function POST(req: Request) {
 
             } else {
               const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
-                SELECT id, title
-                FROM public.tbl_associations
-                WHERE (
-                  (title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
-                  OR (description IS NOT NULL AND LOWER(TRIM(description)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
-                  OR (dean IS NOT NULL AND LOWER(TRIM(dean)) LIKE LOWER(TRIM(${`%${facultyName}%`})))
-                )
+                SELECT id, faculty_name AS title
+                FROM public.tbl_faculties
+                WHERE faculty_name IS NOT NULL
+                  AND LOWER(TRIM(faculty_name)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
                 ORDER BY
                   CASE
-                    WHEN title IS NOT NULL AND LOWER(TRIM(title)) = LOWER(TRIM(${facultyName})) THEN 0
-                    WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
-                    WHEN title IS NOT NULL AND LOWER(TRIM(title)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
+                    WHEN LOWER(TRIM(faculty_name)) = LOWER(TRIM(${facultyName})) THEN 0
+                    WHEN LOWER(TRIM(faculty_name)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
+                    WHEN LOWER(TRIM(faculty_name)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
                     ELSE 3
                   END,
                   id ASC

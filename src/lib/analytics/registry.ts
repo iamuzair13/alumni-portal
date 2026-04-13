@@ -60,7 +60,7 @@ export const moduleRegistry: Record<Exclude<AnalyticsModule, "dashboard">, Modul
   },
   alumni_association: {
     kind: "table",
-    table: { schema: "public", table: "tbl_associations" },
+    table: { schema: "public", table: "tbl_faculties" },
     timestampColumn: "created_at",
   },
   alumni_chapters: {
