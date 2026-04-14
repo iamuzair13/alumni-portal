@@ -327,6 +327,10 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       drawCellText(cnicVal, x2, rowY, c2 + c3 + c4, cnicH, false, false, cnicValLines);
       rowY += cnicH;
 
+      // add margin between declaration and review & approval
+      rowY += 10;
+      
+
       drawSectionHeader("e", "Review & Approval", 2);
 
       // Signature block (white cells)
