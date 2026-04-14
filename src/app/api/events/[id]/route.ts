@@ -10,6 +10,7 @@ import {
   extensionForEventImage,
 } from "@/lib/formDataImagePart";
 import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
 
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
   try {
@@ -233,7 +234,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     
     // Create uploads directory if it doesn't exist (defined outside try for catch block access)
-    const uploadsDir = join(process.cwd(), "public", "images");
+    const uploadsDir = getUploadsImagesDir();
 
     try {
       if (!existsSync(uploadsDir)) {

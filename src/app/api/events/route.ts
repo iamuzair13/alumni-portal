@@ -10,6 +10,7 @@ import {
   extensionForEventImage,
 } from "@/lib/formDataImagePart";
 import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
 
 type EventListItem = {
   id: string;
@@ -230,7 +231,7 @@ export async function POST(req: Request) {
           const filename = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
           
           // Create uploads directory if it doesn't exist
-          const uploadsDir = join(process.cwd(), "public", "images");
+          const uploadsDir = getUploadsImagesDir();
           if (!existsSync(uploadsDir)) {
             await mkdir(uploadsDir, { recursive: true });
           }
@@ -251,7 +252,7 @@ export async function POST(req: Request) {
         const { unlink } = await import("fs/promises");
         for (const filename of Object.values(savedImages)) {
           try {
-            await unlink(join(process.cwd(), "public", "images", filename));
+            await unlink(join(getUploadsImagesDir(), filename));
           } catch {
             // Ignore cleanup errors
           }
@@ -272,7 +273,7 @@ export async function POST(req: Request) {
         const { unlink } = await import("fs/promises");
         for (const filename of Object.values(savedImages)) {
           try {
-            await unlink(join(process.cwd(), "public", "images", filename));
+            await unlink(join(getUploadsImagesDir(), filename));
           } catch {
             // Ignore cleanup errors
           }
@@ -286,7 +287,7 @@ export async function POST(req: Request) {
       const { unlink } = await import("fs/promises");
       for (const filename of Object.values(savedImages)) {
         try {
-          await unlink(join(process.cwd(), "public", "images", filename));
+          await unlink(join(getUploadsImagesDir(), filename));
         } catch {
           // Ignore cleanup errors
         }

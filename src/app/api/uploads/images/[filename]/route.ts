@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import { join, extname } from "path";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
 
 function contentTypeFromFilename(filename: string): string {
   const ext = extname(filename).toLowerCase();
@@ -25,24 +26,6 @@ function isSafeFilename(filename: string): boolean {
   return true;
 }
 
-function resolveUploadsDir(): string {
-  const cwd = process.cwd();
-
-  let projectRoot = cwd;
-  let currentPath = cwd;
-  for (let i = 0; i < 5; i++) {
-    if (existsSync(join(currentPath, "package.json")) || existsSync(join(currentPath, "next.config.mjs"))) {
-      projectRoot = currentPath;
-      break;
-    }
-    const parentPath = join(currentPath, "..");
-    if (parentPath === currentPath) break;
-    currentPath = parentPath;
-  }
-
-  return join(projectRoot, "public", "images");
-}
-
 export async function GET(_: Request, ctx: { params: Promise<{ filename: string }> }) {
   try {
     const { filename: rawFilename } = await ctx.params;
@@ -52,7 +35,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ filename: string 
       return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
     }
 
-    const uploadsDir = resolveUploadsDir();
+    const uploadsDir = getUploadsImagesDir();
     const filePath = join(uploadsDir, filename);
 
     if (!existsSync(filePath)) {
