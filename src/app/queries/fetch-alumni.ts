@@ -65,6 +65,7 @@ export async function getAlumniList(
   admissionYear?: string | string[],
   passingYear?: string | string[],
   occupationStatus?: string | string[],
+  occupationTransitionTiming?: string | string[],
   sector?: string | string[],
   workCity?: string | string[],
   workCountry?: string | string[],
@@ -137,6 +138,7 @@ export async function getAlumniList(
   addFilterParam("admissionYear", admissionYear);
   addFilterParam("passingYear", passingYear);
   addFilterParam("occupationStatus", occupationStatus);
+  addFilterParam("occupationTransitionTiming", occupationTransitionTiming);
   addFilterParam("sector", sector);
   addFilterParam("workCity", workCity);
   addFilterParam("workCountry", workCountry);
@@ -191,6 +193,7 @@ export function useAlumniListPaginated(
   admissionYear?: string | string[],
   passingYear?: string | string[],
   occupationStatus?: string | string[],
+  occupationTransitionTiming?: string | string[],
   sector?: string | string[],
   workCity?: string | string[],
   workCountry?: string | string[],
@@ -211,7 +214,7 @@ export function useAlumniListPaginated(
   sortOrder?: "asc" | "desc"
 ) {
   return useQuery<AlumniListResponse, Error>({
-    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, category, sortBy, sortOrder],
+    queryKey: ["alumnilist", search, page, pageSize, status, faculty, department, program, gender, maritalStatus, homeCountry, homeCity, province, campus, admissionYear, passingYear, occupationStatus, occupationTransitionTiming, sector, workCity, workCountry, employer, institutionName, programEnrolled, fundingSource, institutionCountry, institutionCity, mrNo, photoConsent, sapIdState, regNoState, personalEmailState, contactNoState, category, sortBy, sortOrder],
     queryFn: ({ signal }) => {
       return getAlumniList(
         signal,
@@ -231,6 +234,7 @@ export function useAlumniListPaginated(
         admissionYear,
         passingYear,
         occupationStatus,
+        occupationTransitionTiming,
         sector,
         workCity,
         workCountry,
@@ -294,6 +298,7 @@ export async function getAlumniCounts(
   admissionYear?: string | string[],
   passingYear?: string | string[],
   occupationStatus?: string | string[],
+  occupationTransitionTiming?: string | string[],
   sector?: string | string[],
   workCity?: string | string[],
   workCountry?: string | string[],
@@ -364,6 +369,7 @@ export async function getAlumniCounts(
   addFilterParam("admissionYear", admissionYear);
   addFilterParam("passingYear", passingYear);
   addFilterParam("occupationStatus", occupationStatus);
+  addFilterParam("occupationTransitionTiming", occupationTransitionTiming);
   addFilterParam("sector", sector);
   addFilterParam("workCity", workCity);
   addFilterParam("workCountry", workCountry);

@@ -16,6 +16,7 @@ export type MasterFilters = {
   admissionYear?: string | string[];
   passingYear?: string | string[];
   occupationStatus?: string | string[];
+  occupationTransitionTiming?: string | string[];
   sector?: string | string[];
   workCity?: string | string[];
   workCountry?: string | string[];
@@ -63,6 +64,7 @@ export function addFilterParamsToUrl(url: URL, filters?: MasterFilters): void {
   addFilterParam("admissionYear", filters.admissionYear);
   addFilterParam("passingYear", filters.passingYear);
   addFilterParam("occupationStatus", filters.occupationStatus);
+  addFilterParam("occupationTransitionTiming", filters.occupationTransitionTiming);
   addFilterParam("sector", filters.sector);
   addFilterParam("workCity", filters.workCity);
   addFilterParam("workCountry", filters.workCountry);

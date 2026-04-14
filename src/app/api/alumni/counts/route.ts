@@ -30,6 +30,7 @@ export async function GET(req: Request) {
     const admissionYearParams = searchParams.getAll("admissionYear");
     const passingYearParams = searchParams.getAll("passingYear");
     const occupationStatusParams = searchParams.getAll("occupationStatus");
+    const occupationTransitionTimingParams = searchParams.getAll("occupationTransitionTiming");
     const sectorParams = searchParams.getAll("sector");
     const workCityParams = searchParams.getAll("workCity");
     const workCountryParams = searchParams.getAll("workCountry");
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
     const admissionYear = admissionYearParams.length > 0 ? admissionYearParams : (searchParams.get("admissionYear") || "");
     const passingYear = passingYearParams.length > 0 ? passingYearParams : (searchParams.get("passingYear") || "");
     const occupationStatus = occupationStatusParams.length > 0 ? occupationStatusParams : (searchParams.get("occupationStatus") || "");
+    const occupationTransitionTiming = occupationTransitionTimingParams.length > 0 ? occupationTransitionTimingParams : (searchParams.get("occupationTransitionTiming") || "");
     const sector = sectorParams.length > 0 ? sectorParams : (searchParams.get("sector") || "");
     const workCity = workCityParams.length > 0 ? workCityParams : (searchParams.get("workCity") || "");
     const workCountry = workCountryParams.length > 0 ? workCountryParams : (searchParams.get("workCountry") || "");
@@ -442,6 +444,26 @@ export async function GET(req: Request) {
       if (conditions.length > 0) {
         const combinedCondition = combineOrConditions(conditions);
         occupationStatusFilter = sql`AND (${combinedCondition})`;
+      }
+    }
+
+    let occupationTransitionTimingFilter = sql``;
+    if (occupationTransitionTiming && (Array.isArray(occupationTransitionTiming) ? occupationTransitionTiming.length > 0 : occupationTransitionTiming)) {
+      const timingArray = Array.isArray(occupationTransitionTiming) ? occupationTransitionTiming : [occupationTransitionTiming];
+      const conditions: ReturnType<typeof sql>[] = [];
+
+      timingArray.forEach((v) => {
+        const normalized = String(v).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          conditions.push(sql`(occupation_transition_timing IS NULL OR TRIM(COALESCE(occupation_transition_timing, '')) = '')`);
+        } else {
+          conditions.push(sql`LOWER(TRIM(COALESCE(occupation_transition_timing, ''))) = LOWER(TRIM(${v}))`);
+        }
+      });
+
+      if (conditions.length > 0) {
+        const combinedCondition = combineOrConditions(conditions);
+        occupationTransitionTimingFilter = sql`AND (${combinedCondition})`;
       }
     }
     
@@ -1081,6 +1103,7 @@ export async function GET(req: Request) {
           ${admissionYearFilter}
           ${passingYearFilter}
           ${occupationStatusFilter}
+          ${occupationTransitionTimingFilter}
           ${sectorFilter}
           ${workCityFilter}
           ${workCountryFilter}
@@ -1169,6 +1192,7 @@ export async function GET(req: Request) {
           ${admissionYearFilter}
           ${passingYearFilter}
           ${occupationStatusFilter}
+          ${occupationTransitionTimingFilter}
           ${sectorFilter}
           ${workCityFilter}
           ${workCountryFilter}

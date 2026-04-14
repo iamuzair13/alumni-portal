@@ -75,7 +75,6 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 18;
       const maxWidth = pageWidth - margin * 2;
-      const headerBandH = 18;
       let y = margin;
 
       const clamp = (text: string | null | undefined) => {
@@ -99,7 +98,11 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         return matched[1] || "Yes/No";
       };
 
-      // Keep logo treatment unchanged.
+      // Two header greens, both lighter than brand/logo green (0, 102, 51).
+      const sectionGreen1: [number, number, number] = [150, 205, 175];
+      const sectionGreen2: [number, number, number] = [195, 230, 210];
+
+      const headerBandH = 18;
       doc.setFillColor(0, 102, 51);
       doc.rect(margin, y, maxWidth, headerBandH, "F");
       const logoBase64 = getLogoBase64("light");
@@ -112,15 +115,6 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       }
       y += headerBandH + 4;
 
-      doc.setFillColor(240, 248, 243);
-      doc.rect(margin, y, maxWidth, 8, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(0, 102, 51);
-      doc.text("UNIVERSITY OF LAHORE - SCHOLARSHIP APPLICATION FORM", margin + 2, y + 5.4);
-      doc.setTextColor(0, 0, 0);
-      y += 9;
-
       const outerX = margin;
       const outerY = y;
       const outerW = maxWidth;
@@ -131,8 +125,8 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         normal: 8,
         docsHeader: 8,
         docsRow: 8,
-        signatureLabel: 10,
-        signatureRole: 10,
+        signatureLabel: 18,
+        signatureRole: 14,
       };
 
       const c1 = outerW * 0.26;
@@ -169,14 +163,21 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         h: number,
         bold = false,
         center = false,
-        prepared?: { lines: string[]; fontSize: number }
+        prepared?: { lines: string[]; fontSize: number },
+        centerPad?: { x?: number; y?: number }
       ) => {
         doc.setFont("helvetica", bold ? "bold" : "normal");
         if (center) {
           doc.setFontSize(9);
           const shown = clamp(text);
           const tw = doc.getTextWidth(shown);
-          doc.text(shown, x + Math.max(1.5, (w - tw) / 2), rowY + h / 2 + 2.2);
+          const px = centerPad?.x ?? 1.5;
+          const py = centerPad?.y ?? 0;
+          doc.text(
+            shown,
+            x + px + Math.max(0, (w - 2 * px - tw) / 2),
+            rowY + h / 2 + 2.2 + py
+          );
           return;
         }
         const cell = prepared || toCellLines(text, w, bold, 3);
@@ -191,21 +192,36 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.25);
 
-      // Title row
-      doc.rect(outerX, rowY, outerW, rowHeights.title);
-      drawCellText("Alumni Scholarship Application", outerX, rowY, outerW, rowHeights.title, true, true);
+      const fillRgb = (rgb: [number, number, number]) => {
+        doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+      };
+
+      // Main title row (matches form: full-width band, centered uppercase title)
+      fillRgb(sectionGreen1);
+      doc.rect(outerX, rowY, outerW, rowHeights.title, "FD");
+      doc.setTextColor(0, 0, 0);
+      drawCellText("ALUMNI SCHOLARSHIP APPLICATION", outerX, rowY, outerW, rowHeights.title, true, true);
       rowY += rowHeights.title;
 
-      // Date row
+      // Application date (white cells)
       doc.rect(outerX, rowY, c1, rowHeights.date);
       doc.rect(x2, rowY, outerW - c1, rowHeights.date);
       drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
-      drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, true);
+      drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, false);
       rowY += rowHeights.date;
 
-      const drawSectionHeader = (title: string) => {
-        doc.rect(outerX, rowY, outerW, rowHeights.section);
-        drawCellText(title, outerX, rowY, outerW, rowHeights.section, true);
+      const drawSectionHeader = (letter: string, title: string, shade: 1 | 2) => {
+        const rgb = shade === 1 ? sectionGreen1 : sectionGreen2;
+        fillRgb(rgb);
+        doc.rect(outerX, rowY, outerW, rowHeights.section, "FD");
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        const midY = rowY + rowHeights.section / 2 + 2.2;
+        doc.text(`(${letter})`, outerX + 2, midY);
+        const t = title;
+        const tw = doc.getTextWidth(t);
+        doc.text(t, outerX + Math.max(0, (outerW - tw) / 2), midY);
         rowY += rowHeights.section;
       };
 
@@ -238,29 +254,24 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         rowY += finalH;
       };
 
-      drawSectionHeader("Alumni Details");
+      drawSectionHeader("a", "Alumni Details", 1);
       drawFourColRow("Name:", data.studentName, "Father's Name:", data.fatherName || "Data unavailable");
       drawFourColRow("DOB:", data.dob || "Data unavailable", "CNIC:", data.cnic || "Data unavailable");
 
-      drawSectionHeader("Program Applied For");
+      drawSectionHeader("b", "Program Applied For", 2);
       drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
       drawFourColRow("Department:", data.department || "-", "Program:", data.requestedProgramDegree || "-");
       drawFourColRow("Discount Category:", data.scholarshipType || "-", "Discount Type:", data.requestedDiscount || "-");
 
-      drawSectionHeader("Previous UOL Education Record");
+      drawSectionHeader("c", "Previous UOL Education Record", 1);
       drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
       drawFourColRow("Department:", data.department || "-", "Program:", data.previousDegree || "-");
       drawFourColRow("Sap ID:", data.sapCode || "-", "CGPA:", data.cgpaLastDegree || "-");
       drawFourColRow("Passing Out Year:", "Data unavailable", "Admission Reference No/Applicant ID:", "Data unavailable");
 
-      drawSectionHeader("Documents Checklist");
+      drawSectionHeader("d", "Documents Checklist", 2);
       const leftW = c1 + c2;
       const rightW = c3 + c4;
-      doc.rect(outerX, rowY, leftW, rowHeights.docsHeader);
-      doc.rect(x3, rowY, rightW, rowHeights.docsHeader);
-      drawCellText("", outerX, rowY, leftW, rowHeights.docsHeader);
-      drawCellText("Academic Transcripts & Certificates", x3, rowY, rightW, rowHeights.docsHeader, true, true);
-      rowY += rowHeights.docsHeader;
 
       const drawDocRow = (leftLabel: string, leftValue: string, rightLabel: string, rightValue: string) => {
         const c1Lines = toCellLines(leftLabel, c1, true, 2);
@@ -297,20 +308,50 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         "Academic Transcripts & Certificates:",
         findChecklistValue(["transcripts", "certificate"])
       );
-      drawDocRow("Alumni Card:", findChecklistValue(["alumni card"]), "Curriculum Vitae (CV):", findChecklistValue(["curriculum vitae", "cv"]));
-      drawDocRow("CNIC Copy:", findChecklistValue(["cnic"]), "", "");
+      drawDocRow("Alumni Card:", findChecklistValue(["alumni card"]), "Curriculum Vitae (CV) :", findChecklistValue(["curriculum vitae", "cv"]));
 
-      // Signature block
+      // Single pair: label | Yes/No (no empty fourth column)
+      const cnicLabel = "CNIC Copy:";
+      const cnicVal = findChecklistValue(["cnic"]);
+      const cnicLines = toCellLines(cnicLabel, c1, true, 2);
+      const cnicValLines = toCellLines(cnicVal, c2 + c3 + c4, false, 3);
+      const maxFont = Math.max(cnicLines.fontSize, cnicValLines.fontSize);
+      const lineH = maxFont * 0.38;
+      const cnicH = Math.max(
+        rowHeights.docsRow,
+        Math.max(cnicLines.lines.length, cnicValLines.lines.length, 1) * lineH + 5
+      );
+      doc.rect(outerX, rowY, c1, cnicH);
+      doc.rect(x2, rowY, c2 + c3 + c4, cnicH);
+      drawCellText(cnicLabel, outerX, rowY, c1, cnicH, true, false, cnicLines);
+      drawCellText(cnicVal, x2, rowY, c2 + c3 + c4, cnicH, false, false, cnicValLines);
+      rowY += cnicH;
+
+      drawSectionHeader("e", "Review & Approval", 2);
+
+      // Signature block (white cells)
       doc.rect(outerX, rowY, leftW, rowHeights.signatureLabel);
       doc.rect(x3, rowY, rightW, rowHeights.signatureLabel);
-      drawCellText("Reviewed By:__________", outerX, rowY, leftW, rowHeights.signatureLabel);
-      drawCellText("Approved By:__________", x3, rowY, rightW, rowHeights.signatureLabel);
+      drawCellText("Reviewed By: ___________", outerX, rowY, leftW, rowHeights.signatureLabel, false, true, undefined, {
+        x: 8,
+        y: 0,
+      });
+      drawCellText("Approved By: ___________", x3, rowY, rightW, rowHeights.signatureLabel, false, true, undefined, {
+        x: 8,
+        y: 0,
+      });
       rowY += rowHeights.signatureLabel;
 
       doc.rect(outerX, rowY, leftW, rowHeights.signatureRole);
       doc.rect(x3, rowY, rightW, rowHeights.signatureRole);
-      drawCellText("ARO", outerX, rowY, leftW, rowHeights.signatureRole, true);
-      drawCellText("Competent Authority", x3, rowY, rightW, rowHeights.signatureRole, true);
+      drawCellText("ARO", outerX, rowY, leftW, rowHeights.signatureRole, false, true, undefined, {
+        x: 8,
+        y: 0,
+      });
+      drawCellText("Competent Authority", x3, rowY, rightW, rowHeights.signatureRole, false, true, undefined, {
+        x: 8,
+        y: 0,
+      });
       rowY += rowHeights.signatureRole;
 
       doc.rect(outerX, outerY, outerW, rowY - outerY);

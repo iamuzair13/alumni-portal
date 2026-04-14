@@ -1094,6 +1094,7 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
       queryClient.invalidateQueries({ queryKey: ["campuses"] });
       // Invalidate occupation statuses query when occupation status is updated
       queryClient.invalidateQueries({ queryKey: ["occupation-statuses"] });
+      queryClient.invalidateQueries({ queryKey: ["occupation-transition-timings"] });
       
       // Always invalidate the current identifier
       queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });

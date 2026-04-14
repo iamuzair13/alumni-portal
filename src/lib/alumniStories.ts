@@ -2,6 +2,12 @@ import { z } from "zod";
 
 export const sapIdNumericRegex = /^\d{4,20}$/;
 
+/** True when HTML has visible text (not only empty tags). */
+export function storyHtmlHasText(html: string): boolean {
+  if (!html || !html.trim()) return false;
+  return html.replace(/<[^>]*>/g, "").trim().length > 0;
+}
+
 export const storyFormSchema = z.object({
   sapId: z.string().trim().regex(sapIdNumericRegex, "SAP ID must be 4–20 digits"),
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be under 100 chars"),
@@ -11,7 +17,9 @@ export const storyFormSchema = z.object({
   passingYear: z.number().int().min(1900).max(2100).optional(),
   contactNumber: z.string().trim().max(50).optional(),
   storyTitle: z.string().trim().min(1, "Story title is required").max(200, "Title must be under 200 chars"),
-  storyHtml: z.string().trim().min(1, "Story is required"),
+  storyHtml: z
+    .string()
+    .refine(storyHtmlHasText, { message: "Story is required" }),
 });
 
 export type NewStoryPayload = z.infer<typeof storyFormSchema>;

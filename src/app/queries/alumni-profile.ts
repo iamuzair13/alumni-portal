@@ -205,6 +205,7 @@ export function useUpdateAlumniFields(sapId: string | undefined) {
       qc.invalidateQueries({ queryKey: ["genders"] });
       qc.invalidateQueries({ queryKey: ["campuses"] });
       qc.invalidateQueries({ queryKey: ["occupation-statuses"] });
+      qc.invalidateQueries({ queryKey: ["occupation-transition-timings"] });
     },
   });
 }

@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ComponentCard from "@/components/common/ComponentCard";
@@ -12,6 +12,8 @@ import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import { useForm, Controller } from "react-hook-form";
 import { storyFormSchema, type NewStoryPayload } from "@/lib/alumniStories";
 import { zodResolver } from "@hookform/resolvers/zod";
+import DOMPurify from "dompurify";
+import { StoryRichTextEditor } from "@/components/forms/StoryRichTextEditor";
 import { EyeIcon, TrashBinIcon } from "@/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAlumniStories, alumniStoriesKey, type AlumniStoryItem } from "@/app/queries/fetch-alumni-stories";
@@ -545,16 +547,6 @@ const DEPARTMENTS_BY_FACULTY: Record<string, string[]> = {
   ],
 };
 
-function sanitizeHtml(input: string): string {
-  // Very basic sanitation: allow b, i, u, br, a tags; strip others
-  // Note: For production, use a robust sanitizer like DOMPurify.
-  const allowed = /<(\/?)(b|i|u|br|a)([^>]*)>/gi;
-  return input
-    .replace(/<script[^>]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*?>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, (tag) => (allowed.test(tag) ? tag : ""));
-}
-
 const inputBaseClass =
   "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300";
 const buttonPrimaryClass =
@@ -566,6 +558,9 @@ const AddStoryForm: React.FC = () => {
   const queryClient = useQueryClient();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const storyImageInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -582,6 +577,7 @@ const AddStoryForm: React.FC = () => {
       email: "",
       faculty: "",
       department: "",
+      storyTitle: "",
       storyHtml: "",
     },
     mode: "onChange",
@@ -589,23 +585,85 @@ const AddStoryForm: React.FC = () => {
   const selectedFaculty = watch("faculty") || "";
   const deptOptions = useMemo(() => DEPARTMENTS_BY_FACULTY[selectedFaculty] || [], [selectedFaculty]);
 
+  const handleStoryImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setServerError("Image must be JPEG, PNG, GIF, or WebP.");
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setServerError("Image must be 5MB or smaller.");
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    setServerError(null);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearStoryImage = () => {
+    setImagePreview((prev) => {
+      if (prev?.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return null;
+    });
+    setImageFile(null);
+    if (storyImageInputRef.current) {
+      storyImageInputRef.current.value = "";
+    }
+  };
+
   const onSubmit = async (data: NewStoryPayload) => {
     setServerMsg(null);
     setServerError(null);
     try {
-      const payload = {
-        sapId: data.sapId,
-        name: data.name,
-        email: data.email,
-        faculty: data.faculty,
-        department: data.department,
-        storyHtml: sanitizeHtml(data.storyHtml || ""),
-      };
-      const res = await fetch("/api/alumni-stories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const sanitizedHtml = DOMPurify.sanitize(data.storyHtml || "", {
+        ALLOWED_TAGS: ["p", "br", "strong", "em", "u", "s", "ul", "ol", "li", "h1", "h2", "h3", "a", "div"],
+        ALLOWED_ATTR: ["href", "target", "rel"],
       });
+
+      let res: Response;
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("sapId", data.sapId);
+        formData.append("name", data.name);
+        formData.append("email", data.email);
+        formData.append("faculty", data.faculty);
+        formData.append("department", data.department);
+        formData.append("storyTitle", data.storyTitle);
+        formData.append("storyHtml", sanitizedHtml);
+        formData.append("storyImage", imageFile);
+        res = await fetch("/api/alumni-stories", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        const payload = {
+          sapId: data.sapId,
+          name: data.name,
+          email: data.email,
+          faculty: data.faculty,
+          department: data.department,
+          storyTitle: data.storyTitle,
+          storyHtml: sanitizedHtml,
+        };
+        res = await fetch("/api/alumni-stories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.message || `Failed (${res.status})`);
@@ -614,6 +672,7 @@ const AddStoryForm: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: alumniStoriesKey, exact: false });
       await queryClient.refetchQueries({ queryKey: alumniStoriesKey, exact: false });
       reset();
+      clearStoryImage();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unexpected error while saving.";
       setServerError(msg);
@@ -665,29 +724,76 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="md:col-span-2 flex flex-col gap-2">
-        <label className="text-sm text-gray-600 dark:text-gray-300">Story</label>
+        <label htmlFor="storyTitle" className="text-sm text-gray-600 dark:text-gray-300">Story title</label>
+        <input
+          id="storyTitle"
+          className={inputBaseClass}
+          aria-label="Story title"
+          maxLength={200}
+          {...register("storyTitle")}
+        />
+        {errors.storyTitle && <span className="text-xs text-red-600">{errors.storyTitle.message as string}</span>}
+      </div>
+
+      <div className="md:col-span-2 flex flex-col gap-2">
+        <span id="story-html-label" className="text-sm text-gray-600 dark:text-gray-300">Story</span>
         <Controller
           name="storyHtml"
           control={control}
           render={({ field }) => (
-            <div>
-              <div
-                role="textbox"
-                aria-label="Story rich text"
-                className={`${inputBaseClass} min-h-24`}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={(e) => {
-                  const html = (e.target as HTMLElement).innerHTML;
-                  field.onChange(html);
-                }}
-                dangerouslySetInnerHTML={{ __html: field.value || "" }}
+            <div aria-labelledby="story-html-label">
+              <StoryRichTextEditor
+                value={field.value || ""}
+                onChange={field.onChange}
+                disabled={isSubmitting}
               />
-              <p className="text-xs text-gray-500 mt-1">Supports basic formatting (bold/italic/underline/links). Unsafe HTML is stripped on submit.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Use the toolbar for headings, lists, and links. Content is sanitized when you save.
+              </p>
             </div>
           )}
         />
         {errors.storyHtml && <span className="text-xs text-red-600">{errors.storyHtml.message as string}</span>}
+      </div>
+
+      <div className="md:col-span-2 flex flex-col gap-2">
+        <span id="story-picture-label" className="text-sm text-gray-600 dark:text-gray-300">Story picture (optional)</span>
+        <input
+          ref={storyImageInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+          className="sr-only"
+          aria-labelledby="story-picture-label"
+          onChange={handleStoryImageChange}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => storyImageInputRef.current?.click()}
+            className={`${buttonSecondaryClass} gap-2`}
+            aria-label="Upload picture for this story"
+          >
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Upload picture
+          </button>
+          {imageFile && (
+            <button type="button" onClick={clearStoryImage} className="text-sm text-red-600 hover:underline dark:text-red-400">
+              Remove image
+            </button>
+          )}
+        </div>
+        {imagePreview && (
+          <div className="mt-2 relative inline-block">
+            <img
+              src={imagePreview}
+              alt="Selected story picture preview"
+              className="max-h-48 rounded-xl border border-gray-200 object-contain dark:border-gray-700"
+            />
+          </div>
+        )}
+        <p className="text-xs text-gray-500 dark:text-gray-400">JPEG, PNG, GIF, or WebP, up to 5MB.</p>
       </div>
 
       <div className="md:col-span-2 mt-2">
@@ -696,7 +802,16 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2">
-        <button type="reset" className={buttonSecondaryClass} onClick={() => { reset(); }}>
+        <button
+          type="reset"
+          className={buttonSecondaryClass}
+          onClick={() => {
+            reset();
+            clearStoryImage();
+            setServerMsg(null);
+            setServerError(null);
+          }}
+        >
           Reset
         </button>
         <button type="submit" className={buttonPrimaryClass} disabled={isSubmitting} aria-busy={isSubmitting}>

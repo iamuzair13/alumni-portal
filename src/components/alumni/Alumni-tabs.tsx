@@ -18,6 +18,7 @@ import { useMaritalStatuses } from "@/app/queries/fetch-marital-statuses";
 import { useGenders, type GenderOption } from "@/app/queries/fetch-genders";
 import { useCampuses, type CampusOption } from "@/app/queries/fetch-campuses";
 import { useOccupationStatuses, type OccupationStatusOption } from "@/app/queries/fetch-occupation-statuses";
+import { useOccupationTransitionTimings, type OccupationTransitionTimingOption } from "@/app/queries/fetch-occupation-transition-timings";
 import { useAlumniFaculties } from "@/app/queries/fetch-alumni-faculties";
 import { useAlumniDepartments } from "@/app/queries/fetch-alumni-departments";
 import { useAlumniPrograms } from "@/app/queries/fetch-alumni-programs";
@@ -219,6 +220,7 @@ export const AlumniTabs: React.FC = () => {
   const genderFilterRef = React.useRef<HTMLDivElement>(null);
   const maritalStatusFilterRef = React.useRef<HTMLDivElement>(null);
   const occupationStatusFilterRef = React.useRef<HTMLDivElement>(null);
+  const occupationTransitionTimingFilterRef = React.useRef<HTMLDivElement>(null);
   const photoConsentFilterRef = React.useRef<HTMLDivElement>(null);
   const categoryFilterRef = React.useRef<HTMLDivElement>(null);
 
@@ -289,6 +291,7 @@ export const AlumniTabs: React.FC = () => {
   const [selectedAdmissionYears, setSelectedAdmissionYears] = useState<string[]>([]);
   const [selectedPassingYears, setSelectedPassingYears] = useState<string[]>([]);
   const [selectedOccupationStatuses, setSelectedOccupationStatuses] = useState<string[]>([]);
+  const [selectedOccupationTransitionTimings, setSelectedOccupationTransitionTimings] = useState<string[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [selectedWorkCities, setSelectedWorkCities] = useState<string[]>([]);
   const [selectedWorkCountries, setSelectedWorkCountries] = useState<string[]>([]);
@@ -362,6 +365,7 @@ export const AlumniTabs: React.FC = () => {
     gender: boolean;
     maritalStatus: boolean;
     occupationStatus: boolean;
+    occupationTransitionTiming: boolean;
     photoConsent: boolean;
     category: boolean;
   }>({
@@ -388,6 +392,7 @@ export const AlumniTabs: React.FC = () => {
     gender: false,
     maritalStatus: false,
     occupationStatus: false,
+    occupationTransitionTiming: false,
     photoConsent: false,
     category: false,
   });
@@ -544,6 +549,9 @@ export const AlumniTabs: React.FC = () => {
     if (selectedOccupationStatuses.length > 0) {
       filters.occupationStatus = selectedOccupationStatuses;
     }
+    if (selectedOccupationTransitionTimings.length > 0) {
+      filters.occupationTransitionTiming = selectedOccupationTransitionTimings;
+    }
     if (selectedSectors.length > 0) {
       filters.sector = selectedSectors;
     }
@@ -604,6 +612,7 @@ export const AlumniTabs: React.FC = () => {
     selectedAdmissionYears,
     selectedPassingYears,
     selectedOccupationStatuses,
+    selectedOccupationTransitionTimings,
     selectedSectors,
     selectedWorkCities,
     selectedWorkCountries,
@@ -632,6 +641,7 @@ export const AlumniTabs: React.FC = () => {
   const { data: gendersData, error: gendersError, isLoading: isLoadingGenders } = useGenders(masterFilters);
   const { data: campusesData, error: campusesError, isLoading: isLoadingCampuses } = useCampuses(masterFilters);
   const { data: occupationStatusesData, error: occupationStatusesError, isLoading: isLoadingOccupationStatuses } = useOccupationStatuses(masterFilters);
+  const { data: occupationTransitionTimingsData, error: occupationTransitionTimingsError, isLoading: isLoadingOccupationTransitionTimings } = useOccupationTransitionTimings(masterFilters);
   
   // Additional master filter hooks - pass masterFilters to get dynamic counts
   const { data: homeCountriesData } = useHomeCountries(masterFilters);
@@ -805,6 +815,9 @@ export const AlumniTabs: React.FC = () => {
       if (occupationStatusFilterRef.current && !occupationStatusFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, occupationStatus: false }));
       }
+      if (occupationTransitionTimingFilterRef.current && !occupationTransitionTimingFilterRef.current.contains(event.target as Node)) {
+        setExpandedFilters(prev => ({ ...prev, occupationTransitionTiming: false }));
+      }
       if (photoConsentFilterRef.current && !photoConsentFilterRef.current.contains(event.target as Node)) {
         setExpandedFilters(prev => ({ ...prev, photoConsent: false }));
       }
@@ -887,6 +900,7 @@ export const AlumniTabs: React.FC = () => {
     setSelectedAdmissionYears([]);
     setSelectedPassingYears([]);
     setSelectedOccupationStatuses([]);
+    setSelectedOccupationTransitionTimings([]);
     setSelectedSectors([]);
     setSelectedWorkCities([]);
     setSelectedWorkCountries([]);
@@ -922,6 +936,7 @@ export const AlumniTabs: React.FC = () => {
       selectedAdmissionYears.length > 0 ||
       selectedPassingYears.length > 0 ||
       selectedOccupationStatuses.length > 0 ||
+      selectedOccupationTransitionTimings.length > 0 ||
       selectedSectors.length > 0 ||
       selectedWorkCities.length > 0 ||
       selectedWorkCountries.length > 0 ||
@@ -938,7 +953,7 @@ export const AlumniTabs: React.FC = () => {
       selectedPersonalEmailStates.length > 0 ||
       selectedContactNoStates.length > 0
     );
-  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities,  selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates, selectedPersonalEmailStates, selectedContactNoStates]);
+  }, [query, selectedFaculties, selectedDepartments, selectedPrograms, additionalFilter, selectedGenders, selectedMaritalStatuses, selectedHomeCountries, selectedHomeCities, selectedProvinces, selectedCampuses, selectedAdmissionYears, selectedPassingYears, selectedOccupationStatuses, selectedOccupationTransitionTimings, selectedSectors, selectedWorkCities, selectedWorkCountries, selectedInstitutionNames, selectedProgramsEnrolled, selectedFundingSources, selectedInstitutionCountries, selectedInstitutionCities,  selectedPhotoConsents, selectedCategories, selectedSapIdStates, selectedRegNoStates, selectedPersonalEmailStates, selectedContactNoStates]);
   
   const handleStatusToggle = (status: string) => {
     setAdditionalFilter(prev => 
@@ -1147,6 +1162,24 @@ export const AlumniTabs: React.FC = () => {
       setSelectedOccupationStatuses(occupationStatusesData?.occupationStatuses?.map(s => s.value) || []);
     }
   };
+
+  const handleOccupationTransitionTimingToggle = (value: string) => {
+    setSelectedOccupationTransitionTimings((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
+  const handleOccupationTransitionTimingSelectAll = () => {
+    if (
+      occupationTransitionTimingsData?.occupationTransitionTimings &&
+      selectedOccupationTransitionTimings.length === occupationTransitionTimingsData.occupationTransitionTimings.length &&
+      occupationTransitionTimingsData.occupationTransitionTimings.length > 0
+    ) {
+      setSelectedOccupationTransitionTimings([]);
+    } else {
+      setSelectedOccupationTransitionTimings(occupationTransitionTimingsData?.occupationTransitionTimings?.map((t) => t.value) || []);
+    }
+  };
   
   const handleAdmissionYearToggle = (year: string) => {
     setSelectedAdmissionYears(prev => 
@@ -1246,6 +1279,7 @@ export const AlumniTabs: React.FC = () => {
     selectedAdmissionYears.length > 0 ? selectedAdmissionYears : undefined,
     selectedPassingYears.length > 0 ? selectedPassingYears : undefined,
     selectedOccupationStatuses.length > 0 ? selectedOccupationStatuses : undefined,
+    selectedOccupationTransitionTimings.length > 0 ? selectedOccupationTransitionTimings : undefined,
     selectedSectors.length > 0 ? selectedSectors : undefined,
     selectedWorkCities.length > 0 ? selectedWorkCities : undefined,
     selectedWorkCountries.length > 0 ? selectedWorkCountries : undefined,
@@ -1310,6 +1344,7 @@ export const AlumniTabs: React.FC = () => {
       selectedAdmissionYears,
       selectedPassingYears,
       selectedOccupationStatuses,
+      selectedOccupationTransitionTimings,
       selectedSectors,
       selectedWorkCities,
       selectedWorkCountries,
@@ -1342,6 +1377,7 @@ export const AlumniTabs: React.FC = () => {
       selectedAdmissionYears.length > 0 ? selectedAdmissionYears : undefined,
       selectedPassingYears.length > 0 ? selectedPassingYears : undefined,
       selectedOccupationStatuses.length > 0 ? selectedOccupationStatuses : undefined,
+      selectedOccupationTransitionTimings.length > 0 ? selectedOccupationTransitionTimings : undefined,
       selectedSectors.length > 0 ? selectedSectors : undefined,
       selectedWorkCities.length > 0 ? selectedWorkCities : undefined,
       selectedWorkCountries.length > 0 ? selectedWorkCountries : undefined,
@@ -1892,6 +1928,11 @@ export const AlumniTabs: React.FC = () => {
           url.searchParams.append("occupationStatus", status);
         });
       }
+      if (selectedOccupationTransitionTimings.length > 0) {
+        selectedOccupationTransitionTimings.forEach((v) => {
+          url.searchParams.append("occupationTransitionTiming", v);
+        });
+      }
       if (selectedSectors.length > 0) {
         selectedSectors.forEach(sector => {
           url.searchParams.append("sector", sector);
@@ -2274,6 +2315,7 @@ export const AlumniTabs: React.FC = () => {
     selectedAdmissionYears,
     selectedPassingYears,
     selectedOccupationStatuses,
+    selectedOccupationTransitionTimings,
     selectedSectors,
     selectedWorkCities,
     selectedWorkCountries,
@@ -4019,6 +4061,103 @@ export const AlumniTabs: React.FC = () => {
                         )}
                         {selectedOccupationStatuses.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">{selectedOccupationStatuses.length} selected</p>
+                        )}
+                      </div>
+
+                      {/* Post-graduation transition (occupation_transition_timing) */}
+                      <div className="relative" ref={occupationTransitionTimingFilterRef}>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                          <span>Post-graduation transition</span>
+                        </label>
+                        {isLoadingOccupationTransitionTimings ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-500">
+                            Loading...
+                          </div>
+                        ) : occupationTransitionTimingsError ? (
+                          <div className="w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                            Error loading transition options
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedFilters((prev) => ({ ...prev, occupationTransitionTiming: !prev.occupationTransitionTiming }))}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                            >
+                              <span className="truncate">
+                                {selectedOccupationTransitionTimings.length === 0
+                                  ? "Select transition timing..."
+                                  : selectedOccupationTransitionTimings.length === 1
+                                  ? occupationTransitionTimingsData?.occupationTransitionTimings?.find((t) => t.value === selectedOccupationTransitionTimings[0])?.label || selectedOccupationTransitionTimings[0]
+                                  : `${selectedOccupationTransitionTimings.length} selected`}
+                              </span>
+                              <svg
+                                className={`w-4 h-4 transition-transform ${expandedFilters.occupationTransitionTiming ? "rotate-180" : ""}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {expandedFilters.occupationTransitionTiming && (
+                              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                                <div className="p-2">
+                                  <label
+                                    className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors border-b border-gray-200 dark:border-gray-700 mb-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOccupationTransitionTimingSelectAll();
+                                    }}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          occupationTransitionTimingsData?.occupationTransitionTimings &&
+                                          selectedOccupationTransitionTimings.length === occupationTransitionTimingsData.occupationTransitionTimings.length &&
+                                          occupationTransitionTimingsData.occupationTransitionTimings.length > 0
+                                        }
+                                        onChange={handleOccupationTransitionTimingSelectAll}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                      />
+                                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">All options</span>
+                                    </div>
+                                  </label>
+                                  <div className="max-h-48 overflow-y-auto">
+                                    {occupationTransitionTimingsData?.occupationTransitionTimings &&
+                                    occupationTransitionTimingsData.occupationTransitionTimings.length > 0 ? (
+                                      occupationTransitionTimingsData.occupationTransitionTimings.map((opt: OccupationTransitionTimingOption) => {
+                                        const isChecked = selectedOccupationTransitionTimings.includes(opt.value);
+                                        return (
+                                          <label
+                                            key={opt.value}
+                                            className="flex items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => handleOccupationTransitionTimingToggle(opt.value)}
+                                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300 dark:border-gray-600"
+                                            />
+                                            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                              {opt.label} ({opt.count.toLocaleString()})
+                                            </span>
+                                          </label>
+                                        );
+                                      })
+                                    ) : (
+                                      <div className="p-2 text-sm text-gray-500">No values available</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {selectedOccupationTransitionTimings.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{selectedOccupationTransitionTimings.length} selected</p>
                         )}
                       </div>
                       

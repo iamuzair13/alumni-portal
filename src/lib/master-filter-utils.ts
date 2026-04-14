@@ -307,6 +307,24 @@ export function buildMasterFilterConditions(
     }
   }
 
+  // Occupation transition timing (exclude if querying transition timing options)
+  if (excludeField !== "occupationTransitionTiming") {
+    const occupationTransitionTiming = getFilterValue("occupationTransitionTiming");
+    if (occupationTransitionTiming && (Array.isArray(occupationTransitionTiming) ? occupationTransitionTiming.length > 0 : occupationTransitionTiming)) {
+      const values = Array.isArray(occupationTransitionTiming) ? occupationTransitionTiming : [occupationTransitionTiming];
+      const conditions = values.map(v => {
+        const normalized = String(v).trim();
+        if (normalized === "NULL" || normalized === "null") {
+          return sql`(occupation_transition_timing IS NULL OR TRIM(COALESCE(occupation_transition_timing, '')) = '')`;
+        }
+        return sql`LOWER(TRIM(COALESCE(occupation_transition_timing, ''))) = LOWER(TRIM(${v}))`;
+      });
+      if (conditions.length > 0) {
+        filterConditions.push(sql`(${combineOrConditions(conditions)})`);
+      }
+    }
+  }
+
   // Sector filter (exclude if querying sectors)
   if (excludeField !== "sector") {
     const sector = getFilterValue("sector");
