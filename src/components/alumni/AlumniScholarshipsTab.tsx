@@ -1177,8 +1177,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           <table className="min-w-full text-sm">
                             <tbody className="divide-y divide-slate-200">
                               {[
-                                ["Selected Discount", applicationPreview.application.requestedDiscount],
-                                ["Applied For", applicationPreview.application.applyingFor],
+                                ["Discount Category", applicationPreview.application.scholarshipType],
+                                ["Discount Type", applicationPreview.application.requestedDiscount],
                                 ["Program", applicationPreview.application.requestedProgramDegree || "-"],
                                 ["Department", applicationPreview.application.department || "-"],
                                 ["Faculty", applicationPreview.application.faculty || "-"],
@@ -1314,7 +1314,6 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           <table className="min-w-full text-sm">
                             <tbody className="divide-y divide-slate-200">
                               {[
-                                ["Discount Type", applicationPreview.application.requestedDiscount],
                                 ["SAP Code", applicationPreview.application.sapCode],
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white">

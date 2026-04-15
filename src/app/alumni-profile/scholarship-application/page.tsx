@@ -6,6 +6,10 @@ import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import { Toaster, toast } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
+import {
+  SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY,
+  SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS,
+} from "@/lib/scholarshipLetter";
 
 function ScholarshipApplicationContent() {
   const searchParams = useSearchParams();
@@ -195,26 +199,8 @@ function ScholarshipApplicationContent() {
   }, [data?.father_cnic]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const discountOptions = [
-    { value: "kinship", label: "Kinship Discount" },
-    { value: "masters-phd", label: "Masters/PhD Discount" },
-    { value: "masters-collaboration", label: "Masters Scholarships via UOL International Collaborations (for alumni only)" },
-  ];
-
-  const applyingForOptions = {
-    kinship: [
-      { value: "BS", label: "BS (Bachelor's)" },
-      { value: "Masters", label: "Masters" },
-      { value: "PhD", label: "PhD" },
-    ],
-    "masters-phd": [
-      { value: "Masters", label: "Masters (50% discount)" },
-      { value: "PhD", label: "PhD (25% discount)" },
-    ],
-    "masters-collaboration": [
-      { value: "Masters", label: "Masters Scholarships via UOL International Collaborations" },
-    ],
-  };
+  const discountOptions = [...SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS];
+  const applyingForOptions = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY;
 
   const kinshipRelations = [
     { value: "Sister", label: "Sister" },
@@ -582,7 +568,7 @@ function ScholarshipApplicationContent() {
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="sm:col-span-2">
                   <label htmlFor="discountType" className="mb-2 text-sm text-slate-900 font-medium block">
-                    Select Discount <span className="text-red-500">*</span>
+                    Discount Category <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="discountType"
@@ -597,7 +583,7 @@ function ScholarshipApplicationContent() {
                     className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
                     required
                   >
-                    <option value="">Select Discount Type</option>
+                    <option value="">Discount Type</option>
                     {discountOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -763,7 +749,7 @@ function ScholarshipApplicationContent() {
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
                           <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Applying For (Masters/PhD) <span className="text-red-500">*</span>
+                            Discount Type (Masters/PhD) <span className="text-red-500">*</span>
                           </label>
                           <select
                             value={formData.applyingFor}
@@ -1057,34 +1043,7 @@ function ScholarshipApplicationContent() {
                             required
                           />
                         </div>
-                        <div>
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Other (Please specify)
-                          </label>
-                          <input
-                            type="file"
-                            accept="application/pdf,.pdf"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0] ?? null;
-                              if (f && f.type !== "application/pdf") {
-                                toast.error("Only PDF files are allowed.");
-                                e.currentTarget.value = "";
-                                setDocOtherFile(null);
-                                return;
-                              }
-                              setDocOtherFile(f);
-                            }}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md"
-                          />
-                          <input
-                            type="text"
-                            value={docOtherText}
-                            onChange={(e) => setDocOtherText(e.target.value)}
-                            className="mt-2 px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                            placeholder="Specify other document (if uploaded)"
-                            disabled={!docOtherFile}
-                          />
-                        </div>
+                        
                         
                       </div>
                     </div>

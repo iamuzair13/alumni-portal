@@ -4,10 +4,10 @@ import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { generateScholarshipLetterPDF, generateScholarshipPDF } from "@/lib/pdfGenerator";
 import {
+  discountCategoryLabel,
+  discountTypeOptionLabel,
   parseMastersDetails,
   parseUploadedDocuments,
-  requestedDiscountLabel,
-  scholarshipTypeLabel,
 } from "@/lib/scholarshipLetter";
 
 type ScholarshipUploadedDocDb = {
@@ -16,6 +16,13 @@ type ScholarshipUploadedDocDb = {
   filename?: unknown;
   adminVerified?: unknown;
 };
+
+function normDocLabel(s: string): string {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
 
 function parseUploadedDocumentsWithAdmin(raw: unknown): Array<{ label: string; url: string; filename?: string; adminVerified?: "YES" | "NO" | null }> {
   // Keep backwards compatibility with existing parseUploadedDocuments(),
@@ -214,33 +221,55 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     const docItems = parseUploadedDocuments(app.uploaded_documents);
     const docItemsWithAdmin = parseUploadedDocumentsWithAdmin(app.uploaded_documents);
     const uploadedDocuments =
-      docItems.length > 0
-        ? docItems
-            .map((d) => {
-              const filename =
-                (d.filename && String(d.filename).trim()) ||
-                fileNameFromUrl(String(d.url || ""));
-              const url = String(d.url || "").trim();
-              if (!filename && !url) return null;
-              const adminVerified =
-                docItemsWithAdmin.find((x) => x.label === String(d.label || "Document").trim())?.adminVerified ?? null;
-              return {
-                label: String(d.label || "Document").trim() || "Document",
-                filename: filename || "",
-                url: url || "",
-                adminVerified,
-              };
-            })
-            .filter(
-              (
-                x
-              ): x is {
-                label: string;
-                filename: string;
-                url: string;
-                adminVerified: "YES" | "NO" | null;
-              } => x !== null
-            )
+      docItems.length > 0 || docItemsWithAdmin.length > 0
+        ? (
+            [
+              ...docItems.map((d) => {
+                const labelStr = String(d.label || "Document").trim() || "Document";
+                const adminVerified =
+                  docItemsWithAdmin.find((x) => normDocLabel(x.label) === normDocLabel(labelStr))?.adminVerified ??
+                  null;
+                const filename =
+                  (d.filename && String(d.filename).trim()) ||
+                  fileNameFromUrl(String(d.url || ""));
+                const url = String(d.url || "").trim();
+                if (!filename && !url && adminVerified !== "YES" && adminVerified !== "NO") {
+                  return null;
+                }
+                return {
+                  label: labelStr,
+                  filename: filename || "",
+                  url: url || "",
+                  adminVerified,
+                };
+              }),
+              ...docItemsWithAdmin
+                .filter(
+                  (a) =>
+                    !docItems.some((b) => normDocLabel(b.label) === normDocLabel(a.label)),
+                )
+                .map((a) => ({
+                  label: String(a.label || "Document").trim() || "Document",
+                  filename: String(a.filename ?? "").trim(),
+                  url: String(a.url ?? "").trim(),
+                  adminVerified: a.adminVerified ?? null,
+                })),
+            ] as Array<{
+              label: string;
+              filename: string;
+              url: string;
+              adminVerified: "YES" | "NO" | null;
+            } | null>
+          ).filter(
+            (
+              x
+            ): x is {
+              label: string;
+              filename: string;
+              url: string;
+              adminVerified: "YES" | "NO" | null;
+            } => x !== null
+          )
         : [];
     const documentsLines =
       docItems.length > 0
@@ -270,7 +299,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     }
 
     const dateRaw = app.created_at ? new Date(app.created_at) : new Date();
-    const dateFormatted = dateRaw.toLocaleDateString("en-PK", {
+    const dateFormatted = dateRaw.toLocaleDateString("en-US", {
+      weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -288,27 +318,18 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         ? String(app.cgpa)
         : "Data is missing";
 
-    const applyingForRaw = String(app.apply_for || "").trim();
-    const discountKey = String(app.discount_type || "").trim().toLowerCase();
-    const applyingForWithPercent =
-      discountKey === "masters-phd"
-        ? applyingForRaw
-          ? applyingForRaw.toLowerCase().includes("phd")
-            ? `${applyingForRaw} (25% discount)`
-            : `${applyingForRaw} (50% discount)`
-          : "Data is missing"
-        : applyingForRaw || "Data is missing";
+    const applyingForDisplay = discountTypeOptionLabel(app.discount_type, app.apply_for);
 
     const applicationLetter = {
       title: "Alumni Scholarship Application",
       dateFormatted,
       status: String(app.status || "pending").toLowerCase(),
       studentName: alumniName || "Data is missing",
-      scholarshipType: scholarshipTypeLabel(app.discount_type),
-      applyingFor: applyingForWithPercent,
+      scholarshipType: discountCategoryLabel(app.discount_type),
+      applyingFor: applyingForDisplay,
       previousDegree: String(app.degreetitle || "").trim() || "Data is missing",
       cgpaLastDegree: cgpaDisplay,
-      requestedDiscount: requestedDiscountLabel(app.discount_type),
+      requestedDiscount: applyingForDisplay,
       documentsAttached: documentsLines,
       uploadedDocuments,
       sapCode: String(app.sapid || "").trim() || "Data is missing",

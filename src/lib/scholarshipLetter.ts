@@ -1,23 +1,55 @@
 /** Labels and derived fields for admin scholarship application letter view */
 
-export function scholarshipTypeLabel(discountType: string | null | undefined): string {
+/** Must stay aligned with the scholarship application form (`Discount Category` select). */
+export const SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS = [
+  { value: "kinship", label: "Kinship Discount" },
+  { value: "masters-phd", label: "Masters/PhD Discount" },
+  {
+    value: "masters-collaboration",
+    label: "Masters Scholarships via UOL International Collaborations (for alumni only)",
+  },
+] as const;
+
+/** Nested options per category — must stay aligned with the form’s “Applying for” / discount-type selects. */
+export const SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY: Record<
+  string,
+  readonly { value: string; label: string }[]
+> = {
+  kinship: [
+    { value: "BS", label: "BS (Bachelor's)" },
+    { value: "Masters", label: "Masters" },
+    { value: "PhD", label: "PhD" },
+  ],
+  "masters-phd": [
+    { value: "Masters", label: "Masters (50% discount)" },
+    { value: "PhD", label: "PhD (25% discount)" },
+  ],
+  "masters-collaboration": [
+    { value: "Masters", label: "Masters Scholarships via UOL International Collaborations" },
+  ],
+};
+
+/** Form field “Discount Category” — label for the stored `discount_type` value. */
+export function discountCategoryLabel(discountType: string | null | undefined): string {
   const d = String(discountType || "").trim().toLowerCase();
-  if (d === "kinship") return "Personal / Kinship";
-  if (d === "masters-phd") return "Personal / Kinship";
-  if (d === "masters-collaboration") return "Personal / Kinship";
-  if (!d) return "Scholarship / Discount";
-  return discountType || "Scholarship / Discount";
+  const found = SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS.find((o) => o.value === d);
+  return found?.label ?? (String(discountType || "").trim() || "—");
 }
 
-export function requestedDiscountLabel(discountType: string | null | undefined): string {
+/**
+ * Form nested “Discount Type” / “Applying for” — label for `apply_for` within the selected category.
+ * PDF column “Discount Type” uses this; it is not the same as Discount Category.
+ */
+export function discountTypeOptionLabel(
+  discountType: string | null | undefined,
+  applyFor: string | null | undefined,
+): string {
   const d = String(discountType || "").trim().toLowerCase();
-  if (d === "kinship") return "Kinship Discount";
-  if (d === "masters-phd") return "Masters/PhD Discount";
-  if (d === "masters-collaboration") {
-    return "Masters Scholarships via UOL International Collaborations (for alumni only)";
-  }
-  if (!d) return "Scholarship / Discount";
-  return discountType || "Scholarship / Discount";
+  const raw = String(applyFor || "").trim();
+  if (!raw) return "Data is missing";
+  const list = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY[d] ?? [];
+  const found = list.find((o) => o.value === raw);
+  return found?.label ?? raw;
 }
 
 export function requestedPercent(
