@@ -1,52 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
 import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
-
-/**
- * Database row type for jobs
- */
-type JobRow = {
-  id: bigint | number;
-  title: string | null;
-  company: string | null;
-  location: string | null;
-  category: string | null;
-  job_link: string | null;
-  deadline: Date | string | null;
-  created_at: Date | string | null;
-  description?: string | null;
-};
-
-/**
- * Convert date to ISO 8601 format (UTC)
- */
-function toUtcIso(date: unknown): string | null {
-  try {
-    if (!date) return null;
-    const d = new Date(String(date));
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toISOString();
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Format job data from database row
- */
-function formatJob(row: JobRow) {
-  return {
-    id: Number(row.id),
-    title: row.title || null,
-    company: row.company || null,
-    location: row.location || null,
-    category: row.category || null,
-    job_link: row.job_link || null,
-    deadline: toUtcIso(row.deadline),
-    created_at: toUtcIso(row.created_at),
-    ...(row.description !== undefined && { description: row.description || null }),
-  };
-}
+import { serializeTbljobsRow } from '@/lib/tbljobsSerialize';
 
 /**
  * Handle CORS preflight requests
@@ -57,8 +12,9 @@ export async function OPTIONS(request: NextRequest) {
 
 /**
  * GET /api/external/jobs
- * Retrieves a list of all job postings with optional filtering
- * 
+ * Retrieves a list of all job postings with optional filtering.
+ * Returns every column present on `public.tbljobs` (see schema.sql).
+ *
  * Query Parameters:
  * - category: Filter by job category (e.g., "uol", "partner")
  * - location: Filter by job location
@@ -104,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     // Build WHERE conditions dynamically
     let whereConditions = sql``;
-    
+
     if (category && location && company) {
       const locationPattern = `%${location}%`;
       const companyPattern = `%${company}%`;
@@ -131,80 +87,45 @@ export async function GET(request: NextRequest) {
       whereConditions = sql`WHERE 1=1`;
     }
 
-    // Build the query
-    // Note: We don't include description in the list endpoint (only in detail view)
-    let query: ReturnType<typeof sql>;
-    
+    let rows: Record<string, unknown>[];
+
     if (limit !== undefined && offset !== undefined) {
-      query = sql`
-        SELECT 
-          id,
-          title,
-          company,
-          location,
-          category,
-          job_link,
-          deadline,
-          created_at
+      rows = (await sql`
+        SELECT *
         FROM public.tbljobs
         ${whereConditions}
         ORDER BY created_at DESC
         LIMIT ${limit}
         OFFSET ${offset}
-      `;
+      `) as Record<string, unknown>[];
     } else if (limit !== undefined) {
-      query = sql`
-        SELECT 
-          id,
-          title,
-          company,
-          location,
-          category,
-          job_link,
-          deadline,
-          created_at
+      rows = (await sql`
+        SELECT *
         FROM public.tbljobs
         ${whereConditions}
         ORDER BY created_at DESC
         LIMIT ${limit}
-      `;
+      `) as Record<string, unknown>[];
     } else if (offset !== undefined) {
-      query = sql`
-        SELECT 
-          id,
-          title,
-          company,
-          location,
-          category,
-          job_link,
-          deadline,
-          created_at
+      rows = (await sql`
+        SELECT *
         FROM public.tbljobs
         ${whereConditions}
         ORDER BY created_at DESC
         OFFSET ${offset}
-      `;
+      `) as Record<string, unknown>[];
     } else {
-      query = sql`
-        SELECT 
-          id,
-          title,
-          company,
-          location,
-          category,
-          job_link,
-          deadline,
-          created_at
+      rows = (await sql`
+        SELECT *
         FROM public.tbljobs
         ${whereConditions}
         ORDER BY created_at DESC
-      `;
+      `) as Record<string, unknown>[];
     }
 
-    const rows = await query;
-
-    // Format the results
-    const jobs = rows.map((row) => formatJob(row as unknown as JobRow));
+    const jobs = rows.map((row) =>
+      serializeTbljobsRow(row)
+    );
 
     const response = NextResponse.json({
       data: jobs,
@@ -223,4 +144,3 @@ export async function GET(request: NextRequest) {
     return addCorsHeaders(response, request);
   }
 }
-
