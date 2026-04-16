@@ -1256,28 +1256,58 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 <td className="px-4 py-3 text-xs text-slate-500">—</td>
                                 <td className="px-4 py-3 text-xs text-slate-500">—</td>
                               </tr>
-                              {(applicationPreview.application.uploadedDocuments?.length
-                                ? applicationPreview.application.uploadedDocuments.map((d) => ({
-                                    key: String(d.label || "Document"),
-                                    label: String(d.label || "Document"),
-                                    url: d.url,
-                                    filename: d.filename,
-                                  }))
-                                : (applicationPreview.application.documentsAttached || []).map((line) => ({
-                                    key: String(line || "Document"),
-                                    label: String(line || "Document"),
-                                    url: "",
-                                    filename: "",
-                                  }))
-                              ).map((d) => {
+                              {(() => {
+                                const baseChecklist = [
+                                  "Copy of Admission Letter (PhD – UOL)",
+                                  "Academic Transcripts and Certificates",
+                                  "Alumni Card",
+                                  "Curriculum Vitae (CV)",
+                                  "CNIC Copy",
+                                ].map((label) => ({
+                                  key: label,
+                                  label,
+                                  url: "",
+                                  filename: "",
+                                }));
+
+                                const uploaded = (applicationPreview.application.uploadedDocuments || []).map((d) => ({
+                                  key: String(d.label || "Document"),
+                                  label: String(d.label || "Document"),
+                                  url: d.url,
+                                  filename: d.filename,
+                                }));
+
+                                const fallbackLines = (applicationPreview.application.documentsAttached || []).map((line) => ({
+                                  key: String(line || "Document"),
+                                  label: String(line || "Document"),
+                                  url: "",
+                                  filename: "",
+                                }));
+
+                                const finalRows = [...baseChecklist];
+                                const normalizedExists = (label: string) =>
+                                  finalRows.some((r) => r.label.trim().toLowerCase() === label.trim().toLowerCase());
+
+                                for (const row of [...uploaded, ...fallbackLines]) {
+                                  if (!normalizedExists(row.label)) continue;
+                                  // Keep only the primary checklist rows; enrich them with available file data.
+                                  const idx = finalRows.findIndex(
+                                    (r) => r.label.trim().toLowerCase() === row.label.trim().toLowerCase()
+                                  );
+                                  if (idx >= 0 && row.url) {
+                                    finalRows[idx] = { ...finalRows[idx], ...row };
+                                  }
+                                }
+
+                                return finalRows.map((d) => {
                                 const current = docChecklistDraft[d.key] ?? null;
                                 return (
                                   <tr key={d.key} className="hover:bg-slate-50/60">
                                     <td className="px-4 py-3">
-                                      <div className="font-semibold text-slate-900">{d.label}</div>
+                                      <div className="font-semibold text-slate-900 ">{d.label}</div>
                                       {d.filename ? <div className="mt-0.5 text-xs text-slate-600 break-all">{d.filename}</div> : null}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3 ">
                                       {d.url ? (
                                         <a
                                           href={d.url}
@@ -1291,7 +1321,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                         <span className="text-xs text-slate-500">—</span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3 ">
                                       {isAdmin ? (
                                         <div className="flex items-center gap-3">
                                           <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -1319,7 +1349,8 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                     </td>
                                   </tr>
                                 );
-                              })}
+                              });
+                              })()}
                             </tbody>
                           </table>
                         </div>
