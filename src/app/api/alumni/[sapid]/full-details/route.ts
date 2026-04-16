@@ -181,7 +181,17 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     let associationTitle: string | null = null;
     if (associationId) {
       const associationRows = await sql/* sql */`
-        SELECT faculty_name AS title FROM public.tbl_faculties WHERE id = ${associationId} LIMIT 1
+        SELECT
+          COALESCE(
+            NULLIF(TRIM(to_jsonb(a) ->> 'title'), ''),
+            NULLIF(TRIM(to_jsonb(a) ->> 'association_name'), ''),
+            NULLIF(TRIM(to_jsonb(a) ->> 'name'), ''),
+            NULLIF(TRIM(to_jsonb(a) ->> 'faculty_name'), ''),
+            ('Association #' || a.id::text)
+          ) AS title
+        FROM public.tbl_associations a
+        WHERE a.id = ${associationId}
+        LIMIT 1
       `;
       if (associationRows[0]) {
         associationTitle = String(associationRows[0].title ?? null);

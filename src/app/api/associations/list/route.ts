@@ -6,15 +6,20 @@ export async function GET() {
     const rows = await sql/* sql */`
       SELECT 
         id,
-        faculty_name AS title,
-        NULL::text AS description,
-        NULL::text AS dean,
-        NULL::text AS phone,
-        NULL::text AS email,
-        NULL::text AS address,
-        created_at
-      FROM public.tbl_faculties
-      ORDER BY faculty_name ASC
+        COALESCE(
+          NULLIF(TRIM(to_jsonb(a) ->> 'title'), ''),
+          NULLIF(TRIM(to_jsonb(a) ->> 'association_name'), ''),
+          NULLIF(TRIM(to_jsonb(a) ->> 'name'), ''),
+          NULLIF(TRIM(to_jsonb(a) ->> 'faculty_name'), ''),
+          ('Association #' || id::text)
+        ) AS title,
+        NULLIF(TRIM(to_jsonb(a) ->> 'description'), '') AS description,
+        NULLIF(TRIM(to_jsonb(a) ->> 'dean'), '') AS dean,
+        NULLIF(TRIM(to_jsonb(a) ->> 'phone'), '') AS phone,
+        NULLIF(TRIM(to_jsonb(a) ->> 'email'), '') AS email,
+        NULLIF(TRIM(to_jsonb(a) ->> 'address'), '') AS address
+      FROM public.tbl_associations a
+      ORDER BY title ASC
     `;
     
     const associations = rows.map((r: Record<string, unknown>) => ({
