@@ -3,6 +3,8 @@ import { writeFile, mkdir } from "fs/promises";
 import { join, extname } from "path";
 import { existsSync } from "fs";
 
+import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
+import { getUploadsImagesDir } from "@/lib/uploadsDir";
 import { auth } from "@/lib/auth";
 import { sql } from "@/lib/dbconnect";
 import { sendEmailDetailed } from "@/lib/email";
@@ -66,7 +68,7 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
   const baseNoExt = safeOriginal.replace(/\.[^.]+$/, "");
   const filename = `${prefix}-${slot}-${timestamp}-${randomSuffix}-${baseNoExt}${ext}`.slice(0, 180);
 
-  const uploadsDir = join(process.cwd(), "public", "images");
+  const uploadsDir = getUploadsImagesDir();
   if (!existsSync(uploadsDir)) {
     await mkdir(uploadsDir, { recursive: true });
   }
@@ -78,8 +80,8 @@ async function saveFileToUploads(opts: { file: File; prefix: string; slot: strin
 
   return {
     filename,
-    // Store a public path under /images since runtime files are written to public/images
-    url: `/images/${encodeURIComponent(filename)}`,
+    // Use API route so runtime uploads work on production (immutable deploys); same dir as GET /api/uploads/images/[filename]
+    url: uploadsImageUrl(filename),
     size: file.size,
     type: file.type,
   };

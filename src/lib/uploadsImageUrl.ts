@@ -47,3 +47,14 @@ export function publicUploadsUrlFromStored(raw: string | null | undefined): stri
   return url || null;
 }
 
+/**
+ * Use for links to user-uploaded files: plain `/images/*` often 404s on production (immutable deploys),
+ * while `/api/uploads/images/*` reads from disk at runtime. Leaves absolute http(s) URLs unchanged.
+ */
+export function resolveStoredUploadUrl(stored: string | null | undefined): string {
+  const s = String(stored ?? "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  return publicUploadsUrlFromStored(s) ?? s;
+}
+

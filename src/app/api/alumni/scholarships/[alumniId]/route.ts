@@ -9,6 +9,7 @@ import {
   parseMastersDetails,
   parseUploadedDocuments,
 } from "@/lib/scholarshipLetter";
+import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
 
 type ScholarshipUploadedDocDb = {
   label?: unknown;
@@ -236,7 +237,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
                 const filename =
                   (d.filename && String(d.filename).trim()) ||
                   fileNameFromUrl(String(d.url || ""));
-                const url = String(d.url || "").trim();
+                const url = resolveStoredUploadUrl(String(d.url || "").trim());
                 if (!filename && !url && adminVerified !== "YES" && adminVerified !== "NO") {
                   return null;
                 }
@@ -255,7 +256,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
                 .map((a) => ({
                   label: String(a.label || "Document").trim() || "Document",
                   filename: String(a.filename ?? "").trim(),
-                  url: String(a.url ?? "").trim(),
+                  url: resolveStoredUploadUrl(String(a.url ?? "").trim()),
                   adminVerified: a.adminVerified ?? null,
                 })),
             ] as Array<{
