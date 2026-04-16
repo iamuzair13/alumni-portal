@@ -282,7 +282,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
           ? String(data.passingOutYear).trim()
           : "";
-      drawFourColRow("Passing Out Year:", passingYearPdf, " ", " ");
+      drawFourColRow("Passing Out Year:", passingYearPdf, "Admission Reference No/Application ID:", data.admissionApplicationRef || "-");
 
       drawSectionHeader("d", "Documents Checklist", "docs");
       const leftW = c1 + c2;
@@ -330,13 +330,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         findChecklistValue(["curriculum vitae", "cv"])
       );
 
-      drawDocRow(
-        "Admission Reference No/Application ID:",
-        data.admissionApplicationRef || "-",
-        " ",
-        " "
-      );
-
+     
       // Single pair: label | Yes/No (no empty fourth column)
       const cnicLabel = "CNIC Copy:";
       const cnicVal = findChecklistValue(["cnic"]);
