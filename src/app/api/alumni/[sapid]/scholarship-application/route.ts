@@ -112,6 +112,7 @@ export async function POST(
     let mastersDetails: Record<string, unknown> | null = null;
     let uploadedDocuments: Array<{ label: string; url: string; filename: string; type: string; size: number }> | null =
       null;
+    let admissionApplicationRef: string | null = null;
 
     if (isMultipart) {
       const formData = await req.formData();
@@ -127,6 +128,7 @@ export async function POST(
         const admissionSession = String(formData.get("admissionSession") || "").trim();
         const admissionStatus = String(formData.get("admissionStatus") || "").trim();
         const declarationAccepted = String(formData.get("declarationAccepted") || "").trim();
+        admissionApplicationRef = String(formData.get("admissionApplicationRef") || "").trim() || null;
 
         mastersDetails = {
           admissionFacultyId,
@@ -280,6 +282,7 @@ export async function POST(
         degree_title,
         masters_details,
         uploaded_documents,
+        admission_application_ref,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -292,6 +295,7 @@ export async function POST(
         ${degreeTitle},
         ${mastersDetails ? JSON.stringify(mastersDetails) : null},
         ${uploadedDocuments ? JSON.stringify(uploadedDocuments) : null},
+        ${admissionApplicationRef},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -304,6 +308,7 @@ export async function POST(
         degree_title = EXCLUDED.degree_title,
         masters_details = EXCLUDED.masters_details,
         uploaded_documents = EXCLUDED.uploaded_documents,
+        admission_application_ref = EXCLUDED.admission_application_ref,
         status = 'pending',
         reason = NULL
     `;

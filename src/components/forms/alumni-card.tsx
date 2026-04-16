@@ -27,29 +27,20 @@ const schema = z.object({
   addressPreference: z.enum(["Collect", "Deliver"], {
     message: "Please select an address preference",
   }),
-  homeAddress: z.string().optional(),
   deliveryCity: z.string().optional(),
   deliveryStreetNo: z.string().optional(),
   deliveryHouseNo: z.string().optional(),
 }).refine((data) => {
-  if (data.addressPreference === "Deliver") {
-    return Boolean(data.homeAddress && data.homeAddress.trim().length >= 10);
-  }
-  return true;
+  if (data.addressPreference !== "Deliver") return true;
+  const city = String(data.deliveryCity ?? "").trim();
+  const street = String(data.deliveryStreetNo ?? "").trim();
+  const house = String(data.deliveryHouseNo ?? "").trim();
+  if (!city || !street || !house) return false;
+  // Must match API: full cardaddress string ≥ 10 chars (composed from structured fields).
+  const composed = `${house}, ${street}, ${city}`;
+  return composed.length >= 10;
 }, {
-  message: "Home address is required and must be at least 10 characters when delivery is selected",
-  path: ["homeAddress"],
-}).refine((data) => {
-  if (data.addressPreference === "Deliver") {
-    return (
-      Boolean(String(data.deliveryCity ?? "").trim()) &&
-      Boolean(String(data.deliveryStreetNo ?? "").trim()) &&
-      Boolean(String(data.deliveryHouseNo ?? "").trim())
-    );
-  }
-  return true;
-}, {
-  message: "City, street number, and house number are required when delivery is selected",
+  message: "City, street number, and house number are required. The combined address must be at least 10 characters.",
   path: ["deliveryCity"],
 });
 
@@ -126,7 +117,6 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       confirmation: false,
       comment: "",
       addressPreference: "Collect",
-      homeAddress: "",
       deliveryCity: "",
       deliveryStreetNo: "",
       deliveryHouseNo: "",
@@ -174,22 +164,9 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
     }
   }, [alumniDetailsQuery.data]);
 
-  // Auto-populate home address when preference changes to "Deliver"
-  useEffect(() => {
-    if (addressPreference !== "Deliver") return;
-    const current = watch("homeAddress");
-    if (current && current.trim() !== "") return;
-    const alumni = (alumniDetailsQuery.data as any)?.item;
-    if (alumni?.address && String(alumni.address).trim()) {
-      setValue("homeAddress", String(alumni.address).trim());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressPreference, alumniDetailsQuery.data, sapId, setValue]);
-
   // Clear address fields when preference changes to "Collect"
   React.useEffect(() => {
     if (addressPreference === "Collect") {
-      setValue("homeAddress", "");
       setValue("deliveryCity", "");
       setValue("deliveryStreetNo", "");
       setValue("deliveryHouseNo", "");
@@ -231,12 +208,15 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       if (vals.comment) {
         formData.append("comment", vals.comment);
       }
-      // cardaddress = home address; structured delivery when mailing to address
-      if (vals.addressPreference === "Deliver" && vals.homeAddress) {
-        formData.append("cardaddress", vals.homeAddress.trim());
-        formData.append("delivery_city", String(vals.deliveryCity ?? "").trim());
-        formData.append("delivery_street_no", String(vals.deliveryStreetNo ?? "").trim());
-        formData.append("delivery_house_no", String(vals.deliveryHouseNo ?? "").trim());
+      // cardaddress = full line for mailing; structured columns stored separately
+      if (vals.addressPreference === "Deliver") {
+        const city = String(vals.deliveryCity ?? "").trim();
+        const street = String(vals.deliveryStreetNo ?? "").trim();
+        const house = String(vals.deliveryHouseNo ?? "").trim();
+        formData.append("cardaddress", `${house}, ${street}, ${city}`);
+        formData.append("delivery_city", city);
+        formData.append("delivery_street_no", street);
+        formData.append("delivery_house_no", house);
       } else {
         formData.append("cardaddress", "Collect from Campus");
       }
@@ -282,7 +262,6 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       setValue("confirmation", false);
       setValue("comment", "");
       setValue("addressPreference", "Collect");
-      setValue("homeAddress", "");
       setValue("deliveryCity", "");
       setValue("deliveryStreetNo", "");
       setValue("deliveryHouseNo", "");

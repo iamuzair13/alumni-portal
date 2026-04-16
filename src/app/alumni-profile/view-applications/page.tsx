@@ -17,6 +17,7 @@ type ScholarshipApplication = {
   kinshipCnic: string | null;
   applyFor: string | null;
   degreeTitle: string | null;
+  admissionApplicationRef?: string | null;
   status: string;
   rejectionReason: string | null;
 };
@@ -193,6 +194,15 @@ function ViewApplicationsContent() {
                         </label>
                         <p className="text-sm text-gray-900 dark:text-gray-100">
                           {app.degreeTitle || "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                          Admission Reference No / Application ID
+                        </label>
+                        <p className="text-sm text-gray-900 dark:text-gray-100 break-all">
+                          {app.admissionApplicationRef?.trim() || "N/A"}
                         </p>
                       </div>
 

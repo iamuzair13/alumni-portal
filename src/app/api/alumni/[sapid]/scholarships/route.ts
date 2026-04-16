@@ -73,6 +73,7 @@ export async function GET(
         kinship_cnic,
         apply_for,
         degree_title,
+        admission_application_ref,
         COALESCE(status, 'pending') AS status,
         reason
       FROM public.alumni_scholarships
@@ -103,6 +104,7 @@ export async function GET(
       kinshipCnic: app.kinship_cnic ?? null,
       applyFor: app.apply_for ?? null,
       degreeTitle: app.degree_title ?? null,
+      admissionApplicationRef: app.admission_application_ref ?? null,
       status: (app.status ?? "pending").toLowerCase(),
       rejectionReason: app.reason ?? null,
     }));

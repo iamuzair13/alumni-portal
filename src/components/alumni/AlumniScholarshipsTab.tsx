@@ -68,6 +68,10 @@ type ScholarshipApplicationLetter = {
   department?: string;
   program?: string;
   campus?: string;
+  passingOutYear?: string;
+  admissionApplicationRef?: string | null;
+  mastersAdmissionSummary?: string | null;
+  kinship?: { firstName: string; lastName: string; cnic: string } | null;
 };
 
 async function getAlumniScholarships(
@@ -1203,6 +1207,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ["Department", applicationPreview.application.department || "-"],
                                 ["Faculty", applicationPreview.application.faculty || "-"],
                                 ["Campus", applicationPreview.application.campus || "-"],
+                                ["Passing Out Year", applicationPreview.application.passingOutYear || "-"],
                                 ["CGPA", applicationPreview.application.cgpaLastDegree],
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white">
@@ -1239,6 +1244,18 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
+                              <tr className="bg-slate-50/50">
+                                <td className="px-4 py-3" colSpan={1}>
+                                  <div className="font-semibold text-slate-900">
+                                    Admission Reference No / Application ID
+                                  </div>
+                                  <div className="mt-1 text-sm text-slate-800 break-all">
+                                    {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-slate-500">—</td>
+                                <td className="px-4 py-3 text-xs text-slate-500">—</td>
+                              </tr>
                               {(applicationPreview.application.uploadedDocuments?.length
                                 ? applicationPreview.application.uploadedDocuments.map((d) => ({
                                     key: String(d.label || "Document"),

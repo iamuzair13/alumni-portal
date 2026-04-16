@@ -74,6 +74,7 @@ function ScholarshipApplicationContent() {
   const [docCnicFile, setDocCnicFile] = useState<File | null>(null);
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
+  const [admissionApplicationRef, setAdmissionApplicationRef] = useState("");
 
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
@@ -384,6 +385,7 @@ function ScholarshipApplicationContent() {
                 fd.set("docOther", docOtherFile);
                 fd.set("docOtherText", docOtherText.trim());
               }
+              fd.set("admissionApplicationRef", admissionApplicationRef.trim());
               fd.set("declarationAccepted", mastersDeclarationAccepted ? "true" : "false");
 
               return fetch(url, { method: "POST", body: fd });
@@ -488,6 +490,7 @@ function ScholarshipApplicationContent() {
       setDocCnicFile(null);
       setDocOtherFile(null);
       setDocOtherText("");
+      setAdmissionApplicationRef("");
       setMastersDeclarationAccepted(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
@@ -1043,8 +1046,25 @@ function ScholarshipApplicationContent() {
                             required
                           />
                         </div>
-                        
-                        
+                        <div className="sm:col-span-2">
+                          <label className="mb-2 text-sm text-slate-900 font-medium block" htmlFor="admissionApplicationRef">
+                            Admission Reference No / Application ID{" "}
+                            <span className="text-gray-500 font-normal">(Optional)</span>
+                          </label>
+                          <input
+                            id="admissionApplicationRef"
+                            type="text"
+                            value={admissionApplicationRef}
+                            onChange={(e) => setAdmissionApplicationRef(e.target.value)}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            placeholder="Enter your admission reference or application number"
+                            maxLength={200}
+                            autoComplete="off"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            If applicable, as shown on your admission letter or application portal.
+                          </p>
+                        </div>
                       </div>
                     </div>
 

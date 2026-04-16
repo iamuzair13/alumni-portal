@@ -49,6 +49,10 @@ export interface ScholarshipLetterPDFData {
   requestedDiscount: string;
   documentsAttached: string[];
   sapCode: string;
+  /** Alumni passing-out year from profile (e.g. tbl_alumni.yearofending) */
+  passingOutYear?: string | null;
+  /** Admission reference / application ID entered on the scholarship form */
+  admissionApplicationRef?: string | null;
   // Optional fields to support enhanced tabular layout
   requestedProgramDegree?: string;
   faculty?: string;
@@ -274,7 +278,11 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
       drawFourColRow("Department:", data.department || "-", "Program:", data.previousDegree || "-");
       drawFourColRow("Sap ID:", data.sapCode || "-", "CGPA:", data.cgpaLastDegree || "-");
-      drawFourColRow("Passing Out Year:", "Data unavailable", "Admission Reference No/Applicant ID:", "Data unavailable");
+      const passingYearPdf =
+        data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
+          ? String(data.passingOutYear).trim()
+          : "";
+      drawFourColRow("Passing Out Year:", passingYearPdf, "—", "—");
 
       drawSectionHeader("d", "Documents Checklist", "docs");
       const leftW = c1 + c2;
@@ -338,6 +346,17 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       drawCellText(cnicLabel, outerX, rowY, c1, cnicH, true, false, cnicLines);
       drawCellText(cnicVal, x2, rowY, c2 + c3 + c4, cnicH, false, false, cnicValLines);
       rowY += cnicH;
+
+      const admissionRefPdf =
+        data.admissionApplicationRef != null && String(data.admissionApplicationRef).trim() !== ""
+          ? String(data.admissionApplicationRef).trim()
+          : "";
+      drawDocRow(
+        "Admission Reference No/Application ID:",
+        admissionRefPdf,
+        "—",
+        "—"
+      );
 
       rowY += 4;
 

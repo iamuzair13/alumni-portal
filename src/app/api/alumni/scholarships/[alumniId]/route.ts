@@ -114,6 +114,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.degree_title,
         asch.masters_details,
         asch.uploaded_documents,
+        asch.admission_application_ref,
         a.alumniname,
         a.sapid,
         a.registrationno,
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         a.cnicpassport,
         a.cgpa,
         a.degreetitle,
+        a.yearofending,
         COALESCE(NULLIF(TRIM(a.facultyname), ''), f.faculty_name) AS faculty_name,
         COALESCE(NULLIF(TRIM(a.departmentname), ''), d.department_name) AS department_name,
         COALESCE(NULLIF(TRIM(a.degreetitle), ''), p.program_name) AS program_name,
@@ -153,6 +155,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       degree_title: string | null;
       masters_details: unknown;
       uploaded_documents: unknown;
+      admission_application_ref: string | null;
       alumniname: string | null;
       sapid: string | null;
       registrationno: string | null;
@@ -161,6 +164,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       cnicpassport: string | null;
       cgpa: number | null;
       degreetitle: string | null;
+      yearofending: number | null;
       faculty_name: string | null;
       department_name: string | null;
       program_name: string | null;
@@ -318,6 +322,13 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         ? String(app.cgpa)
         : "Data is missing";
 
+    const passingOutYearDisplay =
+      app.yearofending != null && Number.isFinite(Number(app.yearofending))
+        ? String(Number(app.yearofending))
+        : "Data unavailable";
+
+    const admissionRefDisplay = String(app.admission_application_ref ?? "").trim() || null;
+
     const applyingForDisplay = discountTypeOptionLabel(app.discount_type, app.apply_for);
 
     const applicationLetter = {
@@ -350,6 +361,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
             }
           : null,
       mastersAdmissionSummary,
+      passingOutYear: passingOutYearDisplay,
+      admissionApplicationRef: admissionRefDisplay,
     };
 
     if (mode === "letter-pdf") {
@@ -363,6 +376,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         requestedDiscount: applicationLetter.requestedDiscount,
         documentsAttached: applicationLetter.documentsAttached,
         sapCode: applicationLetter.sapCode,
+        passingOutYear: applicationLetter.passingOutYear,
+        admissionApplicationRef: applicationLetter.admissionApplicationRef,
         requestedProgramDegree: applicationLetter.requestedProgramDegree,
         faculty: applicationLetter.faculty,
         department: applicationLetter.department,
