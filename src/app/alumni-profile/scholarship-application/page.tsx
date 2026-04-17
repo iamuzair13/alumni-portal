@@ -1229,23 +1229,6 @@ function ScholarshipApplicationContent() {
                     </div>
                   </>
                 )}
-
-                {!isFeeFlow && (
-                  <div className="sm:col-span-2">
-                    <label htmlFor="degreeTitle" className="mb-2 text-sm text-slate-900 font-medium block">
-                      Degree Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="degreeTitle"
-                      value={formData.degreeTitle}
-                      onChange={(e) => setFormData({ ...formData, degreeTitle: e.target.value })}
-                      className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                      required
-                      placeholder="Enter degree title"
-                    />
-                  </div>
-                )}
               </div>
 
               <button
