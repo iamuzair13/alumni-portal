@@ -134,7 +134,7 @@ export function generateAdminActionEmail(input: {
     const subject = "Alumni Registration Status Update";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations, EE2 Building 4th Floor.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations</p>
       ${extraBodyHtml}
     `;
     return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
@@ -353,7 +353,7 @@ export function generateAdminActionEmail(input: {
     const subject = "UOL Gym Membership Application – Update on Your Application";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for applying for the UOL Gym Facility.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations, EE2 Building 4th Floor.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations</p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest and look forward to assisting you in the future.</p>
       ${extraBodyHtml}
     `;
@@ -386,7 +386,7 @@ export function generateAdminActionEmail(input: {
     const subject = "UOL Swimming Pool Membership Application – Update on Your Application";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for applying for the UOL Swimming Pool Facility.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations, EE2 Building 4th Floor.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations</p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest and look forward to assisting you in the future.</p>
       ${extraBodyHtml}
     `;
