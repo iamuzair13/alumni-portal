@@ -9,6 +9,9 @@ import PageBanner from "@/components/ui/PageBanner";
 import {
   SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY,
   SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS,
+  isScholarshipFeeDiscountFlow,
+  isScholarshipKinshipCategory,
+  scholarshipApplyingForFromCategory,
 } from "@/lib/scholarshipLetter";
 
 function ScholarshipApplicationContent() {
@@ -79,9 +82,9 @@ function ScholarshipApplicationContent() {
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
 
-  // Load organization datasets only when needed (Masters/PhD Discount)
+  // Load organization datasets only when needed (fee discount / admission flow)
   useEffect(() => {
-    if (formData.discountType !== "masters-phd") {
+    if (!isScholarshipFeeDiscountFlow(formData.discountType)) {
       return;
     }
     if (faculties.length > 0 || orgLoading) {
@@ -202,6 +205,7 @@ function ScholarshipApplicationContent() {
 
   const discountOptions = [...SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS];
   const applyingForOptions = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY;
+  const isFeeFlow = isScholarshipFeeDiscountFlow(formData.discountType);
 
   const kinshipRelations = [
     { value: "Sister", label: "Sister" },
@@ -212,11 +216,16 @@ function ScholarshipApplicationContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.discountType || !formData.applyingFor) {
+    const derivedApplying = scholarshipApplyingForFromCategory(formData.discountType);
+    const effectiveApplyingFor = (derivedApplying ?? formData.applyingFor).trim();
+
+    if (!formData.discountType || !effectiveApplyingFor) {
       toast.error(
         !formData.discountType
-          ? "Please select a discount type."
-          : "Please select “Applying For” (Masters/PhD) at the top of the form.",
+          ? "Please select a discount category."
+          : formData.discountType === "kinship-15"
+            ? "Please select Applying For (BS / Masters / PhD)."
+            : "Please complete Applying For / program level where required.",
         {
         duration: 4000,
         style: {
@@ -230,8 +239,8 @@ function ScholarshipApplicationContent() {
       return;
     }
 
-    // Additional validation for Masters/PhD Discount
-    if (formData.discountType === "masters-phd") {
+    // Additional validation for fee discount (admission letter, uploads, declaration)
+    if (isScholarshipFeeDiscountFlow(formData.discountType)) {
       // Ensure org data is ready
       if (orgLoading || faculties.length === 0) {
         toast.error("Please wait while options are loading. Try again in a moment.", {
@@ -254,7 +263,7 @@ function ScholarshipApplicationContent() {
         !admissionSession ||
         !admissionStatus
       ) {
-        toast.error("Please complete all Masters/PhD Discount sections before submitting.", {
+        toast.error("Please complete all admission and document sections before submitting.", {
           duration: 5000,
           style: {
             background: "#fee2e2",
@@ -306,7 +315,13 @@ function ScholarshipApplicationContent() {
       }
     }
 
-    if (formData.discountType === "kinship" && (!formData.kinshipRelation || !formData.kinshipFirstName || !formData.kinshipLastName || !formData.kinshipCnic)) {
+    if (
+      isScholarshipKinshipCategory(formData.discountType) &&
+      (!formData.kinshipRelation ||
+        !formData.kinshipFirstName ||
+        !formData.kinshipLastName ||
+        !formData.kinshipCnic)
+    ) {
       toast.error("Please provide all kinship details (relation, first name, last name, and CNIC)", {
         duration: 4000,
         style: {
@@ -319,9 +334,9 @@ function ScholarshipApplicationContent() {
       return;
     }
 
-    // Compute degree title for Masters/PhD Discount from selected admission program
+    // Compute degree title for fee discount flow from selected admission program
     let degreeTitleToSend = (formData.degreeTitle || "").trim();
-    if (formData.discountType === "masters-phd") {
+    if (isScholarshipFeeDiscountFlow(formData.discountType)) {
       const selectedProgram = programs.find(
         (p) => typeof admissionProgramId === "number" && p.id === admissionProgramId,
       );
@@ -358,11 +373,11 @@ function ScholarshipApplicationContent() {
     try {
       const url = `/api/alumni/${encodeURIComponent(sapId)}/scholarship-application`;
       const response =
-        formData.discountType === "masters-phd"
+        isScholarshipFeeDiscountFlow(formData.discountType)
           ? await (async () => {
               const fd = new FormData();
               fd.set("discountType", formData.discountType);
-              fd.set("applyingFor", formData.applyingFor);
+              fd.set("applyingFor", effectiveApplyingFor);
               fd.set("degreeTitle", degreeTitleToSend);
 
               fd.set("admissionFacultyId", String(admissionFacultyId));
@@ -395,7 +410,7 @@ function ScholarshipApplicationContent() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 discountType: formData.discountType,
-                applyingFor: formData.applyingFor,
+                applyingFor: effectiveApplyingFor,
                 degreeTitle: degreeTitleToSend,
                 kinshipRelation: formData.kinshipRelation || null,
                 kinshipFirstName: formData.kinshipFirstName || null,
@@ -550,7 +565,9 @@ function ScholarshipApplicationContent() {
     );
   }
 
-  const currentOptions = formData.discountType ? applyingForOptions[formData.discountType as keyof typeof applyingForOptions] || [] : [];
+  const currentOptions = formData.discountType
+    ? applyingForOptions[formData.discountType] ?? []
+    : [];
 
   return (
     <>
@@ -577,10 +594,12 @@ function ScholarshipApplicationContent() {
                     id="discountType"
                     value={formData.discountType}
                     onChange={(e) => {
+                      const v = e.target.value;
+                      const derived = scholarshipApplyingForFromCategory(v);
                       setFormData({
                         ...formData,
-                        discountType: e.target.value,
-                        applyingFor: "", // Reset when discount type changes
+                        discountType: v,
+                        applyingFor: derived !== null ? derived : "",
                       });
                     }}
                     className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
@@ -595,10 +614,33 @@ function ScholarshipApplicationContent() {
                   </select>
                 </div>
 
-                
+                {formData.discountType === "kinship-15" && (
+                  <div className="sm:col-span-2">
+                    <label htmlFor="applyingForKinship" className="mb-2 text-sm text-slate-900 font-medium block">
+                      Applying For <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="applyingForKinship"
+                      value={formData.applyingFor}
+                      onChange={(e) => setFormData({ ...formData, applyingFor: e.target.value })}
+                      className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                      required
+                    >
+                      <option value="">Select program level</option>
+                      {currentOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Level of study for the beneficiary (kin) applying for the discount.
+                    </p>
+                  </div>
+                )}
 
-                {/* Masters/PhD Discount detailed form */}
-                {formData.discountType === "masters-phd" && (
+                {/* Fee discount detailed form (admission + documents) */}
+                {isFeeFlow && (
                   <div className="sm:col-span-2 space-y-6 mt-4">
                     {/* 1. Applicant Information */}
                     <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
@@ -752,20 +794,13 @@ function ScholarshipApplicationContent() {
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
                           <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Discount Type (Masters/PhD) <span className="text-red-500">*</span>
+                            Program level <span className="text-red-500">*</span>
                           </label>
-                          <select
-                            value={formData.applyingFor}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, applyingFor: e.target.value }))}
-                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                            required
-                          >
-                            <option value="">Select</option>
-                            <option value="Masters">Masters (50% discount)</option>
-                            <option value="PhD">PhD (25% discount)</option>
-                          </select>
+                          <div className="px-4 py-3 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md">
+                            {formData.applyingFor || "—"} (from your selected discount category)
+                          </div>
                           <p className="mt-1 text-xs text-gray-500">
-                            This is the same “Applying For” value shown at the top of the form.
+                            Masters or PhD is determined by the discount category you chose above.
                           </p>
                         </div>
                         <div className="sm:col-span-2">
@@ -838,7 +873,10 @@ function ScholarshipApplicationContent() {
                                   const v = e.target.value ? Number(e.target.value) : "";
                                   setAdmissionProgramId(v);
                                   // Auto-set Applying For for Masters/PhD based on program name if not chosen yet.
-                                  if (formData.discountType === "masters-phd" && (!formData.applyingFor || !formData.applyingFor.trim())) {
+                                  if (
+                                    !scholarshipApplyingForFromCategory(formData.discountType) &&
+                                    (!formData.applyingFor || !formData.applyingFor.trim())
+                                  ) {
                                     const selected = programs.find((p) => p.id === v);
                                     const nm = String(selected?.name ?? "").toLowerCase();
                                     const inferred = nm.includes("phd") ? "PhD" : nm ? "Masters" : "";
@@ -1091,7 +1129,7 @@ function ScholarshipApplicationContent() {
                   </div>
                 )}
 
-                {formData.discountType === "kinship" && (
+                {isScholarshipKinshipCategory(formData.discountType) && (
                   <>
                     <div>
                       <label htmlFor="kinshipRelation" className="mb-2 text-sm text-slate-900 font-medium block">
@@ -1192,7 +1230,7 @@ function ScholarshipApplicationContent() {
                   </>
                 )}
 
-                {formData.discountType !== "masters-phd" && (
+                {!isFeeFlow && (
                   <div className="sm:col-span-2">
                     <label htmlFor="degreeTitle" className="mb-2 text-sm text-slate-900 font-medium block">
                       Degree Title <span className="text-red-500">*</span>

@@ -27,6 +27,26 @@ type EventListItem = {
   associationTitle?: string | null;
 };
 
+/** When tbl_events_id_seq lags behind MAX(id), inserts fail with duplicate key on tbl_events_pkey. */
+async function syncTblEventsIdSequence() {
+  await sql/* sql */`
+    SELECT setval(
+      pg_get_serial_sequence('public.tbl_events', 'id')::regclass,
+      COALESCE((SELECT MAX(id) FROM public.tbl_events), 0),
+      true
+    )
+  `;
+}
+
+function isTblEventsPkeyConflict(err: unknown): boolean {
+  const e = err as { code?: string; message?: string };
+  return (
+    e?.code === "23505" &&
+    typeof e?.message === "string" &&
+    (e.message.includes("tbl_events_pkey") || e.message.includes('tbl_events"'))
+  );
+}
+
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
   try {
     const d = date ? new Date(String(date)) : null;
@@ -260,12 +280,25 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Failed to save image 1" }, { status: 500 });
       }
 
-      // Insert event record with image filenames
-      const result = await sql/* sql */`
+      // Insert event record with image filenames (retry once if id sequence is out of sync)
+      const insertEvent = () =>
+        sql/* sql */`
         INSERT INTO public.tbl_events (category, type, title, shortdescription, longdescription, fromdate, todate, eventtime, image1, image2, image3, image4, image5, chapter_id, association_id)
         VALUES (${category}, ${type}, ${title}, ${shortDescription.slice(0, 500)}, ${description || null}, ${fromDate}, ${toDate}, ${eventTime}, ${savedImages[1]}, ${savedImages[2] || null}, ${savedImages[3] || null}, ${savedImages[4] || null}, ${savedImages[5] || null}, ${chapterId}, ${associationId})
         RETURNING id
-      ` as Array<{ id: number }>;
+      ` as Promise<Array<{ id: number }>>;
+
+      let result: Array<{ id: number }>;
+      try {
+        result = await insertEvent();
+      } catch (insertErr) {
+        if (isTblEventsPkeyConflict(insertErr)) {
+          await syncTblEventsIdSequence();
+          result = await insertEvent();
+        } else {
+          throw insertErr;
+        }
+      }
 
       const eventId = result[0]?.id;
       if (!eventId) {

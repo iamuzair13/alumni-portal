@@ -14,6 +14,7 @@ import {
   EMAIL_TRIGGERED_BY,
   insertEmailLog,
 } from "@/lib/emailLogs";
+import { isScholarshipFeeDiscountFlow } from "@/lib/scholarshipLetter";
 
 type Payload = {
   discountType?: string;
@@ -122,7 +123,7 @@ export async function POST(
       applyingFor = String(formData.get("applyingFor") || "").trim();
       degreeTitle = String(formData.get("degreeTitle") || "").trim();
 
-      if (discountType === "masters-phd") {
+      if (isScholarshipFeeDiscountFlow(discountType)) {
         const admissionFacultyId = String(formData.get("admissionFacultyId") || "").trim();
         const admissionDepartmentId = String(formData.get("admissionDepartmentId") || "").trim();
         const admissionProgramId = String(formData.get("admissionProgramId") || "").trim();

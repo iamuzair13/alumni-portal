@@ -198,7 +198,7 @@ export default function AlumniVerificationPage() {
         </div>
 
         <div className="mt-6 text-center text-xs text-white/90">
-          Office of Alumni Relations | University of Lahore
+          Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore
         </div>
       </div>
     </div>

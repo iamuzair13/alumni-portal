@@ -204,7 +204,7 @@ export async function sendChaptersApplicationEmail(
       You have successfully joined the Alumni Chapters.
     </p>
   `;
-  const footer = "We appreciate your interest in staying connected with the UOL community.<br><br>Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  const footer = "We appreciate your interest in staying connected with the UOL community.<br><br>Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -224,7 +224,7 @@ export async function sendAlumniCardApplicationReceivedEmail(
       Our team has begun processing your request. You will be notified via email or SMS once your alumni card is ready for collection or dispatch.
     </p>
   `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  const footer = "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -250,7 +250,7 @@ export async function sendAlumniCardOnHoldEmail(
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application is currently on hold.</p>
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Kindly arrange to provide the required information so your application can be processed.</p>
   `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  const footer = "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -268,7 +268,7 @@ export async function sendSwimmingPoolMembershipEmail(
     <p style="margin: 10px 0; color: #333333; font-size: 16px;">Being an alumnus of UOL, you are availing a special discount on your swimming pool fee for ${month}. Your application has been received and is currently being processed.</p>
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">You will be notified once your access is activated.</p>
   `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+  const footer = "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -312,7 +312,7 @@ export async function sendMentorshipApplicationEmail(
     <p style="margin: 15px 0 0 0; color: #333333; font-size: 16px;">Your application has been received and is currently under review. We will contact you soon with updates.</p>
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Thank you for your commitment to inspiring and guiding the next generation of UOL students.</p>
   `;
-  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore";
+  const footer = "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -336,7 +336,7 @@ export async function sendAssociationApplicationEmail(
       We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.
     </p>
   `;
-  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore";
+  const footer = "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -359,7 +359,7 @@ export async function sendSuccessStoryEmail(
       We appreciate you taking the time to share your journey and contribute to the alumni network.
     </p>
   `;
-  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore";
+  const footer = "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -389,7 +389,7 @@ export async function sendWelcomeEmail(
     </p>
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">We look forward to your active participation in the alumni community.</p>
   `;
-  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  const footer = "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -416,7 +416,7 @@ export async function sendGymMembershipEmail(
       If you have any questions, feel free to contact us.
     </p>
   `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+  const footer = "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -434,7 +434,7 @@ export async function sendAlumniCardActivatedEmail(
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your UOL Alumni Card has been activated, and you can access its e-version through your alumni portal.</p>
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">For physical card collection, you may visit the UOL Alumni Relations Office on campus. Alternatively, if you would like us to dispatch the card to your address (within Pakistan only), please share your complete postal address and contact number. Once dispatched, a confirmation will be sent to you via email or SMS.</p>
   `;
-  const footer = "Warm regards,<br>Office of Alumni Relations<br>University of Lahore";
+  const footer = "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });
@@ -460,7 +460,7 @@ export async function sendPasswordResetEmail(
     </ul>
     <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">Portal Login: <a href="${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin" style="color: #007bff; text-decoration: underline;">${process.env.NEXT_PUBLIC_BASE_URL || "https://portal-alumni.uol.edu.pk"}/signin</a></p>
   `;
-  const footer = "Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  const footer = "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 
   const html = createEmailTemplate(subject, greeting, body, footer);
   return await sendEmail({ to: alumniEmail, subject, html });

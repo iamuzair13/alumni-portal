@@ -7,11 +7,13 @@ import AppHeader from "@/layout/AppHeader";
 import BackButton from "@/components/ui/BackButton";
 import PageBanner from "@/components/ui/PageBanner";
 import { Toaster } from "react-hot-toast";
+import { discountCategoryLabel } from "@/lib/scholarshipLetter";
 
 type ScholarshipApplication = {
   id: number;
   type: "scholarship";
   createdAt: string | null;
+  discountType: string | null;
   kinshipFirstName: string | null;
   kinshipLastName: string | null;
   kinshipCnic: string | null;
@@ -179,6 +181,15 @@ function ViewApplicationsContent() {
 
                   {app.type === "scholarship" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                          Discount Category
+                        </label>
+                        <p className="text-sm text-gray-900 dark:text-gray-100">
+                          {app.discountType ? discountCategoryLabel(app.discountType) : "N/A"}
+                        </p>
+                      </div>
+
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                           Applying For

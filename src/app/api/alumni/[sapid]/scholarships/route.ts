@@ -68,6 +68,7 @@ export async function GET(
       SELECT
         id,
         created_at,
+        discount_type,
         kinship_firstname,
         kinship_lastname,
         kinship_cnic,
@@ -99,6 +100,7 @@ export async function GET(
       id: Number(app.id),
       type: "scholarship" as const,
       createdAt: app.created_at ? new Date(app.created_at).toISOString() : null,
+      discountType: app.discount_type ?? null,
       kinshipFirstName: app.kinship_firstname ?? null,
       kinshipLastName: app.kinship_lastname ?? null,
       kinshipCnic: app.kinship_cnic ?? null,

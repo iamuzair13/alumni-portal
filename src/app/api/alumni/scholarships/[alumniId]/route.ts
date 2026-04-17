@@ -6,6 +6,7 @@ import { generateScholarshipLetterPDF, generateScholarshipPDF } from "@/lib/pdfG
 import {
   discountCategoryLabel,
   discountTypeOptionLabel,
+  isScholarshipFeeDiscountFlow,
   parseMastersDetails,
   parseUploadedDocuments,
 } from "@/lib/scholarshipLetter";
@@ -286,7 +287,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
 
     const masters = parseMastersDetails(app.masters_details);
     let mastersAdmissionSummary: string | null = null;
-    if (masters && String(app.discount_type || "").trim() === "masters-phd") {
+    if (masters && isScholarshipFeeDiscountFlow(String(app.discount_type || "").trim())) {
       const [fn, dn, pn] = await Promise.all([
         resolveFacultyName(masters.admissionFacultyId),
         resolveDepartmentName(masters.admissionDepartmentId),

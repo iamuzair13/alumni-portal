@@ -65,11 +65,11 @@ function getPortalBaseUrl() {
 }
 
 function footerRegards() {
-  return "Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  return "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 }
 
 function footerWarmRegards() {
-  return "Warm regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+  return "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
 }
 
 export function generateAdminActionEmail(input: {
@@ -95,7 +95,7 @@ export function generateAdminActionEmail(input: {
         <li>Eligibility for alumni scholarships and kinship discounts for your family members</li>
         <li>Exclusive invitations to job fairs, networking sessions, and professional events</li>
       </ul>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application will be reviewed by the Office of Alumni Relations. Once approved, you will receive a confirmation email along with your login credentials.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application will be reviewed by the Office of Alumni Relations, EE2 Building 4th Floor. Once approved, you will receive a confirmation email along with your login credentials.</p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We look forward to welcoming you back and strengthening our lifelong connection with you.</p>
       ${extraBodyHtml}
     `;
@@ -134,7 +134,7 @@ export function generateAdminActionEmail(input: {
     const subject = "Alumni Registration Status Update";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;">For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations, EE2 Building 4th Floor.</p>
       ${extraBodyHtml}
     `;
     return { subject, html: createEmailTemplate(subject, greeting, body, footerWarmRegards()) };
@@ -217,7 +217,7 @@ export function generateAdminActionEmail(input: {
     const subject = "Your Application for Chapter Leadership Role";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for your application for the role of <strong>{ROLE}</strong> with the UOL Alumni Chapter.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application has been received and is currently under review by the Office of Alumni Relations. We will contact you soon with updates regarding your application.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application has been received and is currently under review by the Office of Alumni Relations, EE2 Building 4th Floor. We will contact you soon with updates regarding your application.</p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest in serving your chapter and helping to strengthen the UOL alumni network.</p>
       ${extraBodyHtml}
     `;
@@ -232,7 +232,7 @@ export function generateAdminActionEmail(input: {
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.</p>
       ${extraBodyHtml}
     `;
-    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations") };
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor") };
   }
 
   if (input.actionType === EMAIL_ACTION_TYPE.CHAPTER_LEADERSHIP_APPROVED) {
@@ -353,7 +353,7 @@ export function generateAdminActionEmail(input: {
     const subject = "UOL Gym Membership Application – Update on Your Application";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for applying for the UOL Gym Facility.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations, EE2 Building 4th Floor.</p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest and look forward to assisting you in the future.</p>
       ${extraBodyHtml}
     `;
@@ -386,7 +386,7 @@ export function generateAdminActionEmail(input: {
     const subject = "UOL Swimming Pool Membership Application – Update on Your Application";
     const body = `
       <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for applying for the UOL Swimming Pool Facility.</p>
-      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.</p>
+      <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations, EE2 Building 4th Floor.</p>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We appreciate your interest and look forward to assisting you in the future.</p>
       ${extraBodyHtml}
     `;
@@ -473,31 +473,31 @@ export function generateAdminActionEmail(input: {
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_TALK_CONFIRM) {
     const subject = "Alumni Talk Session - Confirmed";
     const body = `<p style="margin: 0; color: #333333; font-size: 16px;">Your alumni talk session has been <strong>confirmed</strong>. Please check the portal for the confirmed date and timings.</p>${extraBodyHtml}`;
-    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations") };
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor") };
   }
 
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_TALK_MARK_CONDUCTED) {
     const subject = "Alumni Talk Session - Marked as Conducted";
     const body = `<p style="margin: 0; color: #333333; font-size: 16px;">Your alumni talk session has been marked as <strong>Conducted</strong>. Thank you for your participation.</p>${extraBodyHtml}`;
-    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations") };
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor") };
   }
 
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_TALK_CANCEL) {
     const subject = "Alumni Talk Session - Cancelled";
     const body = `<p style="margin: 0; color: #333333; font-size: 16px;">Your alumni talk session has been <strong>cancelled</strong>. Please check the portal for details.</p>${extraBodyHtml}`;
-    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations") };
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor") };
   }
 
   if (input.actionType === EMAIL_ACTION_TYPE.ALUMNI_TALK_PROPOSE_SLOT) {
     const subject = "Alumni Talk Session - Proposed Slot";
     const body = `<p style="margin: 0; color: #333333; font-size: 16px;">A new slot has been proposed for your alumni talk session. Please check the details below and confirm.</p>${extraBodyHtml}`;
-    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations") };
+    return { subject, html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor") };
   }
 
   const subject = "Alumni Account Update";
   const body = `<p style="margin: 0; color: #333333; font-size: 16px;">Your alumni record status has been updated by the Alumni Office.</p>${extraBodyHtml}`;
   return {
     subject,
-    html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations"),
+    html: createEmailTemplate(subject, greeting, body, "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor"),
   };
 }

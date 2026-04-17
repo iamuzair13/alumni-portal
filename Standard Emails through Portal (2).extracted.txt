@@ -1,4 +1,5 @@
-
+
+
 Alumni Portal – Standard Emails
 Process
 Stage
@@ -15,12 +16,12 @@ Discounted access to the university gym and other campus facilities
 Special discounts at the University of Lahore Hospital
 Eligibility for alumni scholarships and kinship discounts for your family members
 Exclusive invitations to job fairs, networking sessions, and professional events
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Your application will be reviewed by the Office of Alumni Relations. Once approved, you will receive a confirmation email along with your login credentials.
 
 We look forward to welcoming you back and strengthening our lifelong connection with you.
 
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 alumni@uol.edu.pk
@@ -36,7 +37,7 @@ Temporary Password: {Generated Password}
 Please log in UOL Alumni portal using above credentials and change your password from your profile settings for security reasons.
 Portal Login: {Portal URL}/signin
 We look forward to your active participation in the alumni community.
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 alumni@uol.edu.pk
@@ -52,7 +53,7 @@ Important Security Notice:
 - Never share your password with anyone.
 - If you did not request this password reset, please contact us immediately.
 Portal Login: {Portal URL}/signin
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 alumni@uol.edu.pk
@@ -66,7 +67,7 @@ Dear {Alumni Name},
 This is an auto-generated email to confirm that we have successfully received your application for the UOL Alumni Card.
 Our team has begun processing your request. You will be notified via email or SMS once your alumni card is ready for collection or dispatch.
 
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 alumni@uol.edu.pk
@@ -82,7 +83,7 @@ Thank you for applying for the UOL Alumni Card. After reviewing your application
 Your application is currently on hold.
 Kindly arrange to provide the required information so your application can be processed.
 
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 alumni@uol.edu.pk
@@ -95,7 +96,7 @@ Subject: Your UOL Alumni Card Has Been Activated
 Dear {Alumni Name},
 Great news!
 Your UOL Alumni Card has been activated, and you can access its e-version through your alumni portal.
-For physical card collection, you may visit the UOL Alumni Relations Office on campus. Alternatively, if you would like us to dispatch the card to your address (within Pakistan only), please share your complete postal address and contact number. Once dispatched, a confirmation will be sent to you via email or SMS.
+For physical Office of Alumni Relations, EE2 Building 4th Floorisit the UOL Alumni Relations Office on campus. Alternatively, if you would like us to dispatch the card to your address (within Pakistan only), please share your complete postal address and contact number. Once dispatched, a confirmation will be sent to you via email or SMS.
 Warm regards,Office of Alumni RelationsUniversity of Lahorealumni@uol.edu.pk
 Chapter Membership
 Request for joining another chapter or change of chapter
@@ -106,7 +107,7 @@ Thank you for your application to join the following Alumni Chapters:
 {Chapter List}
 Your application has been received and is currently under review. We will contact you soon with updates.
 We appreciate your interest in staying connected with the UOL community.
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 alumni@uol.edu.pk
@@ -118,7 +119,7 @@ Dear {Alumni Name},
 Thank you for your application to join the Alumni Association as {Role}.
 Your application has been received and is currently under review by the Alumni Office. We will contact you soon with updates regarding your application.
 We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 Chapter Leadership
@@ -129,7 +130,7 @@ Thank you for your application to join the Alumni Association as {Role}.
 Your application has been received and is currently under review by the Alumni Office. We will contact you soon with updates regarding your application.
 We appreciate your interest in contributing to the UOL Alumni Association and helping to strengthen our alumni network.
 
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 Perks & Benefits
@@ -140,7 +141,7 @@ Thank you for submitting your Scholarship Application (Self / Kinship).
 We are pleased to inform you that your application has been successfully received and is currently under review by the concerned department. You will be notified once the evaluation process is completed.
 If any additional documents or information are required, our team will contact you accordingly.
 For further queries, please feel free to reach out to us.
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 Status update on (Self / Kinship) application 
@@ -149,7 +150,7 @@ Dear {Applicant Name},
 We are pleased to inform you that your Scholarship Application (Self / Kinship) has been approved.
 Congratulations! The relevant department will proceed with the necessary formalities and adjustments as per university policy. If any further documentation or action is required from your side, you will be informed accordingly.
 Should you have any questions, please feel free to contact us.
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 UOL Gym Membership application received
@@ -160,7 +161,7 @@ Thank you for applying for the UOL Gym Facility.
 Being an alumnus of UOL, you are availing a special discount on your gym fee for {Month}. Your application has been received and is currently being processed.
 You will be notified once your access is activated.
 If you have any questions, feel free to contact us.
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 
@@ -169,16 +170,16 @@ Subject: UOL Gym Membership Application – Update on Your Application
 Dear {Alumni Name},
 We are pleased to inform you that your application for the UOL Gym Facility has been approved.
 As a valued alumnus of UOL, you are entitled to a special discounted gym fee for {Month}. Your access has now been activated, and you may proceed with the necessary formalities at the Sports Complex.
-Should you require any further assistance, please feel free to contact us.
+Should you reOffice of Alumni Relations, EE2 Building 4th Floorce, please feel free to contact us.
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 UOL Gym Membership Application Response (Not Approved)
 Subject: UOL Gym Membership Application – Update on Your Application
 Dear {Alumni Name},
-Thank you for applying for the UOL Gym Facility.
+Thank you for applying for the UOL Gym Facility.Office of Alumni Relations, EE2 Building 4th Floor
 After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.
 We appreciate your interest and look forward to assisting you in the future.
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 Swimming Pool Membership Application received
@@ -188,7 +189,7 @@ Thank you for applying for the UOL Swimming Pool Facility.
 Being an alumnus of UOL, you are availing a special discount on your swimming pool fee for {Month}. Your application has been received and is currently being processed.
 You will be notified once your access is activated.
 
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 
@@ -198,16 +199,16 @@ Dear {Alumni Name},
 We are pleased to inform you that your application for the UOL Gym Facility has been approved.
 As a valued alumnus of UOL, you are entitled to a special discounted gym fee for {Month}. Your access has now been activated, and you may proceed with the necessary formalities at the Sports Complex.
 Should you require any further assistance, please feel free to contact us.
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 Swimming Pool Membership Application Response (Not Approved)
 Subject: UOL Swimming Pool Membership Application – Update on Your Application
 Dear {Alumni Name},
-Thank you for applying for the UOL Swimming Pool Facility.
+Thank you for applying for the UOL Swimming Pool Facility.Office of Alumni Relations, EE2 Building 4th Floor
 After reviewing your application, we regret to inform you that it has not been approved at this time. For further clarification regarding the status of your application, please feel free to contact the Office of Alumni Relations.
 We appreciate your interest and look forward to assisting you in the future.
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 Lahore Qalander Cricket Club Membership Application received
@@ -217,7 +218,7 @@ Thank you for submitting your membership application for the Lahore Qalandars Cr
 We are pleased to inform you that your application has been successfully received and is currently under review. Our team will evaluate the submitted details and notify you once a decision has been made regarding your membership status.
 If any additional information is required, we will contact you accordingly.
 Thank you for your interest in being a part of the Lahore Qalandars community.
-
+Office of Alumni Relations, EE2 Building 4th Floor
 Warm regards,Office of Alumni RelationsUniversity of Lahore
 
 Lahore Qalander Cricket Club Application Response (Approved)
@@ -226,7 +227,7 @@ Dear {Applicant Name},
 We are pleased to inform you that your application for the Lahore Qalandars Cricket Club Membership has been approved.
 Congratulations and welcome to the club! Further details regarding membership benefits, access, and next steps will be shared with you shortly.
 
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni RelationsUniversity of Lahore
 
 Lahore Qalander Cricket Club Application Response (Not Approved)
@@ -236,7 +237,7 @@ Thank you for your interest in becoming a member of the Lahore Qalandars Cricket
 After careful review, we regret to inform you that your application has not been approved at this time.
 We appreciate your interest in the club and encourage you to apply again in the future. 
 
-Warm regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni RelationsUniversity of Lahore
 Success Story
 
@@ -245,7 +246,7 @@ Dear {Alumni Name},
 Thank you for sharing your success story with the UOL Alumni community.
 Your story has been received and will be reviewed by our team. Once approved, it will be published on the Alumni Portal to inspire other graduates
 We appreciate you taking the time to share your journey and contribute to the alumni network.
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 Alumni Talk
@@ -265,7 +266,7 @@ Availability:
 {Availability}
 Your application has been received and is currently under review. We will contact you soon with updates.
 Thank you for your commitment to inspiring and guiding the next generation of UOL students.
-Regards,
+Office of Alumni Relations, EE2 Building 4th Floor
 Office of Alumni Relations
 University of Lahore
 

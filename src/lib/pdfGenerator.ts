@@ -1,5 +1,11 @@
 import { jsPDF } from "jspdf";
 import { formatObtainedMarkDisplay, normalizeObtainedMark } from "@/lib/leadershipMarks";
+import {
+  discountCategoryLabel,
+  isScholarshipFeeDiscountFlow,
+  isScholarshipKinshipCategory,
+  scholarshipFeeDiscountPercentForPdf,
+} from "@/lib/scholarshipLetter";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -266,23 +272,29 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       };
 
       drawSectionHeader("a", "Alumni Details", 1);
-      drawFourColRow("Name:", data.studentName, "Father's Name:", data.fatherName || "Data unavailable");
-      drawFourColRow("DOB:", data.dob || "Data unavailable", "CNIC:", data.cnic || "Data unavailable");
+      drawFourColRow("Name:", data.studentName || "Missing", "Father's Name:", data.fatherName || "Missing");
+      drawFourColRow("DOB:", data.dob || "Missing", "CNIC:", data.cnic || "Missing");
 
       drawSectionHeader("b", "Program Applied For", 2);
-      drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
-      drawFourColRow("Department:", data.department || "-", "Program:", data.requestedProgramDegree || "-");
-      drawFourColRow("Discount Category:", data.scholarshipType || "-", "Discount Type:", data.requestedDiscount || "-");
+      drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
+      drawFourColRow("Department:", data.department || "Missing", "Program:", data.requestedProgramDegree || "Missing");
+      drawFourColRow(
+        
+        "Discount Type:",
+        data.requestedDiscount ? `${data.requestedDiscount}` : "Missing","Admission Reference No/Application ID:", data.admissionApplicationRef || "Missing",
+      );
+ 
+
 
       drawSectionHeader("c", "Previous UOL Education Record", 1);
-      drawFourColRow("Campus:", data.campus || "-", "Faculty:", data.faculty || "-");
-      drawFourColRow("Department:", data.department || "-", "Program:", data.previousDegree || "-");
-      drawFourColRow("Sap ID:", data.sapCode || "-", "CGPA:", data.cgpaLastDegree || "-");
+      drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
+      drawFourColRow("Department:", data.department || "Missing", "Program:", data.previousDegree || "Missing");
+      drawFourColRow("Sap ID:", data.sapCode || "Missing", "CGPA:", data.cgpaLastDegree || "Missing");
       const passingYearPdf =
         data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
           ? String(data.passingOutYear).trim()
           : "";
-      drawFourColRow("Passing Out Year:", passingYearPdf, "Admission Reference No/Application ID:", data.admissionApplicationRef || "-");
+      drawFourColRow("Passing Out Year:", passingYearPdf, ".", ".");
 
       drawSectionHeader("d", "Documents Checklist", "docs");
       const leftW = c1 + c2;
@@ -453,10 +465,16 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
       addText("Dear Concern,", 12, false, "left", 8);
 
       // Main content
-      addText(`I, ${data.alumniName}, an alumnus of UOL, am applying for ${getDiscountLabel(data.discountType)}.`, 12, false, "left", 8);
+      addText(
+        `I, ${data.alumniName}, an alumnus of UOL, am applying for ${discountCategoryLabel(data.discountType)}.`,
+        12,
+        false,
+        "left",
+        8,
+      );
 
       // Conditional content based on discount type
-      if (data.discountType === "kinship") {
+      if (isScholarshipKinshipCategory(data.discountType)) {
         const relation = data.kinshipRelation || "family member";
         // Use firstName and lastName if available, otherwise fall back to kinshipName
         const firstName = data.kinshipFirstName || "";
@@ -471,9 +489,12 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
           ? "He"
           : "She/He";
         addText(`I am applying for my ${relation}, ${name}. ${pronoun} can avail ${discountPercent} discount.`, 12, false, "left", 8);
-      } else if (data.discountType === "masters-phd") {
-        const discountPercent = data.applyingFor === "Masters" ? "50%" : "25%";
-        addText(`I can avail ${discountPercent} discount for my ${data.applyingFor} program.`, 12, false, "left", 8);
+      } else if (isScholarshipFeeDiscountFlow(data.discountType)) {
+        const discountPercent = scholarshipFeeDiscountPercentForPdf(data.discountType, data.applyingFor);
+        const level = String(data.applyingFor || "").trim() || "selected";
+        if (discountPercent) {
+          addText(`I can avail ${discountPercent} discount for my ${level} program.`, 12, false, "left", 8);
+        }
       } else if (data.discountType === "masters-collaboration") {
         addText("I am eligible to apply for the Masters Scholarship via UOL International Collaborations.", 12, false, "left", 8);
       }
@@ -496,7 +517,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100); // Gray
   
-      const footerText = "Office of Alumni Relations | University of Lahore";
+      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
       const footerWidth = doc.getTextWidth(footerText);
       doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
 
@@ -606,7 +627,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
        doc.setFontSize(9);
        doc.setFont("helvetica", "normal");
        doc.setTextColor(100, 100, 100);
-       const footerText = "Office of Alumni Relations | University of Lahore";
+       const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
        const footerWidth = doc.getTextWidth(footerText);
        doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
 
@@ -618,19 +639,6 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
      }
    });
  }
-
-function getDiscountLabel(discountType: string): string {
-  switch (discountType) {
-    case "kinship":
-      return "Kinship Discount";
-    case "masters-phd":
-      return "Masters/PhD Discount";
-    case "masters-collaboration":
-      return "Masters Scholarships via UOL International Collaborations";
-    default:
-      return "Scholarship/Discount";
-  }
-}
 
 export interface UpskillApplicationData {
   alumniName: string;
@@ -1152,7 +1160,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       doc.setLineWidth(0.3);
       doc.line(margin, footerY - 6, pageWidth - margin, footerY - 6);
       setTextStyle(9, false, [100, 100, 100]);
-      const footerText = "Office of Alumni Relations | University of Lahore";
+      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
       const footerWidth = doc.getTextWidth(footerText);
       doc.text(footerText, (pageWidth - footerWidth) / 2, footerY);
 
@@ -1251,7 +1259,7 @@ export function generateUpskillPDF(data: UpskillApplicationData): Promise<Buffer
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100); // Gray
-      const footerText = "Office of Alumni Relations | University of Lahore";
+      const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
       const footerWidth = doc.getTextWidth(footerText);
       doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
 

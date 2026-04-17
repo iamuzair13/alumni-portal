@@ -2,19 +2,82 @@
 
 /** Must stay aligned with the scholarship application form (`Discount Category` select). */
 export const SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS = [
-  { value: "kinship", label: "Kinship Discount" },
-  { value: "masters-phd", label: "Masters/PhD Discount" },
-  {
-    value: "masters-collaboration",
-    label: "Masters Scholarships via UOL International Collaborations (for alumni only)",
-  },
+  { value: "admission-fee-masters-75", label: "Admission Fee Masters 75%" },
+  { value: "admission-fee-phd-75", label: "Admission Fee PhD 75%" },
+  { value: "kinship-15", label: "Kinship Discount 15%" },
+  { value: "tuition-fee-masters-25", label: "Tuition Fee Masters 25%" },
+  { value: "tuition-fee-phd-25", label: "Tuition Fee PhD 25%" },
 ] as const;
 
-/** Nested options per category — must stay aligned with the form’s “Applying for” / discount-type selects. */
+const LEGACY_DISCOUNT_CATEGORY_LABELS: Record<string, string> = {
+  kinship: "Kinship Discount",
+  "masters-phd": "Masters/PhD Discount",
+  "masters-collaboration":
+    "Masters Scholarships via UOL International Collaborations (for alumni only)",
+};
+
+/** Stored `discount_type` values that use the multipart admission / document flow (same as legacy `masters-phd`). */
+export const SCHOLARSHIP_FEE_DISCOUNT_FLOW_VALUES = [
+  "admission-fee-masters-75",
+  "admission-fee-phd-75",
+  "tuition-fee-masters-25",
+  "tuition-fee-phd-25",
+  "masters-phd",
+] as const;
+
+export function isScholarshipFeeDiscountFlow(
+  discountType: string | null | undefined,
+): boolean {
+  const d = String(discountType || "").trim().toLowerCase();
+  return (SCHOLARSHIP_FEE_DISCOUNT_FLOW_VALUES as readonly string[]).includes(d);
+}
+
+export function isScholarshipKinshipCategory(
+  discountType: string | null | undefined,
+): boolean {
+  const d = String(discountType || "").trim().toLowerCase();
+  return d === "kinship-15" || d === "kinship";
+}
+
+/**
+ * When non-null, `apply_for` is implied by the category (no separate Masters/PhD picker).
+ * Legacy `masters-phd` returns null — applicant still chooses Masters vs PhD in the form.
+ */
+export function scholarshipApplyingForFromCategory(
+  discountType: string | null | undefined,
+): string | null {
+  const d = String(discountType || "").trim().toLowerCase();
+  if (d === "admission-fee-masters-75" || d === "tuition-fee-masters-25") return "Masters";
+  if (d === "admission-fee-phd-75" || d === "tuition-fee-phd-25") return "PhD";
+  return null;
+}
+
+/** Percent shown in the downloadable alumni scholarship PDF body for fee-discount flows. */
+export function scholarshipFeeDiscountPercentForPdf(
+  discountType: string | null | undefined,
+  applyingFor: string | null | undefined,
+): string | null {
+  const d = String(discountType || "").trim().toLowerCase();
+  const a = String(applyingFor || "").trim().toLowerCase();
+  if (d === "admission-fee-masters-75" || d === "admission-fee-phd-75") return "75%";
+  if (d === "tuition-fee-masters-25" || d === "tuition-fee-phd-25") return "25%";
+  if (d === "masters-phd") {
+    if (a.includes("phd")) return "25%";
+    if (a.includes("master")) return "50%";
+  }
+  return null;
+}
+
+/** Nested options per category — must stay aligned with the form’s “Applying for” where used. */
 export const SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY: Record<
   string,
   readonly { value: string; label: string }[]
 > = {
+  "kinship-15": [
+    { value: "BS", label: "BS (Bachelor's)" },
+    { value: "Masters", label: "Masters" },
+    { value: "PhD", label: "PhD" },
+  ],
   kinship: [
     { value: "BS", label: "BS (Bachelor's)" },
     { value: "Masters", label: "Masters" },
@@ -24,6 +87,10 @@ export const SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY: Record<
     { value: "Masters", label: "Masters (50% discount)" },
     { value: "PhD", label: "PhD (25% discount)" },
   ],
+  "admission-fee-masters-75": [{ value: "Masters", label: "Masters" }],
+  "admission-fee-phd-75": [{ value: "PhD", label: "PhD" }],
+  "tuition-fee-masters-25": [{ value: "Masters", label: "Masters" }],
+  "tuition-fee-phd-25": [{ value: "PhD", label: "PhD" }],
   "masters-collaboration": [
     { value: "Masters", label: "Masters Scholarships via UOL International Collaborations" },
   ],
@@ -33,7 +100,11 @@ export const SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY: Record<
 export function discountCategoryLabel(discountType: string | null | undefined): string {
   const d = String(discountType || "").trim().toLowerCase();
   const found = SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS.find((o) => o.value === d);
-  return found?.label ?? (String(discountType || "").trim() || "—");
+  if (found) return found.label;
+  const legacy = LEGACY_DISCOUNT_CATEGORY_LABELS[d];
+  if (legacy) return legacy;
+  const raw = String(discountType || "").trim();
+  return raw || "—";
 }
 
 /**
@@ -54,11 +125,14 @@ export function discountTypeOptionLabel(
 
 export function requestedPercent(
   discountType: string | null | undefined,
-  applyingFor: string | null | undefined
+  applyingFor: string | null | undefined,
 ): string {
   const d = String(discountType || "").trim().toLowerCase();
   const a = String(applyingFor || "").trim().toLowerCase();
 
+  if (d === "admission-fee-masters-75" || d === "admission-fee-phd-75") return "75%";
+  if (d === "tuition-fee-masters-25" || d === "tuition-fee-phd-25") return "25%";
+  if (d === "kinship-15") return "15%";
   if (d === "masters-phd") {
     if (a.includes("phd")) return "25%";
     if (a.includes("master")) return "50%";

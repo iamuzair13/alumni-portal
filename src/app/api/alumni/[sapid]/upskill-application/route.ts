@@ -81,7 +81,7 @@
        </p>
      `;
      const footer =
-       "Regards,<br>Office of Alumni Relations<br>University of Lahore<br>alumni@uol.edu.pk";
+       "Regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore<br>alumni@uol.edu.pk";
      const html = createEmailTemplate(subject, greeting, bodyHtml, footer);
 
      const emailRes = await sendEmailDetailed({
