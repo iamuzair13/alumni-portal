@@ -294,8 +294,20 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
           ? String(data.passingOutYear).trim()
           : "";
-      drawFourColRow("Passing Out Year:", passingYearPdf, ".", ".");
-
+      const passingYearLabel = "Passing Out Year:";
+      const passingYearVal = passingYearPdf !== "" ? passingYearPdf : "Missing";
+      const passingYearLines = toCellLines(passingYearLabel, c1, true, 2);
+      const passingYearValLines = toCellLines(passingYearVal, c2 + c3 + c4, false, 3);
+      const passingYearH = Math.max(
+        rowHeights.docsRow,
+        Math.max(passingYearLines.lines.length, passingYearValLines.lines.length, 1) * passingYearLines.fontSize * 0.38 + 5
+      );
+      doc.rect(outerX, rowY, c1, passingYearH);
+      doc.rect(x2, rowY, c2 + c3 + c4, passingYearH);
+      drawCellText(passingYearLabel, outerX, rowY, c1, passingYearH, true, false, passingYearLines);
+      drawCellText(passingYearVal, x2, rowY, c2 + c3 + c4, passingYearH, false, false, passingYearValLines);
+      rowY += passingYearH;
+    
       drawSectionHeader("d", "Documents Checklist", "docs");
       const leftW = c1 + c2;
       const rightW = c3 + c4;
