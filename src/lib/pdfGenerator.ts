@@ -278,30 +278,14 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       drawSectionHeader("b", "Program Applied For", 2);
       drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
       drawFourColRow("Department:", data.department || "Missing", "Program:", data.requestedProgramDegree || "Missing");
-      {
-        const categoryVal = String(data.scholarshipType || "").trim();
-        const categoryDisplay =
-          categoryVal && categoryVal !== "—" ? categoryVal : "Missing";
-        const applyingRaw = String(data.applyingFor || "").trim();
-        const applyingDisplay =
-          applyingRaw &&
-          applyingRaw !== "Data is missing" &&
-          applyingRaw !== "—"
-            ? applyingRaw
-            : "Missing";
-        drawFourColRow(
-          "Discount Category:",
-          categoryDisplay,
-          "Applying For:",
-          applyingDisplay,
-        );
-      }
       drawFourColRow(
+        "Discount Category:",
+        data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
         "Admission Reference No/Application ID:",
-        String(data.admissionApplicationRef || "").trim() || "Missing",
-        ".",
-        ".",
+        data.admissionApplicationRef?.trim() ? data.admissionApplicationRef : "Missing",
       );
+ 
+
 
       drawSectionHeader("c", "Previous UOL Education Record", 1);
       drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
@@ -495,7 +479,7 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
 
       // Main content
       addText(
-        `I, ${data.alumniName}, an alumnus of UOL, am applying for ${discountCategoryLabel(data.discountType)}.`,
+        `I, ${data.alumniName}, an alumnus of UOL, am applying for ${discountCategoryLabel(data.discountType, data.applyingFor)}.`,
         12,
         false,
         "left",

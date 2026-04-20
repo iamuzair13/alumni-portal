@@ -338,7 +338,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       dateFormatted,
       status: String(app.status || "pending").toLowerCase(),
       studentName: alumniName || "Data is missing",
-      scholarshipType: discountCategoryLabel(app.discount_type),
+      scholarshipType: discountCategoryLabel(app.discount_type, app.apply_for),
       applyingFor: applyingForDisplay,
       previousDegree: String(app.degreetitle || "").trim() || "Data is missing",
       cgpaLastDegree: cgpaDisplay,

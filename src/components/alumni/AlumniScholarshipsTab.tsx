@@ -1182,7 +1182,6 @@ export const AlumniScholarshipsTab: React.FC = () => {
                             <tbody className="divide-y divide-slate-200">
                               {[
                                 ["Discount Category", applicationPreview.application.scholarshipType],
-                                ["Discount Type", applicationPreview.application.requestedDiscount],
                                 ["Program", applicationPreview.application.requestedProgramDegree || "-"],
                                 ["Department", applicationPreview.application.department || "-"],
                                 ["Faculty", applicationPreview.application.faculty || "-"],

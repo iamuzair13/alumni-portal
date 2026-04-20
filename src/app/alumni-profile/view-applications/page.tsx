@@ -186,7 +186,9 @@ function ViewApplicationsContent() {
                           Discount Category
                         </label>
                         <p className="text-sm text-gray-900 dark:text-gray-100">
-                          {app.discountType ? discountCategoryLabel(app.discountType) : "N/A"}
+                          {app.discountType
+                            ? discountCategoryLabel(app.discountType, app.applyFor)
+                            : "N/A"}
                         </p>
                       </div>
 
