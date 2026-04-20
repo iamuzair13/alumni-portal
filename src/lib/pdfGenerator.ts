@@ -278,13 +278,30 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       drawSectionHeader("b", "Program Applied For", 2);
       drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
       drawFourColRow("Department:", data.department || "Missing", "Program:", data.requestedProgramDegree || "Missing");
+      {
+        const categoryVal = String(data.scholarshipType || "").trim();
+        const categoryDisplay =
+          categoryVal && categoryVal !== "—" ? categoryVal : "Missing";
+        const applyingRaw = String(data.applyingFor || "").trim();
+        const applyingDisplay =
+          applyingRaw &&
+          applyingRaw !== "Data is missing" &&
+          applyingRaw !== "—"
+            ? applyingRaw
+            : "Missing";
+        drawFourColRow(
+          "Discount Category:",
+          categoryDisplay,
+          "Applying For:",
+          applyingDisplay,
+        );
+      }
       drawFourColRow(
-        
-        "Discount Type:",
-        data.requestedDiscount ? `${data.requestedDiscount}` : "Missing","Admission Reference No/Application ID:", data.admissionApplicationRef || "Missing",
+        "Admission Reference No/Application ID:",
+        String(data.admissionApplicationRef || "").trim() || "Missing",
+        ".",
+        ".",
       );
- 
-
 
       drawSectionHeader("c", "Previous UOL Education Record", 1);
       drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");

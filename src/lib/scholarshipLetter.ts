@@ -5,7 +5,7 @@ export const SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS = [
   { value: "admission-fee-masters-75", label: "Admission Fee Masters 75%" },
   { value: "admission-fee-phd-75", label: "Admission Fee PhD 75%" },
   { value: "kinship-15", label: "Kinship Discount 15%" },
-  { value: "tuition-fee-masters-25", label: "Tuition Fee Masters 25%" },
+  { value: "tuition-fee-masters-25", label: "Tuition Fee Masters 50%" },
   { value: "tuition-fee-phd-25", label: "Tuition Fee PhD 25%" },
 ] as const;
 
