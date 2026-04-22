@@ -9,7 +9,11 @@ import {
   assertEventImageBlob,
   extensionForEventImage,
 } from "@/lib/formDataImagePart";
-import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
+import {
+  eventImageStoredFromBasename,
+  eventImageUrlFromStored,
+  normalizePublicImageFilename,
+} from "@/lib/uploadsImageUrl";
 import { getUploadsImagesDir } from "@/lib/uploadsDir";
 
 type EventListItem = {
@@ -124,7 +128,7 @@ export async function GET() {
       const title = String(r.title ?? "");
       const venue = ""; // not present in schema
       const shortDescription = String(r.shortdescription ?? "");
-      const imageUrl = normalizePublicImageFilename(r.image1) || "";
+      const imageUrl = eventImageUrlFromStored(r.image1) || "";
       const category = String(r.category ?? "");
       const type = r.type ? String(r.type) : undefined;
       const startTimeUTC = toUtcIso(r.fromdate, r.eventtime);
@@ -248,21 +252,21 @@ export async function POST(req: Request) {
         if (file) {
           assertEventImageBlob(file, `image${imageNum}`);
           const extension = extensionForEventImage(file);
-          const filename = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
-          
+          const diskName = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
+
           // Create uploads directory if it doesn't exist
           const uploadsDir = getUploadsImagesDir();
           if (!existsSync(uploadsDir)) {
             await mkdir(uploadsDir, { recursive: true });
           }
 
-          // Save file
-          const filePath = join(uploadsDir, filename);
+          // Save file on disk (basename); DB stores /images/<basename> for public URLs
+          const filePath = join(uploadsDir, diskName);
           const bytes = await file.arrayBuffer();
           const buffer = Buffer.from(bytes);
           await writeFile(filePath, buffer);
 
-          savedImages[imageNum] = filename;
+          savedImages[imageNum] = eventImageStoredFromBasename(diskName);
         }
       }
 
@@ -270,9 +274,10 @@ export async function POST(req: Request) {
       if (!savedImages[1]) {
         // Clean up any saved images
         const { unlink } = await import("fs/promises");
-        for (const filename of Object.values(savedImages)) {
+        for (const stored of Object.values(savedImages)) {
           try {
-            await unlink(join(getUploadsImagesDir(), filename));
+            const base = normalizePublicImageFilename(stored);
+            if (base) await unlink(join(getUploadsImagesDir(), base));
           } catch {
             // Ignore cleanup errors
           }
@@ -304,9 +309,10 @@ export async function POST(req: Request) {
       if (!eventId) {
         // Clean up saved images
         const { unlink } = await import("fs/promises");
-        for (const filename of Object.values(savedImages)) {
+        for (const stored of Object.values(savedImages)) {
           try {
-            await unlink(join(getUploadsImagesDir(), filename));
+            const base = normalizePublicImageFilename(stored);
+            if (base) await unlink(join(getUploadsImagesDir(), base));
           } catch {
             // Ignore cleanup errors
           }
@@ -318,14 +324,15 @@ export async function POST(req: Request) {
     } catch (imageError) {
       // Clean up saved images on error
       const { unlink } = await import("fs/promises");
-      for (const filename of Object.values(savedImages)) {
+      for (const stored of Object.values(savedImages)) {
         try {
-          await unlink(join(getUploadsImagesDir(), filename));
+          const base = normalizePublicImageFilename(stored);
+          if (base) await unlink(join(getUploadsImagesDir(), base));
         } catch {
           // Ignore cleanup errors
         }
       }
-      
+
       const errorMsg = imageError instanceof Error ? imageError.message : "Failed to save images";
       return NextResponse.json({ error: errorMsg }, { status: 500 });
     }

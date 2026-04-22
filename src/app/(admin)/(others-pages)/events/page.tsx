@@ -26,7 +26,7 @@ import { useModal } from "@/hooks/useModal";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { canModify } from "@/lib/alumniProfile";
-import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
+import { eventImageUrlFromStored } from "@/lib/uploadsImageUrl";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapLink from "@tiptap/extension-link";
@@ -589,7 +589,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
   const queryClient = useQueryClient();
   const [serverMsg, setServerMsg] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-  /** Existing images from API (stable URLs via uploadsImageUrl) */
+  /** Existing images from API (public /images/... URLs) */
   const [serverPreviewUrls, setServerPreviewUrls] = useState<Record<number, string>>({});
   /** Object URLs for newly selected files — kept separate so choosing one slot does not wipe other previews */
   const [filePreviewUrls, setFilePreviewUrls] = useState<Record<number, string>>({});
@@ -712,7 +712,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
             if (data.images && Array.isArray(data.images)) {
               data.images.forEach((img: string, idx: number) => {
                 if (img) {
-                  existingPreviewUrls[idx + 1] = uploadsImageUrl(img);
+                  existingPreviewUrls[idx + 1] = eventImageUrlFromStored(img);
                 }
               });
             }
@@ -1256,7 +1256,7 @@ const AddEventForm: React.FC<AddEventFormProps> = ({ eventId, onSuccess }) => {
                   const existingPreviewUrls: Record<number, string> = {};
                   if (data.images && Array.isArray(data.images)) {
                     data.images.forEach((img: string, idx: number) => {
-                      if (img) existingPreviewUrls[idx + 1] = uploadsImageUrl(img);
+                      if (img) existingPreviewUrls[idx + 1] = eventImageUrlFromStored(img);
                     });
                   }
                   setServerPreviewUrls(existingPreviewUrls);

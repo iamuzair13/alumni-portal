@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
-import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
+import { eventImageUrlFromStored } from "@/lib/uploadsImageUrl";
 import { useQuery } from "@tanstack/react-query";
 
 type EventDetail = {
@@ -150,7 +150,7 @@ export default function EventDetailPage() {
 
   const mainImage = images[selectedImageIndex] || images[0];
   const hasMultipleImages = images.length > 1;
-  const mainImageSrc = mainImage ? uploadsImageUrl(mainImage) : "";
+  const mainImageSrc = mainImage ? eventImageUrlFromStored(mainImage) : "";
   const mainImageBroken = mainImage ? brokenImageKeys.has(mainImage) : true;
 
   return (
@@ -329,7 +329,7 @@ export default function EventDetailPage() {
                   {hasMultipleImages && images.length > 1 && (
                     <div className="grid grid-cols-4 gap-2">
                       {images.map((image, idx) => {
-                        const thumbSrc = uploadsImageUrl(image);
+                        const thumbSrc = eventImageUrlFromStored(image);
                         const thumbBroken = brokenImageKeys.has(image);
                         return (
                         <button

@@ -9,7 +9,11 @@ import {
   assertEventImageBlob,
   extensionForEventImage,
 } from "@/lib/formDataImagePart";
-import { normalizePublicImageFilename } from "@/lib/uploadsImageUrl";
+import {
+  eventImageStoredFromBasename,
+  eventImageUrlFromStored,
+  normalizePublicImageFilename,
+} from "@/lib/uploadsImageUrl";
 import { getUploadsImagesDir } from "@/lib/uploadsDir";
 
 function toUtcIso(date: unknown, time?: unknown): string | undefined {
@@ -85,8 +89,8 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     // Collect all images (filenames only; normalize legacy path-stored values)
     const images: string[] = [];
     const pushImg = (v: string | null) => {
-      const n = normalizePublicImageFilename(v);
-      if (n) images.push(n);
+      const url = eventImageUrlFromStored(v);
+      if (url) images.push(url);
     };
     pushImg(r.image1);
     pushImg(r.image2);
@@ -248,15 +252,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           // New image uploaded - save it
           assertEventImageBlob(file, `image${imageNum}`);
           const extension = extensionForEventImage(file);
-          const filename = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
-          
-          // Save new file
-          const filePath = join(uploadsDir, filename);
+          const diskName = `event-${timestamp}-${randomSuffix}-${imageNum}.${extension}`;
+
+          // Save new file (disk basename); DB stores /images/<basename>
+          const filePath = join(uploadsDir, diskName);
           const bytes = await file.arrayBuffer();
           const buffer = Buffer.from(bytes);
           await writeFile(filePath, buffer);
 
-          savedImages[imageNum] = filename;
+          savedImages[imageNum] = eventImageStoredFromBasename(diskName);
 
           // Mark old image for deletion if it exists
           if (existingImages[imageNum as keyof typeof existingImages]) {
@@ -265,22 +269,25 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         } else {
           // No new image - preserve existing (store basename only)
           const prev = existingImages[imageNum as keyof typeof existingImages];
-          savedImages[imageNum] = normalizePublicImageFilename(prev) || "";
+          savedImages[imageNum] = prev ? eventImageStoredFromBasename(prev) : "";
         }
       }
 
       // Ensure image1 exists (either new or existing)
       if (!savedImages[1] || savedImages[1].trim() === "") {
         // Clean up any newly saved images
-        for (const filename of Object.values(savedImages)) {
-          if (filename && filename.trim() !== "") {
-            const isNewImage = !Object.values(existingImages).some(existing => existing === filename);
-            if (isNewImage) {
-              try {
-                await unlink(join(uploadsDir, filename));
-              } catch {
-                // Ignore cleanup errors
-              }
+        for (const stored of Object.values(savedImages)) {
+          if (!stored?.trim()) continue;
+          const base = normalizePublicImageFilename(stored);
+          if (!base) continue;
+          const isNewImage = !Object.values(existingImages).some(
+            (ex) => ex && normalizePublicImageFilename(ex) === base,
+          );
+          if (isNewImage) {
+            try {
+              await unlink(join(uploadsDir, base));
+            } catch {
+              // Ignore cleanup errors
             }
           }
         }
@@ -312,15 +319,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
       if (!result[0]) {
         // Clean up newly saved images
-        for (const filename of Object.values(savedImages)) {
-          if (filename && filename.trim() !== "") {
-            const isNewImage = !Object.values(existingImages).some(existing => existing === filename);
-            if (isNewImage) {
-              try {
-                await unlink(join(uploadsDir, filename));
-              } catch {
-                // Ignore cleanup errors
-              }
+        for (const stored of Object.values(savedImages)) {
+          if (!stored?.trim()) continue;
+          const base = normalizePublicImageFilename(stored);
+          if (!base) continue;
+          const isNewImage = !Object.values(existingImages).some(
+            (ex) => ex && normalizePublicImageFilename(ex) === base,
+          );
+          if (isNewImage) {
+            try {
+              await unlink(join(uploadsDir, base));
+            } catch {
+              // Ignore cleanup errors
             }
           }
         }
@@ -342,15 +352,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ id: result[0].id, message: "Event updated successfully" }, { status: 200 });
     } catch (imageError) {
       // Clean up newly saved images on error
-      for (const filename of Object.values(savedImages)) {
-        if (filename && filename.trim() !== "") {
-          const isNewImage = !Object.values(existingImages).some(existing => existing === filename);
-          if (isNewImage) {
-            try {
-              await unlink(join(uploadsDir, filename));
-            } catch {
-              // Ignore cleanup errors
-            }
+      for (const stored of Object.values(savedImages)) {
+        if (!stored?.trim()) continue;
+        const base = normalizePublicImageFilename(stored);
+        if (!base) continue;
+        const isNewImage = !Object.values(existingImages).some(
+          (ex) => ex && normalizePublicImageFilename(ex) === base,
+        );
+        if (isNewImage) {
+          try {
+            await unlink(join(uploadsDir, base));
+          } catch {
+            // Ignore cleanup errors
           }
         }
       }

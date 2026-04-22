@@ -28,6 +28,30 @@ export function normalizePublicImageFilename(raw: string | null | undefined): st
   return s.trim();
 }
 
+/** Value stored in `tbl_events.image*` columns: `/images/<filename>` (filename only, no subdirs). */
+export function eventImageStoredFromBasename(basename: string): string {
+  const f = normalizePublicImageFilename(basename);
+  if (!f) return "";
+  return `/images/${f}`;
+}
+
+/**
+ * Browser URL for an event image from DB: supports bare filename, `/images/...`, full URL,
+ * or legacy `/api/uploads/images/...`.
+ */
+export function eventImageUrlFromStored(raw: string | null | undefined): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith("/images/")) return s;
+  if (s.startsWith("/api/uploads/images/")) {
+    const f = normalizePublicImageFilename(s);
+    return f ? `/images/${f}` : "";
+  }
+  const f = normalizePublicImageFilename(s);
+  return f ? `/images/${f}` : "";
+}
+
 /**
  * Public URL for files stored under `public/images`.
  * Uses the API route so uploads work on production (immutable deploys / CDN) where plain `/images/*`
