@@ -334,6 +334,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 }) => {
   const [query, setQuery] = React.useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = React.useState<string>("");
+  const [selectedDeliveryPreference, setSelectedDeliveryPreference] = React.useState<"all" | "collect" | "deliver">("all");
   const [sortKey, setSortKey] = React.useState<SortKey>("name");
   const [sortDir, setSortDir] = React.useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = React.useState<number>(1);
@@ -400,9 +401,17 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   const effectiveLoading = loading || applicantsLoading;
   const effectiveError: string | null = error ?? (applicantsError ? (applicantsErrorObj?.message || "Failed to load applicants") : null);
 
-  const filtered = React.useMemo(() => {
+  const getDeliveryPreference = React.useCallback((item: AlumniListItem): "collect" | "deliver" => {
+    const cardAddress = String(item.cardaddress ?? "").trim().toLowerCase();
+    if (!cardAddress || cardAddress === "collect from campus") {
+      return "collect";
+    }
+    return "deliver";
+  }, []);
+
+  const statusFilteredItems = React.useMemo(() => {
     let filteredByStatus = baseItems;
-    
+
     // Filter by status - strict matching
     if (selectedStatus !== "all" && selectedStatus !== "overdue") {
       const filterStatus = selectedStatus.toLowerCase().trim();
@@ -420,11 +429,33 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         return matches;
       });
     }
-    
+
+    return filteredByStatus;
+  }, [baseItems, selectedStatus]);
+
+  const deliveryPreferenceCounts = React.useMemo(() => {
+    let collect = 0;
+    let deliver = 0;
+    for (const item of statusFilteredItems) {
+      if (getDeliveryPreference(item) === "collect") collect += 1;
+      else deliver += 1;
+    }
+    return { collect, deliver };
+  }, [statusFilteredItems, getDeliveryPreference]);
+
+  const filtered = React.useMemo(() => {
+    let filteredByDelivery = statusFilteredItems;
+
+    if (selectedDeliveryPreference !== "all") {
+      filteredByDelivery = statusFilteredItems.filter(
+        (i) => getDeliveryPreference(i) === selectedDeliveryPreference,
+      );
+    }
+
     // Filter by search query
-    if (!debouncedQuery) return filteredByStatus;
+    if (!debouncedQuery) return filteredByDelivery;
     const q = debouncedQuery.toLowerCase();
-    return filteredByStatus.filter((i) => {
+    return filteredByDelivery.filter((i) => {
       const contact = `${i.email ?? ""} ${i.mobile ?? ""}`.toLowerCase();
       const sapId = i.id?.toLowerCase() ?? "";
       const registrationNo = (i.registrationno ?? "").toLowerCase();
@@ -439,7 +470,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         registrationNo.includes(q)
       );
     });
-  }, [baseItems, debouncedQuery, selectedStatus]);
+  }, [statusFilteredItems, selectedDeliveryPreference, getDeliveryPreference, debouncedQuery]);
 
   const sorted = React.useMemo(() => {
     const arr = [...filtered];
@@ -488,7 +519,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, sortKey, sortDir, pageSize, selectedStatus]);
+  }, [debouncedQuery, sortKey, sortDir, pageSize, selectedStatus, selectedDeliveryPreference]);
 
   // Sync scroll between top scrollbar and table container
   React.useEffect(() => {
@@ -1407,6 +1438,31 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
               aria-label="Search alumni"
             />
           </div>
+        </div>
+        <div className="w-full sm:w-80">
+          <label
+            htmlFor="alumni-card-delivery-preference-filter"
+            className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider"
+          >
+            Delivery Preference
+          </label>
+          <select
+            id="alumni-card-delivery-preference-filter"
+            value={selectedDeliveryPreference}
+            onChange={(e) => setSelectedDeliveryPreference(e.target.value as "all" | "collect" | "deliver")}
+            className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200"
+            aria-label="Filter by delivery preference"
+          >
+            <option value="all">
+              All ({statusFilteredItems.length})
+            </option>
+            <option value="collect">
+              Collect from campus ({deliveryPreferenceCounts.collect})
+            </option>
+            <option value="deliver">
+              Deliver to home address ({deliveryPreferenceCounts.deliver})
+            </option>
+          </select>
         </div>
         <div className="flex items-center gap-3">
           <button
