@@ -52,6 +52,8 @@ type AlumniCardsProps = {
   pageSize?: number;
 };
 
+type AlumniCardTab = CardStatusFilter | "overdue_by_alumni";
+
 // Use centralized mapDbStatusToUI from card-status-config
 
 // Convert CardApplicant to AlumniCardItem
@@ -91,7 +93,7 @@ export function getActionsForStatus(status: CardStatus): ActionDef[] {
 }
 
 // Color mapping for status tabs
-const STATUS_TAB_COLORS: Record<CardStatus | "overdue", {
+const STATUS_TAB_COLORS: Record<CardStatus | "overdue" | "overdue_by_alumni", {
   border: string;
   bg: string;
   text: string;
@@ -155,9 +157,17 @@ const STATUS_TAB_COLORS: Record<CardStatus | "overdue", {
     badgeText: "text-red-800 dark:text-red-200",
     hoverBorder: "hover:border-red-400",
   },
+  overdue_by_alumni: {
+    border: "border-red-500",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    text: "text-red-700 dark:text-red-300",
+    badgeBg: "bg-red-200 dark:bg-red-800",
+    badgeText: "text-red-800 dark:text-red-200",
+    hoverBorder: "hover:border-red-400",
+  },
 };
 
-const STATUS_TABS: { key: CardStatus | "overdue"; label: string; icon: React.FC<{ className?: string }> }[] = [
+const STATUS_TABS: { key: CardStatus | "overdue" | "overdue_by_alumni"; label: string; icon: React.FC<{ className?: string }> }[] = [
   { key: "all", label: CARD_STATUS_CONFIG["all"].label, icon: GroupIcon },
   { key: "under-review", label: CARD_STATUS_CONFIG["under-review"].label, icon: TimeIcon },
   { key: "underprinting", label: CARD_STATUS_CONFIG["underprinting"].label, icon: FileIcon },
@@ -165,16 +175,38 @@ const STATUS_TABS: { key: CardStatus | "overdue"; label: string; icon: React.FC<
   { key: "onhold", label: CARD_STATUS_CONFIG["onhold"].label, icon: LockIcon },
   { key: "delivered", label: CARD_STATUS_CONFIG["delivered"].label, icon: CheckLineIcon },
   { key: "overdue", label: "Over Due", icon: AlertIcon },
+  { key: "overdue_by_alumni", label: "Over Due by Alumni", icon: AlertIcon },
 ];
 
 export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all", pageSize = 12 }) => {
-  const [selectedStatus, setSelectedStatus] = useState<CardStatusFilter>(initialStatus as CardStatusFilter);
+  const [selectedStatus, setSelectedStatus] = useState<AlumniCardTab>(initialStatus as CardStatusFilter);
   const [selectedOverdueType, setSelectedOverdueType] = useState<OverdueType>("under-review");
+  const [overdueByAlumniIds, setOverdueByAlumniIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("alumni-card-overdue-by-alumni");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        setOverdueByAlumniIds(parsed.map((x) => String(x)).filter(Boolean));
+      }
+    } catch {
+      // ignore malformed local storage
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("alumni-card-overdue-by-alumni", JSON.stringify(overdueByAlumniIds));
+  }, [overdueByAlumniIds]);
   
   // Fetch cards for selected status - this also returns counts
+  const apiStatusForFetch: CardStatusFilter = selectedStatus === "overdue_by_alumni" ? "all" : selectedStatus;
   const { data, isLoading, isError, error } = useCardApplicants(
-    selectedStatus,
-    selectedStatus === "overdue" ? { overdueType: selectedOverdueType } : undefined
+    apiStatusForFetch,
+    apiStatusForFetch === "overdue" ? { overdueType: selectedOverdueType } : undefined
   );
   
   // Fetch counts separately to ensure we always have them (even when switching tabs)
@@ -306,9 +338,16 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
               } else if (tab.key === "overdue") {
                 // For overdue tab, show total of both overdue types
                 count = (counts["overdue-under-review"] || 0) + (counts["overdue-under-printing"] || 0);
+              } else if (tab.key === "overdue_by_alumni") {
+                count = overdueByAlumniIds.length;
               }
               const isSelected = selectedStatus === tab.key;
-              const colors = tab.key === "overdue" ? STATUS_TAB_COLORS.overdue : STATUS_TAB_COLORS[tab.key as CardStatus];
+              const colors =
+                tab.key === "overdue"
+                  ? STATUS_TAB_COLORS.overdue
+                  : tab.key === "overdue_by_alumni"
+                    ? STATUS_TAB_COLORS.overdue_by_alumni
+                    : STATUS_TAB_COLORS[tab.key as CardStatus];
               
               return (
                 <button
@@ -323,6 +362,8 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                       setSelectedStatus("overdue");
                       // Reset to "under-review" when switching to overdue tab
                       setSelectedOverdueType("under-review");
+                    } else if (tab.key === "overdue_by_alumni") {
+                      setSelectedStatus("overdue_by_alumni");
                     } else {
                       setSelectedStatus(tab.key as CardStatusFilter);
                     }
@@ -412,6 +453,18 @@ export const AlumniCards: React.FC<AlumniCardsProps> = ({ initialStatus = "all",
                 defaultPageSize={pageSize}
                 selectedStatus={selectedStatus}
                 selectedOverdueType={selectedOverdueType}
+                overdueByAlumniIds={overdueByAlumniIds}
+                onToggleOverdueByAlumni={(item, checked) => {
+                  const key = String(item.id || "").trim();
+                  if (!key) return;
+                  setOverdueByAlumniIds((prev) => {
+                    if (checked) {
+                      if (prev.includes(key)) return prev;
+                      return [...prev, key];
+                    }
+                    return prev.filter((id) => id !== key);
+                  });
+                }}
                 onRowAction={(item, key) => handleAction(item, key)}
               />
             )}

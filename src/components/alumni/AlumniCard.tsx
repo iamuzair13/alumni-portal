@@ -318,9 +318,11 @@ export interface AlumniDataTableProps {
   loading?: boolean;
   error?: string | null;
   defaultPageSize?: number;
-  selectedStatus?: CardStatusFilter;
+  selectedStatus?: CardStatusFilter | "overdue_by_alumni";
   selectedOverdueType?: OverdueType;
   onRowAction?: (item: AlumniListItem, action: ActionKey) => void;
+  overdueByAlumniIds?: string[];
+  onToggleOverdueByAlumni?: (item: AlumniListItem, checked: boolean) => void;
 }
 
 export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
@@ -331,16 +333,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
   selectedStatus = "all",
   selectedOverdueType,
   onRowAction,
+  overdueByAlumniIds = [],
+  onToggleOverdueByAlumni,
 }) => {
   const [query, setQuery] = React.useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = React.useState<string>("");
-  const [selectedDeliveryPreference, setSelectedDeliveryPreference] = React.useState<"all" | "collect" | "deliver">("all");
   const [sortKey, setSortKey] = React.useState<SortKey>("name");
   const [sortDir, setSortDir] = React.useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [pageSize] = React.useState<number>(defaultPageSize);
   const [selectedRowId, setSelectedRowId] = React.useState<string | null>(null);
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
+  const [showOverdueByAlumniConfirmModal, setShowOverdueByAlumniConfirmModal] = React.useState(false);
+  const [pendingOverdueByAlumniChange, setPendingOverdueByAlumniChange] = React.useState<{
+    item: AlumniListItem;
+    checked: boolean;
+  } | null>(null);
   const { data: session } = useSession();
   const canEdit = canModify(session?.user);
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
@@ -400,20 +408,16 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   const effectiveLoading = loading || applicantsLoading;
   const effectiveError: string | null = error ?? (applicantsError ? (applicantsErrorObj?.message || "Failed to load applicants") : null);
+  const overdueByAlumniSet = React.useMemo(() => new Set(overdueByAlumniIds), [overdueByAlumniIds]);
 
-  const getDeliveryPreference = React.useCallback((item: AlumniListItem): "collect" | "deliver" => {
-    const cardAddress = String(item.cardaddress ?? "").trim().toLowerCase();
-    if (!cardAddress || cardAddress === "collect from campus") {
-      return "collect";
-    }
-    return "deliver";
-  }, []);
-
-  const statusFilteredItems = React.useMemo(() => {
+  const filtered = React.useMemo(() => {
     let filteredByStatus = baseItems;
-
+    
     // Filter by status - strict matching
     if (selectedStatus !== "all" && selectedStatus !== "overdue") {
+      if (selectedStatus === "overdue_by_alumni") {
+        filteredByStatus = baseItems.filter((i) => overdueByAlumniSet.has(i.id));
+      } else {
       const filterStatus = selectedStatus.toLowerCase().trim();
       filteredByStatus = baseItems.filter((i) => {
         // Get the actual status from the item, normalize it
@@ -428,34 +432,13 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         const matches = itemStatus === filterStatus;
         return matches;
       });
+      }
     }
-
-    return filteredByStatus;
-  }, [baseItems, selectedStatus]);
-
-  const deliveryPreferenceCounts = React.useMemo(() => {
-    let collect = 0;
-    let deliver = 0;
-    for (const item of statusFilteredItems) {
-      if (getDeliveryPreference(item) === "collect") collect += 1;
-      else deliver += 1;
-    }
-    return { collect, deliver };
-  }, [statusFilteredItems, getDeliveryPreference]);
-
-  const filtered = React.useMemo(() => {
-    let filteredByDelivery = statusFilteredItems;
-
-    if (selectedDeliveryPreference !== "all") {
-      filteredByDelivery = statusFilteredItems.filter(
-        (i) => getDeliveryPreference(i) === selectedDeliveryPreference,
-      );
-    }
-
+    
     // Filter by search query
-    if (!debouncedQuery) return filteredByDelivery;
+    if (!debouncedQuery) return filteredByStatus;
     const q = debouncedQuery.toLowerCase();
-    return filteredByDelivery.filter((i) => {
+    return filteredByStatus.filter((i) => {
       const contact = `${i.email ?? ""} ${i.mobile ?? ""}`.toLowerCase();
       const sapId = i.id?.toLowerCase() ?? "";
       const registrationNo = (i.registrationno ?? "").toLowerCase();
@@ -470,7 +453,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         registrationNo.includes(q)
       );
     });
-  }, [statusFilteredItems, selectedDeliveryPreference, getDeliveryPreference, debouncedQuery]);
+  }, [baseItems, debouncedQuery, selectedStatus, overdueByAlumniSet]);
 
   const sorted = React.useMemo(() => {
     const arr = [...filtered];
@@ -519,7 +502,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedQuery, sortKey, sortDir, pageSize, selectedStatus, selectedDeliveryPreference]);
+  }, [debouncedQuery, sortKey, sortDir, pageSize, selectedStatus]);
 
   // Sync scroll between top scrollbar and table container
   React.useEffect(() => {
@@ -629,7 +612,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       if (debouncedQuery) {
         url.searchParams.set("search", debouncedQuery);
       }
-      if (selectedStatus && selectedStatus !== "all") {
+      if (selectedStatus && selectedStatus !== "all" && selectedStatus !== "overdue_by_alumni") {
         url.searchParams.set("status", selectedStatus);
         if (selectedStatus === "overdue" && selectedOverdueType) {
           url.searchParams.set("overdueType", selectedOverdueType);
@@ -645,7 +628,15 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       }
       
       const data = await res.json();
-      const allItems = data.items || [];
+      let allItems = data.items || [];
+      if (selectedStatus === "overdue_by_alumni") {
+        allItems = allItems.filter((item: Record<string, unknown>) => {
+          const sap = String(item.sapid ?? "").trim();
+          const reg = String(item.registrationno ?? "").trim();
+          const key = sap || reg;
+          return key ? overdueByAlumniSet.has(key) : false;
+        });
+      }
 
       if (!allItems || allItems.length === 0) {
         throw new Error("No data found to export with the applied filters.");
@@ -719,7 +710,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       filename,
       sheetName: "Alumni Cards",
     });
-  }, [debouncedQuery, selectedStatus, selectedOverdueType, openExportModal]);
+  }, [debouncedQuery, selectedStatus, selectedOverdueType, openExportModal, overdueByAlumniSet]);
 
   const StatusSelect: React.FC<{
     sapId: string;
@@ -1439,31 +1430,6 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             />
           </div>
         </div>
-        <div className="w-full sm:w-80">
-          <label
-            htmlFor="alumni-card-delivery-preference-filter"
-            className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider"
-          >
-            Delivery Preference
-          </label>
-          <select
-            id="alumni-card-delivery-preference-filter"
-            value={selectedDeliveryPreference}
-            onChange={(e) => setSelectedDeliveryPreference(e.target.value as "all" | "collect" | "deliver")}
-            className="w-full px-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 transition-all duration-200"
-            aria-label="Filter by delivery preference"
-          >
-            <option value="all">
-              All ({statusFilteredItems.length})
-            </option>
-            <option value="collect">
-              Collect from campus ({deliveryPreferenceCounts.collect})
-            </option>
-            <option value="deliver">
-              Deliver to home address ({deliveryPreferenceCounts.deliver})
-            </option>
-          </select>
-        </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -1622,6 +1588,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                       </div>
                     </div>
                   </TableCell>
+                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-center text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px]">Over Due by Alumni</TableCell>
                   <TableCell isHeader className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
                 </TableRow>
               </TableHeader>
@@ -1786,6 +1753,22 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
                         <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
                         <TableCell className="px-3 sm:px-6 min-w-[250px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
+                        <TableCell className="px-3 sm:px-6 py-5 text-center">
+                          <label className="inline-flex items-center justify-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                              checked={overdueByAlumniSet.has(alum.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const nextChecked = e.target.checked;
+                                setPendingOverdueByAlumniChange({ item: alum, checked: nextChecked });
+                                setShowOverdueByAlumniConfirmModal(true);
+                              }}
+                              aria-label={`Mark ${alum.name} as overdue by alumni`}
+                            />
+                          </label>
+                        </TableCell>
                         <TableCell className={`px-3 sm:px-6 py-5 text-end bg-gray-100 sticky right-0 z-10 min-w-[170px] ${
                           selectedRowId === alum.id 
                             ? "bg-blue-50/80 dark:bg-blue-900/30" 
@@ -1841,6 +1824,54 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           />
         </div>
       </div>
+      <Modal
+        isOpen={showOverdueByAlumniConfirmModal}
+        onClose={() => {
+          setShowOverdueByAlumniConfirmModal(false);
+          setPendingOverdueByAlumniChange(null);
+        }}
+        className="max-w-md mx-auto"
+        showCloseButton={true}
+      >
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Confirm Action
+          </h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-6">
+            {pendingOverdueByAlumniChange?.checked
+              ? `Mark ${pendingOverdueByAlumniChange.item.name} as Over Due by Alumni?`
+              : `Remove Over Due by Alumni flag for ${pendingOverdueByAlumniChange?.item.name || "this alumni"}?`}
+          </p>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={() => {
+                setShowOverdueByAlumniConfirmModal(false);
+                setPendingOverdueByAlumniChange(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              onClick={() => {
+                if (pendingOverdueByAlumniChange) {
+                  onToggleOverdueByAlumni?.(
+                    pendingOverdueByAlumniChange.item,
+                    pendingOverdueByAlumniChange.checked,
+                  );
+                }
+                setShowOverdueByAlumniConfirmModal(false);
+                setPendingOverdueByAlumniChange(null);
+              }}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
       <style jsx global>{`
         .top-horizontal-scrollbar::-webkit-scrollbar {
           height: 24px !important;
