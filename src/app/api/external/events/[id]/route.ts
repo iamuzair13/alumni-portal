@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/dbconnect';
 import { handleCorsPreflight, addCorsHeaders } from '@/lib/cors';
+import { mapEventRecordImageUrlsForExternalApi } from '@/lib/tblEventsPublic';
 
 export async function OPTIONS(request: NextRequest) {
   return handleCorsPreflight(request);
@@ -37,7 +38,11 @@ export async function GET(
       return addCorsHeaders(response, request);
     }
 
-    const response = NextResponse.json({ data: result[0], error: null });
+    const data = mapEventRecordImageUrlsForExternalApi(
+      request,
+      result[0] as unknown as Record<string, unknown>,
+    );
+    const response = NextResponse.json({ data, error: null });
     return addCorsHeaders(response, request);
   } catch (error) {
     const response = NextResponse.json(

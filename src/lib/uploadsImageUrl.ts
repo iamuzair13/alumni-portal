@@ -36,20 +36,48 @@ export function eventImageStoredFromBasename(basename: string): string {
 }
 
 /**
- * Browser URL for an event image from DB: supports bare filename, `/images/...`, full URL,
- * or legacy `/api/uploads/images/...`.
+ * Single-path browser URL: `/images/<filename>`.
+ * Always re-normalize via `normalizePublicImageFilename` (fixes `/images/images/...` and legacy paths).
  */
 export function eventImageUrlFromStored(raw: string | null | undefined): string {
   const s = String(raw ?? "").trim();
   if (!s) return "";
-  if (/^https?:\/\//i.test(s)) return s;
-  if (s.startsWith("/images/")) return s;
-  if (s.startsWith("/api/uploads/images/")) {
-    const f = normalizePublicImageFilename(s);
-    return f ? `/images/${f}` : "";
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const u = new URL(s);
+      const f = normalizePublicImageFilename(u.pathname);
+      return f ? `${u.origin}/images/${f}` : s;
+    } catch {
+      return s;
+    }
   }
   const f = normalizePublicImageFilename(s);
   return f ? `/images/${f}` : "";
+}
+
+/**
+ * Full URL for external API consumers: `https://host/images/<filename>` (one `/images` segment).
+ * Prefers `NEXT_PUBLIC_APP_URL` so links stay correct behind reverse proxies.
+ */
+export function toAbsoluteEventImageUrl(
+  request: Request,
+  raw: string | null | undefined,
+): string {
+  const rel = eventImageUrlFromStored(raw);
+  if (!rel) return "";
+  if (/^https?:\/\//i.test(rel)) return rel;
+  const env = typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL
+    ? String(process.env.NEXT_PUBLIC_APP_URL).replace(/\/$/, "")
+    : "";
+  const origin = env || (() => {
+    try {
+      return new URL(request.url).origin;
+    } catch {
+      return "";
+    }
+  })();
+  if (!origin) return rel;
+  return `${origin}${rel.startsWith("/") ? rel : `/${rel}`}`;
 }
 
 /**
