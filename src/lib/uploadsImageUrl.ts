@@ -66,16 +66,33 @@ export function toAbsoluteEventImageUrl(
   const rel = eventImageUrlFromStored(raw);
   if (!rel) return "";
   if (/^https?:\/\//i.test(rel)) return rel;
-  const env = typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL
-    ? String(process.env.NEXT_PUBLIC_APP_URL).replace(/\/$/, "")
-    : "";
-  const origin = env || (() => {
-    try {
-      return new URL(request.url).origin;
-    } catch {
-      return "";
-    }
-  })();
+  const env =
+    typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL
+      ? String(process.env.NEXT_PUBLIC_APP_URL).replace(/\/$/, "")
+      : "";
+  const origin =
+    env ||
+    (() => {
+      const forwardedProto = request.headers.get("x-forwarded-proto");
+      const forwardedHost = request.headers.get("x-forwarded-host");
+      if (forwardedHost) {
+        const proto = (forwardedProto || "https").split(",")[0].trim() || "https";
+        const host = forwardedHost.split(",")[0].trim();
+        if (host) return `${proto}://${host}`;
+      }
+
+      const host = request.headers.get("host");
+      if (host) {
+        const proto = request.headers.get("x-forwarded-proto") || "https";
+        return `${proto.split(",")[0].trim() || "https"}://${host}`;
+      }
+
+      try {
+        return new URL(request.url).origin;
+      } catch {
+        return "";
+      }
+    })();
   if (!origin) return rel;
   return `${origin}${rel.startsWith("/") ? rel : `/${rel}`}`;
 }
