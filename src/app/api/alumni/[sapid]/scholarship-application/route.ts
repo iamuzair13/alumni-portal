@@ -14,15 +14,24 @@ import {
   EMAIL_TRIGGERED_BY,
   insertEmailLog,
 } from "@/lib/emailLogs";
-import { isScholarshipFeeDiscountFlow } from "@/lib/scholarshipLetter";
+import {
+  isScholarshipFeeDiscountFlow,
+  isScholarshipKinshipCategory,
+} from "@/lib/scholarshipLetter";
 
 type Payload = {
   discountType?: string;
   applyingFor?: string;
   degreeTitle?: string;
-  kinshipRelation?: string | null;
-  kinshipFirstName?: string | null;
-  kinshipLastName?: string | null;
+  kinshipName?: string | null;
+  kinshipFatherName?: string | null;
+  kinshipCampus?: string | null;
+  kinshipFaculty?: string | null;
+  kinshipDepartment?: string | null;
+  kinshipProgram?: string | null;
+  kinshipAdmissionRefNo?: string | null;
+  kinshipLastDegreeCertificate?: string | null;
+  kinshipPassingOutYear?: string | null;
   kinshipCnic?: string | null;
   fatherCnic?: string | null;
 };
@@ -113,6 +122,7 @@ export async function POST(
     let degreeTitle = "";
 
     let mastersDetails: Record<string, unknown> | null = null;
+    let kinshipDetails: Record<string, unknown> | null = null;
     let uploadedDocuments: Array<{ label: string; url: string; filename: string; type: string; size: number }> | null =
       null;
     let admissionApplicationRef: string | null = null;
@@ -187,6 +197,66 @@ export async function POST(
           uploaded.push({ label: `Other: ${otherText}`, url: saved.url, filename: saved.filename, type: saved.type, size: saved.size });
         }
 
+        uploadedDocuments = uploaded;
+      } else if (isScholarshipKinshipCategory(discountType)) {
+        payload.kinshipName = String(formData.get("kinshipName") || "").trim() || null;
+        payload.kinshipFatherName =
+          String(formData.get("kinshipFatherName") || "").trim() || null;
+        payload.kinshipCampus = String(formData.get("kinshipCampus") || "").trim() || null;
+        payload.kinshipFaculty = String(formData.get("kinshipFaculty") || "").trim() || null;
+        payload.kinshipDepartment =
+          String(formData.get("kinshipDepartment") || "").trim() || null;
+        payload.kinshipProgram = String(formData.get("kinshipProgram") || "").trim() || null;
+        payload.kinshipAdmissionRefNo =
+          String(formData.get("kinshipAdmissionRefNo") || "").trim() || null;
+        payload.kinshipLastDegreeCertificate =
+          String(formData.get("kinshipLastDegreeCertificate") || "").trim() || null;
+        payload.kinshipPassingOutYear =
+          String(formData.get("kinshipPassingOutYear") || "").trim() || null;
+        payload.kinshipCnic = String(formData.get("kinshipCnic") || "").trim() || null;
+        payload.fatherCnic = String(formData.get("fatherCnic") || "").trim() || null;
+        const requiredFiles: Array<{ key: string; label: string; slot: string }> = [
+          {
+            key: "docKinshipAdmissionLetter",
+            label: "Copy of Admission Letter",
+            slot: "kinship-admission-letter",
+          },
+          {
+            key: "docKinshipAcademicCertificates",
+            label: "Academic Certificates/Transcripts (Kin)",
+            slot: "kinship-academic-certificates",
+          },
+          { key: "docKinshipAlumniCard", label: "Alumni Card", slot: "kinship-alumni-card" },
+          { key: "docKinshipFrc", label: "FRC", slot: "kinship-frc" },
+          { key: "docKinshipCnicKin", label: "CNIC Copy (Kinship)", slot: "kinship-cnic-kin" },
+          {
+            key: "docKinshipCnicAlumni",
+            label: "CNIC Copy (Alumni)",
+            slot: "kinship-cnic-alumni",
+          },
+        ];
+
+        const prefix = `scholarship-${normalizedSapid}`;
+        const uploaded: Array<{ label: string; url: string; filename: string; type: string; size: number }> = [];
+        for (const rf of requiredFiles) {
+          const f = formData.get(rf.key) as File | null;
+          if (!f || f.size <= 0) {
+            return NextResponse.json({ error: `${rf.label} file is required` }, { status: 400 });
+          }
+          const saved = await saveFileToUploads({ file: f, prefix, slot: rf.slot });
+          uploaded.push({ label: rf.label, url: saved.url, filename: saved.filename, type: saved.type, size: saved.size });
+        }
+        kinshipDetails = {
+          kinshipFatherName: payload.kinshipFatherName,
+          kinshipCampus: payload.kinshipCampus,
+          kinshipFaculty: payload.kinshipFaculty,
+          kinshipDepartment: payload.kinshipDepartment,
+          kinshipProgram: payload.kinshipProgram,
+          kinshipAdmissionRefNo: payload.kinshipAdmissionRefNo,
+          kinshipLastDegreeCertificate: payload.kinshipLastDegreeCertificate,
+          kinshipPassingOutYear: payload.kinshipPassingOutYear,
+          fatherCnic: payload.fatherCnic,
+        };
         uploadedDocuments = uploaded;
       }
     } else {
@@ -265,12 +335,11 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const kinshipFirstName = payload.kinshipFirstName
-      ? String(payload.kinshipFirstName).trim()
-      : null;
-    const kinshipLastName = payload.kinshipLastName
-      ? String(payload.kinshipLastName).trim()
-      : null;
+    const fullKinshipName = payload.kinshipName ? String(payload.kinshipName).trim() : "";
+    const kinshipNameParts = fullKinshipName.split(/\s+/).filter(Boolean);
+    const kinshipFirstName = kinshipNameParts.length > 0 ? kinshipNameParts[0] : null;
+    const kinshipLastName =
+      kinshipNameParts.length > 1 ? kinshipNameParts.slice(1).join(" ") : null;
     const kinshipCnic = payload.kinshipCnic ? String(payload.kinshipCnic).trim() : null;
 
     await sql/* sql */`
@@ -284,6 +353,7 @@ export async function POST(
         apply_for,
         degree_title,
         masters_details,
+        kinship_details,
         uploaded_documents,
         admission_application_ref,
         status
@@ -297,6 +367,7 @@ export async function POST(
         ${applyingFor},
         ${degreeTitle},
         ${mastersDetails ? JSON.stringify(mastersDetails) : null},
+        ${kinshipDetails ? JSON.stringify(kinshipDetails) : null},
         ${uploadedDocuments ? JSON.stringify(uploadedDocuments) : null},
         ${admissionApplicationRef},
         'pending'
@@ -310,6 +381,7 @@ export async function POST(
         apply_for = EXCLUDED.apply_for,
         degree_title = EXCLUDED.degree_title,
         masters_details = EXCLUDED.masters_details,
+        kinship_details = EXCLUDED.kinship_details,
         uploaded_documents = EXCLUDED.uploaded_documents,
         admission_application_ref = EXCLUDED.admission_application_ref,
         status = 'pending',

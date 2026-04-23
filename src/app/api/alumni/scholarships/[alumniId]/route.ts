@@ -7,6 +7,7 @@ import {
   discountCategoryLabel,
   discountTypeOptionLabel,
   isScholarshipFeeDiscountFlow,
+  isScholarshipKinshipCategory,
   parseMastersDetails,
   parseUploadedDocuments,
 } from "@/lib/scholarshipLetter";
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.apply_for,
         asch.degree_title,
         asch.masters_details,
+        asch.kinship_details,
         asch.uploaded_documents,
         asch.admission_application_ref,
         a.alumniname,
@@ -156,6 +158,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       apply_for: string | null;
       degree_title: string | null;
       masters_details: unknown;
+      kinship_details: unknown;
       uploaded_documents: unknown;
       admission_application_ref: string | null;
       alumniname: string | null;
@@ -183,6 +186,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
     const kinshipLastName = app.kinship_lastname;
     const hasKinship = !!(kinshipFirstName && kinshipLastName);
     const discountTypeStored = String(app.discount_type || "").trim();
+    const isKinship = isScholarshipKinshipCategory(discountTypeStored);
     const discountTypeForPdf =
       discountTypeStored ||
       (hasKinship ? "kinship" : "alumni");
@@ -286,6 +290,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         : ["As per application record (legacy or no uploads on file)"];
 
     const masters = parseMastersDetails(app.masters_details);
+    const kinshipDetailsRaw = parseMastersDetails(app.kinship_details) || parseMastersDetails(app.masters_details);
     let mastersAdmissionSummary: string | null = null;
     if (masters && isScholarshipFeeDiscountFlow(String(app.discount_type || "").trim())) {
       const [fn, dn, pn] = await Promise.all([
@@ -333,6 +338,37 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
 
     const applyingForDisplay = discountTypeOptionLabel(app.discount_type, app.apply_for);
 
+    const kinshipDetails = {
+      kinName:
+        `${String(app.kinship_firstname || "").trim()} ${String(app.kinship_lastname || "").trim()}`.trim() ||
+        "Data is missing",
+      kinFatherName:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipFatherName || "").trim() ||
+        "Data is missing",
+      kinCampus:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipCampus || "").trim() ||
+        "Data is missing",
+      kinFaculty:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipFaculty || "").trim() ||
+        "Data is missing",
+      kinDepartment:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipDepartment || "").trim() ||
+        "Data is missing",
+      kinProgram:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipProgram || "").trim() ||
+        "Data is missing",
+      kinAdmissionRefNo:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipAdmissionRefNo || "").trim() ||
+        "Data is missing",
+      kinLastDegreeCertificate:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipLastDegreeCertificate || "").trim() ||
+        "Data is missing",
+      kinPassingOutYear:
+        String((kinshipDetailsRaw as Record<string, unknown> | null)?.kinshipPassingOutYear || "").trim() ||
+        "Data is missing",
+      kinCnic: String(app.kinship_cnic || "").trim() || "Data is missing",
+    };
+
     const applicationLetter = {
       title: "Alumni Scholarship Application",
       dateFormatted,
@@ -362,6 +398,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
               cnic: String(app.kinship_cnic || "").trim() || "Data is missing",
             }
           : null,
+      isKinship,
+      kinshipDetails,
       mastersAdmissionSummary,
       passingOutYear: passingOutYearDisplay,
       admissionApplicationRef: admissionRefDisplay,
@@ -389,6 +427,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         dob: applicationLetter.dob,
         cnic: applicationLetter.cnic,
         uploadedDocuments: applicationLetter.uploadedDocuments,
+        isKinship: applicationLetter.isKinship,
+        kinshipDetails: applicationLetter.kinshipDetails,
       });
 
       return new NextResponse(new Uint8Array(pdfBuffer), {

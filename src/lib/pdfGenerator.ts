@@ -69,6 +69,18 @@ export interface ScholarshipLetterPDFData {
   dob?: string;
   cnic?: string;
   uploadedDocuments?: Array<{ label: string; filename?: string; url?: string; adminVerified?: "YES" | "NO" | null }>;
+  isKinship?: boolean;
+  kinshipDetails?: {
+    kinName?: string;
+    kinFatherName?: string;
+    kinCampus?: string;
+    kinFaculty?: string;
+    kinDepartment?: string;
+    kinProgram?: string;
+    kinAdmissionRefNo?: string;
+    kinLastDegreeCertificate?: string;
+    kinPassingOutYear?: string;
+  };
 }
 
  export interface MembershipApplicationData {
@@ -275,40 +287,91 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       drawFourColRow("Name:", data.studentName || "Missing", "Father's Name:", data.fatherName || "Missing");
       drawFourColRow("DOB:", data.dob || "Missing", "CNIC:", data.cnic || "Missing");
 
-      drawSectionHeader("b", "Program Applied For", 2);
+      const drawSpanRow = (label: string, value: string) => {
+        const lbl = toCellLines(label, c1, true, 2);
+        const val = toCellLines(value, c2 + c3 + c4, false, 3);
+        const h = Math.max(
+          rowHeights.docsRow,
+          Math.max(lbl.lines.length, val.lines.length, 1) * Math.max(lbl.fontSize, val.fontSize) * 0.38 + 5
+        );
+        doc.rect(outerX, rowY, c1, h);
+        doc.rect(x2, rowY, c2 + c3 + c4, h);
+        drawCellText(label, outerX, rowY, c1, h, true, false, lbl);
+        drawCellText(value, x2, rowY, c2 + c3 + c4, h, false, false, val);
+        rowY += h;
+      };
+
+      drawSectionHeader("b", data.isKinship ? "Alumni Educational Record" : "Program Applied For", 2);
       drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
-      drawFourColRow("Department:", data.department || "Missing", "Program:", data.requestedProgramDegree || "Missing");
       drawFourColRow(
-        "Discount Category:",
-        data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
-        "Admission Reference No/Application ID:",
-        data.admissionApplicationRef?.trim() ? data.admissionApplicationRef : "Missing",
+        "Department:",
+        data.department || "Missing",
+        "Program:",
+        data.isKinship ? data.program || "Missing" : data.requestedProgramDegree || "Missing",
       );
- 
+      if (data.isKinship) {
+        drawFourColRow("SAP ID:", data.sapCode || "Missing", "CGPA:", data.cgpaLastDegree || "Missing");
+        drawFourColRow(
+          "Passing Out Year:",
+          data.passingOutYear?.trim() ? String(data.passingOutYear) : "Missing",
+          "Discount Category:",
+          data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
+        );
+        drawSpanRow("Applying For:", data.applyingFor || "Missing");
+      } else {
+        drawFourColRow(
+          "Discount Category:",
+          data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
+          "Admission Reference No/Application ID:",
+          data.admissionApplicationRef?.trim() ? data.admissionApplicationRef : "Missing",
+        );
+      }
 
-
-      drawSectionHeader("c", "Previous UOL Education Record", 1);
-      drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
-      drawFourColRow("Department:", data.department || "Missing", "Program:", data.previousDegree || "Missing");
-      drawFourColRow("Sap ID:", data.sapCode || "Missing", "CGPA:", data.cgpaLastDegree || "Missing");
-      const passingYearPdf =
-        data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
-          ? String(data.passingOutYear).trim()
-          : "";
-      const passingYearLabel = "Passing Out Year:";
-      const passingYearVal = passingYearPdf !== "" ? passingYearPdf : "Missing";
-      const passingYearLines = toCellLines(passingYearLabel, c1, true, 2);
-      const passingYearValLines = toCellLines(passingYearVal, c2 + c3 + c4, false, 3);
-      const passingYearH = Math.max(
-        rowHeights.docsRow,
-        Math.max(passingYearLines.lines.length, passingYearValLines.lines.length, 1) * passingYearLines.fontSize * 0.38 + 5
+      drawSectionHeader(
+        "c",
+        data.isKinship
+          ? "Kin Details - Previous Educational Record & Program Applied For"
+          : "Previous UOL Education Record",
+        1,
       );
-      doc.rect(outerX, rowY, c1, passingYearH);
-      doc.rect(x2, rowY, c2 + c3 + c4, passingYearH);
-      drawCellText(passingYearLabel, outerX, rowY, c1, passingYearH, true, false, passingYearLines);
-      drawCellText(passingYearVal, x2, rowY, c2 + c3 + c4, passingYearH, false, false, passingYearValLines);
-      rowY += passingYearH;
-    
+      if (data.isKinship) {
+        drawFourColRow(
+          "Name:",
+          data.kinshipDetails?.kinName || "Missing",
+          "Father's Name:",
+          data.kinshipDetails?.kinFatherName || "Missing",
+        );
+        drawFourColRow(
+          "Campus:",
+          data.kinshipDetails?.kinCampus || "Missing",
+          "Faculty:",
+          data.kinshipDetails?.kinFaculty || "Missing",
+        );
+        drawFourColRow(
+          "Department:",
+          data.kinshipDetails?.kinDepartment || "Missing",
+          "Program:",
+          data.kinshipDetails?.kinProgram || "Missing",
+        );
+        drawFourColRow(
+          "Admission Ref No:",
+          data.kinshipDetails?.kinAdmissionRefNo || "Missing",
+          "Last Degree/Certificate:",
+          data.kinshipDetails?.kinLastDegreeCertificate || "Missing",
+        );
+        drawSpanRow("Passing Out Year:", data.kinshipDetails?.kinPassingOutYear || "Missing");
+      } else {
+        drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
+        drawFourColRow("Department:", data.department || "Missing", "Program:", data.previousDegree || "Missing");
+        drawFourColRow("Sap ID:", data.sapCode || "Missing", "CGPA:", data.cgpaLastDegree || "Missing");
+        const passingYearPdf =
+          data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
+            ? String(data.passingOutYear).trim()
+            : "";
+        const passingYearVal = passingYearPdf !== "" ? passingYearPdf : "Missing";
+        drawSpanRow("Passing Out Year:", passingYearVal);
+      }
+
       drawSectionHeader("d", "Documents Checklist", "docs");
       const leftW = c1 + c2;
       const rightW = c3 + c4;
@@ -342,36 +405,40 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         rowY += finalH;
       };
 
-      drawDocRow(
-        "Copy of Admission Letter:",
-        findChecklistValue(["admission letter"]),
-        "Academic Transcripts & Certificates:",
-        findChecklistValue(["transcripts", "certificate"])
-      );
-      drawDocRow(
-        "Alumni Card:",
-        findChecklistValue(["alumni card", "alumni proof"]),
-        "Curriculum Vitae (CV) :",
-        findChecklistValue(["curriculum vitae", "cv"])
-      );
-
-     
-      // Single pair: label | Yes/No (no empty fourth column)
-      const cnicLabel = "CNIC Copy:";
-      const cnicVal = findChecklistValue(["cnic"]);
-      const cnicLines = toCellLines(cnicLabel, c1, true, 2);
-      const cnicValLines = toCellLines(cnicVal, c2 + c3 + c4, false, 3);
-      const maxFont = Math.max(cnicLines.fontSize, cnicValLines.fontSize);
-      const lineH = maxFont * 0.38;
-      const cnicH = Math.max(
-        rowHeights.docsRow,
-        Math.max(cnicLines.lines.length, cnicValLines.lines.length, 1) * lineH + 5
-      );
-      doc.rect(outerX, rowY, c1, cnicH);
-      doc.rect(x2, rowY, c2 + c3 + c4, cnicH);
-      drawCellText(cnicLabel, outerX, rowY, c1, cnicH, true, false, cnicLines);
-      drawCellText(cnicVal, x2, rowY, c2 + c3 + c4, cnicH, false, false, cnicValLines);
-      rowY += cnicH;
+      if (data.isKinship) {
+        drawDocRow(
+          "Copy of Admission Letter:",
+          findChecklistValue(["copy of admission letter", "kinship-admission-letter", "admission letter"]),
+          "Academic Certificates/Transcripts (Kin):",
+          findChecklistValue(["academic certificates/transcripts (kin)", "kinship-academic-certificates"])
+        );
+        drawDocRow(
+          "Alumni Card:",
+          findChecklistValue(["alumni card", "kinship-alumni-card"]),
+          "FRC:",
+          findChecklistValue(["frc", "kinship-frc"])
+        );
+        drawDocRow(
+          "CNIC Copy (Kin):",
+          findChecklistValue(["cnic copy (kinship)", "kinship-cnic-kin"]),
+          "CNIC Copy (Alumni):",
+          findChecklistValue(["cnic copy (alumni)", "kinship-cnic-alumni"])
+        );
+      } else {
+        drawDocRow(
+          "Copy of Admission Letter:",
+          findChecklistValue(["admission letter"]),
+          "Academic Transcripts & Certificates:",
+          findChecklistValue(["transcripts", "certificate"])
+        );
+        drawDocRow(
+          "Alumni Card:",
+          findChecklistValue(["alumni card", "alumni proof"]),
+          "Curriculum Vitae (CV) :",
+          findChecklistValue(["curriculum vitae", "cv"])
+        );
+        drawSpanRow("CNIC Copy:", findChecklistValue(["cnic"]));
+      }
 
       
 

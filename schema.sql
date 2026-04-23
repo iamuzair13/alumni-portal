@@ -51,7 +51,9 @@ CREATE TABLE IF NOT EXISTS public.alumni_scholarships
     apply_for text COLLATE pg_catalog."default",
     degree_title text COLLATE pg_catalog."default",
     masters_details jsonb,
+    kinship_details jsonb,
     uploaded_documents jsonb,
+    admission_application_ref text COLLATE pg_catalog."default",
     status text COLLATE pg_catalog."default",
     reason text COLLATE pg_catalog."default",
   CONSTRAINT alumni_scholarships_pkey PRIMARY KEY (id),
@@ -65,6 +67,12 @@ TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.alumni_scholarships
     OWNER to postgres;
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS kinship_details jsonb;
+
+ALTER TABLE IF EXISTS public.alumni_scholarships
+    ADD COLUMN IF NOT EXISTS admission_application_ref text COLLATE pg_catalog."default";
 
 TABLESPACE pg_default;
 

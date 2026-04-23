@@ -174,7 +174,7 @@ const STATUS_TABS: { key: CardStatus | "overdue" | "overdue_by_alumni"; label: s
   { key: "active", label: CARD_STATUS_CONFIG["active"].label, icon: CheckLineIcon },
   { key: "onhold", label: CARD_STATUS_CONFIG["onhold"].label, icon: LockIcon },
   { key: "delivered", label: CARD_STATUS_CONFIG["delivered"].label, icon: CheckLineIcon },
-  { key: "overdue", label: "Over Due", icon: AlertIcon },
+  { key: "overdue", label: "Over Due by Administration", icon: AlertIcon },
   { key: "overdue_by_alumni", label: "Over Due by Alumni", icon: AlertIcon },
 ];
 

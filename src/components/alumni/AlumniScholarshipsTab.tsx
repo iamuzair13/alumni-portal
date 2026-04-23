@@ -72,6 +72,19 @@ type ScholarshipApplicationLetter = {
   admissionApplicationRef?: string | null;
   mastersAdmissionSummary?: string | null;
   kinship?: { firstName: string; lastName: string; cnic: string } | null;
+  isKinship?: boolean;
+  kinshipDetails?: {
+    kinName?: string;
+    kinFatherName?: string;
+    kinCampus?: string;
+    kinFaculty?: string;
+    kinDepartment?: string;
+    kinProgram?: string;
+    kinAdmissionRefNo?: string;
+    kinLastDegreeCertificate?: string;
+    kinPassingOutYear?: string;
+    kinCnic?: string;
+  } | null;
 };
 
 async function getAlumniScholarships(
@@ -1185,6 +1198,9 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ["Program", applicationPreview.application.requestedProgramDegree || "-"],
                                 ["Department", applicationPreview.application.department || "-"],
                                 ["Faculty", applicationPreview.application.faculty || "-"],
+                                ...(applicationPreview.application.isKinship
+                                  ? [["Applying For", applicationPreview.application.applyingFor || "-"]]
+                                  : []),
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white">
                                   <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60">{k}</td>
@@ -1219,6 +1235,52 @@ export const AlumniScholarshipsTab: React.FC = () => {
                         </div>
                       </div>
 
+                      {applicationPreview.application.isKinship && (
+                        <div className="rounded-xl border border-slate-200 overflow-hidden">
+                          <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
+                            Kin Details - Previous Educational Record & Program Applied For
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                              <tbody className="divide-y divide-slate-200">
+                                {[
+                                  ["Name", applicationPreview.application.kinshipDetails?.kinName || "-"],
+                                  [
+                                    "Father's Name",
+                                    applicationPreview.application.kinshipDetails?.kinFatherName || "-",
+                                  ],
+                                  ["Campus", applicationPreview.application.kinshipDetails?.kinCampus || "-"],
+                                  ["Faculty", applicationPreview.application.kinshipDetails?.kinFaculty || "-"],
+                                  [
+                                    "Department",
+                                    applicationPreview.application.kinshipDetails?.kinDepartment || "-",
+                                  ],
+                                  ["Program", applicationPreview.application.kinshipDetails?.kinProgram || "-"],
+                                  [
+                                    "Admission Ref No",
+                                    applicationPreview.application.kinshipDetails?.kinAdmissionRefNo || "-",
+                                  ],
+                                  [
+                                    "Last Degree/Certificate",
+                                    applicationPreview.application.kinshipDetails?.kinLastDegreeCertificate || "-",
+                                  ],
+                                  [
+                                    "Passing Out Year",
+                                    applicationPreview.application.kinshipDetails?.kinPassingOutYear || "-",
+                                  ],
+                                  ["CNIC", applicationPreview.application.kinshipDetails?.kinCnic || "-"],
+                                ].map(([k, v]) => (
+                                  <tr key={k} className="bg-white">
+                                    <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60">{k}</td>
+                                    <td className="px-4 py-3 text-slate-900">{String(v || "-")}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="rounded-xl border border-slate-200 overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50 px-4 py-3">
                           <div className="text-sm font-semibold text-slate-900">Documents Checklist</div>
@@ -1243,26 +1305,39 @@ export const AlumniScholarshipsTab: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
-                              <tr className="bg-slate-50/50">
-                                <td className="px-4 py-3" colSpan={1}>
-                                  <div className="font-semibold text-slate-900">
-                                    Admission Reference No / Application ID
-                                  </div>
-                                  <div className="mt-1 text-sm text-slate-800 break-all">
-                                    {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 text-xs text-slate-500">—</td>
-                                <td className="px-4 py-3 text-xs text-slate-500">—</td>
-                              </tr>
+                              {!applicationPreview.application.isKinship && (
+                                <tr className="bg-slate-50/50">
+                                  <td className="px-4 py-3" colSpan={1}>
+                                    <div className="font-semibold text-slate-900">
+                                      Admission Reference No / Application ID
+                                    </div>
+                                    <div className="mt-1 text-sm text-slate-800 break-all">
+                                      {applicationPreview.application.admissionApplicationRef?.trim() || "—"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-slate-500">—</td>
+                                  <td className="px-4 py-3 text-xs text-slate-500">—</td>
+                                </tr>
+                              )}
                               {(() => {
-                                const baseChecklist = [
-                                  "Copy of Admission Letter (PhD – UOL)",
-                                  "Academic Transcripts and Certificates",
-                                  "Alumni Card",
-                                  "Curriculum Vitae (CV)",
-                                  "CNIC Copy",
-                                ].map((label) => ({
+                                const baseChecklist = (
+                                  applicationPreview.application.isKinship
+                                    ? [
+                                        "Copy of Admission Letter",
+                                        "Academic Certificates/Transcripts (Kin)",
+                                        "Alumni Card",
+                                        "FRC",
+                                        "CNIC Copy (Kinship)",
+                                        "CNIC Copy (Alumni)",
+                                      ]
+                                    : [
+                                        "Copy of Admission Letter (PhD – UOL)",
+                                        "Academic Transcripts and Certificates",
+                                        "Alumni Card",
+                                        "Curriculum Vitae (CV)",
+                                        "CNIC Copy",
+                                      ]
+                                ).map((label) => ({
                                   key: label,
                                   label,
                                   url: "",

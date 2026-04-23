@@ -43,9 +43,15 @@ function ScholarshipApplicationContent() {
     discountType: "",
     applyingFor: "",
     degreeTitle: "",
-    kinshipRelation: "",
-    kinshipFirstName: "",
-    kinshipLastName: "",
+    kinshipName: "",
+    kinshipFatherName: "",
+    kinshipCampus: "",
+    kinshipFaculty: "",
+    kinshipDepartment: "",
+    kinshipProgram: "",
+    kinshipAdmissionRefNo: "",
+    kinshipLastDegreeCertificate: "",
+    kinshipPassingOutYear: "",
     kinshipCnic: "",
     fatherCnic: "",
   });
@@ -75,6 +81,13 @@ function ScholarshipApplicationContent() {
   const [docAlumniProofFile, setDocAlumniProofFile] = useState<File | null>(null);
   const [docCvFile, setDocCvFile] = useState<File | null>(null);
   const [docCnicFile, setDocCnicFile] = useState<File | null>(null);
+  const [docKinshipAdmissionLetterFile, setDocKinshipAdmissionLetterFile] = useState<File | null>(null);
+  const [docKinshipAlumniCardFile, setDocKinshipAlumniCardFile] = useState<File | null>(null);
+  const [docKinshipFrcFile, setDocKinshipFrcFile] = useState<File | null>(null);
+  const [docKinshipCnicKinFile, setDocKinshipCnicKinFile] = useState<File | null>(null);
+  const [docKinshipCnicAlumniFile, setDocKinshipCnicAlumniFile] = useState<File | null>(null);
+  const [docKinshipAcademicCertificatesFile, setDocKinshipAcademicCertificatesFile] =
+    useState<File | null>(null);
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
   const [admissionApplicationRef, setAdmissionApplicationRef] = useState("");
@@ -82,9 +95,12 @@ function ScholarshipApplicationContent() {
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
 
-  // Load organization datasets only when needed (fee discount / admission flow)
+  // Load organization datasets when needed (fee discount and kinship flow)
   useEffect(() => {
-    if (!isScholarshipFeeDiscountFlow(formData.discountType)) {
+    if (
+      !isScholarshipFeeDiscountFlow(formData.discountType) &&
+      !isScholarshipKinshipCategory(formData.discountType)
+    ) {
       return;
     }
     if (faculties.length > 0 || orgLoading) {
@@ -184,6 +200,25 @@ function ScholarshipApplicationContent() {
       ? programs.filter((p) => p.departmentId === admissionDepartmentId)
       : [];
 
+  const kinshipFacultyId =
+    faculties.find(
+      (f) =>
+        f.name.trim().toLowerCase() === formData.kinshipFaculty.trim().toLowerCase(),
+    )?.id ?? null;
+  const kinshipDepartmentsForFaculty =
+    kinshipFacultyId != null
+      ? departments.filter((d) => d.facultyId === kinshipFacultyId)
+      : [];
+  const kinshipDepartmentId =
+    kinshipDepartmentsForFaculty.find(
+      (d) =>
+        d.name.trim().toLowerCase() === formData.kinshipDepartment.trim().toLowerCase(),
+    )?.id ?? null;
+  const kinshipProgramsForDepartment =
+    kinshipDepartmentId != null
+      ? programs.filter((p) => p.departmentId === kinshipDepartmentId)
+      : [];
+
   const currentYear = new Date().getFullYear();
   const sessionOptions = Array.from({ length: 6 }).map((_, idx) =>
     String(currentYear + idx),
@@ -207,10 +242,12 @@ function ScholarshipApplicationContent() {
   const applyingForOptions = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY;
   const isFeeFlow = isScholarshipFeeDiscountFlow(formData.discountType);
 
-  const kinshipRelations = [
-    { value: "Sister", label: "Sister" },
-    { value: "Brother", label: "Brother" },
-    { value: "Other", label: "Other" },
+  const kinshipLastDegreeCertificateOptions = [
+    { value: "FA", label: "FA" },
+    { value: "FSC", label: "FSC" },
+    { value: "ICS", label: "ICS" },
+    { value: "I.COM", label: "I.COM" },
+    { value: "A Levels", label: "A Levels" },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -317,18 +354,44 @@ function ScholarshipApplicationContent() {
 
     if (
       isScholarshipKinshipCategory(formData.discountType) &&
-      (!formData.kinshipRelation ||
-        !formData.kinshipFirstName ||
-        !formData.kinshipLastName ||
+      (!formData.kinshipName ||
+        !formData.kinshipFatherName ||
+        !formData.kinshipCampus ||
+        !formData.kinshipFaculty ||
+        !formData.kinshipDepartment ||
+        !formData.kinshipProgram ||
+        !formData.kinshipAdmissionRefNo ||
+        !formData.kinshipLastDegreeCertificate ||
+        !formData.kinshipPassingOutYear ||
         !formData.kinshipCnic)
     ) {
-      toast.error("Please provide all kinship details (relation, first name, last name, and CNIC)", {
+      toast.error("Please complete all required kinship details.", {
         duration: 4000,
         style: {
           background: '#fee2e2',
           color: '#991b1b',
           padding: '12px',
           borderRadius: '8px',
+        },
+      });
+      return;
+    }
+    if (
+      isScholarshipKinshipCategory(formData.discountType) &&
+      (!docKinshipAdmissionLetterFile ||
+        !docKinshipAlumniCardFile ||
+        !docKinshipFrcFile ||
+        !docKinshipCnicKinFile ||
+        !docKinshipCnicAlumniFile ||
+        !docKinshipAcademicCertificatesFile)
+    ) {
+      toast.error("Please complete all required kinship document checklist fields.", {
+        duration: 4000,
+        style: {
+          background: "#fee2e2",
+          color: "#991b1b",
+          padding: "12px",
+          borderRadius: "8px",
         },
       });
       return;
@@ -343,6 +406,8 @@ function ScholarshipApplicationContent() {
       if (selectedProgram) {
         degreeTitleToSend = selectedProgram.name;
       }
+    } else if (isScholarshipKinshipCategory(formData.discountType)) {
+      degreeTitleToSend = (formData.kinshipProgram || "").trim();
     } else if (!degreeTitleToSend) {
       toast.error("Degree title is required.", {
         duration: 4000,
@@ -405,6 +470,37 @@ function ScholarshipApplicationContent() {
 
               return fetch(url, { method: "POST", body: fd });
             })()
+          : isScholarshipKinshipCategory(formData.discountType)
+          ? await (async () => {
+              const fd = new FormData();
+              fd.set("discountType", formData.discountType);
+              fd.set("applyingFor", effectiveApplyingFor);
+              fd.set("degreeTitle", degreeTitleToSend);
+              fd.set("kinshipName", formData.kinshipName);
+              fd.set("kinshipFatherName", formData.kinshipFatherName);
+              fd.set("kinshipCampus", formData.kinshipCampus);
+              fd.set("kinshipFaculty", formData.kinshipFaculty);
+              fd.set("kinshipDepartment", formData.kinshipDepartment);
+              fd.set("kinshipProgram", formData.kinshipProgram);
+              fd.set("kinshipAdmissionRefNo", formData.kinshipAdmissionRefNo);
+              fd.set(
+                "kinshipLastDegreeCertificate",
+                formData.kinshipLastDegreeCertificate,
+              );
+              fd.set("kinshipPassingOutYear", formData.kinshipPassingOutYear);
+              fd.set("kinshipCnic", formData.kinshipCnic);
+              fd.set("fatherCnic", formData.fatherCnic || "");
+              fd.set(
+                "docKinshipAcademicCertificates",
+                docKinshipAcademicCertificatesFile as File,
+              );
+              fd.set("docKinshipAdmissionLetter", docKinshipAdmissionLetterFile as File);
+              fd.set("docKinshipAlumniCard", docKinshipAlumniCardFile as File);
+              fd.set("docKinshipFrc", docKinshipFrcFile as File);
+              fd.set("docKinshipCnicKin", docKinshipCnicKinFile as File);
+              fd.set("docKinshipCnicAlumni", docKinshipCnicAlumniFile as File);
+              return fetch(url, { method: "POST", body: fd });
+            })()
           : await fetch(url, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -412,9 +508,8 @@ function ScholarshipApplicationContent() {
                 discountType: formData.discountType,
                 applyingFor: effectiveApplyingFor,
                 degreeTitle: degreeTitleToSend,
-                kinshipRelation: formData.kinshipRelation || null,
-                kinshipFirstName: formData.kinshipFirstName || null,
-                kinshipLastName: formData.kinshipLastName || null,
+                kinshipName: formData.kinshipName || null,
+                kinshipFatherName: formData.kinshipFatherName || null,
                 kinshipCnic: formData.kinshipCnic || null,
                 fatherCnic: formData.fatherCnic || null,
               }),
@@ -484,9 +579,15 @@ function ScholarshipApplicationContent() {
         discountType: "",
         applyingFor: "",
         degreeTitle: "",
-        kinshipRelation: "",
-        kinshipFirstName: "",
-        kinshipLastName: "",
+        kinshipName: "",
+        kinshipFatherName: "",
+        kinshipCampus: "",
+        kinshipFaculty: "",
+        kinshipDepartment: "",
+        kinshipProgram: "",
+        kinshipAdmissionRefNo: "",
+        kinshipLastDegreeCertificate: "",
+        kinshipPassingOutYear: "",
         kinshipCnic: "",
         fatherCnic: data?.father_cnic || "",
       });
@@ -503,6 +604,12 @@ function ScholarshipApplicationContent() {
       setDocAlumniProofFile(null);
       setDocCvFile(null);
       setDocCnicFile(null);
+      setDocKinshipAdmissionLetterFile(null);
+      setDocKinshipAlumniCardFile(null);
+      setDocKinshipFrcFile(null);
+      setDocKinshipCnicKinFile(null);
+      setDocKinshipCnicAlumniFile(null);
+      setDocKinshipAcademicCertificatesFile(null);
       setDocOtherFile(null);
       setDocOtherText("");
       setAdmissionApplicationRef("");
@@ -1130,104 +1237,226 @@ function ScholarshipApplicationContent() {
                 )}
 
                 {isScholarshipKinshipCategory(formData.discountType) && (
-                  <>
-                    <div>
-                      <label htmlFor="kinshipRelation" className="mb-2 text-sm text-slate-900 font-medium block">
-                        Relation <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        id="kinshipRelation"
-                        value={formData.kinshipRelation}
-                        onChange={(e) => setFormData({ ...formData, kinshipRelation: e.target.value })}
-                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                        required
-                      >
-                        <option value="">Select Relation</option>
-                        {kinshipRelations.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="sm:col-span-2 space-y-6 mt-4">
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        (a) Alumni Details
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Name</label>
+                          <input type="text" value={missing(data?.alumniname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Father&apos;s Name</label>
+                          <input type="text" value={missing((data as any)?.fathername)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">DOB</label>
+                          <input type="text" value={missing((data as any)?.dateofbirth || (data as any)?.dob)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">CNIC</label>
+                          <input type="text" value={missing(data?.cnicpassport)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" />
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label htmlFor="kinshipFirstName" className="mb-2 text-sm text-slate-900 font-medium block">
-                        {formData.kinshipRelation || "Kinship"} First Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="kinshipFirstName"
-                        value={formData.kinshipFirstName}
-                        onChange={(e) => setFormData({ ...formData, kinshipFirstName: e.target.value })}
-                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                        required
-                        placeholder={`Enter ${formData.kinshipRelation ? formData.kinshipRelation.toLowerCase() : "kinship"} first name`}
-                      />
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        (b) Alumni Educational Record
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Campus</label><input type="text" value={missing((data as any)?.campusname || (data as any)?.campus)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Faculty</label><input type="text" value={missing((data as any)?.facultyname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Department</label><input type="text" value={missing((data as any)?.departmentname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Program</label><input type="text" value={missing((data as any)?.degreetitle)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">SAP ID</label><input type="text" value={missing(data?.sapid)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">CGPA</label><input type="text" value={missing((data as any)?.cgpa)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Passing Out Year</label><input type="text" value={missing((data as any)?.yearofending)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Discount Category</label><input type="text" value={missing(discountOptions.find((option) => option.value === formData.discountType)?.label)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div className="sm:col-span-2"><label className="mb-2 text-sm text-slate-900 font-medium block">Applying For</label><input type="text" value={missing(formData.applyingFor)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label htmlFor="kinshipLastName" className="mb-2 text-sm text-slate-900 font-medium block">
-                        {formData.kinshipRelation || "Kinship"} Last Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="kinshipLastName"
-                        value={formData.kinshipLastName}
-                        onChange={(e) => setFormData({ ...formData, kinshipLastName: e.target.value })}
-                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                        required
-                        placeholder={`Enter ${formData.kinshipRelation ? formData.kinshipRelation.toLowerCase() : "kinship"} last name`}
-                      />
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        (c) Kin Details - Previous Educational Record & Program Applied For
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Name <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipName} onChange={(e) => setFormData({ ...formData, kinshipName: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Father&apos;s Name <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipFatherName} onChange={(e) => setFormData({ ...formData, kinshipFatherName: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Campus <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipCampus}
+                            onChange={(e) => setFormData({ ...formData, kinshipCampus: e.target.value })}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            required
+                          >
+                            <option value="">Select campus</option>
+                            <option value="Lahore">Lahore</option>
+                            <option value="Sargodha">Sargodha</option>
+                            <option value="Islamabad">Islamabad</option>
+                            <option value="Pakpattan">Pakpattan</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Faculty <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipFaculty}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                kinshipFaculty: e.target.value,
+                                kinshipDepartment: "",
+                                kinshipProgram: "",
+                              })
+                            }
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            required
+                          >
+                            <option value="">{orgLoading ? "Loading..." : "Select faculty"}</option>
+                            {faculties.map((f) => (
+                              <option key={f.id} value={f.name}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Department <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipDepartment}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                kinshipDepartment: e.target.value,
+                                kinshipProgram: "",
+                              })
+                            }
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            disabled={!formData.kinshipFaculty || kinshipDepartmentsForFaculty.length === 0}
+                            required
+                          >
+                            <option value="">
+                              {!formData.kinshipFaculty
+                                ? "Select faculty first"
+                                : kinshipDepartmentsForFaculty.length === 0
+                                  ? "No departments"
+                                  : "Select department"}
+                            </option>
+                            {kinshipDepartmentsForFaculty.map((d) => (
+                              <option key={d.id} value={d.name}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Program <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipProgram}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                kinshipProgram: e.target.value,
+                              })
+                            }
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            disabled={!formData.kinshipDepartment || kinshipProgramsForDepartment.length === 0}
+                            required
+                          >
+                            <option value="">
+                              {!formData.kinshipDepartment
+                                ? "Select department first"
+                                : kinshipProgramsForDepartment.length === 0
+                                  ? "No programs"
+                                  : "Select program"}
+                            </option>
+                            {kinshipProgramsForDepartment.map((p) => (
+                              <option key={p.id} value={p.name}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Admission Ref No <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipAdmissionRefNo} onChange={(e) => setFormData({ ...formData, kinshipAdmissionRefNo: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Last Degree/Certificate <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipLastDegreeCertificate}
+                            onChange={(e) => setFormData({ ...formData, kinshipLastDegreeCertificate: e.target.value })}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            required
+                          >
+                            <option value="">Select</option>
+                            {kinshipLastDegreeCertificateOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Passing Out Year <span className="text-red-500">*</span></label>
+                          <select
+                            value={formData.kinshipPassingOutYear}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                kinshipPassingOutYear: e.target.value,
+                              })
+                            }
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            required
+                          >
+                            <option value="">Select passing out year</option>
+                            {Array.from({ length: 71 }, (_, idx) => String(new Date().getFullYear() - idx)).map(
+                              (year) => (
+                                <option key={year} value={year}>
+                                  {year}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">CNIC (Kinship) <span className="text-red-500">*</span></label><input type="text" value={formData.kinshipCnic} onChange={(e) => setFormData({ ...formData, kinshipCnic: e.target.value })} className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all" required /></div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label htmlFor="alumniCnic" className="mb-2 text-sm text-slate-900 font-medium block">
-                        Alumni CNIC
-                      </label>
-                      <input
-                        type="text"
-                        id="alumniCnic"
-                        value={data?.cnicpassport || ""}
-                        className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
-                        readOnly
-                        disabled
-                      />
-                      <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                    <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
+                        (d) Documents Checklist (all are required)
+                      </h2>
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Copy of Admission Letter <span className="text-red-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAdmissionLetterFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Academic Certificates/Transcripts (Kin) <span className="text-red-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAcademicCertificatesFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Alumni Card <span className="text-red-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipAlumniCardFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">FRC <span className="text-red-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipFrcFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">CNIC Copy (Kinship) <span className="text-red-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicKinFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                        </div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">CNIC Copy (Alumni) <span className="text-red-500">*</span></label>
+                          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDocKinshipCnicAlumniFile(e.target.files?.[0] ?? null)} className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md" required />
+                        </div>
+                      </div>
                     </div>
-
-                    <div>
-                      <label htmlFor="kinshipCnic" className="mb-2 text-sm text-slate-900 font-medium block">
-                        {formData.kinshipRelation || "Kinship"} CNIC <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="kinshipCnic"
-                        value={formData.kinshipCnic}
-                        onChange={(e) => setFormData({ ...formData, kinshipCnic: e.target.value })}
-                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                        required
-                        placeholder={`Enter ${formData.kinshipRelation ? formData.kinshipRelation.toLowerCase() : "kinship"} CNIC (xxxxx-xxxxxxx-x)`}
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="fatherCnic" className="mb-2 text-sm text-slate-900 font-medium block">
-                        Father CNIC
-                      </label>
-                      <input
-                        type="text"
-                        id="fatherCnic"
-                        value={formData.fatherCnic}
-                        onChange={(e) => setFormData({ ...formData, fatherCnic: e.target.value })}
-                        className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
-                        placeholder={data?.father_cnic ? `Current: ${data.father_cnic}` : "Enter father CNIC (xxxxx-xxxxxxx-x)"}
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        {data?.father_cnic ? "Auto-fetched from your profile. You can update it if needed." : "Enter father CNIC if available"}
-                      </p>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
 
