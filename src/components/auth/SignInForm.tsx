@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Alert from "@/components/ui/alert/Alert";
+import Alert from "@/components/ui/alert/Alert"; 
 import { useModal } from "@/hooks/useModal";
 import { Modal } from "@/components/ui/modal";
 
