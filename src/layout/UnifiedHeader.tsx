@@ -247,7 +247,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
 
   return (
     <>
-      <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-[60]">
+      <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-[600]">
         <div className="w-full mx-auto flex items-center justify-start flex-wrap  gap-4">
           
 
@@ -363,7 +363,7 @@ const UnifiedHeaderTopbar: FC = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-10000">
+    <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative ">
       <div className="w-full mx-auto flex items-center justify-between gap-3">
         <div className="flex items-center justify-between gap-3 ">
           {isAlumni ? (

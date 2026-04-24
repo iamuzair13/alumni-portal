@@ -156,6 +156,9 @@ type AlumniExpandableDetailsProps = {
   onClose: () => void;
   readOnly?: boolean;
   highlightMissingFields?: string[];
+  /** Merged with session override when set from the alumni list (see Alumni-tabs). */
+  isPreSapEnabled?: boolean;
+  onPreSapEnabledChange?: (value: boolean) => void;
 };
 
 type AlumniFullData = {
@@ -238,6 +241,17 @@ type AlumniFullData = {
   association_id: number | null;
   alumni_consent_info: boolean | null;
   alumni_consent_pic: boolean | null;
+  pre_sap_registration: boolean | null;
+};
+
+const toBoolPreSap = (value: unknown): boolean => {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0) return false;
+  if (typeof value === "string") {
+    const n = value.trim().toLowerCase();
+    return n === "true" || n === "1" || n === "yes" || n === "on";
+  }
+  return false;
 };
 
 // Helper to format field value
@@ -572,13 +586,21 @@ async function fetchErpData(sapId?: string, registrationNo?: string | null): Pro
   }
 }
 
-function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMissingFields = [] }: AlumniExpandableDetailsProps) {
+function AlumniExpandableDetails({
+  sapId,
+  onClose,
+  readOnly = false,
+  highlightMissingFields = [],
+  isPreSapEnabled,
+  onPreSapEnabledChange,
+}: AlumniExpandableDetailsProps) {
   const queryClient = useQueryClient();
   const session = useSession();
   const router = useRouter();
   const isSuperAdmin = isSuperAdminUser(session.data?.user);
   const canViewPassword = isAdminUser(session.data?.user) || isSuperAdmin;
   const canSendCredentials = canModify(session.data?.user);
+  const canTogglePreSap = canModify(session.data?.user) && !readOnly;
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
   const deleteModal = useModal();
@@ -589,6 +611,13 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
     return v !== "" && !Number.isNaN(Number(v));
   }, [sapId]);
   const { data, isLoading, error } = useAlumniFullDetails(currentSapId);
+
+  const isPreSap = useMemo(() => {
+    if (typeof isPreSapEnabled === "boolean") {
+      return isPreSapEnabled;
+    }
+    return toBoolPreSap(data?.pre_sap_registration);
+  }, [isPreSapEnabled, data?.pre_sap_registration]);
 
   const {
     register,
@@ -606,6 +635,7 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAutoAssigningCategory, setIsAutoAssigningCategory] = useState(false);
 
   const safePasswordValue = useMemo(() => {
     const raw = data?.password;
@@ -681,6 +711,9 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
   const selectedCountry = watch("country") || "";
   const selectedProvince = watch("province") || "";
   const selectedEmployeed = watch("employeed") || data?.employeed || "";
+  const selectedHigherEducationProgram = watch("higher_education_program") || data?.higher_education_program || "";
+  const selectedPassingOutYear = watch("yearofending") || data?.yearofending || null;
+  const selectedCategory = watch("category") || data?.category || "";
   const [citySearch, setCitySearch] = useState("");
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const cityInputRef = useRef<HTMLInputElement>(null);
@@ -837,7 +870,8 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
     if (!data) return new Set<string>();
 
     const missing = new Set<string>();
-    if (isMissingRequiredValue(data.sapid)) missing.add("sapid");
+    if (!isPreSap && isMissingRequiredValue(data.sapid)) missing.add("sapid");
+    if (isPreSap && isMissingRequiredValue(data.registrationno)) missing.add("registrationno");
     if (isMissingRequiredValue(data.alumniname)) missing.add("alumniname");
     if (isMissingRequiredValue(data.fathername)) missing.add("fathername");
     if (isMissingRequiredValue(data.cnicpassport)) missing.add("cnicpassport");
@@ -850,7 +884,7 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
     if (isMissingRequiredValue(data.yearofending)) missing.add("yearofending");
 
     return missing;
-  }, [data, displayDepartmentName, displayFacultyName, isMissingRequiredValue]);
+  }, [data, displayDepartmentName, displayFacultyName, isMissingRequiredValue, isPreSap]);
 
   useEffect(() => {
     if (!highlightMissingFields || highlightMissingFields.length === 0) return;
@@ -1120,6 +1154,92 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
     }
   };
 
+  const handleAutoAssignCategory = async () => {
+    if (!data) return;
+    const occupation = String(selectedEmployeed || "").trim().toLowerCase();
+    const higherEducationProgram = String(selectedHigherEducationProgram || "").trim().toLowerCase();
+    const isPursuingHigherEducation = occupation === "pursuing higher education";
+
+    let assignedCategory: "A" | "B" | "C" | "D" | null = null;
+
+    // Overrides: while pursuing higher education, category derives from enrolled program.
+    if (isPursuingHigherEducation && higherEducationProgram.includes("phd")) {
+      assignedCategory = "B";
+    } else if (
+      isPursuingHigherEducation &&
+      (higherEducationProgram.includes("master") ||
+        higherEducationProgram.includes("ms") ||
+        higherEducationProgram.includes("m.s") ||
+        higherEducationProgram.includes("mba"))
+    ) {
+      assignedCategory = "C";
+    } else {
+      const passoutYear = Number(selectedPassingOutYear);
+      if (!Number.isFinite(passoutYear) || passoutYear <= 0) {
+        toast.error("Passing Out Year is required for auto assigning category.");
+        return;
+      }
+
+      const currentYear = new Date().getFullYear();
+      const yearsSincePassout = currentYear - passoutYear;
+
+      if (yearsSincePassout < 2) {
+        assignedCategory = "D";
+      } else if (yearsSincePassout < 4) {
+        assignedCategory = "C";
+      } else if (yearsSincePassout < 7) {
+        assignedCategory = "B";
+      } else {
+        assignedCategory = "A";
+      }
+    }
+
+    if (!assignedCategory) {
+      toast.error("Unable to auto assign category.");
+      return;
+    }
+
+    const stableIdentifier = data?.alumniid ? String(data.alumniid) : currentSapId;
+    if (!stableIdentifier) {
+      toast.error("Invalid identifier for category update.");
+      return;
+    }
+
+    setIsAutoAssigningCategory(true);
+    try {
+      const res = await fetch(`/api/alumni/${encodeURIComponent(stableIdentifier)}/update-fields`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: assignedCategory }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to auto assign category");
+      }
+
+      setValue("category", assignedCategory);
+      setEditingFields((prev) => {
+        const next = new Set(prev);
+        next.delete("category");
+        return next;
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["alumni"] });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist-counts"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["alumnilist"] });
+      queryClient.invalidateQueries({ queryKey: ["categories"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["alumni", "full-details", currentSapId] });
+
+      toast.success(`Category auto-assigned as ${assignedCategory}`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to auto assign category";
+      toast.error(msg);
+    } finally {
+      setIsAutoAssigningCategory(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!currentSapId || !data) return;
     
@@ -1219,7 +1339,61 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
             </div>
           </div>
 
-          <CompactField label="Sap No" value={data.sapid} isEditing={isFieldEditing("sapid")} readOnly={readOnly} register={register} name="sapid" onEdit={() => startEditingField("sapid")} comparisonStatus={getComparisonStatus("Sap No", data.sapid)} highlightMissing={requiredMissingMap.has("sapid")} />
+          <div
+            data-field-name="sapid"
+            className={`flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50 ${
+              !isPreSap && requiredMissingMap.has("sapid") ? "bg-rose-50/70 dark:bg-rose-900/10" : ""
+            }`}
+          >
+            <span className={`text-xs font-medium min-w-[140px] flex-shrink-0 ${
+              !isPreSap && requiredMissingMap.has("sapid") ? "text-rose-700 dark:text-rose-300" : "text-gray-500 dark:text-gray-400"
+            }`}>Sap No:</span>
+            <div className="flex-1 min-w-0 flex items-center gap-3">
+              {isFieldEditing("sapid") && !readOnly && !isPreSap ? (
+                <input
+                  type="text"
+                  {...register("sapid")}
+                  className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300"
+                />
+              ) : (
+                <span className={`text-xs break-words ${
+                  !isPreSap && requiredMissingMap.has("sapid") ? "text-rose-700 dark:text-rose-200 font-semibold" : "text-gray-900 dark:text-gray-100"
+                }`}>
+                  {formatValue(data.sapid)}
+                </span>
+              )}
+              {canTogglePreSap && onPreSapEnabledChange && (
+                <label className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-200 whitespace-nowrap cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPreSap}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setEditingFields((prev) => {
+                          const next = new Set(prev);
+                          next.delete("sapid");
+                          return next;
+                        });
+                      }
+                      onPreSapEnabledChange(e.target.checked);
+                    }}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+                  />
+                  Pre Sap Registration
+                </label>
+              )}
+            </div>
+            {!readOnly && !isPreSap && !isFieldEditing("sapid") && (
+              <button
+                type="button"
+                onClick={() => startEditingField("sapid")}
+                className="ml-auto flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded transition-colors"
+                title="Edit field"
+              >
+                <PencilIcon className="w-3 h-3" />
+              </button>
+            )}
+          </div>
           <CompactField label="Full Name" value={data.alumniname} isEditing={isFieldEditing("alumniname")} readOnly={readOnly} register={register} name="alumniname" onEdit={() => startEditingField("alumniname")} comparisonStatus={getComparisonStatus("Full Name", data.alumniname)} highlightMissing={requiredMissingMap.has("alumniname")} />
           <CompactField label="Father Name" value={data.fathername} isEditing={isFieldEditing("fathername")} readOnly={readOnly} register={register} name="fathername" onEdit={() => startEditingField("fathername")} comparisonStatus={getComparisonStatus("Father Name", data.fathername)} highlightMissing={requiredMissingMap.has("fathername")} />
           <CompactField label="CNIC/Passport" value={data.cnicpassport} isEditing={isFieldEditing("cnicpassport")} readOnly={readOnly} register={register} name="cnicpassport" onEdit={() => startEditingField("cnicpassport")} comparisonStatus={getComparisonStatus("CNIC/Passport", data.cnicpassport)} highlightMissing={requiredMissingMap.has("cnicpassport")} />
@@ -1396,7 +1570,17 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1">Personal</h4>
           </div>
 
-          <CompactField label="Registration No" value={data.registrationno} isEditing={isFieldEditing("registrationno")} readOnly={readOnly} register={register} name="registrationno" onEdit={() => startEditingField("registrationno")} comparisonStatus={getComparisonStatus("Registration No", data.registrationno)} />
+          <CompactField
+            label="Registration No"
+            value={data.registrationno}
+            isEditing={isFieldEditing("registrationno")}
+            readOnly={readOnly}
+            register={register}
+            name="registrationno"
+            onEdit={() => startEditingField("registrationno")}
+            comparisonStatus={getComparisonStatus("Registration No", data.registrationno)}
+            highlightMissing={requiredMissingMap.has("registrationno")}
+          />
           <CompactField label="Gender" value={data.gender} isEditing={isFieldEditing("gender")} readOnly={readOnly} register={register} name="gender" type="select" options={[
             { value: "", label: "Select" },
             { value: "Male", label: "Male" },
@@ -1827,14 +2011,51 @@ function AlumniExpandableDetails({ sapId, onClose, readOnly = false, highlightMi
             { value: "Active", label: "Active" },
             { value: "Inactive", label: "Inactive" }
           ]} onEdit={() => startEditingField("alumnistatus")} />
-          <CompactField label="Alumni Category" value={data.category} isEditing={isFieldEditing("category")} readOnly={readOnly} register={register} name="category" type="select" options={[
-            { value: "", label: "Select" },
-            { value: "A+", label: "A+" },
-            { value: "A", label: "A" },
-            { value: "B", label: "B" },
-            { value: "C", label: "C" },
-            { value: "D", label: "D" },
-          ]} onEdit={() => startEditingField("category")} />
+          <div className="flex items-start gap-2 py-1 border-b border-gray-100 dark:border-gray-700/50">
+            <div className="flex items-center gap-1.5 min-w-[140px] flex-shrink-0">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Alumni Category:</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              {(!isFieldEditing("category") || readOnly) ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs flex-1 break-words text-gray-900 dark:text-gray-100">{formatValue(selectedCategory)}</span>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => startEditingField("category")}
+                      className="ml-auto flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded transition-colors"
+                      title="Edit field"
+                    >
+                      <PencilIcon className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <select
+                  {...register("category")}
+                  disabled={readOnly}
+                  className={`w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 ${readOnly ? "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed" : ""}`}
+                >
+                  <option value="">Select</option>
+                  <option value="A+">A+</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                </select>
+              )}
+            </div>
+            {!readOnly && canModify(session.data?.user) && String(selectedCategory).toUpperCase() !== "A+" && (
+              <button
+                type="button"
+                onClick={handleAutoAssignCategory}
+                disabled={isAutoAssigningCategory}
+                className="flex-shrink-0 inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isAutoAssigningCategory ? "Assigning..." : "Auto Assign"}
+              </button>
+            )}
+          </div>
           <CompactField 
             label="Allowed to use information Officially" 
             value={data.alumni_consent_info === true ? "Allowed" : data.alumni_consent_info === false ? "Not Allowed" : "Not Set"} 

@@ -49,6 +49,7 @@ import { SendEmailButton } from "@/components/email/SendEmailButton";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 import toast from "react-hot-toast";
 import { ChangeApprovalsTab } from "@/components/alumni/ChangeApprovalsTab";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
  function formatRegistrationDate(v?: string | null): string {
    if (!v) return "-";
@@ -85,6 +86,14 @@ const CATEGORY_TABS: { key: TabKey; label: string }[] = [
   { key: "c", label: "C Category" },
   { key: "d", label: "D Category" },
 ];
+
+const CATEGORY_TAB_TOOLTIPS: Partial<Record<TabKey, string>> = {
+  aPlus: "A+ is always assigned manually.",
+  a: "Pass-out more than 7 years ago.",
+  b: "Pass-out 4 to <7 years ago, OR Pursuing Higher Education with PhD.",
+  c: "Pass-out 2 to <4 years ago, OR Pursuing Higher Education with Masters.",
+  d: "Pass-out less than 2 years ago.",
+};
 
 const DISTINGUISHED_TAB: { key: TabKey; label: string }[] = [
   { key: "distinguished", label: "Distinguished Alumni" },
@@ -705,7 +714,8 @@ export const AlumniTabs: React.FC = () => {
   const [incompleteFields, setIncompleteFields] = useState<Array<{ key: string; label: string }>>([]);
   const [incompleteTarget, setIncompleteTarget] = useState<AlumniItem | null>(null);
   const [incompleteHighlightKeys, setIncompleteHighlightKeys] = useState<string[]>([]);
-  const [preSapRegistrationChecked, setPreSapRegistrationChecked] = useState<boolean>(false);
+  /** Admin session override for "Pre Sap Registration" (moved to Alumni details panel). */
+  const [preSapByAlumniId, setPreSapByAlumniId] = useState<Record<string, boolean>>({});
 
   const [expandedHighlightRowId, setExpandedHighlightRowId] = useState<number | null>(null);
   const [expandedHighlightKeys, setExpandedHighlightKeys] = useState<string[]>([]);
@@ -1564,6 +1574,17 @@ export const AlumniTabs: React.FC = () => {
     return false;
   }, []);
 
+  const mergeWithPreSapOverride = useCallback(
+    (alumni: AlumniItem): AlumniItem => {
+      const id = String(alumni.alumniid ?? alumni.id);
+      if (Object.prototype.hasOwnProperty.call(preSapByAlumniId, id)) {
+        return { ...alumni, preSapRegistration: preSapByAlumniId[id] };
+      }
+      return alumni;
+    },
+    [preSapByAlumniId]
+  );
+
   const getMissingRequiredFields = useCallback(
     (alumni: AlumniItem) => {
       const requiredFields = [
@@ -1578,11 +1599,21 @@ export const AlumniTabs: React.FC = () => {
         { key: "program", label: "Program" },
         { key: "campus", label: "Campus" },
         { key: "passingOutYear", label: "Passing Out Year" },
+        { key: "registrationNo", label: "Registration No" },
       ] as const;
 
       return requiredFields.filter((field) => {
         if (field.key === "sapId" && isPreSapRegistrationEnabled(alumni)) {
           return false;
+        }
+
+        if (field.key === "registrationNo") {
+          if (!isPreSapRegistrationEnabled(alumni)) {
+            return false;
+          }
+          const raw = alumni as unknown as Record<string, unknown>;
+          const reg = raw.registrationNo ?? raw.registrationno ?? null;
+          return isMissingRequiredValue(reg);
         }
 
         const raw = alumni as unknown as Record<string, unknown>;
@@ -1607,19 +1638,6 @@ export const AlumniTabs: React.FC = () => {
   const getItemLocalKey = useCallback((item: AlumniItem): string => {
     return String(item.alumniid ?? item.id);
   }, []);
-
-  const hasMissingSapId = useMemo(
-    () => incompleteFields.some((field) => field.key === "sapId"),
-    [incompleteFields]
-  );
-
-  const effectiveIncompleteFields = useMemo(
-    () =>
-      preSapRegistrationChecked
-        ? incompleteFields.filter((field) => field.key !== "sapId")
-        : incompleteFields,
-    [incompleteFields, preSapRegistrationChecked]
-  );
 
   const findDuplicatesFor = useCallback((target: AlumniItem, dataset: AlumniItem[]): AlumniItem[] => {
     const sap = normalizeDupKey(target.sapId);
@@ -2441,13 +2459,13 @@ export const AlumniTabs: React.FC = () => {
     (sapid: string, name: string, alumniId: number | null, email: string | null) => {
       const localKey = String(alumniId ?? sapid);
       const target = items.find((x) => String(x.alumniid ?? x.id) === localKey);
+      const targetMerged = target ? mergeWithPreSapOverride(target) : null;
 
-      if (target) {
-        const missing = getMissingRequiredFields(target);
+      if (targetMerged) {
+        const missing = getMissingRequiredFields(targetMerged);
         if (missing.length > 0) {
           setIncompleteFields(missing.map((m) => ({ key: m.key, label: m.label })));
-          setIncompleteTarget(target);
-          setPreSapRegistrationChecked(false);
+          setIncompleteTarget(targetMerged);
           setIncompleteHighlightKeys(
             missing
               .map((m) => {
@@ -2474,6 +2492,8 @@ export const AlumniTabs: React.FC = () => {
                     return "campusname";
                   case "passingOutYear":
                     return "yearofending";
+                  case "registrationNo":
+                    return "registrationno";
                   default:
                     return null;
                 }
@@ -2499,7 +2519,7 @@ export const AlumniTabs: React.FC = () => {
       setPendingAction({ type: "verify", sapid, name, alumniId, email });
       confirmModal.openModal();
     },
-    [confirmModal, duplicatesModal, findDuplicatesFor, getMissingRequiredFields, incompleteProfileModal, items]
+    [confirmModal, duplicatesModal, findDuplicatesFor, getMissingRequiredFields, incompleteProfileModal, items, mergeWithPreSapOverride]
   );
 
   // Execute verify after confirmation
@@ -2830,7 +2850,7 @@ export const AlumniTabs: React.FC = () => {
             const statusStyles = STATUS_CLASS_MAP[tab.key];
             const isDisabled = false; // All tabs are now functional
            
-            return (
+            const buttonNode = (
               <button
                 key={tab.key}
                 type="button"
@@ -2902,6 +2922,20 @@ export const AlumniTabs: React.FC = () => {
                 )}
               </button>
             );
+
+            const tooltipText = CATEGORY_TAB_TOOLTIPS[tab.key];
+            if (tooltipText) {
+              return (
+                <Tooltip key={tab.key}>
+                  <TooltipTrigger asChild>{buttonNode}</TooltipTrigger>
+                  <TooltipContent>
+                    <p>{tooltipText}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return buttonNode;
   };
 
   return (
@@ -5886,6 +5920,22 @@ export const AlumniTabs: React.FC = () => {
                                     setExpandedHighlightKeys([]);
                                   }}
                                   readOnly={!canModify(session?.user)}
+                                  isPreSapEnabled={(() => {
+                                    const k = String(alum.alumniid ?? alum.id);
+                                    return Object.prototype.hasOwnProperty.call(preSapByAlumniId, k)
+                                      ? preSapByAlumniId[k]
+                                      : isPreSapRegistrationEnabled(alum);
+                                  })()}
+                                  onPreSapEnabledChange={
+                                    canModify(session?.user)
+                                      ? (v) => {
+                                          setPreSapByAlumniId((s) => ({
+                                            ...s,
+                                            [String(alum.alumniid ?? alum.id)]: v,
+                                          }));
+                                        }
+                                      : undefined
+                                  }
                                   highlightMissingFields={
                                     expandedHighlightRowId && alum.alumniid === expandedHighlightRowId
                                       ? expandedHighlightKeys
@@ -6290,7 +6340,6 @@ export const AlumniTabs: React.FC = () => {
             setIncompleteFields([]);
             setIncompleteTarget(null);
             setIncompleteHighlightKeys([]);
-            setPreSapRegistrationChecked(false);
           }}
           className="max-w-lg mx-auto"
           showCloseButton={true}
@@ -6310,10 +6359,10 @@ export const AlumniTabs: React.FC = () => {
 
             <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-900/10 p-4">
               <div className="space-y-2">
-                {effectiveIncompleteFields.length === 0 ? (
+                {incompleteFields.length === 0 ? (
                   <div className="text-sm text-rose-800 dark:text-rose-200">-</div>
                 ) : (
-                  effectiveIncompleteFields.map((f) => (
+                  incompleteFields.map((f) => (
                     <div key={f.key} className="flex items-center justify-between gap-3 rounded-lg bg-white/70 dark:bg-gray-900/20 border border-rose-200 dark:border-rose-900/40 px-3 py-2">
                       <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">{f.label}</div>
                       <div className="text-xs font-semibold text-rose-700 dark:text-rose-300">Missing</div>
@@ -6321,24 +6370,11 @@ export const AlumniTabs: React.FC = () => {
                   ))
                 )}
               </div>
-              {hasMissingSapId && (
-                <label className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 dark:border-rose-900/40 bg-white/70 dark:bg-gray-900/20 px-3 py-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={preSapRegistrationChecked}
-                    onChange={(e) => setPreSapRegistrationChecked(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
-                  />
-                  <span className="text-sm font-medium text-rose-700 dark:text-rose-300">
-                    Pre Sap Registration (allow verification without SAP ID only)
-                  </span>
-                </label>
-              )}
-              <div className="mt-3 text-sm text-rose-800 dark:text-rose-200">
-                {effectiveIncompleteFields.length > 0
-                  ? "Please complete these fields before approving."
-                  : "You can proceed with verification because only SAP ID was missing and Pre Sap Registration is checked."}
-              </div>
+              {incompleteFields.length > 0 ? (
+                <div className="mt-3 text-sm text-rose-800 dark:text-rose-200">
+                  Open <span className="font-semibold">Go to Edit</span> to expand the row, then in Alumni Details set <span className="font-semibold">Pre Sap Registration</span> and fill any missing fields. With Pre Sap Registration on, a <span className="font-semibold">Registration No</span> is required to verify; save the profile before verifying.
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-3">
@@ -6351,37 +6387,10 @@ export const AlumniTabs: React.FC = () => {
                   setIncompleteFields([]);
                   setIncompleteTarget(null);
                   setIncompleteHighlightKeys([]);
-                  setPreSapRegistrationChecked(false);
                 }}
                 className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
               >
                 Close
-              </button>
-              <button
-                type="button"
-                disabled={!hasMissingSapId || effectiveIncompleteFields.length > 0 || !incompleteTarget}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!incompleteTarget) return;
-                  const actionSapid = String(incompleteTarget.alumniid ?? incompleteTarget.id);
-                  setPendingAction({
-                    type: "verify",
-                    sapid: actionSapid,
-                    name: incompleteTarget.name,
-                    alumniId: incompleteTarget.alumniid ?? null,
-                    email: incompleteTarget.email ?? incompleteTarget.personalEmail ?? null,
-                  });
-                  incompleteProfileModal.closeModal();
-                  setIncompleteFields([]);
-                  setIncompleteTarget(null);
-                  setIncompleteHighlightKeys([]);
-                  setPreSapRegistrationChecked(false);
-                  confirmModal.openModal();
-                }}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Verify with Pre Sap Registration
               </button>
               <button
                 type="button"

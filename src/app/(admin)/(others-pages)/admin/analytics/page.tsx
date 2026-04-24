@@ -27,7 +27,7 @@ export default async function AdminAnalyticsPage() {
 
   return (
     <div>
-      <ComponentCard title="Analytics & Insights" desc="Trends and growth across system modules.">
+      <ComponentCard >
         <AnalyticsDashboardClient />
       </ComponentCard>
     </div>
