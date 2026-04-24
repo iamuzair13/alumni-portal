@@ -134,12 +134,59 @@ export async function GET(req: Request) {
     const talksRows = await sql/* sql */`
       SELECT
         COUNT(*) FILTER (WHERE t.date_1 >= ${quarterStart}::date)::int AS quarter_count,
-        COUNT(*) FILTER (WHERE t.date_1 >= ${yearStart}::date)::int AS ytd_count
+        COUNT(*) FILTER (WHERE t.date_1 >= ${yearStart}::date)::int AS ytd_count,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.mentorshipprogram,'')) IN ('yes','true','1') AND t.date_1 >= ${quarterStart}::date)::int AS mentorship_quarter,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.mentorshipprogram,'')) IN ('yes','true','1') AND t.date_1 >= ${yearStart}::date)::int AS mentorship_ytd,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%seminar%' AND t.date_1 >= ${quarterStart}::date)::int AS seminars_quarter,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%seminar%' AND t.date_1 >= ${yearStart}::date)::int AS seminars_ytd,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%conference%' AND t.date_1 >= ${quarterStart}::date)::int AS conferences_quarter,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%conference%' AND t.date_1 >= ${yearStart}::date)::int AS conferences_ytd,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%high achiever%' OR LOWER(COALESCE(t.topic,'')) LIKE '%high achiever%') AND t.date_1 >= ${quarterStart}::date)::int AS high_achievers_quarter,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%high achiever%' OR LOWER(COALESCE(t.topic,'')) LIKE '%high achiever%') AND t.date_1 >= ${yearStart}::date)::int AS high_achievers_ytd,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%wellbeing%' OR LOWER(COALESCE(t.topic,'')) LIKE '%wellbeing%') AND t.date_1 >= ${quarterStart}::date)::int AS wellbeing_quarter,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%wellbeing%' OR LOWER(COALESCE(t.topic,'')) LIKE '%wellbeing%') AND t.date_1 >= ${yearStart}::date)::int AS wellbeing_ytd
       FROM public.tblalumnitalks t
       JOIN public.tbl_alumni a ON a.alumniid = t.alumniid
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+    `;
+
+    const chapterEventsRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (WHERE e.fromdate >= ${quarterStart}::date)::int AS quarter_count,
+        COUNT(*) FILTER (WHERE e.fromdate >= ${yearStart}::date)::int AS ytd_count,
+        COUNT(*)::int AS total_count
+      FROM public.tbl_events e
+    `;
+
+    const careerDerivedRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(j.category,'')) LIKE '%recruit%' OR LOWER(COALESCE(j.title,'')) LIKE '%recruit%')
+            AND j.created_at >= ${quarterStart}::date
+        )::int AS recruitment_quarter,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(j.category,'')) LIKE '%recruit%' OR LOWER(COALESCE(j.title,'')) LIKE '%recruit%')
+            AND j.created_at >= ${yearStart}::date
+        )::int AS recruitment_ytd,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(j.category,'')) LIKE '%startup%' OR LOWER(COALESCE(j.title,'')) LIKE '%startup%')
+            AND j.created_at >= ${quarterStart}::date
+        )::int AS startups_quarter,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(j.category,'')) LIKE '%startup%' OR LOWER(COALESCE(j.title,'')) LIKE '%startup%')
+            AND j.created_at >= ${yearStart}::date
+        )::int AS startups_ytd,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(j.category,'')) LIKE '%course%' OR LOWER(COALESCE(j.category,'')) LIKE '%upskill%' OR LOWER(COALESCE(j.title,'')) LIKE '%course%' OR LOWER(COALESCE(j.title,'')) LIKE '%upskill%')
+            AND j.created_at >= ${quarterStart}::date
+        )::int AS upskill_quarter,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(j.category,'')) LIKE '%course%' OR LOWER(COALESCE(j.category,'')) LIKE '%upskill%' OR LOWER(COALESCE(j.title,'')) LIKE '%course%' OR LOWER(COALESCE(j.title,'')) LIKE '%upskill%')
+            AND j.created_at >= ${yearStart}::date
+        )::int AS upskill_ytd
+      FROM public.tbljobs j
     `;
 
     const kpi = (kpiRows[0] ?? {}) as { total_alumni?: number; active_alumni?: number };
@@ -149,7 +196,9 @@ export async function GET(req: Request) {
     const mb = (membershipRows[0] ?? {}) as { active_benefits?: number; gym_count?: number; swimming_count?: number };
     const ca = (chapterAssocRows[0] ?? {}) as Record<string, number | undefined>;
     const cd = (cardsRows[0] ?? {}) as Record<string, number | undefined>;
-    const tk = (talksRows[0] ?? {}) as { quarter_count?: number; ytd_count?: number };
+    const tk = (talksRows[0] ?? {}) as Record<string, number | undefined>;
+    const ce = (chapterEventsRows[0] ?? {}) as { quarter_count?: number; ytd_count?: number; total_count?: number };
+    const cr = (careerDerivedRows[0] ?? {}) as Record<string, number | undefined>;
 
     return NextResponse.json(
       {
@@ -186,21 +235,22 @@ export async function GET(req: Request) {
             delivered: cd.delivered ?? null,
           },
           activities: {
-            mentorshipSessions: { quarter: null as NumOrNull, ytd: null as NumOrNull },
-            seminarsParticipation: { quarter: null as NumOrNull, ytd: null as NumOrNull },
-            conferencesParticipation: { quarter: null as NumOrNull, ytd: null as NumOrNull },
-            alumniTalks: { quarter: tk.quarter_count ?? null, ytd: tk.ytd_count ?? null },
-            highAchieversRecognition: { quarter: null as NumOrNull, ytd: null as NumOrNull },
-            wellbeingSupport: { quarter: null as NumOrNull, ytd: null as NumOrNull },
+            mentorshipSessions: { quarter: tk.mentorship_quarter ?? 0, ytd: tk.mentorship_ytd ?? 0 },
+            seminarsParticipation: { quarter: tk.seminars_quarter ?? 0, ytd: tk.seminars_ytd ?? 0 },
+            conferencesParticipation: { quarter: tk.conferences_quarter ?? 0, ytd: tk.conferences_ytd ?? 0 },
+            alumniTalks: { quarter: tk.quarter_count ?? 0, ytd: tk.ytd_count ?? 0 },
+            highAchieversRecognition: { quarter: tk.high_achievers_quarter ?? 0, ytd: tk.high_achievers_ytd ?? 0 },
+            wellbeingSupport: { quarter: tk.wellbeing_quarter ?? 0, ytd: tk.wellbeing_ytd ?? 0 },
+            chapterEvents: { quarter: ce.quarter_count ?? 0, ytd: ce.ytd_count ?? 0, total: ce.total_count ?? 0 },
           },
         },
         sectionC: {
           career: {
-            recruitmentDrives: { quarter: null as NumOrNull, ytd: null as NumOrNull },
+            recruitmentDrives: { quarter: cr.recruitment_quarter ?? 0, ytd: cr.recruitment_ytd ?? 0 },
             jobsPostedUol: { quarter: null as NumOrNull, ytd: jb.uol_total ?? null },
             jobsPostedOtherEmployers: { quarter: null as NumOrNull, ytd: jb.other_total ?? null },
-            startupsSupport: { quarter: null as NumOrNull, ytd: null as NumOrNull },
-            upskillCourses: { quarter: null as NumOrNull, ytd: null as NumOrNull },
+            startupsSupport: { quarter: cr.startups_quarter ?? 0, ytd: cr.startups_ytd ?? 0 },
+            upskillCourses: { quarter: cr.upskill_quarter ?? 0, ytd: cr.upskill_ytd ?? 0 },
           },
           scholarships: {
             kinship: { applied: sc.kinship_applied ?? null, processed: sc.kinship_processed ?? null },

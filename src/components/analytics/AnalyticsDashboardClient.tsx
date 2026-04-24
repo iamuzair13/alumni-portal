@@ -249,6 +249,7 @@ export default function AnalyticsDashboardClient() {
 
   const activitySource = ((realtime?.sectionB as Record<string, unknown> | undefined)?.activities ??
     {}) as Record<string, { quarter: number | null; ytd: number | null }>;
+  const chapterEventsSource = (activitySource as unknown as Record<string, { quarter?: number | null; ytd?: number | null; total?: number | null }>).chapterEvents;
   const engagementActivityRows: TableRow[] = [
     { activity: "Mentorship Sessions", quarter: fmt(activitySource.mentorshipSessions?.quarter), ytd: fmt(activitySource.mentorshipSessions?.ytd) },
     { activity: "Seminars Participation", quarter: fmt(activitySource.seminarsParticipation?.quarter), ytd: fmt(activitySource.seminarsParticipation?.ytd) },
@@ -395,7 +396,7 @@ export default function AnalyticsDashboardClient() {
               ]}
               rows={[
                 { metric: "Meetups", quarter: fmt(chapterStats.meetupsQuarter), ytd: fmt(chapterStats.meetupsYtd), total: fmt(chapterStats.meetupsTotal) },
-                { metric: "Chapter Events", quarter: "Under Processing", ytd: "Under Processing", total: "Under Processing" },
+                { metric: "Chapter Events", quarter: fmt(chapterEventsSource?.quarter), ytd: fmt(chapterEventsSource?.ytd), total: fmt(chapterEventsSource?.total) },
               ]}
             />
           </div>
