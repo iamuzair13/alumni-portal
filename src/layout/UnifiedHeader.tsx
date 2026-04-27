@@ -310,9 +310,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
               </div>
             </div>
           </nav>
-          <div className="flex shrink-0 items-center">
-            <ThemeToggleButton />
-          </div>
+          
         </div>
       </header>
 
