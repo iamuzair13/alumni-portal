@@ -577,10 +577,10 @@ export const AlumniScholarshipsTab: React.FC = () => {
                   setSelectedStatus(tab.key);
                   setCurrentPage(1);
                 }}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold border transition-all ${
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
                   isSelected
                     ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 }`}
               >
                 <span>{tab.label}</span>
@@ -597,10 +597,10 @@ export const AlumniScholarshipsTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1200} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell
                   className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -754,7 +754,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                 !error &&
                 sortedItems.map((item) => (
                   <React.Fragment key={item.alumniId}>
-                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50">
+                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
                       <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
                         <div className="flex items-center gap-3">
                           <button
@@ -859,7 +859,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-2 py-4 text-sm text-slate-700  min-w-[180px] sticky right-0 z-10 bg-gray-100 dark:bg-gray-800">
+                      <TableCell className="sticky right-0 z-10 min-w-[180px] bg-gray-100 px-2 py-4 text-sm text-slate-700 dark:bg-gray-900">
                         {isAdmin && (
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
@@ -948,7 +948,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
             </TableBody>
           </Table>
         </SyncedTableScroll>
-        <div className="flex items-center justify-between p-4 border-t">
+        <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
           <span className="text-sm text-gray-500">
             Showing{" "}
             {sortedItems.length
@@ -963,7 +963,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
             </label>
             <select
               id="scholarship-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));

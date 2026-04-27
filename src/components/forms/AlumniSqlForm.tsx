@@ -84,7 +84,7 @@ export type TblAlumniForm = {
 };
 
 const inputBase =
-  "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50";
+  "mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-neutral-50 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-100 dark:disabled:bg-gray-900";
 const labelBase = "block text-sm font-medium text-neutral-800";
 const occupationTransitionTimingOptions = [
   "Before graduation",
@@ -1389,7 +1389,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       <input type="hidden" name="alumni" value="alumni" />
       {/* Notifications */}
       {(submitMsg || submitError || submitting) && (
-        <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm" aria-live="polite" aria-atomic="true">
+        <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-gray-900" aria-live="polite" aria-atomic="true">
           {submitting && (
             <div className="flex items-center gap-2 text-sm text-neutral-600">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
@@ -1416,7 +1416,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       )}
 
       {/* Section 1: Personal Information */}
-      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Personal Information</h2>
           <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
@@ -1892,7 +1892,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
        </section>
 
       {/* Section 2: Academic Information */}
-      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Academic Information</h2>
           <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
@@ -2195,7 +2195,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       </section>
 
       {/* Section 3: Work Status */}
-      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Occupation Details</h2>
         </div>
@@ -2621,7 +2621,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       </section>
 
       {/* Section 4: Social Links */}
-      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Social Links(Optional)</h2>
         </div>
@@ -2673,7 +2673,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
       {/* Section 5: Alumni Chapters */}
       {!excludeAdminStep && (
-      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-neutral-800">Alumni Chapters</h2>
           <p className="mt-1 text-xs text-neutral-600">Select up to 3 chapters to join (optional).</p>
@@ -2792,7 +2792,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
       {/* Section 6: Admin Section */}
       {!excludeAdminStep && (
-        <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
           <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
           </div>
@@ -2881,7 +2881,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             reset();
             setSelectedChapters([]);
           }}
-          className="inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 disabled:opacity-60 sm:w-auto"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 disabled:opacity-60 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-200 dark:hover:bg-gray-700 sm:w-auto"
         >
           Reset
         </button>

@@ -237,9 +237,9 @@ export const AlumniTalksTab: React.FC = () => {
         className="max-w-md"
       >
         <div className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900">Delete alumni talk</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Delete alumni talk</h3>
           <p className="text-sm text-slate-600">This action cannot be undone.</p>
-          {pendingDelete?.alumniName ? <p className="text-sm text-slate-700">Alumni: {pendingDelete.alumniName}</p> : null}
+          {pendingDelete?.alumniName ? <p className="text-sm text-slate-700 dark:text-slate-300">Alumni: {pendingDelete.alumniName}</p> : null}
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
@@ -270,24 +270,24 @@ export const AlumniTalksTab: React.FC = () => {
       </Modal>
 
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900">Alumni Talks</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Alumni Talks</h3>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600" htmlFor="talks-search">Search:</label>
+            <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="talks-search">Search:</label>
           <input
             id="talks-search"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, SAP ID, email..."
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
           />
         </div>
       </div>
 
-      <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1300} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell isHeader className="px-4 py-3 text-left text-xs font-semibold text-slate-700 w-12">{null}</TableCell>
                 <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">SAP ID / Reg No</TableCell>
@@ -353,7 +353,7 @@ export const AlumniTalksTab: React.FC = () => {
                 
                 return (
                   <React.Fragment key={rowId}>
-                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50">
+                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
                       <TableCell className="px-2 py-3">
                         <button
                           type="button"
@@ -501,7 +501,7 @@ export const AlumniTalksTab: React.FC = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                             {/* Basic Info */}
                             <div className="space-y-2">
-                              <h4 className="font-semibold text-slate-700 mb-2">Basic Information</h4>
+                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-slate-200">Basic Information</h4>
                               <div><span className="font-medium">Status:</span> {prettyStatus(item.status)}</div>
                               {item.alumniNote ? (
                                 <div className="mt-2">
@@ -519,10 +519,10 @@ export const AlumniTalksTab: React.FC = () => {
                             
                             {/* Availability Dates */}
                             <div className="space-y-2">
-                              <h4 className="font-semibold text-slate-700 mb-2">Availability Dates</h4>
+                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-slate-200">Availability Dates</h4>
                               {availabilityOptions.length > 0 ? (
                                 availabilityOptions.map((opt, i) => (
-                                  <div key={i} className="p-2 bg-white rounded border border-gray-200">
+                                  <div key={i} className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
                                     <div className="font-medium">{opt.label}:</div>
                                     <div>Date: {opt.date || "-"}</div>
                                     <div>Timings: {opt.timings || "-"}</div>
@@ -535,7 +535,7 @@ export const AlumniTalksTab: React.FC = () => {
                             
                             {/* Variations */}
                             <div className="space-y-2">
-                              <h4 className="font-semibold text-slate-700 mb-2">Schedule</h4>
+                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-slate-200">Schedule</h4>
                               {(item.confirmedDate || item.confirmedTimings) ? (
                                 <div className="p-2 bg-white rounded border border-emerald-200">
                                   <div className="font-medium text-emerald-800">Confirmed</div>
@@ -552,8 +552,8 @@ export const AlumniTalksTab: React.FC = () => {
                                 </div>
                               ) : null}
 
-                              <div className="p-2 bg-white rounded border border-gray-200">
-                                <div className="font-medium text-slate-700 mb-2">Propose new slot</div>
+                                <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+                                <div className="mb-2 font-medium text-slate-700 dark:text-slate-200">Propose new slot</div>
                                 <div className="grid grid-cols-1 gap-2">
                                   <input
                                     type="date"
@@ -658,7 +658,7 @@ export const AlumniTalksTab: React.FC = () => {
             <label className="text-sm text-gray-500" htmlFor="talks-page-size">Items per page:</label>
             <select
               id="talks-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
             >

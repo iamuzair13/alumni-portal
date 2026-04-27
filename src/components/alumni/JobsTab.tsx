@@ -361,10 +361,10 @@ export const JobsTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1200} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell
                   className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -547,7 +547,7 @@ export const JobsTab: React.FC = () => {
               {!isLoading &&
                 !error &&
                 sortedItems.map((item) => (
-                  <TableRow key={item.id} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50">
+                  <TableRow key={item.id} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
                     <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">
                       {item.title || "-"}
                     </TableCell>
@@ -638,7 +638,7 @@ export const JobsTab: React.FC = () => {
             </TableBody>
           </Table>
         </SyncedTableScroll>
-        <div className="flex items-center justify-between p-4 border-t">
+        <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
           <span className="text-sm text-gray-500">
             Showing{" "}
             {sortedItems.length
@@ -653,7 +653,7 @@ export const JobsTab: React.FC = () => {
             </label>
             <select
               id="job-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));

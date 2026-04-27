@@ -187,9 +187,9 @@ export default function LeadershipCriteriaManager(props: {
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{c.label}</div>
                         {c.is_mandatory ? (
-                          <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
+                          <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">Mandatory</span>
                         ) : (
-                          <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
+                          <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Optional</span>
                         )}
                       </div>
                       {c.description ? <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{c.description}</div> : null}
@@ -286,9 +286,9 @@ export default function LeadershipCriteriaManager(props: {
                           <span className="text-xs text-gray-500 dark:text-gray-400">Sort: {c.sort_order}</span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">Marks: {Number.isFinite(Number(c.criterion_score)) ? String(Number(c.criterion_score)) : "N/A"}</span>
                           {c.is_mandatory ? (
-                            <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[10px] font-semibold">Mandatory</span>
+                            <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">Mandatory</span>
                           ) : (
-                            <span className="rounded-full bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 text-[10px] font-semibold">Optional</span>
+                            <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">Optional</span>
                           )}
                         </div>
                       </div>

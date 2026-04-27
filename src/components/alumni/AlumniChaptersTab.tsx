@@ -717,7 +717,7 @@ export const AlumniChaptersTab: React.FC = () => {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Alumni Chapters</h3>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-white dark:text-gray-400" htmlFor="chapters-search">Search:</label>
+            <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="chapters-search">Search:</label>
             <input
               id="chapters-search"
               type="text"
@@ -829,7 +829,7 @@ export const AlumniChaptersTab: React.FC = () => {
         </div>
 
         {/* Verified Checkbox */}
-        <div className="flex items-center gap-3 px-0 py-2">
+      <div className="flex items-center gap-3 px-0 py-2">
           <label className="flex items-center gap-3 cursor-pointer group">
             <input
               type="checkbox"
@@ -839,8 +839,8 @@ export const AlumniChaptersTab: React.FC = () => {
             />
             <span className={`text-base font-semibold transition-colors duration-200 ${
               verifiedFilter === true 
-                ? "text-white dark:text-blue-300" 
-                : "text-white dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-gray-100"
+                ? "text-blue-700 dark:text-blue-300" 
+                : "text-gray-700 dark:text-gray-300 group-hover:text-green-600 dark:group-hover:text-gray-100"
             }`}>
               Verified Only
             </span>
@@ -854,7 +854,7 @@ export const AlumniChaptersTab: React.FC = () => {
       </div>
 
       {/* Filter Dropdowns - Checkbox-based multi-select */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex flex-col items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60 sm:flex-row sm:items-end">
         {/* National Chapter Filter */}
         <div className="flex-1 sm:min-w-[200px]">
           <label htmlFor="national-chapter-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
@@ -1219,10 +1219,10 @@ export const AlumniChaptersTab: React.FC = () => {
         </div>
       )}
 
-      <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1100} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell 
                   className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1332,8 +1332,8 @@ export const AlumniChaptersTab: React.FC = () => {
                 return (
                   <React.Fragment key={rowId}>
                     <TableRow
-                      className={`odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 cursor-pointer ${
-                        isExpanded ? "bg-blue-50/70" : ""
+                      className={`cursor-pointer odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20 ${
+                        isExpanded ? "bg-blue-50/70 dark:bg-blue-900/30" : ""
                       }`}
                       onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
                       aria-selected={isExpanded}
@@ -1387,7 +1387,7 @@ export const AlumniChaptersTab: React.FC = () => {
             </TableBody>
           </Table>
         </SyncedTableScroll>
-        <div className="flex items-center justify-between p-4 border-t">
+        <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
           <span className="text-sm text-gray-500">
             Showing {pageItems.length ? start + 1 : 0}-{pageItems.length ? start + pageItems.length : 0} of {total}
           </span>
@@ -1395,7 +1395,7 @@ export const AlumniChaptersTab: React.FC = () => {
             <label className="text-sm text-gray-500" htmlFor="chapters-page-size">Items per page:</label>
             <select
               id="chapters-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
             >

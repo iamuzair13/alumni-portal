@@ -831,7 +831,7 @@ export const AlumniAssociationTab: React.FC = () => {
       </div>
 
       {/* Filter Dropdowns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60 md:grid-cols-3">
         {/* Faculty Filter */}
         <div className="flex-1 sm:min-w-[180px]">
           <label htmlFor="faculty-filter" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
@@ -1083,10 +1083,10 @@ export const AlumniAssociationTab: React.FC = () => {
         </div>
       )}
 
-      <div className="overflow-hidden border-2 border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1000} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b-2 border-gray-300">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell className="px-3 py-4 text-left text-sm font-semibold text-slate-700">{""}</TableCell>
                 <TableCell 
@@ -1198,15 +1198,15 @@ export const AlumniAssociationTab: React.FC = () => {
                 return (
                   <React.Fragment key={rowId}>
                     <TableRow
-                      className={`odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 cursor-pointer ${
-                        isExpanded ? "bg-blue-50/70" : ""
+                      className={`cursor-pointer odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20 ${
+                        isExpanded ? "bg-blue-50/70 dark:bg-blue-900/30" : ""
                       }`}
                       aria-selected={isExpanded}
                     >
                       <TableCell className="px-3 py-4 text-sm">
                         <button
                           type="button"
-                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-white text-slate-700 hover:bg-gray-50"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-white text-slate-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-slate-200 dark:hover:bg-gray-700"
                           onClick={(e) => {
                             e.stopPropagation();
                             setExpandedRowId(isExpanded ? null : rowId);
@@ -1262,7 +1262,7 @@ export const AlumniAssociationTab: React.FC = () => {
             </TableBody>
           </Table>
         </SyncedTableScroll>
-        <div className="flex items-center justify-between p-4 border-t">
+        <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
           <span className="text-sm text-gray-500">
             Showing {pageItems.length ? ((currentPage - 1) * pageSize) + 1 : 0}-{Math.min((currentPage - 1) * pageSize + pageItems.length, total)} of {total}
           </span>
@@ -1270,7 +1270,7 @@ export const AlumniAssociationTab: React.FC = () => {
             <label className="text-sm text-gray-500" htmlFor="association-page-size">Items per page:</label>
             <select
               id="association-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
             >

@@ -799,8 +799,8 @@ function SetupPageContent() {
             {!usersLoading && filteredUsers.length > 0 && (
               <div className="mt-6">
                 <SyncedTableScroll minWidth={1100}>
-                  <table className="min-w-full border border-gray-200 rounded-2xl overflow-hidden dark:border-gray-800" role="table" aria-label="Users with dashboard access">
-                    <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+                  <table className="min-w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800" role="table" aria-label="Users with dashboard access">
+                    <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80">
                       <tr className="border-b border-gray-200 dark:border-white/[0.06]">
                         <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
                         <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Role</th>
@@ -812,7 +812,7 @@ function SetupPageContent() {
                     </thead>
                     <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                       {paginatedUsers.map((u) => (
-                        <tr key={u.id} className="odd:bg-gray-50">
+                        <tr key={u.id} className="odd:bg-gray-50 dark:odd:bg-gray-800/70">
                           <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                             <div className="flex flex-col">
                               <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{u.name}</span>
@@ -1395,10 +1395,10 @@ function RealTimeUsers(props: {
   }
 
   return (
-    <div className="mt-6 overflow-hidden border border-gray-200 max  bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="mt-6 max overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <SyncedTableScroll minWidth={1200} maxHeight={700} className="mx-auto">
         <table className="min-w-full border border-gray-200 dark:border-gray-800" role="table" aria-label="Real-time users list">
-          <thead className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+          <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80">
             <tr className="border-b border-gray-200 dark:border-white/[0.06]">
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
               <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Email</th>
@@ -1412,7 +1412,7 @@ function RealTimeUsers(props: {
           </thead>
           <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
             {pageItems.map((u) => (
-              <tr key={u.userid} className="odd:bg-gray-50">
+              <tr key={u.userid} className="odd:bg-gray-50 dark:odd:bg-gray-800/70">
                 <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
                   <div className="flex flex-col">
                     <span className={`block font-medium  ${u.blocked ? "text-red-600" : "text-slate-900"} text-[13px] dark:text-white/90`}>{`${u.firstname ?? ""} ${u.lastname ?? ""}`.trim() || u.email || `User #${u.userid}`}</span>
@@ -1464,17 +1464,17 @@ function RealTimeUsers(props: {
                             <button
                               aria-label={`Edit ${u.email ?? "user"}`}
                               onClick={() => openEdit(u)}
-                              className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                             >
-                              <PencilIcon className="w-4 h-4 text-gray-700" />
+                              <PencilIcon className="h-4 w-4 text-gray-700 dark:text-gray-300" />
                             </button>
                             {canManage && (
                               <button
                                 aria-label={`Delete ${u.email ?? "user"}`}
                                 onClick={() => setDeleteId(u.userid)}
-                                className="inline-flex items-center justify-center w-8 h-8 bg-white rounded-full shadow-sm border border-gray-200 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                               >
-                                <TrashBinIcon className="w-4 h-4 text-gray-700" />
+                                <TrashBinIcon className="h-4 w-4 text-gray-700 dark:text-gray-300" />
                               </button>
                             )}
                           </>

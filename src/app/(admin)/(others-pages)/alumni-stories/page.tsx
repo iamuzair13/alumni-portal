@@ -90,7 +90,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
     <div className="overflow-hidden border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] ">
       <SyncedTableScroll minWidth={950} maxHeight={700}>
         <Table className="min-w-full border border-gray-200 dark:border-gray-800">
-            <TableHeader className="bg-white whitespace-nowrap border-b border-gray-200 dark:border-white/[0.06]">
+            <TableHeader className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80">
               <TableRow>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">SrNo.</TableCell>
                 <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Date</TableCell>
@@ -105,7 +105,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
             <TableBody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
               {(loading || isFetching) && (
                 Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                  <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50">
+                  <TableRow key={`skeleton-${i}`} className="odd:bg-gray-50 dark:odd:bg-gray-800/70">
                     <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-12 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
                     <TableCell className="px-4 py-3 border-r border-gray-200"><div className="h-5 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
@@ -124,7 +124,7 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
                       <button
                         type="button"
                         onClick={() => setCurrentPage(1)}
-                        className="inline-flex items-center rounded-md bg-white border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                       >Retry</button>
                     </div>
                   </TableCell>
@@ -210,12 +210,12 @@ const StoryTable: React.FC<StoryListProps> = ({ items, loading, isFetching, erro
       </SyncedTableScroll>
       <div className="px-4" aria-live="polite" aria-atomic="true">
             {actionMessage && (
-              <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300">
                 {actionMessage}
               </div>
             )}
             {actionError && (
-              <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">
                 {actionError}
               </div>
             )}
@@ -797,8 +797,8 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="md:col-span-2 mt-2">
-        {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700">{serverMsg}</div>}
-        {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700">{serverError}</div>}
+        {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700 dark:border-green-800/50 dark:bg-green-900/20 dark:text-green-300">{serverMsg}</div>}
+        {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300">{serverError}</div>}
       </div>
 
       <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2">

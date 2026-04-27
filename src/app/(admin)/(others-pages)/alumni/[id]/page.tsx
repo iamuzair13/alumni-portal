@@ -107,11 +107,11 @@ export default function AlumniProfilePage() {
   const content = useMemo(() => {
     if (loading) {
       return (
-        <div className="space-y-3 ">
-          <div className="h-6 w-48 bg-gray-200 animate-pulse rounded" />
+        <div className="space-y-3">
+          <div className="h-6 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />
+              <div key={i} className="h-16 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
             ))}
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function AlumniProfilePage() {
         <button 
           type="button" 
           onClick={() => setRefreshTick((x) => x + 1)} 
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm hover:shadow-md"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -195,7 +195,7 @@ export default function AlumniProfilePage() {
 
 function Field({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="flex flex-col p-4 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800/60">
       <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">{label}</span>
       <div className="text-sm font-medium text-gray-900 dark:text-white/90">{value ?? "-"}</div>
     </div>
