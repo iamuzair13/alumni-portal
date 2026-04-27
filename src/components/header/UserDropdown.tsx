@@ -78,12 +78,12 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   }
   
   return (
-    <div className="relative  ">
+    <div className="relative">
       <button
         onClick={toggleDropdown} 
-        className="flex items-center text-[#183D32] dropdown-toggle rounded-xl px-2 py-1.5 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 transition-colors"
+        className="dropdown-toggle flex items-center rounded-xl px-2 py-1.5 text-[#183D32] transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:text-emerald-200 dark:hover:bg-gray-800 dark:focus-visible:ring-emerald-400/30"
       >
-        <span className="mr-3 overflow-hidden border border-gray-200 rounded-full h-11 w-11 bg-gray-50">
+        <span className="mr-3 h-11 w-11 overflow-hidden rounded-full border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
           <Image
             width={44}
             height={44}
@@ -99,12 +99,12 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
           />
         </span>
 
-        <span className="block mr-1 font-medium text-[#183D32] text-theme-sm">
+        <span className="mr-1 block text-theme-sm font-medium text-[#183D32] dark:text-emerald-200">
           {status === "loading" ? "Loading" : session?.user?.name || "User"}
         </span>
 
         <svg
-          className={`stroke-[#183D32] text-[#183D32] dark:stroke-gray-400 transition-transform duration-200 ${
+          className={`text-[#183D32] transition-transform duration-200 dark:text-emerald-200 ${
             isOpen ? "rotate-180" : ""
           }`}
           width="18"
@@ -126,10 +126,10 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className="absolute right-0 mt-3 flex w-[260px] flex-col rounded-2xl border border-gray-200/80 bg-white p-3 shadow-lg"
+        className="absolute right-0 mt-3 flex w-[260px] flex-col rounded-2xl border border-gray-200/80 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900"
       >
         <div>
-          <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
+          <span className="block text-theme-sm font-medium text-gray-700 dark:text-gray-200">
             {status === "loading" ? "Loading" : session?.user?.name || "User"}
           </span>
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
@@ -143,10 +143,10 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
               <DropdownItem
                 onItemClick={() => { closeDropdown(); router.push("/profile"); }}
                 tag="button"
-                className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                className="group flex items-center gap-3 rounded-lg px-3 py-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white"
               >
                 <svg
-                  className="fill-gray-500 group-hover:fill-gray-700 dark:fill-gray-400 dark:group-hover:fill-gray-300"
+                  className="fill-gray-500 group-hover:fill-gray-700 dark:fill-gray-300 dark:group-hover:fill-white"
                   width="24"
                   height="24"
                   viewBox="0 0 24 24"
@@ -173,10 +173,10 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
             // Use window.location for reliable redirect on Plesk server
             window.location.href = "/signin";
           }}
-          className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+          className="group mt-3 flex items-center gap-3 rounded-lg px-3 py-2 text-theme-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white"
         >
           <svg
-            className="fill-gray-500 group-hover:fill-gray-700 dark:group-hover:fill-gray-300"
+            className="fill-gray-500 group-hover:fill-gray-700 dark:fill-gray-300 dark:group-hover:fill-white"
             width="24"
             height="24"
             viewBox="0 0 24 24"

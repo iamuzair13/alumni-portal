@@ -137,12 +137,12 @@ export default function AnalyticsDashboardClient() {
   const { data: realtime } = useQuery({
     queryKey: ["analytics-realtime-dashboard", facultyFilter, timeRange],
     queryFn: async () => {
-      const params = new URLSearchParams();
+        const params = new URLSearchParams();
       params.set("facultyId", facultyFilter);
       params.set("timeRange", timeRange);
       const res = await fetch(`/api/analytics/realtime-dashboard?${params.toString()}`, { headers: { accept: "application/json" } });
       const json = (await res.json()) as Record<string, unknown>;
-      if (!res.ok) {
+        if (!res.ok) {
         throw new Error("Failed to load realtime analytics");
       }
       return json;

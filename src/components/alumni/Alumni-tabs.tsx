@@ -2942,7 +2942,7 @@ export const AlumniTabs: React.FC = () => {
     <div className="p-0">
       <div className="flex flex-col gap-8 ">
         {/* Stats Cards Section */}
-        <div className="px-4 py-8  rounded-2xl bg-[#183D32]/10 dark:bg-gray-800 border border-gray-200 shadow-lg">
+        <div className="px-4 py-8  rounded-2xl bg-[#183D32]/10 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
           {/* Regular Tabs */}
           <div className="flex flex-wrap gap-4 mb-6 ">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
@@ -5524,7 +5524,7 @@ export const AlumniTabs: React.FC = () => {
                           </div>
                         </div>
                       </TableCell>
-                    <TableCell className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">
+                    <TableCell className="sticky right-0 z-20 min-w-[120px] bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 px-3 py-4 text-right text-xs font-extrabold uppercase tracking-wider text-gray-700 backdrop-blur-sm dark:bg-gray-900 dark:bg-none dark:text-gray-200 sm:px-6">
                       Actions
                     </TableCell>
                     </TableRow>
@@ -5599,7 +5599,7 @@ export const AlumniTabs: React.FC = () => {
                         <TableCell className="px-3 sm:px-6 py-5">
                           <div className="h-7 w-20 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
                         </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
+                        <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-900 z-10">
                           <div className="h-9 w-24 sm:w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
                         </TableCell>
                       </TableRow>
@@ -5782,7 +5782,8 @@ export const AlumniTabs: React.FC = () => {
                         <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden 2xl:table-cell">
                           <span className="truncate block max-w-[140px]">{alum.chapter1 || "-"}</span>
                         </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-start">
+                        <TableCell className="px-3 py-5 text-start text-gray-700 dark:text-gray-200 sm:px-6">
+                   
                           <Badge 
                             size="sm" 
                             color={
@@ -5802,8 +5803,8 @@ export const AlumniTabs: React.FC = () => {
                         </TableCell>
                         <TableCell className={`px-3 sm:px-6 py-5 text-end sticky right-0 z-10 ${
                           selectedRowId === (alum.alumniid ?? null) 
-                            ? "bg-blue-50/80 dark:bg-blue-900/30" 
-                            : "bg-white dark:bg-gray-800/30"
+                            ? "bg-blue-50/80 dark:bg-gray-900" 
+                            : "bg-white dark:bg-gray-900"
                         }`}>
                           <div role="group" aria-label="Row actions" className="flex w-40 items-center gap-1.5 sm:gap-2.5 flex-wrap justify-end">
                             {(() => {

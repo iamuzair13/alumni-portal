@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import UserDropdown from "@/components/header/UserDropdown";
 import ComponentCard from "@/components/common/ComponentCard";
+import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useSidebar } from "@/context/SidebarContext";
 
 import { AlumniTabs } from "@/components/alumni/Alumni-tabs";
@@ -231,13 +232,21 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
     return (
       <span className="ml-2 inline-flex items-center gap-1 align-middle">
         {showLoader ? (
-          <span className="inline-flex items-center justify-center FMENUh-4 w-8">
-            <span className="h-3 w-3 rounded-full border-2 border-[#183D32]/30 border-t-[#183D32] animate-spin" />
+          <span className="inline-flex h-4 w-8 items-center justify-center">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#183D32]/30 border-t-[#183D32] dark:border-emerald-500/25 dark:border-t-emerald-300" />
           </span>
         ) : (
           <>
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${allCls}`}>{c!.all}</span>
-            <span className={isSelected ? "text-[#183D32]/60 text-[10px]" : "text-[#183D32]/60 text-[10px]"}>/</span>
+            <span
+              className={
+                isSelected
+                  ? "text-[10px] text-[#183D32]/60 dark:text-white/45"
+                  : "text-[10px] text-[#183D32]/60 dark:text-gray-500"
+              }
+            >
+              /
+            </span>
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none ${secondaryCls}`}>{c!.secondary}</span>
           </>
         )}
@@ -247,27 +256,25 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
 
   return (
     <>
-      <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative z-[600]">
-        <div className="w-full mx-auto flex items-center justify-start flex-wrap  gap-4">
-          
-
-          <nav className="flex-1 min-w-0 ">
+      <header className="sticky top-0 relative z-[600] flex min-h-[70px] border-b border-transparent bg-white py-4 px-4 tracking-wide shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] dark:border-gray-800 dark:bg-gray-900 dark:shadow-[0px_0px_20px_rgba(0,0,0,0.35)] sm:px-6">
+        <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-4">
+          <nav className="min-w-0 flex-1">
             <div
-              className="w-full  bg-gray-50/60 p-1"
+              className="w-full rounded-2xl bg-gray-50/60 p-1 dark:bg-gray-800/50 dark:ring-1 dark:ring-gray-700/60"
               role="tablist"
               aria-label="Alumni sections"
             >
-              <div className="flex items-start gap-2 flex-wrap  justify-start overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:justify-start">
+              <div className="flex flex-wrap items-start justify-start gap-2 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:justify-start">
                 {MENU_TABS.map((tab, idx) => {
                   const isSelected = selected === tab.key;
                   return (
                     <button
                       key={tab.key}
                       className={
-                        "inline-flex items-center rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 " +
+                        "inline-flex items-center rounded-full border px-3 py-2 text-xs font-semibold shadow-sm transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:shadow-md dark:shadow-black/20 dark:focus-visible:ring-2 dark:focus-visible:ring-emerald-400/30 sm:px-4 sm:text-sm " +
                         (isSelected
-                          ? "bg-[#183D32] text-white border-[#183D32]"
-                          : "bg-white text-[#183D32] border-gray-200 hover:border-[#183D32]/40 hover:bg-white")
+                          ? "border-[#183D32] bg-[#183D32] text-white dark:border-emerald-500/50 dark:bg-[#142e26] dark:text-emerald-50 dark:ring-1 dark:ring-inset dark:ring-white/15 dark:shadow-lg dark:shadow-emerald-950/40"
+                          : "border-gray-200 bg-white text-[#183D32] hover:border-[#183D32]/40 hover:bg-white dark:border-gray-600 dark:bg-gray-900/90 dark:text-emerald-100/90 dark:ring-0 dark:shadow-sm dark:shadow-black/30 dark:hover:border-emerald-500/60 dark:hover:bg-gray-800 dark:hover:text-emerald-50 dark:hover:shadow-md dark:hover:shadow-emerald-950/20 dark:active:bg-gray-800/95")
                       }
                       onClick={() => handleTabChange(tab.key)}
                       role="tab"
@@ -303,6 +310,9 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
               </div>
             </div>
           </nav>
+          <div className="flex shrink-0 items-center">
+            <ThemeToggleButton />
+          </div>
         </div>
       </header>
 
@@ -363,9 +373,9 @@ const UnifiedHeaderTopbar: FC = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 flex shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] py-4 px-4 sm:px-6 bg-white min-h-[70px] tracking-wide relative ">
-      <div className="w-full mx-auto flex items-center justify-between gap-3">
-        <div className="flex items-center justify-between gap-3 ">
+    <header className="relative sticky top-0 z-[500] flex min-h-[70px] border-b border-transparent bg-white py-4 px-4 tracking-wide shadow-[0px_0px_16px_rgba(17,_17,_26,_0.1)] dark:border-gray-800 dark:bg-gray-900 dark:shadow-[0px_0px_20px_rgba(0,0,0,0.35)] sm:px-6">
+      <div className="mx-auto flex w-full items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           {isAlumni ? (
             <Link href="/" className="flex items-center gap-2">
               <Image
@@ -388,7 +398,7 @@ const UnifiedHeaderTopbar: FC = () => {
           ) : (
             <div className="flex flex-row justify-center items-center">
               <button
-                className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-gray-200 bg-white text-[#183D32] shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 lg:h-11 lg:w-11"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-[#183D32] shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:border-gray-600 dark:bg-gray-800 dark:text-emerald-200 dark:hover:bg-gray-700 dark:focus-visible:ring-emerald-400/30 lg:h-11 lg:w-11"
                 onClick={handleToggle}
                 aria-label="Toggle Sidebar"
               >
@@ -419,7 +429,7 @@ const UnifiedHeaderTopbar: FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={toggleApplicationMenu}
-            className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-gray-200 bg-white text-[#183D32] shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 lg:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-[#183D32] shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:border-gray-600 dark:bg-gray-800 dark:text-emerald-200 dark:hover:bg-gray-700 dark:focus-visible:ring-emerald-400/30 lg:hidden"
             aria-label="Open menu"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -438,23 +448,23 @@ const UnifiedHeaderTopbar: FC = () => {
             type="button"
             aria-label="Close menu"
             onClick={toggleApplicationMenu}
-            className="fixed inset-0 bg-black/30 backdrop-blur-[1px] lg:hidden"
+            className="fixed inset-0 bg-black/30 backdrop-blur-[1px] dark:bg-black/50 lg:hidden"
           />
         )}
 
         <div
           className={
-            "fixed inset-y-0 right-0 w-72 bg-white shadow-xl border-l border-gray-200 p-4 flex flex-col gap-4 transform transition-transform duration-300 z-[60] " +
+            "fixed inset-y-0 right-0 z-[60] flex w-72 flex-col gap-4 border-l border-gray-200 bg-white p-4 shadow-xl transition-transform duration-300 dark:border-gray-800 dark:bg-gray-900 " +
             (isApplicationMenuOpen ? "translate-x-0" : "translate-x-full") +
-            " lg:static lg:inset-auto lg:w-auto lg:translate-x-0 lg:shadow-none lg:border-0 lg:p-0 lg:flex lg:flex-row lg:items-center"
+            " lg:static lg:inset-auto lg:w-auto lg:translate-x-0 lg:border-0 lg:p-0 lg:shadow-none lg:flex lg:flex-row lg:items-center"
           }
         >
           <div className="flex items-center justify-between lg:hidden">
-            <span className="text-sm font-semibold text-[#183D32]">Menu</span>
+            <span className="text-sm font-semibold text-[#183D32] dark:text-emerald-200">Menu</span>
             <button
               type="button"
               onClick={toggleApplicationMenu}
-              className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-gray-200 bg-white text-[#183D32] shadow-sm hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-[#183D32] shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:border-gray-600 dark:bg-gray-800 dark:text-emerald-200 dark:hover:bg-gray-700 dark:focus-visible:ring-emerald-400/30"
               aria-label="Close menu"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -467,17 +477,22 @@ const UnifiedHeaderTopbar: FC = () => {
               </svg>
             </button>
           </div>
-          <div className="flex items-center gap-2 2xsm:gap-3" />
+          <div className="flex items-center gap-2 2xsm:gap-3">
+            <ThemeToggleButton />
+          </div>
 
           {status === "loading" && (
             <div className="flex items-center gap-3">
-              <span className="mr-3 overflow-hidden rounded-full h-11 w-11 bg-gray-200 animate-pulse" />
-              <span className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <span className="mr-3 h-11 w-11 animate-pulse overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" />
+              <span className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
             </div>
           )}
           {status === "authenticated" && <UserDropdown />}
           {status === "unauthenticated" && (
-            <Link href="/signin" className="text-sm text-[#183D32] hover:text-[#183D32]/80 underline-offset-4 hover:underline">
+            <Link
+              href="/signin"
+              className="text-sm text-[#183D32] underline-offset-4 hover:text-[#183D32]/80 hover:underline dark:text-emerald-300 dark:hover:text-emerald-200"
+            >
               Sign in
             </Link>
           )}
