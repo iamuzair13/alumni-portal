@@ -126,8 +126,8 @@ export default async function MyAssociationsPage({ searchParams }: { searchParam
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
+      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
         {(() => {
@@ -145,39 +145,39 @@ export default async function MyAssociationsPage({ searchParams }: { searchParam
         )}
         <PageBanner title="My Association" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <BackButton />
-                <h1 className="text-3xl font-bold text-slate-900">My Association</h1>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-gray-100">My Association</h1>
               </div>
             </div>
 
             {!association ? (
-              <div className="text-center py-12">
+              <div className="text-center py-12 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16 mx-auto text-gray-400 mb-4 fill-current">
                   <path d="M12 2L2 7v10h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2V7L12 2zm0 2.5l6 2.5v2h-2V9h-2v2h-2V9h-2v2h-2V9H8v2H6V9H4v-2l6-2.5zM4 11h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
                 </svg>
-                <p className="text-gray-600 text-lg">You are not currently a member of any association.</p>
-                <p className="text-gray-500 text-sm mt-2">
+                <p className="text-gray-600 text-lg dark:text-gray-100">You are not currently a member of any association.</p>
+                <p className="text-gray-500 text-sm mt-2 dark:text-gray-100">
                   Join an association to connect with alumni from your faculty or department!
                 </p>
                 <Link 
                   href={sapId ? `/alumni-profile/association-membership?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/association-membership`}
-                  className="mt-6 inline-flex items-center px-6 py-3 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 transition-colors"
+                  className="mt-6 inline-flex items-center px-6 py-3 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 transition-colors dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
                 >
                   Join an Association
                 </Link>
               </div>
             ) : (
               <>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl shadow-md border border-orange-200 overflow-hidden">
-                  <div className="p-6 md:p-8">
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl shadow-md border border-orange-200 overflow-hidden dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <div className="p-6 md:p-8 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{association.title}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">{association.title}</h2>
                         {association.description && (
-                          <p className="text-gray-700 leading-relaxed mb-4">{association.description}</p>
+                          <p className="text-gray-700 leading-relaxed mb-4 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">{association.description}</p>
                         )}
                       </div>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12 text-orange-600 fill-current flex-shrink-0 ml-4">

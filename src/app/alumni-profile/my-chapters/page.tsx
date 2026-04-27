@@ -175,8 +175,8 @@ export default async function MyChaptersPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
+      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
         {(() => {
@@ -193,34 +193,34 @@ export default async function MyChaptersPage({ searchParams }: { searchParams: P
           </div>
         )}
         <PageBanner title="My Chapters" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:bg-gray-900 dark:text-gray-100">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <BackButton />
-                <h1 className="text-3xl font-bold text-slate-900">My Alumni Chapters</h1>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-gray-100">My Alumni Chapters</h1>
               </div>
             </div>
 
             {chapters.length === 0 ? (
-              <div className="text-center py-12">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16 mx-auto text-gray-400 mb-4">
+              <div className="text-center py-12 dark:text-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-16 h-16 mx-auto text-gray-400 mb-4 dark:text-gray-100">
                   <path className="fill-current" d="M12 12a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0H5zm14.5-9.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM3.5 11.5a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM22 21h-3.5a5.5 5.5 0 00-3.9-5.2 6.97 6.97 0 013.4-.8A4.5 4.5 0 0122 19.5V21zM5.5 21H2v-1.5A4.5 4.5 0 016.6 15a6.97 6.97 0 013.4.8A5.5 5.5 0 005.5 21z"/>
                 </svg>
-                <p className="text-gray-600 text-lg">You are not currently a member of any alumni chapter.</p>
-                <p className="text-gray-500 text-sm mt-2">
+                <p className="text-gray-600 text-lg dark:text-gray-100">You are not currently a member of any alumni chapter.</p>
+                <p className="text-gray-500 text-sm mt-2 dark:text-gray-100">
                   Join a chapter to connect with other alumni in your area!
                 </p>
                 <Link 
                   href={sapId ? `/alumni-profile/chapters?sapid=${encodeURIComponent(sapId)}` : `/alumni-profile/chapters`}
-                  className="mt-6 inline-flex items-center px-6 py-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+                  className="mt-6 inline-flex items-center px-6 py-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
                 >
                   Apply for Chapters
                 </Link>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 dark:text-gray-100">
                   {chapters.map((chapter, index) => (
                     <ChapterCard key={chapter.id || `chapter-${index}`} chapter={chapter} />
                   ))}

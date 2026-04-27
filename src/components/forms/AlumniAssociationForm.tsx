@@ -33,7 +33,7 @@ type RoleCriterion = {
   sort_order: number;
 };
 
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
+const labelBase = "mb-2 text-sm text-slate-900 dark:text-gray-200 font-medium block";
 const errorText = "mt-1 text-xs text-rose-600";
 
 type Props = {
@@ -658,7 +658,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
   }
 
   return (
-    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-6">
         <LeadershipApplicationsTracker alumniId={alumniIdNumber} />
       </div>
@@ -680,18 +680,18 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                   key={roleOption.value}
                   className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
                     selectedRole === roleOption.value
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                      : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600"
                   }`}
                 >
                   <input
                     type="radio"
                     value={roleOption.value}
                     {...register("role", { required: "Please select a role" })}
-                    className="mt-1 mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    className="mt-1 mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600"
                   />
                   <div className="flex-1">
-                    <span className="text-base font-semibold text-gray-900">{roleOption.label}</span>
+                    <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{roleOption.label}</span>
                   </div>
                 </label>
               ))}
@@ -711,7 +711,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                 const id = raw ? Number(raw) : null;
                 setSelectedAssociationId(id && Number.isFinite(id) && id > 0 ? id : null);
               }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select an association</option>
               {(associationsData ?? []).map((a) => (
@@ -724,7 +724,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
           </div>
 
           {selectedRole ? (
-            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-4">
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Information</div>
               <div className="mt-3 space-y-3">
                 
@@ -763,7 +763,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     ) : (
                       <div className="mt-3 space-y-2">
                         {mandatoryCriteriaItems.length ? (
-                          <div className="rounded-lg border border-rose-200 bg-rose-50/40 px-3 py-3 space-y-2">
+                          <div className="rounded-lg border border-rose-200 bg-rose-50/40 dark:border-rose-900 dark:bg-rose-950/20 px-3 py-3 space-y-2">
                             {mandatoryCriteriaItems.map((c) => {
                               const id = Number(c.id);
                               const value = mandatoryCriteriaResponses[id] ?? "";
@@ -783,8 +783,8 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                       ) : null}
                                     </div>
                                     <div className="shrink-0">
-                                      <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden">
-                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "YES" ? "bg-emerald-600 text-white" : "text-gray-700"}`}>
+                                      <div className="inline-flex rounded-lg border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-700 overflow-hidden">
+                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "YES" ? "bg-emerald-600 text-white" : "text-gray-700 dark:text-gray-300"}`}>
                                           <input
                                             type="radio"
                                             name={`mandatory-criteria-${id}`}
@@ -798,7 +798,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                           />
                                           YES
                                         </label>
-                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "NO" ? "bg-rose-600 text-white" : "text-gray-700"}`}>
+                                        <label className={`px-3 py-1.5 text-xs font-semibold cursor-pointer ${value === "NO" ? "bg-rose-600 text-white" : "text-gray-700 dark:text-gray-300"}`}>
                                           <input
                                             type="radio"
                                             name={`mandatory-criteria-${id}`}
@@ -845,7 +845,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                         ) : null}
 
                         {optionalCriteriaItems.length ? (
-                          <div className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-3 space-y-2">
+                          <div className="rounded-lg border border-gray-200 bg-gray-50/60 dark:border-gray-700 dark:bg-gray-800/40 px-3 py-3 space-y-2">
                             <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">How would you rate yourself on the following using a scale of 1 to 5? For rating 4 star or above, please provide a brief explanation</div>
 
                             {optionalCriteriaItems.map((c) => {
@@ -865,8 +865,8 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{c.description}</div>
                                     ) : null}
 
-                                    <div className="mt-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                                      <div className="text-xs font-semibold text-slate-700 mb-1">Proficiency</div>
+                                    <div className="mt-2 rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 px-3 py-2">
+                                      <div className="text-xs font-semibold text-slate-700 dark:text-gray-300 mb-1">Proficiency</div>
                                       <StarRating
                                         value={Number(optionalCriteriaProficiency[id] || 0)}
                                         onChange={(val) => {
@@ -958,7 +958,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role
                     </div>
-                    <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500"}`}>
+                    <div className={`text-xs font-semibold ${planLen > planMaxLen ? "text-rose-600" : "text-gray-500 dark:text-gray-400"}`}>
                       {planLen} / {planMaxLen}
                     </div>
                   </div>
@@ -983,7 +983,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
                     className="mt-3 w-full resize-none rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   {errors.planStrategy ? <div className={errorText}>{errors.planStrategy.message}</div> : null}
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Optional. If provided, aim for {planMinLen}-{planMaxLen} characters.
                   </div>
                 </div>
@@ -999,7 +999,7 @@ export default function AlumniAssociationForm({ alumniId }: Props) {
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-4">
+            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 p-4">
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upload Documents</div>
             <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">Allowed: PDF, DOC, DOCX. Max size: 5MB per file.</div>
             <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">

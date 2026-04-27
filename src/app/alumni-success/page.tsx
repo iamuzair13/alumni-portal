@@ -42,16 +42,16 @@ export default function Page() {
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
+      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900">
+        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700">
           <AppHeader />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:bg-gray-900 dark:border-gray-700">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <BackButton />
-                <h1 className="text-3xl font-bold text-slate-900">Alumni Success Stories</h1>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-gray-900">Alumni Success Stories</h1>
               </div>
               <Link 
                 href="/alumni-success/new" 

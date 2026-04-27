@@ -89,23 +89,23 @@ export default function SwimmingPoolMembershipForm({ alumniId, sapId }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl mx-auto">
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl mx-auto dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-slate-900 mb-2">Swimming Pool Membership Application</h2>
-        <p className="text-sm text-slate-600">
+        <h2 className="text-xl font-semibold text-slate-900 mb-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Swimming Pool Membership Application</h2>
+        <p className="text-sm text-slate-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
           Apply for swimming pool facility access. As a UOL alumni, you are eligible for special discounts.
         </p>
       </div>
 
       <div className="space-y-6">
         <div>
-          <label htmlFor="month" className={labelBase}>
+          <label htmlFor="month" className={labelBase + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>
             Apply for Month <span className="text-red-500">*</span>
           </label>
           <select
             id="month"
             {...register("month")}
-            className={`${inputBase} ${errors.month ? "border-red-500" : ""}`}
+            className={`${inputBase} ${errors.month ? "border-red-500" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
             aria-invalid={errors.month ? "true" : "false"}
             aria-describedby={errors.month ? "month-error" : undefined}
           >
@@ -117,7 +117,7 @@ export default function SwimmingPoolMembershipForm({ alumniId, sapId }: Props) {
             ))}
           </select>
           {errors.month && (
-            <p id="month-error" className="mt-1 text-sm text-red-600" role="alert">
+            <p id="month-error" className="mt-1 text-sm text-red-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" role="alert">
               {errors.month.message}
             </p>
           )}
@@ -127,7 +127,7 @@ export default function SwimmingPoolMembershipForm({ alumniId, sapId }: Props) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className={buttonPrimary}
+        className={buttonPrimary + "dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}
         aria-label="Submit swimming pool membership application"
       >
         {isSubmitting ? "Submitting..." : "Submit Application"}

@@ -864,18 +864,18 @@ export default function LeadershipPage() {
   const applicationsCount = Number(applicationCountsData?.all ?? applicationsData?.length ?? 0);
 
   return (
-    <div className="min-h-screen w-full bg-slate-200 dark:bg-gray-900/50 overflow-x-hidden">
+    <div className="min-h-screen w-full bg-slate-200 dark:bg-gray-900/50 overflow-x-hidden dark:text-gray-300 dark:bg-gray-900">
       {/* add appropria title and description here */}
-      <div className="w-full max-w-[1230px] border-b border-gray-200 dark:border-gray-700 bg-white rounded-t-lg mt-4 mx-auto flex flex-col justify-start ">
+      <div className="w-full max-w-[1230px] border-b border-gray-200 dark:border-gray-700 bg-white rounded-t-lg mt-4 mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
         <div className="px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Leadership Applications</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Manage leadership applications for chapters and associations.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Leadership Applications</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">Manage leadership applications for chapters and associations.</p>
         </div>
       </div>
-      <div className="w-full max-w-[1230px] bg-white rounded-b-lg  mx-auto flex flex-col justify-start ">
+      <div className="w-full max-w-[1230px] bg-white rounded-b-lg  mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
         {/* Tabs Section */}
-        <div className="w-full px-4 py-4">
-          <div className=" mx-auto">
+        <div className="w-full px-4 py-4 ">
+          <div className=" mx-auto dark:text-gray-300 dark:bg-gray-900">
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {TABS.map((tab) => {
                 const isSelected = selectedTab === tab.key;
@@ -886,7 +886,7 @@ export default function LeadershipPage() {
                   <button
                     key={tab.key}
                     type="button"
-                    className={`relative rounded-lg p-3 text-center transition-all ${
+                    className={`relative rounded-lg p-3 text-center transition-all dark:text-gray-300 dark:bg-gray-900 ${
                       isSelected 
                         ? `bg-${colorClass}-50 border-2 border-${colorClass}-500 dark:bg-${colorClass}-900/20 shadow-sm` 
                         : 'bg-white border border-gray-200 dark:bg-gray-800/50 dark:border-gray-700 hover:border-gray-300'
@@ -899,13 +899,13 @@ export default function LeadershipPage() {
                       setApplicationTypeFilter("all");
                     }}
                   >
-                    <div className={`text-xs font-bold uppercase tracking-wide mb-1 truncate ${
+                    <div className={`text-xs font-bold uppercase tracking-wide mb-1 truncate dark:text-gray-300 dark:bg-gray-900 ${
                       isSelected ? `text-${colorClass}-600 dark:text-${colorClass}-400` : 'text-gray-600 dark:text-gray-400'
                     }`}>
                       <span className="hidden sm:inline">{tab.label}</span>
                       <span className="sm:hidden">{tab.shortLabel}</span>
                     </div>
-                    <div className={`text-2xl font-bold ${
+                    <div className={`text-2xl font-bold dark:text-gray-300 dark:bg-gray-900 ${
                       isSelected ? `text-${colorClass}-700 dark:text-${colorClass}-300` : 'text-gray-700 dark:text-gray-300'
                     }`}>
                       {statCount}
@@ -918,10 +918,10 @@ export default function LeadershipPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="w-full px-4 py-2">
+        <div className="w-full px-4 py-2 dark:text-gray-300 dark:bg-gray-900">
           <div className="mx-auto">
             <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 dark:text-gray-300 dark:bg-gray-900">
                 <div className="relative flex-1">
                   <input
                     type="text"
@@ -931,7 +931,7 @@ export default function LeadershipPage() {
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 dark:text-gray-300 dark:bg-gray-900">
                   {selectedTab === "applications" && (
                     <select
                       value={applicationTypeFilter}
@@ -958,7 +958,7 @@ export default function LeadershipPage() {
                   <button
                     onClick={handleExport}
                     disabled={isExporting}
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700"
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 dark:text-gray-300 dark:bg-gray-900 dark:hover:bg-green-700"
                   >
                     <DownloadIcon className="w-4 h-4" />
                     <span className="hidden sm:inline">Export</span>
@@ -967,7 +967,7 @@ export default function LeadershipPage() {
               </div>
 
               {selectedTab === "applications" && isAdmin && (
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 dark:text-gray-300 dark:bg-gray-900">
                   <div className="flex flex-wrap items-center gap-2">
                     {([
                       { key: "all", label: "All" },
@@ -996,7 +996,7 @@ export default function LeadershipPage() {
                             setApplicationStatusTab(t.key);
                             setAppPage(1);
                           }}
-                          className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors ${
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors dark:text-gray-300 dark:bg-gray-900 ${
                             active
                               ? "bg-blue-600 text-white border-blue-700"
                               : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700"
@@ -1020,7 +1020,7 @@ export default function LeadershipPage() {
                         setApplicationRoleFilter(e.target.value as RoleFilter);
                         setAppPage(1);
                       }}
-                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:bg-gray-900"
                     >
                       <option value="all">All Roles</option>
                       <option value="president">President</option>
@@ -1028,7 +1028,7 @@ export default function LeadershipPage() {
                       <option value="coordinator">Coordinator</option>
                     </select>
 
-                    <label className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2">
+                    <label className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 dark:text-gray-300 dark:bg-gray-900">
                       <input
                         type="checkbox"
                         checked={hasAdditionalAchievementsFilter}
@@ -1036,9 +1036,9 @@ export default function LeadershipPage() {
                           setHasAdditionalAchievementsFilter(e.target.checked);
                           setAppPage(1);
                         }}
-                        className="h-4 w-4 text-blue-600"
+                        className="h-4 w-4 text-blue-600 dark:text-gray-300 dark:bg-gray-900"
                       />
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">With Additional Achievements</span>
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 dark:bg-gray-900">With Additional Achievements</span>
                     </label>
 
                   </div>
@@ -1061,11 +1061,11 @@ export default function LeadershipPage() {
               }
             }}
             showCloseButton={true}
-            className="max-w-[1080px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8"
+            className="max-w-[1080px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8 dark:text-gray-300 dark:bg-gray-900"
           >
             <div className="flex max-h-[80vh] flex-col ">
               <div className="p-6 overflow-y-auto">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 {pendingAction.action === "assessment"
                   ? "Assess Leadership Application"
                   : pendingAction.action === "approve"
@@ -1075,7 +1075,7 @@ export default function LeadershipPage() {
                       : "Delete Leadership Member"}
               </h3>
 
-              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 dark:bg-gray-900">
                 {pendingAction.action === "delete" ? (
                   <>Are you sure you want to delete this record? This action cannot be undone.</>
                 ) : (
@@ -1100,23 +1100,23 @@ export default function LeadershipPage() {
               </p>
 
               {pendingAction.action === "assessment" && isAdmin && (
-                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4 dark:text-gray-300 dark:bg-gray-900">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role Criteria Confirmation &amp; Marks</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Role Criteria Confirmation &amp; Marks</div>
                       <div className="text-xs text-gray-600 dark:text-gray-400">
                         Confirm mandatory criteria, select proficiency for optional criteria, and assign obtained marks (0 up to each criterion&apos;s maximum).
                       </div>
                     </div>
                     {criteriaLoading || approveDetailsLoading ? (
-                      <div className="text-xs text-gray-500">Loading...</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-300 dark:bg-gray-900">Loading...</div>
                     ) : null}
                   </div>
 
                   {criteriaItems.length === 0 && !criteriaLoading ? (
-                    <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">No criteria configured for this role.</div>
+                    <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">No criteria configured for this role.</div>
                   ) : (
-                    <div className="mt-3 overflow-x-auto [transform:rotateX(180deg)]">
+                    <div className="mt-3 overflow-x-auto [transform:rotateX(180deg)] dark:text-gray-300 dark:bg-gray-900">
                       {(() => {
                         const items = criteriaItems || [];
                         const profMap =
@@ -1152,15 +1152,15 @@ export default function LeadershipPage() {
                         return (
                           <div className="[transform:rotateX(180deg)]">
                           <table className="min-w-[920px] w-[1150px]  text-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900/10">
-                            <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10">
+                            <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900/40 z-10 dark:text-gray-300 dark:bg-gray-900">
                               <tr className="border-b border-gray-200 dark:border-gray-700">
-                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200">Requirement</th>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[110px]">Marks</th>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[160px]">Obtained Marks</th>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[210px]">Alumni</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 dark:text-gray-300 dark:bg-gray-900">Requirement</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 dark:text-gray-300 dark:bg-gray-900 w-[110px]">Marks</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 dark:text-gray-300 dark:bg-gray-900 w-[160px]">Obtained Marks</th>
+                                <th className="text-left px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 w-[210px] dark:text-gray-300 dark:bg-gray-900">Alumni</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 dark:text-gray-300 dark:bg-gray-900">
                               {items.map((c) => {
                                 const id = Number(c.id);
                                 const isMandatory = Boolean(c.is_mandatory);
@@ -1192,9 +1192,9 @@ export default function LeadershipPage() {
                                 const alumniLabel = !isMandatory && Number.isFinite(alumniRating) && alumniRating >= 1 ? proficiencyLabel(alumniRating) : "";
 
                                 return (
-                                  <tr key={id} className="bg-white dark:bg-transparent">
+                                  <tr key={id} className="bg-white dark:bg-transparent dark:text-gray-300 dark:bg-gray-900">
                                     <td className="px-4 py-3 align-top">
-                                      <div className="flex items-start gap-2">
+                                      <div className="flex items-start gap-2 dark:text-gray-300 dark:bg-gray-900">
                                         {isMandatory ? (
                                           <input
                                             type="checkbox"
@@ -1215,20 +1215,20 @@ export default function LeadershipPage() {
                                                 return next;
                                               });
                                             }}
-                                            className="mt-1 h-4 w-4 text-blue-600"
+                                            className="mt-1 h-4 w-4 text-blue-600 dark:text-gray-300 dark:bg-gray-900"
                                             aria-label="Confirm mandatory criterion"
                                           />
                                         ) : null}
 
                                         <div className="min-w-0">
                                           <div className="flex flex-wrap items-center gap-2">
-                                            <div className="font-semibold text-gray-900 dark:text-gray-100 break-words">{c.label}</div>
+                                            <div className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900 break-words">{c.label}</div>
                                             
                                           </div>
-                                          {c.description ? <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 break-words">{c.description}</div> : null}
+                                          {c.description ? <div className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900 break-words">{c.description}</div> : null}
                                           {c.has_textbox ? (
                                             <div className="mt-2">
-                                              <div className="text-[12px] font-semibold text-gray-700 dark:text-gray-200">{tbLabel}:</div>
+                                              <div className="text-[12px] font-semibold text-gray-700 dark:text-gray-200 dark:text-gray-300 dark:bg-gray-900">{tbLabel}:</div>
                                               <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
                                                 {tbValue}
                                               </div>
@@ -1237,7 +1237,7 @@ export default function LeadershipPage() {
 
                                           {!isMandatory ? (
                                             <div className="mt-3">
-                                              <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                              <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-2 dark:text-gray-300 dark:bg-gray-900">
                                                 Admin proficiency (1-5)
                                               </div>
                                               <div className="flex flex-wrap items-center gap-2">
@@ -1254,10 +1254,10 @@ export default function LeadershipPage() {
                                                           setAdminCriterionObtainedMarks((prev) => ({ ...prev, [id]: clampObtainedMark(suggested, maxScore) }));
                                                         }
                                                       }}
-                                                      className={`select-none rounded-md border px-2 py-1 text-xs font-semibold ${
+                                                      className={`select-none rounded-md border px-2 py-1 text-xs font-semibold dark:text-gray-300 dark:bg-gray-900 ${
                                                         active
-                                                          ? "border-amber-300 bg-amber-50 text-amber-800"
-                                                          : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                                                          ? "border-amber-300 bg-amber-50 text-amber-800 dark:text-gray-300 dark:bg-gray-900"
+                                                          : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50 dark:text-gray-300 dark:bg-gray-900"
                                                       }`}
                                                       aria-label={`Set rating to ${star}`}
                                                     >
@@ -1266,7 +1266,7 @@ export default function LeadershipPage() {
                                                   );
                                                 })}
                                               </div>
-                                              <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                              <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">
                                                 {currentRating ? `Selected: ${currentRating}` : "No rating"}
                                               </div>
                                             </div>
@@ -1275,13 +1275,13 @@ export default function LeadershipPage() {
                                       </div>
                                     </td>
 
-                                    <td className="px-4 py-3 align-top font-semibold text-gray-900 dark:text-gray-100">
+                                    <td className="px-4 py-3 align-top font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                                       {hasScored ? formatObtainedMarkDisplay(maxScore) : "N/A"}
                                     </td>
 
                                     <td className="px-4 py-3 align-top">
                                       {!isSelected || !hasScored ? (
-                                        <div className="font-semibold text-gray-500">—</div>
+                                        <div className="font-semibold text-gray-500 dark:text-gray-300 dark:bg-gray-900">—</div>
                                       ) : (
                                         <input
                                           type="number"
@@ -1303,40 +1303,40 @@ export default function LeadershipPage() {
                                             if (!Number.isFinite(num)) return;
                                             setAdminCriterionObtainedMarks((p) => ({ ...p, [id]: clampObtainedMark(num, maxScore) }));
                                           }}
-                                          className="w-full max-w-[160px] rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
+                                          className="w-full max-w-[160px] rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm dark:text-gray-300 dark:bg-gray-900"
                                         />
                                       )}
                                     </td>
 
                                     <td className="px-4 py-3 align-top">
                                       {alumniYes ? (
-                                        <div className="text-gray-900 dark:text-gray-100">
+                                        <div className="text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                                           <div className="font-semibold">✔ YES</div>
                                           {!isMandatory ? (
-                                            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300">
+                                            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 dark:text-gray-300 dark:bg-gray-900">
                                               {alumniStars ? (
                                                 <span>
                                                   <span className="font-semibold text-amber-700">{alumniStars}</span>
                                                   {alumniLabel ? ` (${alumniLabel} - ${alumniRating})` : ""}
                                                 </span>
                                               ) : (
-                                                <span className="text-gray-500">No rating</span>
+                                                <span className="text-gray-500 dark:text-gray-300 dark:bg-gray-900">No rating</span>
                                               )}
                                             </div>
                                           ) : null}
                                         </div>
                                       ) : (
-                                        <div className="text-gray-900 dark:text-gray-100">
-                                          <div className="font-semibold text-gray-500">NO</div>
+                                        <div className="text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
+                                          <div className="font-semibold text-gray-500 dark:text-gray-300 dark:bg-gray-900">NO</div>
                                           {!isMandatory ? (
-                                            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300">
+                                            <div className="mt-1 text-xs text-gray-700 dark:text-gray-300 dark:text-gray-300 dark:bg-gray-900">
                                               {alumniStars ? (
                                                 <span>
                                                   <span className="font-semibold text-amber-700">{alumniStars}</span>
                                                   {alumniLabel ? ` (${alumniLabel} - ${alumniRating})` : ""}
                                                 </span>
                                               ) : (
-                                                <span className="text-gray-500">No rating</span>
+                                                <span className="text-gray-500 dark:text-gray-300 dark:bg-gray-900">No rating</span>
                                               )}
                                             </div>
                                           ) : null}
@@ -1348,14 +1348,14 @@ export default function LeadershipPage() {
                               })}
 
                               <tr className="bg-gray-50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
-                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Result</td>
-                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Result</td>
+                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                                   {totalMarks > 0 ? formatObtainedMarkDisplay(totalMarks) : "-"}
                                 </td>
-                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
+                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                                   {totalMarks > 0 ? formatObtainedMarkDisplay(totalObtained) : "-"}
                                 </td>
-                                <td className="px-4 py-3" />
+                                <td className="px-4 py-3 dark:text-gray-300 dark:bg-gray-900" />
                               </tr>
                             </tbody>
                           </table>
@@ -1368,41 +1368,41 @@ export default function LeadershipPage() {
               )}
 
               {pendingAction.action === "assessment" && isAdmin && (
-                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Assessment Remarks (optional)</div>
+                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4 dark:text-gray-300 dark:bg-gray-900">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Assessment Remarks (optional)</div>
                   <div className="mt-2">
                     <textarea
                       value={assessmentRemarks}
                       onChange={(e) => setAssessmentRemarks(e.target.value)}
                       placeholder="Add any remarks for the assessment (optional)."
-                      className="w-full min-h-[110px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full min-h-[110px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:bg-gray-900"
                     />
                   </div>
                 </div>
               )}
 
               {pendingAction.action === "unapprove" && (
-                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Unapproval Remarks (optional)</div>
+                <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4 dark:text-gray-300 dark:bg-gray-900">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Unapproval Remarks (optional)</div>
                   <div className="mt-2">
                     <textarea
                       value={unapprovalRemarks}
                       onChange={(e) => setUnapprovalRemarks(e.target.value)}
                       placeholder="Add any remarks for unapproval (optional)."
-                      className="w-full min-h-[110px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full min-h-[110px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:bg-gray-900"
                     />
                   </div>
                 </div>
               )}
 
               {pendingAction.action === "approve" && (
-                <div className="mt-5">
+                <div className="mt-5 dark:text-gray-300 dark:bg-gray-900">
                   {(() => {
                     const alumniId = pendingAction.alumniId;
                     const recipientEmail = pendingAction.email;
                     if (!alumniId || !recipientEmail) {
                       return (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:text-gray-300 dark:bg-gray-900">
                           No recipient email found for this alumni. You can still confirm the action, but you cannot send an email.
                         </div>
                       );

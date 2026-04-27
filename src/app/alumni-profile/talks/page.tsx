@@ -24,8 +24,8 @@ export default async function AlumniTalksPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
+      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
         {(() => {
@@ -39,13 +39,13 @@ export default async function AlumniTalksPage({ searchParams }: { searchParams: 
 
         <PageBanner title="Alumni Talks" />
 
-        <div className="min-w-screen flex justify-center mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="w-full max-w-6xl">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 md:p-7">
-              <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="w-full flex justify-center mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:bg-gray-900 dark:text-gray-100">
+          <div className="w-full max-w-6xl dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 md:p-7 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+              <div className="flex items-center justify-between gap-4 mb-6 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                 <div className="flex items-center gap-4">
                   <BackButton />
-                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Alumni Talks</h1>
+                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-gray-100">Alumni Talks</h1>
                 </div>
 
                 <AlumniTalksApplyButton />

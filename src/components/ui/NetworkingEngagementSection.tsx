@@ -123,12 +123,12 @@ export default function NetworkingEngagementSection({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-4 sm:gap-5 md:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 bg-slate-100 gap-4 sm:gap-5 md:gap-6 dark:bg-gray-950">
       {cards.map((card, idx) => (
-        <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden">
+        <div key={idx} className="bg-white w-full shadow-sm border flex flex-col justify-between items-center border-gray-200 rounded-lg overflow-hidden dark:bg-gray-900 dark:border-gray-700">
           <div className="p-3 sm:p-4 md:p-5 text-center flex flex-col justify-between min-h-[10rem] sm:min-h-[12rem]">
-            <h3 className="text-base sm:text-lg font-semibold text-slate-900">{card.title}</h3>
-            <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">{card.decription}</p>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-gray-100">{card.title}</h3>
+            <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-gray-400">{card.decription}</p>
             {card.title === "Success Story" && typeof successStoryCount === "number" && (
               <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-yellow-50 text-yellow-700 px-2.5 py-1 border border-yellow-200">
                 <span className="text-xs">All Stories: {successStoryCount}</span>

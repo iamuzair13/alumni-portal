@@ -289,47 +289,47 @@ export const AlumniTalksTab: React.FC = () => {
           <Table className="min-w-full">
             <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
-                <TableCell isHeader className="px-4 py-3 text-left text-xs font-semibold text-slate-700 w-12">{null}</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">SAP ID / Reg No</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Full Name</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Email</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Faculty</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Department</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Status</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Topic</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Mode</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Availability</TableCell>
-                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Actions</TableCell>
+                <TableCell isHeader className="px-4 py-3 text-left text-xs font-semibold text-slate-700 w-12 dark:text-gray-300">{null}</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[120px]">SAP/Reg.</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Full Name</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Email</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Faculty</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Department</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Status</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300">Topic</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Mode</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300">Availability</TableCell>
+                <TableCell className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-gray-300 w-[200px]">Actions</TableCell>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skeleton-${i}`}>
-                    <TableCell className="px-2 py-3"><div className="h-4 w-4 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-2 py-3"><div className="h-4 w-4 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
                     <TableCell className="px-4 py-3"><div className="h-4 w-24 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-20 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-20 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded" /></TableCell>
-                    <TableCell className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 animate-pulse rounded" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-20 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-40 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-20 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
+                    <TableCell className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 animate-pulse rounded dark:bg-gray-700" /></TableCell>
                   </TableRow>
                 ))
               )}
               {!isLoading && isError && (
                 <TableRow>
-                  <TableCell colSpan={11} className="px-5 py-6 text-center text-red-600">
+                  <TableCell colSpan={11} className="px-5 py-6 text-center text-red-600 dark:text-red-400">
                     {error?.message || "Failed to load data"}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !isError && pageItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="px-5 py-8 text-center text-gray-600">
+                  <TableCell colSpan={11} className="px-5 py-8 text-center text-gray-600 dark:text-gray-400">
                     No alumni talks found
                   </TableCell>
                 </TableRow>
@@ -353,7 +353,7 @@ export const AlumniTalksTab: React.FC = () => {
                 
                 return (
                   <React.Fragment key={rowId}>
-                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
+                    <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20 dark:text-gray-300">
                       <TableCell className="px-2 py-3">
                         <button
                           type="button"
@@ -368,11 +368,11 @@ export const AlumniTalksTab: React.FC = () => {
                               return next;
                             });
                           }}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          className="p-1 hover:bg-gray-200 rounded transition-colors dark:hover:bg-gray-700"
                           aria-label={isExpanded ? "Collapse" : "Expand"}
                         >
                           <svg
-                            className={`w-4 h-4 text-gray-600 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            className={`w-4 h-4 text-gray-600 transition-transform dark:text-gray-400 ${isExpanded ? 'rotate-90' : ''}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -381,20 +381,20 @@ export const AlumniTalksTab: React.FC = () => {
                           </svg>
                         </button>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs font-mono text-slate-700">
+                      <TableCell className="px-4 py-3 text-xs font-mono text-slate-700 dark:text-gray-300">
                         {item.sapid || item.registrationNo || "-"}
                         {item.sapid && item.registrationNo && (
-                          <span className="block text-xs text-gray-500">{item.registrationNo}</span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{item.registrationNo}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs font-semibold text-slate-900">{item.name}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs font-semibold text-slate-900 dark:text-gray-100">{item.name}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
-                        <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline truncate block max-w-[200px]">
+                        <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline truncate block max-w-[200px] dark:text-blue-400">
                           {item.email || "-"}
                         </a>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-slate-700">{item.faculty || "-"}</TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-slate-700">{item.department || "-"}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-slate-700 dark:text-gray-300">{item.faculty || "Null"}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-slate-700 dark:text-gray-300">{item.department || "Null"}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
                         <Badge size="sm" color={statusBadgeColor(item.status)}>
                           {prettyStatus(item.status)}
@@ -406,14 +406,14 @@ export const AlumniTalksTab: React.FC = () => {
                             {item.topics.slice(0, 2).map((topic, i) => (
                               <Badge key={i} size="sm" color="info">{topic}</Badge>
                             ))}
-                            {item.topics.length > 2 && <span className="text-xs text-gray-500">+{item.topics.length - 2}</span>}
+                            {item.topics.length > 2 && <span className="text-xs text-gray-500 dark:text-gray-400">+{item.topics.length - 2}</span>}
                           </div>
                         ) : "-"}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-slate-700">{item.mode || "-"}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-slate-700 dark:text-gray-300">{item.mode || "Null"}</TableCell>
                       <TableCell className="px-4 py-3 text-xs">
                         {availabilityOptions.length > 0 ? (
-                          <select className="text-xs border border-gray-300 rounded px-2 py-1 bg-white">
+                          <select className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
                             {availabilityOptions.map((opt, i) => (
                               <option key={i} value={i}>
                                 {opt.date} ({opt.timings})
@@ -426,7 +426,7 @@ export const AlumniTalksTab: React.FC = () => {
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2">
                             <select
-                              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                              className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                               value={confirmOptionById[item.id] ?? ""}
                               onChange={(e) => setConfirmOptionById((p) => ({ ...p, [item.id]: Number(e.target.value) }))}
                             >
@@ -446,7 +446,7 @@ export const AlumniTalksTab: React.FC = () => {
                                   emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_CONFIRM,
                                 })
                               }
-                              className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                              className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-700"
                             >
                               Confirm
                             </button>
@@ -464,7 +464,7 @@ export const AlumniTalksTab: React.FC = () => {
                                   emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_MARK_CONDUCTED,
                                 })
                               }
-                              className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                              className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-50 dark:hover:text-gray-700"
                             >
                               Mark Conducted
                             </button>
@@ -479,7 +479,7 @@ export const AlumniTalksTab: React.FC = () => {
                                   emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_CANCEL,
                                 })
                               }
-                              className="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                              className="rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-100 dark:hover:bg-rose-100 dark:hover:text-rose-700"
                             >
                               Cancel
                             </button>
@@ -487,8 +487,8 @@ export const AlumniTalksTab: React.FC = () => {
                               type="button"
                               disabled={isBusy}
                               onClick={() => openDelete(item)}
-                              className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
-                            >
+                              className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-100 dark:hover:bg-rose-50 dark:hover:text-rose-700"
+                            > 
                               Delete
                             </button>
                           </div>
@@ -496,30 +496,30 @@ export const AlumniTalksTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
+                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10 dark:text-gray-300">
                         <TableCell colSpan={11} className="px-4 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                             {/* Basic Info */}
                             <div className="space-y-2">
-                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-slate-200">Basic Information</h4>
+                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-gray-300">Basic Information</h4>
                               <div><span className="font-medium">Status:</span> {prettyStatus(item.status)}</div>
                               {item.alumniNote ? (
                                 <div className="mt-2">
                                   <span className="font-medium">Alumni Note:</span>
-                                  <p className="mt-1 text-gray-600 whitespace-pre-wrap">{item.alumniNote}</p>
+                                  <p className="mt-1 text-gray-600 whitespace-pre-wrap dark:text-gray-400">{item.alumniNote}</p>
                                 </div>
                               ) : null}
                               {item.briefOutline && (
                                 <div className="mt-2">
                                   <span className="font-medium">Brief Outline:</span>
-                                  <p className="mt-1 text-gray-600 whitespace-pre-wrap">{item.briefOutline}</p>
+                                  <p className="mt-1 text-gray-600 whitespace-pre-wrap dark:text-gray-400">{item.briefOutline}</p>
                                 </div>
                               )}
                             </div>
                             
                             {/* Availability Dates */}
                             <div className="space-y-2">
-                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-slate-200">Availability Dates</h4>
+                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-gray-300">Availability Dates</h4>
                               {availabilityOptions.length > 0 ? (
                                 availabilityOptions.map((opt, i) => (
                                   <div key={i} className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
@@ -529,57 +529,57 @@ export const AlumniTalksTab: React.FC = () => {
                                   </div>
                                 ))
                               ) : (
-                                <div className="text-gray-500">No availability dates</div>
+                                <div className="text-gray-500 dark:text-gray-400">No availability dates</div>
                               )}
                             </div>
                             
                             {/* Variations */}
                             <div className="space-y-2">
-                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-slate-200">Schedule</h4>
+                              <h4 className="mb-2 font-semibold text-slate-700 dark:text-gray-300">Schedule</h4>
                               {(item.confirmedDate || item.confirmedTimings) ? (
                                 <div className="p-2 bg-white rounded border border-emerald-200">
                                   <div className="font-medium text-emerald-800">Confirmed</div>
                                   <div className="text-gray-700">{item.confirmedDate || "-"} {item.confirmedTimings ? `(${item.confirmedTimings})` : ""}</div>
                                 </div>
                               ) : (
-                                <div className="text-gray-500">No confirmed schedule</div>
+                                <div className="text-gray-500 dark:text-gray-400">No confirmed schedule</div>
                               )}
                               {(item.adminProposedDate || item.adminProposedTimings) ? (
-                                <div className="p-2 bg-white rounded border border-blue-200">
+                                <div className="p-2 bg-white rounded border border-blue-200 dark:border-blue-600 dark:bg-gray-800 dark:text-gray-100">
                                   <div className="font-medium text-blue-800">Admin Proposed</div>
                                   <div className="text-gray-700">{item.adminProposedDate || "-"} {item.adminProposedTimings ? `(${item.adminProposedTimings})` : ""}</div>
-                                  {item.adminNote ? <div className="mt-1 text-gray-700 whitespace-pre-wrap">{item.adminNote}</div> : null}
+                                  {item.adminNote ? <div className="mt-1 text-gray-700 whitespace-pre-wrap dark:text-gray-400">{item.adminNote}</div> : null}
                                 </div>
                               ) : null}
 
-                                <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
-                                <div className="mb-2 font-medium text-slate-700 dark:text-slate-200">Propose new slot</div>
+                                <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                                <div className="mb-2 font-medium text-slate-700 dark:text-slate-200 dark:text-gray-100">Propose new slot</div>
                                 <div className="grid grid-cols-1 gap-2">
                                   <input
                                     type="date"
                                     value={proposeDateById[item.id] ?? ""}
                                     onChange={(e) => setProposeDateById((p) => ({ ...p, [item.id]: e.target.value }))}
-                                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                   />
                                   <div className="grid grid-cols-2 gap-2">
                                     <input
                                       type="time"
                                       value={proposeStartById[item.id] ?? ""}
                                       onChange={(e) => setProposeStartById((p) => ({ ...p, [item.id]: e.target.value }))}
-                                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     />
                                     <input
                                       type="time"
                                       value={proposeEndById[item.id] ?? ""}
                                       onChange={(e) => setProposeEndById((p) => ({ ...p, [item.id]: e.target.value }))}
-                                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                      className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     />
                                   </div>
                                   <textarea
                                     rows={2}
                                     value={proposeNoteById[item.id] ?? ""}
                                     onChange={(e) => setProposeNoteById((p) => ({ ...p, [item.id]: e.target.value }))}
-                                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     placeholder="Optional note"
                                   />
                                   <button
@@ -597,7 +597,7 @@ export const AlumniTalksTab: React.FC = () => {
                                         emailActionType: EMAIL_ACTION_TYPE.ALUMNI_TALK_PROPOSE_SLOT,
                                       });
                                     }}
-                                    className="rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                                    className="rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
                                   >
                                     Propose
                                   </button>
@@ -608,7 +608,7 @@ export const AlumniTalksTab: React.FC = () => {
                             {/* Areas */}
                             {item.areas.length > 0 && (
                               <div className="space-y-2">
-                                <h4 className="font-semibold text-slate-700 mb-2">Areas</h4>
+                                <h4 className="font-semibold text-slate-700 mb-2 dark:text-gray-300">Areas</h4>
                                 <div className="flex flex-wrap gap-1">
                                   {item.areas.map((area, i) => (
                                     <Badge key={i} size="sm" color="success">{area}</Badge>
@@ -619,7 +619,7 @@ export const AlumniTalksTab: React.FC = () => {
 
                             {/* Alumni Profile & ERP */}
                             <div className="space-y-2 md:col-span-3">
-                              <h4 className="font-semibold text-slate-700 mb-2">Alumni Profile & ERP</h4>
+                              <h4 className="font-semibold text-slate-700 mb-2 dark:text-gray-300">Alumni Profile & ERP</h4>
                               <div className="flex flex-row justify-start">
                                 <AlumniExpandableDetails
                                   sapId={item.sapid || item.registrationNo || ""}
@@ -651,14 +651,14 @@ export const AlumniTalksTab: React.FC = () => {
           </Table>
         </SyncedTableScroll>
         <div className="flex items-center justify-between p-4 border-t">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
             Showing {pageItems.length ? start + 1 : 0}-{pageItems.length ? start + pageItems.length : 0} of {total}
           </span>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-500" htmlFor="talks-page-size">Items per page:</label>
+            <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="talks-page-size">Items per page:</label>
             <select
               id="talks-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
             >
@@ -681,8 +681,8 @@ export const AlumniTalksTab: React.FC = () => {
         className="max-w-xl mx-auto"
       >
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{pendingAction?.title || "Confirm Action"}</h2>
-          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{pendingAction?.title || "Confirm Action"}</h2>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-100">
             This action will update the talk status for <strong>{pendingAction?.alumniName || "Alumni"}</strong>.
           </p>
 
@@ -694,10 +694,10 @@ export const AlumniTalksTab: React.FC = () => {
                   alumniName: pendingAction.alumniName,
                 });
                 return (
-                  <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4 dark:text-gray-100">
                     <div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview Email</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">Preview Email</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 dark:text-gray-100">Preview and edit before sending</div>
                     </div>
                     <SendEmailButton
                       alumniId={pendingAction.alumniId}
@@ -711,7 +711,7 @@ export const AlumniTalksTab: React.FC = () => {
               })()}
             </div>
           ) : (
-            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:text-gray-100">
               No recipient email found for this alumni. You can still confirm the action, but you cannot send an email.
             </div>
           )}
@@ -723,7 +723,7 @@ export const AlumniTalksTab: React.FC = () => {
                 confirmModal.closeModal();
                 setPendingAction(null);
               }}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-100"
             >
               Cancel
             </button>
@@ -735,7 +735,7 @@ export const AlumniTalksTab: React.FC = () => {
                 confirmModal.closeModal();
                 setPendingAction(null);
               }}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:text-white dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               Confirm
             </button>

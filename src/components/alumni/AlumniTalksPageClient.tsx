@@ -99,7 +99,7 @@ export default function AlumniTalksPageClient() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 dark:bg-gray-900 dark:text-gray-100">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (
@@ -119,7 +119,7 @@ export default function AlumniTalksPageClient() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600" htmlFor="talks-search">Search:</label>
+          <label className="text-sm text-gray-600 dark:text-gray-400" htmlFor="talks-search">Search:</label>
           <input
             id="talks-search"
             type="text"
@@ -146,7 +146,7 @@ export default function AlumniTalksPageClient() {
       )}
 
       {!isLoading && !isError && filtered.length === 0 && (
-        <div className="text-center py-10 text-gray-600">No talks found.</div>
+        <div className="text-center py-10 text-gray-600 dark:text-gray-400">No talks found.</div>
       )}
 
       {!isLoading && !isError && filtered.length > 0 && (

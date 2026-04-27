@@ -367,7 +367,7 @@ export const JobsTab: React.FC = () => {
             <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("title")}
                 >
                   <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("company")}
                 >
                   <div className="flex items-center gap-2">
@@ -415,7 +415,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("category")}
                 >
                   <div className="flex items-center gap-2">
@@ -438,11 +438,11 @@ export const JobsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Location
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("deadline")}
                 >
                   <div className="flex items-center gap-2">
@@ -466,7 +466,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("status")}
                 >
                   <div className="flex items-center gap-2">
@@ -490,7 +490,7 @@ export const JobsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("createdAt")}
                 >
                   <div className="flex items-center gap-2">
@@ -513,7 +513,7 @@ export const JobsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Actions
                 </TableCell>
               </TableRow>
@@ -523,7 +523,7 @@ export const JobsTab: React.FC = () => {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`job-skeleton-${i}`}>
                     {Array.from({ length: 8 }).map((__, j) => (
-                      <TableCell key={j} className="px-6 py-4">
+                      <TableCell key={j} className="px-6 py-4 dark:text-gray-300 dark:bg-gray-900">
                         <div className="h-5 w-24 bg-gray-200 animate-pulse rounded" />
                       </TableCell>
                     ))}
@@ -532,14 +532,14 @@ export const JobsTab: React.FC = () => {
               )}
               {!isLoading && error && (
                 <TableRow>
-                  <TableCell colSpan={8} className="px-5 py-6 text-center text-red-600">
+                  <TableCell colSpan={8} className="px-5 py-6 text-center text-red-600 dark:text-gray-300 dark:bg-gray-900">
                     {error.message || "Failed to load jobs"}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !error && sortedItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="px-5 py-8 text-center text-gray-600">
+                  <TableCell colSpan={8} className="px-5 py-8 text-center text-gray-600 dark:text-gray-300 dark:bg-gray-900">
                     No jobs found
                   </TableCell>
                 </TableRow>
@@ -547,27 +547,27 @@ export const JobsTab: React.FC = () => {
               {!isLoading &&
                 !error &&
                 sortedItems.map((item) => (
-                  <TableRow key={item.id} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
-                    <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">
+                  <TableRow key={item.id} className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20 dark:text-gray-300 dark:bg-gray-900">
+                    <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-300 dark:bg-gray-900">
                       {item.title || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.company || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.category || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.location || "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       {formatDateString(item.deadline, {
                         year: "numeric",
                         month: "short",
                         day: "numeric",
                       })}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       {(() => {
                         const status = getJobStatus(item.deadline);
                         return (
@@ -583,7 +583,7 @@ export const JobsTab: React.FC = () => {
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       {item.createdAt
                         ? new Date(item.createdAt).toLocaleDateString("en-PK", {
                             year: "numeric",
@@ -592,7 +592,7 @@ export const JobsTab: React.FC = () => {
                           })
                         : "-"}
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-sm text-slate-700">
+                    <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -639,7 +639,7 @@ export const JobsTab: React.FC = () => {
           </Table>
         </SyncedTableScroll>
         <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-gray-500 dark:text-gray-300 dark:bg-gray-900">
             Showing{" "}
             {sortedItems.length
               ? (currentPage - 1) * pageSize + 1
@@ -648,12 +648,12 @@ export const JobsTab: React.FC = () => {
             {Math.min((currentPage - 1) * pageSize + sortedItems.length, total)} of {total}
           </span>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-500" htmlFor="job-page-size">
+            <label className="text-sm text-gray-500 dark:text-gray-300 dark:bg-gray-900" htmlFor="job-page-size">
               Items per page:
             </label>
             <select
               id="job-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900"
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));
@@ -697,42 +697,42 @@ export const JobsTab: React.FC = () => {
             viewModal.closeModal();
             setViewJobId(null);
           }}
-          className="max-w-2xl"
+          className="max-w-2xl dark:text-gray-300 dark:bg-gray-900"
         >
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 dark:text-gray-300 dark:bg-gray-900">
               Job Details
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Title
                 </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">{selectedJob.title || "-"}</p>
+                <p className="text-sm text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{selectedJob.title || "-"}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Company
                 </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">{selectedJob.company || "-"}</p>
+                <p className="text-sm text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{selectedJob.company || "-"}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Category
                 </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">{selectedJob.category || "-"}</p>
+                <p className="text-sm text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{selectedJob.category || "-"}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Location
                 </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">{selectedJob.location || "-"}</p>
+                <p className="text-sm text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{selectedJob.location || "-"}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Deadline
                 </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
+                <p className="text-sm text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                   {formatDateString(selectedJob.deadline, {
                     year: "numeric",
                     month: "long",
@@ -741,7 +741,7 @@ export const JobsTab: React.FC = () => {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Status
                 </label>
                 {(() => {
@@ -761,7 +761,7 @@ export const JobsTab: React.FC = () => {
               </div>
               {selectedJob.jobLink && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                     Job Link
                   </label>
                   <a
@@ -785,10 +785,10 @@ export const JobsTab: React.FC = () => {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-300 dark:bg-gray-900">
                   Created At
                 </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100">
+                <p className="text-sm text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                   {selectedJob.createdAt
                     ? new Date(selectedJob.createdAt).toLocaleDateString("en-PK", {
                         year: "numeric",
@@ -832,11 +832,11 @@ export const JobsTab: React.FC = () => {
           <div className="p-6">
             <div className="flex items-center gap-4 mb-4">
               <TrashBinIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 Delete Job
               </h3>
             </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 dark:text-gray-300 dark:bg-gray-900 dark:bg-gray-900">
               Are you sure you want to delete this job? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">

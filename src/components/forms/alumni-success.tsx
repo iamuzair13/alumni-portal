@@ -49,10 +49,10 @@ const schema = z.object({
 
 type FormVals = z.infer<typeof schema>;
 
-const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all";
-const labelBase = "mb-2 text-sm text-slate-900 font-medium block";
-const errorText = "mt-1 text-xs text-rose-600";
-const buttonPrimary = "px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60";
+const inputBase = "px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
+const labelBase = "mb-2 text-sm text-slate-900 font-medium block dark:text-gray-100";
+const errorText = "mt-1 text-xs text-rose-600 dark:text-rose-400";
+const buttonPrimary = "px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700";
 
 export default function AlumniSuccessForm({ 
   sapId, 
@@ -118,7 +118,7 @@ export default function AlumniSuccessForm({
     },
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700 dark:outline-gray-700",
       },
     },
     // Ensure editor is editable
@@ -296,16 +296,16 @@ export default function AlumniSuccessForm({
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Success Story</h3>
       <p className="text-sm text-gray-600 dark:text-gray-400">Share your success story with the alumni community.</p>
 
-      <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni success form">
+      <form className="max-w-4xl mx-auto mt-4 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100" onSubmit={handleSubmit(onSubmit)} aria-label="Alumni success form">
         <div className="grid sm:grid-cols-2 gap-6">
           {/* Name */}
           <div>
             <label htmlFor="name" className={labelBase}>Name</label>
-            <div className="relative flex items-center">
+            <div className="relative flex items-center  ">
               <Controller
                 name="name"
                 control={control}
@@ -442,7 +442,7 @@ export default function AlumniSuccessForm({
           </div>
 
           {/* Story - Tiptap Editor */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <label htmlFor="storyHtml" className={labelBase}>
               Your Success Story
               <span className="text-rose-600 ml-1">*</span>
@@ -451,14 +451,14 @@ export default function AlumniSuccessForm({
               name="storyHtml"
               control={control}
               render={({ field }) => (
-                <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+                <div className="bg-white border border-gray-200 rounded-md overflow-hidden dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                   {/* Toolbar - Only show if editor is ready */}
                   {editor && (
-                    <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+                    <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("heading", { level: 1 }) ? "bg-gray-300" : ""
                   }`}
                   title="Heading 1"
@@ -469,7 +469,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("heading", { level: 2 }) ? "bg-gray-300" : ""
                   }`}
                   title="Heading 2"
@@ -480,7 +480,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("heading", { level: 3 }) ? "bg-gray-300" : ""
                   }`}
                   title="Heading 3"
@@ -492,7 +492,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleBold().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 font-bold transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("bold") ? "bg-gray-300" : ""
                   }`}
                   title="Bold"
@@ -503,7 +503,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleItalic().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 italic transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("italic") ? "bg-gray-300" : ""
                   }`}
                   title="Italic"
@@ -514,7 +514,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleUnderline().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 underline transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("underline") ? "bg-gray-300" : ""
                   }`}
                   title="Underline"
@@ -526,7 +526,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleBulletList().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("bulletList") ? "bg-gray-300" : ""
                   }`}
                   title="Bullet List"
@@ -537,7 +537,7 @@ export default function AlumniSuccessForm({
                 <button
                   type="button"
                   onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("orderedList") ? "bg-gray-300" : ""
                   }`}
                   title="Numbered List"
@@ -554,7 +554,7 @@ export default function AlumniSuccessForm({
                       editor.chain().focus().setLink({ href: url.trim() }).run();
                     }
                   }}
-                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded hover:bg-gray-200 transition-colors dark:hover:bg-gray-700 ${
                     editor.isActive("link") ? "bg-gray-300" : ""
                   }`}
                   title="Insert Link"

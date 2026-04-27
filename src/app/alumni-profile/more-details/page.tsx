@@ -380,16 +380,16 @@ function MoreDetailsContent() {
     return (
       <>
         <AppHeader />
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="bg-white rounded-lg shadow-sm p-8">
+            <div className="bg-white rounded-lg shadow-sm p-8 dark:bg-gray-900 dark:border dark:border-gray-700">
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <svg className="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <p className="text-sm text-gray-600">Loading profile details...</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Loading profile details...</p>
                 </div>
               </div>
             </div>
@@ -403,16 +403,16 @@ function MoreDetailsContent() {
     return (
       <>
         <AppHeader />
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="bg-white rounded-lg shadow-sm p-8">
+            <div className="bg-white rounded-lg shadow-sm p-8 dark:bg-gray-900 dark:border dark:border-gray-700">
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <svg className="h-12 w-12 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="text-sm text-red-600">Failed to load profile details</p>
-                  <p className="text-xs text-gray-500">{error instanceof Error ? error.message : "Unknown error"}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{error instanceof Error ? error.message : "Unknown error"}</p>
                   <div className="mt-4">
                     <BackButton />
                   </div>
@@ -592,21 +592,21 @@ function MoreDetailsContent() {
         position="top-right"
         containerStyle={{ top: 80, zIndex: 100000 }}
       />
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 dark:text-gray-300 dark:bg-gray-900">
         <PageBanner title="Profile Details" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 dark:text-gray-300 dark:bg-gray-900 dark:border border-gray-700">
           <div className="mb-6">
             <BackButton />
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-900 dark:border dark:border-gray-700">
             <div className="p-6 sm:p-8">
               <div className="flex flex-col lg:flex-row gap-8">
                 <div className="w-full lg:w-72 flex-shrink-0">
-                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                     <div className="flex flex-col items-center">
-                      <div className="relative w-32 h-32 rounded-full overflow-hidden border border-gray-200 bg-white">
+                      <div className="relative w-32 h-32 rounded-full overflow-hidden border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
                         <Image
                           src={normalizeImagePath(data.image1)}
                           alt={data.alumniname || "Profile"}
@@ -615,8 +615,8 @@ function MoreDetailsContent() {
                         />
                       </div>
                       <div className="mt-4 text-center">
-                        <div className="text-lg font-semibold text-gray-900">{data.alumniname || "-"}</div>
-                        <div className="text-sm text-gray-600">{data.sapid || data.registrationno || ""}</div>
+                        <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{data.alumniname || "-"}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">{data.sapid || data.registrationno || ""}</div>
                       </div>
                     </div>
                   </div>
@@ -638,9 +638,9 @@ function MoreDetailsContent() {
 
                   <div className="space-y-8">
                     {sections.map((section) => (
-                      <div key={section.title} className="border border-gray-200 rounded-xl overflow-hidden">
-                        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
-                          <h3 className="text-sm font-semibold text-gray-800">{section.title}</h3>
+                      <div key={section.title} className="border border-gray-200 rounded-xl overflow-hidden dark:border-gray-700">
+                        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{section.title}</h3>
                         </div>
                         <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
                           {section.fields.map((field) => {
@@ -731,7 +731,7 @@ function MoreDetailsContent() {
                       type="button"
                       onClick={handleCancelAll}
                       disabled={isSavingAll || Object.keys(pendingChanges).length === 0}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                       Cancel Changes
                     </button>
@@ -746,29 +746,29 @@ function MoreDetailsContent() {
                   </div>
 
                   {isAlumniUser && (
-                    <div className="mt-8 rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="mt-8 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <h3 className="text-base font-semibold text-slate-900">Change Password</h3>
-                          <p className="mt-1 text-sm text-slate-600">For security, you must enter your current password.</p>
+                          <h3 className="text-base font-semibold text-slate-900 dark:text-gray-100">Change Password</h3>
+                          <p className="mt-1 text-sm text-slate-600 dark:text-gray-400">For security, you must enter your current password.</p>
                         </div>
                       </div>
 
                       <div className="mt-4 grid grid-cols-1 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700">Current Password</label>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300">Current Password</label>
                           <div className="mt-1 flex gap-2">
                             <input
                               type={showCurrentPassword ? "text" : "password"}
                               value={currentPassword}
                               onChange={(e) => setCurrentPassword(e.target.value)}
-                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus-visible:ring-blue-500"
                               disabled={isChangingPassword}
                             />
                             <button
                               type="button"
                               onClick={() => setShowCurrentPassword((v) => !v)}
-                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                             >
                               {showCurrentPassword ? "Hide" : "Show"}
                             </button>
@@ -776,19 +776,19 @@ function MoreDetailsContent() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-slate-700">New Password</label>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300">New Password</label>
                           <div className="mt-1 flex gap-2">
                             <input
                               type={showNewPassword ? "text" : "password"}
                               value={newPassword}
                               onChange={(e) => setNewPassword(e.target.value)}
-                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus-visible:ring-blue-500"
                               disabled={isChangingPassword}
                             />
                             <button
                               type="button"
                               onClick={() => setShowNewPassword((v) => !v)}
-                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                             >
                               {showNewPassword ? "Hide" : "Show"}
                             </button>
@@ -796,19 +796,19 @@ function MoreDetailsContent() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-slate-700">Confirm New Password</label>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-gray-300">Confirm New Password</label>
                           <div className="mt-1 flex gap-2">
                             <input
                               type={showConfirmPassword ? "text" : "password"}
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
-                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-theme-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus-visible:ring-blue-500"
                               disabled={isChangingPassword}
                             />
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword((v) => !v)}
-                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                             >
                               {showConfirmPassword ? "Hide" : "Show"}
                             </button>

@@ -52,17 +52,17 @@ export default function BenefitCard({
     <Link
       href={href}
       onClick={handleClick}
-      className={`group bg-white border-2 border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${isNavigating ? "opacity-70 pointer-events-none" : ""}`}
+      className={`group bg-white border-2 border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer transform hover:-translate-y-1 dark:bg-gray-900 dark:border-gray-700 dark:hover:border-gray-600 ${isNavigating ? "opacity-70 pointer-events-none" : ""}`}
     >
       <div className={`flex items-center bg-gradient-to-br gap-2 ${gradient} p-4 sm:p-5 md:p-6 border-b-2 ${borderColor}`}>
         <div className={`w-4 h-4 sm:w-4 sm:h-4 md:w-6 md:h-6 ${iconBg} rounded-xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
           {icon}
         </div>
-        <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors">{title}</h4>
+        <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-2 group-hover:text-slate-700 transition-colors dark:text-gray-900 dark:group-hover:text-gray-900 ">{title}</h4>
       </div>
       <div className="p-4 sm:p-5 md:p-6">
-        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{description}</p>
-        <div className="mt-4 flex items-center text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-gray-400">{description}</p>
+        <div className="mt-4 flex items-center text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors dark:text-gray-300 dark:group-hover:text-gray-100">
           {isNavigating ? (
             <>
               <LoadingSpinner size="sm" className="text-slate-700 mr-2" />

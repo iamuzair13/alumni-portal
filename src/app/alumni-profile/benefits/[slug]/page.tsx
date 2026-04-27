@@ -12,15 +12,15 @@ const benefitsData: Record<string, { title: string; description: string; content
     description: "Avail special tuition and admission discounts offered to UOL alumni.",
     content: `
       <div class="mb-8">
-        <h3 class="text-2xl font-bold text-gray-900 mb-3">Academic: Fee Discounts & Scholarships</h3>
-        <p class="text-gray-700 text-lg leading-relaxed mb-6">As a valued UOL alumnus, you are eligible for academic scholarships and fee discounts on all programs and courses. These benefits support your continued learning and professional growth while rewarding your connection with UOL.</p>
+        <h3 class="text-2xl font-bold text-gray-900 mb-3 dark:text-gray-100">Academic: Fee Discounts & Scholarships</h3>
+        <p class="text-gray-700 text-lg leading-relaxed mb-6 dark:text-gray-400">As a valued UOL alumnus, you are eligible for academic scholarships and fee discounts on all programs and courses. These benefits support your continued learning and professional growth while rewarding your connection with UOL.</p>
       </div>
       
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="lg:col-span-2">
-          <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <div class="bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-4">
-              <h4 class="text-xl font-bold text-white">Available Scholarships & Discounts</h4>
+              <h4 class="text-xl font-bold text-white dark:text-gray-100">Available Scholarships & Discounts</h4>
             </div>
             <div class="p-6">
               <div class="overflow-x-auto">
@@ -122,12 +122,12 @@ const benefitsData: Record<string, { title: string; description: string; content
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50 transition-colors">
+                <tr class="hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                   <td class="px-4 py-4 font-semibold text-gray-900">Medical Consultation, Diagnostic Services at University of Lahore Hospital (ULH)</td>
                   <td class="px-4 py-4 text-gray-700" rowspan="2">Alumni and family members (Spouse, Children)</td>
                   <td class="px-4 py-4 text-gray-700" rowspan="2">Same discount % & services, as offered to UOL students</td>
-                </tr>
-                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
+                </tr> 
+                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                   <td class="px-4 py-4 font-semibold text-gray-900">Medical Consultation, Diagnostic Services at all UOL SMCs (Sehat Medical Complexes)</td>
                 </tr>
               </tbody>
@@ -203,10 +203,10 @@ const benefitsData: Record<string, { title: string; description: string; content
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">UOL Gym Membership</td>
+                <tr class="hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">UOL Gym Membership</td>
                   <td class="px-4 py-4 text-gray-700">
-                    <ul class="list-disc list-inside space-y-1 text-sm">
+                    <ul class="list-disc list-inside space-y-1 text-sm dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                       <li>Same % discount as offered to UOL Students</li>
                       <li>Free registration for select competitions</li>
                     </ul>
@@ -220,10 +220,10 @@ const benefitsData: Record<string, { title: string; description: string; content
                     </a>
                   </td>
                 </tr>
-                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">UOL Swimming Pool Membership</td>
+                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">UOL Swimming Pool Membership</td>
                   <td class="px-4 py-4 text-gray-700">
-                    <ul class="list-disc list-inside space-y-1 text-sm">
+                    <ul class="list-disc list-inside space-y-1 text-sm dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                       <li>Same % discount as offered to UOL Students</li>
                       <li>Free registration for select competitions</li>
                     </ul>
@@ -237,8 +237,8 @@ const benefitsData: Record<string, { title: string; description: string; content
                     </a>
                   </td>
                 </tr>
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">UOL Qalandars Cricket Club Membership</td>
+                <tr class="hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">UOL Qalandars Cricket Club Membership</td>
                   <td class="px-4 py-4 text-gray-700">
                     <ul class="list-disc list-inside space-y-1 text-sm">
                       <li>Same % discount as offered to UOL Students</li>
@@ -247,18 +247,18 @@ const benefitsData: Record<string, { title: string; description: string; content
                   </td>
                   <td class="px-4 py-4"></td>
                 </tr>
-                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">Discounts at UOL Restaurants (Poet)</td>
+                <tr class="bg-gray-50 hover:bg-gray-100 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Discounts at UOL Restaurants (Poet)</td>
                   <td class="px-4 py-4 text-gray-700">Same % discount as offered to UOL Students</td>
                   <td class="px-4 py-4"></td>
                 </tr>
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">Free 3 Membership coupons to Alumni per month for Gym & Pool</td>
+                <tr class="hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Free 3 Membership coupons to Alumni per month for Gym & Pool</td>
                   <td class="px-4 py-4 text-gray-700">Monthly draw run through portal</td>
                   <td class="px-4 py-4"></td>
                 </tr>
-                <tr class="hover:bg-gray-50 transition-colors">
-                  <td class="px-4 py-4 font-semibold text-gray-900">Access to UOL Library Resources</td>
+                <tr class="hover:bg-gray-50 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
+                  <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Access to UOL Library Resources</td>
                   <td class="px-4 py-4 text-gray-700">
                     <ul class="list-disc list-inside space-y-2">
                       <li>Free on-campus access</li>
@@ -561,6 +561,34 @@ const benefitsData: Record<string, { title: string; description: string; content
   },
 };
 
+function applyDarkThemeToContent(html: string): string {
+  let themed = String(html || "");
+  const replacements: Array<[RegExp, string]> = [
+    [/\bbg-white\b/g, "bg-white dark:bg-gray-900"],
+    [/\bborder-gray-200\b/g, "border-gray-200 dark:border-gray-700"],
+    [/\bbg-gray-50\b/g, "bg-gray-50 dark:bg-gray-800/70"],
+    [/\bbg-gray-100\b/g, "bg-gray-100 dark:bg-gray-800"],
+    [/\btext-gray-900\b/g, "text-gray-900 dark:text-gray-100"],
+    [/\btext-gray-800\b/g, "text-gray-800 dark:text-gray-200"],
+    [/\btext-gray-700\b/g, "text-gray-700 dark:text-gray-300"],
+    [/\btext-gray-600\b/g, "text-gray-600 dark:text-gray-400"],
+    [/\bfrom-blue-50\b/g, "from-blue-50 dark:from-blue-950/40"],
+    [/\bto-indigo-50\b/g, "to-indigo-50 dark:to-indigo-950/40"],
+    [/\bfrom-purple-50\b/g, "from-purple-50 dark:from-purple-950/40"],
+    [/\bto-purple-100\b/g, "to-purple-100 dark:to-purple-950/40"],
+    [/\bborder-blue-200\b/g, "border-blue-200 dark:border-blue-900"],
+    [/\bborder-purple-200\b/g, "border-purple-200 dark:border-purple-900"],
+    [/\bbg-rose-50\b/g, "bg-rose-50 dark:bg-rose-950/30"],
+    [/\bborder-rose-200\b/g, "border-rose-200 dark:border-rose-900"],
+  ];
+
+  replacements.forEach(([pattern, value]) => {
+    themed = themed.replace(pattern, value);
+  });
+
+  return themed;
+}
+
 export default async function BenefitDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const benefit = benefitsData[slug];
@@ -636,36 +664,38 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  content = applyDarkThemeToContent(content);
+
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden">
-        <div className="border bg-white relative z-50">
+      <div className="bg-slate-100 overflow-x-hidden dark:bg-gray-950">
+        <div className="border bg-white relative z-50 dark:border-gray-800 dark:bg-gray-900">
           <AppHeader />
         </div>
-        <div className="min-w-screen">
+        <div className="w-full">
           <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-            <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white">
+            <div className="w-full bg-gradient-to-r from-green-700 to-green-400 text-white dark:bg-gray-900 dark:text-gray-100 dark:border-y dark:border-gray-700">
               <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
                 <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Alumni Benefits</h1>
               </div>
             </div>
           </div>
 
-          <div className="min-w-screen mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
-            <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8 md:p-10">
+          <div className="w-full mx-auto mt-16 px-4 sm:px-6 md:px-8 lg:px-10">
+            <div className="bg-white rounded-lg shadow-sm border p-6 sm:p-8 md:p-10 dark:bg-gray-900 dark:border-gray-700">
               <div className="mb-6">
                 <BackButton />
               </div>
 
               <div className="flex items-center gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">{benefit.title}</h2>
-                  <p className="text-slate-600 mt-2">{benefit.description}</p>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-gray-100">{benefit.title}</h2>
+                  <p className="text-slate-600 mt-2 dark:text-gray-400">{benefit.description}</p>
                 </div>
               </div>
 
               <div
-                className="prose prose-slate max-w-none [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:mb-4 [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:mt-6 [&_h4]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:mb-4 [&_ul]:space-y-2"
+                className="prose prose-slate max-w-none dark:prose-invert [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:mb-4 [&_h4]:text-lg [&_h4]:font-semibold [&_h4]:mt-6 [&_h4]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:mb-4 [&_ul]:space-y-2 dark:[&_table]:text-gray-200 dark:[&_th]:text-gray-200 dark:[&_td]:text-gray-300 dark:[&_thead_tr]:bg-gray-800 dark:[&_thead_tr]:border-gray-700 dark:[&_tbody]:divide-gray-700 dark:[&_tr]:border-gray-700 dark:[&_tr:hover]:bg-gray-800/70 dark:[&_div.bg-white]:bg-gray-900 dark:[&_div.bg-white]:border-gray-700 dark:[&_div.bg-gray-50]:bg-gray-800 dark:[&_div.border-gray-200]:border-gray-700 dark:[&_p.text-gray-700]:text-gray-300 dark:[&_p.text-gray-800]:text-gray-200 dark:[&_p.text-gray-600]:text-gray-400 dark:[&_h3.text-gray-900]:text-gray-100 dark:[&_h4.text-gray-900]:text-gray-100 dark:[&_td.text-gray-700]:text-gray-300 dark:[&_td.text-gray-900]:text-gray-100 dark:[&_th.text-gray-800]:text-gray-200 dark:[&_li]:text-gray-300 dark:[&_span.text-purple-600]:text-purple-300 dark:[&_a]:text-white"
                 dangerouslySetInnerHTML={{ __html: content }}
               />
             </div>

@@ -488,10 +488,10 @@ export const AlumniMembershipsTab: React.FC = () => {
       <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <SyncedTableScroll minWidth={1200} maxHeight={700}>
           <Table className="min-w-full">
-            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
+            <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:bg-gray-900">
               <TableRow>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("sapid")}
                 >
                   <div className="flex items-center gap-2">
@@ -515,7 +515,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("name")}
                 >
                   <div className="flex items-center gap-2">
@@ -538,23 +538,23 @@ export const AlumniMembershipsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Faculty
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Department
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Program
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Gym Membership Month
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Swimming Pool Membership Month
                 </TableCell>
                 <TableCell
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
                   onClick={() => handleSort("createdAt")}
                 >
                   <div className="flex items-center gap-2">
@@ -577,10 +577,10 @@ export const AlumniMembershipsTab: React.FC = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                   Status
                 </TableCell>
-                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 sticky right-0 z-10 bg-gray-100 dark:bg-gray-800">
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 sticky right-0 z-10 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
                   Actions
                 </TableCell>
               </TableRow>
@@ -590,7 +590,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`membership-skeleton-${i}`}>
                     {Array.from({ length: 10 }).map((__, j) => (
-                      <TableCell key={j} className="px-6 py-4">
+                      <TableCell key={j} className="px-6 py-4 dark:text-gray-300 dark:bg-gray-900">
                         <div className="h-5 w-24 bg-gray-200 animate-pulse rounded" />
                       </TableCell>
                     ))}
@@ -599,14 +599,14 @@ export const AlumniMembershipsTab: React.FC = () => {
               )}
               {!isLoading && error && (
                 <TableRow>
-                  <TableCell colSpan={10} className="px-5 py-6 text-center text-red-600">
+                  <TableCell colSpan={10} className="px-5 py-6 text-center text-red-600 dark:text-gray-300 dark:bg-gray-900">
                     {error.message || "Failed to load memberships"}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !error && sortedItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="px-5 py-8 text-center text-gray-600">
+                  <TableCell colSpan={10} className="px-5 py-8 text-center text-gray-600 dark:text-gray-300 dark:bg-gray-900">
                     No membership records found
                   </TableCell>
                 </TableRow>
@@ -616,7 +616,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                 sortedItems.map((item) => (
                   <React.Fragment key={item.id}>
                     <TableRow className="odd:bg-white even:bg-gray-50/50 hover:bg-blue-50/50 dark:odd:bg-gray-900 dark:even:bg-gray-800/70 dark:hover:bg-blue-900/20">
-                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
@@ -645,25 +645,25 @@ export const AlumniMembershipsTab: React.FC = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">
+                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-300 dark:bg-gray-900">
                         {item.name}
                       </TableCell>
-                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.faculty || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.department || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 min-w-[220px] text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.program || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.gymMembershipMonth || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.swimmingPoolMembershipMonth || "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.createdAt
                           ? new Date(item.createdAt).toLocaleDateString("en-PK", {
                               year: "numeric",
@@ -672,7 +672,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                             })
                           : "-"}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -697,7 +697,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="sticky right-0 z-10 min-w-[180px] bg-gray-100 px-2 py-4 text-sm text-slate-700 dark:bg-gray-900">
+                      <TableCell className="sticky right-0 z-10 min-w-[180px] bg-gray-100 px-2 py-4 text-sm text-slate-700 dark:bg-gray-900 dark:text-gray-300 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
                         {isAdmin && (
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             <button
@@ -759,7 +759,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                     {expandedRowId === item.id && (
-                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
+                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10 dark:text-gray-300 dark:bg-gray-900">
                         <TableCell colSpan={10} className="px-0 py-4">
                           <div
                             className="w-full overflow-x-hidden"
@@ -787,7 +787,7 @@ export const AlumniMembershipsTab: React.FC = () => {
           </Table>
         </SyncedTableScroll>
         <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-gray-500 dark:text-gray-300 dark:bg-gray-900">
             Showing{" "}
             {sortedItems.length
               ? (currentPage - 1) * pageSize + 1
@@ -796,12 +796,12 @@ export const AlumniMembershipsTab: React.FC = () => {
             {Math.min((currentPage - 1) * pageSize + sortedItems.length, total)} of {total}
           </span>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-500" htmlFor="membership-page-size">
+            <label className="text-sm text-gray-500 dark:text-gray-300 dark:bg-gray-900" htmlFor="membership-page-size">
               Items per page:
             </label>
             <select
               id="membership-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900"
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));
@@ -839,22 +839,22 @@ export const AlumniMembershipsTab: React.FC = () => {
               ) : (
                 <CloseLineIcon className="h-6 w-6 text-rose-600 dark:text-rose-400" />
               )}
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 {pendingAction.type === "approve" ? "Approve Application" : pendingAction.type === "delete" ? "Delete Application" : "Not Approve Application"}
               </h3>
             </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 dark:text-gray-300 dark:bg-gray-900">
               {pendingAction.type === "approve" ? (
-                <>Are you sure you want to approve the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>?</>
+                <>Are you sure you want to approve the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>?</>
               ) : pendingAction.type === "delete" ? (
-                <>Are you sure you want to delete the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>? This action cannot be undone.</>
+                <>Are you sure you want to delete the membership application for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>? This action cannot be undone.</>
               ) : (
-                <>Are you sure you want to mark the membership application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100">{pendingAction.name}</strong>?</>
+                <>Are you sure you want to mark the membership application as not approved for <strong className="font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">{pendingAction.name}</strong>?</>
               )}
             </p>
             {pendingAction.type === "unapprove" && (
               <div className="mb-6">
-                <label htmlFor="rejection-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="rejection-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 dark:text-gray-300 dark:bg-gray-900">
                   Reason for Rejection <span className="text-red-600">*</span>
                 </label>
                 <textarea
@@ -866,7 +866,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 resize-none"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">
                   This reason will be visible to the alumni.
                 </p>
               </div>
@@ -879,7 +879,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   const recipientEmail = it?.email || null;
                   if (!recipientEmail) {
                     return (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:text-gray-300 dark:bg-gray-900">
                         No recipient email found for this alumni. You can still confirm the action, but you cannot send an email.
                       </div>
                     );
@@ -905,7 +905,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   return (
                     <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
                       <div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview Email</div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Preview Email</div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
                       </div>
                       <SendEmailButton
@@ -932,7 +932,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                   }
                 }}
                 disabled={mutatingIds.has(pendingAction.membershipId)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300 dark:bg-gray-900 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
@@ -940,7 +940,7 @@ export const AlumniMembershipsTab: React.FC = () => {
                 type="button"
                 onClick={handleConfirmClick}
                 disabled={mutatingIds.has(pendingAction.membershipId) || (pendingAction.type === "unapprove" && !rejectionReason.trim())}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300 dark:bg-gray-900 dark:hover:bg-gray-800 ${
                   pendingAction.type === "approve"
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
                     : pendingAction.type === "delete"
@@ -977,7 +977,7 @@ export const AlumniMembershipsTab: React.FC = () => {
         >
           <div className="p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 Application Preview
               </h3>
               <div className="flex items-center gap-2">

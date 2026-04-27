@@ -238,14 +238,14 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
 
   if (isLoading) {
     return (
-      <div className="bg-white flex justify-between border rounded-lg p-6 pt-0">
+      <div className="bg-white flex justify-between border rounded-lg p-6 pt-0 dark:bg-gray-900 dark:border-gray-700">
         <div className="w-full flex items-center justify-center py-12">
           <div className="flex flex-col items-center gap-4">
             <svg className="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="text-sm text-gray-600">Loading profile details...</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Loading profile details...</p>
           </div>
         </div>
       </div>
@@ -253,12 +253,12 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
   }
 
   return (
-    <div className="bg-white flex justify-between border rounded-lg p-6 pt-0">
+    <div className="bg-white flex justify-between border rounded-lg p-6 pt-0 dark:bg-gray-900 dark:border-gray-700">
       <div>
         <div className="flex flex-col items-start sm:flex-row sm:items-end">
           <div className="flex flex-col items-center">
             <div className="relative w-28 h-28 sm:w-32 sm:h-32 -mt-12 sm:-mt-16 md:-mt-10 group">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-red-600 bg-gray-100 overflow-hidden">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-red-600 bg-gray-100 overflow-hidden dark:bg-gray-800">
                 <Image
                   src={displayAvatar}
                   alt={name || "alumni"}
@@ -313,12 +313,12 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                 className="w-full max-w-[140px] sm:max-w-[160px] md:max-w-[180px] mt-3 sm:mt-4 block"
                 title="Click to complete your profile"
               >
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer group">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-green-500 hover:shadow-md transition-all duration-200 cursor-pointer group dark:bg-gray-800 dark:border-gray-700 dark:hover:border-green-600">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-700 group-hover:text-green-600 transition-colors">Profile Completion</span>
-                    <span className="text-xs font-semibold text-gray-900">{completionPercentage}%</span>
+                    <span className="text-xs font-medium text-gray-700 group-hover:text-green-600 transition-colors dark:text-gray-300">Profile Completion</span>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{completionPercentage}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                     <div
                       className={`h-2 rounded-full transition-all duration-500 ${
                         completionPercentage >= 80
@@ -335,7 +335,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                       aria-label={`Profile completion: ${completionPercentage}%`}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1.5 text-center group-hover:text-green-600 transition-colors">
+                  <p className="text-xs text-gray-500 mt-1.5 text-center group-hover:text-green-600 transition-colors dark:text-gray-400">
                     {completionPercentage < 50
                       ? "Complete your profile"
                       : completionPercentage < 80
@@ -348,7 +348,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
           </div>
           <div className="pt-3 sm:pt-4 md:pt-0 sm:ml-4 md:ml-6 flex-grow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 md:gap-3 gap-2">
-              <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold break-words">{name}</h4>
+              <h4 className="text-slate-900 text-xl sm:text-2xl md:text-3xl font-bold break-words dark:text-gray-100">{name}</h4>
               {/* Assigned Chapters Badges */}
               {Array.isArray(chapters) && chapters.length > 0 && chapters.map((chapter, idx) => (
                 <span
@@ -383,10 +383,10 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
 
             {leadershipGovernanceHtml ? (
               <div className="mt-3">
-                <details className="rounded-lg border border-gray-200 bg-white">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-gray-800">Office Term & Related Governance</summary>
-                  <div className="border-t border-gray-200 px-3 py-3">
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: leadershipGovernanceHtml }} />
+                <details className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200">Office Term & Related Governance</summary>
+                  <div className="border-t border-gray-200 px-3 py-3 dark:border-gray-700">
+                    <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: leadershipGovernanceHtml }} />
                   </div>
                 </details>
               </div>
@@ -458,7 +458,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
 
                   {/* No Memberships Message */}
                   {chapters.length === 0 && !associationTitle && (
-                    <div className="text-xs text-gray-500 italic">
+                    <div className="text-xs text-gray-500 italic dark:text-gray-400">
                       Not a member of any chapter or association
                     </div>
                   )}
@@ -468,13 +468,13 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
 
             <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3">
               {[{ href: facebook || "#", label: "Facebook", svg: (
-                <svg role="img" aria-label="Facebook" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 155.139 155.139"><path d="M89.584 155.139V84.378h23.742l3.562-27.585H89.584V39.184c0-7.984 2.208-13.425 13.67-13.425l14.595-.006V1.08C115.325.752 106.661 0 96.577 0 75.52 0 61.104 12.853 61.104 36.452v20.341H37.29v27.585h23.814v70.761h28.48z"/></svg>
+                <svg role="img" aria-label="Facebook" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700 dark:fill-gray-300" viewBox="0 0 155.139 155.139"><path d="M89.584 155.139V84.378h23.742l3.562-27.585H89.584V39.184c0-7.984 2.208-13.425 13.67-13.425l14.595-.006V1.08C115.325.752 106.661 0 96.577 0 75.52 0 61.104 12.853 61.104 36.452v20.341H37.29v27.585h23.814v70.761h28.48z"/></svg>
               )}, { href: instagram || "#", label: "Instagram", svg: (
-                <svg role="img" aria-label="Instagram" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700" viewBox="0 0 512 512"><path d="M512 97.248c-19.04 8.352-39.328 13.888-60.48 16.576 21.76-12.992 38.368-33.408 46.176-58.016-20.288 12.096-42.688 20.64-66.56 25.408C411.872 60.704 384.416 48 354.464 48c-58.112 0-104.896 47.168-104.896 104.992 0 8.32.704 16.32 2.432 23.936-87.264-4.256-164.48-46.08-216.352-109.792-9.056 15.712-14.368 33.696-14.368 53.056 0 36.352 18.72 68.576 46.624 87.232-16.864-.32-33.408-5.216-47.424-12.928v1.152c0 51.008 36.384 93.376 84.096 103.136-8.544 2.336-17.856 3.456-27.52 3.456-6.72 0-13.504-.384-19.872-1.792 13.6 41.568 52.192 72.128 98.08 73.12-35.712 27.936-81.056 44.768-130.144 44.768-8.608 0-16.864-.384-25.12-1.44C46.496 446.88 101.6 464 161.024 464c193.152 0 298.752-160 298.752-298.688 0-4.64-.16-9.12-.384-13.568 20.832-14.784 38.336-33.248 52.608-54.496z"/></svg>
+                <svg role="img" aria-label="Instagram" xmlns="http://www.w3.org/2000/svg" width="12" className="fill-gray-700 dark:fill-gray-300" viewBox="0 0 512 512"><path d="M512 97.248c-19.04 8.352-39.328 13.888-60.48 16.576 21.76-12.992 38.368-33.408 46.176-58.016-20.288 12.096-42.688 20.64-66.56 25.408C411.872 60.704 384.416 48 354.464 48c-58.112 0-104.896 47.168-104.896 104.992 0 8.32.704 16.32 2.432 23.936-87.264-4.256-164.48-46.08-216.352-109.792-9.056 15.712-14.368 33.696-14.368 53.056 0 36.352 18.72 68.576 46.624 87.232-16.864-.32-33.408-5.216-47.424-12.928v1.152c0 51.008 36.384 93.376 84.096 103.136-8.544 2.336-17.856 3.456-27.52 3.456-6.72 0-13.504-.384-19.872-1.792 13.6 41.568 52.192 72.128 98.08 73.12-35.712 27.936-81.056 44.768-130.144 44.768-8.608 0-16.864-.384-25.12-1.44C46.496 446.88 101.6 464 161.024 464c193.152 0 298.752-160 298.752-298.688 0-4.64-.16-9.12-.384-13.568 20.832-14.784 38.336-33.248 52.608-54.496z"/></svg>
               )}, { href: linkedin || "#", label: "LinkedIn", svg: (
-                <svg role="img" aria-label="LinkedIn" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700" viewBox="0 0 24 24"><path d="M23.994 24v-.001H24v-8.802c0-4.306-.927-7.623-5.961-7.623-2.42 0-4.044 1.328-4.707 2.587h-.07V7.976H8.489v16.023h4.97v-7.934c0-2.089.396-4.109 2.983-4.109 2.549 0 2.587 2.384 2.587 4.243V24zM.396 7.977h4.976V24H.396zM2.882 0C1.291 0 0 1.291 0 2.882s1.291 2.909 2.882 2.909 2.882-1.318 2.882-2.909A2.884 2.884 0 0 0 2.882 0z"/></svg>
+                <svg role="img" aria-label="LinkedIn" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700 dark:fill-gray-300" viewBox="0 0 24 24"><path d="M23.994 24v-.001H24v-8.802c0-4.306-.927-7.623-5.961-7.623-2.42 0-4.044 1.328-4.707 2.587h-.07V7.976H8.489v16.023h4.97v-7.934c0-2.089.396-4.109 2.983-4.109 2.549 0 2.587 2.384 2.587 4.243V24zM.396 7.977h4.976V24H.396zM2.882 0C1.291 0 0 1.291 0 2.882s1.291 2.909 2.882 2.909 2.882-1.318 2.882-2.909A2.884 2.884 0 0 0 2.882 0z"/></svg>
               )}, { href: youtube || "#", label: "YouTube", svg: (
-                <svg role="img" aria-label="YouTube" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700" viewBox="0 0 24 24"><path d="M23.498 6.186a2.999 2.999 0 0 0-2.116-2.12C19.59 3.5 12 3.5 12 3.5s-7.59 0-9.382.566A2.999 2.999 0 0 0 .502 6.186C0 8.002 0 12 0 12s0 3.998.502 5.814a2.999 2.999 0 0 0 2.116 2.12C4.41 20.5 12 20.5 12 20.5s7.59 0 9.382-.566a2.999 2.999 0 0 0 2.116-2.12C24 15.998 24 12 24 12s0-3.998-.502-5.814zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
+                <svg role="img" aria-label="YouTube" xmlns="http://www.w3.org/2000/svg" width="14" className="fill-gray-700 dark:fill-gray-300" viewBox="0 0 24 24"><path d="M23.498 6.186a2.999 2.999 0 0 0-2.116-2.12C19.59 3.5 12 3.5 12 3.5s-7.59 0-9.382.566A2.999 2.999 0 0 0 .502 6.186C0 8.002 0 12 0 12s0 3.998.502 5.814a2.999 2.999 0 0 0 2.116 2.12C4.41 20.5 12 20.5 12 20.5s7.59 0 9.382-.566a2.999 2.999 0 0 0 2.116-2.12C24 15.998 24 12 24 12s0-3.998-.502-5.814zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
               )}].map((s, i) => (
                 <a 
                   key={i} 
@@ -497,8 +497,8 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
                   }}
                   className={`w-8 h-8 sm:w-9 sm:h-9 inline-flex items-center justify-center rounded-full transition-colors ${
                     s.href !== "#" 
-                      ? "bg-gray-100 hover:bg-gray-300 cursor-pointer" 
-                      : "bg-gray-50 text-gray-400 cursor-pointer hover:bg-gray-100"
+                      ? "bg-gray-100 hover:bg-gray-300 cursor-pointer dark:bg-gray-800 dark:hover:bg-gray-700" 
+                      : "bg-gray-50 text-gray-400 cursor-pointer hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-500 dark:hover:bg-gray-800"
                   }`}
                   aria-label={s.href !== "#" ? s.label : `${s.label} not provided`}
                   title={s.href !== "#" ? s.label : `${s.label} not provided`}
@@ -521,7 +521,7 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
               )}
             </div>
             {showSocialForm && sapId && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                 <SocialLinksForm
                   sapId={sapId}
                   initialData={{ facebook, instagram, youtube, linkedin }}
@@ -534,9 +534,9 @@ export default function ProfileDetailsServer({ name, avatar: initialAvatar, sapI
             )}
           </div>
         </div>
-        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
-          <h5 className="text-base sm:text-lg font-semibold text-red-800 mb-2 sm:mb-3">Profile Details</h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-xs sm:text-sm text-slate-700">
+        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100 dark:border-gray-800">
+          <h5 className="text-base sm:text-lg font-semibold text-red-800 mb-2 sm:mb-3 dark:text-red-300">Profile Details</h5>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 text-xs sm:text-sm text-slate-700 dark:text-gray-300">
             {hasSapId && (
               <div className="col-span-1"><span className="font-semibold">SAP ID:</span> <br/> {safeText(sapIdValue) || "N/A"}</div>
             )}

@@ -617,16 +617,16 @@ function SetupPageContent() {
 
   return (
     <div className="">
-      <ComponentCard title="Setup" className="overflow-x-hidden">
+      <ComponentCard title="Setup" className="overflow-x-hidden dark:text-gray-300 dark:bg-gray-900">
         {/* Notifications */}
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 dark:text-gray-300 dark:bg-gray-900">
           {toasts.map((t) => (
             <Alert key={t.id} variant={t.type} title={t.type === "success" ? "Success" : "Error"} message={t.message} />
           ))}
         </div>
 
         {/* Role indicator */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between dark:text-gray-300 dark:bg-gray-900">
           <div className="text-sm text-gray-600 dark:text-gray-400">
             {isSuperAdmin ? (
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300">
@@ -648,14 +648,14 @@ function SetupPageContent() {
         </div>
 
         <div
-          className="tab-list"
+          className="tab-list dark:text-gray-300 dark:bg-gray-900"
           role="tablist"
           aria-label="Setup sections"
         >
           {TABS.map((tab, idx) => (
             <button
               key={tab.key}
-              className={`tab-item rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out  hover:shadow-sm  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+              className={`tab-item rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out  hover:shadow-sm  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-gray-300 dark:bg-gray-900 ${
                 selected === tab.key
                   ? "bg-white  text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                   : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
@@ -693,7 +693,7 @@ function SetupPageContent() {
         </div>
 
         {selected === "users" && (
-          <div className="mt-6">
+          <div className="mt-6 dark:text-gray-300 dark:bg-gray-900">
             {/* Users Counter */}
             <UsersCounter 
               realTimeCount={realTimeUsersCount}
@@ -702,7 +702,7 @@ function SetupPageContent() {
             />
 
             {/* Admin Control Panel */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between dark:text-gray-300 dark:bg-gray-900">
               <div className="flex items-center gap-2 w-full sm:w-2/3">
                 <Label className="sr-only">Search users</Label>
                 <Input
@@ -711,7 +711,7 @@ function SetupPageContent() {
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   aria-label="Search users"
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900"
                 />
                 {userSearch && (
                   <Button size="sm" variant="outline" onClick={() => setUserSearch("")} aria-label="Clear user search" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">Clear</Button>
@@ -734,7 +734,7 @@ function SetupPageContent() {
                   value={userFacultyFilter}
                   onChange={(e) => setUserFacultyFilter(e.target.value)}
                   aria-label="Filter by faculty"
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900"
                 >
                   <option value="">All faculties</option>
                   {facultyOptions.map((f) => (
@@ -746,7 +746,7 @@ function SetupPageContent() {
                   value={userDepartmentFilter}
                   onChange={(e) => setUserDepartmentFilter(e.target.value)}
                   aria-label="Filter by department"
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900"
                 >
                   <option value="">All departments</option>
                   {departmentOptions.map((d) => (
@@ -755,12 +755,12 @@ function SetupPageContent() {
                 </select>
               </div>
               {canManage && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 dark:text-gray-300 dark:bg-gray-900">
                   <Button size="sm" onClick={() => setAddUserOpen(true)}>Add User</Button>
                 </div>
               )}
               {!canManage && (
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 dark:bg-gray-900">
                   <span>{isAdmin ? "Admin access - Cannot manage users" : "Viewer access - Read only"}</span>
                 </div>
               )}
@@ -768,12 +768,12 @@ function SetupPageContent() {
 
             {/* Loading / Error / Empty States */}
             {usersLoading && (
-              <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800">
+              <div className="mt-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800 dark:text-gray-300 dark:bg-gray-900">
                 <p className="text-sm text-gray-600 dark:text-gray-300">Loading users...</p>
               </div>
             )}
             {usersError && (
-              <div className="mt-6 p-5 border border-error-500 rounded-2xl bg-error-50 dark:border-error-500/30 dark:bg-error-500/15">
+              <div className="mt-6 p-5 border border-error-500 rounded-2xl bg-error-50 dark:border-error-500/30 dark:bg-error-500/15 dark:text-gray-300 dark:bg-gray-900">
                 <p className="text-sm text-error-600 dark:text-error-400">{usersError}</p>
               </div>
             )}
@@ -788,7 +788,7 @@ function SetupPageContent() {
 
             {/* User Cards (preview) */}
             {!usersLoading && filteredUsers.length > 0 && (
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 dark:text-gray-300 dark:bg-gray-900">
                 {filteredUsers.slice(0, 2).map((u) => (
                   <UserCard key={u.id} user={u} onEdit={() => setEditUserId(u.id)} onRemove={() => setRemoveUserId(u.id)} canModify={hasModifyAccess} />
                 ))}
@@ -797,10 +797,10 @@ function SetupPageContent() {
 
             {/* Dashboard Access Management Table */}
             {!usersLoading && filteredUsers.length > 0 && (
-              <div className="mt-6">
+              <div className="mt-6 dark:text-gray-300 dark:bg-gray-900">
                 <SyncedTableScroll minWidth={1100}>
                   <table className="min-w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800" role="table" aria-label="Users with dashboard access">
-                    <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80">
+                    <thead className="whitespace-nowrap border-b border-gray-200 bg-white dark:border-white/[0.06] dark:bg-gray-900/80 dark:text-gray-300 dark:bg-gray-900">
                       <tr className="border-b border-gray-200 dark:border-white/[0.06]">
                         <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">User</th>
                         <th scope="col" className="px-4 py-3 text-left text-[13px] font-medium text-slate-600 border-r border-gray-200 dark:text-gray-300">Role</th>
@@ -812,23 +812,23 @@ function SetupPageContent() {
                     </thead>
                     <tbody className="whitespace-nowrap divide-y divide-gray-200 dark:divide-white/[0.06]">
                       {paginatedUsers.map((u) => (
-                        <tr key={u.id} className="odd:bg-gray-50 dark:odd:bg-gray-800/70">
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                        <tr key={u.id} className="odd:bg-gray-50 dark:odd:bg-gray-800/70 dark:text-gray-300 dark:bg-gray-900">
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">
                             <div className="flex flex-col">
                               <span className="block font-medium text-slate-900 text-[13px] dark:text-white/90">{u.name}</span>
                               <span className="text-xs text-gray-600 dark:text-gray-300">{u.email}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.role}</td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{u.status}</td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">{formatDateTime(u.lastAccess)}</td>
-                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300">
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{u.role}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{u.status}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">{formatDateTime(u.lastAccess)}</td>
+                          <td className="px-4 py-3 border-r border-gray-200 text-slate-900 text-[13px] text-start dark:text-gray-300 dark:bg-gray-900">
                             {Object.entries(u.permissions)
                               .filter(([, v]) => v)
                               .map(([k]) => k.replace(/([A-Z])/g, " $1").toLowerCase())
                               .join(", ") || "None"}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3 text-right dark:text-gray-300 dark:bg-gray-900">
                             <div className="flex gap-2 justify-end">
                               {canManage ? (
                                 <>
@@ -840,7 +840,7 @@ function SetupPageContent() {
                                   </Button>
                                 </>
                               ) : (
-                                <span className="text-xs text-gray-500 dark:text-gray-400">View only</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 dark:bg-gray-900">View only</span>
                               )}
                             </div>
                           </td>
@@ -851,7 +851,7 @@ function SetupPageContent() {
                 </SyncedTableScroll>
 
                 {usersTotalPages > 1 && (
-                  <div className="mt-4 flex items-center justify-end">
+                  <div className="mt-4 flex items-center justify-end dark:text-gray-300 dark:bg-gray-900">
                     <Pagination
                       currentPage={usersPageSafe}
                       totalPages={usersTotalPages}
@@ -864,10 +864,10 @@ function SetupPageContent() {
 
             {/* Add User Modal */}
             {canManage && (
-              <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8">
+              <Modal isOpen={addUserOpen} onClose={() => setAddUserOpen(false)} className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8 dark:text-gray-300 dark:bg-gray-900">
                 <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <h4 className="text-2xl font-bold text-gray-900 dark:text-white">Add New User</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Create a new user account with appropriate access permissions</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 dark:bg-gray-900 dark:text-gray-300">Create a new user account with appropriate access permissions</p>
                 </div>
                 <UserForm />
               </Modal>
@@ -875,7 +875,7 @@ function SetupPageContent() {
 
             {/* Edit User Modal */}
             {canManage && (
-              <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[720px] p-5 lg:p-10">
+              <Modal isOpen={!!editUserId} onClose={() => setEditUserId(null)} className="max-w-[720px] p-5 lg:p-10 dark:text-gray-300 dark:bg-gray-900">
                 <h4 className="font-semibold text-gray-800 mb-5 text-title-sm dark:text-white/90">Edit Permissions</h4>
                 {editUserId && (
                   <AddOrEditUserForm
@@ -894,7 +894,7 @@ function SetupPageContent() {
 
             {/* Remove User Modal */}
             {canManage && (
-              <Modal isOpen={!!removeUserId} onClose={() => setRemoveUserId(null)} className="max-w-[520px] p-5 lg:p-8">
+              <Modal isOpen={!!removeUserId} onClose={() => setRemoveUserId(null)} className="max-w-[520px] p-5 lg:p-8 dark:text-gray-300 dark:bg-gray-900">
                 <h4 className="font-semibold text-gray-800 mb-4 text-title-sm dark:text-white/90">Confirm Removal</h4>
                 <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">Are you sure you want to remove access for this user?</p>
                 <div className="flex items-center justify-end w-full gap-3 mt-6">
@@ -931,13 +931,13 @@ function SetupPageContent() {
 
         {selected === "leadership" && isSuperAdmin && (
           <div className="mt-6 space-y-6">
-            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-4 shadow-sm">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Form Settings</h3>
+            <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-4 shadow-sm dark:text-gray-300 dark:bg-gray-900">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 dark:text-gray-300 dark:bg-gray-900">Form Settings</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex-1 min-w-0">
-                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">Chapter Leadership</label>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">Enable/disable form</p>
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate dark:text-gray-300 dark:bg-gray-900">Chapter Leadership</label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate dark:text-gray-300 dark:bg-gray-900">Enable/disable form</p>
                   </div>
                   <button
                     onClick={async () => {
@@ -964,8 +964,8 @@ function SetupPageContent() {
 
                 <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex-1 min-w-0">
-                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">Association Leadership</label>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">Enable/disable form</p>
+                    <label className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate dark:text-gray-300 dark:bg-gray-900">Association Leadership</label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate dark:text-gray-300 dark:bg-gray-900">Enable/disable form</p>
                   </div>
                   <button
                     onClick={async () => {
@@ -992,11 +992,11 @@ function SetupPageContent() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm dark:text-gray-300 dark:bg-gray-900">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Role Criteria Management</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Configure criteria rules for leadership roles.</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Role Criteria Management</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">Configure criteria rules for leadership roles.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <select
@@ -1006,7 +1006,7 @@ function SetupPageContent() {
                       setCriteriaEditingId(null);
                       setCriteriaDraft({ label: "", description: "", isMandatory: false, hasTextbox: false, textboxLabel: "Explanation", isTextboxRequired: false, sortOrder: 0, criterionScore: 1 });
                     }}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900"
                   >
                     <option value="chapter">Chapter</option>
                     <option value="association">Association</option>
@@ -1018,7 +1018,7 @@ function SetupPageContent() {
                       setCriteriaEditingId(null);
                       setCriteriaDraft({ label: "", description: "", isMandatory: false, hasTextbox: false, textboxLabel: "Explanation", isTextboxRequired: false, sortOrder: 0, criterionScore: 1 });
                     }}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900"
                   >
                     <option value="president">President</option>
                     <option value="vice_president">Vice President</option>
@@ -1027,7 +1027,7 @@ function SetupPageContent() {
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-4">
+              <div className="mt-5 flex flex-wrap gap-4 dark:text-gray-300 dark:bg-gray-900">
                 <RoleDescriptionSection
                   title="Role Description"
                   content={String(roleAdminData?.role?.role_description ?? "")}

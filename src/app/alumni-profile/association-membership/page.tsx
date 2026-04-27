@@ -88,8 +88,8 @@ export default async function AssociationMembershipPage({ searchParams }: { sear
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-        <div className="border bg-white relative z-50">
+      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:bg-gray-900 dark:text-gray-100">
+        <div className="border bg-white relative z-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <AppHeader />
         </div>
         {(() => {
@@ -112,24 +112,24 @@ export default async function AssociationMembershipPage({ searchParams }: { sear
         )}
         <PageBanner title="Association Membership" />
         <div className="min-w-screen mx-auto flex justify-center px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-          <div className="bg-white max-w-4xl rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+          <div className="bg-white max-w-4xl rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-slate-900">Join an Association</h1>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">Join an Association</h1>
               <BackButton />
             </div>
             <div className="mb-7 max-w-4xl mx-auto">
               <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-2">
                 Alumni Associations
               </h2>
-              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+              <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                 Join a faculty or department association to connect with alumni who share your academic background. Stay engaged with your field and expand your professional network.
               </p>
             </div>
             {!isViewer ? (
               <AlumniAssociationMembershipForm alumniId={alumniId} />
             ) : (
-              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 text-center">
-                <p className="text-gray-600">This form is not available for viewers. Please contact an administrator if you need to submit an association membership application.</p>
+              <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 text-center dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
+                <p className="text-gray-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">This form is not available for viewers. Please contact an administrator if you need to submit an association membership application.</p>
               </div>
             )}
           </div>

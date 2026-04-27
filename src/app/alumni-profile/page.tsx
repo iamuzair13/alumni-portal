@@ -656,8 +656,8 @@ let cardImageFile: string | null = null;
 
   return (
     <>
-    <div className=" bg-slate-100 overflow-x-hidden">
-      <div className="border bg-white relative z-50">
+    <div className="bg-slate-100 overflow-x-hidden dark:bg-gray-950">
+      <div className="border bg-white relative z-50 dark:border-gray-800 dark:bg-gray-900">
         <AppHeader />
       </div>
       {(() => {
@@ -682,17 +682,17 @@ let cardImageFile: string | null = null;
 
         {/* 2. Main Content Container (Max-width and Padding) */}
         {/* This container centers and holds the profile details and ID card. */}
-        <div className="w-full bg-slate-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10">
-          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-8 sm:mt-10 md:-mt-16 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="w-full bg-slate-100 mx-auto mt-8 sm:mt-12 md:mt-16 px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 dark:bg-gray-950">
+          <div className="flex flex-col bg-white rounded-lg md:flex-row lg:flex-row mt-8 sm:mt-10 md:-mt-16 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8 dark:bg-gray-900">
 
             <div className="w-full flex min-w-0 order-1">
                 {sapId && sapId.trim() ? (
                   <ProfileDetailsClient sapId={sapId} chapters={chapters} isVerified={isVerified} chaptersError={chaptersError} associationTitle={associationTitle} associationError={associationError} leadershipInfo={leadershipInfo} leadershipError={leadershipError} leadershipGovernanceHtml={leadershipGovernanceHtml} />
                 ) : canView ? (
                   <div className="w-full p-8 text-center">
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-2">Select an Alumni Profile</h3>
-                      <p className="text-blue-700 mb-4">
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-6 dark:border-blue-900 dark:bg-blue-950/40">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-2 dark:text-blue-200">Select an Alumni Profile</h3>
+                      <p className="text-blue-700 mb-4 dark:text-blue-300">
                         To view an alumni profile, please select a profile from the alumni list or use the URL with a SAP ID parameter.
                       </p>
                       <Link
@@ -729,18 +729,18 @@ let cardImageFile: string | null = null;
                   <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 pt-4 sm:pt-6 md:pt-8 lg:pt-10 mt-4 sm:mt-6 md:mt-0 order-2">
                     <div className={`shadow-sm border rounded-lg overflow-hidden text-center lg:mt-0 ${
                       cardStatus === "received" 
-                        ? "bg-green-100 border-gray-100" 
+                        ? "bg-green-100 border-green-200 dark:bg-green-950/30 dark:border-green-900" 
                         : cardStatus === "active" 
-                        ? "bg-emerald-50 border-emerald-200" 
+                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900" 
                         : cardStatus === "under-review" 
-                        ? "bg-amber-50 border-amber-200" 
+                        ? "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900" 
                         : cardStatus === "inprocess"
-                        ? "bg-blue-50 border-blue-200"
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900"
                         : cardStatus === "onhold" 
-                        ? "bg-rose-50 border-rose-200" 
+                        ? "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-900" 
                         : cardStatus === "full" 
-                        ? "bg-sky-50 border-sky-200" 
-                        : "bg-gray-50 border-gray-200"
+                        ? "bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-900" 
+                        : "bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700"
                     }`} aria-label="Alumni card">
                       <div className="p-4 sm:p-5 md:p-6">
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-3">
@@ -757,12 +757,12 @@ let cardImageFile: string | null = null;
                               ? "text-rose-700" 
                               : cardStatus === "full" 
                               ? "text-sky-700" 
-                              : "text-gray-700"
+                              : "text-gray-700 dark:text-gray-300"
                           }`}>Alumni Card</h3>
                           <div role="status" aria-live="polite">
                             {cardStatusError ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
+                              <div className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-900">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-rose-600 dark:text-rose-300"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14H11v-2h2v2zm0-4H11V7h2v5z"/></svg>
                                 <span className="text-xs">{cardStatusError}</span>
                               </div>
                             ) : cardStatus === "received" ? (
@@ -796,8 +796,8 @@ let cardImageFile: string | null = null;
                                 <span className="text-xs">Full</span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-gray-50 text-gray-700 px-2 py-0.5 border border-gray-200">
-                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
+                              <div className="inline-flex items-center gap-1 rounded-md bg-gray-50 text-gray-700 px-2 py-0.5 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-600 dark:text-gray-300"><path className="fill-current" d="M12 2a10 10 0 100 20 10 10 0 000-20zM11 7h2v6h-2V7zm0 8h2v2h-2v-2z"/></svg>
                                 <span className="text-xs">No Application</span>
                               </div>
                             )}
@@ -847,29 +847,29 @@ let cardImageFile: string | null = null;
                           <>
                             <div className="mt-3 sm:mt-4">
                               {cardStatus === "under-review" ? (
-                                <p className="text-xs text-amber-700">Your application is under review.</p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300">Your application is under review.</p>
                               ) : cardStatus === "inprocess" ? (
-                                <p className="text-xs text-blue-700">Your application is in process.</p>
+                                <p className="text-xs text-blue-700 dark:text-blue-300">Your application is in process.</p>
                               ) : cardStatus === "onhold" ? (
-                                <div className="text-xs text-rose-700">
+                                <div className="text-xs text-rose-700 dark:text-rose-300">
                                   <p className="font-medium mb-1">Your application is on hold.</p>
                                   {reasonOnhold && (
-                                    <p className="text-[10px] mt-1 italic bg-rose-50 border border-rose-200 rounded px-2 py-1">
+                                    <p className="text-[10px] mt-1 italic bg-rose-50 border border-rose-200 rounded px-2 py-1 dark:bg-rose-950/40 dark:border-rose-900">
                                       Reason: {reasonOnhold}
                                     </p>
                                   )}
                                   {cardComment && (
-                                    <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-md">
-                                      <p className="font-medium text-rose-800 mb-1">Note:</p>
-                                      <p className="text-rose-700">{cardComment}</p>
+                                    <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-md dark:bg-rose-950/40 dark:border-rose-900">
+                                      <p className="font-medium text-rose-800 mb-1 dark:text-rose-200">Note:</p>
+                                      <p className="text-rose-700 dark:text-rose-300">{cardComment}</p>
                                     </div>
                                   )}
                                   {!cardComment && <p className="mt-1">Please contact us for more information.</p>}
                                 </div>
                               ) : cardStatus === "full" ? (
-                                <p className="text-xs text-sky-700">Application capacity is currently full. Please try later.</p>
+                                <p className="text-xs text-sky-700 dark:text-sky-300">Application capacity is currently full. Please try later.</p>
                               ) : (
-                                <p className="text-xs text-gray-700 mb-2 sm:mb-3">Start your application to get your alumni card.</p>
+                                <p className="text-xs text-gray-700 mb-2 sm:mb-3 dark:text-gray-300">Start your application to get your alumni card.</p>
                               )}
                             </div>
                             {cardStatus === "under-review" ? (
@@ -943,8 +943,8 @@ let cardImageFile: string | null = null;
           {/* B. Alumni ID Card (Fixed width on larger screens) */}
         </div>
       </div>
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-slate-900 bg-slate-100">
-        <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-4 sm:mb-5 md:mb-6">Networking & Engagement</h4>
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 text-slate-900 bg-slate-100 dark:bg-gray-950 dark:text-gray-100">
+        <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-4 sm:mb-5 md:mb-6 dark:text-gray-100">Networking & Engagement</h4>
         <NetworkingEngagementSection
           sapId={sapId}
           mentorshipStatus={mentorshipStatus}
@@ -956,21 +956,21 @@ let cardImageFile: string | null = null;
         />
       </div>
 
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100 dark:bg-gray-950">
         <NewslettersCard />
       </div>
 
 
 
-      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100">
+      <div className="px-3 py-6 sm:px-4 sm:py-8 md:px-6 md:py-10 lg:px-10 bg-slate-100 dark:bg-gray-950">
         <div className="mb-4 sm:mb-6 md:mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-2 sm:mb-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 dark:text-gray-100">
           Perks &amp; Benefits
-            <span className="px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm">
+            <span className="px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 font-semibold border-2 border-yellow-300 shadow-sm dark:from-yellow-950/50 dark:to-amber-950/50 dark:text-yellow-200 dark:border-yellow-900">
             Alumni card is required to avail these benefits
           </span>
         </h2>
-          <p className="text-sm sm:text-base md:text-lg text-slate-600 mt-2">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
+          <p className="text-sm sm:text-base md:text-lg text-slate-600 mt-2 dark:text-gray-400">Explore exclusive benefits and opportunities available to UOL alumni members.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
           <BenefitCard

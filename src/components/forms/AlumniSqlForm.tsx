@@ -1382,7 +1382,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="mx-auto mt-6 w-full max-w-6xl px-4 pb-10"
+      className="mx-auto mt-6 w-full max-w-6xl px-4 pb-10 dark:text-gray-300 dark:bg-gray-900"
       aria-label="Alumni registration form"
     >
       <input type="hidden" value="Alumni" {...register("datasource")} />
@@ -1391,25 +1391,25 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {(submitMsg || submitError || submitting) && (
         <div className="mb-6 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-gray-900" aria-live="polite" aria-atomic="true">
           {submitting && (
-            <div className="flex items-center gap-2 text-sm text-neutral-600">
+            <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-gray-300 dark:bg-gray-900">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
-              <span>Submitting your registration...</span>
+              <span className="dark:text-gray-300 dark:bg-gray-900">Submitting your registration...</span>
             </div>
           )}
           {submitMsg && (
-            <div role="status" className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+            <div role="status" className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800 dark:text-gray-300 dark:bg-gray-900">
               <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span>{submitMsg}</span>
+              <span className="dark:text-gray-300 dark:bg-gray-900">{submitMsg}</span>
             </div>
           )}
           {submitError && (
-            <div role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800 dark:text-gray-300 dark:bg-gray-900">
               <svg className="h-5 w-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <span>{submitError}</span>
+              <span className="dark:text-gray-300 dark:bg-gray-900">{submitError}</span>
             </div>
           )}
         </div>
@@ -1418,15 +1418,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {/* Section 1: Personal Information */}
       <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Personal Information</h2>
-          <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-300 dark:bg-gray-900">Personal Information</h2>
+          <p className="mt-1 text-xs text-neutral-600 dark:text-gray-300 dark:bg-gray-900">Fields marked with * are required.</p>
         </div>
         <div className="px-4 py-5 sm:px-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className={labelBase}>
                 Registration No{' '}
-                <span className="ml-1 text-xs text-neutral-500 font-normal italic">
+                <span className="ml-1 text-xs text-neutral-500 font-normal italic dark:text-gray-300 dark:bg-gray-900">
                   (Provide atleast one, Registration No or SAP ID)
                 </span>
               </label>
@@ -1447,7 +1447,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   }
                 })}
               />
-              {errors.registrationno && <p className="mt-1 text-xs text-red-600">{errors.registrationno.message}</p>}
+              {errors.registrationno && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.registrationno.message}</p>}
             </div>
             <div>
               <label className={labelBase}>SAP ID </label>
@@ -1511,7 +1511,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             </div>
             
             <div>
-          <p className="text-xs text-blue-700 mt-1">Please ensure to enter correct CNIC. It will be used for verification and Alumni card issuance. Make sure it matches your official documents.</p>
+          <p className="text-xs text-blue-700 mt-1 dark:text-gray-300 dark:bg-gray-900">Please ensure to enter correct CNIC. It will be used for verification and Alumni card issuance. Make sure it matches your official documents.</p>
               <label className={labelBase}>CNIC/Passport * </label>
               <input type="text" className={inputBase} {...register("cnicpassport", { required: true, maxLength: 50 })} />
               {errors.cnicpassport && <p className="mt-1 text-xs text-red-600">CNIC/Passport is required</p>}
@@ -1831,7 +1831,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
             <div>
               <label className={labelBase}>Home City *</label>
               {selectedHomeCountry === "Pakistan" && !selectedHomeProvince ? (
-                <div className="mt-1 p-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500">
+                <div className="mt-1 p-2 rounded border border-gray-300 bg-gray-50 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                   Please select a province first
                 </div>
               ) : (
@@ -1894,7 +1894,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {/* Section 2: Academic Information */}
       <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Academic Information</h2>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-300 dark:bg-gray-900">Academic Information</h2>
           <p className="mt-1 text-xs text-neutral-600">Fields marked with * are required.</p>
         </div>
         <div className="px-4 py-5 sm:px-6">
@@ -2197,13 +2197,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {/* Section 3: Work Status */}
       <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Occupation Details</h2>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-300 dark:bg-gray-900">Occupation Details</h2>
         </div>
         <div className="px-4 py-5 sm:px-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="mt-2 flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-gray-300 dark:bg-gray-900">
                   <input
                     type="radio"
                     value="Employed"
@@ -2213,7 +2213,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   Employed
                 </label>
-                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-gray-300 dark:bg-gray-900">
                   <input
                     type="radio"
                     value="Self-Employed/Enterpreneur"
@@ -2222,7 +2222,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   Self-Employed/Enterpreneur
                 </label>
-                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-gray-300 dark:bg-gray-900">
                   <input
                     type="radio"
                     value="Pursuing Higher Education"
@@ -2231,7 +2231,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   Pursuing Higher Education
                 </label>
-                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-gray-300 dark:bg-gray-900">
                   <input
                     type="radio"
                     value="Unemployed(By Choice)"
@@ -2240,7 +2240,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   />
                   Unemployed(By Choice)
                 </label>
-                <label className="flex items-center gap-2 text-sm text-neutral-800">
+                <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-gray-300 dark:bg-gray-900">
                   <input
                     type="radio"
                     value="Unemployed(Searching for job)"
@@ -2322,7 +2322,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("startOfCareer", { required: true })} 
                   />
                   {errors.startOfCareer && (
-                    <p className="mt-1 text-xs text-red-600">Start of career date is required</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Start of career date is required</p>
                   )}
                 </div>
 
@@ -2338,7 +2338,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("nameoforganization", { required: true, maxLength: 100 })} 
                   />
                   {errors.nameoforganization && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
                       {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business name is required" : "Current organization is required"}
                     </p>
                   )}
@@ -2349,7 +2349,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <label className={labelBase}>Current Designation *</label>
                   <input type="text" className={inputBase} placeholder="Enter your designation" {...register("designation", { required: true, maxLength: 100 })} />
                   {errors.designation && (
-                    <p className="mt-1 text-xs text-red-600">Current designation is required</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Current designation is required</p>
                   )}
                 </div>
 
@@ -2372,7 +2372,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     })} 
                   />
                   {errors.officialemail && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
                       {errors.officialemail.message || ((employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business email is required" : "Work email is required")}
                     </p>
                   )}
@@ -2390,7 +2390,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("officialnumber", { required: true, maxLength: 50 })} 
                   />
                   {errors.officialnumber && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
                       {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business phone is required" : "Work phone is required"}
                     </p>
                   )}
@@ -2408,7 +2408,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("organization_address", { required: true, maxLength: 500 })} 
                   />
                   {errors.organization_address && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
                       {(employeedVal || "").toLowerCase() === "self-employed/enterpreneur" ? "Business address is required" : "Work address is required"}
                     </p>
                   )}
@@ -2466,7 +2466,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     )}
                   />
                   {errors.workCity && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">
                       {errors.workCity.message ||
                         ((employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
                           ? "Business city is required"
@@ -2501,7 +2501,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </datalist>
                   {errors.workCountry && (
-                    <p className="mt-1 text-xs text-red-600">{errors.workCountry.message || "Work country is required"}</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.workCountry.message || "Work country is required"}</p>
                   )}
                 </div>
               </>
@@ -2524,14 +2524,14 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </select>
                   {errors.occupation_transition_timing && (
-                    <p className="mt-1 text-xs text-red-600">This field is required</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">This field is required</p>
                   )}
                 </div>
                 <div>
                   <label className={labelBase}>Institution Name *</label>
                   <input type="text" className={inputBase} placeholder="e.g. University Name" {...register("highereducationinstitute", { required: true, maxLength: 200 })} />
                   {errors.highereducationinstitute && (
-                    <p className="mt-1 text-xs text-red-600">Institution name is required</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Institution name is required</p>
                   )}
                 </div>
 
@@ -2544,7 +2544,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     {...register("highereducationprogram", { required: "Program enrolled is required", maxLength: 100 })}
                   />
                   {errors.highereducationprogram && (
-                    <p className="mt-1 text-xs text-red-600">{errors.highereducationprogram.message || "Program enrolled is required"}</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.highereducationprogram.message || "Program enrolled is required"}</p>
                   )}
                 </div>
 
@@ -2557,7 +2557,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     <option value="Self Paid">Self Paid</option>
                   </select>
                   {errors.scholarship && (
-                    <p className="mt-1 text-xs text-red-600">Funding source is required</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">Funding source is required</p>
                   )}
                 </div>
 
@@ -2579,7 +2579,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     placeholder="e.g. Lahore"
                   />
                   {errors.highereducationinstituteCity && (
-                    <p className="mt-1 text-xs text-red-600">{errors.highereducationinstituteCity.message || "Institution city is required"}</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.highereducationinstituteCity.message || "Institution city is required"}</p>
                   )}
                 </div>
 
@@ -2601,7 +2601,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                     ))}
                   </datalist>
                   {errors.highereducationinstituteCountry && (
-                    <p className="mt-1 text-xs text-red-600">{errors.highereducationinstituteCountry.message || "Institution country is required"}</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.highereducationinstituteCountry.message || "Institution country is required"}</p>
                   )}
                 </div>
 
@@ -2623,7 +2623,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {/* Section 4: Social Links */}
       <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Social Links(Optional)</h2>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-300 dark:bg-gray-900">Social Links(Optional)</h2>
         </div>
         <div className="px-4 py-5 sm:px-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2635,7 +2635,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://facebook.com/yourprofile"
                 {...register("facebook", { maxLength: 200 })}
               />
-              {errors.facebook && <p className="mt-1 text-xs text-red-600">{errors.facebook.message}</p>}
+              {errors.facebook && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.facebook.message}</p>}
             </div>
             <div>
               <label className={labelBase}>Instagram</label>
@@ -2645,7 +2645,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://instagram.com/yourprofile"
                 {...register("instagram", { maxLength: 200 })}
               />
-              {errors.instagram && <p className="mt-1 text-xs text-red-600">{errors.instagram.message}</p>}
+              {errors.instagram && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.instagram.message}</p>}
             </div>
             <div>
               <label className={labelBase}>YouTube</label>
@@ -2655,7 +2655,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://youtube.com/@yourchannel"
                 {...register("youtube", { maxLength: 200 })}
               />
-              {errors.youtube && <p className="mt-1 text-xs text-red-600">{errors.youtube.message}</p>}
+              {errors.youtube && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.youtube.message}</p>}
             </div>
             <div>
               <label className={labelBase}>LinkedIn</label>
@@ -2665,7 +2665,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 placeholder="https://linkedin.com/in/yourprofile"
                 {...register("linkedin", { maxLength: 200 })}
               />
-              {errors.linkedin && <p className="mt-1 text-xs text-red-600">{errors.linkedin.message}</p>}
+              {errors.linkedin && <p className="mt-1 text-xs text-red-600 dark:text-gray-300 dark:bg-gray-900">{errors.linkedin.message}</p>}
             </div>
           </div>
         </div>
@@ -2675,7 +2675,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {!excludeAdminStep && (
       <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
         <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-neutral-800">Alumni Chapters</h2>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-300 dark:bg-gray-900">Alumni Chapters</h2>
           <p className="mt-1 text-xs text-neutral-600">Select up to 3 chapters to join (optional).</p>
         </div>
         <div className="px-4 py-5 sm:px-6">
@@ -2683,7 +2683,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           {isLoadingChapters ? (
             <div className="flex items-center justify-center py-4">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600"></div>
-              <span className="ml-2 text-sm text-neutral-600">Loading chapters...</span>
+              <span className="ml-2 text-sm text-neutral-600 dark:text-gray-300 dark:bg-gray-900">Loading chapters...</span>
             </div>
           ) : (
             <>
@@ -2794,7 +2794,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       {!excludeAdminStep && (
         <section className="mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-gray-900">
           <div className="border-b border-neutral-100 px-4 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-neutral-800">Admin Section</h2>
+            <h2 className="text-lg font-semibold text-neutral-800 dark:text-gray-300 dark:bg-gray-900">Admin Section</h2>
           </div>
           <div className="px-4 py-5 sm:px-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2840,7 +2840,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
       {/* Declaration and Consent */}
       <section className="mb-6 mt-8">
-        <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-4">
+        <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-gray-900">
           <div className="flex items-start gap-3">
             <input
               type="checkbox"
@@ -2851,16 +2851,16 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               })}
               className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
             />
-            <label htmlFor="alumni_consent_info" className="text-sm text-neutral-800 cursor-pointer">
+            <label htmlFor="alumni_consent_info" className="text-sm text-neutral-800 cursor-pointer dark:text-gray-300 dark:bg-gray-900">
               <span className="font-semibold">Declaration</span>
               <br />
-              <span className="text-xs text-neutral-600 mt-1 block">
+              <span className="text-xs text-neutral-600 mt-1 block dark:text-gray-300 dark:bg-gray-900">
                 I confirm that the information provided is accurate and up to date. I also consent to the University and Alumni Office using this information for official purposes (academic, administrative, communication, website, and alumni engagement) in line with University Policies, and applicable government regulations.
               </span>
             </label>
           </div>
           {errors.alumni_consent_info && (
-            <p className="mt-2 text-xs text-red-600 ml-7">{errors.alumni_consent_info.message}</p>
+            <p className="mt-2 text-xs text-red-600 ml-7 dark:text-gray-300 dark:bg-gray-900">{errors.alumni_consent_info.message}</p>
           )}
         </div>
       </section>

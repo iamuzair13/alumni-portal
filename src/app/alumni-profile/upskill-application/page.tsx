@@ -264,19 +264,19 @@ function UpskillApplicationContent() {
       <AppHeader />
       <Toaster position="top-right" />
       <PageBanner title="Upskill & Reskill Application" />
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
           <div className="mb-6">
             <BackButton />
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Upskill & Reskill Course Application</h1>
-            <p className="text-gray-600 mb-8">As a valued UOL alumnus, you can take advantage of our exclusive Upskill & Reskill courses designed to boost your professional knowledge and career growth. Select your preferred course offered by department below.</p>
+          <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:outline-gray-700">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Upskill & Reskill Course Application</h1>
+            <p className="text-gray-600 mb-8 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">As a valued UOL alumnus, you can take advantage of our exclusive Upskill & Reskill courses designed to boost your professional knowledge and career growth. Select your preferred course offered by department below.</p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="courseName" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                   Course Name <span className="text-red-500">*</span>
                 </label>
                 <input

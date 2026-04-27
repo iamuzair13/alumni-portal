@@ -1400,14 +1400,14 @@ function EventsPageInner() {
 
   return (
     <ComponentCard className="p-0">
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8 dark:text-gray-300 dark:bg-gray-900">
         {/* Tabs navigation */}
         <div className="px-6 pt-2">
-          <div className="tab-list flex flex-wrap gap-4" role="tablist" aria-label="Events sections">
+          <div className="tab-list flex flex-wrap gap-4 dark:text-gray-300 dark:bg-gray-900" role="tablist" aria-label="Events sections">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-gray-300 dark:bg-gray-900 ${
                   selected === tab.key
                     ? "bg-white text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                     : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
@@ -1432,7 +1432,7 @@ function EventsPageInner() {
         </div>
 
         {/* Content Section */}
-        <div className="px-6 pb-8">
+        <div className="px-6 pb-8 dark:text-gray-300 dark:bg-gray-900">
           {selected === "viewEvents" && (
             <>
               {/* Search Section */}

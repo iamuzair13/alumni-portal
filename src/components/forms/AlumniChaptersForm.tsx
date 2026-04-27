@@ -266,40 +266,19 @@ export default function AlumniChaptersForm({
   };
 
   return (
-    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Alumni Chapters</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400">Apply to join alumni chapters and connect with fellow alumni in your area.</p>
+    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-100">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Alumni Chapters</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Apply to join alumni chapters and connect with fellow alumni in your area.</p>
 
       <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="grid sm:grid-cols-2 gap-6">
-          {/* Contact Number - Manual input */}
-          <div className="md:col-span-2">
-            <label htmlFor="contactNumber" className={labelBase}>
-              Contact Number <span className="text-rose-600">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                id="contactNumber"
-                type="tel"
-                {...register("contactNumber", {
-                  required: "Contact number is required",
-                  pattern: {
-                    value: /^[0-9+\-\s()]+$/,
-                    message: "Please enter a valid contact number",
-                  },
-                })}
-                className={`${inputBase} ${errors.contactNumber ? "border-rose-500 bg-rose-50" : ""}`}
-                placeholder="Enter your contact number"
-              />
-            </div>
-            {errors.contactNumber && <span className={errorText}>{errors.contactNumber.message}</span>}
-          </div>
+         
 
           {/* Chapters Selection - Multi-select up to 3 */}
-          <div className="md:col-span-2">
-            <label className={labelBase}>
-              Select Chapters <span className="text-rose-600">*</span>
-              <span className="text-xs text-gray-500 font-normal ml-2">(Select up to 3 chapters)</span>
+          <div className="md:col-span-2 ">
+            <label className={labelBase + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>
+              Select Chapters <span className="text-rose-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">*</span>
+              <span className="text-xs text-gray-500 font-normal ml-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 dark:text-gray-100">(Select up to 3 chapters)</span>
             </label>
             {isLoadingChapters ? (
               <div className="flex items-center justify-center py-8">
@@ -308,7 +287,7 @@ export default function AlumniChaptersForm({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <p className="text-sm text-gray-600">Loading chapters...</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Loading chapters...</p>
                 </div>
               </div>
             ) : (
@@ -316,7 +295,7 @@ export default function AlumniChaptersForm({
                 {/* National Chapters Section */}
                 {nationalChapters.length > 0 ? (
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                       National Chapters ({nationalChapters.length})
                       <PakistanFlag className="w-5 h-4" />
                     </h4>
@@ -326,7 +305,7 @@ export default function AlumniChaptersForm({
                         return (
                           <label
                             key={chapter.id}
-                            className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                            className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 ${
                               isSelected
                                 ? 'bg-blue-50 border-blue-500'
                                 : 'bg-white border-gray-200 hover:border-gray-300'
@@ -351,7 +330,7 @@ export default function AlumniChaptersForm({
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-md dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                     <p className="text-sm text-amber-700">
                       No national chapters available. Please contact the administrator.
                     </p>
@@ -361,7 +340,7 @@ export default function AlumniChaptersForm({
                 {/* International Chapters Section */}
                 {internationalChapters.length > 0 ? (
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">International Chapters ({internationalChapters.length})</h4>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">International Chapters ({internationalChapters.length})</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                       {internationalChapters.map((chapter) => {
                         const isSelected = selectedChapters.includes(chapter.id);
@@ -369,7 +348,7 @@ export default function AlumniChaptersForm({
                         return (
                           <label
                             key={chapter.id}
-                            className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors ${
+                            className={`flex items-center p-3 border rounded-md cursor-pointer transition-colors dark
                               isSelected
                                 ? 'bg-blue-50 border-blue-500'
                                 : 'bg-white border-gray-200 hover:border-gray-300'
@@ -403,8 +382,8 @@ export default function AlumniChaptersForm({
               </div>
             )}
             {selectedChapters.length > 0 && (
-              <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                <p className="text-xs text-gray-600 mb-1">
+              <div className="mt-3 p-3 bg-gray-50 rounded-md dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
+                <p className="text-xs text-gray-600 mb-1 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                   Selected chapters ({selectedChapters.length}/3):
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -415,7 +394,7 @@ export default function AlumniChaptersForm({
                     return (
                       <span
                         key={chapterId}
-                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                        className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
                       >
                         <span className="mr-1 flex-shrink-0">
                           <FlagComponent className="w-4 h-3" />
@@ -424,7 +403,7 @@ export default function AlumniChaptersForm({
                         <button
                           type="button"
                           onClick={() => handleChapterToggle(chapterId)}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
+                          className="ml-1 text-blue-600 hover:text-blue-800 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
                         >
                           ×
                         </button>
@@ -434,13 +413,13 @@ export default function AlumniChaptersForm({
                 </div>
               </div>
             )}
-            {errors.chapters && <span className={errorText}>{errors.chapters.message}</span>}
+            {errors.chapters && <span className={errorText + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>{errors.chapters.message}</span>}
           </div>
 
           {/* Remarks Field */}
           <div className="md:col-span-2">
-            <label htmlFor="remarks" className={labelBase}>
-              Remarks <span className="text-gray-500 font-normal">(Why do you want to join these chapters?)</span>
+            <label htmlFor="remarks" className={labelBase + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>
+              Remarks <span className="text-gray-500 font-normal dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">(Why do you want to join these chapters?)</span>
             </label>
             <div className="relative flex items-center">
               <textarea
@@ -452,11 +431,11 @@ export default function AlumniChaptersForm({
                     message: "Remarks must be less than 1000 characters",
                   },
                 })}
-                className={`${inputBase} ${errors.remarks ? "border-rose-500 bg-rose-50" : ""}`}
+                className={`${inputBase} ${errors.remarks ? "border-rose-500 bg-rose-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" : ""} dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}
                 placeholder="Please provide your reasons for joining these chapters..."
               />
             </div>
-            {errors.remarks && <span className={errorText}>{errors.remarks.message}</span>}
+            {errors.remarks && <span className={errorText + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>{errors.remarks.message}</span>}
           </div>
         </div>
 

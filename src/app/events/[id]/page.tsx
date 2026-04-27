@@ -122,19 +122,19 @@ export default function EventDetailPage() {
   if (isError || !event) {
     return (
       <>
-        <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+        <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
           <div className="border bg-white relative z-50">
             <AppHeader />
           </div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:text-gray-300 dark:bg-gray-900">
               <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-700 mb-4">
                 <p className="font-semibold">Error loading event</p>
                 <p className="text-sm mt-1">{error?.message || "Event not found"}</p>
               </div>
               <Link
                 href="/events"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors dark:text-gray-300 dark:bg-gray-900"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -155,11 +155,11 @@ export default function EventDetailPage() {
 
   return (
     <>
-      <div className="bg-slate-100 overflow-x-hidden min-h-screen">
+      <div className="bg-slate-100 overflow-x-hidden min-h-screen dark:text-gray-300 dark:bg-gray-900">
         <div className="border bg-white relative z-50">
           <AppHeader />
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8 dark:text-gray-300 dark:bg-gray-900">
           {/* Back Button */}
           <div className="mb-6">
             <Link

@@ -156,9 +156,9 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
 
   if (associationsLoading) {
     return (
-      <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
         <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" />
         </div>
       </div>
     );
@@ -166,15 +166,15 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
 
   if (associations.length === 0) {
     return (
-      <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="rounded-lg border-2 border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 p-8 text-center">
+      <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
+        <div className="rounded-lg border-2 border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 p-8 text-center dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 dark:text-gray-100">
           <div className="mb-4">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No associations available</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 dark:text-gray-100">No associations available</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 dark:text-gray-100 dark:text-gray-100">
             There are currently no associations available to join. Please check back later.
           </p>
         </div>
@@ -183,55 +183,55 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
   }
 
   return (
-    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Join an Association</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400">Select an association to join and connect with alumni from your academic background.</p>
+    <div className="rounded-2xl max-w-4xl mx-auto border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 dark:text-gray-100">Join an Association</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Select an association to join and connect with alumni from your academic background.</p>
 
       <form className="max-w-4xl mx-auto mt-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="space-y-6">
           {/* Association Selection - Radio Buttons */}
           <div>
-            <label className={`${labelBase} text-base font-semibold`}>
-              Select an Association <span className="text-rose-600">*</span>
+            <label className={`${labelBase} text-base font-semibold dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700`}>
+              Select an Association <span className="text-rose-600 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">*</span>
             </label>
-            <div className="space-y-3 mt-3">
+            <div className="space-y-3 mt-3 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
               {associations.map((association) => (
                 <label
                   key={association.id}
-                  className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700 ${
                     selectedAssociation === String(association.id)
-                      ? 'border-orange-500 bg-orange-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                      ? 'border-orange-500 bg-orange-50 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700'
+                      : 'border-gray-200 bg-white hover:border-gray-300 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700'
                   }`}
                 >
                   <input
                     type="radio"
                     value={association.id}
                     {...register("associationId", { required: "Please select an association" })}
-                    className="mt-1 mr-3 h-5 w-5 text-orange-600 focus:ring-orange-500 border-gray-300"
+                    className="mt-1 mr-3 h-5 w-5 text-orange-600 focus:ring-orange-500 border-gray-300 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"
                   />
                   <div className="flex-1">
-                    <span className="text-base font-semibold text-gray-900">{association.title}</span>
+                    <span className="text-base font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">{association.title}</span>
                     {association.description && (
-                      <p className="text-sm text-gray-600 mt-1">{association.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">{association.description}</p>
                     )}
                   </div>
                 </label>
               ))}
             </div>
-            {errors.associationId && <span className={errorText}>{errors.associationId.message}</span>}
+            {errors.associationId && <span className={errorText + " dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700"}>{errors.associationId.message}</span>}
           </div>
 
           {/* Association Details - Shown when association is selected */}
           {selectedAssociationDetails && (
             <div className="mt-6 p-6 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-lg border border-orange-100 dark:border-orange-800/30">
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                 {selectedAssociationDetails.title}
               </h4>
               <div className="space-y-3">
                 {selectedAssociationDetails.description && (
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">About:</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">About:</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                       {selectedAssociationDetails.description}
                     </p>
@@ -240,14 +240,14 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
                 {selectedAssociationDetails.dean && (
                   <div>
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Dean:</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
                       {selectedAssociationDetails.dean}
                     </p>
                   </div>
                 )}
                 {selectedAssociationDetails.email && (
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email:</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Email:</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedAssociationDetails.email}
                     </p>
@@ -255,7 +255,7 @@ export default function AlumniAssociationMembershipForm({ alumniId }: Props) {
                 )}
                 {selectedAssociationDetails.phone && (
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Phone:</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Phone:</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedAssociationDetails.phone}
                     </p>

@@ -1225,7 +1225,7 @@ export const AlumniChaptersTab: React.FC = () => {
             <TableHeader className="sticky top-0 z-10 border-b-2 border-gray-300 bg-gradient-to-r from-slate-50 to-slate-100 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
               <TableRow>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("sapId")}
                 >
                   <div className="flex items-center gap-2">
@@ -1237,7 +1237,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("name")}
                 >
                   <div className="flex items-center gap-2">
@@ -1249,7 +1249,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("email")}
                 >
                   <div className="flex items-center gap-2">
@@ -1261,7 +1261,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("faculty")}
                 >
                   <div className="flex items-center gap-2">
@@ -1273,7 +1273,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("department")}
                 >
                   <div className="flex items-center gap-2">
@@ -1285,7 +1285,7 @@ export const AlumniChaptersTab: React.FC = () => {
                   </div>
                 </TableCell>
                 <TableCell 
-                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   onClick={() => handleSort("chapters")}
                 >
                   <div className="flex items-center gap-2">
@@ -1338,20 +1338,20 @@ export const AlumniChaptersTab: React.FC = () => {
                       onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
                       aria-selected={isExpanded}
                     >
-                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700">
+                      <TableCell className="px-6 py-4 text-sm font-mono text-slate-700 dark:text-gray-300">
                         {item.sapid || item.registrationNo || "-"}
                         {item.sapid && item.registrationNo && item.sapid !== item.registrationNo && (
                           <span className="text-gray-500"> / {item.registrationNo}</span>
                         )}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900">{item.name}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm font-semibold text-slate-900 dark:text-gray-100">{item.name}</TableCell>
                       <TableCell className="px-6 py-4 text-sm">
-                        <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline">
+                        <a href={item.email ? `mailto:${item.email}` : "#"} className="text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-600">
                           {item.email || "-"}
                         </a>
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">{item.faculty || "-"}</TableCell>
-                      <TableCell className="px-6 py-4 text-sm text-slate-700">{item.department || "-"}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300">{item.faculty || "-"}</TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300">{item.department || "-"}</TableCell>
                       <TableCell className="px-6 py-4 text-sm">
                         {item.chapters.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
@@ -1363,7 +1363,7 @@ export const AlumniChaptersTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10">
+                      <TableRow className="bg-blue-50/30 dark:bg-blue-900/10 dark:text-gray-300">
                         <TableCell colSpan={6} className="px-0 py-4">
                           <div className="w-full overflow-x-hidden" style={{ maxWidth: "calc(100vw - 2rem)", boxSizing: "border-box" }}>
                             <div className="w-full max-w-full overflow-x-hidden flex flex-row justify-start px-4">
@@ -1388,14 +1388,14 @@ export const AlumniChaptersTab: React.FC = () => {
           </Table>
         </SyncedTableScroll>
         <div className="flex items-center justify-between border-t p-4 dark:border-gray-700 dark:bg-gray-900">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
             Showing {pageItems.length ? start + 1 : 0}-{pageItems.length ? start + pageItems.length : 0} of {total}
           </span>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-500" htmlFor="chapters-page-size">Items per page:</label>
+            <label className="text-sm text-gray-500 dark:text-gray-400" htmlFor="chapters-page-size">Items per page:</label>
             <select
               id="chapters-page-size"
-              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-100"
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
             >

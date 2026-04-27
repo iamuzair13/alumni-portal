@@ -310,14 +310,14 @@ function AlumniPageInner() {
     <ComponentCard title="Alumni Stories" className="">
       {/* Tabs navigation: identical styling and accessible keyboard interaction */}
       <div
-        className="tab-list flex flex-wrap gap-4 lg:gap-6 justify-start"
+        className="tab-list flex flex-wrap gap-4 lg:gap-6 justify-start dark:text-gray-300 dark:bg-gray-900"
         role="tablist"
         aria-label="Stories filters"
       >
         {TABS.map((tab, idx) => (
           <button
             key={tab.key}
-            className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm ${
+            className={`rounded-xl border px-4 py-2 cursor-pointer transform scale-100 transform-gpu transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:shadow-sm dark:text-gray-300 dark:bg-gray-900 ${
               selected === tab.key
                 ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20"
                 : "border-gray-200 bg-slate-100 text-gray-700 dark:border-gray-800 dark:bg-white/[0.03]"
@@ -366,7 +366,7 @@ function AlumniPageInner() {
         {selected === "viewStories" && (
           <div className="flex flex-wrap gap-3 items-center mb-4">
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-300" htmlFor="stories-search">
+              <label className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900" htmlFor="stories-search">
                 Search:
               </label>
               <input
@@ -375,7 +375,7 @@ function AlumniPageInner() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Name, program, session, description"
-                className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:bg-gray-900"
                 aria-label="Search stories by name, program, session, or description"
               />
             </div>
@@ -386,7 +386,7 @@ function AlumniPageInner() {
                 refetch();
               }}
               disabled={isFetching}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:bg-gray-900 "
               aria-label="Refresh stories list"
             >
               {isFetching ? (
@@ -443,7 +443,7 @@ function AlumniPageInner() {
         )}
 
         {selected === "addStory" && (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 dark:border-white/10 dark:bg-white/[0.02]">
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 dark:border-white/10 dark:bg-white/[0.02] dark:text-gray-300 dark:bg-gray-900">
             <AddStoryForm />
           </div>
         )}
@@ -682,27 +682,27 @@ const AddStoryForm: React.FC = () => {
   
 
   return (
-    <form className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Add story form" onSubmit={handleSubmit(onSubmit)}>
+    <form className="grid grid-cols-1 md:grid-cols-2 gap-4 dark:text-gray-300 dark:bg-gray-900" aria-label="Add story form" onSubmit={handleSubmit(onSubmit)}>
       <div className="flex flex-col gap-2">
-        <label htmlFor="sapId" className="text-sm text-gray-600 dark:text-gray-300">SAP ID</label>
+        <label htmlFor="sapId" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">SAP ID</label>
         <input id="sapId" className={inputBaseClass} aria-label="SAP ID" {...register("sapId")} />
         {errors.sapId && <span className="text-xs text-red-600">{errors.sapId.message as string}</span>}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="name" className="text-sm text-gray-600 dark:text-gray-300">Name</label>
+        <label htmlFor="name" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Name</label>
         <input id="name" className={inputBaseClass} aria-label="Name" {...register("name")} />
         {errors.name && <span className="text-xs text-red-600">{errors.name.message}</span>}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="email" className="text-sm text-gray-600 dark:text-gray-300">Email</label>
+        <label htmlFor="email" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Email</label>
         <input id="email" className={inputBaseClass} aria-label="Email" type="email" {...register("email")} />
         {errors.email && <span className="text-xs text-red-600">{errors.email.message as string}</span>}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="faculty" className="text-sm text-gray-600 dark:text-gray-300">Faculty</label>
+        <label htmlFor="faculty" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Faculty</label>
         <select id="faculty" className={inputBaseClass} aria-label="Faculty" {...register("faculty")}>
           <option value="">Select</option>
           {FACULTY_OPTIONS.map((f) => (
@@ -713,7 +713,7 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="department" className="text-sm text-gray-600 dark:text-gray-300">Department</label>
+        <label htmlFor="department" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Department</label>
         <select id="department" className={inputBaseClass} aria-label="Department" {...register("department")}>
           <option value="">Select</option>
           {deptOptions.map((d) => (
@@ -724,7 +724,7 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="md:col-span-2 flex flex-col gap-2">
-        <label htmlFor="storyTitle" className="text-sm text-gray-600 dark:text-gray-300">Story title</label>
+        <label htmlFor="storyTitle" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Story title</label>
         <input
           id="storyTitle"
           className={inputBaseClass}
@@ -736,7 +736,7 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="md:col-span-2 flex flex-col gap-2">
-        <span id="story-html-label" className="text-sm text-gray-600 dark:text-gray-300">Story</span>
+        <span id="story-html-label" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Story</span>
         <Controller
           name="storyHtml"
           control={control}
@@ -747,7 +747,7 @@ const AddStoryForm: React.FC = () => {
                 onChange={field.onChange}
                 disabled={isSubmitting}
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 dark:bg-gray-900">
                 Use the toolbar for headings, lists, and links. Content is sanitized when you save.
               </p>
             </div>
@@ -757,7 +757,7 @@ const AddStoryForm: React.FC = () => {
       </div>
 
       <div className="md:col-span-2 flex flex-col gap-2">
-        <span id="story-picture-label" className="text-sm text-gray-600 dark:text-gray-300">Story picture (optional)</span>
+        <span id="story-picture-label" className="text-sm text-gray-600 dark:text-gray-300 dark:bg-gray-900">Story picture (optional)</span>
         <input
           ref={storyImageInputRef}
           type="file"
@@ -793,18 +793,18 @@ const AddStoryForm: React.FC = () => {
             />
           </div>
         )}
-        <p className="text-xs text-gray-500 dark:text-gray-400">JPEG, PNG, GIF, or WebP, up to 5MB.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 dark:bg-gray-900">JPEG, PNG, GIF, or WebP, up to 5MB.</p>
       </div>
 
       <div className="md:col-span-2 mt-2">
-        {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700 dark:border-green-800/50 dark:bg-green-900/20 dark:text-green-300">{serverMsg}</div>}
-        {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300">{serverError}</div>}
+        {serverMsg && <div className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-green-700 dark:border-green-800/50 dark:bg-green-900/20 dark:text-green-300 dark:bg-gray-900">{serverMsg}</div>}
+        {serverError && <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-700 dark:border-red-800/50 dark:bg-red-900/20 dark:text-red-300 dark:bg-gray-900">{serverError}</div>}
       </div>
 
-      <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2">
+      <div className="md:col-span-2 flex items-center justify-end gap-3 mt-2 dark:text-gray-300 dark:bg-gray-900">
         <button
           type="reset"
-          className={buttonSecondaryClass}
+          className={buttonSecondaryClass} 
           onClick={() => {
             reset();
             clearStoryImage();
