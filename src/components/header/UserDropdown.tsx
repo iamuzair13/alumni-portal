@@ -12,6 +12,8 @@ export default function UserDropdown() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [openUpwards, setOpenUpwards] = useState(false);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
   const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
@@ -70,7 +72,19 @@ export default function UserDropdown() {
 
 function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   e.stopPropagation();
-  setIsOpen((prev) => !prev);
+  setIsOpen((prev) => {
+    const next = !prev;
+    if (next) {
+      // If there isn't enough space below, open upwards (mobile panel case).
+      // This avoids the menu being rendered off-screen.
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (rect) {
+        const spaceBelow = window.innerHeight - rect.bottom;
+        setOpenUpwards(spaceBelow < 320);
+      }
+    }
+    return next;
+  });
 }
 
   function closeDropdown() {
@@ -80,8 +94,9 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={toggleDropdown} 
-        className="dropdown-toggle flex items-center rounded-xl px-2 py-1.5 text-[#183D32] transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:text-emerald-200 dark:hover:bg-gray-800 dark:focus-visible:ring-emerald-400/30"
+        className="dropdown-toggle flex  items-center rounded-xl px-2 py-1.5 text-[#183D32] transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#183D32]/20 dark:text-emerald-200 dark:hover:bg-gray-800 dark:focus-visible:ring-emerald-400/30 "
       >
         <span className="mr-3 h-11 w-11 overflow-hidden rounded-full border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
           <Image
@@ -126,7 +141,9 @@ function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className="absolute right-0 mt-3 flex w-[260px] flex-col rounded-2xl border border-gray-200/80 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+        className={`right-0 flex w-[260px] flex-col rounded-2xl border border-gray-200/80 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900 ${
+          openUpwards ? "bottom-full mb-3" : "mt-3"
+        }`}
       >
         <div>
           <span className="block text-theme-sm font-medium text-gray-700 dark:text-gray-200">

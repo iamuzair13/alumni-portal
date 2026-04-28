@@ -14,6 +14,7 @@ import UserDropdown from "@/components/header/UserDropdown";
 import ComponentCard from "@/components/common/ComponentCard";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useSidebar } from "@/context/SidebarContext";
+import { isSuperAdminUser } from "@/lib/alumniProfile";
 
 import { AlumniTabs } from "@/components/alumni/Alumni-tabs";
 import { AlumniCards } from "@/components/alumni/Alumini-cards";
@@ -585,7 +586,8 @@ const UnifiedHeaderTopbar: FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
+  const pathname = usePathname();
+  const { isExpanded, isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
   const handleToggle = useCallback(() => {
     if (window.innerWidth >= 1024) {
@@ -603,6 +605,8 @@ const UnifiedHeaderTopbar: FC = () => {
   const { status, data: session } = useSession();
   const t = String(((session?.user ?? {}) as { type?: string }).type || "").toLowerCase();
   const isAlumni = t === "alumni";
+  const isSuperAdmin = isSuperAdminUser(session?.user);
+  const isAnalyticsRoute = pathname === "/admin/analytics";
 
   // Track scroll
   useEffect(() => {
@@ -623,14 +627,29 @@ const UnifiedHeaderTopbar: FC = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // On analytics route, keep sidebar collapsed by default
+  useEffect(() => {
+    if (!isAnalyticsRoute) return;
+
+    // Desktop sidebar (expanded/collapsed)
+    if (typeof window !== "undefined" && window.innerWidth >= 1024 && isExpanded) {
+      toggleSidebar();
+    }
+
+    // Mobile sidebar drawer
+    if (isMobileOpen) {
+      toggleMobileSidebar();
+    }
+  }, [isAnalyticsRoute, isExpanded, isMobileOpen, toggleSidebar, toggleMobileSidebar]);
+
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={`
-        sticky top-0 z-[500] flex min-h-[68px] items-center border-b bg-white/95
-        backdrop-blur-xl transition-all duration-300
+        sticky top-0 z-[500] flex min-h-[68px] items-center border-b  bg-white/95
+        backdrop-blur-xl transition-all duration-300 
         ${
           isScrolled
             ? "border-gray-200/80 shadow-lg shadow-gray-900/5 dark:border-gray-700/60 dark:shadow-black/20"
@@ -639,7 +658,7 @@ const UnifiedHeaderTopbar: FC = () => {
         dark:bg-gray-900/95 dark:backdrop-blur-xl
       `}
     >
-      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1600px] border-b  items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         {/* Left section: Logo / Toggle */}
         <div className="flex items-center gap-3">
           {isAlumni ? (
@@ -707,10 +726,58 @@ const UnifiedHeaderTopbar: FC = () => {
             </button>
           )}
         </div>
+        {/* Super Admin Actions */}
+       
 
        
         {/* Right section: Actions & User */}
         <div className="flex items-center gap-2">
+          {isSuperAdmin && !isAnalyticsRoute ? (
+            <div className="flex shrink-0 flex-col gap-1 sm:flex-row sm:items-center">
+              <Link
+                target="_blank"
+                href="/admin/analytics"
+                className="group relative inline-flex items-center justify-center gap-3 rounded-2xl border border-gray-200/80 bg-white px-6 py-2 text-sm font-semibold text-gray-900 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)] backdrop-blur-sm transition-all duration-300 ease-out hover:border-brand-300 hover:bg-brand-50/80 hover:text-brand-700 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05),0_2px_4px_rgba(0,0,0,0.03)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.98] dark:border-gray-700/60 dark:bg-gray-900/50 dark:text-white/90 dark:hover:border-brand-500/40 dark:hover:bg-brand-950/30 dark:hover:text-brand-200 dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+              >
+                <span className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-brand-500/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-brand-400/[0.05]" />
+
+                <span
+                  className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/[0.08] text-brand-600 ring-1 ring-brand-500/10 transition-all duration-300 group-hover:scale-105 group-hover:bg-brand-500/[0.12] group-hover:ring-brand-500/20 dark:bg-brand-400/[0.08] dark:text-brand-400 dark:ring-brand-400/10 dark:group-hover:bg-brand-400/[0.15] dark:group-hover:ring-brand-400/20"
+                  aria-hidden
+                >
+                  <svg
+                    className="h-[1.125rem] w-[1.125rem] transition-transform duration-300 group-hover:scale-110"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.75}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+                    />
+                  </svg>
+                </span>
+
+                <span className="relative text-left leading-tight">
+                  <span className="block tracking-tight">View Analytics</span>
+                </span>
+
+                <svg
+                  className="relative ml-1 h-4 w-4 text-gray-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-brand-600 dark:text-gray-500 dark:group-hover:text-brand-300"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          ) : null}
+
           {/* Mobile menu toggle */}
           <button
             onClick={toggleApplicationMenu}
@@ -728,8 +795,6 @@ const UnifiedHeaderTopbar: FC = () => {
           {/* Desktop actions */}
           <div className="hidden items-center gap-2 lg:flex">
             <ThemeToggleButton />
-
-            
 
             {/* Divider */}
             <div className="mx-1 h-6 w-px bg-gray-200 dark:bg-gray-700" />
