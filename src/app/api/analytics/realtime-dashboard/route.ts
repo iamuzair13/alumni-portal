@@ -118,6 +118,7 @@ export async function GET(req: Request) {
 
     const cardsRows = await sql/* sql */`
       SELECT
+        COUNT(*)::int AS card_total,
         COUNT(*) FILTER (WHERE c.status IS NULL OR TRIM(COALESCE(c.status,'')) = '')::int AS applied,
         COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) IN ('UNDERREVIEW','PENDING'))::int AS review,
         COUNT(*) FILTER (WHERE UPPER(TRIM(COALESCE(c.status,''))) = 'ONHOLD')::int AS on_hold,
@@ -227,6 +228,7 @@ export async function GET(req: Request) {
             meetupsTotal: ev.total ?? null,
           },
           cardsStatus: {
+            totalCards: cd.card_total ?? null,
             applied: cd.applied ?? null,
             review: cd.review ?? null,
             onHold: cd.on_hold ?? null,

@@ -513,9 +513,9 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
     // Sync scrollbar width with table content
     const syncScrollbarWidth = () => {
-      const tableContent = tableContainer.querySelector('.table-content-wrapper') as HTMLElement;
+      const tableContent = tableContainer.querySelector(".table-content-wrapper") as HTMLElement;
       if (tableContent) {
-        const scrollbarContent = topScrollbar.querySelector('.table-scrollbar-content') as HTMLElement;
+        const scrollbarContent = topScrollbar.querySelector(".table-scrollbar-content") as HTMLElement;
         if (scrollbarContent) {
           scrollbarContent.style.minWidth = `${tableContent.scrollWidth}px`;
         }
@@ -550,7 +550,7 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       syncScrollbarWidth();
     });
 
-    const tableContent = tableContainer.querySelector('.table-content-wrapper');
+    const tableContent = tableContainer.querySelector(".table-content-wrapper");
     if (tableContent) {
       resizeObserver.observe(tableContent);
     }
@@ -952,113 +952,216 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     return (
       <div className="flex flex-col gap-2">
+        {/* ─── Status Badge / Select ─── */}
         <div className="flex items-center gap-2">
-          <select
-            aria-label="Card status"
-            className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[12px] text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
-            value={current}
-            disabled={isLoading || isUpdating || readOnly}
-            onChange={handleStatusChange}
-          >
-            {Object.entries(CARD_STATUS_CONFIG)
-              .filter(([key]) => key !== "all")
-              .map(([key, config]) => (
-                <option key={key} value={config.dbValue || ""}>
-                  {config.label}
-                </option>
-              ))}
-          </select>
-          {isUpdating && <span className="text-[11px] text-gray-500">Updating...</span>}
-          {error && <span className="text-[11px] text-red-600" title={error}>Error</span>}
+          <div className="relative group">
+            <select
+              aria-label="Card status"
+              value={current}
+              disabled={isLoading || isUpdating || readOnly}
+              onChange={handleStatusChange}
+              className={`
+                appearance-none rounded-xl border px-3.5 py-2 pr-10 text-xs font-semibold shadow-sm
+                transition-all duration-200 cursor-pointer
+                focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500/30
+                disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none
+                hover:shadow-md
+                ${getStatusSelectStyles(current)}
+              `}
+            >
+              {Object.entries(CARD_STATUS_CONFIG)
+                .filter(([key]) => key !== "all")
+                .map(([key, config]) => (
+                  <option key={key} value={config.dbValue || ""}>
+                    {config.label}
+                  </option>
+                ))}
+            </select>
+            {/* Custom chevron */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
+              <svg 
+                className={`h-3.5 w-3.5 transition-colors ${isLoading || isUpdating || readOnly ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-600'}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+    
+          {/* Loading State */}
+          {isUpdating && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 animate-pulse">
+              <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Saving...
+            </span>
+          )}
+    
+          {/* Error Tooltip */}
+          {error && (
+            <span 
+              className="inline-flex items-center gap-1 text-[11px] text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-100 cursor-help"
+              title={error}
+            >
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Failed
+            </span>
+          )}
         </div>
+    
+        {/* ─── On Hold Reason Display ─── */}
         {showReasonInput && current === "Onhold" && data?.reason_onhold && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-            <span className="text-[10px] font-semibold text-gray-600">Reason for On Hold:</span>
-            <p className="text-[11px] text-gray-800 mt-1">{data.reason_onhold}</p>
+          <div className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-orange-50/40 p-3 shadow-sm">
+            <div className="flex items-start gap-2">
+              <svg className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">On Hold Reason</span>
+                <p className="text-xs text-amber-900 dark:text-amber-300 mt-1 font-medium leading-relaxed">{data.reason_onhold}</p>
+              </div>
+            </div>
           </div>
         )}
-        {showReasonInput && current === "Onhold" && !canEdit && data?.reason_onhold && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-            <span className="text-[10px] font-semibold text-gray-600">Reason for On Hold:</span>
-            <p className="text-[11px] text-gray-800 mt-1">{data.reason_onhold}</p>
-          </div>
-        )}
-        
-        {/* Confirmation Modal for Status Change */}
+    
+        {/* ─── Confirmation Modal ─── */}
         {canEdit && (
           <Modal
             isOpen={showConfirmModal}
             onClose={handleCancelStatusChange}
-            className="max-w-md mx-auto"
+            className="max-w-lg mx-auto"
             showCloseButton={true}
           >
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Confirm Status Change</h2>
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Are you sure you want to update this card status?
-              </p>
-
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">New Status:</span>
-                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                    {pendingStatusChange?.status ? getStatusLabel(mapDbStatusToUI(pendingStatusChange.status)) : "Under-Review"}
-                  </span>
+            <div className="p-0 overflow-hidden">
+              {/* Modal Header */}
+              <div className="px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Confirm Status Change</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Review details before confirming</p>
+                  </div>
                 </div>
-
+              </div>
+    
+              {/* Modal Body */}
+              <div className="px-6 py-5 space-y-5">
+                {/* Status Transition */}
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800">
+                  <div className="flex-1">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Current</div>
+                    <StatusBadge status={current} />
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">New Status</div>
+                    <StatusBadge status={pendingStatusChange?.status || "UnderReview"} />
+                  </div>
+                </div>
+    
+                {/* On Hold Reason Section */}
                 {pendingStatusChange?.status === "Onhold" && (
-                  <div className="mt-4">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">On Hold Reason</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">This will be stored in database and included in email</div>
-                    <select
-                      aria-label="On hold reason"
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-theme-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={pendingStatusChange?.reason || ""}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setPendingStatusChange((prev) => (prev ? { ...prev, reason: v } : prev));
-                        setError(null);
-                      }}
-                      disabled={isUpdating}
-                    >
-                      <option value="">Select reason...</option>
-                      <option value="Picture issue">Picture issue</option>
-                      <option value="Data Mismatch">Data Mismatch</option>
-                    </select>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Reason for On Hold
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">This reason will be saved to the database and included in the notification email.</p>
+                    </div>
+                    <div className="relative">
+                      <select
+                        aria-label="On hold reason"
+                        value={pendingStatusChange?.reason || ""}
+                        disabled={isUpdating}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPendingStatusChange((prev) => (prev ? { ...prev, reason: v } : prev));
+                          setError(null);
+                        }}
+                        className={`
+                          w-full rounded-xl border px-4 py-3 text-sm shadow-sm
+                          focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                          appearance-none pr-10
+                          ${!pendingStatusChange?.reason ? 'border-gray-300 bg-white text-gray-500' : 'border-amber-300 bg-amber-50/30 text-gray-900'}
+                        `}
+                      >
+                        <option value="" disabled>Select a reason...</option>
+                        <option value="Picture issue">📷 Picture Issue — Blurry, incorrect format, or missing photo</option>
+                        <option value="Data Mismatch">📋 Data Mismatch — Information doesn't match university records</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    {error && (
+                      <div className="flex items-center gap-1.5 text-xs text-red-600">
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {error}
+                      </div>
+                    )}
                   </div>
                 )}
-
+    
+                {/* Email Preview Section */}
                 {(() => {
                   const next = pendingStatusChange?.status;
                   if (!next) return null;
                   if (next !== "Onhold" && next !== "Active") return null;
+                  
                   if (!alumniId || !recipientEmail) {
                     return (
-                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="text-xs text-amber-700 dark:text-amber-400">
-                          Email preview is not available because alumni email or alumniId is missing for this record.
+                      <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4 flex items-start gap-3">
+                        <svg className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Email preview unavailable</p>
+                          <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">Alumni email or ID is missing for this record.</p>
                         </div>
                       </div>
                     );
                   }
-
+    
                   if (next === "Onhold" && !String(pendingStatusChange?.reason || "").trim()) {
                     return (
-                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <div className="text-xs text-amber-700 dark:text-amber-400">
-                          Select an On Hold reason to enable email preview.
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-start gap-3">
+                        <svg className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Email notification ready</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">Select an On Hold reason above to preview and customize the email.</p>
                         </div>
                       </div>
                     );
                   }
-
+    
                   const actionType =
                     next === "Onhold"
                       ? EMAIL_ACTION_TYPE.ALUMNI_CARD_ONHOLD
-                      : next === "Active"
-                        ? EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY
-                        : EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY;
-
+                      : EMAIL_ACTION_TYPE.ALUMNI_CARD_READY_FOR_DELIVERY;
+    
                   const tpl = generateAdminActionEmail({
                     actionType,
                     alumniName: alumniName || "Alumni",
@@ -1067,13 +1170,20 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         ? `<p style="margin: 12px 0 0 0; color: #333333; font-size: 14px;"><strong>Reason:</strong> ${String(pendingStatusChange.reason)}</p>`
                         : "",
                   });
-
+    
                   return (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview Email</div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400">Preview and edit before sending</div>
+                    <div className="rounded-xl border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                            <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">Email Notification</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Preview and send email to {recipientEmail}</p>
+                          </div>
                         </div>
                         <SendEmailButton
                           alumniId={alumniId}
@@ -1084,17 +1194,24 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                           disabled={isUpdating}
                         />
                       </div>
+                      
+                      {/* Email Preview Card */}
+                      <div className="mt-3 rounded-lg border border-blue-100 bg-white dark:bg-gray-900 dark:border-gray-700 p-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Subject</div>
+                        <p className="text-xs text-gray-800 dark:text-gray-200 font-medium truncate">{tpl.subject}</p>
+                      </div>
                     </div>
                   );
                 })()}
               </div>
-
-              <div className="mt-6 flex items-center justify-end gap-3">
+    
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={handleCancelStatusChange}
                   disabled={isUpdating}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   Cancel
                 </button>
@@ -1102,9 +1219,24 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                   type="button"
                   onClick={handleConfirmStatusChange}
                   disabled={isUpdating}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-500/25 hover:shadow-md hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200 inline-flex items-center gap-2"
                 >
-                  {isUpdating ? "Updating..." : "Confirm"}
+                  {isUpdating ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Confirm Change</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1112,6 +1244,53 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         )}
       </div>
     );
+    
+    // ─── Helper Components ───
+    
+    function getStatusSelectStyles(status: string | null): string {
+      const base = "border-transparent";
+      switch (status) {
+        case "Pending":
+        case "UnderReview":
+          return `${base} bg-amber-50 text-amber-800 hover:bg-amber-100 focus:border-amber-500 dark:bg-amber-900/20 dark:text-amber-300`;
+        case "Process":
+        case "UnderPrinting":
+          return `${base} bg-purple-50 text-purple-800 hover:bg-purple-100 focus:border-purple-500 dark:bg-purple-900/20 dark:text-purple-300`;
+        case "Active":
+          return `${base} bg-emerald-50 text-emerald-800 hover:bg-emerald-100 focus:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-300`;
+        case "Delivered":
+          return `${base} bg-blue-50 text-blue-800 hover:bg-blue-100 focus:border-blue-500 dark:bg-blue-900/20 dark:text-blue-300`;
+        case "Onhold":
+          return `${base} bg-rose-50 text-rose-800 hover:bg-rose-100 focus:border-rose-500 dark:bg-rose-900/20 dark:text-rose-300`;
+        default:
+          return `${base} bg-gray-50 text-gray-700 hover:bg-gray-100 focus:border-gray-500 dark:bg-gray-800 dark:text-gray-300`;
+      }
+    }
+    
+    function StatusBadge({ status }: { status: string | null }) {
+      const styles = getStatusSelectStyles(status);
+      const label = status ? getStatusLabel(mapDbStatusToUI(status as DbCardStatus)) : "Unknown";
+      
+      return (
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${styles}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(status)}`} />
+          {label}
+        </span>
+      );
+    }
+    
+    function getStatusDotColor(status: string | null): string {
+      switch (status) {
+        case "Pending":
+        case "UnderReview": return "bg-amber-400";
+        case "Process":
+        case "UnderPrinting": return "bg-purple-400";
+        case "Active": return "bg-emerald-400";
+        case "Delivered": return "bg-blue-400";
+        case "Onhold": return "bg-rose-400";
+        default: return "bg-gray-400";
+      }
+    }
   };
 
   const RowActions: React.FC<{ sapId: string; studentName: string; alumItem: AlumniListItem }> = ({ sapId, studentName, alumItem }) => {
@@ -1405,425 +1584,277 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
 
   return (
     <section aria-labelledby="alumni-table-title" className="w-full">
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-800/30 rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
-        <div className="flex-1 w-full sm:max-w-lg">
-          <label htmlFor="alumni-card-table-search" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2.5 uppercase tracking-wider">
+      {/* ─── Enhanced Toolbar ─── */}
+      <div className="mb-6 flex flex-col gap-4  py-2 px-2 	 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex-1 w-full lg:max-w-xl">
+          <label 
+            htmlFor="alumni-card-table-search" 
+            className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-[0.15em]"
+          >
             Search Alumni Cards
           </label>
-          <div className="relative">
-            <svg 
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg 
+                className="h-5 w-5 text-gray-400 transition-colors group-focus-within:text-blue-500" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <input
               id="alumni-card-table-search"
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, degree, company, contact..."
-              className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300/80 bg-white dark:bg-gray-900 text-sm font-medium text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:text-gray-100 transition-all duration-200"
+              className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-600 dark:hover:border-gray-600"
               aria-label="Search alumni"
             />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Clear search"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
+        
         <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-900 dark:border-gray-800">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total:</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{total.toLocaleString()}</span>
+          </div>
           <button
             type="button"
             onClick={handleExportToExcel}
             disabled={isExporting || effectiveLoading || filtered.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 hover:bg-emerald-700 hover:shadow-md hover:shadow-emerald-500/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200 active:scale-[0.98]"
           >
             {isExporting ? (
               <>
                 <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Exporting...
+                <span>Exporting...</span>
               </>
             ) : (
               <>
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Export Excel
+                <span>Export Excel</span>
               </>
             )}
           </button>
-          
         </div>
       </div>
-
-      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-lg dark:border-gray-700/80 dark:bg-gray-800/50">
-        {/* Top Horizontal Scrollbar - Prominent and Easy to Interact */}
+  
+      {/* ─── Main Table Container ─── */}
+      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
+        {/* Synced Scrollbar */}
         <div 
           ref={topScrollbarRef}
           className="top-horizontal-scrollbar w-full overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
           style={{
-            height: '24px',
-            scrollbarWidth: 'auto' as const,
-            scrollbarColor: '#3b82f6 #e5e7eb',
+            height: "24px",
+            scrollbarWidth: "auto",
+            scrollbarColor: "#3b82f6 #e5e7eb",
           }}
         >
-          <div className="table-scrollbar-content h-full" style={{ minWidth: '800px' }}></div>
+          <div className="table-scrollbar-content h-full" style={{ minWidth: "800px" }} />
         </div>
+  
         <div 
           ref={tableContainerRef}
-          className="max-w-full overflow-x-hidden custom-scrollbar max-h-[700px] overflow-y-auto relative"
+          className="max-w-full overflow-x-auto custom-scrollbar max-h-[680px] overflow-y-auto relative"
           style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
           }}
           aria-live="polite"
         >
-          <div className="table-content-wrapper" style={{ minWidth: '800px' }}>
-            <Table className="min-w-full">
-              <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-900/80 dark:to-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
-                <TableRow className="border-b-2 border-gray-200 dark:border-gray-700">
-                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[50px]">{null}</TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
-                    onClick={() => toggleSort("name")} 
-                    aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Full Name</span>
-                      <div className="flex flex-col">
-                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "name" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "name" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
-                    onClick={() => toggleSort("id")} 
-                    aria-sort={sortKey === "id" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>SAP ID / Registration</span>
-                      <div className="flex flex-col">
-                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "id" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "id" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[180px] hidden lg:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
-                    onClick={() => toggleSort("contact")} 
-                    aria-sort={sortKey === "contact" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Email</span>
-                      <div className="flex flex-col">
-                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "contact" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "contact" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] hidden lg:table-cell"
-                  >
-                    <span>Home Address</span>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[200px] hidden lg:table-cell"
-                  >
-                    <span>Delivery Address</span>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[130px] hidden lg:table-cell"
-                  >
-                    <span>Application Date</span>
-                  </TableCell>
-                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Card Status</TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
-                    onClick={() => toggleSort("faculty")} 
-                    aria-sort={sortKey === "faculty" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Faculty</span>
-                      <div className="flex flex-col">
-                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "faculty" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "faculty" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
-                    onClick={() => toggleSort("department")} 
-                    aria-sort={sortKey === "department" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Department</span>
-                      <div className="flex flex-col">
-                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "department" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "department" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell 
-                    isHeader 
-                    className="px-3 sm:px-6 py-4 text-left text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[150px] hidden md:table-cell cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
-                    onClick={() => toggleSort("program")} 
-                    aria-sort={sortKey === "program" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Program</span>
-                      <div className="flex flex-col">
-                        <ArrowUpIcon className={`w-3 h-3 ${sortKey === "program" && sortDir === "asc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                        <ArrowDownIcon className={`w-3 h-3 -mt-1 ${sortKey === "program" && sortDir === "desc" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`} />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-center text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[160px]">Over Due by Alumni</TableCell>
-                  <TableCell isHeader className="px-3 sm:px-6 py-4 text-right text-xs font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider min-w-[120px] sticky right-0 bg-gradient-to-r from-transparent via-gray-50/95 to-gray-50 dark:via-gray-900/95 dark:to-gray-900/50 backdrop-blur-sm z-20">Actions</TableCell>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-                {effectiveLoading && (
-                  Array.from({ length: Math.min(pageSize, 5) }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`} className="bg-white dark:bg-gray-800/30">
-                      <TableCell className="px-3 sm:px-6 py-5">
-                        <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5">
-                        <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5">
-                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
-                        <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
-                        <div className="h-5 w-56 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
-                        <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden lg:table-cell">
-                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
-                        <div className="h-5 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
-                        <div className="h-5 w-36 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 hidden md:table-cell">
-                        <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5">
-                        <div className="h-7 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
-                      </TableCell>
-                      <TableCell className="px-3 sm:px-6 py-5 sticky right-0 bg-white dark:bg-gray-800/30 z-10">
-                        <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg ml-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-
-                {!effectiveLoading && effectiveError && (
-                  <TableRow>
-                    <TableCell className="px-6 py-16 text-center" colSpan={12}>
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                          <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-base font-semibold text-red-600 dark:text-red-400 mb-1">{effectiveError}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-500">Please try again</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-
+          <div className="table-content-wrapper" style={{ minWidth: "1400px" }}>
+            <table className="min-w-full border-collapse">
+              {/* ─── Table Header ─── */}
+              <thead className="sticky top-0 z-20">
+                <tr className="bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+                  <th className="w-12 px-4 py-4 text-left">
+                    <span className="sr-only">Expand</span>
+                  </th>
+                  
+                  <SortableHeader 
+                    label="Full Name" 
+                    sortKey="name" 
+                    currentSort={sortKey} 
+                    sortDir={sortDir} 
+                    onSort={toggleSort}
+                    className="min-w-[180px]"
+                  />
+                  
+                  <SortableHeader 
+                    label="SAP ID / Reg. No" 
+                    sortKey="id" 
+                    currentSort={sortKey} 
+                    sortDir={sortDir} 
+                    onSort={toggleSort}
+                    className="min-w-[140px]"
+                  />
+                  
+                  <SortableHeader 
+                    label="Email" 
+                    sortKey="contact" 
+                    currentSort={sortKey} 
+                    sortDir={sortDir} 
+                    onSort={toggleSort}
+                    className="min-w-[220px] hidden lg:table-cell"
+                  />
+                  
+                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[240px] hidden lg:table-cell">
+                    Home Address
+                  </th>
+                  
+                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[240px] hidden lg:table-cell">
+                    Delivery Address
+                  </th>
+                  
+                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[130px] hidden lg:table-cell">
+                    Applied On
+                  </th>
+                  
+                  <th className="px-4 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px]">
+                    Status
+                  </th>
+                  
+                  <SortableHeader 
+                    label="Faculty" 
+                    sortKey="faculty" 
+                    currentSort={sortKey} 
+                    sortDir={sortDir} 
+                    onSort={toggleSort}
+                    className="min-w-[160px] hidden md:table-cell"
+                  />
+                  
+                  <SortableHeader 
+                    label="Department" 
+                    sortKey="department" 
+                    currentSort={sortKey} 
+                    sortDir={sortDir} 
+                    onSort={toggleSort}
+                    className="min-w-[160px] hidden md:table-cell"
+                  />
+                  
+                  <SortableHeader 
+                    label="Program" 
+                    sortKey="program" 
+                    currentSort={sortKey} 
+                    sortDir={sortDir} 
+                    onSort={toggleSort}
+                    className="min-w-[180px] hidden md:table-cell"
+                  />
+                  
+                  <th className="px-4 py-4 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Overdue
+                    </span>
+                  </th>
+                  
+                  <th className="px-4 py-4 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px] sticky right-0 bg-gray-50 dark:bg-gray-900 z-30 shadow-[-4px_0_12px_-6px_rgba(0,0,0,0.1)]">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+  
+              {/* ─── Table Body ─── */}
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
+                {effectiveLoading && <TableSkeletons pageSize={pageSize} />}
+                
+                {!effectiveLoading && effectiveError && <ErrorState message={effectiveError} />}
+                
                 {!effectiveLoading && !effectiveError && pageItems.length === 0 && (
-                  <TableRow>
-                    <TableCell className="px-6 py-16 text-center text-gray-500 dark:text-gray-400" colSpan={12}>
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-base font-semibold text-gray-700 dark:text-gray-300">No alumni found{debouncedQuery ? ` for "${debouncedQuery}"` : ""}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Try adjusting your search or filters</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <EmptyState query={debouncedQuery} />
                 )}
-
-                {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => {
-                  return (
-                    <React.Fragment key={`${alum.id}-fragment-${idx}`}>
-                      <TableRow
-                        key={`${alum.id}-${idx}`}
-                        className={`hover:bg-blue-50/60 dark:hover:bg-white/[0.05] transition-all duration-200 cursor-pointer ${selectedRowId === alum.id ? "bg-blue-50/80 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700 shadow-sm" : "odd:bg-white even:bg-gray-50/30 dark:odd:bg-gray-800/30 dark:even:bg-gray-800/20"}`}
-                        onClick={() => setSelectedRowId(alum.id)}
-                        aria-selected={selectedRowId === alum.id}
-                      >
-                        <TableCell className="px-6 py-5 text-start">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedRowId(expandedRowId === alum.id ? null : alum.id);
-                            }}
-                            className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
-                              expandedRowId === alum.id
-                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
-                            }`}
-                            aria-label={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
-                            title={expandedRowId === alum.id ? "Collapse details" : "Expand details"}
-                          >
-                            <PlusIcon className={`w-4 h-4 transition-transform ${expandedRowId === alum.id ? "rotate-45" : ""}`} />
-                          </button>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-start">
-                          <div className="flex items-center gap-3">
-                            <span className="block font-semibold text-gray-900 text-sm dark:text-gray-100">{toTitleCase(alum.name)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 font-mono text-xs">
-                          {alum.registrationno ? (
-                            <div>
-                              <div>{formatSapId(alum.id)}</div>
-                              <div className="text-xs text-gray-500">{alum.registrationno}</div>
-                            </div>
-                          ) : (
-                            formatSapId(alum.id)
-                          )}
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                          <a 
-                            href={alum.email ? `mailto:${alum.email}` : "#"} 
-                            className={`${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors" : "text-gray-400"}`}
-                          >
-                            {formatEmail(alum.email)}
-                          </a>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                          <div className="max-w-[280px] whitespace-normal break-words leading-snug">
-                            {alum.cardaddress && String(alum.cardaddress).trim() ? String(alum.cardaddress) : "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                          <div className="max-w-[280px] whitespace-normal break-words leading-snug">
-                            {formatCardDeliveryAddressLine(
-                              alum.deliveryCity,
-                              alum.deliveryStreetNo,
-                              alum.deliveryHouseNo
-                            ) || "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden lg:table-cell">
-                          {formatApplicationDate(alum.createdAt)}
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-start">
-                          <StatusSelect
-                            sapId={alum.id}
-                            alumniId={alum.alumniid ?? null}
-                            recipientEmail={alum.email ?? null}
-                            alumniName={alum.name}
-                            initialStatus={alum.status}
-                            readOnly={!canEdit}
-                          />
-                        </TableCell>
-                        <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.faculty ?? "-"}</TableCell>
-                        <TableCell className="px-3 sm:px-6 min-w-[220px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.department ?? "-"}</TableCell>
-                        <TableCell className="px-3 sm:px-6 min-w-[250px] py-5 text-gray-700 text-sm text-start dark:text-gray-300 hidden md:table-cell">{alum.program ?? "-"}</TableCell>
-                        <TableCell className="px-3 sm:px-6 py-5 text-center">
-                          <label className="inline-flex items-center justify-center gap-2 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-                              checked={overdueByAlumniSet.has(alum.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const nextChecked = e.target.checked;
-                                setPendingOverdueByAlumniChange({ item: alum, checked: nextChecked });
-                                setShowOverdueByAlumniConfirmModal(true);
-                              }}
-                              aria-label={`Mark ${alum.name} as overdue by alumni`}
-                            />
-                          </label>
-                        </TableCell>
-                        <TableCell className={`px-3 sm:px-6 py-5 text-end bg-gray-100 sticky right-0 z-10 min-w-[170px] ${
-                          selectedRowId === alum.id 
-                            ? "bg-blue-50/80 dark:bg-blue-900/30" 
-                            : idx % 2 === 0 
-                              ? "bg-gray-50/30 dark:bg-gray-800/20" 
-                              : "bg-white dark:bg-gray-800/30"
-                        }`}>
-                          <RowActions sapId={alum.id} studentName={alum.name} alumItem={alum} />
-                        </TableCell>
-                      </TableRow>
-                      {expandedRowId === alum.id && (
-                        <TableRow key={`${alum.id}-expanded`} className="bg-blue-50/30 dark:bg-blue-900/10">
-                          <TableCell colSpan={12} className="px-0 py-6">
-                            <div className="w-full overflow-x-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', boxSizing: 'border-box' }}>
-                              <div className="w-full max-w-full overflow-x-hidden flex ">
-                                <AlumniExpandableDetails sapId={alum.id} onClose={() => setExpandedRowId(null)} readOnly={!canEdit} />
-                                <ErpDataDetails sapId={alum.id} registrationNo={alum.registrationno ?? null} onClose={() => setExpandedRowId(null)} />
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
+  
+                {!effectiveLoading && !effectiveError && pageItems.map((alum, idx) => (
+                  <AlumniTableRow
+                    key={`${alum.id}-${idx}`}
+                    alum={alum}
+                    idx={idx}
+                    isSelected={selectedRowId === alum.id}
+                    isExpanded={expandedRowId === alum.id}
+                    onSelect={() => setSelectedRowId(alum.id)}
+                    onToggleExpand={() => setExpandedRowId(expandedRowId === alum.id ? null : alum.id)}
+                    isOverdue={overdueByAlumniSet.has(alum.id)}
+                    onToggleOverdue={(checked) => {
+                      setPendingOverdueByAlumniChange({ item: alum, checked });
+                      setShowOverdueByAlumniConfirmModal(true);
+                    }}
+                    canEdit={canEdit}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-5 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700">
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-            {(() => {
-              const start = total > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-              const end = Math.min(start + pageItems.length - 1, total);
-              return `Showing ${start.toLocaleString()}-${end.toLocaleString()} of ${total.toLocaleString()}`;
-            })()}
-          </span>
+  
+        {/* ─── Table Footer ─── */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                {total > 0 ? ((currentPage - 1) * pageSize + 1).toLocaleString() : 0}
+              </span>
+              {" - "}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                {Math.min(currentPage * pageSize, total).toLocaleString()}
+              </span>
+              {" of "}
+              <span className="font-semibold text-gray-900 dark:text-white">{total.toLocaleString()}</span>
+              {" results"}
+            </span>
+            {debouncedQuery && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium dark:bg-blue-900/20 dark:text-blue-400">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {debouncedQuery}
+                <button 
+                  onClick={() => setQuery("")}
+                  className="ml-1 hover:text-blue-900"
+                  aria-label="Clear filter"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            )}
+          </div>
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={(p) => {
               const newPage = Math.max(1, Math.min(totalPages, p));
               setCurrentPage(newPage);
-              // Scroll to top of table when page changes
-              if (tableContainerRef.current) {
-                tableContainerRef.current.scrollTop = 0;
-              }
-              // Also reset horizontal scroll
-              if (topScrollbarRef.current) {
-                topScrollbarRef.current.scrollLeft = 0;
-              }
+              tableContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+              topScrollbarRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
             }}
           />
         </div>
       </div>
+  
+      {/* ─── Overdue Confirmation Modal ─── */}
       <Modal
         isOpen={showOverdueByAlumniConfirmModal}
         onClose={() => {
@@ -1834,18 +1865,23 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
         showCloseButton={true}
       >
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Confirm Action
+          <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-4 dark:bg-amber-900/20">
+            <svg className="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+            {pendingOverdueByAlumniChange?.checked ? "Mark as Overdue" : "Remove Overdue Flag"}
           </h2>
-          <p className="text-gray-700 dark:text-gray-300 mb-6">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
             {pendingOverdueByAlumniChange?.checked
-              ? `Mark ${pendingOverdueByAlumniChange.item.name} as Over Due by Alumni?`
-              : `Remove Over Due by Alumni flag for ${pendingOverdueByAlumniChange?.item.name || "this alumni"}?`}
+              ? `Are you sure you want to mark ${pendingOverdueByAlumniChange.item.name} as overdue by alumni? This will flag the record for follow-up.`
+              : `Remove the overdue flag for ${pendingOverdueByAlumniChange?.item.name}? The record will return to normal status.`}
           </p>
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
               onClick={() => {
                 setShowOverdueByAlumniConfirmModal(false);
                 setPendingOverdueByAlumniChange(null);
@@ -1855,7 +1891,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
             </button>
             <button
               type="button"
-              className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all active:scale-[0.98] ${
+                pendingOverdueByAlumniChange?.checked
+                  ? "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
+                  : "bg-gray-800 hover:bg-gray-900 focus:ring-gray-500"
+              }`}
               onClick={() => {
                 if (pendingOverdueByAlumniChange) {
                   onToggleOverdueByAlumni?.(
@@ -1872,6 +1912,8 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
           </div>
         </div>
       </Modal>
+  
+      {/* ─── Scrollbar Styles ─── */}
       <style jsx global>{`
         .top-horizontal-scrollbar::-webkit-scrollbar {
           height: 24px !important;
@@ -1904,4 +1946,368 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
       <ExportModal />
     </section>
   );
+  
+  // ─── Sub-Components ───
+  
+  function SortableHeader({ 
+    label, 
+    sortKey, 
+    currentSort, 
+    sortDir, 
+    onSort,
+    className = ""
+  }: { 
+    label: string; 
+    sortKey: SortKey; 
+    currentSort: SortKey; 
+    sortDir: SortDirection; 
+    onSort: (key: SortKey) => void;
+    className?: string;
+  }) {
+    const isActive = currentSort === sortKey;
+    
+    return (
+      <th 
+        className={`px-4 py-4 text-left cursor-pointer group transition-colors hover:bg-gray-100/50 dark:hover:bg-gray-800/50 ${className}`}
+        onClick={() => onSort(sortKey)}
+        aria-sort={isActive ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <div className="flex items-center gap-2">
+          <span className={`text-[11px] font-bold uppercase tracking-wider transition-colors ${
+            isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+          }`}>
+            {label}
+          </span>
+          <div className="flex flex-col gap-0">
+            <svg 
+              className={`w-3 h-3 transition-colors ${isActive && sortDir === "asc" ? "text-blue-500" : "text-gray-300 dark:text-gray-600"}`} 
+              fill="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z" />
+            </svg>
+            <svg 
+              className={`w-3 h-3 -mt-1 transition-colors ${isActive && sortDir === "desc" ? "text-blue-500" : "text-gray-300 dark:text-gray-600"}`} 
+              fill="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z" />
+            </svg>
+          </div>
+        </div>
+      </th>
+    );
+  }
+  
+  function TableSkeletons({ pageSize }: { pageSize: number }) {
+    return (
+      <>
+        {Array.from({ length: Math.min(pageSize, 6) }).map((_, i) => (
+          <tr key={`skeleton-${i}`} className="animate-pulse">
+            <td className="px-4 py-5">
+              <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded-md" />
+            </td>
+            <td className="px-4 py-5">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700" />
+                <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+              </div>
+            </td>
+            <td className="px-4 py-5">
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5 hidden lg:table-cell">
+              <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5 hidden lg:table-cell">
+              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5 hidden lg:table-cell">
+              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5 hidden lg:table-cell">
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5">
+              <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded-full" />
+            </td>
+            <td className="px-4 py-5 hidden md:table-cell">
+              <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5 hidden md:table-cell">
+              <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5 hidden md:table-cell">
+              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+            </td>
+            <td className="px-4 py-5">
+              <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded mx-auto" />
+            </td>
+            <td className="px-4 py-5 sticky right-0 z-10 bg-white dark:bg-gray-900 shadow-[-8px_0_16px_-8px_rgba(0,0,0,0.05)]">
+              <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg ml-auto" />
+            </td>
+          </tr>
+        ))}
+      </>
+    );
+  }
+  
+  function ErrorState({ message }: { message: string }) {
+    return (
+      <tr>
+        <td className="px-6 py-16 text-center" colSpan={13}>
+          <div className="flex flex-col items-center gap-4 max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center dark:bg-red-900/20">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Failed to load data</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:text-red-400"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Retry
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+  
+  function EmptyState({ query }: { query: string }) {
+    return (
+      <tr>
+        <td className="px-6 py-16 text-center" colSpan={13}>
+          <div className="flex flex-col items-center gap-4 max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center dark:bg-gray-800">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">
+                No alumni found{query ? ` for "${query}"` : ""}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {query ? "Try adjusting your search terms or clearing filters" : "No records match the current filters"}
+              </p>
+            </div>
+            {query && (
+              <button 
+                onClick={() => {/* clear query */}}
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors dark:bg-gray-800 dark:text-gray-300"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+  
+  function AlumniTableRow({ 
+    alum, 
+    idx, 
+    isSelected, 
+    isExpanded, 
+    onSelect, 
+    onToggleExpand,
+    isOverdue,
+    onToggleOverdue,
+    canEdit
+  }: {
+    alum: AlumniListItem;
+    idx: number;
+    isSelected: boolean;
+    isExpanded: boolean;
+    onSelect: () => void;
+    onToggleExpand: () => void;
+    isOverdue: boolean;
+    onToggleOverdue: (checked: boolean) => void;
+    canEdit: boolean;
+  }) {
+    const rowBg = isSelected 
+      ? "bg-blue-50/70 dark:bg-blue-900/20" 
+      : idx % 2 === 0 
+        ? "bg-white dark:bg-gray-900" 
+        : "bg-gray-50/50 dark:bg-gray-800/30";
+  
+    return (
+      <>
+        <tr
+          className={`group transition-all duration-200 ${rowBg} hover:bg-blue-50/40 dark:hover:bg-white/[0.03] ${isSelected ? "ring-1 ring-inset ring-blue-200 dark:ring-blue-800" : ""}`}
+          onClick={onSelect}
+          aria-selected={isSelected}
+        >
+          <td className="px-4 py-4">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand();
+              }}
+              className={`flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200 ${
+                isExpanded
+                  ? "bg-blue-100 text-blue-700 rotate-45 dark:bg-blue-900/30 dark:text-blue-400"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+              }`}
+              aria-label={isExpanded ? "Collapse details" : "Expand details"}
+            >
+              <PlusIcon className="w-4 h-4" />
+            </button>
+          </td>
+          
+          <td className="px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-xs font-bold text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-400">
+                {alum.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                  {toTitleCase(alum.name)}
+                </div>
+                {alum.email && (
+                  <div className="text-xs text-gray-500 dark:text-gray-500 lg:hidden">
+                    {formatEmail(alum.email)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </td>
+          
+          <td className="px-4 py-4">
+            <div className="font-mono text-xs text-gray-700 dark:text-gray-300">
+              {formatSapId(alum.id)}
+            </div>
+            {alum.registrationno && (
+              <div className="text-[11px] text-gray-400 mt-0.5 font-mono">{alum.registrationno}</div>
+            )}
+          </td>
+          
+          <td className="px-4 py-4 hidden lg:table-cell">
+            <a 
+              href={alum.email ? `mailto:${alum.email}` : undefined}
+              className={`text-sm ${alum.email ? "text-blue-600 hover:text-blue-700 hover:underline font-medium" : "text-gray-400"} transition-colors`}
+            >
+              {formatEmail(alum.email)}
+            </a>
+          </td>
+          
+          <td className="px-4 py-4 hidden lg:table-cell">
+            <div className="max-w-[260px] text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">
+              {alum.cardaddress?.trim() || "-"}
+            </div>
+          </td>
+          
+          <td className="px-4 py-4 hidden lg:table-cell">
+            <div className="max-w-[260px] text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">
+              {formatCardDeliveryAddressLine(
+                alum.deliveryCity,
+                alum.deliveryStreetNo,
+                alum.deliveryHouseNo
+              ) || "-"}
+            </div>
+          </td>
+          
+          <td className="px-4 py-4 hidden lg:table-cell">
+            <span className="text-sm text-gray-600 dark:text-gray-400 tabular-nums">
+              {formatApplicationDate(alum.createdAt)}
+            </span>
+          </td>
+          
+          <td className="px-4 py-4">
+            <StatusSelect
+              sapId={alum.id}
+              alumniId={alum.alumniid ?? null}
+              recipientEmail={alum.email ?? null}
+              alumniName={alum.name}
+              initialStatus={alum.status}
+              readOnly={!canEdit}
+            />
+          </td>
+          
+          <td className="px-4 py-4 hidden md:table-cell">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              {alum.faculty || "-"}
+            </span>
+          </td>
+          
+          <td className="px-4 py-4 hidden md:table-cell">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {alum.department || "-"}
+            </span>
+          </td>
+          
+          <td className="px-4 py-4 hidden md:table-cell">
+            <span className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
+              {alum.program || "-"}
+            </span>
+          </td>
+          
+          <td className="px-4 py-4 text-center">
+            <label className="relative inline-flex items-center cursor-pointer group/check">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isOverdue}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => onToggleOverdue(e.target.checked)}
+                aria-label={`Mark ${alum.name} as overdue by alumni`}
+              />
+              <div className={`w-5 h-5 rounded border-2 transition-all duration-200 flex items-center justify-center ${
+                isOverdue 
+                  ? "bg-amber-500 border-amber-500" 
+                  : "border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500"
+              }`}>
+                {isOverdue && (
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </label>
+          </td>
+          
+          <td className={`px-4 py-4 text-right sticky right-0 z-10 transition-colors ${
+            isSelected 
+              ? "bg-blue-50 dark:bg-blue-900" 
+              : idx % 2 === 0 
+                ? "bg-white dark:bg-gray-900" 
+                : "bg-gray-50 dark:bg-gray-800"
+          } shadow-[-8px_0_16px_-8px_rgba(0,0,0,0.05)]`}>
+            <RowActions sapId={alum.id} studentName={alum.name} alumItem={alum} />
+          </td>
+        </tr>
+        
+        {isExpanded && (
+          <tr className="bg-blue-50/30 dark:bg-blue-900/5">
+            <td colSpan={13} className="px-0 py-0">
+              <div className="p-6 border-t border-blue-100 dark:border-blue-900/20">
+                <div className="flex gap-6 overflow-x-auto pb-2">
+                  <AlumniExpandableDetails 
+                    sapId={alum.id} 
+                    onClose={() => {}} 
+                    readOnly={!canEdit} 
+                  />
+                  <ErpDataDetails 
+                    sapId={alum.id} 
+                    registrationNo={alum.registrationno ?? null} 
+                    onClose={() => {}} 
+                  />
+                </div>
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
+    );
+  }
 };
