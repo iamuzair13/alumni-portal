@@ -98,6 +98,18 @@ type ApplicationCounts = {
   rejected: number;
 };
 
+type PendingFilterOption = {
+  id: number;
+  label: string;
+  count: number;
+};
+
+type PendingFilterOptionsResponse = {
+  nationalChapters: PendingFilterOption[];
+  internationalChapters: PendingFilterOption[];
+  associations: PendingFilterOption[];
+};
+
 type ApplicationDetailsCriterion = {
   id: number;
   label: string;
@@ -152,6 +164,9 @@ async function fetchApplications(input: {
   role?: RoleFilter;
   search?: string;
   hasAdditionalAchievements?: boolean;
+  nationalChapterId?: number;
+  internationalChapterId?: number;
+  associationId?: number;
 }) {
   const items = await getLeadershipApplications({
     type: input.type ?? "all",
@@ -159,6 +174,9 @@ async function fetchApplications(input: {
     role: input.role ?? "all",
     search: input.search,
     hasAdditionalAchievements: input.hasAdditionalAchievements,
+    nationalChapterId: input.nationalChapterId,
+    internationalChapterId: input.internationalChapterId,
+    associationId: input.associationId,
   });
   return items as LeadershipApplication[];
 }
@@ -228,17 +246,61 @@ async function fetchApplicationCounts(input: {
   role?: RoleFilter;
   search?: string;
   hasAdditionalAchievements?: boolean;
+  nationalChapterId?: number;
+  internationalChapterId?: number;
+  associationId?: number;
 }) {
   const params = new URLSearchParams();
   if (input.type && input.type !== "all") params.append("type", input.type);
   if (input.role && input.role !== "all") params.append("role", input.role);
   if (input.search) params.append("search", input.search);
   if (input.hasAdditionalAchievements) params.append("hasAdditionalAchievements", "1");
+  if (input.nationalChapterId && Number.isFinite(input.nationalChapterId) && input.nationalChapterId > 0) {
+    params.append("nationalChapterId", String(input.nationalChapterId));
+  }
+  if (input.internationalChapterId && Number.isFinite(input.internationalChapterId) && input.internationalChapterId > 0) {
+    params.append("internationalChapterId", String(input.internationalChapterId));
+  }
+  if (input.associationId && Number.isFinite(input.associationId) && input.associationId > 0) {
+    params.append("associationId", String(input.associationId));
+  }
 
   const res = await fetch(`/api/leadership/application-counts?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to fetch application counts");
   const data = await res.json();
   return (data.counts || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 }) as ApplicationCounts;
+}
+
+async function fetchPendingFilterOptions(input: {
+  role?: RoleFilter;
+  search?: string;
+  hasAdditionalAchievements?: boolean;
+  nationalChapterId?: number;
+  internationalChapterId?: number;
+  associationId?: number;
+}) {
+  const params = new URLSearchParams();
+  if (input.role && input.role !== "all") params.append("role", input.role);
+  if (input.search) params.append("search", input.search);
+  if (input.hasAdditionalAchievements) params.append("hasAdditionalAchievements", "1");
+  if (input.nationalChapterId && Number.isFinite(input.nationalChapterId) && input.nationalChapterId > 0) {
+    params.append("nationalChapterId", String(input.nationalChapterId));
+  }
+  if (input.internationalChapterId && Number.isFinite(input.internationalChapterId) && input.internationalChapterId > 0) {
+    params.append("internationalChapterId", String(input.internationalChapterId));
+  }
+  if (input.associationId && Number.isFinite(input.associationId) && input.associationId > 0) {
+    params.append("associationId", String(input.associationId));
+  }
+
+  const res = await fetch(`/api/leadership/pending-filter-options?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch pending filter options");
+  const data = (await res.json()) as PendingFilterOptionsResponse;
+  return {
+    nationalChapters: Array.isArray(data.nationalChapters) ? data.nationalChapters : [],
+    internationalChapters: Array.isArray(data.internationalChapters) ? data.internationalChapters : [],
+    associations: Array.isArray(data.associations) ? data.associations : [],
+  } as PendingFilterOptionsResponse;
 }
 
 async function fetchApplicationDetails(input: { type: "chapter" | "association"; applicationId: number }) {
@@ -273,6 +335,9 @@ export default function LeadershipPage() {
   const [applicationStatusTab, setApplicationStatusTab] = useState<ApplicationStatusTab>("pending");
   const [applicationRoleFilter, setApplicationRoleFilter] = useState<RoleFilter>("all");
   const [hasAdditionalAchievementsFilter, setHasAdditionalAchievementsFilter] = useState(false);
+  const [pendingNationalChapterFilter, setPendingNationalChapterFilter] = useState<number | null>(null);
+  const [pendingInternationalChapterFilter, setPendingInternationalChapterFilter] = useState<number | null>(null);
+  const [pendingAssociationFilter, setPendingAssociationFilter] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [appPage, setAppPage] = useState(1);
@@ -295,7 +360,23 @@ export default function LeadershipPage() {
 
   useEffect(() => {
     setAppPage(1);
-  }, [applicationTypeFilter, applicationStatusTab, applicationRoleFilter, hasAdditionalAchievementsFilter]);
+  }, [
+    applicationTypeFilter,
+    applicationStatusTab,
+    applicationRoleFilter,
+    hasAdditionalAchievementsFilter,
+    pendingNationalChapterFilter,
+    pendingInternationalChapterFilter,
+    pendingAssociationFilter,
+  ]);
+
+  useEffect(() => {
+    if (applicationStatusTab !== "pending") {
+      setPendingNationalChapterFilter(null);
+      setPendingInternationalChapterFilter(null);
+      setPendingAssociationFilter(null);
+    }
+  }, [applicationStatusTab]);
 
   const confirmModal = useModal();
   const secondaryConfirmModal = useModal();
@@ -452,7 +533,17 @@ export default function LeadershipPage() {
 
   // Fetch applications
   const { data: applicationsData, isLoading: applicationsLoading, refetch: refetchApplications } = useQuery({
-    queryKey: ["leadership-applications", applicationTypeFilter, applicationStatusTab, applicationRoleFilter, debouncedSearch, hasAdditionalAchievementsFilter],
+    queryKey: [
+      "leadership-applications",
+      applicationTypeFilter,
+      applicationStatusTab,
+      applicationRoleFilter,
+      debouncedSearch,
+      hasAdditionalAchievementsFilter,
+      pendingNationalChapterFilter,
+      pendingInternationalChapterFilter,
+      pendingAssociationFilter,
+    ],
     queryFn: () =>
       fetchApplications({
         type: applicationTypeFilter,
@@ -460,6 +551,9 @@ export default function LeadershipPage() {
         role: applicationRoleFilter,
         search: debouncedSearch || undefined,
         ...(hasAdditionalAchievementsFilter ? { hasAdditionalAchievements: true } : {}),
+        ...(applicationStatusTab === "pending" && pendingNationalChapterFilter ? { nationalChapterId: pendingNationalChapterFilter } : {}),
+        ...(applicationStatusTab === "pending" && pendingInternationalChapterFilter ? { internationalChapterId: pendingInternationalChapterFilter } : {}),
+        ...(applicationStatusTab === "pending" && pendingAssociationFilter ? { associationId: pendingAssociationFilter } : {}),
       }),
     enabled: true,
     staleTime: 0,
@@ -468,16 +562,53 @@ export default function LeadershipPage() {
   });
 
   const { data: applicationCountsData } = useQuery({
-    queryKey: ["leadership-application-counts", applicationTypeFilter, applicationRoleFilter, debouncedSearch, hasAdditionalAchievementsFilter],
+    queryKey: [
+      "leadership-application-counts",
+      applicationTypeFilter,
+      applicationRoleFilter,
+      debouncedSearch,
+      hasAdditionalAchievementsFilter,
+      pendingNationalChapterFilter,
+      pendingInternationalChapterFilter,
+      pendingAssociationFilter,
+    ],
     queryFn: () =>
       fetchApplicationCounts({
         type: applicationTypeFilter,
         role: applicationRoleFilter,
         search: debouncedSearch || undefined,
         ...(hasAdditionalAchievementsFilter ? { hasAdditionalAchievements: true } : {}),
+        ...(applicationStatusTab === "pending" && pendingNationalChapterFilter ? { nationalChapterId: pendingNationalChapterFilter } : {}),
+        ...(applicationStatusTab === "pending" && pendingInternationalChapterFilter ? { internationalChapterId: pendingInternationalChapterFilter } : {}),
+        ...(applicationStatusTab === "pending" && pendingAssociationFilter ? { associationId: pendingAssociationFilter } : {}),
       }),
     enabled: true,
     placeholderData: (prev) => prev,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  const { data: pendingFilterOptionsData, isLoading: pendingFilterOptionsLoading } = useQuery({
+    queryKey: [
+      "leadership-pending-filter-options",
+      applicationRoleFilter,
+      debouncedSearch,
+      hasAdditionalAchievementsFilter,
+      pendingNationalChapterFilter,
+      pendingInternationalChapterFilter,
+      pendingAssociationFilter,
+    ],
+    queryFn: () =>
+      fetchPendingFilterOptions({
+        role: applicationRoleFilter,
+        search: debouncedSearch || undefined,
+        ...(hasAdditionalAchievementsFilter ? { hasAdditionalAchievements: true } : {}),
+        ...(pendingNationalChapterFilter ? { nationalChapterId: pendingNationalChapterFilter } : {}),
+        ...(pendingInternationalChapterFilter ? { internationalChapterId: pendingInternationalChapterFilter } : {}),
+        ...(pendingAssociationFilter ? { associationId: pendingAssociationFilter } : {}),
+      }),
+    enabled: selectedTab === "applications" && isAdmin && applicationStatusTab === "pending",
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -918,135 +1049,277 @@ export default function LeadershipPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="w-full px-4 py-2 dark:text-gray-300 dark:bg-gray-900">
-          <div className="mx-auto">
-            <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3">
-              <div className="flex flex-col sm:flex-row gap-2 dark:text-gray-300 dark:bg-gray-900">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search..."
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="flex gap-2 dark:text-gray-300 dark:bg-gray-900">
-                  {selectedTab === "applications" && (
-                    <select
-                      value={applicationTypeFilter}
-                      onChange={(e) => setApplicationTypeFilter(e.target.value as "all" | "chapter" | "association")}
-                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">All</option>
-                      <option value="chapter">Chapter</option>
-                      <option value="association">Association</option>
-                    </select>
-                  )}
-                  {uniqueFaculties.length > 0 && (
-                    <select
-                      value={facultyFilter}
-                      onChange={(e) => setFacultyFilter(e.target.value)}
-                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">All Faculties</option>
-                      {uniqueFaculties.map(faculty => (
-                        <option key={faculty} value={faculty}>{faculty}</option>
-                      ))}
-                    </select>
-                  )}
-                  <button
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 dark:text-gray-300 dark:bg-gray-900 dark:hover:bg-green-700"
-                  >
-                    <DownloadIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Export</span>
-                  </button>
-                </div>
-              </div>
+        <div className="w-full px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm backdrop-blur-sm">
+  <div className="mx-auto max-w-7xl">
+    <div className="bg-gray-50/80 dark:bg-gray-900/50 rounded-xl border border-gray-200/60 dark:border-gray-800/60 p-4 space-y-4 backdrop-blur-sm">
+      
+      {/* Primary Controls Row */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 group">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search applications..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm"
+          />
+        </div>
+        
+        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+          {selectedTab === "applications" && (
+            <select
+              value={applicationTypeFilter}
+              onChange={(e) => setApplicationTypeFilter(e.target.value as "all" | "chapter" | "association")}
+              className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm cursor-pointer hover:border-gray-400 dark:hover:border-gray-600"
+            >
+              <option value="all">All Types</option>
+              <option value="chapter">Chapter</option>
+              <option value="association">Association</option>
+            </select>
+          )}
+          
+          {uniqueFaculties.length > 0 && (
+            <select
+              value={facultyFilter}
+              onChange={(e) => setFacultyFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm cursor-pointer hover:border-gray-400 dark:hover:border-gray-600"
+            >
+              <option value="">All Faculties</option>
+              {uniqueFaculties.map(faculty => (
+                <option key={faculty} value={faculty}>{faculty}</option>
+              ))}
+            </select>
+          )}
+          
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+          >
+            <DownloadIcon className={`w-4 h-4 ${isExporting ? 'animate-bounce' : ''}`} />
+            <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export'}</span>
+          </button>
+        </div>
+      </div>
 
-              {selectedTab === "applications" && isAdmin && (
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 dark:text-gray-300 dark:bg-gray-900">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {([
-                      { key: "all", label: "All" },
-                      { key: "pending", label: "Pending" },
-                      { key: "assessed", label: "Assessed" },
-                      { key: "approved", label: "Approved" },
-                      { key: "rejected", label: "Not Approved" },
-                    ] as Array<{ key: ApplicationStatusTab; label: string }>).map((t) => {
-                      const active = applicationStatusTab === t.key;
-                      const counts = applicationCountsData || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 };
-                      const countVal =
-                        t.key === "all"
-                          ? counts.all
-                          : t.key === "pending"
-                            ? counts.pending
-                            : t.key === "assessed"
-                              ? counts.assessed
-                              : t.key === "approved"
-                                ? counts.approved
-                                : counts.rejected;
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          onClick={() => {
-                            setApplicationStatusTab(t.key);
-                            setAppPage(1);
-                          }}
-                          className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors dark:text-gray-300 dark:bg-gray-900 ${
-                            active
-                              ? "bg-blue-600 text-white border-blue-700"
-                              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700"
-                          }`}
-                        >
-                          {t.label}
-                          <span className={`ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                            active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                          }`}>
-                            {countVal}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      value={applicationRoleFilter}
-                      onChange={(e) => {
-                        setApplicationRoleFilter(e.target.value as RoleFilter);
-                        setAppPage(1);
-                      }}
-                      className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:bg-gray-900"
-                    >
-                      <option value="all">All Roles</option>
-                      <option value="president">President</option>
-                      <option value="vice_president">Vice President</option>
-                      <option value="coordinator">Coordinator</option>
-                    </select>
-
-                    <label className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 px-3 py-2 dark:text-gray-300 dark:bg-gray-900">
-                      <input
-                        type="checkbox"
-                        checked={hasAdditionalAchievementsFilter}
-                        onChange={(e) => {
-                          setHasAdditionalAchievementsFilter(e.target.checked);
-                          setAppPage(1);
-                        }}
-                        className="h-4 w-4 text-blue-600 dark:text-gray-300 dark:bg-gray-900"
-                      />
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 dark:bg-gray-900">With Additional Achievements</span>
-                    </label>
-
-                  </div>
-                </div>
+      {selectedTab === "applications" && isAdmin && (
+  <div className="space-y-5 pt-4 border-t border-gray-200/50 dark:border-gray-800/50 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    
+    {/* ─── Primary Command Bar ─── */}
+    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+      
+      {/* Status Segmented Control */}
+      <div className="flex flex-wrap items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl w-fit ring-1 ring-gray-200/60 dark:ring-gray-800/60">
+        {([
+          { key: "all", label: "All", color: "slate" },
+          { key: "pending", label: "Pending", color: "amber" },
+          { key: "assessed", label: "Assessed", color: "blue" },
+          { key: "approved", label: "Approved", color: "emerald" },
+          { key: "rejected", label: "Not Approved", color: "rose" },
+        ] as Array<{ key: ApplicationStatusTab; label: string; color: string }>).map((t) => {
+          const active = applicationStatusTab === t.key;
+          const counts = applicationCountsData || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 };
+          const countVal =
+            t.key === "all"
+              ? counts.all
+              : t.key === "pending"
+                ? counts.pending
+                : t.key === "assessed"
+                  ? counts.assessed
+                  : t.key === "approved"
+                    ? counts.approved
+                    : counts.rejected;
+          
+          const colorMap: Record<string, { active: string; badge: string; badgeBg: string }> = {
+            slate: { active: "bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700", badge: "text-slate-600 dark:text-slate-400", badgeBg: "bg-slate-100 dark:bg-slate-800/80" },
+            amber: { active: "bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-200 dark:ring-amber-900/50", badge: "text-amber-600 dark:text-amber-400", badgeBg: "bg-amber-50 dark:bg-amber-900/30" },
+            blue: { active: "bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900/50", badge: "text-blue-600 dark:text-blue-400", badgeBg: "bg-blue-50 dark:bg-blue-900/30" },
+            emerald: { active: "bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-emerald-200 dark:ring-emerald-900/50", badge: "text-emerald-600 dark:text-emerald-400", badgeBg: "bg-emerald-50 dark:bg-emerald-900/30" },
+            rose: { active: "bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-400 shadow-sm ring-1 ring-rose-200 dark:ring-rose-900/50", badge: "text-rose-600 dark:text-rose-400", badgeBg: "bg-rose-50 dark:bg-rose-900/30" },
+          };
+          const colors = colorMap[t.color];
+          
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => {
+                setApplicationStatusTab(t.key);
+                setAppPage(1);
+              }}
+              className={`relative rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 ease-out
+                ${active ? colors.active : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/40 dark:hover:bg-gray-800/60"}
+              `}
+            >
+              <span className="flex items-center gap-2">
+                {t.label}
+                <span className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold transition-all duration-200
+                  ${active ? `${colors.badgeBg} ${colors.badge} scale-105` : "bg-gray-200/50 dark:bg-gray-800 text-gray-500 dark:text-gray-500"}
+                `}>
+                  {countVal}
+                </span>
+              </span>
+              {active && (
+                <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-current opacity-20" />
               )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─── Secondary Filter Arsenal ─── */}
+      <div className="flex flex-wrap items-center gap-3 w-full">
+        {/* Role Filter */}
+        <div className="relative group flex-1 min-w-[160px] max-w-xs">
+          <select
+            value={applicationRoleFilter}
+            onChange={(e) => {
+              setApplicationRoleFilter(e.target.value as RoleFilter);
+              setAppPage(1);
+            }}
+            className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+          >
+            <option value="all">All Roles</option>
+            <option value="president">President</option>
+            <option value="vice_president">Vice President</option>
+            <option value="coordinator">Coordinator</option>
+          </select>
+          <svg
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {/* Achievement Toggle */}
+        <label className="flex items-center gap-2.5 flex-1 min-w-[180px] max-w-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm px-4 py-2.5 cursor-pointer hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all duration-200 shadow-sm group">
+          <div className="relative flex items-center">
+            <input
+              type="checkbox"
+              checked={hasAdditionalAchievementsFilter}
+              onChange={(e) => {
+                setHasAdditionalAchievementsFilter(e.target.checked);
+                setAppPage(1);
+              }}
+              className="peer sr-only"
+            />
+            <div className="h-[18px] w-[18px] rounded-[5px] border-2 border-gray-300 dark:border-gray-600 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:dark:bg-blue-500 peer-checked:dark:border-blue-500 transition-all duration-200 flex items-center justify-center shadow-sm">
+              <svg className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
           </div>
+          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 select-none group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+            With Achievements
+          </span>
+        </label>
+
+        {/* Pending Context Filters */}
+        <div className="flex flex-1 flex-wrap items-center gap-3 min-w-[340px] pl-3 border-l border-gray-200 dark:border-gray-800 animate-in fade-in slide-in-from-left-2 duration-300">
+          {/* National Chapters */}
+          <div className="relative group flex-1 min-w-[160px] max-w-xs">
+            <select
+              value={pendingNationalChapterFilter ? String(pendingNationalChapterFilter) : ""}
+              onChange={(e) => {
+                const next = e.target.value ? Number(e.target.value) : null;
+                setPendingNationalChapterFilter(next);
+                setPendingInternationalChapterFilter(null);
+                setPendingAssociationFilter(null);
+                setApplicationTypeFilter("chapter");
+                setAppPage(1);
+              }}
+              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+            >
+              <option value="">
+                National Chapters
+                {pendingFilterOptionsLoading ? "…" : ""}
+              </option>
+              {(pendingFilterOptionsData?.nationalChapters || []).map((item) => (
+                <option key={`nat-${item.id}`} value={item.id}>
+                  {item.label} ({item.count})
+                </option>
+              ))}
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {/* International Chapters */}
+          <div className="relative group flex-1 min-w-[160px] max-w-xs">
+            <select
+              value={pendingInternationalChapterFilter ? String(pendingInternationalChapterFilter) : ""}
+              onChange={(e) => {
+                const next = e.target.value ? Number(e.target.value) : null;
+                setPendingInternationalChapterFilter(next);
+                setPendingNationalChapterFilter(null);
+                setPendingAssociationFilter(null);
+                setApplicationTypeFilter("chapter");
+                setAppPage(1);
+              }}
+              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+            >
+              <option value="">
+                International Chapters
+                {pendingFilterOptionsLoading ? "…" : ""}
+              </option>
+              {(pendingFilterOptionsData?.internationalChapters || []).map((item) => (
+                <option key={`int-${item.id}`} value={item.id}>
+                  {item.label} ({item.count})
+                </option>
+              ))}
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {/* Associations */}
+          <div className="relative group flex-1 min-w-[160px] max-w-xs">
+            <select
+              value={pendingAssociationFilter ? String(pendingAssociationFilter) : ""}
+              onChange={(e) => {
+                const next = e.target.value ? Number(e.target.value) : null;
+                setPendingAssociationFilter(next);
+                setPendingNationalChapterFilter(null);
+                setPendingInternationalChapterFilter(null);
+                setApplicationTypeFilter("association");
+                setAppPage(1);
+              }}
+              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+            >
+              <option value="">
+                Associations
+                {pendingFilterOptionsLoading ? "…" : ""}
+              </option>
+              {(pendingFilterOptionsData?.associations || []).map((item) => (
+                <option key={`assoc-${item.id}`} value={item.id}>
+                  {item.label} ({item.count})
+                </option>
+              ))}
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
+      </div>
+
+    </div>
+  </div>
+)}
+    </div>
+  </div>
+</div>
 
         <ExportModal />
 

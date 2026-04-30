@@ -23,6 +23,17 @@ export async function GET(req: NextRequest) {
     const alumniIdParamRaw = searchParams.get("alumniId");
     const alumniIdParam = alumniIdParamRaw ? Number(alumniIdParamRaw) : null;
     const alumniId = alumniIdParam && Number.isFinite(alumniIdParam) && alumniIdParam > 0 ? alumniIdParam : null;
+    const nationalChapterIdRaw = searchParams.get("nationalChapterId");
+    const internationalChapterIdRaw = searchParams.get("internationalChapterId");
+    const associationIdRaw = searchParams.get("associationId");
+    const nationalChapterId = nationalChapterIdRaw ? Number(nationalChapterIdRaw) : null;
+    const internationalChapterId = internationalChapterIdRaw ? Number(internationalChapterIdRaw) : null;
+    const associationId = associationIdRaw ? Number(associationIdRaw) : null;
+    const validNationalChapterId =
+      nationalChapterId && Number.isFinite(nationalChapterId) && nationalChapterId > 0 ? nationalChapterId : null;
+    const validInternationalChapterId =
+      internationalChapterId && Number.isFinite(internationalChapterId) && internationalChapterId > 0 ? internationalChapterId : null;
+    const validAssociationId = associationId && Number.isFinite(associationId) && associationId > 0 ? associationId : null;
 
     const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
     if (!statusValues.has(status)) {
@@ -166,6 +177,23 @@ export async function GET(req: NextRequest) {
     const effectiveAlumniId = isAlumni ? sessionAlumniId : alumniId;
     const chapterAlumniFilter = effectiveAlumniId ? sql` AND cl.alumniid = ${Number(effectiveAlumniId)}` : sql``;
     const assocAlumniFilter = effectiveAlumniId ? sql` AND ass.alumni_id = ${Number(effectiveAlumniId)}` : sql``;
+    const chapterPendingDimensionCondition =
+      status !== "pending"
+        ? sql``
+        : validAssociationId
+          ? sql` AND 1=0`
+          : sql`
+              ${validNationalChapterId ? sql` AND cl.chapter_id = ${validNationalChapterId} AND TRIM(COALESCE(ch.national_chapter, '')) <> ''` : sql``}
+              ${validInternationalChapterId ? sql` AND cl.chapter_id = ${validInternationalChapterId} AND TRIM(COALESCE(ch.international_chapter, '')) <> ''` : sql``}
+            `;
+    const associationPendingDimensionCondition =
+      status !== "pending"
+        ? sql``
+        : validNationalChapterId || validInternationalChapterId
+          ? sql` AND 1=0`
+          : validAssociationId
+            ? sql` AND ass.association_id = ${validAssociationId}`
+            : sql``;
 
     // Get chapter leadership applications
     if (type === "all" || type === "chapter") {
@@ -213,6 +241,7 @@ export async function GET(req: NextRequest) {
           ${chapterRoleCondition}
           ${chapterAdditionalCondition}
           ${chapterAlumniFilter}
+          ${chapterPendingDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql 
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter 
@@ -306,6 +335,7 @@ export async function GET(req: NextRequest) {
           ${assocRoleCondition}
           ${assocAdditionalCondition}
           ${assocAlumniFilter}
+          ${associationPendingDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql 
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter 

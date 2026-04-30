@@ -17,6 +17,17 @@ export async function GET(req: NextRequest) {
     const role = searchParams.get("role") || "all"; // all|president|vice_president|coordinator
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
+    const nationalChapterIdRaw = searchParams.get("nationalChapterId");
+    const internationalChapterIdRaw = searchParams.get("internationalChapterId");
+    const associationIdRaw = searchParams.get("associationId");
+    const nationalChapterId = nationalChapterIdRaw ? Number(nationalChapterIdRaw) : null;
+    const internationalChapterId = internationalChapterIdRaw ? Number(internationalChapterIdRaw) : null;
+    const associationId = associationIdRaw ? Number(associationIdRaw) : null;
+    const validNationalChapterId =
+      nationalChapterId && Number.isFinite(nationalChapterId) && nationalChapterId > 0 ? nationalChapterId : null;
+    const validInternationalChapterId =
+      internationalChapterId && Number.isFinite(internationalChapterId) && internationalChapterId > 0 ? internationalChapterId : null;
+    const validAssociationId = associationId && Number.isFinite(associationId) && associationId > 0 ? associationId : null;
 
     const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
     if (!roleValues.has(role)) {
@@ -82,6 +93,19 @@ export async function GET(req: NextRequest) {
     const assocAdditionalCondition = hasAdditional
       ? sql` AND ass.additional_achievements IS NOT NULL AND LENGTH(TRIM(ass.additional_achievements)) > 0`
       : sql``;
+    const chapterPendingDimensionCondition =
+      validAssociationId
+        ? sql` AND 1=0`
+        : sql`
+            ${validNationalChapterId ? sql` AND cl.chapter_id = ${validNationalChapterId} AND TRIM(COALESCE(ch.national_chapter, '')) <> ''` : sql``}
+            ${validInternationalChapterId ? sql` AND cl.chapter_id = ${validInternationalChapterId} AND TRIM(COALESCE(ch.international_chapter, '')) <> ''` : sql``}
+          `;
+    const associationPendingDimensionCondition =
+      validNationalChapterId || validInternationalChapterId
+        ? sql` AND 1=0`
+        : validAssociationId
+          ? sql` AND ass.association_id = ${validAssociationId}`
+          : sql``;
 
     const counts = {
       all: 0,
@@ -96,10 +120,12 @@ export async function GET(req: NextRequest) {
         SELECT COALESCE(cl.status, 'pending') AS status, COUNT(*)::int AS count
         FROM public.chapter_leadership cl
         LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
+        LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
         WHERE 1=1
           ${searchCondition}
           ${chapterRoleCondition}
           ${chapterAdditionalCondition}
+          ${chapterPendingDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter
@@ -129,6 +155,7 @@ export async function GET(req: NextRequest) {
           ${searchCondition}
           ${assocRoleCondition}
           ${assocAdditionalCondition}
+          ${associationPendingDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter
