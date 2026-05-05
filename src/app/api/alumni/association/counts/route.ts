@@ -6,6 +6,8 @@ import { combineOrConditions } from "@/lib/master-filter-utils";
 import {
   buildAssociationTabDepartmentFilterSQL,
   buildAssociationTabFacultyFilterSQL,
+  buildAssociationTabMembershipMembersSQL,
+  buildAssociationTabMembershipNonMembersSQL,
 } from "@/lib/association-tab-filters";
 
 export async function GET(request: NextRequest) {
@@ -52,19 +54,16 @@ export async function GET(request: NextRequest) {
       verifiedFilterCondition = sql` AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')`;
     }
     
-    // Base query: start from tbl_alumni and LEFT JOIN associations to include ALL alumni,
-    // including those without any association membership (assoc.* will be NULL for non-members).
+    // Base query: start from tbl_alumni and LEFT JOIN assoc row keyed by association_id.
+    // Non-members are alumni with both association_id and faculty NULL (see membership conditions).
     // Also join faculties and departments for filtering.
     const baseQueryFromAlumni = sql`FROM public.tbl_alumni a
       LEFT JOIN public.tbl_faculties assoc ON assoc.id = a.association_id
       LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
       LEFT JOIN public.tbl_departments d ON d.id = a.department`;
     
-    // Helper conditions for membership:
-    // Members = alumni who have a non-null association_id (a.association_id IS NOT NULL)
-    // Non-members = alumni who have a null association_id (a.association_id IS NULL)
-    const membersCondition = sql` AND a.association_id IS NOT NULL`;
-    const nonMembersCondition = sql` AND a.association_id IS NULL`;
+    const membersCondition = buildAssociationTabMembershipMembersSQL();
+    const nonMembersCondition = buildAssociationTabMembershipNonMembersSQL();
     
     // Total count: Count ALL alumni (with or without associations), under current filters
     const totalCountQuery = sql`
@@ -90,7 +89,7 @@ export async function GET(request: NextRequest) {
       ${verifiedFilterCondition}
     `;
     
-    // Get members count: alumni who have a non-null association_id
+    // Members: linked via association_id or faculty (same as association chip filters)
     const membersCountQuery = sql`
       SELECT COUNT(DISTINCT a.alumniid) as count
       ${baseQueryFromAlumni}
@@ -103,7 +102,7 @@ export async function GET(request: NextRequest) {
       ${membersCondition}
     `;
     
-    // Get non-members count: alumni who have a null association_id
+    // Non-members: neither association_id nor faculty FK set
     const nonMembersCountQuery = sql`
       SELECT COUNT(DISTINCT a.alumniid) as count
       ${baseQueryFromAlumni}

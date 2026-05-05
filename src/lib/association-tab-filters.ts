@@ -49,3 +49,16 @@ export function buildAssociationTabDepartmentFilterSQL(
   }
   return sql` AND (${combinedCondition})`;
 }
+
+/**
+ * Association tab filters treat `association_id` and `faculty` as the same faculty/association ids.
+ * Membership counts and list filters must use the same rule, or alumni with only `faculty` set appear
+ * as "non-members" despite being assignable to an association.
+ */
+export function buildAssociationTabMembershipMembersSQL(): ReturnType<typeof sql> {
+  return sql` AND (a.association_id IS NOT NULL OR a.faculty IS NOT NULL)`;
+}
+
+export function buildAssociationTabMembershipNonMembersSQL(): ReturnType<typeof sql> {
+  return sql` AND (a.association_id IS NULL AND a.faculty IS NULL)`;
+}

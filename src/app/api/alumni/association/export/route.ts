@@ -7,6 +7,8 @@ import { combineOrConditions } from "@/lib/master-filter-utils";
 import {
   buildAssociationTabDepartmentFilterSQL,
   buildAssociationTabFacultyFilterSQL,
+  buildAssociationTabMembershipMembersSQL,
+  buildAssociationTabMembershipNonMembersSQL,
 } from "@/lib/association-tab-filters";
 
 export async function GET(req: NextRequest) {
@@ -55,9 +57,9 @@ export async function GET(req: NextRequest) {
 
     let membershipWhereCondition = sql``;
     if (membershipFilter === "non-members") {
-      membershipWhereCondition = sql` AND a.association_id IS NULL`;
+      membershipWhereCondition = buildAssociationTabMembershipNonMembersSQL() as unknown as typeof membershipWhereCondition;
     } else if (membershipFilter === "members") {
-      membershipWhereCondition = sql` AND a.association_id IS NOT NULL`;
+      membershipWhereCondition = buildAssociationTabMembershipMembersSQL() as unknown as typeof membershipWhereCondition;
     }
 
     const baseQuery = sql`FROM public.tbl_alumni a

@@ -120,24 +120,24 @@ function KpiCard({
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900/50">
-      <div className={`absolute right-0 top-0 h-24 w-24 -translate-y-8 translate-x-8 rounded-full bg-gradient-to-br ${colorMap[color]} opacity-[0.07] transition-transform duration-300 group-hover:scale-150`} />
-      <div className="relative">
+    <div className="group relative overflow-hidden  rounded-xl  border border-gray-200/80 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900/50">
+      <div className={`absolute right-0 top-0 h-20 w-20 -translate-y-8   border translate-x-8 rounded-full bg-gradient-to-br ${colorMap[color]} opacity-[0.06] transition-transform duration-300 group-hover:scale-150`} />
+      <div className="relative flex flex-row gap-2">
         <div className="flex items-center justify-between">
-          <div className={`inline-flex rounded-lg p-2.5 ${colorMap[color].split(' ').slice(2, 4).join(' ')}`}>
+          <div className={`inline-flex rounded-lg p-2 ${colorMap[color].split(' ').slice(2, 4).join(' ')}`}>
             {icon}
           </div>
           {trend && (
-            <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${trend.positive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+            <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[18px] font-semibold ${trend.positive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}`}>
               {trend.positive ? Icons.arrowUp : Icons.arrowDown}
               {trend.value}
             </span>
           )}
         </div>
-        <div className="mt-4">
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{value}</p>
-          <p className="mt-1 text-xs font-medium text-gray-400 dark:text-gray-500">{subtitle}</p>
+        <div className="mt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="mt-0.5 text-2xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">{value}</p>
+          <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-gray-400 dark:text-gray-500">{subtitle}</p>
         </div>
       </div>
     </div>

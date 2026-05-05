@@ -9,6 +9,8 @@ import { combineOrConditions } from "@/lib/master-filter-utils";
 import {
   buildAssociationTabDepartmentFilterSQL,
   buildAssociationTabFacultyFilterSQL,
+  buildAssociationTabMembershipMembersSQL,
+  buildAssociationTabMembershipNonMembersSQL,
 } from "@/lib/association-tab-filters";
 
 export async function GET(request: NextRequest) {
@@ -66,12 +68,11 @@ export async function GET(request: NextRequest) {
       verifiedFilterCondition = sql` AND (a.verify IS NULL OR a.verify = '' OR a.verify != 'true')`;
     }
     
-    // Membership is tracked on association_id; do not INNER JOIN assoc — legacy IDs may not exist in tbl_faculties
     let membershipWhereCondition = sql``;
     if (membershipFilter === "non-members") {
-      membershipWhereCondition = sql` AND a.association_id IS NULL`;
+      membershipWhereCondition = buildAssociationTabMembershipNonMembersSQL() as unknown as typeof membershipWhereCondition;
     } else if (membershipFilter === "members") {
-      membershipWhereCondition = sql` AND a.association_id IS NOT NULL`;
+      membershipWhereCondition = buildAssociationTabMembershipMembersSQL() as unknown as typeof membershipWhereCondition;
     }
 
     const baseQuery = sql`FROM public.tbl_alumni a
