@@ -24,9 +24,12 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
         // Clear all React Query cache
         queryClient.clear();
         
-        // Clear any stored data
-        localStorage.clear();
-        sessionStorage.clear();
+        try {
+          window.localStorage.clear();
+          window.sessionStorage.clear();
+        } catch {
+          /* ignore */
+        }
         
         // Redirect to signin
         router.replace("/signin");
@@ -59,8 +62,12 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
         if (response.status === 401 && window.location.pathname !== "/signin") {
           // Clear all caches
           queryClient.clear();
-          localStorage.clear();
-          sessionStorage.clear();
+          try {
+            window.localStorage.clear();
+            window.sessionStorage.clear();
+          } catch {
+            /* ignore */
+          }
           
           // Sign out and redirect
           signOut({ redirect: false }).then(() => {

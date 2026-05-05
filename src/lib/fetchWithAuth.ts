@@ -26,9 +26,12 @@ export async function fetchWithAuth(
       // Ignore errors
     }
     
-    // Clear storage
-    localStorage.clear();
-    sessionStorage.clear();
+    try {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
     
     // Redirect to signin
     window.location.href = "/signin";

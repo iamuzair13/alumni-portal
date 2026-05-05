@@ -88,14 +88,98 @@ const getAlumniFieldValue = (label: string, alumniData: Record<string, unknown> 
   return alumniField ? alumniData[alumniField] : null;
 };
 
-/** ERP Doc YYYYMMDD → passing-out year for alignment with Alumni "Passing Out Year" */
-function erpPassingOutYearFromDoc(doc: unknown): number | null {
-  const trimmed = String(doc ?? "").trim();
-  if (/^\d{8}$/.test(trimmed)) {
-    const y = Number(trimmed.slice(0, 4));
-    return Number.isFinite(y) ? y : null;
+/** Normalize OData / SAP JSON property names for loose matching */
+function normalizedErpFieldKey(key: string): string {
+  return key.replace(/_/g, "").toLowerCase();
+}
+
+/** Alternate ERP keys that often carry passing-out year (SAP OData naming varies). */
+const PASSOUT_YEAR_KEY_ALIASES = new Set([
+  "passyear",
+  "passingyear",
+  "passoutyear",
+  "yearofending",
+  "gradyear",
+  "completionyear",
+  "graduationyear",
+  "passingoutyear",
+  "yearend",
+  "endyear",
+  "passyr",
+  "gradyr",
+  /** SAP ZSTUDENTHMIS_SRV: completion / pass-out year when `Doc` is empty */
+  "acadyear",
+  "academicyear",
+]);
+
+/**
+ * Parse a passing-out calendar year from a single ERP value.
+ * Handles YYYYMMDD, numeric years, OData `/Date(ms)/`, and ISO-like date strings.
+ */
+function parsePassingOutYearValue(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const intVal = Math.trunc(value);
+    if (intVal >= 1900 && intVal <= 2100) return intVal;
+    // Compact SAP date integer YYYYMMDD (e.g. 20240515 from OData/XML parsers)
+    if (intVal >= 19000101 && intVal <= 21001231) {
+      const y = Math.floor(intVal / 10000);
+      if (y >= 1900 && y <= 2100) return y;
+    }
+    // Epoch ms or Unix seconds
+    if (Math.abs(value) > 1e11 || (Math.abs(value) > 1e9 && Math.abs(value) < 1e11)) {
+      const d = new Date(Math.abs(value) > 1e11 ? value : value * 1000);
+      const y = d.getFullYear();
+      if (!Number.isNaN(y) && y >= 1900 && y <= 2100) return y;
+    }
+    return null;
   }
+
+  const s = String(value).trim();
+  if (!s) return null;
+
+  if (/^\d{4}$/.test(s)) {
+    const y = Number(s);
+    return y >= 1900 && y <= 2100 ? y : null;
+  }
+
+  if (/^\d{8}$/.test(s)) {
+    const y = Number(s.slice(0, 4));
+    return Number.isFinite(y) && y >= 1900 && y <= 2100 ? y : null;
+  }
+
+  const msMatch = /^\/Date\((-?\d+)\)\/$/.exec(s);
+  if (msMatch) {
+    const d = new Date(Number(msMatch[1]));
+    const y = d.getFullYear();
+    return !Number.isNaN(y) && y >= 1900 && y <= 2100 ? y : null;
+  }
+
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    if (y >= 1900 && y <= 2100) return y;
+  }
+
   return null;
+}
+
+/**
+ * Resolve passing-out year from the full ERP record: dedicated year fields first, then `Doc`.
+ */
+function erpPassingOutYearFromRecord(record: Record<string, unknown> | null | undefined): number | null {
+  if (!record) return null;
+
+  for (const [key, val] of Object.entries(record)) {
+    if (key.startsWith("__")) continue;
+    if (PASSOUT_YEAR_KEY_ALIASES.has(normalizedErpFieldKey(key))) {
+      const y = parsePassingOutYearValue(val);
+      if (y !== null) return y;
+    }
+  }
+
+  return parsePassingOutYearValue(record.Doc);
 }
 
 type ErpRecord = {
@@ -157,6 +241,7 @@ const formatLabel = (key: string): string => {
     "Campus": "Campus",
     "Gbdat": "Date of Birth",
     "AdmAyear": "Admission Year",
+    "AcadYear": "Academic / Pass-out Year",
     "DegrTitle": "Degree Title",
     "DeptName": "Department Name",
     "Gesch": "Gender",
@@ -404,6 +489,7 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
     "DegrTitle",
     "Campus",
     "AdmAyear",
+    "AcadYear",
     "Gbdat",
     "Gesch",
     "Mrno",
@@ -418,6 +504,8 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
     .filter(([key]) => key !== "torel")
     .filter(([key]) => key !== "__metadata")
     .filter(([key]) => !shownKeys.has(key));
+
+  const passingOutYearFromErp = erpPassingOutYearFromRecord(data as Record<string, unknown>);
 
   return (
     <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-700 p-3 overflow-x-hidden max-w-xl w-full">
@@ -455,8 +543,8 @@ export const ErpDataDetails: React.FC<ErpDataDetailsProps> = ({ sapId, registrat
         <CompactField label="Campus" value={(data as Record<string, unknown>)?.Campus as string | null} />
         <CompactField
           label="Passing Out Year"
-          value={erpPassingOutYearFromDoc(data?.Doc)}
-          comparisonStatus={getComparisonStatus("Passing Out Year", erpPassingOutYearFromDoc(data?.Doc))}
+          value={passingOutYearFromErp}
+          comparisonStatus={getComparisonStatus("Passing Out Year", passingOutYearFromErp)}
         />
 
         <div className="pt-2 pb-1 border-b border-gray-200 dark:border-gray-700 mt-2">
