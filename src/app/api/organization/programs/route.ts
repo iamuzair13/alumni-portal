@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         ORDER BY p.program_name ASC
       `;
 
-    let rows;
+    let rows: Record<string, unknown>[] = [];
 
     if (isSuperAdminUser(session.user)) {
       if (departmentId) {
@@ -99,10 +99,55 @@ export async function GET(request: NextRequest) {
           if (isNaN(departmentIdNum)) {
             return NextResponse.json({ error: "Invalid department ID" }, { status: 400 });
           }
-          if (!allowedDepartmentIds.has(departmentIdNum)) {
-            return NextResponse.json({ success: true, programs: [] }, { status: 200 });
+
+          // Match /api/organization/departments scoped access: faculty-only assignments
+          // must still see programs for any department under that faculty. Previously we
+          // required the department id to appear in allowedDepartmentIds, which left
+          // faculty-scoped admins with an empty list and a disabled program dropdown.
+          const deptRows = await sql/* sql */`
+            SELECT faculty_id
+            FROM public.tbl_departments
+            WHERE id = ${departmentIdNum}
+            LIMIT 1
+          `;
+          const deptFacultyRaw = deptRows[0]?.faculty_id;
+          const deptFacultyId =
+            deptFacultyRaw != null && deptFacultyRaw !== ""
+              ? Number(deptFacultyRaw)
+              : null;
+
+          const deptExplicitlyAllowed = allowedDepartmentIds.has(departmentIdNum);
+          const facultyOfDeptAllowed =
+            typeof deptFacultyId === "number" &&
+            Number.isFinite(deptFacultyId) &&
+            deptFacultyId > 0 &&
+            allowedFacultyIds.has(deptFacultyId);
+
+          const programIds = Array.from(allowedProgramIds);
+
+          if (deptExplicitlyAllowed || facultyOfDeptAllowed) {
+            rows = await baseSelectByDepartment(departmentIdNum);
+          } else if (programIds.length > 0) {
+            rows = await sql/* sql */`
+              SELECT 
+                p.id,
+                p.program_name,
+                p.department_id,
+                p.program_abv,
+                d.department_name,
+                d.faculty_id,
+                f.faculty_name,
+                p.created_at
+              FROM public.tbl_programs p
+              LEFT JOIN public.tbl_departments d ON d.id = p.department_id
+              LEFT JOIN public.tbl_faculties f ON f.id = d.faculty_id
+              WHERE p.department_id = ${departmentIdNum}
+                AND p.id = ANY(${programIds}::int[])
+              ORDER BY p.program_name ASC
+            `;
+          } else {
+            rows = [];
           }
-          rows = await baseSelectByDepartment(departmentIdNum);
         } else {
           const facultyIds = Array.from(allowedFacultyIds);
           const departmentIds = Array.from(allowedDepartmentIds);

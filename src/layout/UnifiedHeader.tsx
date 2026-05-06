@@ -200,14 +200,42 @@ async function fetchTabCounts(): Promise<Partial<Record<MenuKey, PairCounts>>> {
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════════════ */
 
-/** Animated counter badge with shimmer effect */
+/** Same easing count-up as alumni dashboard cards / alumni cards tabs */
+function useAnimatedCounter(target: number, duration = 600) {
+  const [count, setCount] = useState(0);
+  const prevRef = useRef(0);
+
+  useEffect(() => {
+    const start = prevRef.current;
+    const diff = target - start;
+    if (diff === 0) return;
+
+    let startTime: number | null = null;
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(start + diff * easeOut));
+      if (progress < 1) requestAnimationFrame(animate);
+      else prevRef.current = target;
+    };
+
+    requestAnimationFrame(animate);
+  }, [target, duration]);
+
+  return count;
+}
+
+/** Animated counter badge (count-up + tabular nums, aligned with alumni cards TabCounter) */
 const CounterBadge: FC<{
   value: number;
   variant: "primary" | "secondary";
   isSelected: boolean;
 }> = ({ value, variant, isSelected }) => {
+  const animated = useAnimatedCounter(Number.isFinite(value) ? value : 0);
+
   const baseClasses =
-    "inline-flex items-center justify-center rounded-md text-[10px] font-bold leading-none tabular-nums transition-all duration-300";
+    "inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums transition-colors duration-300";
 
   const variantClasses =
     variant === "primary"
@@ -220,20 +248,27 @@ const CounterBadge: FC<{
 
   return (
     <motion.span
-      initial={{ scale: 0.8, opacity: 0 }}
+      layout
+      initial={{ scale: 0.92, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      className={`${baseClasses} ${variantClasses} min-w-[1.25rem] px-1.5 py-0.5`}
+      transition={{ type: "spring", stiffness: 500, damping: 32 }}
+      className={`${baseClasses} ${variantClasses}`}
     >
-      {value > 99 ? "99+" : value}
+      {animated.toLocaleString()}
     </motion.span>
   );
 };
 
-/** Skeleton loader for counters */
+/** Skeleton loader for counters (matches alumni-cards-style pulse chips) */
 const CounterSkeleton: FC = () => (
-  <span className="ml-2 inline-flex h-4 w-12 items-center">
-    <span className="h-3.5 w-full animate-pulse rounded-md bg-gray-200 dark:bg-gray-700" />
+  <span className="inline-flex shrink-0 items-center gap-1.5">
+    <span className="inline-flex h-5 w-8 items-center justify-center rounded-md bg-gray-200 dark:bg-gray-600">
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse dark:bg-gray-400" />
+    </span>
+    <span className="text-[10px] text-gray-400 dark:text-gray-500">/</span>
+    <span className="inline-flex h-5 w-8 items-center justify-center rounded-md bg-gray-200 dark:bg-gray-600">
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse dark:bg-gray-400" />
+    </span>
   </span>
 );
 

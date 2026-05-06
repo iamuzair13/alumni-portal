@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ComponentCard from "@/components/common/ComponentCard";
 import Badge from "../ui/badge/Badge";
@@ -98,6 +98,136 @@ const CATEGORY_TAB_TOOLTIPS: Partial<Record<TabKey, string>> = {
 const DISTINGUISHED_TAB: { key: TabKey; label: string }[] = [
   { key: "distinguished", label: "Distinguished Alumni" },
 ];
+
+/** Matches animated counters on alumni cards (Alumini-cards TabCounter). */
+function useAnimatedCounter(target: number, duration = 600) {
+  const [count, setCount] = useState(0);
+  const prevRef = useRef(0);
+
+  useEffect(() => {
+    const start = prevRef.current;
+    const diff = target - start;
+    if (diff === 0) return;
+
+    let startTime: number | null = null;
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(start + diff * easeOut));
+      if (progress < 1) requestAnimationFrame(animate);
+      else prevRef.current = target;
+    };
+
+    requestAnimationFrame(animate);
+  }, [target, duration]);
+
+  return count;
+}
+
+function AlumniTabAnimatedStat({
+  value,
+  isLoading,
+  className,
+}: {
+  value: number;
+  isLoading: boolean;
+  className: string;
+}) {
+  const animated = useAnimatedCounter(isLoading ? 0 : value);
+  if (isLoading) {
+    return (
+      <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
+    );
+  }
+  return <h3 className={`tabular-nums ${className}`}>{animated.toLocaleString()}</h3>;
+}
+
+function AlumniTabUnderApprovalStats({
+  newCount,
+  changeCount,
+  newLoading,
+  changeLoading,
+  labelTextClass,
+}: {
+  newCount: number;
+  changeCount: number;
+  newLoading: boolean;
+  changeLoading: boolean;
+  labelTextClass: string;
+}) {
+  const animatedNew = useAnimatedCounter(newLoading ? 0 : newCount);
+  const animatedChange = useAnimatedCounter(changeLoading ? 0 : changeCount);
+
+  if (newLoading && changeLoading) {
+    return (
+      <div className="h-10 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading approval counts" />
+    );
+  }
+
+  const pill =
+    "inline-flex items-center rounded-full border border-gray-200/60 bg-white/70 px-3 py-1 text-2xl font-extrabold leading-none text-gray-900 shadow-sm dark:border-gray-700/60 dark:bg-white/[0.06] dark:text-white";
+
+  return (
+    <h3 className={`text-4xl font-extrabold tracking-tight tabular-nums ${labelTextClass}`}>
+      <span className="inline-flex items-center gap-2">
+        <span className={pill}>
+          {newLoading ? (
+            <span className="inline-flex h-6 min-w-[2.25rem] items-center justify-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse opacity-60" />
+            </span>
+          ) : (
+            animatedNew.toLocaleString()
+          )}
+        </span>
+        <span className="text-2xl font-extrabold opacity-50">|</span>
+        <span className={pill}>
+          {changeLoading ? (
+            <span className="inline-flex h-6 min-w-[2.25rem] items-center justify-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse opacity-60" />
+            </span>
+          ) : (
+            animatedChange.toLocaleString()
+          )}
+        </span>
+      </span>
+    </h3>
+  );
+}
+
+function UnderApprovalSubTabCounter({
+  count,
+  isLoading,
+  isSelected,
+}: {
+  count: number;
+  isLoading: boolean;
+  isSelected: boolean;
+}) {
+  const animated = useAnimatedCounter(isLoading ? 0 : count);
+
+  if (isLoading) {
+    return (
+      <span
+        className={`inline-flex h-5 w-8 items-center justify-center rounded-md ${
+          isSelected ? "bg-blue-700/30 text-blue-100" : "bg-gray-200 dark:bg-gray-600"
+        }`}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse opacity-80" />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-md px-1.5 text-[10px] font-bold tabular-nums transition-all duration-300 ${
+        isSelected ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+      }`}
+    >
+      {animated.toLocaleString()}
+    </span>
+  );
+}
 
 // Counts are computed dynamically from fetched data
 
@@ -1694,21 +1824,21 @@ export const AlumniTabs: React.FC = () => {
     };
   }, [countsData, totalRecords]);
 
-  const { data: changeApprovalsCountData } = useQuery<{ changeApprovalCount: number }>(
-    {
-      queryKey: ["change-approvals", "count"],
-      queryFn: async ({ signal }) => {
-        const res = await fetch("/api/change-approvals/count", { signal, headers: { accept: "application/json" } });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error((data as any)?.error ?? "Failed to load change approvals count");
-        return data as { changeApprovalCount: number };
-      },
-      staleTime: 30 * 1000,
-      gcTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-    }
-  );
+  const { data: changeApprovalsCountData, isPending: isPendingChangeApprovalCount } = useQuery<{
+    changeApprovalCount: number;
+  }>({
+    queryKey: ["change-approvals", "count"],
+    queryFn: async ({ signal }) => {
+      const res = await fetch("/api/change-approvals/count", { signal, headers: { accept: "application/json" } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as any)?.error ?? "Failed to load change approvals count");
+      return data as { changeApprovalCount: number };
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
 
   const changeApprovalCount = useMemo(() => {
     const n = Number(changeApprovalsCountData?.changeApprovalCount ?? 0);
@@ -2901,24 +3031,20 @@ export const AlumniTabs: React.FC = () => {
                     {tab.label}
                   </h6>
                 </div>
-                {isLoadingCounts && !countsData ? (
-                  <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
+                {tab.key === "underApproval" ? (
+                  <AlumniTabUnderApprovalStats
+                    newCount={underApprovalNewCount}
+                    changeCount={underApprovalChangeCount}
+                    newLoading={isLoadingCounts && !countsData}
+                    changeLoading={isPendingChangeApprovalCount}
+                    labelTextClass={statusStyles.labelText}
+                  />
                 ) : (
-                  <h3 className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}>
-                    {tab.key === "underApproval" ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span className="inline-flex items-center rounded-full border border-gray-200/60 bg-white/70 px-3 py-1 text-2xl font-extrabold leading-none text-gray-900 shadow-sm dark:border-gray-700/60 dark:bg-white/[0.06] dark:text-white">
-                          {underApprovalNewCount.toLocaleString()}
-                        </span>
-                        <span className="text-2xl font-extrabold opacity-50">|</span>
-                        <span className="inline-flex items-center rounded-full border border-gray-200/60 bg-white/70 px-3 py-1 text-2xl font-extrabold leading-none text-gray-900 shadow-sm dark:border-gray-700/60 dark:bg-white/[0.06] dark:text-white">
-                          {underApprovalChangeCount.toLocaleString()}
-                        </span>
-                      </span>
-                    ) : (
-                      statCount.toLocaleString()
-                    )}
-                  </h3>
+                  <AlumniTabAnimatedStat
+                    value={statCount}
+                    isLoading={isLoadingCounts && !countsData}
+                    className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}
+                  />
                 )}
               </button>
             );
@@ -2942,7 +3068,7 @@ export const AlumniTabs: React.FC = () => {
     <div className="p-0">
       <div className="flex flex-col gap-8 ">
         {/* Stats Cards Section */}
-        <div className="px-4 py-8  rounded-2xl bg-[#183D32]/10 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+        <div className="px-4 py-8   rounded-2xl bg-[#183D32]/10 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
           {/* Regular Tabs */}
           <div className="flex flex-wrap gap-4 mb-6 ">
             {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
@@ -2981,24 +3107,34 @@ export const AlumniTabs: React.FC = () => {
             <button
               type="button"
               onClick={() => setUnderApprovalSubTab("new")}
-              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
                 underApprovalSubTab === "new"
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
                   : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
               }`}
             >
-              New Approvals ({(counts.underApproval || 0).toLocaleString()})
+              New Approvals
+              <UnderApprovalSubTabCounter
+                count={counts.underApproval || 0}
+                isLoading={isLoadingCounts && !countsData}
+                isSelected={underApprovalSubTab === "new"}
+              />
             </button>
             <button
               type="button"
               onClick={() => setUnderApprovalSubTab("change")}
-              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
                 underApprovalSubTab === "change"
                   ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-200"
                   : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
               }`}
             >
-              Change Approvals ({changeApprovalCount.toLocaleString()})
+              Change Approvals
+              <UnderApprovalSubTabCounter
+                count={changeApprovalCount}
+                isLoading={isPendingChangeApprovalCount}
+                isSelected={underApprovalSubTab === "change"}
+              />
             </button>
           </div>
         )}
