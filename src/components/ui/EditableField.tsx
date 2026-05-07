@@ -151,18 +151,18 @@ export default function EditableField({
   if (disabled) {
     return (
       <div className="flex flex-col">
-        <span className="text-sm font-medium text-gray-500 mb-1">{label}</span>
+        <span className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">{label}</span>
         {hasPending ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-base text-gray-500 break-words">{displayValue(value)}</span>
-            <span className="text-base text-gray-400">→</span>
-            <span className="text-base text-blue-700 break-words font-medium">{displayValue(pendingValue)}</span>
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="text-base text-gray-500 dark:text-slate-400 break-words">{displayValue(value)}</span>
+            <span className="text-base text-gray-400 dark:text-slate-500">→</span>
+            <span className="text-base text-blue-700 dark:text-blue-400 break-words font-medium">{displayValue(pendingValue)}</span>
+            <span className="inline-flex items-center rounded-full border border-amber-200 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-900/35 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
               Pending Approval
             </span>
           </div>
         ) : (
-          <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
+          <span className="text-base text-gray-900 dark:text-slate-100 break-words">{displayValue(value)}</span>
         )}
       </div>
     );
@@ -172,11 +172,11 @@ export default function EditableField({
     return (
       <div className="flex flex-col group">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium text-gray-500">{label}</span>
+          <span className="text-sm font-medium text-gray-500 dark:text-slate-400">{label}</span>
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all duration-200"
+            className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded transition-all duration-200"
             aria-label={`Edit ${label}`}
             title={`Edit ${label}`}
           >
@@ -187,15 +187,15 @@ export default function EditableField({
         </div>
         {hasPending ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-base text-gray-500 break-words">{displayValue(value)}</span>
-            <span className="text-base text-gray-400">→</span>
-            <span className="text-base text-blue-700 break-words font-medium">{displayValue(pendingValue)}</span>
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="text-base text-gray-500 dark:text-slate-400 break-words">{displayValue(value)}</span>
+            <span className="text-base text-gray-400 dark:text-slate-500">→</span>
+            <span className="text-base text-blue-700 dark:text-blue-400 break-words font-medium">{displayValue(pendingValue)}</span>
+            <span className="inline-flex items-center rounded-full border border-amber-200 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-900/35 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
               Pending Approval
             </span>
           </div>
         ) : (
-          <span className="text-base text-gray-900 break-words">{displayValue(value)}</span>
+          <span className="text-base text-gray-900 dark:text-slate-100 break-words">{displayValue(value)}</span>
         )}
       </div>
     );
@@ -203,13 +203,13 @@ export default function EditableField({
 
   return (
     <div className="flex flex-col">
-      <span className="text-sm font-medium text-gray-500 mb-1">{label}</span>
+      <span className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">{label}</span>
       <div className="flex flex-col gap-2">
         {type === "textarea" ? (
           <textarea
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             rows={3}
             disabled={isUpdating}
           />
@@ -217,7 +217,7 @@ export default function EditableField({
           <select
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             disabled={isUpdating}
           >
             <option value="">Select</option>
@@ -233,10 +233,10 @@ export default function EditableField({
               type="checkbox"
               checked={editValue === "true"}
               onChange={(e) => setEditValue(e.target.checked ? "true" : "false")}
-              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               disabled={isUpdating}
             />
-            <span className="text-sm text-gray-700">Show this information</span>
+            <span className="text-sm text-gray-700 dark:text-slate-200">Show this information</span>
           </label>
         ) : (
           <input
@@ -245,7 +245,7 @@ export default function EditableField({
             list={datalistId}
             placeholder={placeholder || `Enter ${label.toLowerCase()}`}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800/80 p-2 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             disabled={isUpdating}
           />
         )}
@@ -263,7 +263,7 @@ export default function EditableField({
               type="button"
               onClick={handleCancel}
               disabled={isUpdating}
-              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
@@ -274,18 +274,18 @@ export default function EditableField({
             <button
               type="button"
               onClick={handleSave}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded transition-colors"
             >
               Confirm
             </button>
             <button
               type="button"
               onClick={handleCancel}
-              className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded transition-colors"
             >
               Cancel
             </button>
-            <span className="text-xs text-gray-500">Save all changes together</span>
+            <span className="text-xs text-gray-500 dark:text-slate-400">Save all changes together</span>
           </div>
         )}
       </div>

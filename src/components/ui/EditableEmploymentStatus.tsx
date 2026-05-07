@@ -603,7 +603,7 @@ export default function EditableEmploymentStatus({
         </>
       )}
       {!showEmploymentFields && !isPursuingHigherEd && (
-        <div className="col-span-full text-sm text-gray-500 italic">
+        <div className="col-span-full text-sm text-gray-500 dark:text-slate-400 italic">
           No employment fields to display for this status
         </div>
       )}
