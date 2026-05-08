@@ -4,7 +4,7 @@
 export const SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS = [
   { value: "admission-fee-masters-75", label: "Admission Fee Masters 75%" },
   { value: "admission-fee-phd-75", label: "Admission Fee PhD 75%" },
-  { value: "kinship-15", label: "Kinship Discount 15%" },
+  { value: "kinship-15", label: "Kinship Tution Discount 15%" },
   { value: "tuition-fee-masters-25", label: "Tuition Fee Masters 50%" },
   { value: "tuition-fee-phd-25", label: "Tuition Fee PhD 25%" },
 ] as const;
@@ -35,6 +35,35 @@ export function isScholarshipKinshipCategory(
 ): boolean {
   const d = String(discountType || "").trim().toLowerCase();
   return d === "kinship-15" || d === "kinship";
+}
+
+/**
+ * Human-facing application reference for the alumni scholarship PDF (header area).
+ * AS = Alumni Scholarship; S = Self (fee-discount flows); K = Kinship; year from submission; trailing digits from DB row id.
+ */
+export function formatAlumniScholarshipApplicationPdfId(params: {
+  discountType: string | null | undefined;
+  applicationId: number;
+  /** Calendar year (e.g. from application `created_at`); defaults to current year. */
+  submissionYear?: number;
+}): string | null {
+  const d = String(params.discountType || "").trim().toLowerCase();
+  const id = Math.floor(Number(params.applicationId));
+  if (!Number.isFinite(id) || id < 1) return null;
+
+  const year =
+    params.submissionYear != null && Number.isFinite(params.submissionYear)
+      ? Math.floor(params.submissionYear)
+      : new Date().getFullYear();
+  const seq = String(Math.max(0, id)).padStart(3, "0");
+
+  if (isScholarshipKinshipCategory(d)) {
+    return `AS-K-${year}-${seq}`;
+  }
+  if (isScholarshipFeeDiscountFlow(d)) {
+    return `AS-S-${year}-${seq}`;
+  }
+  return null;
 }
 
 /**
@@ -116,7 +145,7 @@ export function discountCategoryLabel(
     return "Tuition Fee Masters 25%";
   }
   if (d === "kinship") {
-    return "Kinship Discount 15%";
+    return "Kinship Tution Discount 15%";
   }
 
   const legacy = LEGACY_DISCOUNT_CATEGORY_LABELS[d];
@@ -167,7 +196,6 @@ export type MastersDetailsParsed = {
   admissionProgramId?: string;
   admissionCampus?: string;
   admissionSession?: string;
-  admissionStatus?: string;
   declarationAccepted?: boolean;
 };
 

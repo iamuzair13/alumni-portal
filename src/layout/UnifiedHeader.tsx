@@ -683,7 +683,7 @@ const UnifiedHeaderTopbar: FC = () => {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={`
-        sticky top-0 z-[500] flex min-h-[68px] items-center border-b  bg-white/95
+        sticky top-0 z-[620] flex min-h-[68px] items-center border-b  bg-white/95
         backdrop-blur-xl transition-all duration-300 
         ${
           isScrolled

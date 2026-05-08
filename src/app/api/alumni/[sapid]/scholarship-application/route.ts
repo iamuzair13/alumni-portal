@@ -139,7 +139,6 @@ export async function POST(
         const admissionProgramId = String(formData.get("admissionProgramId") || "").trim();
         const admissionCampus = String(formData.get("admissionCampus") || "").trim();
         const admissionSession = String(formData.get("admissionSession") || "").trim();
-        const admissionStatus = String(formData.get("admissionStatus") || "").trim();
         const declarationAccepted = String(formData.get("declarationAccepted") || "").trim();
         admissionApplicationRef = String(formData.get("admissionApplicationRef") || "").trim() || null;
 
@@ -149,7 +148,6 @@ export async function POST(
           admissionProgramId,
           admissionCampus,
           admissionSession,
-          admissionStatus,
           declarationAccepted: declarationAccepted === "true",
         };
 

@@ -6,6 +6,7 @@ import { generateScholarshipLetterPDF, generateScholarshipPDF } from "@/lib/pdfG
 import {
   discountCategoryLabel,
   discountTypeOptionLabel,
+  formatAlumniScholarshipApplicationPdfId,
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   parseMastersDetails,
@@ -304,7 +305,6 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         pn ? `Program applied for: ${pn}` : null,
         masters.admissionCampus ? `Campus: ${masters.admissionCampus}` : null,
         masters.admissionSession ? `Session / Intake: ${masters.admissionSession}` : null,
-        masters.admissionStatus ? `Admission status: ${masters.admissionStatus}` : null,
       ].filter(Boolean);
       mastersAdmissionSummary = parts.length ? parts.join(" | ") : null;
     }
@@ -315,6 +315,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       year: "numeric",
       month: "long",
       day: "numeric",
+    });
+    const scholarshipApplicationPdfId = formatAlumniScholarshipApplicationPdfId({
+      discountType: app.discount_type,
+      applicationId: alumniIdNum,
+      submissionYear: dateRaw.getFullYear(),
     });
     const dobFormatted = app.dateofbirth
       ? new Date(app.dateofbirth).toLocaleDateString("en-PK", {
@@ -403,6 +408,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       mastersAdmissionSummary,
       passingOutYear: passingOutYearDisplay,
       admissionApplicationRef: admissionRefDisplay,
+      scholarshipApplicationPdfId,
     };
 
     if (mode === "letter-pdf") {
@@ -418,6 +424,8 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         sapCode: applicationLetter.sapCode,
         passingOutYear: applicationLetter.passingOutYear,
         admissionApplicationRef: applicationLetter.admissionApplicationRef,
+        scholarshipApplicationPdfId: applicationLetter.scholarshipApplicationPdfId ?? null,
+        discountType: app.discount_type,
         requestedProgramDegree: applicationLetter.requestedProgramDegree,
         faculty: applicationLetter.faculty,
         department: applicationLetter.department,

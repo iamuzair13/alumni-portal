@@ -73,7 +73,6 @@ function ScholarshipApplicationContent() {
   const [admissionProgramId, setAdmissionProgramId] = useState<number | "">("");
   const [admissionCampus, setAdmissionCampus] = useState("");
   const [admissionSession, setAdmissionSession] = useState("");
-  const [admissionStatus, setAdmissionStatus] = useState<"confirmed" | "pending" | "">("");
 
   // Attached documents (file uploads)
   const [docAdmissionLetterFile, setDocAdmissionLetterFile] = useState<File | null>(null);
@@ -297,8 +296,7 @@ function ScholarshipApplicationContent() {
         !admissionDepartmentId ||
         !admissionProgramId ||
         !admissionCampus ||
-        !admissionSession ||
-        !admissionStatus
+        !admissionSession
       ) {
         toast.error("Please complete all admission and document sections before submitting.", {
           duration: 5000,
@@ -450,7 +448,6 @@ function ScholarshipApplicationContent() {
               fd.set("admissionProgramId", String(admissionProgramId));
               fd.set("admissionCampus", admissionCampus);
               fd.set("admissionSession", admissionSession);
-              fd.set("admissionStatus", admissionStatus);
 
               fd.set("docAdmissionLetter", docAdmissionLetterFile as File);
               fd.set("docAlumniProof", docAlumniProofFile as File);
@@ -598,7 +595,6 @@ function ScholarshipApplicationContent() {
       setAdmissionProgramId("");
       setAdmissionCampus("");
       setAdmissionSession("");
-      setAdmissionStatus("");
       setDocAdmissionLetterFile(null);
       setDocTranscriptsFile(null);
       setDocAlumniProofFile(null);
@@ -689,6 +685,7 @@ function ScholarshipApplicationContent() {
 
           <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Scholarship</h1>
+            <span className="text-red-500 text-[16px]"> (Applicable if your Admission in University is confirmed)</span>
             <p className="text-gray-600 mb-8">Fill out the form below to apply for UOL Alumni Scholarship or Fee Discount.</p>
 
             <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-4" aria-label="Scholarship application form">
@@ -1050,35 +1047,7 @@ function ScholarshipApplicationContent() {
                           </select>
                         </div>
 
-                        <div className="sm:col-span-2">
-                          <label className="mb-2 text-sm text-slate-900 font-medium block">
-                            Admission Status
-                          </label>
-                          <div className="flex items-center gap-6">
-                            <label className="inline-flex items-center gap-2 text-sm text-slate-900">
-                              <input
-                                type="radio"
-                                name="admissionStatus"
-                                value="confirmed"
-                                checked={admissionStatus === "confirmed"}
-                                onChange={() => setAdmissionStatus("confirmed")}
-                                className="h-4 w-4 text-blue-600 border-gray-300"
-                              />
-                              <span>Confirmed</span>
-                            </label>
-                            <label className="inline-flex items-center gap-2 text-sm text-slate-900">
-                              <input
-                                type="radio"
-                                name="admissionStatus"
-                                value="pending"
-                                checked={admissionStatus === "pending"}
-                                onChange={() => setAdmissionStatus("pending")}
-                                className="h-4 w-4 text-blue-600 border-gray-300"
-                              />
-                              <span>Pending</span>
-                            </label>
-                          </div>
-                        </div>
+                        
                       </div>
                     </div>
 

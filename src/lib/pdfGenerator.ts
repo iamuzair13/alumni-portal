@@ -59,6 +59,10 @@ export interface ScholarshipLetterPDFData {
   passingOutYear?: string | null;
   /** Admission reference / application ID entered on the scholarship form */
   admissionApplicationRef?: string | null;
+  /** e.g. AS-S-2026-001 / AS-K-2026-001 — shown next to Application Date when category applies */
+  scholarshipApplicationPdfId?: string | null;
+  /** Stored discount category (`discount_type`); drives banner Self vs Kinship title */
+  discountType?: string | null;
   // Optional fields to support enhanced tabular layout
   requestedProgramDegree?: string;
   faculty?: string;
@@ -141,7 +145,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       const logoBase64 = getLogoBase64("light");
       if (logoBase64) {
         try {
-          doc.addImage(logoBase64, "PNG", margin + 4, y + 5, 52, 12, "uol-logo", "FAST");
+          doc.addImage(logoBase64, "PNG", margin + 2, y + 5, 30, 12, "uol-logo", "FAST");
         } catch {
           // ignore logo rendering failure
         }
@@ -149,8 +153,20 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      const headerTitle = "ALUMNI SCHOLARSHIP APPLICATION";
-      const headerTitleW = doc.getTextWidth(headerTitle);
+      const headerTitle =
+        isScholarshipKinshipCategory(data.discountType)
+          ? "ALUMNI SCHOLARSHIP APPLICATION (KINSHIP)"
+          : isScholarshipFeeDiscountFlow(data.discountType)
+            ? "ALUMNI SCHOLARSHIP APPLICATION (SELF)"
+            : "ALUMNI SCHOLARSHIP APPLICATION";
+      let headerFontSize = 10;
+      doc.setFontSize(headerFontSize);
+      let headerTitleW = doc.getTextWidth(headerTitle);
+      while (headerTitleW > maxWidth - 8 && headerFontSize > 7) {
+        headerFontSize -= 0.5;
+        doc.setFontSize(headerFontSize);
+        headerTitleW = doc.getTextWidth(headerTitle);
+      }
       doc.text(headerTitle, margin + Math.max(0, (maxWidth - headerTitleW) / 2), y + headerBandH / 2 + 3.2);
       doc.setTextColor(0, 0, 0);
       y += headerBandH + 3;
@@ -232,13 +248,6 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         doc.setFillColor(rgb[0], rgb[1], rgb[2]);
       };
 
-      // Application date (white cells)
-      doc.rect(outerX, rowY, c1, rowHeights.date);
-      doc.rect(x2, rowY, outerW - c1, rowHeights.date);
-      drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
-      drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, false);
-      rowY += rowHeights.date;
-
       const drawSectionHeader = (letter: string, title: string, shade: 1 | 2 | "docs") => {
         const rgb = shade === "docs" ? sectionGreenDocs : shade === 1 ? sectionGreen1 : sectionGreen2;
         fillRgb(rgb);
@@ -283,6 +292,18 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         rowY += finalH;
       };
 
+      // Application date + optional application reference (tabular row aligned with sections below)
+      const pdfAppId = String(data.scholarshipApplicationPdfId || "").trim();
+      if (pdfAppId) {
+        drawFourColRow("Application Date:", data.dateFormatted, "Application ID:", pdfAppId);
+      } else {
+        doc.rect(outerX, rowY, c1, rowHeights.date);
+        doc.rect(x2, rowY, outerW - c1, rowHeights.date);
+        drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
+        drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, false);
+        rowY += rowHeights.date;
+      }
+
       drawSectionHeader("a", "Alumni Details", 1);
       drawFourColRow("Name:", data.studentName || "Missing", "Father's Name:", data.fatherName || "Missing");
       drawFourColRow("DOB:", data.dob || "Missing", "CNIC:", data.cnic || "Missing");
@@ -322,7 +343,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         drawFourColRow(
           "Discount Category:",
           data.scholarshipType?.trim() ? data.scholarshipType : "Missing",
-          "Admission Reference No/Application ID:",
+          "Admission Reference No:",
           data.admissionApplicationRef?.trim() ? data.admissionApplicationRef : "Missing",
         );
       }

@@ -92,7 +92,7 @@ export function generateAdminActionEmail(input: {
       <ul style="margin: 12px 0 0 18px; color: #333333; font-size: 16px; line-height: 1.6;">
         <li>Discounted access to the university gym and other campus facilities</li>
         <li>Special discounts at the University of Lahore Hospital</li>
-        <li>Eligibility for alumni scholarships and kinship discounts for your family members</li>
+        <li>Eligibility for alumni scholarships and kinship tution discounts for your family members</li>
         <li>Exclusive invitations to job fairs, networking sessions, and professional events</li>
       </ul>
       <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Your application will be reviewed by the Office of Alumni Relations, EE2 Building 4th Floor. Once approved, you will receive a confirmation email along with your login credentials.</p>
