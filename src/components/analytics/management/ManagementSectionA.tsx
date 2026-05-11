@@ -119,26 +119,7 @@ export default function ManagementSectionA({ data, isLoading, timeRange }: Props
             </div>
           }
         />
-        {!isLoading && facultyTotal > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Registration distribution</p>
-            {facultySource
-              .filter((r) => typeof r.registrations === "number")
-              .map((r, i) => (
-                <div key={r.faculty} className="flex items-center gap-3">
-                  <span className="w-28 truncate text-xs text-gray-600 dark:text-gray-400">{r.faculty}</span>
-                  <ProgressBar
-                    value={r.registrations ?? 0}
-                    max={maxRegistrations}
-                    color={["indigo", "emerald", "amber", "rose", "sky", "violet"][i % 6]}
-                  />
-                  <span className="w-10 text-right text-xs font-medium tabular-nums text-gray-700 dark:text-gray-300">
-                    {(((r.registrations ?? 0) / facultyTotal) * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
+        
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
