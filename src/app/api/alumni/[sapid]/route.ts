@@ -667,22 +667,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
       current.verify !== undefined &&
       String(current.verify).trim().toLowerCase() === "underapproval";
     
-    // Always generate password and send email when admin verifies/unverifies an alumni that was under approval
-    // This happens only once when status changes from NULL to verified/unverified
-    let generatedPassword: string | null = null;
+    // When leaving underApproval: keep public.tbl_alumni.password so approval emails and /api/send-email match login.
+    // Only auto-generate if no password is stored (legacy or incomplete rows).
     let passwordToStore: string | null = null;
-    
-    if (wasUnderApproval) {
-      // Always generate password when admin verifies/unverifies for the first time (moving from NULL to verified/unverified)
-      // This is a one-time action - email will be sent only when moving from NULL status
-      const { default: generateEasyPassword } = await import("@/lib/passwordUtils");
-      generatedPassword = generateEasyPassword();
-      passwordToStore = generatedPassword;
 
+    if (wasUnderApproval) {
+      const existingPlain = String(current.password || "").trim();
+      if (existingPlain) {
+        passwordToStore = existingPlain;
+      } else {
+        const { default: generateEasyPassword } = await import("@/lib/passwordUtils");
+        passwordToStore = generateEasyPassword();
+      }
     } else {
       // Keep existing password if alumni was already verified/unverified (admin is just changing status)
       passwordToStore = current.password;
-
     }
     
     // Verify field is now VARCHAR(10) - update with string value
