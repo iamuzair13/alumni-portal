@@ -33,6 +33,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const facultyIdParam = searchParams.get("facultyId");
   const timeRange = (searchParams.get("timeRange") || "This Quarter").trim();
+  const debug = (searchParams.get("debug") || "").trim() === "1";
   const selectedFacultyId = facultyIdParam && facultyIdParam !== "all" ? Number(facultyIdParam) : null;
   const facultyFilterCondition =
     selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND a.faculty = ${selectedFacultyId}` : sql``;
@@ -341,15 +342,26 @@ export async function GET(req: Request) {
       ${facultyFilterCondition}
     `;
 
-    const uaaFacultyCondForAdmins =
+    const uaaFacultyResolvedCond =
       selectedFacultyId && Number.isFinite(selectedFacultyId)
-        ? sql` AND uaa.faculty_id = ${selectedFacultyId}`
+        ? sql` AND COALESCE(uaa.faculty_id, fby.id) = ${selectedFacultyId}`
+        : sql``;
+
+    const uraFacultyCond =
+      selectedFacultyId && Number.isFinite(selectedFacultyId)
+        ? sql` AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) = ${selectedFacultyId}`
         : sql``;
 
     let trainedFacultyAdmins: {
       total: number | null;
       byFaculty: Array<{ faculty: string; facultyId: number | null; count: number }>;
     } = { total: null, byFaculty: [] };
+    const trainedFacultyAdminsDebug: {
+      tableCheck?: unknown;
+      mergedError?: string;
+      uaaOnlyError?: string;
+      legacyError?: string;
+    } = {};
 
     const applyTrainedAdminRows = (
       totalRows: Array<{ c?: number }>,
@@ -367,45 +379,333 @@ export async function GET(req: Request) {
       };
     };
 
-    try {
-      // userid may match users.id (new) or users.legacy_userid (migrated). Portal sign-in also allows type "user".
-      const totalRowsUsers = await sql/* sql */`
-        SELECT COUNT(DISTINCT u.id)::int AS c
-        FROM public.user_access_assignments uaa
-        INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
-        WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
-          AND COALESCE(u.blocked, false) = false
-          AND (
-            LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-            OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-          )
-          ${uaaFacultyCondForAdmins}
-      `;
-      const byFacultyRowsUsers = await sql/* sql */`
+    /** Setup /users uses `user_resource_access` + `resources` (see rbac.ts); legacy uses `user_access_assignments`. */
+    const loadTrainedFromMergedPairs = async () => {
+      const tables = await sql/* sql */`
         SELECT
-          COALESCE(
-            NULLIF(TRIM(f.faculty_name), ''),
-            NULLIF(TRIM(uaa.faculty_name), ''),
-            CASE WHEN uaa.faculty_id IS NOT NULL THEN 'Faculty #' || uaa.faculty_id::text ELSE 'Unassigned faculty' END
-          ) AS faculty,
-          uaa.faculty_id AS faculty_id,
-          COUNT(DISTINCT u.id)::int AS cnt
-        FROM public.user_access_assignments uaa
-        INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
-        LEFT JOIN public.tbl_faculties f ON f.id = uaa.faculty_id
-        WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
-          AND COALESCE(u.blocked, false) = false
-          AND (
-            LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-            OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-          )
-          ${uaaFacultyCondForAdmins}
-        GROUP BY uaa.faculty_id, f.faculty_name, uaa.faculty_name
-        ORDER BY cnt DESC, 1 ASC
+          to_regclass('public.user_resource_access') AS ura,
+          to_regclass('public.resources') AS resources,
+          to_regclass('public.user_access_assignments') AS uaa,
+          to_regclass('public.users') AS users,
+          to_regclass('public.tbl_faculties') AS faculties
       `;
-      applyTrainedAdminRows(totalRowsUsers as Array<{ c?: number }>, byFacultyRowsUsers);
-    } catch {
-      trainedFacultyAdmins = { total: null, byFaculty: [] };
+      trainedFacultyAdminsDebug.tableCheck =
+        (tables as unknown as Array<Record<string, unknown>>)?.[0] ?? null;
+
+      const tc = trainedFacultyAdminsDebug.tableCheck as
+        | { ura?: string | null; resources?: string | null; uaa?: string | null }
+        | null
+        | undefined;
+      const hasUaa = Boolean(tc?.uaa);
+
+      // URA-only query is valid even when `user_access_assignments` doesn't exist.
+      if (!hasUaa) {
+        const totalRowsUraOnly = await sql/* sql */`
+          WITH ura_pairs AS (
+            SELECT DISTINCT
+              u.id AS user_id,
+              COALESCE(
+                res.legacy_faculty_id,
+                parent_fac.legacy_faculty_id,
+                grandparent_fac.legacy_faculty_id,
+                fby_res.id
+              ) AS faculty_id
+            FROM public.user_resource_access ura
+            INNER JOIN public.users u ON u.id = ura.user_id
+            INNER JOIN public.resources res ON ura.resource_id = res.id
+            LEFT JOIN public.resources parent_dept ON res.parent_id = parent_dept.id AND parent_dept.type = 'department'
+            LEFT JOIN public.resources parent_fac ON
+              (res.type = 'department' AND res.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+              OR (res.type = 'program' AND parent_dept.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+            LEFT JOIN public.resources grandparent_fac ON
+              res.type = 'program' AND parent_dept.parent_id = grandparent_fac.id AND grandparent_fac.type = 'faculty'
+            LEFT JOIN public.tbl_faculties fby_res ON
+              COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id) IS NULL
+              AND LENGTH(TRIM(COALESCE(
+                CASE WHEN res.type = 'faculty' THEN res.name
+                     WHEN res.type = 'department' THEN parent_fac.name
+                     WHEN res.type = 'program' THEN grandparent_fac.name
+                     ELSE NULL END,
+                ''
+              ))) > 0
+              AND LOWER(TRIM(fby_res.faculty_name)) = LOWER(TRIM(COALESCE(
+                CASE WHEN res.type = 'faculty' THEN res.name
+                     WHEN res.type = 'department' THEN parent_fac.name
+                     WHEN res.type = 'program' THEN grandparent_fac.name
+                     ELSE NULL END,
+                ''
+              )))
+            WHERE res.type IN ('faculty', 'department', 'program')
+              AND COALESCE(u.blocked, false) = false
+              AND (
+                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              )
+              AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
+              ${uraFacultyCond}
+          )
+          SELECT COUNT(DISTINCT user_id)::int AS c FROM ura_pairs
+        `;
+        const byFacultyUraOnly = await sql/* sql */`
+          WITH ura_pairs AS (
+            SELECT DISTINCT
+              u.id AS user_id,
+              COALESCE(
+                res.legacy_faculty_id,
+                parent_fac.legacy_faculty_id,
+                grandparent_fac.legacy_faculty_id,
+                fby_res.id
+              ) AS faculty_id
+            FROM public.user_resource_access ura
+            INNER JOIN public.users u ON u.id = ura.user_id
+            INNER JOIN public.resources res ON ura.resource_id = res.id
+            LEFT JOIN public.resources parent_dept ON res.parent_id = parent_dept.id AND parent_dept.type = 'department'
+            LEFT JOIN public.resources parent_fac ON
+              (res.type = 'department' AND res.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+              OR (res.type = 'program' AND parent_dept.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+            LEFT JOIN public.resources grandparent_fac ON
+              res.type = 'program' AND parent_dept.parent_id = grandparent_fac.id AND grandparent_fac.type = 'faculty'
+            LEFT JOIN public.tbl_faculties fby_res ON
+              COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id) IS NULL
+              AND LENGTH(TRIM(COALESCE(
+                CASE WHEN res.type = 'faculty' THEN res.name
+                     WHEN res.type = 'department' THEN parent_fac.name
+                     WHEN res.type = 'program' THEN grandparent_fac.name
+                     ELSE NULL END,
+                ''
+              ))) > 0
+              AND LOWER(TRIM(fby_res.faculty_name)) = LOWER(TRIM(COALESCE(
+                CASE WHEN res.type = 'faculty' THEN res.name
+                     WHEN res.type = 'department' THEN parent_fac.name
+                     WHEN res.type = 'program' THEN grandparent_fac.name
+                     ELSE NULL END,
+                ''
+              )))
+            WHERE res.type IN ('faculty', 'department', 'program')
+              AND COALESCE(u.blocked, false) = false
+              AND (
+                LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+                OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              )
+              AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
+              ${uraFacultyCond}
+          ),
+          per_faculty AS (
+            SELECT faculty_id, COUNT(DISTINCT user_id)::int AS cnt
+            FROM ura_pairs
+            GROUP BY faculty_id
+          )
+          SELECT
+            COALESCE(NULLIF(TRIM(tf.faculty_name), ''), 'Faculty #' || pf.faculty_id::text) AS faculty,
+            pf.faculty_id AS faculty_id,
+            pf.cnt
+          FROM per_faculty pf
+          LEFT JOIN public.tbl_faculties tf ON tf.id = pf.faculty_id
+          ORDER BY pf.cnt DESC, faculty ASC
+        `;
+        applyTrainedAdminRows(totalRowsUraOnly as Array<{ c?: number }>, byFacultyUraOnly);
+        return;
+      }
+
+      // If `user_access_assignments` exists, use the union (URA + legacy UAA).
+      const totalRowsMerged = await sql/* sql */`
+        WITH ura_pairs AS (
+          SELECT DISTINCT
+            u.id AS user_id,
+            COALESCE(
+              res.legacy_faculty_id,
+              parent_fac.legacy_faculty_id,
+              grandparent_fac.legacy_faculty_id,
+              fby_res.id
+            ) AS faculty_id
+          FROM public.user_resource_access ura
+          INNER JOIN public.users u ON u.id = ura.user_id
+          INNER JOIN public.resources res ON ura.resource_id = res.id
+          LEFT JOIN public.resources parent_dept ON res.parent_id = parent_dept.id AND parent_dept.type = 'department'
+          LEFT JOIN public.resources parent_fac ON
+            (res.type = 'department' AND res.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+            OR (res.type = 'program' AND parent_dept.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+          LEFT JOIN public.resources grandparent_fac ON
+            res.type = 'program' AND parent_dept.parent_id = grandparent_fac.id AND grandparent_fac.type = 'faculty'
+          LEFT JOIN public.tbl_faculties fby_res ON
+            COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id) IS NULL
+            AND LENGTH(TRIM(COALESCE(
+              CASE WHEN res.type = 'faculty' THEN res.name
+                   WHEN res.type = 'department' THEN parent_fac.name
+                   WHEN res.type = 'program' THEN grandparent_fac.name
+                   ELSE NULL END,
+              ''
+            ))) > 0
+            AND LOWER(TRIM(fby_res.faculty_name)) = LOWER(TRIM(COALESCE(
+              CASE WHEN res.type = 'faculty' THEN res.name
+                   WHEN res.type = 'department' THEN parent_fac.name
+                   WHEN res.type = 'program' THEN grandparent_fac.name
+                   ELSE NULL END,
+              ''
+            )))
+          WHERE res.type IN ('faculty', 'department', 'program')
+            AND COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            )
+            AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
+            ${uraFacultyCond}
+        ),
+        uaa_pairs AS (
+          SELECT DISTINCT
+            u.id AS user_id,
+            COALESCE(uaa.faculty_id, fby.id) AS faculty_id
+          FROM public.user_access_assignments uaa
+          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+          LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
+            AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+            AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+          WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
+            AND COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            )
+            ${uaaFacultyResolvedCond}
+        ),
+        pairs AS (
+          SELECT user_id, faculty_id FROM ura_pairs
+          UNION
+          SELECT user_id, faculty_id FROM uaa_pairs
+        )
+        SELECT COUNT(DISTINCT user_id)::int AS c FROM pairs
+      `;
+      const byFacultyMerged = await sql/* sql */`
+        WITH ura_pairs AS (
+          SELECT DISTINCT
+            u.id AS user_id,
+            COALESCE(
+              res.legacy_faculty_id,
+              parent_fac.legacy_faculty_id,
+              grandparent_fac.legacy_faculty_id,
+              fby_res.id
+            ) AS faculty_id
+          FROM public.user_resource_access ura
+          INNER JOIN public.users u ON u.id = ura.user_id
+          INNER JOIN public.resources res ON ura.resource_id = res.id
+          LEFT JOIN public.resources parent_dept ON res.parent_id = parent_dept.id AND parent_dept.type = 'department'
+          LEFT JOIN public.resources parent_fac ON
+            (res.type = 'department' AND res.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+            OR (res.type = 'program' AND parent_dept.parent_id = parent_fac.id AND parent_fac.type = 'faculty')
+          LEFT JOIN public.resources grandparent_fac ON
+            res.type = 'program' AND parent_dept.parent_id = grandparent_fac.id AND grandparent_fac.type = 'faculty'
+          LEFT JOIN public.tbl_faculties fby_res ON
+            COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id) IS NULL
+            AND LENGTH(TRIM(COALESCE(
+              CASE WHEN res.type = 'faculty' THEN res.name
+                   WHEN res.type = 'department' THEN parent_fac.name
+                   WHEN res.type = 'program' THEN grandparent_fac.name
+                   ELSE NULL END,
+              ''
+            ))) > 0
+            AND LOWER(TRIM(fby_res.faculty_name)) = LOWER(TRIM(COALESCE(
+              CASE WHEN res.type = 'faculty' THEN res.name
+                   WHEN res.type = 'department' THEN parent_fac.name
+                   WHEN res.type = 'program' THEN grandparent_fac.name
+                   ELSE NULL END,
+              ''
+            )))
+          WHERE res.type IN ('faculty', 'department', 'program')
+            AND COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            )
+            AND COALESCE(res.legacy_faculty_id, parent_fac.legacy_faculty_id, grandparent_fac.legacy_faculty_id, fby_res.id) IS NOT NULL
+            ${uraFacultyCond}
+        ),
+        uaa_pairs AS (
+          SELECT DISTINCT
+            u.id AS user_id,
+            COALESCE(uaa.faculty_id, fby.id) AS faculty_id
+          FROM public.user_access_assignments uaa
+          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+          LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
+            AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+            AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+          WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
+            AND COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            )
+            ${uaaFacultyResolvedCond}
+        ),
+        pairs AS (
+          SELECT user_id, faculty_id FROM ura_pairs
+          UNION
+          SELECT user_id, faculty_id FROM uaa_pairs
+        ),
+        per_faculty AS (
+          SELECT faculty_id, COUNT(DISTINCT user_id)::int AS cnt
+          FROM pairs
+          GROUP BY faculty_id
+        )
+        SELECT
+          COALESCE(NULLIF(TRIM(tf.faculty_name), ''), 'Faculty #' || pf.faculty_id::text) AS faculty,
+          pf.faculty_id AS faculty_id,
+          pf.cnt
+        FROM per_faculty pf
+        LEFT JOIN public.tbl_faculties tf ON tf.id = pf.faculty_id
+        ORDER BY pf.cnt DESC, faculty ASC
+      `;
+      applyTrainedAdminRows(totalRowsMerged as Array<{ c?: number }>, byFacultyMerged);
+    };
+
+    try {
+      await loadTrainedFromMergedPairs();
+    } catch (e) {
+      trainedFacultyAdminsDebug.mergedError = e instanceof Error ? e.message : String(e);
+      try {
+        const totalRowsUaaOnly = await sql/* sql */`
+          SELECT COUNT(DISTINCT u.id)::int AS c
+          FROM public.user_access_assignments uaa
+          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+          WHERE COALESCE(uaa.faculty_id, (
+            SELECT f2.id FROM public.tbl_faculties f2
+            WHERE LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+              AND LOWER(TRIM(f2.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+            LIMIT 1
+          )) IS NOT NULL
+            AND COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            )
+            ${uaaFacultyResolvedCond}
+        `;
+        const byFacultyUaaOnly = await sql/* sql */`
+          SELECT
+            COALESCE(NULLIF(TRIM(f.faculty_name), ''), NULLIF(TRIM(uaa.faculty_name), ''), 'Faculty #' || COALESCE(uaa.faculty_id, fby.id)::text) AS faculty,
+            COALESCE(uaa.faculty_id, fby.id) AS faculty_id,
+            COUNT(DISTINCT u.id)::int AS cnt
+          FROM public.user_access_assignments uaa
+          INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+          LEFT JOIN public.tbl_faculties f ON f.id = uaa.faculty_id
+          LEFT JOIN public.tbl_faculties fby ON uaa.faculty_id IS NULL
+            AND LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0
+            AND LOWER(TRIM(fby.faculty_name)) = LOWER(TRIM(uaa.faculty_name))
+          WHERE COALESCE(uaa.faculty_id, fby.id) IS NOT NULL
+            AND COALESCE(u.blocked, false) = false
+            AND (
+              LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+              OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            )
+            ${uaaFacultyResolvedCond}
+          GROUP BY COALESCE(uaa.faculty_id, fby.id), f.faculty_name, uaa.faculty_name, fby.faculty_name
+          ORDER BY cnt DESC, faculty ASC
+        `;
+        applyTrainedAdminRows(totalRowsUaaOnly as Array<{ c?: number }>, byFacultyUaaOnly);
+      } catch (e2) {
+        trainedFacultyAdminsDebug.uaaOnlyError = e2 instanceof Error ? e2.message : String(e2);
+        trainedFacultyAdmins = { total: null, byFaculty: [] };
+      }
     }
 
     const hasNoTrainedData =
@@ -420,7 +720,7 @@ export async function GET(req: Request) {
           WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
             AND COALESCE(tu.blocked, false) = false
             AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-            ${uaaFacultyCondForAdmins}
+            ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
         `;
         const byFacultyRowsLegacy = await sql/* sql */`
           SELECT
@@ -437,12 +737,13 @@ export async function GET(req: Request) {
           WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
             AND COALESCE(tu.blocked, false) = false
             AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
-            ${uaaFacultyCondForAdmins}
+            ${selectedFacultyId && Number.isFinite(selectedFacultyId) ? sql` AND uaa.faculty_id = ${selectedFacultyId}` : sql``}
           GROUP BY uaa.faculty_id, f.faculty_name, uaa.faculty_name
           ORDER BY cnt DESC, 1 ASC
         `;
         applyTrainedAdminRows(totalRowsLegacy as Array<{ c?: number }>, byFacultyRowsLegacy);
-      } catch {
+      } catch (e3) {
+        trainedFacultyAdminsDebug.legacyError = e3 instanceof Error ? e3.message : String(e3);
         /* tbl_users may not exist */
       }
     }
@@ -687,6 +988,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         ...payload,
+        ...(debug ? { debug: { trainedFacultyAdmins: trainedFacultyAdminsDebug } } : {}),
         scopeNotes: MANAGEMENT_DASHBOARD_SCOPE_NOTES,
         legacy: {
           totalEventsMeetupsSelectedRange: ev.selected_range_count ?? null,
