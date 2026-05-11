@@ -18,6 +18,7 @@ const facultyAbbreviationMap: Array<{ match: RegExp; short: string }> = [
   { match: /social\s*sciences/i, short: "FSS" },
   { match: /science/i, short: "Sci" },
   { match: /architecture/i, short: "A&R" },
+  { match: /law\s*&\s*letters|languages?\s*&\s*letters|l\s*&\s*l/i, short: "L&L" },
   { match: /law/i, short: "FL" },
   { match: /ucmd|medical|dent/i, short: "UCMD" },
 ];

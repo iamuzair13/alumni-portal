@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import {
+  MANAGEMENT_DASHBOARD_MERCHANT_SEED,
+  MANAGEMENT_DASHBOARD_SCOPE_NOTES,
+  type ManagementDashboardPayload,
+} from "@/lib/analytics/management-dashboard";
 
 type NumOrNull = number | null;
 
@@ -37,11 +42,41 @@ export async function GET(req: Request) {
   const selectedStart = timeRange === "YTD" ? yearStart : quarterStart;
 
   try {
-    const [kpiRows] = await Promise.all([
+    const [kpiRows, alumniHeadlineRows] = await Promise.all([
       sql/* sql */`
         SELECT
           COUNT(*) FILTER (WHERE true)::int AS total_alumni,
           COUNT(*) FILTER (WHERE LOWER(COALESCE(a.alumnistatus,'')) = 'active')::int AS active_alumni
+        FROM public.tbl_alumni a
+        WHERE 1=1
+        ${accessFilterCondition}
+        ${facultyFilterCondition}
+      `,
+      sql/* sql */`
+        SELECT
+          COUNT(DISTINCT a.alumniid)::int AS total,
+          COUNT(DISTINCT a.alumniid) FILTER (WHERE LOWER(COALESCE(a.verify, '')) = 'true')::int AS verified,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'a+'
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a+%'
+          )::int AS category_a_plus,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE (LOWER(TRIM(COALESCE(a.category, ''))) = 'a'
+               OR (LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'a%'
+               AND LOWER(TRIM(COALESCE(a.category, ''))) NOT LIKE 'a+%'))
+          )::int AS category_a,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'b'
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'b%'
+          )::int AS category_b,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'c'
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'c%'
+          )::int AS category_c,
+          COUNT(DISTINCT a.alumniid) FILTER (
+            WHERE LOWER(TRIM(COALESCE(a.category, ''))) = 'd'
+               OR LOWER(TRIM(COALESCE(a.category, ''))) LIKE 'd%'
+          )::int AS category_d
         FROM public.tbl_alumni a
         WHERE 1=1
         ${accessFilterCondition}
@@ -62,8 +97,24 @@ export async function GET(req: Request) {
       SELECT
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')::int AS uol_total,
-        COUNT(*) FILTER (WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%'))::int AS other_total
-      FROM public.tbljobs
+        COUNT(*) FILTER (WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%'))::int AS other_total,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${quarterStart}::timestamptz
+        )::int AS uol_quarter,
+        COUNT(*) FILTER (
+          WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${yearStart}::timestamptz
+        )::int AS uol_ytd,
+        COUNT(*) FILTER (
+          WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${quarterStart}::timestamptz
+        )::int AS other_quarter,
+        COUNT(*) FILTER (
+          WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
+            AND j.created_at >= ${yearStart}::timestamptz
+        )::int AS other_ytd
+      FROM public.tbljobs j
     `;
 
     const scholarshipsRows = await sql/* sql */`
@@ -86,7 +137,22 @@ export async function GET(req: Request) {
       SELECT
         COUNT(*) FILTER (WHERE LOWER(COALESCE(m.status,'pending')) IN ('approved','active'))::int AS active_benefits,
         COUNT(*) FILTER (WHERE TRIM(COALESCE(m.gym_membership_month,'')) <> '')::int AS gym_count,
-        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> '')::int AS swimming_count
+        COUNT(*) FILTER (WHERE TRIM(COALESCE(m.swimmingpool_membership_month,'')) <> '')::int AS swimming_count,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%free%' AND LOWER(COALESCE(m.reason,'')) LIKE '%gym%'
+        )::int AS free_gym_hint,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%free%' AND LOWER(COALESCE(m.reason,'')) LIKE '%pool%'
+        )::int AS free_pool_hint,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%qalander%' OR LOWER(COALESCE(m.reason,'')) LIKE '%qalandar%'
+        )::int AS qalander_hint,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%health%' OR LOWER(COALESCE(m.reason,'')) LIKE '%hospital%' OR LOWER(COALESCE(m.reason,'')) LIKE '%ulh%'
+        )::int AS healthcare_hint,
+        COUNT(*) FILTER (
+          WHERE LOWER(COALESCE(m.reason,'')) LIKE '%vehicle%' OR LOWER(COALESCE(m.reason,'')) LIKE '%sticker%'
+        )::int AS vehicle_hint
       FROM public.alumni_memberships m
       JOIN public.tbl_alumni a ON a.alumniid = m.alumniid
       WHERE 1=1
@@ -190,94 +256,442 @@ export async function GET(req: Request) {
       FROM public.tbljobs j
     `;
 
+    const transitionRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) = 'before graduation')::int AS before_graduation,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%immediately%')::int AS immediate,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%within 3 month%')::int AS within_3,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%within 6 month%')::int AS within_6,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) LIKE '%after 6 month%')::int AS after_6,
+        COUNT(*) FILTER (
+          WHERE TRIM(COALESCE(a.occupation_transition_timing,'')) <> ''
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT IN ('before graduation')
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%immediately%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 3 month%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%within 6 month%'
+            AND LOWER(TRIM(COALESCE(a.occupation_transition_timing,''))) NOT LIKE '%after 6 month%'
+        )::int AS unknown_bucket
+      FROM public.tbl_alumni a
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+    `;
+
+    const occupationRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.employeed,''))) IN ('employed','employed/business')
+        )::int AS employed,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%self-employed%' OR LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%entrepreneur%'
+        )::int AS self_employed,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%searching%'
+        )::int AS unemployed_searching,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.employeed,''))) LIKE '%choice%'
+        )::int AS unemployed_choice,
+        COUNT(*) FILTER (WHERE TRIM(COALESCE(a.employeed,'')) <> '')::int AS with_status
+      FROM public.tbl_alumni a
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+    `;
+
+    const provinceRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%punjab%'
+            AND LOWER(TRIM(COALESCE(a.province,''))) NOT LIKE '%islamabad%'
+        )::int AS punjab,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%islamabad%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%ict%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%federal capital%'
+        )::int AS islamabad,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%khyber%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%kpk%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) = 'kp'
+        )::int AS kpk,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%sindh%'
+        )::int AS sindh,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%ajk%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%azad%'
+        )::int AS ajk,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%gilgit%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%baltistan%'
+            OR LOWER(TRIM(COALESCE(a.province,''))) LIKE '%gb%'
+        )::int AS gb,
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(COALESCE(a.province,''))) LIKE '%baloch%'
+        )::int AS balochistan,
+        COUNT(*) FILTER (
+          WHERE TRIM(COALESCE(a.country,'')) <> ''
+            AND LOWER(TRIM(COALESCE(a.country,''))) NOT LIKE '%pakistan%'
+            AND LOWER(TRIM(COALESCE(a.country,''))) NOT IN ('pk')
+        )::int AS overseas,
+        COUNT(*)::int AS total_rows
+      FROM public.tbl_alumni a
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+    `;
+
+    const uaaFacultyCondForAdmins =
+      selectedFacultyId && Number.isFinite(selectedFacultyId)
+        ? sql` AND uaa.faculty_id = ${selectedFacultyId}`
+        : sql``;
+
+    let trainedFacultyAdmins: {
+      total: number | null;
+      byFaculty: Array<{ faculty: string; facultyId: number | null; count: number }>;
+    } = { total: null, byFaculty: [] };
+
+    const applyTrainedAdminRows = (
+      totalRows: Array<{ c?: number }>,
+      byFacultyRows: unknown
+    ) => {
+      const total = Number((totalRows[0] as { c?: number } | undefined)?.c ?? 0);
+      const byFaculty = (byFacultyRows as unknown as Array<{ faculty: string; faculty_id: number | null; cnt: number }>).map((r) => ({
+        faculty: r.faculty || "Unknown",
+        facultyId: r.faculty_id ?? null,
+        count: Number(r.cnt ?? 0),
+      }));
+      trainedFacultyAdmins = {
+        total: Number.isFinite(total) ? total : null,
+        byFaculty,
+      };
+    };
+
+    try {
+      // userid may match users.id (new) or users.legacy_userid (migrated). Portal sign-in also allows type "user".
+      const totalRowsUsers = await sql/* sql */`
+        SELECT COUNT(DISTINCT u.id)::int AS c
+        FROM public.user_access_assignments uaa
+        INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+        WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
+          AND COALESCE(u.blocked, false) = false
+          AND (
+            LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+          )
+          ${uaaFacultyCondForAdmins}
+      `;
+      const byFacultyRowsUsers = await sql/* sql */`
+        SELECT
+          COALESCE(
+            NULLIF(TRIM(f.faculty_name), ''),
+            NULLIF(TRIM(uaa.faculty_name), ''),
+            CASE WHEN uaa.faculty_id IS NOT NULL THEN 'Faculty #' || uaa.faculty_id::text ELSE 'Unassigned faculty' END
+          ) AS faculty,
+          uaa.faculty_id AS faculty_id,
+          COUNT(DISTINCT u.id)::int AS cnt
+        FROM public.user_access_assignments uaa
+        INNER JOIN public.users u ON (u.id = uaa.userid OR u.legacy_userid = uaa.userid)
+        LEFT JOIN public.tbl_faculties f ON f.id = uaa.faculty_id
+        WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
+          AND COALESCE(u.blocked, false) = false
+          AND (
+            LOWER(TRIM(COALESCE(u.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            OR LOWER(TRIM(COALESCE(u.legacy_type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+          )
+          ${uaaFacultyCondForAdmins}
+        GROUP BY uaa.faculty_id, f.faculty_name, uaa.faculty_name
+        ORDER BY cnt DESC, 1 ASC
+      `;
+      applyTrainedAdminRows(totalRowsUsers as Array<{ c?: number }>, byFacultyRowsUsers);
+    } catch {
+      trainedFacultyAdmins = { total: null, byFaculty: [] };
+    }
+
+    const hasNoTrainedData =
+      (trainedFacultyAdmins.total ?? 0) === 0 && (trainedFacultyAdmins.byFaculty?.length ?? 0) === 0;
+
+    if (hasNoTrainedData) {
+      try {
+        const totalRowsLegacy = await sql/* sql */`
+          SELECT COUNT(DISTINCT uaa.userid)::int AS c
+          FROM public.user_access_assignments uaa
+          INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
+          WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
+            AND COALESCE(tu.blocked, false) = false
+            AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            ${uaaFacultyCondForAdmins}
+        `;
+        const byFacultyRowsLegacy = await sql/* sql */`
+          SELECT
+            COALESCE(
+              NULLIF(TRIM(f.faculty_name), ''),
+              NULLIF(TRIM(uaa.faculty_name), ''),
+              CASE WHEN uaa.faculty_id IS NOT NULL THEN 'Faculty #' || uaa.faculty_id::text ELSE 'Unassigned faculty' END
+            ) AS faculty,
+            uaa.faculty_id AS faculty_id,
+            COUNT(DISTINCT uaa.userid)::int AS cnt
+          FROM public.user_access_assignments uaa
+          INNER JOIN public.tbl_users tu ON tu.userid = uaa.userid
+          LEFT JOIN public.tbl_faculties f ON f.id = uaa.faculty_id
+          WHERE (uaa.faculty_id IS NOT NULL OR LENGTH(TRIM(COALESCE(uaa.faculty_name, ''))) > 0)
+            AND COALESCE(tu.blocked, false) = false
+            AND LOWER(TRIM(COALESCE(tu.type, ''))) IN ('admin', 'viewer', 'superadmin', 'user')
+            ${uaaFacultyCondForAdmins}
+          GROUP BY uaa.faculty_id, f.faculty_name, uaa.faculty_name
+          ORDER BY cnt DESC, 1 ASC
+        `;
+        applyTrainedAdminRows(totalRowsLegacy as Array<{ c?: number }>, byFacultyRowsLegacy);
+      } catch {
+        /* tbl_users may not exist */
+      }
+    }
+
+    let storiesPub = 0;
+    let storiesQ = 0;
+    let storiesY = 0;
+    try {
+      const storyAgg = await sql/* sql */`
+        SELECT
+          COUNT(*)::int AS total_pub,
+          COUNT(*) FILTER (WHERE s.createdat >= ${quarterStart}::timestamp)::int AS q,
+          COUNT(*) FILTER (WHERE s.createdat >= ${yearStart}::timestamp)::int AS y
+        FROM public.tblalumnistories s
+        INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
+        WHERE s.alumnistories IS NOT NULL
+          AND TRIM(s.alumnistories) <> ''
+          AND (s.status IS NULL OR LOWER(TRIM(s.status)) NOT IN ('rejected', 'declined', 'draft'))
+          ${accessFilterCondition}
+          ${facultyFilterCondition}
+      `;
+      const sr = storyAgg[0] as { total_pub?: number; q?: number; y?: number } | undefined;
+      storiesPub = Number(sr?.total_pub ?? 0);
+      storiesQ = Number(sr?.q ?? 0);
+      storiesY = Number(sr?.y ?? 0);
+    } catch {
+      storiesPub = 0;
+      storiesQ = 0;
+      storiesY = 0;
+    }
+
+    let nlTotal = 0;
+    let nlQ = 0;
+    let nlY = 0;
+    try {
+      const nl = await sql/* sql */`
+        SELECT
+          COUNT(*)::int AS c,
+          COUNT(*) FILTER (WHERE COALESCE(n.date, n.created_at::date) >= ${quarterStart}::date)::int AS cq,
+          COUNT(*) FILTER (WHERE COALESCE(n.date, n.created_at::date) >= ${yearStart}::date)::int AS cy
+        FROM public.newsletters n
+      `;
+      const nr = nl[0] as { c?: number; cq?: number; cy?: number } | undefined;
+      nlTotal = Number(nr?.c ?? 0);
+      nlQ = Number(nr?.cq ?? 0);
+      nlY = Number(nr?.cy ?? 0);
+    } catch {
+      nlTotal = 0;
+      nlQ = 0;
+      nlY = 0;
+    }
+
+    const discountCatRows = await sql/* sql */`
+      SELECT
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%dining%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%café%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%cafe%')::int AS dining,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%retail%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%shop%')::int AS retail,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%travel%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%leisure%')::int AS travel,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%health%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%wellness%')::int AS health,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%professional%' OR LOWER(COALESCE(s.discount_type,'')) LIKE '%education%')::int AS professional,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(s.discount_type,'')) LIKE '%financ%')::int AS financial
+      FROM public.alumni_scholarships s
+      JOIN public.tbl_alumni a ON a.alumniid = s.id
+      WHERE 1=1
+      ${accessFilterCondition}
+      ${facultyFilterCondition}
+    `;
+
     const kpi = (kpiRows[0] ?? {}) as { total_alumni?: number; active_alumni?: number };
+    const ah = (alumniHeadlineRows[0] ?? {}) as Record<string, number | undefined>;
     const ev = (eventRows[0] ?? {}) as { total?: number; quarter_count?: number; ytd_count?: number; selected_range_count?: number };
-    const jb = (jobsRows[0] ?? {}) as { total?: number; uol_total?: number; other_total?: number };
+    const jb = (jobsRows[0] ?? {}) as Record<string, number | undefined>;
     const sc = (scholarshipsRows[0] ?? {}) as Record<string, number | undefined>;
-    const mb = (membershipRows[0] ?? {}) as { active_benefits?: number; gym_count?: number; swimming_count?: number };
+    const mb = (membershipRows[0] ?? {}) as Record<string, number | undefined>;
     const ca = (chapterAssocRows[0] ?? {}) as Record<string, number | undefined>;
     const cd = (cardsRows[0] ?? {}) as Record<string, number | undefined>;
     const tk = (talksRows[0] ?? {}) as Record<string, number | undefined>;
     const ce = (chapterEventsRows[0] ?? {}) as { quarter_count?: number; ytd_count?: number; total_count?: number };
     const cr = (careerDerivedRows[0] ?? {}) as Record<string, number | undefined>;
+    const tr = (transitionRows[0] ?? {}) as Record<string, number | undefined>;
+    const oc = (occupationRows[0] ?? {}) as Record<string, number | undefined>;
+    const pr = (provinceRows[0] ?? {}) as Record<string, number | undefined>;
+    const dc = (discountCatRows[0] ?? {}) as Record<string, number | undefined>;
+
+    const totalWithOcc = Number(oc.with_status ?? 0);
+    const occOther = Math.max(
+      0,
+      totalWithOcc -
+        Number(oc.employed ?? 0) -
+        Number(oc.self_employed ?? 0) -
+        Number(oc.unemployed_searching ?? 0) -
+        Number(oc.unemployed_choice ?? 0)
+    );
+
+    const provinceSumKnown =
+      Number(pr.punjab ?? 0) +
+      Number(pr.islamabad ?? 0) +
+      Number(pr.kpk ?? 0) +
+      Number(pr.sindh ?? 0) +
+      Number(pr.ajk ?? 0) +
+      Number(pr.gb ?? 0) +
+      Number(pr.balochistan ?? 0) +
+      Number(pr.overseas ?? 0);
+    const provinceOther = Math.max(0, Number(pr.total_rows ?? 0) - provinceSumKnown);
+
+    const meetupsForKpi = timeRange === "YTD" ? (ev.ytd_count ?? null) : (ev.quarter_count ?? null);
+    const engagementsForKpi = timeRange === "YTD" ? (tk.ytd_count ?? null) : (tk.quarter_count ?? null);
+
+    const payload: ManagementDashboardPayload = {
+      meta: {
+        quarterStart,
+        yearStart,
+        timeRange,
+        facultyId: facultyIdParam,
+      },
+      alumniHeadline: {
+        total: ah.total ?? null,
+        verified: ah.verified ?? null,
+        category: {
+          aPlus: ah.category_a_plus ?? null,
+          a: ah.category_a ?? null,
+          b: ah.category_b ?? null,
+          c: ah.category_c ?? null,
+          d: ah.category_d ?? null,
+        },
+      },
+      kpis: {
+        totalAlumni: kpi.total_alumni ?? null,
+        totalRegistrations: kpi.total_alumni ?? null,
+        activeAlumni: kpi.active_alumni ?? null,
+        totalEngagements: engagementsForKpi,
+        totalEventsMeetups: meetupsForKpi,
+        jobsPosted: jb.total ?? null,
+        scholarshipsProcessed: sc.processed ?? null,
+        activeBenefitsDiscounts: mb.active_benefits ?? null,
+      },
+      sectionA: {
+        facultyRows: facultyRows.map((r) => r as { faculty: string; registrations: number }),
+        trainedFacultyAdmins,
+        transitionVelocity: {
+          beforeGraduation: tr.before_graduation ?? null,
+          immediateAfterGraduation: tr.immediate ?? null,
+          within3Months: tr.within_3 ?? null,
+          within6Months: tr.within_6 ?? null,
+          after6Months: tr.after_6 ?? null,
+          unknown: tr.unknown_bucket ?? null,
+        },
+        currentOccupation: {
+          employed: oc.employed ?? null,
+          selfEmployed: oc.self_employed ?? null,
+          unemployedSearching: oc.unemployed_searching ?? null,
+          unemployedByChoice: oc.unemployed_choice ?? null,
+          other: occOther > 0 ? occOther : null,
+        },
+        provinceLocation: {
+          punjab: pr.punjab ?? null,
+          islamabad: pr.islamabad ?? null,
+          kpk: pr.kpk ?? null,
+          sindh: pr.sindh ?? null,
+          ajk: pr.ajk ?? null,
+          gb: pr.gb ?? null,
+          balochistan: pr.balochistan ?? null,
+          overseas: pr.overseas ?? null,
+          other: provinceOther > 0 ? provinceOther : null,
+        },
+      },
+      sectionB: {
+        chaptersAssociations: {
+          nationalChapters: ca.national_chapters ?? null,
+          internationalChapters: ca.international_chapters ?? null,
+          associations: ca.associations ?? null,
+          members: ca.members ?? null,
+          leadersAppointed: ca.leaders_appointed ?? null,
+          meetupsQuarter: ev.quarter_count ?? null,
+          meetupsYtd: ev.ytd_count ?? null,
+          meetupsTotal: ev.total ?? null,
+        },
+        cardsStatus: {
+          totalCards: cd.card_total ?? null,
+          applied: cd.applied ?? null,
+          review: cd.review ?? null,
+          onHold: cd.on_hold ?? null,
+          underPrinting: cd.under_printing ?? null,
+          readyForDelivery: cd.ready_for_delivery ?? null,
+          delivered: cd.delivered ?? null,
+        },
+        activities: {
+          mentorshipSessions: { quarter: tk.mentorship_quarter ?? 0, ytd: tk.mentorship_ytd ?? 0 },
+          seminarsParticipation: { quarter: tk.seminars_quarter ?? 0, ytd: tk.seminars_ytd ?? 0 },
+          conferencesParticipation: { quarter: tk.conferences_quarter ?? 0, ytd: tk.conferences_ytd ?? 0 },
+          alumniTalks: { quarter: tk.quarter_count ?? 0, ytd: tk.ytd_count ?? 0 },
+          highAchieversRecognition: { quarter: tk.high_achievers_quarter ?? 0, ytd: tk.high_achievers_ytd ?? 0 },
+          wellbeingSupport: { quarter: tk.wellbeing_quarter ?? 0, ytd: tk.wellbeing_ytd ?? 0 },
+          chapterEvents: { quarter: ce.quarter_count ?? 0, ytd: ce.ytd_count ?? 0, total: ce.total_count ?? 0 },
+        },
+        publications: {
+          successStoriesPublished: storiesPub,
+          successStoriesQuarter: storiesQ,
+          successStoriesYtd: storiesY,
+          newslettersIssued: nlTotal,
+          newslettersQuarter: nlQ,
+          newslettersYtd: nlY,
+          surveysConducted: null,
+        },
+      },
+      sectionC: {
+        career: {
+          recruitmentDrives: { quarter: cr.recruitment_quarter ?? 0, ytd: cr.recruitment_ytd ?? 0 },
+          jobsPostedUol: { quarter: jb.uol_quarter ?? null, ytd: jb.uol_ytd ?? null },
+          jobsPostedOtherEmployers: { quarter: jb.other_quarter ?? null, ytd: jb.other_ytd ?? null },
+          startupsSupport: { quarter: cr.startups_quarter ?? 0, ytd: cr.startups_ytd ?? 0 },
+          upskillCourses: { quarter: cr.upskill_quarter ?? 0, ytd: cr.upskill_ytd ?? 0 },
+        },
+        scholarships: {
+          kinship: { applied: sc.kinship_applied ?? null, processed: sc.kinship_processed ?? null },
+          mastersPhd: { applied: sc.masters_phd_applied ?? null, processed: sc.masters_phd_processed ?? null },
+          iqPrograms: { applied: sc.iq_applied ?? null, processed: sc.iq_processed ?? null },
+        },
+        giveBackFinancialAssistance: null,
+      },
+      sectionD: {
+        memberships: {
+          gymDiscountActive: mb.gym_count ?? null,
+          swimmingPoolDiscountActive: mb.swimming_count ?? null,
+          freeGymThreeMonth: mb.free_gym_hint ?? null,
+          freePoolThreeMonth: mb.free_pool_hint ?? null,
+          qalanderClub: mb.qalander_hint ?? null,
+          healthcareDiscounts: mb.healthcare_hint ?? null,
+          vehicleStickers: mb.vehicle_hint ?? null,
+        },
+        discountCategories: {
+          diningAndCafes: dc.dining ?? null,
+          retailAndShopping: dc.retail ?? null,
+          travelAndLeisure: dc.travel ?? null,
+          healthAndWellness: dc.health ?? null,
+          professionalServices: dc.professional ?? null,
+          financialServices: dc.financial ?? null,
+        },
+        merchants: [...MANAGEMENT_DASHBOARD_MERCHANT_SEED],
+      },
+    };
 
     return NextResponse.json(
       {
-        kpis: {
-          totalAlumni: kpi.total_alumni ?? null,
-          totalRegistrations: kpi.total_alumni ?? null,
-          activeAlumni: kpi.active_alumni ?? null,
-          totalEngagements: timeRange === "YTD" ? tk.ytd_count ?? null : tk.quarter_count ?? null,
-          totalEventsMeetups: ev.selected_range_count ?? null,
-          jobsPosted: jb.total ?? null,
-          scholarshipsProcessed: sc.processed ?? null,
-          activeBenefitsDiscounts: mb.active_benefits ?? null,
-        },
-        sectionA: {
-          facultyRows: facultyRows.map((r) => r as { faculty: string; registrations: number }),
-        },
-        sectionB: {
-          chaptersAssociations: {
-            nationalChapters: ca.national_chapters ?? null,
-            internationalChapters: ca.international_chapters ?? null,
-            associations: ca.associations ?? null,
-            members: ca.members ?? null,
-            leadersAppointed: ca.leaders_appointed ?? null,
-            meetupsQuarter: ev.quarter_count ?? null,
-            meetupsYtd: ev.ytd_count ?? null,
-            meetupsTotal: ev.total ?? null,
-          },
-          cardsStatus: {
-            totalCards: cd.card_total ?? null,
-            applied: cd.applied ?? null,
-            review: cd.review ?? null,
-            onHold: cd.on_hold ?? null,
-            underPrinting: cd.under_printing ?? null,
-            readyForDelivery: cd.ready_for_delivery ?? null,
-            delivered: cd.delivered ?? null,
-          },
-          activities: {
-            mentorshipSessions: { quarter: tk.mentorship_quarter ?? 0, ytd: tk.mentorship_ytd ?? 0 },
-            seminarsParticipation: { quarter: tk.seminars_quarter ?? 0, ytd: tk.seminars_ytd ?? 0 },
-            conferencesParticipation: { quarter: tk.conferences_quarter ?? 0, ytd: tk.conferences_ytd ?? 0 },
-            alumniTalks: { quarter: tk.quarter_count ?? 0, ytd: tk.ytd_count ?? 0 },
-            highAchieversRecognition: { quarter: tk.high_achievers_quarter ?? 0, ytd: tk.high_achievers_ytd ?? 0 },
-            wellbeingSupport: { quarter: tk.wellbeing_quarter ?? 0, ytd: tk.wellbeing_ytd ?? 0 },
-            chapterEvents: { quarter: ce.quarter_count ?? 0, ytd: ce.ytd_count ?? 0, total: ce.total_count ?? 0 },
-          },
-        },
-        sectionC: {
-          career: {
-            recruitmentDrives: { quarter: cr.recruitment_quarter ?? 0, ytd: cr.recruitment_ytd ?? 0 },
-            jobsPostedUol: { quarter: null as NumOrNull, ytd: jb.uol_total ?? null },
-            jobsPostedOtherEmployers: { quarter: null as NumOrNull, ytd: jb.other_total ?? null },
-            startupsSupport: { quarter: cr.startups_quarter ?? 0, ytd: cr.startups_ytd ?? 0 },
-            upskillCourses: { quarter: cr.upskill_quarter ?? 0, ytd: cr.upskill_ytd ?? 0 },
-          },
-          scholarships: {
-            kinship: { applied: sc.kinship_applied ?? null, processed: sc.kinship_processed ?? null },
-            mastersPhd: { applied: sc.masters_phd_applied ?? null, processed: sc.masters_phd_processed ?? null },
-            iqPrograms: { applied: sc.iq_applied ?? null, processed: sc.iq_processed ?? null },
-          },
-          giveBackFinancialAssistance: null as NumOrNull,
-        },
-        sectionD: {
-          memberships: {
-            gym: mb.gym_count ?? null,
-            swimmingPool: mb.swimming_count ?? null,
-            freeMemberships: null as NumOrNull,
-            healthcareDiscounts: null as NumOrNull,
-            vehicleStickers: null as NumOrNull,
-          },
-          discountCategories: {
-            diningAndCafes: null as NumOrNull,
-            retailAndShopping: null as NumOrNull,
-            travelAndLeisure: null as NumOrNull,
-            healthAndWellness: null as NumOrNull,
-            professionalServices: null as NumOrNull,
-            financialServices: null as NumOrNull,
-          },
-          merchants: [] as Array<{ merchant: string; discount: string; reference: string }>,
+        ...payload,
+        scopeNotes: MANAGEMENT_DASHBOARD_SCOPE_NOTES,
+        legacy: {
+          totalEventsMeetupsSelectedRange: ev.selected_range_count ?? null,
+          jobsUolAllTime: jb.uol_total ?? null,
+          jobsOtherAllTime: jb.other_total ?? null,
         },
       },
       { status: 200 }
@@ -287,4 +701,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
