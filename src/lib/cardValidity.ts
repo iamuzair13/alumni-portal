@@ -3,7 +3,32 @@
  *
  * DB stores `tblcard.validity_date` as a DATE, typically serialized as `YYYY-MM-DD`.
  * Some UI layers historically passed `YYYY-MM` (month only) or already-formatted `MM/YYYY`.
+ *
+ * Policy: standard expiry for non-delivered applications and as fallback when delivered
+ * rows have no `validity_date` — end of May 2029.
  */
+export const ALUMNI_CARD_VALIDITY_ISO = "2029-05-31";
+
+/** Raw ISO date (`YYYY-MM-DD`) used for expiry / `validity_date` per current policy. */
+export function resolveAlumniCardValidityRaw(params: {
+  status: string | null | undefined;
+  validityDate: string | null | undefined;
+}): string {
+  const st = String(params.status ?? "")
+    .trim()
+    .toLowerCase();
+  const vd =
+    params.validityDate != null && String(params.validityDate).trim() !== ""
+      ? String(params.validityDate).trim()
+      : null;
+
+  if (st === "delivered") {
+    return vd ?? ALUMNI_CARD_VALIDITY_ISO;
+  }
+
+  return ALUMNI_CARD_VALIDITY_ISO;
+}
+
 export function formatCardValidityMonthYear(validity: string | null | undefined): string {
   const raw = (validity ?? "").trim();
   if (!raw) return "MM/YYYY";
@@ -28,19 +53,12 @@ export function formatCardValidityMonthYear(validity: string | null | undefined)
   return raw;
 }
 
-export function computeValidityISOFromAppliedAt(appliedAt: string | Date | null | undefined, years: number = 3): string | null {
-  if (!appliedAt) return null;
-  const base = appliedAt instanceof Date ? appliedAt : new Date(String(appliedAt));
-  if (Number.isNaN(base.getTime())) return null;
-
-  // Work in UTC to avoid timezone/day rollovers.
-  const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
-  d.setUTCFullYear(d.getUTCFullYear() + years);
-
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+/** @deprecated Years offset removed; returns fixed policy date. Kept for call-site compatibility. */
+export function computeValidityISOFromAppliedAt(
+  _appliedAt?: string | Date | null,
+  _years?: number
+): string | null {
+  return ALUMNI_CARD_VALIDITY_ISO;
 }
 
 function parseYearMonthDayOrYearMonth(value: string): { year: number; month: number; day?: number } | null {

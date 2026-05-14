@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import PassportPhotoCropModal from "@/components/ui/PassportPhotoCropModal";
+import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
 
 type Props = {
   alumniId: string;
@@ -173,11 +174,14 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
     }
   }, [addressPreference, setValue]);
 
-  // Calculate validity date (3 years from application date)
-  const validityDate = new Date();
-  validityDate.setFullYear(validityDate.getFullYear() + 3);
-  const validityDateStr = validityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const validityDateISO = validityDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  // Standard alumni card validity (policy): end of May 2029
+  const validityDateISO = ALUMNI_CARD_VALIDITY_ISO;
+  const validityDateStr = new Date(`${validityDateISO}T12:00:00Z`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
   const cnicFromQuery = (() => {
     const alumni = (alumniDetailsQuery.data as any)?.item;
     if (!alumni) return "";
@@ -220,7 +224,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
       } else {
         formData.append("cardaddress", "Collect from Campus");
       }
-      // Save validity date (3 years from application date)
+      // Standard validity date (policy)
       formData.append("validity_date", validityDateISO);
 
       const res = await fetch("/api/alumni-cards", {
@@ -326,7 +330,7 @@ export default function AlumniCardForm({ alumniId, name, faculty, department, sa
           <div className="relative flex items-center">
             <input id="validity" type="date" className={inputBase} value={validityDateISO} readOnly aria-label="Validity" />
           </div>
-          <p className="text-xs text-gray-500 mt-1">Card will be valid until {validityDateStr} (3 years from application date)</p>
+          <p className="text-xs text-gray-500 mt-1">Card will be valid through {validityDateStr} (standard validity through May 2029)</p>
         </div>
         <div>
           <label className={labelBase} htmlFor="cnic">CNIC/Passport</label>

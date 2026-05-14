@@ -27,7 +27,7 @@ import NetworkingEngagementSection from "@/components/ui/NetworkingEngagementSec
 import NewslettersCard from "@/components/alumni/NewslettersCard";
 import BenefitCard from "@/components/ui/BenefitCard";
 import AlumniTalksCard from "@/components/alumni/AlumniTalksCard";
-import { formatCardValidityMonthYear } from "@/lib/cardValidity";
+import { formatCardValidityMonthYear, resolveAlumniCardValidityRaw } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { resolvePreferredCardImage } from "@/lib/alumniCardImage";
 
@@ -361,6 +361,7 @@ let cardImageFile: string | null = null;
   let reasonOnhold: string | null = null;
   let cardComment: string | null = null;
   let validityDate: string | null = null;
+  let cardDbStatusRaw: string | null = null;
   // Always check card status from database - don't auto-activate for admins or new users
   // New users should see "Apply" button until they actually apply for a card
   if (false) { // Disabled: was auto-setting to "active" for admins
@@ -389,6 +390,7 @@ let cardImageFile: string | null = null;
         reasonOnhold = cr[0]?.reason_onhold ?? null;
         cardComment = cr[0]?.comment ?? null;
         validityDate = cr[0]?.validity_date ? String(cr[0].validity_date) : null;
+        cardDbStatusRaw = cr[0]?.status ? String(cr[0].status).trim() : null;
         
         // Map database statuses to CardStatus
         // Database values: "UnderReview", "UnderPrinting", "Active", "Delivered", "Onhold", "Pending" (legacy)
@@ -427,13 +429,16 @@ let cardImageFile: string | null = null;
     return undefined;
   })();
 
-  // Use validity_date from database if available, otherwise calculate from yearofending (add 5 years as default validity)
+  // Delivered cards use stored `validity_date` when present; all other application statuses use policy expiry (May 2029).
   let validity: string | undefined = undefined;
-  if (validityDate) {
+  if (cardDbStatusRaw) {
+    validity = formatCardValidityMonthYear(
+      resolveAlumniCardValidityRaw({ status: cardDbStatusRaw, validityDate })
+    );
+  } else if (validityDate) {
     validity = formatCardValidityMonthYear(validityDate);
   } else {
-    // Fallback: Calculate validity from yearofending (add 5 years as default validity)
-  const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
+    const validityYear = p?.yearofending ? p.yearofending + 5 : undefined;
     validity = validityYear ? `${validityYear}-12` : undefined;
   }
   // Mentorship application status for alumni users

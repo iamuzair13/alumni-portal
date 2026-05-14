@@ -7,7 +7,7 @@ import { Roboto } from "next/font/google";
 import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import jsPDF from "jspdf";
-import { computeValidityISOFromAppliedAt } from "@/lib/cardValidity";
+import { resolveAlumniCardValidityRaw, formatCardValidityMonthYear } from "@/lib/cardValidity";
 import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { uploadsImageUrl } from "@/lib/uploadsImageUrl";
 import AlumniCardTemplate from "@/components/alumni/AlumniCardTemplate";
@@ -65,8 +65,21 @@ async function fetchCardPrintPayload(sapId: string): Promise<AlumniCardData> {
   let appliedAt: string | null = null;
   if (cardRes?.ok) {
     const cardJson = await cardRes.json();
-    appliedAt = cardJson.card?.createdat || null;
-    validity = cardJson.card?.validity_date || computeValidityISOFromAppliedAt(appliedAt) || null;
+    const card = cardJson.card as {
+      createdat?: string | null;
+      validity_date?: string | null;
+      status?: string | null;
+      card_image?: string | null;
+      cardpicture?: string | null;
+    } | null;
+    appliedAt = card?.createdat || null;
+    if (card) {
+      const raw = resolveAlumniCardValidityRaw({
+        status: card.status,
+        validityDate: card.validity_date,
+      });
+      validity = formatCardValidityMonthYear(raw);
+    }
     const resolvedCardImage =
       cardJson.card?.card_image ||
       cardJson.card?.cardpicture ||

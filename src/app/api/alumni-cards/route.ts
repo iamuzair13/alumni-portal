@@ -7,6 +7,7 @@ import { sendAlumniCardApplicationReceivedEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { isCardPictureUpdateAllowed } from "@/lib/alumniCardImage";
+import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
 
 const CARD_UPLOAD_DIR = join(process.cwd(), "public", "images");
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
@@ -113,14 +114,7 @@ export async function POST(req: Request) {
         ? null
         : String((body as { delivery_house_no?: unknown })?.delivery_house_no ?? "").trim() || null;
       const cardpicture = String(body?.cardpicture || "profile").slice(0, 50);
-      const validityDateStr = body?.validity_date ? String(body.validity_date) : null;
-      // Calculate validity date (3 years from application date) if not provided
-      let validityDate: string | null = validityDateStr;
-      if (!validityDate) {
-        const futureDate = new Date();
-        futureDate.setFullYear(futureDate.getFullYear() + 3);
-        validityDate = futureDate.toISOString().split("T")[0];
-      }
+      const validityDate = ALUMNI_CARD_VALIDITY_ISO;
       
       // Check if this is a new application (no existing record)
       const existingCard = await sql/* sql */`
@@ -266,8 +260,6 @@ export async function POST(req: Request) {
     const deliveryHouseNo = isCollect
       ? null
       : String(formData.get("delivery_house_no") || "").trim() || null;
-    const validityDateStr = formData.get("validity_date") ? String(formData.get("validity_date")) : null;
-
     if (!isCollect) {
       if (!cardaddress || cardaddress.length < 10) {
         return NextResponse.json(
@@ -282,14 +274,8 @@ export async function POST(req: Request) {
         );
       }
     }
-    
-    // Calculate validity date (3 years from application date) if not provided
-    let validityDate: string | null = validityDateStr;
-    if (!validityDate) {
-      const futureDate = new Date();
-      futureDate.setFullYear(futureDate.getFullYear() + 3);
-      validityDate = futureDate.toISOString().split('T')[0];
-    }
+
+    const validityDate = ALUMNI_CARD_VALIDITY_ISO;
 
     if (!(image instanceof File)) {
       return NextResponse.json({ error: "Profile image is required" }, { status: 400 });

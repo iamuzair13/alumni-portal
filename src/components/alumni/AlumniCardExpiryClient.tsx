@@ -1,7 +1,7 @@
 "use client";
 
 import { useCardStatus } from "@/app/queries/fetch-card-status";
-import { computeValidityISOFromAppliedAt, formatCardValidityMonthYear } from "@/lib/cardValidity";
+import { resolveAlumniCardValidityRaw, formatCardValidityMonthYear } from "@/lib/cardValidity";
 import RenewCardButton from "@/components/alumni/RenewCardButton";
 
 type Props = {
@@ -57,20 +57,54 @@ function computeExpiryDate(raw: string | null): Date | null {
   return null;
 }
 
+/** Month + year for profile copy (e.g. May 2029); falls back to MM/YYYY when unparsable. */
+function formatExpiryHumanLabel(raw: string): string {
+  const v = raw.trim();
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(v);
+  if (ymd) {
+    const y = Number(ymd[1]);
+    const mo = Number(ymd[2]) - 1;
+    return new Date(Date.UTC(y, mo, 15)).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  const slash = /^(\d{2})\/(\d{4})$/u.exec(v);
+  if (slash) {
+    const mo = Number(slash[1]) - 1;
+    const y = Number(slash[2]);
+    return new Date(Date.UTC(y, mo, 1)).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  const ym = /^(\d{4})-(\d{2})$/u.exec(v);
+  if (ym) {
+    const y = Number(ym[1]);
+    const mo = Number(ym[2]) - 1;
+    return new Date(Date.UTC(y, mo, 1)).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  return formatCardValidityMonthYear(v);
+}
+
 export default function AlumniCardExpiryClient({ sapId, fallbackValidity, alumniId, name, faculty, department }: Props) {
   const { data: cardData } = useCardStatus(sapId);
 
   let rawValidity = fallbackValidity;
-
-  if (cardData?.status?.toLowerCase() === "delivered") {
-    if (cardData.validity_date) {
-      rawValidity = cardData.validity_date;
-    } else if (cardData.createdat) {
-      rawValidity = computeValidityISOFromAppliedAt(cardData.createdat, 3) ?? rawValidity;
-    }
+  if (cardData) {
+    rawValidity = resolveAlumniCardValidityRaw({
+      status: cardData.status,
+      validityDate: cardData.validity_date,
+    });
   }
 
-  const formattedExpiry = rawValidity ? formatCardValidityMonthYear(rawValidity) : "Not set";
+  const formattedExpiry = rawValidity ? formatExpiryHumanLabel(rawValidity) : "Not set";
 
   const expiryDate = computeExpiryDate(rawValidity);
   let isExpired = false;
@@ -82,10 +116,10 @@ export default function AlumniCardExpiryClient({ sapId, fallbackValidity, alumni
 
   return (
     <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-2 sm:mb-3">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Card Expiry Date:</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2 sm:mb-3">
+        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Card valid through</span>
         <span
-          className={`text-xs sm:text-sm font-semibold ${
+          className={`text-xs sm:text-sm font-semibold sm:text-right tabular-nums ${
             isExpired ? "text-rose-600 dark:text-rose-400" : "text-gray-900 dark:text-gray-100"
           }`}
         >

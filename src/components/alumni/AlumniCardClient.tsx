@@ -18,7 +18,7 @@ type AlumniCardClientProps = {
   initialCardImage?: string | null; // Initial card image from server (for SSR)
 };
 
-import { computeValidityISOFromAppliedAt, formatCardValidityMonthYear } from "@/lib/cardValidity";
+import { resolveAlumniCardValidityRaw, formatCardValidityMonthYear } from "@/lib/cardValidity";
 
 export default function AlumniCardClient({
   studentName,
@@ -40,14 +40,15 @@ export default function AlumniCardClient({
   // Use card_image from tblcard if available, otherwise fall back to initialCardImage or photoUrl
   const cardImage = cardData?.card_image ?? cardData?.cardpicture ?? initialCardImage ?? null;
 
-  // Compute validity: if delivered, show 3 years after createdat; else fallback to provided validity
+  // Delivered cards use stored `validity_date` when set; other statuses use policy expiry (May 2029).
   let computedValidity = validity;
-  if (cardData?.status?.toLowerCase() === "delivered") {
-    if (cardData.validity_date) {
-      computedValidity = formatCardValidityMonthYear(cardData.validity_date);
-    } else if (cardData.createdat) {
-      computedValidity = computeValidityISOFromAppliedAt(cardData.createdat, 3) ?? computedValidity;
-    }
+  if (cardData) {
+    computedValidity = formatCardValidityMonthYear(
+      resolveAlumniCardValidityRaw({
+        status: cardData.status,
+        validityDate: cardData.validity_date,
+      })
+    );
   }
 
   return (

@@ -7,6 +7,7 @@ import { unlink } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { getCardImageCandidates, resolvePreferredCardImage } from "@/lib/alumniCardImage";
+import { ALUMNI_CARD_VALIDITY_ISO } from "@/lib/cardValidity";
 
 export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> }) {
   try {
@@ -253,7 +254,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ sapid: string
             status = ${finalStatus},
             reason_onhold = NULL,
             validity_date = CASE
-              WHEN ${shouldSetDeliveredValidity} THEN (CURRENT_DATE + INTERVAL '3 years')::date
+              WHEN ${shouldSetDeliveredValidity} THEN ${ALUMNI_CARD_VALIDITY_ISO}::date
               ELSE c.validity_date
             END
           FROM public.tbl_alumni a
