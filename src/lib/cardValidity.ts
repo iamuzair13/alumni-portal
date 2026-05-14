@@ -7,7 +7,7 @@
  * Policy: standard expiry for non-delivered applications and as fallback when delivered
  * rows have no `validity_date` — end of May 2029.
  */
-export const ALUMNI_CARD_VALIDITY_ISO = "2029-05-31";
+export const ALUMNI_CARD_VALIDITY_ISO = "2029-12-31";
 
 /** Raw ISO date (`YYYY-MM-DD`) used for expiry / `validity_date` per current policy. */
 export function resolveAlumniCardValidityRaw(params: {
