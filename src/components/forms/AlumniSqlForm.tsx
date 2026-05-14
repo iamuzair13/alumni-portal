@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type RegisterOptions } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
 import type { Faculty, Department, Program } from "@/app/queries/fetch-organization";
-// Removed static data imports - now using database-backed data
+/** Stable id for <form> — useId() can produce `:`-heavy ids that break `form=""` on external submit buttons in some browsers. */
+const ALUMNI_REGISTRATION_FORM_ID = "alumni-registration-sql-form";
 
 // TypeScript type reflecting public.tbl_alumni schema (excluding serial primary key)
 export type TblAlumniForm = {
@@ -81,6 +82,27 @@ export type TblAlumniForm = {
   category: string | null;
   chapters: number[] | null; // Array of selected chapter IDs (up to 3)
   alumni_consent_info: boolean | null;
+};
+
+/** Same DB column for "first job / self-employed timing" and "higher ed enrolment timing"; required only for those occupation choices. */
+const occupationTransitionTimingRegisterOptions: RegisterOptions<
+  TblAlumniForm,
+  "occupation_transition_timing"
+> = {
+  deps: ["employeed"],
+  validate(value: string | null, formValues: TblAlumniForm): true | string {
+    const emp = String(formValues.employeed ?? "")
+      .trim()
+      .toLowerCase();
+    const needsAnswer =
+      emp === "employed" ||
+      emp === "employed/business" ||
+      emp === "self-employed/enterpreneur" ||
+      emp === "pursuing higher education";
+    if (!needsAnswer) return true;
+    const ok = value != null && String(value).trim() !== "";
+    return ok ? true : "This field is required";
+  },
 };
 
 const inputBase =
@@ -658,7 +680,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
     setValue("chapters", selectedChapters.length > 0 ? selectedChapters : null);
   }, [selectedChapters, setValue]);
 
-  const personalEmailVal = watch("personalemail") || "";
   const employeedVal = (watch("employeed") || "Unemployed(Searching for job)") as string;
   const selectedHomeCountry = watch("country") || "";
   const selectedHomeProvince = watch("province") || "";
@@ -920,8 +941,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   }, [selectedHomeProvince, selectedHomeCountry, setValue]);
 
 
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
   // Helper function to strip non-numeric characters from phone numbers
   const sanitizePhoneNumber = (value: string): string => {
     return value.replace(/\D/g, '');
@@ -940,149 +959,12 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
   const admissionYearOptions = generateYearOptions(1998, currentYear);
   const passingYearOptions = generateYearOptions(2000, currentYear);
 
-  async function validateAll() {
-    clearErrors();
-    
-    // Check if at least one of registrationno or sapid is provided
-    const regNo = watch("registrationno") ? String(watch("registrationno")).trim() : "";
-    const sapId = watch("sapid") ? String(watch("sapid")).trim() : "";
-    if (!regNo && !sapId) {
-      setError("registrationno", { type: "validate", message: "Either Registration # or SAP ID is required" });
-      setError("sapid", { type: "validate", message: "Either Registration # or SAP ID is required" });
-      return false;
-    }
-    
-    // Validate Personal Information section (only trigger fields that are actually required)
-    const fieldsToValidate: Array<keyof TblAlumniForm> = ["alumniname", "fathername", "gender", "cnicpassport", "contactno", "personalemail", "homeCity", "homeCountry"];
-    
-    // Only validate the provided field (registrationno OR sapid), not both
-    if (regNo) {
-      fieldsToValidate.push("registrationno");
-    } else if (sapId) {
-      fieldsToValidate.push("sapid");
-    }
-    
-    const personalOk = await trigger(fieldsToValidate);
-    if (!personalOk) return false;
-    if (!emailPattern.test(personalEmailVal)) {
-      setError("personalemail", { type: "pattern", message: "Invalid email format" });
-      return false;
-    }
-
-    // Validate Academic Information section
-    const academicFields: Array<keyof TblAlumniForm> = [
-      "campusname",
-      "faculty",
-      "department",
-      "yearofstarting",
-      "yearofending",
-    ];
-    
-    // If using custom department, validate degreetitle; otherwise validate program
-    if (departmentOtherSelected) {
-      academicFields.push("degreetitle");
-    } else {
-      academicFields.push("program");
-    }
-    
-    const academicOk = await trigger(academicFields);
-    if (!academicOk) return false;
-
-    // Validate Work Status section
-    const workFieldsToValidate: Array<keyof TblAlumniForm> = ["employeed"];
-  
-    // Only validate work fields if employed or Self-Employed/Enterpreneur
-    if (
-      (employeedVal || "").toLowerCase() === "employed" ||
-      (employeedVal || "").toLowerCase() === "employed/business" ||
-      (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
-    ) {
-      workFieldsToValidate.push("occupation_transition_timing", "industry", "startOfCareer", "nameoforganization", "designation", "officialemail", "officialnumber", "organization_address", "workCity", "workCountry");
-    }
-    
-    // Validate higher education fields if pursuing higher education
-    if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      workFieldsToValidate.push(
-        "occupation_transition_timing",
-        "highereducationinstitute",
-        "highereducationprogram",
-        "scholarship",
-        "highereducationinstituteCity",
-        "highereducationinstituteCountry"
-      );
-    }
-    
-    // No validation needed for unemployed options as reason is in the radio button value
-    
-    const workOk = await trigger(workFieldsToValidate);
-    if (!workOk) return false;
-  
-    // Conditional: when employed or Self-Employed/Enterpreneur, validate required fields
-    if (
-      (employeedVal || "").toLowerCase() === "employed" ||
-      (employeedVal || "").toLowerCase() === "employed/business" ||
-      (employeedVal || "").toLowerCase() === "self-employed/enterpreneur"
-    ) {
-      const fields: Array<keyof TblAlumniForm> = [
-        "occupation_transition_timing",
-        "industry",
-        "startOfCareer",
-        "nameoforganization",
-        "designation",
-        "officialemail",
-        "officialnumber",
-        "organization_address",
-        "workCity",
-        "workCountry",
-      ];
-      for (const f of fields) {
-        const val = watch(f);
-        if (!val || String(val).trim() === "") {
-          setError(f, { type: "required", message: "Required" });
-          return false;
-        }
-      }
-    }
-    
-    // Conditional: when pursuing higher education, validate required fields
-    if ((employeedVal || "").toLowerCase() === "pursuing higher education") {
-      const fields: Array<keyof TblAlumniForm> = [
-        "occupation_transition_timing",
-        "highereducationinstitute",
-        "highereducationprogram",
-        "scholarship",
-        "highereducationinstituteCity",
-        "highereducationinstituteCountry",
-      ];
-      for (const f of fields) {
-        const val = watch(f);
-        if (!val || String(val).trim() === "") {
-          setError(f, { type: "required", message: "Required" });
-          return false;
-        }
-      }
-    }
-    
-    // No validation needed for unemployed options as reason is in the radio button value
-
-    // Validate Admin Section (if not excluded)
-    if (!excludeAdminStep) {
-      const adminOk = await trigger(["datasource", "verify", "alumnistatus"]);
-      if (!adminOk) return false;
-    }
-
-    // Validate consent checkbox
-    const consentOk = await trigger("alumni_consent_info");
-    if (!consentOk) return false;
-
-    return true;
-  }
-
   async function onSubmit(data: TblAlumniForm) {
+    const flowToastId = "alumni-reg-flow";
     setSubmitting(true);
     setSubmitMsg(null);
     setSubmitError(null);
-    
+    toast.loading("Working on your registration…", { id: flowToastId, duration: 120_000 });
     try {
       const payload: TblAlumniForm = { ...data };
       payload.alumniemail = null;
@@ -1176,16 +1058,31 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       const checkParams = new URLSearchParams();
       if (regNo) checkParams.append("registrationno", regNo);
       if (sapId) checkParams.append("sapid", sapId);
-      
-      const checkRes = await fetch(`/api/alumni/check-registration?${checkParams.toString()}`);
-      const checkData = await checkRes.json();
-      
+
+      const fetchSignal =
+        typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+          ? (AbortSignal as typeof AbortSignal & { timeout: (ms: number) => AbortSignal }).timeout(120_000)
+          : undefined;
+
+      const checkRes = await fetch(`/api/alumni/check-registration?${checkParams.toString()}`, {
+        signal: fetchSignal,
+      });
+      const checkRaw = await checkRes.text();
+      let checkData: Record<string, unknown> = {};
+      try {
+        checkData = checkRaw ? (JSON.parse(checkRaw) as Record<string, unknown>) : {};
+      } catch {
+        checkData = {
+          error: checkRaw ? `Server returned non-JSON (${checkRes.status})` : "Empty response from server",
+        };
+      }
+
       toast.dismiss(loadingToast);
       
       // Only block if alumni exists AND is verified (cannot re-register)
       // If alumni exists but is NOT verified (pending/false/null), allow registration (will update existing record)
       if (checkRes.ok && checkData.exists && !checkData.canRegister) {
-        const alumni = checkData.alumni;
+        const alumni = checkData.alumni as Record<string, unknown> | undefined;
         let errorMsg = "";
         
         if (regNo && alumni?.registrationno === regNo && sapId && alumni?.sapid === sapId) {
@@ -1209,7 +1106,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         });
         
         setSubmitError(errorMsg);
-        setSubmitting(false);
         return;
       }
       
@@ -1228,12 +1124,13 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       }
       
       if (!checkRes.ok) {
-        const errorMsg = checkData?.error || "Failed to verify existing user. Please try again.";
+        const errorMsg =
+          (typeof checkData.error === "string" && checkData.error) ||
+          "Failed to verify existing user. Please try again.";
         toast.error(errorMsg, {
           duration: 5000,
         });
         setSubmitError(errorMsg);
-        setSubmitting(false);
         return;
       }
       
@@ -1250,6 +1147,10 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal:
+          typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+            ? (AbortSignal as typeof AbortSignal & { timeout: (ms: number) => AbortSignal }).timeout(120_000)
+            : undefined,
       });
       
       const rawText = await res.text();
@@ -1273,7 +1174,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           duration: 6000,
         });
         setSubmitError(errorMsg);
-        setSubmitting(false);
         return;
       }
 
@@ -1283,7 +1183,6 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
           duration: 6000,
         });
         setSubmitError(errorMsg);
-        setSubmitting(false);
         return;
       }
       
@@ -1349,40 +1248,24 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
       
       setSubmitError(errorMsg);
     } finally {
+      toast.dismiss(flowToastId);
       setSubmitting(false);
     }
   }
 
   async function handleFormSubmit(data: TblAlumniForm) {
-    // Clear previous errors
     setSubmitError(null);
     setSubmitMsg(null);
-    
-    // Validate all fields
-    const isValid = await validateAll();
-    if (!isValid) {
-      // Show general error message
-      setSubmitError("Please fix all errors in the form before submitting.");
-      
-      // Scroll to first error after a brief delay to allow errors to render
-      setTimeout(() => {
-        const firstErrorField = document.querySelector('.text-red-600')?.closest('div')?.querySelector('input, select, textarea');
-        if (firstErrorField) {
-          firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
-          (firstErrorField as HTMLElement).focus();
-        }
-      }, 100);
-      return;
-    }
-    
-    // If validation passes, submit the form
     await onSubmit(data);
   }
 
   return (
+    <>
     <form
+      id={ALUMNI_REGISTRATION_FORM_ID}
+      noValidate
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="mx-auto mt-6 w-full max-w-6xl px-4 pb-10 dark:text-gray-300 dark:bg-gray-900"
+      className="mx-auto mt-6 w-full max-w-6xl px-4 pb-4 sm:pb-6 dark:text-gray-300 dark:bg-gray-900"
       aria-label="Alumni registration form"
     >
       <input type="hidden" value="Alumni" {...register("datasource")} />
@@ -1435,6 +1318,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 className={inputBase}
                 {...register("registrationno", {
                   maxLength: 20,
+                  deps: ["sapid"],
                   validate: (value, formValues) => {
                     const regNo = value ? String(value).trim() : "";
                     const sapId = formValues?.sapid ? String(formValues.sapid).trim() : "";
@@ -1456,6 +1340,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                 className={inputBase}
                 {...register("sapid", {
                   maxLength: 20,
+                  deps: ["registrationno"],
                   validate: (value, formValues) => {
                     const regNo = formValues?.registrationno ? String(formValues.registrationno).trim() : "";
                     const sapId = value ? String(value).trim() : "";
@@ -2263,7 +2148,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   </label>
                   <select
                     className={inputBase}
-                    {...register("occupation_transition_timing", { required: true })}
+                    {...register("occupation_transition_timing", occupationTransitionTimingRegisterOptions)}
                   >
                     <option value="">Select</option>
                     {occupationTransitionTimingOptions.map((opt) => (
@@ -2514,7 +2399,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
                   <label className={labelBase}>How soon after graduation did you enrol in a higher education program? *</label>
                   <select
                     className={inputBase}
-                    {...register("occupation_transition_timing", { required: true })}
+                    {...register("occupation_transition_timing", occupationTransitionTimingRegisterOptions)}
                   >
                     <option value="">Select</option>
                     {occupationTransitionTimingOptions.map((opt) => (
@@ -2610,7 +2495,7 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
 
             {/* Unemployed Fields - No additional fields needed as reason is in the radio button value */}
             {!isOccupationQuestionApplicable && (
-              <input type="hidden" value="" {...register("occupation_transition_timing")} />
+              <input type="hidden" {...register("occupation_transition_timing", occupationTransitionTimingRegisterOptions)} />
             )}
             <div className="sm:col-span-2 lg:col-span-3 mt-4">
               <label className={labelBase}>About Me (Optional)</label>
@@ -2846,8 +2731,15 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
               type="checkbox"
               id="alumni_consent_info"
               {...register("alumni_consent_info", {
-                required: "You must confirm the declaration to proceed",
-                setValueAs: (value) => value === true || value === "true" || value === 1 || value === "1"
+                validate: (value: unknown) => {
+                  const ok =
+                    value === true ||
+                    value === "true" ||
+                    value === "on" ||
+                    value === 1 ||
+                    value === "1";
+                  return ok ? true : "You must confirm the declaration to proceed";
+                },
               })}
               className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
             />
@@ -2865,27 +2757,45 @@ export default function AlumniSqlForm({ excludeAdminStep = false, onSuccess }: {
         </div>
       </section>
 
-      {/* Submit and Reset Buttons */}
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:opacity-60 sm:w-auto"
-        >
-          Submit
-        </button>
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={() => {
-            reset();
-            setSelectedChapters([]);
-          }}
-          className="inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 disabled:opacity-60 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-200 dark:hover:bg-gray-700 sm:w-auto"
-        >
-          Reset
-        </button>
-      </div>
     </form>
+      {/* Submit uses explicit RHF handleSubmit — external native type="submit" + form="" is unreliable across browsers when the form id comes from useId(). */}
+      <div className="pointer-events-auto sticky bottom-0 z-[60] mt-2 border-t border-neutral-200 bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.06)] backdrop-blur-sm dark:border-neutral-700 dark:bg-gray-900/95">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => {
+              void handleSubmit(handleFormSubmit, (errors) => {
+                const keys = Object.keys(errors) as Array<keyof typeof errors>;
+                const first = keys[0];
+                const detail = first
+                  ? `${String(first)}: ${String(errors[first]?.message ?? "Invalid")}`
+                  : "Please complete all required fields (including the declaration).";
+                toast.error(detail, {
+                  id: "alumni-reg-validation",
+                  duration: 6000,
+                });
+              })();
+            }}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600/40 disabled:opacity-60 sm:w-auto"
+          >
+            Submit
+          </button>
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => {
+              toast.dismiss("alumni-reg-flow");
+              setSubmitting(false);
+              reset();
+              setSelectedChapters([]);
+            }}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/40 disabled:opacity-60 dark:border-neutral-700 dark:bg-gray-800 dark:text-neutral-200 dark:hover:bg-gray-700 sm:w-auto"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

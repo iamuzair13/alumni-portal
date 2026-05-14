@@ -10,7 +10,7 @@ export default function AuthLayout({
   return (
     <div className="primaryBackground h-full w-full">
       <ThemeProvider>
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 sm:p-0 w-full">{children}</div>
+        <div className="min-h-screen flex w-full flex-col items-center justify-start p-6 sm:px-0 sm:py-8">{children}</div>
       </ThemeProvider>
     </div>
   );

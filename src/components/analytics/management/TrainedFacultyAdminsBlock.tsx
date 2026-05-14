@@ -36,13 +36,7 @@ export default function TrainedFacultyAdminsBlock({ data, isLoading }: Props) {
     <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-4 dark:border-violet-900/40 dark:bg-violet-950/20">
       <div className="mb-3">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Trained faculty admin users</h3>
-        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-          Same sources as <strong className="font-medium">Setup → Users</strong>:{" "}
-          <code className="rounded bg-white/80 px-1 py-0.5 text-[10px] dark:bg-gray-900/80">user_resource_access</code> +{" "}
-          <code className="text-[10px]">resources</code> (faculty / department / program), merged with legacy{" "}
-          <code className="text-[10px]">user_access_assignments</code>. Staff types admin, viewer, superadmin, user (not blocked).{" "}
-          <code className="text-[10px]">tbl_users</code> is used only if nothing matches <code className="text-[10px]">users</code>.
-        </p>
+        
       </div>
       <ChartTableToggle
         widgetId="mgmt-trained-faculty-admins"

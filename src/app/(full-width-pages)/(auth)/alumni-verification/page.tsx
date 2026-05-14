@@ -103,9 +103,6 @@ export default function AlumniVerificationPage() {
           <div className="px-6 py-5 border-b border-gray-100">
             <div className="text-xs font-semibold text-green-700">Step 1 of 2</div>
             <h1 className="mt-1 text-xl font-bold text-gray-900">Alumni Verification</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Enter your SAP ID or Registration Number to check if your record already exists.
-            </p>
           </div>
 
           <div className="p-6 space-y-5">

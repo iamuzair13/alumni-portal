@@ -10,6 +10,11 @@ import { ProgressProvider } from "@bprogress/react";
 import ProgressBar from "@/components/ProgressBar";
 import { useRouter } from "next/navigation";
 
+/** Pages that must work without a NextAuth session (public alumni flows). */
+function isPublicAlumniAuthPath(pathname: string) {
+  return pathname === "/alumni-registration" || pathname === "/alumni-verification";
+}
+
 // Component to handle session expiration and 401 errors
 function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
@@ -19,8 +24,8 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if session is unauthenticated
     if (status === "unauthenticated" && typeof window !== "undefined") {
-      // Only redirect if we're not already on the signin page
-      if (window.location.pathname !== "/signin") {
+      // Only redirect if we're not already on the signin page or a public alumni page
+      if (window.location.pathname !== "/signin" && !isPublicAlumniAuthPath(window.location.pathname)) {
         // Clear all React Query cache
         queryClient.clear();
         
@@ -59,7 +64,12 @@ function SessionExpirationHandler({ children }: { children: React.ReactNode }) {
         const response = await originalFetch(...args);
 
         // Handle 401 Unauthorized errors
-        if (response.status === 401 && window.location.pathname !== "/signin") {
+        const pathname = window.location.pathname;
+        if (
+          response.status === 401 &&
+          pathname !== "/signin" &&
+          !isPublicAlumniAuthPath(pathname)
+        ) {
           // Clear all caches
           queryClient.clear();
           try {
