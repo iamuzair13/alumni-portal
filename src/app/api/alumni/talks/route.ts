@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { validatePayload } from "./validation";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { buildAlumniPresenceBaseWhere } from "@/lib/master-filter-utils";
 import type { Session } from "next-auth";
 import { sendEmailDetailed } from "@/lib/email";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
@@ -139,6 +140,7 @@ export async function GET(req: Request) {
 
     const accessFilterCondition = accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
     const sapidCondition = sapidParam ? sql` AND (a.sapid = ${sapidParam} OR a.registrationno = ${sapidParam})` : sql``;
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
 
     let rows;
     try {
@@ -176,10 +178,7 @@ export async function GET(req: Request) {
           s.alumni_note
         FROM public.tbl_alumni a
           INNER JOIN public.alumni_talk_sessions s ON s.alumniid = a.alumniid
-        WHERE (
-          (a.sapid IS NOT NULL AND a.sapid != '')
-          OR (a.registrationno IS NOT NULL AND a.registrationno != '')
-        )
+        WHERE ${baseWhere}
         ${sapidCondition}
         ${accessFilterCondition}
         ORDER BY s.created_at DESC
@@ -261,10 +260,7 @@ export async function GET(req: Request) {
         COUNT(*) FILTER (WHERE LOWER(COALESCE(s.status, 'pending')) IN ('admin_confirmed', 'alumni_confirmed')) AS confirmed_count
       FROM public.tbl_alumni a
         INNER JOIN public.alumni_talk_sessions s ON s.alumniid = a.alumniid
-      WHERE (
-        (a.sapid IS NOT NULL AND a.sapid != '')
-        OR (a.registrationno IS NOT NULL AND a.registrationno != '')
-      )
+      WHERE ${baseWhere}
       ${sapidCondition}
       ${accessFilterCondition}
     `;

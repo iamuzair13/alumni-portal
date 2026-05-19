@@ -5,6 +5,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { parseChapterCities } from "@/lib/chapterCities";
+import { buildAlumniPresenceBaseWhere } from "@/lib/master-filter-utils";
 
 async function autoAssignChapter1FromHomeLocation(args: {
   alumniId: number;
@@ -1265,6 +1266,7 @@ export async function GET(req: Request) {
     
     // If only counts are needed, return early with just counts
     if (getCountsOnly) {
+      const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
       const searchTermForCount = search && search.trim() ? `%${search.trim().toLowerCase()}%` : null;
       const countQuery = searchTermForCount
         ? sql/* sql */`
@@ -1273,7 +1275,7 @@ export async function GET(req: Request) {
             LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
             LEFT JOIN public.tbl_departments d ON d.id = a.department
             LEFT JOIN public.tbl_programs p ON p.id = a.program
-            WHERE a.sapid IS NOT NULL AND a.sapid != ''
+            WHERE ${baseWhere}
               ${categoryFilter}
               ${facultyFilter}
               ${departmentFilter}
@@ -1317,7 +1319,7 @@ export async function GET(req: Request) {
             LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
             LEFT JOIN public.tbl_departments d ON d.id = a.department
             LEFT JOIN public.tbl_programs p ON p.id = a.program
-            WHERE a.sapid IS NOT NULL AND a.sapid != ''
+            WHERE ${baseWhere}
               ${categoryFilter}
               ${facultyFilter}
               ${departmentFilter}
@@ -1433,16 +1435,7 @@ export async function GET(req: Request) {
     
     // Build query with optional search and status filter
     let query;
-    // Base WHERE clause: require either sapid OR registrationno (except for underApproval which we handle separately)
-    // Include under-approval rows that may not yet have sapid/registrationno (same scope as counts API).
-    const needsUnrestrictedBase =
-      hasSapIdStateFilter ||
-      hasRegNoStateFilter ||
-      hasPersonalEmailStateFilter ||
-      hasContactNoStateFilter;
-    const baseWhere = needsUnrestrictedBase
-      ? sql`1=1`
-      : sql`((sapid IS NOT NULL AND sapid != '') OR (registrationno IS NOT NULL AND registrationno != '') OR (LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'))`;
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
     
     if (search && search.trim()) {
       const searchTerm = `%${search.trim().toLowerCase()}%`;

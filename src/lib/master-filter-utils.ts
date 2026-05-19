@@ -715,20 +715,12 @@ export function buildMasterFilterConditions(
   return sql`AND ${combined}`;
 }
 
-export function buildAlumniPresenceBaseWhere(searchParams: URLSearchParams) {
-  const statusParams = searchParams.getAll("status");
-  const status = statusParams.length > 0 ? statusParams : (searchParams.get("status") || "");
-  const hasSapIdStateFilter = searchParams.getAll("sapIdState").length > 0 || !!searchParams.get("sapIdState");
-  const hasRegNoStateFilter = searchParams.getAll("regNoState").length > 0 || !!searchParams.get("regNoState");
-  const hasPersonalEmailStateFilter =
-    searchParams.getAll("personalEmailState").length > 0 || !!searchParams.get("personalEmailState");
-  const hasContactNoStateFilter =
-    searchParams.getAll("contactNoState").length > 0 || !!searchParams.get("contactNoState");
-
-  if (hasSapIdStateFilter || hasRegNoStateFilter || hasPersonalEmailStateFilter || hasContactNoStateFilter) {
-    return sql`1=1`;
-  }
-
-  return sql`((a.sapid IS NOT NULL AND a.sapid != '') OR (a.registrationno IS NOT NULL AND a.registrationno != '') OR (LOWER(TRIM(COALESCE(a.verify, ''))) = 'underapproval'))`;
+/**
+ * Base scope for alumni list, counts, exports, and master-filter option queries.
+ * Every tbl_alumni row is included until an admin runs "Delete Alumni" (hard DELETE).
+ * Do not filter by sapid, registrationno, or verify status here.
+ */
+export function buildAlumniPresenceBaseWhere(_searchParams?: URLSearchParams) {
+  return sql`1=1`;
 }
 

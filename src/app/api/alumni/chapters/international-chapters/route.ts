@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
-import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
+import { buildAlumniPresenceBaseWhere, buildMasterFilterConditions } from "@/lib/master-filter-utils";
 
 export async function GET(req: Request) {
   try {
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
     // Build master filter conditions excluding chapters filters to avoid circular dependency
     const masterFilterConditions = buildMasterFilterConditions(searchParams, "chapters");
 
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
           SELECT COUNT(DISTINCT a.alumniid) as count
           FROM public.tbl_alumni a
           INNER JOIN public.alumni_chapter ac ON ac.id = a.alumniid
-          WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+          WHERE ${baseWhere}
             AND (
               ac."chapter1" = ${chapterId}
               OR ac."chapter2" = ${chapterId}

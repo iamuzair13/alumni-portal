@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
-import { buildMasterFilterConditions } from "@/lib/master-filter-utils";
+import { buildAlumniPresenceBaseWhere, buildMasterFilterConditions } from "@/lib/master-filter-utils";
 
 export async function GET(req: Request) {
   try {
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
     // Build master filter conditions excluding associations filter to avoid circular dependency
     const masterFilterConditions = buildMasterFilterConditions(searchParams, "associations");
 
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
         const countRows = await sql/* sql */`
           SELECT COUNT(DISTINCT a.alumniid) as count
           FROM public.tbl_alumni a
-          WHERE (a.sapid IS NOT NULL AND a.sapid != '' OR a.registrationno IS NOT NULL AND a.registrationno != '')
+          WHERE ${baseWhere}
             AND (a.association_id = ${association.id} OR a.faculty = ${association.id})
             ${accessFilterCondition}
             ${masterFilterConditions}

@@ -1573,16 +1573,6 @@ export const AlumniTabs: React.FC = () => {
       }
 
       const verifyStrEarly = String(r.verify ?? "").toLowerCase().trim();
-      const isUnderApprovalRow = verifyStrEarly === "underapproval";
-
-      // Skip incomplete rows unless they are pending approval (API can return those without sapid/regno).
-      if (
-        (!r.sapid || !r.sapid.trim()) &&
-        (!r.registrationno || !r.registrationno.trim()) &&
-        !isUnderApprovalRow
-      ) {
-        continue;
-      }
 
       // Optimize verification status check (handle string, boolean, or null)
       // Handle verify='underApproval' as "underApproval"

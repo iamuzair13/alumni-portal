@@ -3,6 +3,7 @@ import { sql, retryDbOperation } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { buildIdBasedAccessFilterSQL } from "@/lib/rbac";
+import { buildAlumniPresenceBaseWhere } from "@/lib/master-filter-utils";
 
 export async function GET(req: Request) {
   try {
@@ -1027,17 +1028,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // Build base WHERE clause: allow NULL values when filters are active
-    // Pending registrations (verify = underApproval) may lack sapid and registrationno; they must still
-    // be included in aggregates and match list/count behavior across tabs (no +1 only when Under Approval is selected).
-    const needsUnrestrictedBase =
-      hasSapIdStateFilter ||
-      hasRegNoStateFilter ||
-      hasPersonalEmailStateFilter ||
-      hasContactNoStateFilter;
-    const baseWhere = needsUnrestrictedBase
-      ? sql`1=1`
-      : sql`((sapid IS NOT NULL AND sapid != '') OR (registrationno IS NOT NULL AND registrationno != '') OR (LOWER(TRIM(COALESCE(verify, ''))) = 'underapproval'))`;
+    const baseWhere = buildAlumniPresenceBaseWhere(searchParams);
 
     // Verify field is now VARCHAR(10) - handle as string only
     let result;
