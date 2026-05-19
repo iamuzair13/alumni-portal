@@ -9,11 +9,11 @@ type Props = {
   sapId: string;
 };
 
-function GymMembershipFormInner({ alumniId, sapId }: Props) {
-  return <CampusMembershipForm facilityType="gym" alumniId={alumniId} sapId={sapId} />;
+function CricketMembershipFormInner({ alumniId, sapId }: Props) {
+  return <CampusMembershipForm facilityType="cricket" alumniId={alumniId} sapId={sapId} />;
 }
 
-export default function GymMembershipForm(props: Props) {
+export default function CricketMembershipForm(props: Props) {
   return (
     <Suspense
       fallback={
@@ -22,7 +22,7 @@ export default function GymMembershipForm(props: Props) {
         </div>
       }
     >
-      <GymMembershipFormInner {...props} />
+      <CricketMembershipFormInner {...props} />
     </Suspense>
   );
 }

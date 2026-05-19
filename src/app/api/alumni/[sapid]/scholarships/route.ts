@@ -89,6 +89,12 @@ export async function GET(
         created_at,
         gym_membership_month,
         swimmingpool_membership_month,
+        cricket_membership_month,
+        facility_type,
+        application_ref,
+        membership_type,
+        membership_start_date,
+        preferred_timing,
         COALESCE(status, 'pending') AS status,
         reason
       FROM public.alumni_memberships
@@ -117,6 +123,12 @@ export async function GET(
       createdAt: app.created_at ? new Date(app.created_at).toISOString() : null,
       gymMembershipMonth: app.gym_membership_month ?? null,
       swimmingPoolMembershipMonth: app.swimmingpool_membership_month ?? null,
+      cricketMembershipMonth: app.cricket_membership_month ?? null,
+      facilityType: app.facility_type ?? null,
+      applicationRef: app.application_ref ?? null,
+      membershipType: app.membership_type ?? null,
+      membershipStartDate: app.membership_start_date ?? null,
+      preferredTiming: app.preferred_timing ?? null,
       status: (app.status ?? "pending").toLowerCase(),
       rejectionReason: app.reason ?? null,
     }));

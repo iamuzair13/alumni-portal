@@ -30,6 +30,12 @@ type MembershipApplication = {
   createdAt: string | null;
   gymMembershipMonth: string | null;
   swimmingPoolMembershipMonth: string | null;
+  cricketMembershipMonth: string | null;
+  facilityType: string | null;
+  applicationRef: string | null;
+  membershipType: string | null;
+  membershipStartDate: string | null;
+  preferredTiming: string | null;
   status: string;
   rejectionReason: string | null;
 };
@@ -243,25 +249,70 @@ function ViewApplicationsContent() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      {app.gymMembershipMonth && (
+                      {app.facilityType && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Facility
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100 capitalize">{app.facilityType}</p>
+                        </div>
+                      )}
+                      {app.applicationRef && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Application ID
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.applicationRef}</p>
+                        </div>
+                      )}
+                      {app.membershipType && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Membership Type
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.membershipType}</p>
+                        </div>
+                      )}
+                      {app.membershipStartDate && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Membership Start Date
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">
+                            {new Date(app.membershipStartDate).toLocaleDateString("en-PK")}
+                          </p>
+                        </div>
+                      )}
+                      {app.preferredTiming && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Preferred Timing
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.preferredTiming}</p>
+                        </div>
+                      )}
+                      {!app.facilityType && app.gymMembershipMonth && (
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                             Gym Membership Month
                           </label>
-                          <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {app.gymMembershipMonth}
-                          </p>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.gymMembershipMonth}</p>
                         </div>
                       )}
-
-                      {app.swimmingPoolMembershipMonth && (
+                      {!app.facilityType && app.swimmingPoolMembershipMonth && (
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                             Swimming Pool Membership Month
                           </label>
-                          <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {app.swimmingPoolMembershipMonth}
-                          </p>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.swimmingPoolMembershipMonth}</p>
+                        </div>
+                      )}
+                      {!app.facilityType && app.cricketMembershipMonth && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            Cricket Membership Month
+                          </label>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{app.cricketMembershipMonth}</p>
                         </div>
                       )}
                     </div>

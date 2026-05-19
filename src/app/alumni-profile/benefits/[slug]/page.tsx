@@ -245,7 +245,14 @@ const benefitsData: Record<string, { title: string; description: string; content
                       <li>Free registration for select tournaments</li>
                     </ul>
                   </td>
-                  <td class="px-4 py-4"></td>
+                  <td class="px-4 py-4">
+                    <a href="/alumni-profile/cricket-membership" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Apply
+                    </a>
+                  </td>
                 </tr>
                 <tr class="bg-gray-50 hover:bg-gray-100 transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
                   <td class="px-4 py-4 font-semibold text-gray-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">Discounts at UOL Restaurants (Poet)</td>
@@ -644,19 +651,23 @@ export default async function BenefitDetailPage({ params }: { params: Promise<{ 
       'href="/alumni-profile/swimming-pool-membership"',
       `href="/alumni-profile/swimming-pool-membership?sapid=${encodeURIComponent(sapId)}"`
     );
+    content = content.replace(
+      'href="/alumni-profile/cricket-membership"',
+      `href="/alumni-profile/cricket-membership?sapid=${encodeURIComponent(sapId)}"`
+    );
   }
 
   // Remove Apply links for viewers
   if (isViewer) {
     // Remove Apply buttons/links from content using regex
-    content = content.replace(/<a[^>]*href="[^"]*alumni-profile\/(scholarship-application|gym-membership|swimming-pool-membership|mentorship|upskill-application)"[^>]*>[\s\S]*?<\/a>/gi, '');
+    content = content.replace(/<a[^>]*href="[^"]*alumni-profile\/(scholarship-application|gym-membership|swimming-pool-membership|cricket-membership|mentorship|upskill-application)"[^>]*>[\s\S]*?<\/a>/gi, '');
     // Remove the entire "Apply for Scholarships" section for academic-benefits
     if (slug === "academic-benefits") {
       content = content.replace(/<div class="bg-gradient-to-br from-blue-50 to-indigo-50[^>]*>[\s\S]*?Apply Now[\s\S]*?<\/a>[\s\S]*?<\/div>[\s\S]*?<\/div>/gi, '');
     }
     // Remove Apply buttons from campus-facilities table cells
     if (slug === "campus-facilities") {
-      content = content.replace(/<td class="px-4 py-4">[\s\S]*?<a[^>]*href="[^"]*alumni-profile\/(gym-membership|swimming-pool-membership)"[^>]*>[\s\S]*?<\/a>[\s\S]*?<\/td>/gi, '<td class="px-4 py-4"></td>');
+      content = content.replace(/<td class="px-4 py-4">[\s\S]*?<a[^>]*href="[^"]*alumni-profile\/(gym-membership|swimming-pool-membership|cricket-membership)"[^>]*>[\s\S]*?<\/a>[\s\S]*?<\/td>/gi, '<td class="px-4 py-4"></td>');
     }
     // Remove Apply Now button from career-mentorship
     if (slug === "career-mentorship") {

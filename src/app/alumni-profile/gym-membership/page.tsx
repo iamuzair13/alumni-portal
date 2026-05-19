@@ -9,6 +9,7 @@ export const viewport: Viewport = {
 import { sql } from "@/lib/dbconnect";
 import GymMembershipForm from "@/components/forms/gym-membership";
 import { auth } from "@/lib/auth";
+import { resolveAlumniPageIds } from "@/lib/resolveAlumniPageIds";
 import AppHeader from "@/layout/AppHeader";
 import Alert from "@/components/ui/alert/Alert";
 import { computeLoginBanner } from "@/lib/alumniProfile";
@@ -66,37 +67,17 @@ export default async function GymMembershipPage({ searchParams }: { searchParams
   }
   const session = await auth();
   const name = p?.alumniname ?? "";
-  
-  // Get SAP ID from session first, then from search params, then from email lookup
-  const sessionSapid = session?.user ? ((session.user as { sapid?: string | null })?.sapid ? String((session.user as { sapid?: string | null }).sapid).trim() : undefined) : undefined;
-  const email = session?.user?.email ? String(session.user.email) : undefined;
-  
-  let sapRows: Array<{ alumniid: number; sapid: string }> = [];
+
+  let sapId = "";
+  let alumniId = "";
   let sapError: string | null = null;
-  
-  // If we have SAP ID from session, use it directly
-  if (sessionSapid) {
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE sapid = ${sessionSapid} LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID from session";
-    }
-  } else if (email) {
-    // Fallback to email lookup (backward compatibility)
-    try {
-      sapRows = await sql/* sql */`
-        SELECT alumniid, sapid FROM public.tbl_alumni 
-        WHERE personalemail = ${email} OR officialemail = ${email} OR universityemail = ${email}
-        ORDER BY alumniid DESC LIMIT 1`;
-    } catch (e) {
-      sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
-    }
+  try {
+    const ids = await resolveAlumniPageIds(session, sp);
+    sapId = ids.sapId;
+    alumniId = ids.alumniId;
+  } catch (e) {
+    sapError = e instanceof Error ? e.message : "Failed to load SAP ID";
   }
-  
-  const sapId = String(sapRows[0]?.sapid ?? sp?.sapid ?? sessionSapid ?? "").trim();
-  const alumniId = String(sapRows[0]?.alumniid ?? "");
 
   return (
     <>

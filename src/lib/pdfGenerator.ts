@@ -87,12 +87,35 @@ export interface ScholarshipLetterPDFData {
   };
 }
 
- export interface MembershipApplicationData {
-   alumniName: string;
-   membershipType: string;
-   gymMembershipMonth?: string | null;
-   swimmingPoolMembershipMonth?: string | null;
- }
+export interface MembershipFormPDFData {
+  headerTitle: string;
+  dateFormatted: string;
+  applicationRef: string | null;
+  studentName: string;
+  fatherName: string;
+  dob: string;
+  cnic: string;
+  campus: string;
+  faculty: string;
+  department: string;
+  program: string;
+  sapCode: string;
+  cgpa: string;
+  passingOutYear: string;
+  applyingFor: string;
+  discountType: string;
+  membershipType: string;
+  membershipStartDate: string;
+  preferredTiming: string;
+  medicalConditions: string;
+  allergies: string;
+  physicalDisability: string;
+  emergencyContactName: string;
+  emergencyContactRelationship: string;
+  emergencyContactNumber: string;
+  alumniCardSubmitted: string;
+  cnicDocSubmitted: string;
+}
 
 export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -632,114 +655,247 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
   });
 }
 
- export function generateMembershipPDF(data: MembershipApplicationData): Promise<Buffer> {
-   return new Promise((resolve, reject) => {
-     try {
-       const doc = new jsPDF();
-       const pageWidth = doc.internal.pageSize.getWidth();
-       const pageHeight = doc.internal.pageSize.getHeight();
-       const margin = 50;
-       const maxWidth = pageWidth - 2 * margin;
-       let yPosition = margin;
+/** Tabular membership application form PDF (Gym / Pool / Cricket Club). */
+export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new jsPDF({ compress: true });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 18;
+      const maxWidth = pageWidth - margin * 2;
+      let y = margin;
 
-       const logoBase64 = getLogoBase64();
-       if (logoBase64) {
-         try {
-           const logoWidth = 40;
-           const logoHeight = 20;
-           const logoX = pageWidth - margin - logoWidth;
-           const logoY = margin;
-           doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
-           yPosition = logoY + logoHeight + 15;
-         } catch {
-           yPosition = margin + 10;
-         }
-       } else {
-         yPosition = margin + 10;
-       }
+      const clamp = (text: string | null | undefined) => {
+        const value = String(text || "").replace(/\s+/g, " ").trim();
+        return value || "Missing";
+      };
 
-       doc.setDrawColor(0, 102, 51);
-       doc.setLineWidth(0.5);
-       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-       yPosition += 15;
+      const sectionGreen1: [number, number, number] = [150, 205, 175];
+      const sectionGreen2: [number, number, number] = [195, 230, 210];
+      const sectionGreenDocs: [number, number, number] = [115, 198, 155];
 
-       doc.setFontSize(18);
-       doc.setFont("helvetica", "bold");
-       doc.setTextColor(0, 102, 51);
-       doc.text("Alumni Membership Application", margin, yPosition);
-       yPosition += 10;
+      const headerBandH = 22;
+      doc.setFillColor(0, 102, 51);
+      doc.rect(margin, y, maxWidth, headerBandH, "F");
+      const logoBase64 = getLogoBase64("light");
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", margin + 2, y + 5, 30, 12, "uol-logo", "FAST");
+        } catch {
+          // ignore logo rendering failure
+        }
+      }
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      let headerFontSize = 10;
+      const headerTitle = clamp(data.headerTitle);
+      doc.setFontSize(headerFontSize);
+      let headerTitleW = doc.getTextWidth(headerTitle);
+      while (headerTitleW > maxWidth - 8 && headerFontSize > 7) {
+        headerFontSize -= 0.5;
+        doc.setFontSize(headerFontSize);
+        headerTitleW = doc.getTextWidth(headerTitle);
+      }
+      doc.text(headerTitle, margin + Math.max(0, (maxWidth - headerTitleW) / 2), y + headerBandH / 2 + 3.2);
+      doc.setTextColor(0, 0, 0);
+      y += headerBandH + 3;
 
-       const date = new Date().toLocaleDateString("en-US", {
-         year: "numeric",
-         month: "long",
-         day: "numeric",
-       });
-       doc.setFontSize(11);
-       doc.setFont("helvetica", "normal");
-       doc.setTextColor(0, 0, 0);
-       const dateText = `Date: ${date}`;
-       const dateWidth = doc.getTextWidth(dateText);
-       doc.text(dateText, pageWidth - margin - dateWidth, yPosition);
-       yPosition += 20;
+      const outerX = margin;
+      const outerY = y;
+      const outerW = maxWidth;
+      const rowHeights = { date: 8, section: 8, normal: 8, docsRow: 8 };
 
-       const addText = (
-         text: string,
-         fontSize: number,
-         isBold: boolean = false,
-         align: "left" | "center" | "right" = "left",
-         spacing: number = 5
-       ) => {
-         doc.setFontSize(fontSize);
-         doc.setFont("helvetica", isBold ? "bold" : "normal");
-         doc.setTextColor(0, 0, 0);
-         const lines = doc.splitTextToSize(text, maxWidth);
-         const xPos = align === "center" ? pageWidth / 2 : align === "right" ? pageWidth - margin : margin;
-         doc.text(lines, xPos, yPosition, { align, maxWidth });
-         yPosition += lines.length * (fontSize * 0.4) + spacing;
-       };
+      const c1 = outerW * 0.26;
+      const c2 = outerW * 0.24;
+      const c3 = outerW * 0.26;
+      const c4 = outerW - c1 - c2 - c3;
+      const x2 = outerX + c1;
+      const x3 = x2 + c2;
+      const x4 = x3 + c3;
 
-       addText("Dear Concern,", 12, false, "left", 8);
+      const toCellLines = (text: string, width: number, bold = false, maxLines = 3) => {
+        let fontSize = 9;
+        const shown = clamp(text);
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(fontSize);
+        let lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
+        while (lines.length > maxLines && fontSize > 7) {
+          fontSize -= 0.5;
+          doc.setFontSize(fontSize);
+          lines = doc.splitTextToSize(shown, Math.max(8, width - 3));
+        }
+        const shownLines = lines.slice(0, maxLines);
+        if (lines.length > maxLines) {
+          const last = shownLines[shownLines.length - 1] || "";
+          shownLines[shownLines.length - 1] = `${last.slice(0, Math.max(0, last.length - 2))}..`;
+        }
+        return { lines: shownLines as string[], fontSize };
+      };
 
-       addText(
-         `I, ${data.alumniName}, an alumnus of UOL, am applying for ${data.membershipType} membership.`,
-         12,
-         false,
-         "left",
-         8
-       );
+      const drawCellText = (
+        text: string,
+        x: number,
+        rowY: number,
+        w: number,
+        h: number,
+        bold = false,
+        center = false,
+        prepared?: { lines: string[]; fontSize: number },
+      ) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        if (center) {
+          doc.setFontSize(9);
+          const shown = clamp(text);
+          const tw = doc.getTextWidth(shown);
+          doc.text(shown, x + 1.5 + Math.max(0, (w - 3 - tw) / 2), rowY + h / 2 + 2.2);
+          return;
+        }
+        const cell = prepared || toCellLines(text, w, bold, 3);
+        doc.setFontSize(cell.fontSize);
+        const lineH = cell.fontSize * 0.38;
+        const textBlockH = Math.max(1, cell.lines.length) * lineH;
+        const textY = rowY + Math.max(2.6, (h - textBlockH) / 2) + lineH;
+        doc.text(cell.lines, x + 1.5, textY, { maxWidth: w - 2.5 });
+      };
 
-       if (data.gymMembershipMonth) {
-         addText(`Gym Membership Month: ${data.gymMembershipMonth}`, 12, false, "left", 8);
-       }
-       if (data.swimmingPoolMembershipMonth) {
-         addText(`Swimming Pool Membership Month: ${data.swimmingPoolMembershipMonth}`, 12, false, "left", 8);
-       }
+      let rowY = outerY;
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.25);
 
-       addText("Please approve so that the applicant can proceed with the process.", 12, false, "left", 15);
+      const fillRgb = (rgb: [number, number, number]) => {
+        doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+      };
 
-       addText("Regards,", 12, false, "left", 8);
-       addText(data.alumniName, 12, true, "left", 10);
+      const drawSectionHeader = (letter: string, title: string, shade: 1 | 2 | "docs") => {
+        const rgb = shade === "docs" ? sectionGreenDocs : shade === 1 ? sectionGreen1 : sectionGreen2;
+        fillRgb(rgb);
+        doc.rect(outerX, rowY, outerW, rowHeights.section, "FD");
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        const midY = rowY + rowHeights.section / 2 + 2.2;
+        doc.text(`(${letter})`, outerX + 2, midY);
+        const tw = doc.getTextWidth(title);
+        doc.text(title, outerX + Math.max(0, (outerW - tw) / 2), midY);
+        rowY += rowHeights.section;
+      };
 
-       const footerY = pageHeight - 30;
-       doc.setDrawColor(0, 102, 51);
-       doc.setLineWidth(0.5);
-       doc.line(margin, footerY, pageWidth - margin, footerY);
+      const drawFourColRow = (l1: string, v1: string, l2: string, v2: string) => {
+        const c1Lines = toCellLines(l1, c1, true, 2);
+        const c2Lines = toCellLines(v1, c2, false, 3);
+        const c3Lines = toCellLines(l2, c3, true, 2);
+        const c4Lines = toCellLines(v2, c4, false, 3);
+        const maxFont = Math.max(c1Lines.fontSize, c2Lines.fontSize, c3Lines.fontSize, c4Lines.fontSize);
+        const lineH = maxFont * 0.38;
+        const rowH =
+          Math.max(c1Lines.lines.length, c2Lines.lines.length, c3Lines.lines.length, c4Lines.lines.length, 1) *
+            lineH +
+          5;
+        const finalH = Math.max(rowHeights.normal, rowH);
+        doc.rect(outerX, rowY, c1, finalH);
+        doc.rect(x2, rowY, c2, finalH);
+        doc.rect(x3, rowY, c3, finalH);
+        doc.rect(x4, rowY, c4, finalH);
+        drawCellText(l1, outerX, rowY, c1, finalH, true, false, c1Lines);
+        drawCellText(v1, x2, rowY, c2, finalH, false, false, c2Lines);
+        drawCellText(l2, x3, rowY, c3, finalH, true, false, c3Lines);
+        drawCellText(v2, x4, rowY, c4, finalH, false, false, c4Lines);
+        rowY += finalH;
+      };
 
-       doc.setFontSize(9);
-       doc.setFont("helvetica", "normal");
-       doc.setTextColor(100, 100, 100);
-       const footerText = "Office of Alumni Relations, EE2 Building 4th Floor | University of Lahore";
-       const footerWidth = doc.getTextWidth(footerText);
-       doc.text(footerText, (pageWidth - footerWidth) / 2, footerY + 8);
+      const drawSpanRow = (label: string, value: string) => {
+        const lbl = toCellLines(label, c1, true, 2);
+        const val = toCellLines(value, c2 + c3 + c4, false, 3);
+        const h =
+          Math.max(rowHeights.docsRow, Math.max(lbl.lines.length, val.lines.length, 1) * Math.max(lbl.fontSize, val.fontSize) * 0.38 + 5);
+        doc.rect(outerX, rowY, c1, h);
+        doc.rect(x2, rowY, c2 + c3 + c4, h);
+        drawCellText(label, outerX, rowY, c1, h, true, false, lbl);
+        drawCellText(value, x2, rowY, c2 + c3 + c4, h, false, false, val);
+        rowY += h;
+      };
 
-       const pdfOutput = doc.output("arraybuffer");
-       const buffer = Buffer.from(pdfOutput);
-       resolve(buffer);
-     } catch (error) {
-       reject(error);
-     }
-   });
- }
+      const pdfAppId = String(data.applicationRef || "").trim();
+      if (pdfAppId) {
+        drawFourColRow("Application Date:", data.dateFormatted, "Application ID:", pdfAppId);
+      } else {
+        doc.rect(outerX, rowY, c1, rowHeights.date);
+        doc.rect(x2, rowY, outerW - c1, rowHeights.date);
+        drawCellText("Application Date:", outerX, rowY, c1, rowHeights.date, true);
+        drawCellText(data.dateFormatted, x2, rowY, outerW - c1, rowHeights.date, false);
+        rowY += rowHeights.date;
+      }
+
+      drawSectionHeader("a", "Alumni Personal Details", 1);
+      drawFourColRow("Name:", data.studentName, "Father's Name:", data.fatherName);
+      drawFourColRow("DOB:", data.dob, "CNIC:", data.cnic);
+
+      drawSectionHeader("b", "Alumni Education Details", 2);
+      drawFourColRow("Campus:", data.campus, "Faculty:", data.faculty);
+      drawFourColRow("Department:", data.department, "Program:", data.program);
+      drawFourColRow("SAP ID:", data.sapCode, "CGPA:", data.cgpa);
+      drawSpanRow("Passing Out Year:", data.passingOutYear);
+
+      drawSectionHeader("c", "Membership Details", 1);
+      drawFourColRow("Applying For:", data.applyingFor, "Discount Type:", data.discountType);
+      drawFourColRow(
+        "Membership Type:",
+        data.membershipType,
+        "Membership Start Date:",
+        data.membershipStartDate,
+      );
+      drawSpanRow("Preferred Timing:", data.preferredTiming);
+
+      drawSectionHeader("d", "Medical & Fitness Information", 2);
+      drawSpanRow("Medical Conditions:", data.medicalConditions);
+      drawFourColRow("Allergies:", data.allergies, "Physical Disability:", data.physicalDisability);
+
+      drawSectionHeader("e", "Emergency Contact", 1);
+      drawFourColRow(
+        "Contact Name:",
+        data.emergencyContactName,
+        "Relationship:",
+        data.emergencyContactRelationship,
+      );
+      drawSpanRow("Contact Number:", data.emergencyContactNumber);
+
+      drawSectionHeader("f", "Documents Checklist", "docs");
+      drawFourColRow("Alumni Card:", data.alumniCardSubmitted, "CNIC:", data.cnicDocSubmitted);
+
+      rowY += 4;
+
+      const leftW = c1 + c2;
+      const rightW = c3 + c4;
+      const sigBlockH = 34;
+      doc.rect(outerX, rowY, leftW, sigBlockH);
+      doc.rect(x3, rowY, rightW, sigBlockH);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Reviewed By (ARO):", outerX + 2, rowY + 5.5);
+      doc.text("Approved By (Competent Authority):", x3 + 2, rowY + 5.5);
+      rowY += sigBlockH;
+
+      doc.rect(outerX, outerY, outerW, rowY - outerY);
+
+      const pages = doc.getNumberOfPages();
+      if (pages > 1) {
+        for (let i = pages; i > 1; i -= 1) {
+          doc.deletePage(i);
+        }
+      }
+
+      resolve(Buffer.from(doc.output("arraybuffer")));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/** @deprecated Use generateMembershipFormPDF */
+export function generateMembershipPDF(data: MembershipFormPDFData): Promise<Buffer> {
+  return generateMembershipFormPDF(data);
+}
 
 export interface UpskillApplicationData {
   alumniName: string;

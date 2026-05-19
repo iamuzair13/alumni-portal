@@ -15,6 +15,8 @@ import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import { useExcelExport } from "@/lib/excel-export";
 import { SendEmailButton } from "@/components/email/SendEmailButton";
+import { MembershipApplicationPreviewBody } from "@/components/alumni/MembershipApplicationPreviewBody";
+import type { MembershipApplicationPreview } from "@/lib/membershipApplicationPreview";
 import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplates";
 
 type MembershipItem = {
@@ -31,6 +33,12 @@ type MembershipItem = {
   createdAt: string | null;
   gymMembershipMonth: string | null;
   swimmingPoolMembershipMonth: string | null;
+  cricketMembershipMonth: string | null;
+  facilityType: string | null;
+  applicationRef: string | null;
+  membershipType: string | null;
+  membershipStartDate: string | null;
+  preferredTiming: string | null;
   status: string;
   rejectionReason: string | null;
 };
@@ -107,6 +115,7 @@ export const AlumniMembershipsTab: React.FC = () => {
     membershipId: number;
     email: string;
     pdfUrl: string;
+    application?: MembershipApplicationPreview;
   } | null>(null);
   const applicationPreviewModal = useModal();
   const [isLoadingApplicationPreview, setIsLoadingApplicationPreview] = useState(false);
@@ -235,8 +244,17 @@ export const AlumniMembershipsTab: React.FC = () => {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Failed to fetch application preview (${res.status})`);
       }
-      const data = (await res.json()) as { email: string; pdfUrl: string };
-      setApplicationPreview({ membershipId, email: data.email || "-", pdfUrl: data.pdfUrl });
+      const data = (await res.json()) as {
+        email: string;
+        pdfUrl: string;
+        application?: MembershipApplicationPreview;
+      };
+      setApplicationPreview({
+        membershipId,
+        email: data.email || "-",
+        pdfUrl: data.pdfUrl,
+        application: data.application,
+      });
       applicationPreviewModal.openModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -548,10 +566,13 @@ export const AlumniMembershipsTab: React.FC = () => {
                   Program
                 </TableCell>
                 <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
-                  Gym Membership Month
+                  Facility
                 </TableCell>
                 <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
-                  Swimming Pool Membership Month
+                  Membership Type
+                </TableCell>
+                <TableCell className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                  Start Date
                 </TableCell>
                 <TableCell
                   className="px-6 py-4 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors dark:text-gray-300 dark:bg-gray-900"
@@ -589,7 +610,7 @@ export const AlumniMembershipsTab: React.FC = () => {
               {isLoading && (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`membership-skeleton-${i}`}>
-                    {Array.from({ length: 10 }).map((__, j) => (
+                    {Array.from({ length: 11 }).map((__, j) => (
                       <TableCell key={j} className="px-6 py-4 dark:text-gray-300 dark:bg-gray-900">
                         <div className="h-5 w-24 bg-gray-200 animate-pulse rounded" />
                       </TableCell>
@@ -599,14 +620,14 @@ export const AlumniMembershipsTab: React.FC = () => {
               )}
               {!isLoading && error && (
                 <TableRow>
-                  <TableCell colSpan={10} className="px-5 py-6 text-center text-red-600 dark:text-gray-300 dark:bg-gray-900">
+                  <TableCell colSpan={11} className="px-5 py-6 text-center text-red-600 dark:text-gray-300 dark:bg-gray-900">
                     {error.message || "Failed to load memberships"}
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && !error && sortedItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="px-5 py-8 text-center text-gray-600 dark:text-gray-300 dark:bg-gray-900">
+                  <TableCell colSpan={11} className="px-5 py-8 text-center text-gray-600 dark:text-gray-300 dark:bg-gray-900">
                     No membership records found
                   </TableCell>
                 </TableRow>
@@ -658,10 +679,23 @@ export const AlumniMembershipsTab: React.FC = () => {
                         {item.program || "-"}
                       </TableCell>
                       <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
-                        {item.gymMembershipMonth || "-"}
+                        {item.facilityType
+                          ? item.facilityType.charAt(0).toUpperCase() + item.facilityType.slice(1)
+                          : item.gymMembershipMonth
+                          ? "Gym"
+                          : item.swimmingPoolMembershipMonth
+                          ? "Pool"
+                          : item.cricketMembershipMonth
+                          ? "Cricket"
+                          : "-"}
                       </TableCell>
                       <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
-                        {item.swimmingPoolMembershipMonth || "-"}
+                        {item.membershipType || "-"}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
+                        {item.membershipStartDate
+                          ? new Date(item.membershipStartDate).toLocaleDateString("en-PK")
+                          : item.gymMembershipMonth || item.swimmingPoolMembershipMonth || item.cricketMembershipMonth || "-"}
                       </TableCell>
                       <TableCell className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 dark:bg-gray-900">
                         {item.createdAt
@@ -980,16 +1014,22 @@ export const AlumniMembershipsTab: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">
                 Application Preview
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-12">
                 {applicationPreview?.pdfUrl && (
                   <button
                     type="button"
                     onClick={() => {
-                      window.open(applicationPreview.pdfUrl, "_blank", "noopener,noreferrer");
+                      const downloadUrl = `/api/alumni/memberships/${applicationPreview.membershipId}?mode=form-pdf&download=1`;
+                      const link = document.createElement("a");
+                      link.href = downloadUrl;
+                      link.download = `Membership_Application_${applicationPreview.membershipId}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     }}
                     className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    Print / Download
+                    Download
                   </button>
                 )}
                 <button
@@ -1017,18 +1057,11 @@ export const AlumniMembershipsTab: React.FC = () => {
             )}
 
             {!isLoadingApplicationPreview && !applicationPreviewError && applicationPreview && (
-              <div className="space-y-4">
-                <div className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Email:</span> {applicationPreview.email || "-"}
-                </div>
-                <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
-                  <iframe
-                    title={`membership-application-${applicationPreview.membershipId}`}
-                    src={applicationPreview.pdfUrl}
-                    className="w-full h-[70vh]"
-                  />
-                </div>
-              </div>
+              <MembershipApplicationPreviewBody
+                membershipId={applicationPreview.membershipId}
+                email={applicationPreview.email}
+                application={applicationPreview.application}
+              />
             )}
           </div>
         </Modal>

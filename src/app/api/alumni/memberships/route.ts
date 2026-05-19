@@ -12,12 +12,18 @@ type RawRow = {
   personalemail: string | null;
   officialemail: string | null;
   universityemail: string | null;
-  facultyname: string | null;
-  departmentname: string | null;
-  degreetitle: string | null;
+  faculty_name: string | null;
+  department_name: string | null;
+  program_name: string | null;
   created_at: string | null;
   gym_membership_month: string | null;
   swimmingpool_membership_month: string | null;
+  cricket_membership_month: string | null;
+  facility_type: string | null;
+  application_ref: string | null;
+  membership_type: string | null;
+  membership_start_date: string | null;
+  preferred_timing: string | null;
   status: string | null;
   reason: string | null;
 };
@@ -81,16 +87,25 @@ export async function GET(request: NextRequest) {
         a.personalemail,
         a.officialemail,
         a.universityemail,
-        a.facultyname,
-        a.departmentname,
-        a.degreetitle,
+        COALESCE(NULLIF(TRIM(a.facultyname), ''), f.faculty_name) AS faculty_name,
+        COALESCE(NULLIF(TRIM(a.departmentname), ''), d.department_name) AS department_name,
+        COALESCE(NULLIF(TRIM(a.degreetitle), ''), p.program_name) AS program_name,
         am.created_at,
         am.gym_membership_month,
         am.swimmingpool_membership_month,
+        am.cricket_membership_month,
+        am.facility_type,
+        am.application_ref,
+        am.membership_type,
+        am.membership_start_date,
+        am.preferred_timing,
         COALESCE(am.status, 'pending') AS status,
         am.reason
       FROM public.alumni_memberships am
       JOIN public.tbl_alumni a ON a.alumniid = am.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE 1=1
         ${accessFilterCondition}
         ${searchCondition}
@@ -108,12 +123,18 @@ export async function GET(request: NextRequest) {
       registrationNo: r.registrationno ?? null,
       name: r.alumniname ?? "",
       email: r.personalemail || r.officialemail || r.universityemail || null,
-      faculty: r.facultyname ?? null,
-      department: r.departmentname ?? null,
-      program: r.degreetitle ?? null,
+      faculty: r.faculty_name ?? null,
+      department: r.department_name ?? null,
+      program: r.program_name ?? null,
       createdAt: r.created_at,
       gymMembershipMonth: r.gym_membership_month ?? null,
       swimmingPoolMembershipMonth: r.swimmingpool_membership_month ?? null,
+      cricketMembershipMonth: r.cricket_membership_month ?? null,
+      facilityType: r.facility_type ?? null,
+      applicationRef: r.application_ref ?? null,
+      membershipType: r.membership_type ?? null,
+      membershipStartDate: r.membership_start_date ?? null,
+      preferredTiming: r.preferred_timing ?? null,
       status: (r.status ?? "pending").toLowerCase(),
       rejectionReason: r.reason ?? null,
     }));

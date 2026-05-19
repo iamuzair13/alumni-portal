@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
-import { generateMembershipPDF } from "@/lib/pdfGenerator";
+import { generateMembershipFormPDF } from "@/lib/pdfGenerator";
+import {
+  buildMembershipApplicationPreview,
+  buildMembershipFormPDFData,
+  type MembershipDbRow,
+} from "@/lib/membershipApplicationPreview";
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniId: string }> }) {
   try {
@@ -23,19 +28,43 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
 
     const { searchParams } = new URL(request.url);
     const mode = (searchParams.get("mode") || "").toLowerCase();
+    const download = (searchParams.get("download") || "").toLowerCase();
 
     const membershipRows = await sql/* sql */`
       SELECT
         am.id,
         am.alumniid,
+        am.created_at,
+        COALESCE(am.status, 'pending') AS status,
+        am.facility_type,
+        am.application_ref,
+        am.discount_type,
+        am.membership_type,
+        am.membership_start_date,
+        am.preferred_timing,
+        am.application_details,
         am.gym_membership_month,
         am.swimmingpool_membership_month,
+        am.cricket_membership_month,
         a.alumniname,
+        a.fathername,
+        a.dateofbirth,
+        a.cnicpassport,
+        a.sapid,
+        a.cgpa,
+        a.yearofending,
+        COALESCE(NULLIF(TRIM(a.facultyname), ''), f.faculty_name) AS faculty_name,
+        COALESCE(NULLIF(TRIM(a.departmentname), ''), d.department_name) AS department_name,
+        COALESCE(NULLIF(TRIM(a.degreetitle), ''), p.program_name) AS program_name,
+        a.campusname,
         a.personalemail,
         a.universityemail,
         a.officialemail
       FROM public.alumni_memberships am
       JOIN public.tbl_alumni a ON a.alumniid = am.alumniid
+      LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
+      LEFT JOIN public.tbl_departments d ON d.id = a.department
+      LEFT JOIN public.tbl_programs p ON p.id = a.program
       WHERE am.id = ${membershipIdNum}
       LIMIT 1
     `;
@@ -44,41 +73,41 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       return NextResponse.json({ error: "Membership application not found" }, { status: 404 });
     }
 
-    const membership = membershipRows[0] as {
-      gym_membership_month: string | null;
-      swimmingpool_membership_month: string | null;
-      alumniname: string | null;
+    const row = membershipRows[0] as MembershipDbRow & {
       personalemail: string | null;
       universityemail: string | null;
       officialemail: string | null;
     };
 
-    const alumniName = String(membership.alumniname || "");
-    const alumniEmail = String(membership.personalemail || membership.universityemail || membership.officialemail || "");
-    const gymMonth = membership.gym_membership_month;
-    const swimmingPoolMonth = membership.swimmingpool_membership_month;
-    const membershipType = gymMonth ? "Gym" : swimmingPoolMonth ? "Swimming Pool" : "Membership";
+    const alumniEmail = String(
+      row.personalemail || row.universityemail || row.officialemail || "",
+    );
 
-    if (mode === "pdf") {
-      const pdfBuffer = await generateMembershipPDF({
-        alumniName,
-        membershipType,
-        gymMembershipMonth: gymMonth,
-        swimmingPoolMembershipMonth: swimmingPoolMonth,
-      });
+    const application = buildMembershipApplicationPreview(row);
+    const pdfData = buildMembershipFormPDFData(row);
 
+    if (mode === "pdf" || mode === "form-pdf") {
+      const pdfBuffer = await generateMembershipFormPDF(pdfData);
+      const facilitySlug = application.facilityType;
       return new NextResponse(new Uint8Array(pdfBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `inline; filename=Membership_Application_${membershipIdNum}.pdf`,
+          "Content-Disposition": `${download === "1" || download === "true" ? "attachment" : "inline"}; filename=Membership_Application_${facilitySlug}_${membershipIdNum}.pdf`,
           "Cache-Control": "no-store",
         },
       });
     }
 
-    const pdfUrl = `/api/alumni/memberships/${membershipIdNum}?mode=pdf`;
-    return NextResponse.json({ email: alumniEmail, pdfUrl }, { status: 200 });
+    const pdfUrl = `/api/alumni/memberships/${membershipIdNum}?mode=form-pdf`;
+    return NextResponse.json(
+      {
+        email: alumniEmail,
+        pdfUrl,
+        application,
+      },
+      { status: 200 },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch application preview";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -95,14 +124,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only admins can update membership status
     if (!canModify(session.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { alumniId } = await ctx.params;
     const alumniIdNum = parseInt(String(alumniId), 10);
-    
+
     if (isNaN(alumniIdNum) || alumniIdNum <= 0) {
       return NextResponse.json({ error: "Invalid alumni ID" }, { status: 400 });
     }
@@ -110,7 +138,6 @@ export async function PATCH(
     const body = await request.json();
     const { status, rejectionReason } = body;
 
-    // Validate status
     const validStatuses = ["pending", "approved", "not-approved"];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
@@ -119,7 +146,6 @@ export async function PATCH(
       );
     }
 
-    // If status is "not-approved", rejectionReason is required
     if (status === "not-approved" && (!rejectionReason || rejectionReason.trim() === "")) {
       return NextResponse.json(
         { error: "Rejection reason is required when marking application as not approved" },
@@ -127,19 +153,9 @@ export async function PATCH(
       );
     }
 
-    // Fetch membership and alumni details before updating
     const membershipRows = await sql/* sql */`
-      SELECT
-        am.id,
-        am.alumniid,
-        am.gym_membership_month,
-        am.swimmingpool_membership_month,
-        a.alumniname,
-        a.personalemail,
-        a.universityemail,
-        a.officialemail
+      SELECT am.id
       FROM public.alumni_memberships am
-      JOIN public.tbl_alumni a ON a.alumniid = am.alumniid
       WHERE am.id = ${alumniIdNum}
       LIMIT 1
     `;
@@ -148,22 +164,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Membership application not found" }, { status: 404 });
     }
 
-    const membership = membershipRows[0] as {
-      gym_membership_month: string | null;
-      swimmingpool_membership_month: string | null;
-      alumniname: string | null;
-      personalemail: string | null;
-      universityemail: string | null;
-      officialemail: string | null;
-    };
-
-    const alumniName = String(membership.alumniname || "");
-    const alumniEmail = String(membership.personalemail || membership.universityemail || membership.officialemail || "");
-    const gymMonth = membership.gym_membership_month;
-    const swimmingPoolMonth = membership.swimmingpool_membership_month;
-    const membershipType = gymMonth ? "Gym" : swimmingPoolMonth ? "Swimming Pool" : "Membership";
-
-    // Update membership status and rejection reason
     if (status === "not-approved") {
       await sql/* sql */`
         UPDATE public.alumni_memberships
@@ -171,7 +171,6 @@ export async function PATCH(
         WHERE id = ${alumniIdNum}
       `;
     } else {
-      // Clear rejection reason when approving or setting to pending
       await sql/* sql */`
         UPDATE public.alumni_memberships
         SET status = ${status}, reason = NULL
@@ -179,13 +178,7 @@ export async function PATCH(
       `;
     }
 
-    return NextResponse.json(
-      { 
-        success: true, 
-        status,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, status }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update membership status";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -202,19 +195,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only admins can delete membership applications
     if (!canModify(session.user)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { alumniId } = await ctx.params;
     const membershipId = parseInt(String(alumniId), 10);
-    
+
     if (isNaN(membershipId) || membershipId <= 0) {
       return NextResponse.json({ error: "Invalid membership ID" }, { status: 400 });
     }
 
-    // Check if membership exists
     const membershipRows = await sql/* sql */`
       SELECT id
       FROM public.alumni_memberships
@@ -226,13 +217,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Membership application not found" }, { status: 404 });
     }
 
-    // Delete the membership application
     await sql/* sql */`
       DELETE FROM public.alumni_memberships
       WHERE id = ${membershipId}
     `;
 
-    return NextResponse.json({ success: true, message: "Membership application deleted successfully" }, { status: 200 });
+    return NextResponse.json(
+      { success: true, message: "Membership application deleted successfully" },
+      { status: 200 },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to delete membership application";
     return NextResponse.json({ error: msg }, { status: 500 });

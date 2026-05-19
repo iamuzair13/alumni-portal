@@ -7,7 +7,7 @@ export const viewport: Viewport = {
 };
 
 import { sql } from "@/lib/dbconnect";
-import SwimmingPoolMembershipForm from "@/components/forms/swimming-pool-membership";
+import CricketMembershipForm from "@/components/forms/cricket-membership";
 import { auth } from "@/lib/auth";
 import { resolveAlumniPageIds } from "@/lib/resolveAlumniPageIds";
 import AppHeader from "@/layout/AppHeader";
@@ -56,7 +56,7 @@ async function getProfile(searchParams: { sapid?: string }) {
 
 type AlumniProfileSearchParams = { sapid?: string };
 
-export default async function SwimmingPoolMembershipPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
+export default async function CricketMembershipPage({ searchParams }: { searchParams: Promise<AlumniProfileSearchParams> }) {
   const sp = await searchParams;
   let p: Profile | undefined;
   let profileError: string | null = null;
@@ -103,16 +103,16 @@ export default async function SwimmingPoolMembershipPage({ searchParams }: { sea
             <Alert variant="error" title="Account Lookup Failed" message={sapError} />
           </div>
         )}
-        <PageBanner title="Swimming Pool Membership Application" />
+        <PageBanner title="UOL Qalandars Cricket Club Membership" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:outline-gray-700">
-                Swimming Pool Membership Application
+                UOL Qalandars Cricket Club Membership
               </h1>
               <BackButton />
             </div>
-            <SwimmingPoolMembershipForm
+            <CricketMembershipForm
               alumniId={alumniId}
               name={name}
               sapId={sapId}

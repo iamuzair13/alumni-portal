@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     if (!session?.user) {
       return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
     }
-    return await handleCampusMembershipPost(req, "pool", session);
+    return await handleCampusMembershipPost(req, "cricket", session);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to submit application";
     return NextResponse.json({ error: errorMessage }, { status: 500 });

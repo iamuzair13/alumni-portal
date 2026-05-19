@@ -395,6 +395,23 @@ export async function sendWelcomeEmail(
   return await sendEmail({ to: alumniEmail, subject, html });
 }
 
+export async function sendCricketMembershipEmail(
+  alumniEmail: string,
+  alumniName: string
+): Promise<boolean> {
+  const subject = "Lahore Qalandars Cricket Club Membership Application – Update on Your Application";
+  const greeting = `Dear ${alumniName},`;
+  const body = `
+    <p style="margin: 0; color: #333333; font-size: 16px;">Thank you for submitting your membership application for the Lahore Qalandars Cricket Club.</p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">We are pleased to inform you that your application has been successfully received and is currently under review. Our team will evaluate the submitted details and notify you once a decision has been made regarding your membership status.</p>
+    <p style="margin: 12px 0 0 0; color: #333333; font-size: 16px;">Thank you for your interest in being a part of the Lahore Qalandars community.</p>
+  `;
+  const footer = "Warm regards,<br>Office of Alumni Relations, EE2 Building 4th Floor<br>University of Lahore";
+
+  const html = createEmailTemplate(subject, greeting, body, footer);
+  return await sendEmail({ to: alumniEmail, subject, html });
+}
+
 export async function sendGymMembershipEmail(
   alumniEmail: string,
   alumniName: string,
