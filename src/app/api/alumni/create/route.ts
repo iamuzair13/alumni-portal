@@ -4,6 +4,7 @@ import generateEasyPassword from "@/lib/passwordUtils";
 import { auth } from "@/lib/auth";
 import { parseChapterCities } from "@/lib/chapterCities";
 import { erpClient } from "@/lib/erpClient";
+import { autoAssignAssociationFromFaculty, parseFacultyId } from "@/lib/alumniAssociation";
 
 function normalizeCnicOrPassport(value: string, mode: "cnic" | "passport" | "auto" = "auto"): string {
   const raw = String(value ?? "");
@@ -445,6 +446,8 @@ export async function POST(req: Request) {
     // Track whether this is an update or insert for proper response status
     let isUpdate = false;
 
+    const facultyIdForAssociation = parseFacultyId(body.faculty);
+
     const id = await sql.begin(async (tx) => {
       // RULE 2: If existing record found (verify = 'underApproval'/'false'/null), UPDATE it
       if (existingRecord) {
@@ -492,6 +495,7 @@ export async function POST(req: Request) {
             yearofstarting = ${body.yearofstarting ?? null},
             yearofending = ${body.yearofending ?? null},
             faculty = ${body.faculty ?? null},
+            association_id = COALESCE(association_id, ${facultyIdForAssociation}),
             campusname = ${clean(body.campusname)},
             department = ${body.department ?? null},
             program = ${body.program ?? null},
@@ -581,6 +585,7 @@ export async function POST(req: Request) {
           yearofstarting,
           yearofending,
           faculty,
+          association_id,
           campusname,
           department,
           program,
@@ -647,6 +652,7 @@ export async function POST(req: Request) {
           ${body.yearofstarting ?? null},
           ${body.yearofending ?? null},
           ${body.faculty ?? null},
+          ${facultyIdForAssociation},
           ${clean(body.campusname)},
           ${body.department ?? null},
           ${body.program ?? null},
@@ -966,60 +972,13 @@ export async function POST(req: Request) {
           }
         }
 
-        // Auto-assign association based on selected faculty (first registration / when association_id is empty)
-        let facultyName = "";
-        if (body.faculty) {
-          // Fetch faculty name from database using the ID
-          const facultyRow = await sql/* sql */`
-            SELECT faculty_name FROM public.tbl_faculties WHERE id = ${body.faculty} LIMIT 1
-          `;
-          facultyName = facultyRow.length > 0 ? String(facultyRow[0].faculty_name).trim() : "";
-        }
-        if (facultyName) {
-          try {
-            const currentAssoc = await sql<{ association_id: number | null }[]>/* sql */`
-              SELECT association_id
-              FROM public.tbl_alumni
-              WHERE alumniid = ${id}
-              LIMIT 1
-            `;
-
-            const existingAssociationId = currentAssoc[0]?.association_id ?? null;
-
-            if (existingAssociationId) {
-
-            } else {
-              const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
-                SELECT id, faculty_name AS title
-                FROM public.tbl_faculties
-                WHERE faculty_name IS NOT NULL
-                  AND LOWER(TRIM(faculty_name)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
-                ORDER BY
-                  CASE
-                    WHEN LOWER(TRIM(faculty_name)) = LOWER(TRIM(${facultyName})) THEN 0
-                    WHEN LOWER(TRIM(faculty_name)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
-                    WHEN LOWER(TRIM(faculty_name)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
-                    ELSE 3
-                  END,
-                  id ASC
-                LIMIT 1
-              `;
-
-              const chosen = assocRows[0];
-
-              if (chosen?.id) {
-                await sql/* sql */`
-                  UPDATE public.tbl_alumni
-                  SET association_id = ${chosen.id}
-                  WHERE alumniid = ${id}
-                `;
-
-              }
-            }
-          } catch (err) {
-
-          }
-        }
+        // Faculty id is the association id (tbl_faculties) on first registration
+        await autoAssignAssociationFromFaculty({
+          alumniId: id,
+          facultyId: body.faculty,
+          facultyName: body.facultyname,
+          onlyWhenEmpty: true,
+        });
       } catch (assignmentError) {
         // Don't fail the registration if chapter/association assignment fails
 

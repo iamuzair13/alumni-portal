@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { parseChapterCities } from "@/lib/chapterCities";
 import { buildAlumniPresenceBaseWhere } from "@/lib/master-filter-utils";
+import { autoAssignAssociationFromFaculty } from "@/lib/alumniAssociation";
 
 async function autoAssignChapter1FromHomeLocation(args: {
   alumniId: number;
@@ -180,57 +181,6 @@ async function autoAssignChapter2FromWorkLocation(args: {
       `;
 
     }
-  } catch (err) {
-
-  }
-}
-
-async function autoAssignAssociationFromFaculty(args: { alumniId: number; facultyName: string | null | undefined }) {
-  const facultyName = args.facultyName ? String(args.facultyName).trim() : "";
-  if (!facultyName) {
-
-    return;
-  }
-
-  try {
-    const currentAssoc = await sql<{ association_id: number | null }[]>/* sql */`
-      SELECT association_id
-      FROM public.tbl_alumni
-      WHERE alumniid = ${args.alumniId}
-      LIMIT 1
-    `;
-    const existingAssociationId = currentAssoc[0]?.association_id ?? null;
-
-    if (existingAssociationId) {
-
-      return;
-    }
-
-    const assocRows = await sql<{ id: number; title: string | null }[]>/* sql */`
-      SELECT id, faculty_name AS title
-      FROM public.tbl_faculties
-      WHERE faculty_name IS NOT NULL
-        AND LOWER(TRIM(faculty_name)) LIKE LOWER(TRIM(${`%${facultyName}%`}))
-      ORDER BY
-        CASE
-          WHEN LOWER(TRIM(faculty_name)) = LOWER(TRIM(${facultyName})) THEN 0
-          WHEN LOWER(TRIM(faculty_name)) LIKE LOWER(TRIM(${facultyName})) || '%' THEN 1
-          WHEN LOWER(TRIM(faculty_name)) LIKE '%' || LOWER(TRIM(${facultyName})) || '%' THEN 2
-          ELSE 3
-        END,
-        id ASC
-      LIMIT 1
-    `;
-    const chosen = assocRows[0];
-
-    if (!chosen?.id) return;
-
-    await sql/* sql */`
-      UPDATE public.tbl_alumni
-      SET association_id = ${chosen.id}
-      WHERE alumniid = ${args.alumniId}
-    `;
-
   } catch (err) {
 
   }
@@ -2043,6 +1993,7 @@ export async function POST(req: Request) {
       await autoAssignAssociationFromFaculty({
         alumniId: Number(updated.alumniid),
         facultyName: d.facultyname,
+        onlyWhenEmpty: true,
       });
       
       return NextResponse.json({ 
@@ -2095,6 +2046,7 @@ export async function POST(req: Request) {
     await autoAssignAssociationFromFaculty({
       alumniId: Number((created as { alumniid: number }).alumniid),
       facultyName: d.facultyname,
+      onlyWhenEmpty: true,
     });
 
     return NextResponse.json({ ok: true, created }, { status: 201 });
