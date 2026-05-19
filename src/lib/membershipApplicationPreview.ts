@@ -4,6 +4,13 @@ import {
   type CampusMembershipApplicationDetails,
 } from "@/lib/campusMembership";
 import type { MembershipFormPDFData } from "@/lib/pdfGenerator";
+import { resolveStoredUploadUrl } from "@/lib/uploadsImageUrl";
+
+export type MembershipUploadedDocument = {
+  label: string;
+  filename: string;
+  url: string;
+};
 
 export type MembershipDbRow = {
   created_at: string | null;
@@ -64,6 +71,7 @@ export type MembershipApplicationPreview = {
     alumniCard: string;
     cnic: string;
   };
+  uploadedDocuments: MembershipUploadedDocument[];
 };
 
 export function resolveMembershipFacilityType(row: MembershipDbRow): CampusFacilityType {
@@ -122,6 +130,28 @@ function docSubmittedLabel(
   const has =
     Boolean(String(doc.url ?? "").trim()) || Boolean(String(doc.filename ?? "").trim());
   return has ? "Yes" : "No";
+}
+
+function toUploadedDocument(
+  doc: { label?: string; url?: string; filename?: string } | null | undefined,
+  defaultLabel: string,
+): MembershipUploadedDocument {
+  const label = String(doc?.label ?? defaultLabel).trim() || defaultLabel;
+  const filename = String(doc?.filename ?? "").trim();
+  const url = resolveStoredUploadUrl(String(doc?.url ?? "").trim());
+  return { label, filename, url };
+}
+
+function buildUploadedDocuments(
+  details: CampusMembershipApplicationDetails | null,
+): MembershipUploadedDocument[] {
+  const checklist: Array<{ key: "alumniCard" | "cnic"; label: string }> = [
+    { key: "alumniCard", label: "Alumni Card" },
+    { key: "cnic", label: "CNIC" },
+  ];
+  return checklist.map(({ key, label }) =>
+    toUploadedDocument(details?.documents?.[key] ?? null, label),
+  );
 }
 
 export function buildMembershipApplicationPreview(
@@ -183,6 +213,7 @@ export function buildMembershipApplicationPreview(
       alumniCard: docSubmittedLabel(details?.documents?.alumniCard),
       cnic: docSubmittedLabel(details?.documents?.cnic),
     },
+    uploadedDocuments: buildUploadedDocuments(details),
   };
 }
 

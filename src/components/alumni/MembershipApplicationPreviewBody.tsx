@@ -8,6 +8,57 @@ type Props = {
   application?: MembershipApplicationPreview;
 };
 
+const DETAIL_SECTIONS = (application: MembershipApplicationPreview) =>
+  [
+    {
+      title: "(a) Alumni Personal Details",
+      rows: [
+        ["Name", application.studentName],
+        ["Father's Name", application.fatherName],
+        ["DOB", application.dob],
+        ["CNIC", application.cnic],
+      ],
+    },
+    {
+      title: "(b) Alumni Education Details",
+      rows: [
+        ["Campus", application.campus],
+        ["Faculty", application.faculty],
+        ["Department", application.department],
+        ["Program", application.program],
+        ["SAP ID", application.sapCode],
+        ["CGPA", application.cgpa],
+        ["Passing Out Year", application.passingOutYear],
+      ],
+    },
+    {
+      title: "(c) Membership Details",
+      rows: [
+        ["Applying For", application.applyingFor],
+        ["Discount Type", application.discountType],
+        ["Membership Type", application.membershipType],
+        ["Membership Start Date", application.membershipStartDate],
+        ["Preferred Timing", application.preferredTiming],
+      ],
+    },
+    {
+      title: "(d) Medical & Fitness Information",
+      rows: [
+        ["Medical Conditions", application.medicalConditions],
+        ["Allergies", application.allergies],
+        ["Physical Disability", application.physicalDisability],
+      ],
+    },
+    {
+      title: "(e) Emergency Contact",
+      rows: [
+        ["Contact Name", application.emergencyContactName],
+        ["Relationship", application.emergencyContactRelationship],
+        ["Contact Number", application.emergencyContactNumber],
+      ],
+    },
+  ] as const;
+
 export function MembershipApplicationPreviewBody({ membershipId, email, application }: Props) {
   return (
     <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
@@ -41,64 +92,7 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
           </div>
 
           <div className="space-y-6">
-            {(
-              [
-                {
-                  title: "(a) Alumni Personal Details",
-                  rows: [
-                    ["Name", application.studentName],
-                    ["Father's Name", application.fatherName],
-                    ["DOB", application.dob],
-                    ["CNIC", application.cnic],
-                  ],
-                },
-                {
-                  title: "(b) Alumni Education Details",
-                  rows: [
-                    ["Campus", application.campus],
-                    ["Faculty", application.faculty],
-                    ["Department", application.department],
-                    ["Program", application.program],
-                    ["SAP ID", application.sapCode],
-                    ["CGPA", application.cgpa],
-                    ["Passing Out Year", application.passingOutYear],
-                  ],
-                },
-                {
-                  title: "(c) Membership Details",
-                  rows: [
-                    ["Applying For", application.applyingFor],
-                    ["Discount Type", application.discountType],
-                    ["Membership Type", application.membershipType],
-                    ["Membership Start Date", application.membershipStartDate],
-                    ["Preferred Timing", application.preferredTiming],
-                  ],
-                },
-                {
-                  title: "(d) Medical & Fitness Information",
-                  rows: [
-                    ["Medical Conditions", application.medicalConditions],
-                    ["Allergies", application.allergies],
-                    ["Physical Disability", application.physicalDisability],
-                  ],
-                },
-                {
-                  title: "(e) Emergency Contact",
-                  rows: [
-                    ["Contact Name", application.emergencyContactName],
-                    ["Relationship", application.emergencyContactRelationship],
-                    ["Contact Number", application.emergencyContactNumber],
-                  ],
-                },
-                {
-                  title: "(f) Documents Checklist",
-                  rows: [
-                    ["Alumni Card", application.documentsChecklist.alumniCard],
-                    ["CNIC", application.documentsChecklist.cnic],
-                  ],
-                },
-              ] as const
-            ).map((section) => (
+            {DETAIL_SECTIONS(application).map((section) => (
               <div
                 key={section.title}
                 className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700"
@@ -125,17 +119,73 @@ export function MembershipApplicationPreviewBody({ membershipId, email, applicat
 
             <div className="rounded-xl border border-slate-200 overflow-hidden dark:border-gray-700">
               <div className="bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 dark:bg-gray-800 dark:text-gray-100">
-                Review & Approval
+                (f) Documents Checklist
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-gray-700">
-                <div className="p-6 min-h-[120px] text-sm font-semibold text-slate-800 dark:text-gray-100">
-                  Reviewed By (ARO):
-                </div>
-                <div className="p-6 min-h-[120px] text-sm font-semibold text-slate-800 dark:text-gray-100">
-                  Approved By (Competent Authority):
-                </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-[520px] w-full text-sm">
+                  <thead className="bg-white border-b border-slate-200 dark:bg-gray-800 dark:border-gray-700">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-semibold text-slate-700 dark:text-gray-100">
+                        Document
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold text-slate-700 w-[100px] dark:text-gray-100">
+                        Submitted
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold text-slate-700 w-[120px] dark:text-gray-100">
+                        View
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white dark:divide-gray-700 dark:bg-gray-900">
+                    {(application.uploadedDocuments?.length
+                      ? application.uploadedDocuments
+                      : [
+                          { label: "Alumni Card", filename: "", url: "" },
+                          { label: "CNIC", filename: "", url: "" },
+                        ]
+                    ).map((doc) => {
+                      const submitted =
+                        doc.label === "Alumni Card"
+                          ? application.documentsChecklist.alumniCard
+                          : doc.label === "CNIC"
+                            ? application.documentsChecklist.cnic
+                            : doc.url || doc.filename
+                              ? "Yes"
+                              : "No";
+                      return (
+                        <tr key={doc.label} className="bg-white dark:bg-gray-900">
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-slate-900 dark:text-gray-100">{doc.label}</div>
+                            {doc.filename ? (
+                              <div className="mt-0.5 text-xs text-slate-600 break-all dark:text-gray-400">
+                                {doc.filename}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 text-slate-800 dark:text-gray-100">{submitted}</td>
+                          <td className="px-4 py-3">
+                            {doc.url ? (
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                              >
+                                Open
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-500 dark:text-gray-400">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
+
+            
           </div>
         </div>
       ) : (

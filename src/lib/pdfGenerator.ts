@@ -847,8 +847,8 @@ export function generateMembershipFormPDF(data: MembershipFormPDFData): Promise<
       drawSpanRow("Preferred Timing:", data.preferredTiming);
 
       drawSectionHeader("d", "Medical & Fitness Information", 2);
-      drawSpanRow("Medical Conditions:", data.medicalConditions);
-      drawFourColRow("Allergies:", data.allergies, "Physical Disability:", data.physicalDisability);
+      drawFourColRow("Medical Conditions:", data.medicalConditions, "Physical Disability:", data.physicalDisability);
+      drawSpanRow("Allergies:", data.allergies);
 
       drawSectionHeader("e", "Emergency Contact", 1);
       drawFourColRow(
