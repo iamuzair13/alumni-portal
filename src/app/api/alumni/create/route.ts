@@ -4,7 +4,10 @@ import generateEasyPassword from "@/lib/passwordUtils";
 import { auth } from "@/lib/auth";
 import { parseChapterCities } from "@/lib/chapterCities";
 import { erpClient } from "@/lib/erpClient";
-import { autoAssignAssociationFromFaculty, parseFacultyId } from "@/lib/alumniAssociation";
+import {
+  autoAssignAssociationFromFaculty,
+  resolveValidFacultyId,
+} from "@/lib/alumniAssociation";
 
 function normalizeCnicOrPassport(value: string, mode: "cnic" | "passport" | "auto" = "auto"): string {
   const raw = String(value ?? "");
@@ -446,7 +449,7 @@ export async function POST(req: Request) {
     // Track whether this is an update or insert for proper response status
     let isUpdate = false;
 
-    const facultyIdForAssociation = parseFacultyId(body.faculty);
+    const validFacultyId = await resolveValidFacultyId(body.faculty);
 
     const id = await sql.begin(async (tx) => {
       // RULE 2: If existing record found (verify = 'underApproval'/'false'/null), UPDATE it
@@ -494,8 +497,8 @@ export async function POST(req: Request) {
             cgpa = ${body.cgpa ?? null},
             yearofstarting = ${body.yearofstarting ?? null},
             yearofending = ${body.yearofending ?? null},
-            faculty = ${body.faculty ?? null},
-            association_id = COALESCE(association_id, ${facultyIdForAssociation}),
+            faculty = ${validFacultyId},
+            association_id = NULL,
             campusname = ${clean(body.campusname)},
             department = ${body.department ?? null},
             program = ${body.program ?? null},
@@ -651,8 +654,8 @@ export async function POST(req: Request) {
           ${body.cgpa ?? null},
           ${body.yearofstarting ?? null},
           ${body.yearofending ?? null},
-          ${body.faculty ?? null},
-          ${facultyIdForAssociation},
+          ${validFacultyId},
+          NULL,
           ${clean(body.campusname)},
           ${body.department ?? null},
           ${body.program ?? null},
@@ -975,7 +978,7 @@ export async function POST(req: Request) {
         // Faculty id is the association id (tbl_faculties) on first registration
         await autoAssignAssociationFromFaculty({
           alumniId: id,
-          facultyId: body.faculty,
+          facultyId: validFacultyId,
           facultyName: body.facultyname,
           onlyWhenEmpty: true,
         });

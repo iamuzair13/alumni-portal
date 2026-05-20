@@ -7,6 +7,23 @@ export function parseFacultyId(value: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Returns faculty id only when it exists in tbl_faculties (safe for FK columns). */
+export async function resolveValidFacultyId(value: unknown): Promise<number | null> {
+  const facultyId = parseFacultyId(value);
+  if (!facultyId) return null;
+  const rows = await sql<{ id: number }[]>/* sql */`
+    SELECT id FROM public.tbl_faculties WHERE id = ${facultyId} LIMIT 1
+  `;
+  return rows[0]?.id ?? null;
+}
+
+async function facultyIdExists(facultyId: number): Promise<boolean> {
+  const rows = await sql<{ id: number }[]>/* sql */`
+    SELECT id FROM public.tbl_faculties WHERE id = ${facultyId} LIMIT 1
+  `;
+  return !!rows[0]?.id;
+}
+
 /**
  * Faculty and association are the same entity (tbl_faculties.id).
  * Resolves association id from faculty FK or, for legacy payloads, faculty name.
@@ -61,6 +78,7 @@ export async function autoAssignAssociationFromFaculty(args: {
     facultyName: args.facultyName,
   });
   if (!associationId) return;
+  if (!(await facultyIdExists(associationId))) return;
 
   try {
     if (onlyWhenEmpty) {

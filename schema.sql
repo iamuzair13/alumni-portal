@@ -289,7 +289,7 @@ CREATE TABLE IF NOT EXISTS public.tbl_alumni
     change_approval character varying(20) COLLATE pg_catalog."default" DEFAULT NULL,
     CONSTRAINT tbl_alumni_pkey PRIMARY KEY (alumniid),
     CONSTRAINT tbl_alumni_association_id_fkey FOREIGN KEY (association_id)
-        REFERENCES public.tbl_associations (id) MATCH SIMPLE
+        REFERENCES public.tbl_faculties (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
     CONSTRAINT tbl_alumni_association_job_fkey FOREIGN KEY (association_job)
