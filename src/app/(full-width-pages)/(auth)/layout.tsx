@@ -8,9 +8,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="primaryBackground h-full w-full">
+    <div className="primaryBackground   w-full">
       <ThemeProvider>
-        <div className="min-h-screen flex w-full flex-col items-center justify-start p-6 sm:px-0 sm:py-8">{children}</div>
+        <div className="flex w-full  flex-col items-center justify-start">{children}</div>
       </ThemeProvider>
     </div>
   );
