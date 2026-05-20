@@ -3,22 +3,20 @@ import { sql } from "@/lib/dbconnect";
 
 export async function GET() {
   try {
+    // association_id on tbl_alumni references tbl_faculties.id (faculty = association)
     const rows = await sql/* sql */`
-      SELECT 
+      SELECT
         id,
         COALESCE(
-          NULLIF(TRIM(to_jsonb(a) ->> 'title'), ''),
-          NULLIF(TRIM(to_jsonb(a) ->> 'association_name'), ''),
-          NULLIF(TRIM(to_jsonb(a) ->> 'name'), ''),
-          NULLIF(TRIM(to_jsonb(a) ->> 'faculty_name'), ''),
-          ('Association #' || id::text)
+          NULLIF(TRIM(faculty_name), ''),
+          ('Faculty #' || id::text)
         ) AS title,
-        NULLIF(TRIM(to_jsonb(a) ->> 'description'), '') AS description,
-        NULLIF(TRIM(to_jsonb(a) ->> 'dean'), '') AS dean,
-        NULLIF(TRIM(to_jsonb(a) ->> 'phone'), '') AS phone,
-        NULLIF(TRIM(to_jsonb(a) ->> 'email'), '') AS email,
-        NULLIF(TRIM(to_jsonb(a) ->> 'address'), '') AS address
-      FROM public.tbl_associations a
+        NULL::text AS description,
+        NULL::text AS dean,
+        NULL::text AS phone,
+        NULL::text AS email,
+        NULL::text AS address
+      FROM public.tbl_faculties
       ORDER BY title ASC
     `;
     

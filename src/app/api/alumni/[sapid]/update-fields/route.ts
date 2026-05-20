@@ -3,6 +3,7 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { canModify } from "@/lib/alumniProfile";
 import { logAdminAction } from "@/lib/adminActivityLog";
+import { resolveValidFacultyId } from "@/lib/alumniAssociation";
 
 function parseJsonbRecord(v: unknown): Record<string, unknown> {
   if (!v) return {};
@@ -278,7 +279,21 @@ export async function PUT(req: Request, ctx: { params: Promise<{ sapid: string }
     const higherEducationInstituteCityVal = "higher_education_institute_city" in body ? cleanValue("higher_education_institute_city", body.higher_education_institute_city) : undefined;
     const isScholarshipVal = "is_scholarship" in body ? cleanValue("is_scholarship", body.is_scholarship) : undefined;
     // Association field
-    const associationIdVal = "association_id" in body ? (body.association_id !== null && body.association_id !== undefined && body.association_id !== "" ? Number(body.association_id) : null) : undefined;
+    let associationIdVal: number | null | undefined = undefined;
+    if ("association_id" in body) {
+      if (body.association_id === null || body.association_id === undefined || body.association_id === "") {
+        associationIdVal = null;
+      } else {
+        const resolved = await resolveValidFacultyId(body.association_id);
+        if (!resolved) {
+          return NextResponse.json(
+            { error: "Invalid association. Select a faculty from the list.", field: "association_id", reason: "INVALID_FK" },
+            { status: 400 }
+          );
+        }
+        associationIdVal = resolved;
+      }
+    }
     // System fields
     const verifyVal = "verify" in body ? cleanValue("verify", body.verify) : undefined;
     const lasttimeloginVal = undefined;

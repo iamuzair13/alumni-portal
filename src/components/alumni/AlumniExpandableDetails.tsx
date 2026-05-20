@@ -142,14 +142,6 @@ async function getChaptersList(): Promise<Chapter[]> {
   return data.chapters ?? [];
 }
 
-async function getAssociationsList(): Promise<Association[]> {
-  const res = await fetch("/api/associations/list", { headers: { "accept": "application/json" } });
-  if (!res.ok) {
-    throw new Error("Failed to fetch associations list");
-  }
-  const data = (await res.json()) as { associations: Association[] };
-  return data.associations ?? [];
-}
 
 type AlumniExpandableDetailsProps = {
   sapId: string;
@@ -743,12 +735,12 @@ function AlumniExpandableDetails({
     refetchOnWindowFocus: false,
   });
 
-  const { data: associationsList = [] } = useQuery<Association[]>({
-    queryKey: ["associations-list"],
-    queryFn: getAssociationsList,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  const associationsList = useMemo<Association[]>(() => {
+    return (facultiesData ?? []).map((f) => ({
+      id: Number(f.id),
+      title: String(f.faculty_name ?? "").trim() || `Faculty #${f.id}`,
+    }));
+  }, [facultiesData]);
 
   // Keep local state in sync with cached TanStack Query data
   useEffect(() => {

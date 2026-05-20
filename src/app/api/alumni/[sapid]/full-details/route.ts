@@ -176,26 +176,29 @@ export async function GET(_: Request, ctx: { params: Promise<{ sapid: string }> 
     }
     const chapterDisplay = chapters.length > 0 ? chapters.join(", ") : null;
     
-    // Fetch association data
-    const associationId = row.association_id ? Number(row.association_id) : null;
+    // Association is the faculty row (tbl_faculties.id)
+    const facultyFk = row.faculty ? Number(row.faculty) : null;
+    const associationId = row.association_id
+      ? Number(row.association_id)
+      : facultyFk;
     let associationTitle: string | null = null;
     if (associationId) {
       const associationRows = await sql/* sql */`
         SELECT
           COALESCE(
-            NULLIF(TRIM(to_jsonb(a) ->> 'title'), ''),
-            NULLIF(TRIM(to_jsonb(a) ->> 'association_name'), ''),
-            NULLIF(TRIM(to_jsonb(a) ->> 'name'), ''),
-            NULLIF(TRIM(to_jsonb(a) ->> 'faculty_name'), ''),
-            ('Association #' || a.id::text)
+            NULLIF(TRIM(faculty_name), ''),
+            ('Faculty #' || id::text)
           ) AS title
-        FROM public.tbl_associations a
-        WHERE a.id = ${associationId}
+        FROM public.tbl_faculties
+        WHERE id = ${associationId}
         LIMIT 1
       `;
       if (associationRows[0]) {
         associationTitle = String(associationRows[0].title ?? null);
       }
+    }
+    if (!associationTitle && row.facultyname) {
+      associationTitle = String(row.facultyname);
     }
     
     // Return all fields from tbl_alumni
