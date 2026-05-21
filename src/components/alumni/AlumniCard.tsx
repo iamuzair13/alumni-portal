@@ -103,6 +103,15 @@ const STATUS_ICON_MAP: Record<CardStatus, React.FC<{ className?: string }>> = {
   delivered: CheckCircleIcon,
 };
 
+/** Stored in tblcard.reason_onhold; sent in notification email. */
+export const ON_HOLD_REASON_OPTIONS = [
+  { value: "Picture issue", label: "📷 Picture Issue — Blurry, incorrect format, or missing photo" },
+  { value: "Data Mismatch", label: "📋 Data Mismatch — Information doesn't match university records" },
+  { value: "Islamabad Campus", label: "🏛️ Islamabad Campus" },
+] as const;
+
+export type OnHoldReason = (typeof ON_HOLD_REASON_OPTIONS)[number]["value"];
+
 
 export type AlumniCardProps = {
   item: AlumniCardItem;
@@ -804,9 +813,17 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
     
     const handleConfirmStatusChange = async () => {
       if (!pendingStatusChange) return;
-      if (pendingStatusChange.status === "Onhold" && !String(pendingStatusChange.reason || "").trim()) {
-        setError("Reason is required when status is Onhold");
-        return;
+      if (pendingStatusChange.status === "Onhold") {
+        const reason = String(pendingStatusChange.reason || "").trim();
+        if (!reason) {
+          setError("Reason is required when status is Onhold");
+          return;
+        }
+        const validReasons = ON_HOLD_REASON_OPTIONS.map((o) => o.value);
+        if (!validReasons.includes(reason as OnHoldReason)) {
+          setError("Please select a valid On Hold reason from the list");
+          return;
+        }
       }
       setShowConfirmModal(false);
       await submitStatusChange(pendingStatusChange.status, pendingStatusChange.reason || "");
@@ -1103,8 +1120,11 @@ export const AlumniDataTable: React.FC<AlumniDataTableProps> = ({
                         `}
                       >
                         <option value="" disabled>Select a reason...</option>
-                        <option value="Picture issue">📷 Picture Issue — Blurry, incorrect format, or missing photo</option>
-                        <option value="Data Mismatch">📋 Data Mismatch — Information doesn't match university records</option>
+                        {ON_HOLD_REASON_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                         <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
