@@ -7,6 +7,7 @@ import {
   discountCategoryLabel,
   discountTypeOptionLabel,
   formatAlumniScholarshipApplicationPdfId,
+  formatScholarshipCgpaGradeDisplay,
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   parseMastersDetails,
@@ -120,6 +121,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.kinship_details,
         asch.uploaded_documents,
         asch.admission_application_ref,
+        asch.grade_percent,
         a.alumniname,
         a.sapid,
         a.registrationno,
@@ -162,6 +164,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       kinship_details: unknown;
       uploaded_documents: unknown;
       admission_application_ref: string | null;
+      grade_percent: string | null;
       alumniname: string | null;
       sapid: string | null;
       registrationno: string | null;
@@ -329,10 +332,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         })
       : "Data unavailable";
 
-    const cgpaDisplay =
-      app.cgpa != null && Number.isFinite(Number(app.cgpa))
-        ? String(app.cgpa)
-        : "Data is missing";
+    const cgpaGradeDisplay = formatScholarshipCgpaGradeDisplay(app.cgpa, app.grade_percent);
 
     const passingOutYearDisplay =
       app.yearofending != null && Number.isFinite(Number(app.yearofending))
@@ -382,7 +382,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       scholarshipType: discountCategoryLabel(app.discount_type, app.apply_for),
       applyingFor: applyingForDisplay,
       previousDegree: String(app.degreetitle || "").trim() || "Data is missing",
-      cgpaLastDegree: cgpaDisplay,
+      cgpaLastDegree: cgpaGradeDisplay,
       requestedDiscount: applyingForDisplay,
       documentsAttached: documentsLines,
       uploadedDocuments,

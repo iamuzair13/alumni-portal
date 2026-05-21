@@ -214,6 +214,33 @@ export function parseMastersDetails(raw: unknown): MastersDetailsParsed | null {
 
 export type UploadedDocItem = { label: string; url: string; filename?: string };
 
+/** Normalize optional Grade(%) from the form (e.g. "95" → "95%"). */
+export function normalizeGradePercent(value: unknown): string | null {
+  const s = String(value ?? "").trim();
+  if (!s) return null;
+  const numeric = s.replace(/%/g, "").trim();
+  if (!numeric) return null;
+  if (/^\d+(\.\d+)?$/.test(numeric)) return `${numeric}%`;
+  return s;
+}
+
+/**
+ * Admin/PDF display: join profile CGPA and application Grade(%) as "3.4/95%".
+ */
+export function formatScholarshipCgpaGradeDisplay(
+  cgpa: number | string | null | undefined,
+  gradePercent: string | null | undefined,
+  emptyFallback = "Data is missing",
+): string {
+  const cgpaStr =
+    cgpa != null && cgpa !== "" && Number.isFinite(Number(cgpa)) ? String(cgpa) : "";
+  const gradeStr = String(gradePercent ?? "").trim();
+  if (cgpaStr && gradeStr) return `${cgpaStr}/${gradeStr}`;
+  if (cgpaStr) return cgpaStr;
+  if (gradeStr) return gradeStr;
+  return emptyFallback;
+}
+
 export function parseUploadedDocuments(raw: unknown): UploadedDocItem[] {
   if (raw == null) return [];
   let arr: unknown = raw;

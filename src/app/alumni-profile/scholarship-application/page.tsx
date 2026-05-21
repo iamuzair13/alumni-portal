@@ -90,6 +90,8 @@ function ScholarshipApplicationContent() {
   const [docOtherFile, setDocOtherFile] = useState<File | null>(null);
   const [docOtherText, setDocOtherText] = useState("");
   const [admissionApplicationRef, setAdmissionApplicationRef] = useState("");
+  /** Optional marks % for Educational Record (stored on scholarship application, not profile). */
+  const [gradePercent, setGradePercent] = useState("");
 
   // Declaration
   const [mastersDeclarationAccepted, setMastersDeclarationAccepted] = useState(false);
@@ -464,6 +466,9 @@ function ScholarshipApplicationContent() {
               }
               fd.set("admissionApplicationRef", admissionApplicationRef.trim());
               fd.set("declarationAccepted", mastersDeclarationAccepted ? "true" : "false");
+              if (gradePercent.trim()) {
+                fd.set("gradePercent", gradePercent.trim());
+              }
 
               return fetch(url, { method: "POST", body: fd });
             })()
@@ -496,6 +501,9 @@ function ScholarshipApplicationContent() {
               fd.set("docKinshipFrc", docKinshipFrcFile as File);
               fd.set("docKinshipCnicKin", docKinshipCnicKinFile as File);
               fd.set("docKinshipCnicAlumni", docKinshipCnicAlumniFile as File);
+              if (gradePercent.trim()) {
+                fd.set("gradePercent", gradePercent.trim());
+              }
               return fetch(url, { method: "POST", body: fd });
             })()
           : await fetch(url, {
@@ -509,6 +517,7 @@ function ScholarshipApplicationContent() {
                 kinshipFatherName: formData.kinshipFatherName || null,
                 kinshipCnic: formData.kinshipCnic || null,
                 fatherCnic: formData.fatherCnic || null,
+                gradePercent: gradePercent.trim() || null,
               }),
             });
 
@@ -609,6 +618,7 @@ function ScholarshipApplicationContent() {
       setDocOtherFile(null);
       setDocOtherText("");
       setAdmissionApplicationRef("");
+      setGradePercent("");
       setMastersDeclarationAccepted(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to submit application. Please try again.", {
@@ -885,6 +895,40 @@ function ScholarshipApplicationContent() {
                               className="px-3 py-2.5 bg-[#f0f1f2] text-black w-full text-xs sm:text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
                             />
                             <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <p className="mb-2 text-sm text-slate-900 font-medium">
+                          Educational Record (UOL)
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="mb-2 text-sm text-slate-900 font-medium block">
+                              CGPA
+                            </label>
+                            <input
+                              type="text"
+                              value={missing((data as any)?.cgpa)}
+                              readOnly
+                              className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p>
+                          </div>
+                          <div>
+                            <label className="mb-2 text-sm text-slate-900 font-medium block">
+                              Grade (%)
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="e.g. 95"
+                              value={gradePercent}
+                              onChange={(e) => setGradePercent(e.target.value)}
+                              className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Optional — enter your marks percentage</p>
                           </div>
                         </div>
                       </div>
@@ -1241,7 +1285,19 @@ function ScholarshipApplicationContent() {
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">Department</label><input type="text" value={missing((data as any)?.departmentname)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">Program</label><input type="text" value={missing((data as any)?.degreetitle)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">SAP ID</label><input type="text" value={missing(data?.sapid)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">CGPA</label><input type="text" value={missing((data as any)?.cgpa)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">CGPA</label><input type="text" value={missing((data as any)?.cgpa)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /><p className="mt-1 text-xs text-gray-500">Auto-fetched from your profile</p></div>
+                        <div>
+                          <label className="mb-2 text-sm text-slate-900 font-medium block">Grade (%)</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="e.g. 95"
+                            value={gradePercent}
+                            onChange={(e) => setGradePercent(e.target.value)}
+                            className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">Optional — enter your marks percentage</p>
+                        </div>
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">Passing Out Year</label><input type="text" value={missing((data as any)?.yearofending)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">Discount Category</label><input type="text" value={missing(discountOptions.find((option) => option.value === formData.discountType)?.label)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
                         <div className="sm:col-span-2"><label className="mb-2 text-sm text-slate-900 font-medium block">Applying For</label><input type="text" value={missing(formData.applyingFor)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>

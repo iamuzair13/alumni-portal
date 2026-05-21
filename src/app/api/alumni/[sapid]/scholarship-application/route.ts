@@ -17,6 +17,7 @@ import {
 import {
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
+  normalizeGradePercent,
 } from "@/lib/scholarshipLetter";
 
 type Payload = {
@@ -34,6 +35,7 @@ type Payload = {
   kinshipPassingOutYear?: string | null;
   kinshipCnic?: string | null;
   fatherCnic?: string | null;
+  gradePercent?: string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -126,12 +128,14 @@ export async function POST(
     let uploadedDocuments: Array<{ label: string; url: string; filename: string; type: string; size: number }> | null =
       null;
     let admissionApplicationRef: string | null = null;
+    let gradePercent: string | null = null;
 
     if (isMultipart) {
       const formData = await req.formData();
       discountType = String(formData.get("discountType") || "").trim();
       applyingFor = String(formData.get("applyingFor") || "").trim();
       degreeTitle = String(formData.get("degreeTitle") || "").trim();
+      gradePercent = normalizeGradePercent(formData.get("gradePercent"));
 
       if (isScholarshipFeeDiscountFlow(discountType)) {
         const admissionFacultyId = String(formData.get("admissionFacultyId") || "").trim();
@@ -262,6 +266,7 @@ export async function POST(
       discountType = String(payload.discountType || "").trim();
       applyingFor = String(payload.applyingFor || "").trim();
       degreeTitle = String(payload.degreeTitle || "").trim();
+      gradePercent = normalizeGradePercent(payload.gradePercent);
     }
 
     if (!discountType || !applyingFor || !degreeTitle) {
@@ -354,6 +359,7 @@ export async function POST(
         kinship_details,
         uploaded_documents,
         admission_application_ref,
+        grade_percent,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -368,6 +374,7 @@ export async function POST(
         ${kinshipDetails ? JSON.stringify(kinshipDetails) : null},
         ${uploadedDocuments ? JSON.stringify(uploadedDocuments) : null},
         ${admissionApplicationRef},
+        ${gradePercent},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -382,6 +389,7 @@ export async function POST(
         kinship_details = EXCLUDED.kinship_details,
         uploaded_documents = EXCLUDED.uploaded_documents,
         admission_application_ref = EXCLUDED.admission_application_ref,
+        grade_percent = EXCLUDED.grade_percent,
         status = 'pending',
         reason = NULL
     `;

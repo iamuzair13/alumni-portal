@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS public.alumni_scholarships
     kinship_details jsonb,
     uploaded_documents jsonb,
     admission_application_ref text COLLATE pg_catalog."default",
+    grade_percent text COLLATE pg_catalog."default",
     status text COLLATE pg_catalog."default",
     reason text COLLATE pg_catalog."default",
   CONSTRAINT alumni_scholarships_pkey PRIMARY KEY (id),

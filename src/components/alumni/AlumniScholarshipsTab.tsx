@@ -1223,7 +1223,7 @@ export const AlumniScholarshipsTab: React.FC = () => {
                                 ["Faculty", applicationPreview.application.faculty || "-"],
                                 ["Campus", applicationPreview.application.campus || "-"],
                                 ["Passing Out Year", applicationPreview.application.passingOutYear || "-"],
-                                ["CGPA", applicationPreview.application.cgpaLastDegree],
+                                ["CGPA/Grade", applicationPreview.application.cgpaLastDegree],
                               ].map(([k, v]) => (
                                 <tr key={k} className="bg-white dark:bg-gray-900">
                                   <td className="w-[260px] px-4 py-3 font-semibold text-slate-800 bg-slate-50/60 dark:text-gray-100 dark:text-gray-100 dark:bg-gray-900">{k}</td>

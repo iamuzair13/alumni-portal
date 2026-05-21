@@ -354,7 +354,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
         data.isKinship ? data.program || "Missing" : data.requestedProgramDegree || "Missing",
       );
       if (data.isKinship) {
-        drawFourColRow("SAP ID:", data.sapCode || "Missing", "CGPA:", data.cgpaLastDegree || "Missing");
+        drawFourColRow("SAP ID:", data.sapCode || "Missing", "CGPA/Grade:", data.cgpaLastDegree || "Missing");
         drawFourColRow(
           "Passing Out Year:",
           data.passingOutYear?.trim() ? String(data.passingOutYear) : "Missing",
@@ -407,7 +407,7 @@ export function generateScholarshipLetterPDF(data: ScholarshipLetterPDFData): Pr
       } else {
         drawFourColRow("Campus:", data.campus || "Missing", "Faculty:", data.faculty || "Missing");
         drawFourColRow("Department:", data.department || "Missing", "Program:", data.previousDegree || "Missing");
-        drawFourColRow("Sap ID:", data.sapCode || "Missing", "CGPA:", data.cgpaLastDegree || "Missing");
+        drawFourColRow("Sap ID:", data.sapCode || "Missing", "CGPA/Grade:", data.cgpaLastDegree || "Missing");
         const passingYearPdf =
           data.passingOutYear != null && String(data.passingOutYear).trim() !== ""
             ? String(data.passingOutYear).trim()
