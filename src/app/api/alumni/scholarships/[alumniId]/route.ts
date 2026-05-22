@@ -8,6 +8,7 @@ import {
   discountTypeOptionLabel,
   formatAlumniScholarshipApplicationPdfId,
   formatScholarshipCgpaGradeDisplay,
+  requestedPercent,
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   parseMastersDetails,
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         asch.uploaded_documents,
         asch.admission_application_ref,
         asch.grade_percent,
+        asch.applied_discount_percent,
         a.alumniname,
         a.sapid,
         a.registrationno,
@@ -165,6 +167,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       uploaded_documents: unknown;
       admission_application_ref: string | null;
       grade_percent: string | null;
+      applied_discount_percent: number | null;
       alumniname: string | null;
       sapid: string | null;
       registrationno: string | null;
@@ -201,6 +204,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
         discountType: discountTypeForPdf,
         applyingFor: String(app.apply_for || ""),
         degreeTitle: String(app.degree_title || ""),
+        appliedDiscountPercent: app.applied_discount_percent,
         kinshipRelation: null,
         kinshipFirstName: kinshipFirstName || null,
         kinshipLastName: kinshipLastName || null,
@@ -383,7 +387,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ alumniI
       applyingFor: applyingForDisplay,
       previousDegree: String(app.degreetitle || "").trim() || "Data is missing",
       cgpaLastDegree: cgpaGradeDisplay,
-      requestedDiscount: applyingForDisplay,
+      requestedDiscount: requestedPercent(
+        app.discount_type,
+        app.apply_for,
+        app.applied_discount_percent,
+      ),
+      appliedDiscountPercent: app.applied_discount_percent,
       documentsAttached: documentsLines,
       uploadedDocuments,
       sapCode: String(app.sapid || "").trim() || "Data is missing",

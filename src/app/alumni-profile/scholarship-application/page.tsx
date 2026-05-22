@@ -8,11 +8,19 @@ import { Toaster, toast } from "react-hot-toast";
 import PageBanner from "@/components/ui/PageBanner";
 import {
   SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY,
-  SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS,
   isScholarshipFeeDiscountFlow,
   isScholarshipKinshipCategory,
   scholarshipApplyingForFromCategory,
 } from "@/lib/scholarshipLetter";
+import {
+  findCategoryBySlug,
+  formatDiscountPercentDisplay,
+  parseCgpa,
+  resolveCategoryFlowType,
+  resolveDiscountPercent,
+  type ScholarshipCategoryWithTiers,
+} from "@/lib/scholarshipDiscount";
+import Link from "next/link";
 
 function ScholarshipApplicationContent() {
   const searchParams = useSearchParams();
@@ -56,6 +64,61 @@ function ScholarshipApplicationContent() {
     fatherCnic: "",
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scholarshipCategories, setScholarshipCategories] = useState<ScholarshipCategoryWithTiers[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const res = await fetch("/api/scholarship/categories?includeTiers=1");
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Failed to load discount categories");
+        if (!cancelled) {
+          setScholarshipCategories(Array.isArray(json.items) ? json.items : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setCategoriesError(e instanceof Error ? e.message : "Failed to load categories");
+        }
+      } finally {
+        if (!cancelled) setCategoriesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedCategory = findCategoryBySlug(formData.discountType, scholarshipCategories);
+  const profileCgpa = parseCgpa((data as { cgpa?: number | null })?.cgpa);
+  const applicableDiscountPercent =
+    profileCgpa != null && selectedCategory?.tiers?.length
+      ? resolveDiscountPercent(profileCgpa, selectedCategory.tiers)
+      : null;
+
+  const categoryFlow = resolveCategoryFlowType(formData.discountType, scholarshipCategories, {
+    isFee: isScholarshipFeeDiscountFlow,
+    isKinship: isScholarshipKinshipCategory,
+  });
+  const isFeeFlow = categoryFlow === "fee_discount";
+  const isKinshipFlow = categoryFlow === "kinship";
+  const needsKinshipApplyingFor =
+    isKinshipFlow &&
+    !selectedCategory?.default_apply_for &&
+    !scholarshipApplyingForFromCategory(formData.discountType);
+
+  const applyingForOptions = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY;
+  const canSubmitScholarship =
+    profileCgpa != null &&
+    !!formData.discountType &&
+    applicableDiscountPercent != null &&
+    !categoriesLoading;
+
   // Masters/PhD Discount specific state
   const [orgLoading, setOrgLoading] = useState(false);
   const [orgError, setOrgError] = useState<string | null>(null);
@@ -98,10 +161,7 @@ function ScholarshipApplicationContent() {
 
   // Load organization datasets when needed (fee discount and kinship flow)
   useEffect(() => {
-    if (
-      !isScholarshipFeeDiscountFlow(formData.discountType) &&
-      !isScholarshipKinshipCategory(formData.discountType)
-    ) {
+    if (!isFeeFlow && !isKinshipFlow) {
       return;
     }
     if (faculties.length > 0 || orgLoading) {
@@ -189,7 +249,7 @@ function ScholarshipApplicationContent() {
     };
     // We intentionally exclude dependencies to avoid reloading unnecessarily
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.discountType]);
+  }, [formData.discountType, isFeeFlow, isKinshipFlow]);
 
   const admissionDepartmentsForFaculty =
     typeof admissionFacultyId === "number"
@@ -237,11 +297,6 @@ function ScholarshipApplicationContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.father_cnic]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const discountOptions = [...SCHOLARSHIP_DISCOUNT_CATEGORY_OPTIONS];
-  const applyingForOptions = SCHOLARSHIP_APPLYING_FOR_BY_CATEGORY;
-  const isFeeFlow = isScholarshipFeeDiscountFlow(formData.discountType);
 
   const kinshipLastDegreeCertificateOptions = [
     { value: "FA", label: "FA" },
@@ -254,16 +309,43 @@ function ScholarshipApplicationContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const derivedApplying = scholarshipApplyingForFromCategory(formData.discountType);
+    if (profileCgpa == null) {
+      toast.error("Please add your CGPA in your alumni profile before applying.", {
+        duration: 5000,
+        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
+      });
+      return;
+    }
+
+    if (!formData.discountType) {
+      toast.error("Please select a discount category.", {
+        duration: 4000,
+        style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
+      });
+      return;
+    }
+
+    if (applicableDiscountPercent == null) {
+      toast.error(
+        "No discount tier applies to your CGPA for this category. Contact the alumni office or choose another category.",
+        {
+          duration: 5000,
+          style: { background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "8px" },
+        },
+      );
+      return;
+    }
+
+    const derivedApplying =
+      selectedCategory?.default_apply_for ??
+      scholarshipApplyingForFromCategory(formData.discountType);
     const effectiveApplyingFor = (derivedApplying ?? formData.applyingFor).trim();
 
-    if (!formData.discountType || !effectiveApplyingFor) {
+    if (!effectiveApplyingFor) {
       toast.error(
-        !formData.discountType
-          ? "Please select a discount category."
-          : formData.discountType === "kinship-15"
-            ? "Please select Applying For (BS / Masters / PhD)."
-            : "Please complete Applying For / program level where required.",
+        needsKinshipApplyingFor
+          ? "Please select Applying For (BS / Masters / PhD)."
+          : "Please complete Applying For / program level where required.",
         {
         duration: 4000,
         style: {
@@ -278,7 +360,7 @@ function ScholarshipApplicationContent() {
     }
 
     // Additional validation for fee discount (admission letter, uploads, declaration)
-    if (isScholarshipFeeDiscountFlow(formData.discountType)) {
+    if (isFeeFlow) {
       // Ensure org data is ready
       if (orgLoading || faculties.length === 0) {
         toast.error("Please wait while options are loading. Try again in a moment.", {
@@ -353,7 +435,7 @@ function ScholarshipApplicationContent() {
     }
 
     if (
-      isScholarshipKinshipCategory(formData.discountType) &&
+      isKinshipFlow &&
       (!formData.kinshipName ||
         !formData.kinshipFatherName ||
         !formData.kinshipCampus ||
@@ -377,7 +459,7 @@ function ScholarshipApplicationContent() {
       return;
     }
     if (
-      isScholarshipKinshipCategory(formData.discountType) &&
+      isKinshipFlow &&
       (!docKinshipAdmissionLetterFile ||
         !docKinshipAlumniCardFile ||
         !docKinshipFrcFile ||
@@ -399,14 +481,14 @@ function ScholarshipApplicationContent() {
 
     // Compute degree title for fee discount flow from selected admission program
     let degreeTitleToSend = (formData.degreeTitle || "").trim();
-    if (isScholarshipFeeDiscountFlow(formData.discountType)) {
+    if (isFeeFlow) {
       const selectedProgram = programs.find(
         (p) => typeof admissionProgramId === "number" && p.id === admissionProgramId,
       );
       if (selectedProgram) {
         degreeTitleToSend = selectedProgram.name;
       }
-    } else if (isScholarshipKinshipCategory(formData.discountType)) {
+    } else if (isKinshipFlow) {
       degreeTitleToSend = (formData.kinshipProgram || "").trim();
     } else if (!degreeTitleToSend) {
       toast.error("Degree title is required.", {
@@ -438,12 +520,13 @@ function ScholarshipApplicationContent() {
     try {
       const url = `/api/alumni/${encodeURIComponent(sapId)}/scholarship-application`;
       const response =
-        isScholarshipFeeDiscountFlow(formData.discountType)
+        isFeeFlow
           ? await (async () => {
               const fd = new FormData();
               fd.set("discountType", formData.discountType);
               fd.set("applyingFor", effectiveApplyingFor);
               fd.set("degreeTitle", degreeTitleToSend);
+              fd.set("appliedDiscountPercent", String(applicableDiscountPercent));
 
               fd.set("admissionFacultyId", String(admissionFacultyId));
               fd.set("admissionDepartmentId", String(admissionDepartmentId));
@@ -472,12 +555,13 @@ function ScholarshipApplicationContent() {
 
               return fetch(url, { method: "POST", body: fd });
             })()
-          : isScholarshipKinshipCategory(formData.discountType)
+          : isKinshipFlow
           ? await (async () => {
               const fd = new FormData();
               fd.set("discountType", formData.discountType);
               fd.set("applyingFor", effectiveApplyingFor);
               fd.set("degreeTitle", degreeTitleToSend);
+              fd.set("appliedDiscountPercent", String(applicableDiscountPercent));
               fd.set("kinshipName", formData.kinshipName);
               fd.set("kinshipFatherName", formData.kinshipFatherName);
               fd.set("kinshipCampus", formData.kinshipCampus);
@@ -513,6 +597,7 @@ function ScholarshipApplicationContent() {
                 discountType: formData.discountType,
                 applyingFor: effectiveApplyingFor,
                 degreeTitle: degreeTitleToSend,
+                appliedDiscountPercent: applicableDiscountPercent,
                 kinshipName: formData.kinshipName || null,
                 kinshipFatherName: formData.kinshipFatherName || null,
                 kinshipCnic: formData.kinshipCnic || null,
@@ -700,6 +785,27 @@ function ScholarshipApplicationContent() {
 
             <form onSubmit={handleSubmit} className="max-w-4xl mx-auto mt-4" aria-label="Scholarship application form">
               <div className="grid sm:grid-cols-2 gap-6">
+                {profileCgpa == null && (
+                  <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-medium text-amber-900">CGPA required</p>
+                    <p className="mt-1 text-sm text-amber-800">
+                      Add your CGPA in your alumni profile before you can submit a scholarship application.
+                    </p>
+                    <Link
+                      href="/alumni-profile/more-details"
+                      className="mt-2 inline-block text-sm font-semibold text-blue-700 hover:underline"
+                    >
+                      Update profile →
+                    </Link>
+                  </div>
+                )}
+
+                {categoriesError && (
+                  <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                    {categoriesError}
+                  </div>
+                )}
+
                 <div className="sm:col-span-2">
                   <label htmlFor="discountType" className="mb-2 text-sm text-slate-900 font-medium block">
                     Discount Category <span className="text-red-500">*</span>
@@ -709,7 +815,9 @@ function ScholarshipApplicationContent() {
                     value={formData.discountType}
                     onChange={(e) => {
                       const v = e.target.value;
-                      const derived = scholarshipApplyingForFromCategory(v);
+                      const cat = findCategoryBySlug(v, scholarshipCategories);
+                      const derived =
+                        cat?.default_apply_for ?? scholarshipApplyingForFromCategory(v);
                       setFormData({
                         ...formData,
                         discountType: v,
@@ -718,17 +826,45 @@ function ScholarshipApplicationContent() {
                     }}
                     className="px-4 py-3 pr-8 bg-[#f0f1f2] focus:bg-transparent text-black w-full text-sm border border-gray-200 outline-[#007bff] rounded-md transition-all"
                     required
+                    disabled={categoriesLoading || profileCgpa == null}
                   >
-                    <option value="">Discount Type</option>
-                    {discountOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
+                    <option value="">
+                      {categoriesLoading ? "Loading categories..." : "Select discount category"}
+                    </option>
+                    {scholarshipCategories.map((option) => (
+                      <option key={option.slug} value={option.slug}>
                         {option.label}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {formData.discountType === "kinship-15" && (
+                {formData.discountType && profileCgpa != null && (
+                  <div className="sm:col-span-2 rounded-lg border border-blue-100 bg-blue-50/80 p-4">
+                    <div className="flex flex-wrap gap-6 text-sm">
+                      <div>
+                        <span className="text-gray-600">Your CGPA</span>
+                        <p className="font-semibold text-gray-900">{profileCgpa.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Applicable discount</span>
+                        <p className="font-semibold text-green-700">
+                          {applicableDiscountPercent != null
+                            ? formatDiscountPercentDisplay(applicableDiscountPercent)
+                            : "No tier matches your CGPA"}
+                        </p>
+                      </div>
+                    </div>
+                    {applicableDiscountPercent == null && (
+                      <p className="mt-2 text-xs text-amber-800">
+                        Your CGPA does not fall within any configured range for this category. Choose another
+                        category or contact the alumni office.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {needsKinshipApplyingFor && (
                   <div className="sm:col-span-2">
                     <label htmlFor="applyingForKinship" className="mb-2 text-sm text-slate-900 font-medium block">
                       Applying For <span className="text-red-500">*</span>
@@ -1249,7 +1385,7 @@ function ScholarshipApplicationContent() {
                   </div>
                 )}
 
-                {isScholarshipKinshipCategory(formData.discountType) && (
+                {isKinshipFlow && (
                   <div className="sm:col-span-2 space-y-6 mt-4">
                     <div className="border border-gray-200 rounded-lg p-4 sm:p-5">
                       <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
@@ -1299,7 +1435,8 @@ function ScholarshipApplicationContent() {
                           <p className="mt-1 text-xs text-gray-500">Optional — enter your marks percentage</p>
                         </div>
                         <div><label className="mb-2 text-sm text-slate-900 font-medium block">Passing Out Year</label><input type="text" value={missing((data as any)?.yearofending)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
-                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Discount Category</label><input type="text" value={missing(discountOptions.find((option) => option.value === formData.discountType)?.label)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Discount Category</label><input type="text" value={missing(selectedCategory?.label)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
+                        <div><label className="mb-2 text-sm text-slate-900 font-medium block">Applicable Discount</label><input type="text" value={formatDiscountPercentDisplay(applicableDiscountPercent)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
                         <div className="sm:col-span-2"><label className="mb-2 text-sm text-slate-900 font-medium block">Applying For</label><input type="text" value={missing(formData.applyingFor)} readOnly className="px-4 py-3 pr-8 bg-[#f0f1f2] text-black w-full text-sm border border-gray-200 rounded-md opacity-60 cursor-not-allowed" /></div>
                       </div>
                     </div>
@@ -1487,7 +1624,7 @@ function ScholarshipApplicationContent() {
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !canSubmitScholarship}
                 className="mt-12 px-5 py-2.5 text-[15px] font-medium w-full max-w-[130px] mx-auto block bg-[#007bff] hover:bg-[#006bff] text-white rounded-md transition-all cursor-pointer disabled:opacity-60"
               >
                 {isSubmitting ? "Submitting..." : "Submit Application"}

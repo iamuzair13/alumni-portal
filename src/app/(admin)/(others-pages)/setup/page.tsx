@@ -24,6 +24,8 @@ import Pagination from "@/components/tables/Pagination";
 import { NewsletterTab } from "@/components/alumni/NewsletterTab";
 import RoleDescriptionSection from "@/components/leadership/RoleDescriptionSection";
 import LeadershipCriteriaManager from "@/components/leadership/LeadershipCriteriaManager";
+import ScholarshipDiscountManager from "@/components/scholarship/ScholarshipDiscountManager";
+import type { ScholarshipCategoryWithTiers } from "@/lib/scholarshipDiscount";
 
 type LeadershipType = "chapter" | "association";
 type LeadershipRoleName = "president" | "vice_president" | "coordinator";
@@ -256,14 +258,19 @@ function SetupPageContent() {
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership";
+  type SetupTabKey = "users" | "organizations" | "chapters" | "newsletters" | "leadership" | "scholarships";
 
   const TABS: Array<{ key: SetupTabKey; label: string }> = [
     { key: "users", label: "Users" },
     { key: "organizations", label: "Organizations" },
     { key: "chapters", label: "Chapters" },
     { key: "newsletters", label: "Newsletters" },
-    ...(isSuperAdmin ? [{ key: "leadership" as const, label: "Leadership" }] : []),
+    ...(isSuperAdmin
+      ? [
+          { key: "leadership" as const, label: "Leadership" },
+          { key: "scholarships" as const, label: "Scholarships" },
+        ]
+      : []),
   ];
 
   // Get initial tab from URL search params, default to "users"
@@ -308,6 +315,30 @@ function SetupPageContent() {
   });
 
   const [criteriaEditingId, setCriteriaEditingId] = useState<number | null>(null);
+  const [selectedScholarshipCategoryId, setSelectedScholarshipCategoryId] = useState<number | null>(null);
+
+  async function fetchScholarshipCategoriesAdmin(): Promise<ScholarshipCategoryWithTiers[]> {
+    const res = await fetch("/api/scholarship/categories?admin=1&includeTiers=1");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to load scholarship categories");
+    }
+    const data = await res.json();
+    const items = data.items ?? [];
+    return Array.isArray(items) ? items : [];
+  }
+
+  const {
+    data: scholarshipCategoriesAdmin = [],
+    isLoading: scholarshipCategoriesLoading,
+    refetch: refetchScholarshipCategories,
+  } = useQuery({
+    queryKey: ["scholarship-categories-admin"],
+    queryFn: fetchScholarshipCategoriesAdmin,
+    enabled: isSuperAdmin && selected === "scholarships",
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const { data: leadershipSettings, refetch: refetchLeadershipSettings } = useQuery({
     queryKey: ["leadership-settings"],
@@ -1167,6 +1198,31 @@ function SetupPageContent() {
                   deleteLeadershipCriterion={deleteLeadershipCriterion}
                   invalidateCriteriaQueries={() => {
                     queryClient.invalidateQueries({ queryKey: ["leadership-criteria-admin", criteriaType, criteriaRole] });
+                  }}
+                  pushToast={pushToast}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selected === "scholarships" && isSuperAdmin && (
+          <div className="mt-6 space-y-6">
+            <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/50 p-5 shadow-sm">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Scholarship Discount Categories</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Manage discount categories and CGPA-based discount percentages shown to alumni on the scholarship application form.
+                </p>
+              </div>
+              <div className="mt-5">
+                <ScholarshipDiscountManager
+                  categories={scholarshipCategoriesAdmin}
+                  loading={scholarshipCategoriesLoading}
+                  selectedCategoryId={selectedScholarshipCategoryId}
+                  setSelectedCategoryId={setSelectedScholarshipCategoryId}
+                  onRefresh={async () => {
+                    await refetchScholarshipCategories();
                   }}
                   pushToast={pushToast}
                 />

@@ -83,7 +83,15 @@ export function scholarshipApplyingForFromCategory(
 export function scholarshipFeeDiscountPercentForPdf(
   discountType: string | null | undefined,
   applyingFor: string | null | undefined,
+  appliedDiscountPercent?: number | string | null,
 ): string | null {
+  if (appliedDiscountPercent != null && appliedDiscountPercent !== "") {
+    const n = Number(appliedDiscountPercent);
+    if (Number.isFinite(n)) {
+      return Number.isInteger(n) ? `${n}%` : `${n}%`;
+    }
+  }
+
   const d = String(discountType || "").trim().toLowerCase();
   const a = String(applyingFor || "").trim().toLowerCase();
   if (d === "admission-fee-masters-75" || d === "admission-fee-phd-75") return "75%";
@@ -173,7 +181,15 @@ export function discountTypeOptionLabel(
 export function requestedPercent(
   discountType: string | null | undefined,
   applyingFor: string | null | undefined,
+  appliedDiscountPercent?: number | string | null,
 ): string {
+  if (appliedDiscountPercent != null && appliedDiscountPercent !== "") {
+    const n = Number(appliedDiscountPercent);
+    if (Number.isFinite(n)) {
+      return Number.isInteger(n) ? `${n}%` : `${n}%`;
+    }
+  }
+
   const d = String(discountType || "").trim().toLowerCase();
   const a = String(applyingFor || "").trim().toLowerCase();
 

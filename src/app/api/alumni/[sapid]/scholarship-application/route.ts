@@ -19,6 +19,11 @@ import {
   isScholarshipKinshipCategory,
   normalizeGradePercent,
 } from "@/lib/scholarshipLetter";
+import {
+  parseCgpa,
+  resolveDiscountPercent,
+  type ScholarshipCgpaDiscountTier,
+} from "@/lib/scholarshipDiscount";
 
 type Payload = {
   discountType?: string;
@@ -36,6 +41,7 @@ type Payload = {
   kinshipCnic?: string | null;
   fatherCnic?: string | null;
   gradePercent?: string | null;
+  appliedDiscountPercent?: number | string | null;
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -129,6 +135,7 @@ export async function POST(
       null;
     let admissionApplicationRef: string | null = null;
     let gradePercent: string | null = null;
+    let clientAppliedPercent: number | null = null;
 
     if (isMultipart) {
       const formData = await req.formData();
@@ -136,6 +143,11 @@ export async function POST(
       applyingFor = String(formData.get("applyingFor") || "").trim();
       degreeTitle = String(formData.get("degreeTitle") || "").trim();
       gradePercent = normalizeGradePercent(formData.get("gradePercent"));
+      const rawPct = formData.get("appliedDiscountPercent");
+      if (rawPct != null && String(rawPct).trim() !== "") {
+        const n = Number(rawPct);
+        if (Number.isFinite(n)) clientAppliedPercent = n;
+      }
 
       if (isScholarshipFeeDiscountFlow(discountType)) {
         const admissionFacultyId = String(formData.get("admissionFacultyId") || "").trim();
@@ -267,6 +279,10 @@ export async function POST(
       applyingFor = String(payload.applyingFor || "").trim();
       degreeTitle = String(payload.degreeTitle || "").trim();
       gradePercent = normalizeGradePercent(payload.gradePercent);
+      if (payload.appliedDiscountPercent != null && payload.appliedDiscountPercent !== "") {
+        const n = Number(payload.appliedDiscountPercent);
+        if (Number.isFinite(n)) clientAppliedPercent = n;
+      }
     }
 
     if (!discountType || !applyingFor || !degreeTitle) {
@@ -282,7 +298,8 @@ export async function POST(
         personalemail,
         officialemail,
         universityemail,
-        alumniemail
+        alumniemail,
+        cgpa
       FROM public.tbl_alumni
       WHERE TRIM(COALESCE(sapid, '')) = ${normalizedSapid}
          OR TRIM(COALESCE(registrationno, '')) = ${normalizedSapid}
@@ -338,6 +355,60 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const alumniCgpa = parseCgpa((alumni as { cgpa?: number | null }).cgpa);
+    if (alumniCgpa == null) {
+      return NextResponse.json(
+        { error: "Please add your CGPA in your alumni profile before applying." },
+        { status: 400 },
+      );
+    }
+
+    const categoryRows = await sql/* sql */`
+      SELECT id, slug, flow_type, is_active
+      FROM public.scholarship_discount_categories
+      WHERE slug = ${discountType}
+        AND is_active = true
+      LIMIT 1
+    `;
+    const category = categoryRows?.[0] as
+      | { id: number; slug: string; flow_type: string; is_active: boolean }
+      | undefined;
+    if (!category?.id) {
+      return NextResponse.json({ error: "Invalid or inactive discount category" }, { status: 400 });
+    }
+
+    const tierRows = await sql/* sql */`
+      SELECT id, category_id, cgpa_min, cgpa_max, discount_percent, sort_order
+      FROM public.scholarship_cgpa_discount_tiers
+      WHERE category_id = ${category.id}
+      ORDER BY sort_order ASC, id ASC
+    `;
+    const tiers = (tierRows as Record<string, unknown>[]).map(
+      (r): ScholarshipCgpaDiscountTier => ({
+        id: Number(r.id),
+        category_id: Number(r.category_id),
+        cgpa_min: Number(r.cgpa_min),
+        cgpa_max: Number(r.cgpa_max),
+        discount_percent: Number(r.discount_percent),
+        sort_order: Number(r.sort_order) || 0,
+      }),
+    );
+
+    const appliedDiscountPercent = resolveDiscountPercent(alumniCgpa, tiers);
+    if (appliedDiscountPercent == null) {
+      return NextResponse.json(
+        { error: "No discount tier applies to your CGPA for this category." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      clientAppliedPercent != null &&
+      Math.abs(clientAppliedPercent - appliedDiscountPercent) > 0.001
+    ) {
+      return NextResponse.json({ error: "Discount percent mismatch. Please refresh and try again." }, { status: 400 });
+    }
+
     const fullKinshipName = payload.kinshipName ? String(payload.kinshipName).trim() : "";
     const kinshipNameParts = fullKinshipName.split(/\s+/).filter(Boolean);
     const kinshipFirstName = kinshipNameParts.length > 0 ? kinshipNameParts[0] : null;
@@ -360,6 +431,7 @@ export async function POST(
         uploaded_documents,
         admission_application_ref,
         grade_percent,
+        applied_discount_percent,
         status
       ) VALUES (
         ${alumni.alumniid},
@@ -375,6 +447,7 @@ export async function POST(
         ${uploadedDocuments ? JSON.stringify(uploadedDocuments) : null},
         ${admissionApplicationRef},
         ${gradePercent},
+        ${appliedDiscountPercent},
         'pending'
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -390,6 +463,7 @@ export async function POST(
         uploaded_documents = EXCLUDED.uploaded_documents,
         admission_application_ref = EXCLUDED.admission_application_ref,
         grade_percent = EXCLUDED.grade_percent,
+        applied_discount_percent = EXCLUDED.applied_discount_percent,
         status = 'pending',
         reason = NULL
     `;

@@ -39,6 +39,7 @@ export interface ScholarshipApplicationData {
   discountType: string;
   applyingFor: string;
   degreeTitle: string;
+  appliedDiscountPercent?: number | null;
   kinshipRelation?: string | null;
   kinshipFirstName?: string | null;
   kinshipLastName?: string | null;
@@ -606,7 +607,15 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
         const name = firstName && lastName 
           ? `${firstName} ${lastName}` 
           : data.kinshipName || "beneficiary";
-        const discountPercent = "15%";
+        const discountPercent =
+          scholarshipFeeDiscountPercentForPdf(
+            data.discountType,
+            data.applyingFor,
+            data.appliedDiscountPercent,
+          ) ??
+          (data.appliedDiscountPercent != null && Number.isFinite(Number(data.appliedDiscountPercent))
+            ? `${Number(data.appliedDiscountPercent)}%`
+            : "15%");
         const pronoun = relation.toLowerCase().includes("sister")
           ? "She"
           : relation.toLowerCase().includes("brother")
@@ -614,7 +623,11 @@ export function generateScholarshipPDF(data: ScholarshipApplicationData): Promis
           : "She/He";
         addText(`I am applying for my ${relation}, ${name}. ${pronoun} can avail ${discountPercent} discount.`, 12, false, "left", 8);
       } else if (isScholarshipFeeDiscountFlow(data.discountType)) {
-        const discountPercent = scholarshipFeeDiscountPercentForPdf(data.discountType, data.applyingFor);
+        const discountPercent = scholarshipFeeDiscountPercentForPdf(
+          data.discountType,
+          data.applyingFor,
+          data.appliedDiscountPercent,
+        );
         const level = String(data.applyingFor || "").trim() || "selected";
         if (discountPercent) {
           addText(`I can avail ${discountPercent} discount for my ${level} program.`, 12, false, "left", 8);
