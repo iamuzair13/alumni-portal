@@ -43,9 +43,9 @@ function inferRoleNameFromPosition(position: string): "president" | "vice_presid
 type TabKey = "chapterMembers" | "associationMembers" | "applications";
 
 const TABS: { key: TabKey; label: string; shortLabel: string }[] = [
+  { key: "applications", label: "Applications", shortLabel: "Applications" },
   { key: "chapterMembers", label: "Chapter Leadership", shortLabel: "Chapter" },
   { key: "associationMembers", label: "Association Leadership", shortLabel: "Association" },
-  { key: "applications", label: "Applications", shortLabel: "Applications" },
 ];
 
 type LeadershipMember = {
@@ -153,6 +153,38 @@ type ViewDetailsItem = ApplicationDetailsItem & {
   additionalFile1Url?: string | null;
   additionalFile2Url?: string | null;
 };
+
+function AssessmentApplicantSummary({
+  pending,
+  detailsItem,
+  className = "mt-3",
+}: {
+  pending: { type: "chapter" | "association"; name?: string; categoryName?: string | null; position?: string };
+  detailsItem?: ViewDetailsItem;
+  className?: string;
+}) {
+  const alumniName = String(pending.name || detailsItem?.name || "").trim() || "—";
+  const categoryName = String(pending.categoryName || detailsItem?.categoryName || "").trim() || "—";
+  const role = String(pending.position || detailsItem?.position || "").trim() || "—";
+  const applicationLabel =
+    pending.type === "chapter" ? `Chapter — ${categoryName}` : `Association — ${categoryName}`;
+  return (
+    <div
+      className={`${className} rounded-lg flex gap-10 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 space-y-2`}
+    >
+      <div>
+        <span className="font-semibold text-gray-900 dark:text-gray-100">Alumni Name:</span> {alumniName}
+      </div>
+      <div>
+        <span className="font-semibold text-gray-900 dark:text-gray-100">Leadership Application:</span>{" "}
+        {applicationLabel}
+      </div>
+      <div>
+        <span className="font-semibold text-gray-900 dark:text-gray-100">Role:</span> {role}
+      </div>
+    </div>
+  );
+}
 
 async function fetchMembers(type: string, search?: string, faculty?: string, chapter?: string) {
   const params = new URLSearchParams({ type });
@@ -1494,17 +1526,24 @@ export default function LeadershipPage() {
                       : "Delete Leadership Member"}
               </h3>
 
+              {pendingAction.action === "assessment" && (
+                <AssessmentApplicantSummary
+                  pending={pendingAction}
+                  detailsItem={approveDetailsData?.item as ViewDetailsItem | undefined}
+                />
+              )}
+
               <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300 dark:bg-gray-900">
                 {pendingAction.action === "delete" ? (
                   <>Are you sure you want to delete this record? This action cannot be undone.</>
+                ) : pendingAction.action === "assessment" ? (
+                  <>Review the criteria below, assign marks, then confirm to save this assessment.</>
                 ) : (
                   <>
                     Are you sure you want to{" "}
-                    {pendingAction.action === "assessment"
-                      ? "assess"
-                      : pendingAction.action === "approve"
-                        ? "approve"
-                        : "mark as not approved"}{" "}
+                    {pendingAction.action === "approve"
+                      ? "approve"
+                      : "mark as not approved"}{" "}
                     the{" "}
                     <strong>{pendingAction.type === "chapter" ? "chapter" : "association"}</strong> leadership application
                     {pendingAction.name ? (
@@ -1988,6 +2027,13 @@ export default function LeadershipPage() {
               <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Confirm {pendingAction.action === "assessment" ? "Assessment" : pendingAction.action === "approve" ? "Approval" : pendingAction.action === "unapprove" ? "Unapproval" : "Deletion"}
               </div>
+              {pendingAction.action === "assessment" && (
+                <AssessmentApplicantSummary
+                  pending={pendingAction}
+                  detailsItem={approveDetailsData?.item as ViewDetailsItem | undefined}
+                  className="mt-3"
+                />
+              )}
               <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
                 This will update the application status accordingly. You can close this dialog to review your input.
               </div>
