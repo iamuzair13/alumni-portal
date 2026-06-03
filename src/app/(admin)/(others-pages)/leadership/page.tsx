@@ -137,7 +137,10 @@ type ApplicationDetailsItem = LeadershipApplication & {
   updatedAt?: string | null;
 };
 
+const ALUMNI_PROFILE_PLACEHOLDER = "/images/person.jpg";
+
 type ViewDetailsItem = ApplicationDetailsItem & {
+  profilePhotoUrl?: string | null;
   gender?: string | null;
   passingYear?: number | null;
   phone?: string | null;
@@ -168,19 +171,34 @@ function AssessmentApplicantSummary({
   const role = String(pending.position || detailsItem?.position || "").trim() || "—";
   const applicationLabel =
     pending.type === "chapter" ? `Chapter — ${categoryName}` : `Association — ${categoryName}`;
+  const photoSrc = String(detailsItem?.profilePhotoUrl || "").trim() || ALUMNI_PROFILE_PLACEHOLDER;
   return (
     <div
-      className={`${className} rounded-lg flex gap-10 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 space-y-2`}
+      className={`${className} flex gap-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-4 py-3 text-sm text-gray-700 dark:text-gray-300`}
     >
-      <div>
-        <span className="font-semibold text-gray-900 dark:text-gray-100">Alumni Name:</span> {alumniName}
-      </div>
-      <div>
-        <span className="font-semibold text-gray-900 dark:text-gray-100">Leadership Application:</span>{" "}
-        {applicationLabel}
-      </div>
-      <div>
-        <span className="font-semibold text-gray-900 dark:text-gray-100">Role:</span> {role}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photoSrc}
+        alt={`${alumniName} profile`}
+        className="h-20 w-20 shrink-0 rounded-lg border border-gray-200 object-cover bg-gray-100 dark:border-gray-600 dark:bg-gray-800"
+        onError={(e) => {
+          const img = e.currentTarget;
+          if (!img.src.includes("/images/person.jpg")) {
+            img.src = ALUMNI_PROFILE_PLACEHOLDER;
+          }
+        }}
+      />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Alumni Name:</span> {alumniName}
+        </div>
+        <div>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Leadership Application:</span>{" "}
+          {applicationLabel}
+        </div>
+        <div>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">Role:</span> {role}
+        </div>
       </div>
     </div>
   );

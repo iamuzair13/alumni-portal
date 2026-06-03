@@ -1459,11 +1459,11 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
 
       hLine(0, 10);
       sectionTitle("Bonus Assessment");
-      drawWrappedText("Strategy & Planning Response:", margin, 10.5, true, maxWidth, 3);
+      drawWrappedText("Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role.", margin, 10.5, true, maxWidth, 3);
       drawRichTextBlock(planStrategyText, maxWidth, 10.5, false);
       drawWrappedText(`Marks Awarded: ${formatObtainedMarkDisplay(strategyMarks)} / 15`, margin, 10.5, false, maxWidth, 8);
       hLine(0, 8);
-      drawWrappedText("Additional Achievements Response:", margin, 10.5, true, maxWidth, 3);
+      drawWrappedText("Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.", margin, 10.5, true, maxWidth, 3);
       drawRichTextBlock(additionalAchievementsText, maxWidth, 10.5, false);
       drawWrappedText(`Marks Awarded: ${formatObtainedMarkDisplay(achievementsMarks)} / 10`, margin, 10.5, false, maxWidth, 8);
       drawWrappedText(`Bonus Marks: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, margin, 10.5, true, maxWidth, 10);

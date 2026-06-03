@@ -3,7 +3,16 @@ import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { isAdminUser, isSuperAdminUser, isViewerUser } from "@/lib/alumniProfile";
+import { pickAlumniProfilePhotoFilename } from "@/lib/alumniProfilePhoto";
 import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
+
+function alumniProfilePhotoUrl(image1: unknown, image2: unknown): string | null {
+  const filename = pickAlumniProfilePhotoFilename(
+    image2 as string | null | undefined,
+    image1 as string | null | undefined
+  );
+  return publicUploadsUrlFromStored(filename);
+}
 
 function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
   const s = String(position || "").toLowerCase();
@@ -142,6 +151,8 @@ export async function GET(req: NextRequest) {
           a.personalemail,
           a.officialemail,
           a.universityemail,
+          a.image1,
+          a.image2,
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as program_name,
@@ -260,6 +271,7 @@ export async function GET(req: NextRequest) {
             assessmentRemarks: r.assessment_remarks ? String(r.assessment_remarks) : null,
             assessedBy: Number.isFinite(Number(r.assessed_by)) ? Number(r.assessed_by) : null,
             assessedAt: r.assessed_at ?? null,
+            profilePhotoUrl: alumniProfilePhotoUrl(r.image1, r.image2),
           },
           criteria: (criteriaRows || []).map((c: Record<string, unknown>) => ({
             id: Number(c.id),
@@ -358,6 +370,8 @@ export async function GET(req: NextRequest) {
         a.personalemail,
         a.officialemail,
         a.universityemail,
+        a.image1,
+        a.image2,
         f.faculty_name as facultyname,
         d.department_name as departmentname,
         p.program_name as program_name,
@@ -476,6 +490,7 @@ export async function GET(req: NextRequest) {
           assessmentRemarks: r.assessment_remarks ? String(r.assessment_remarks) : null,
           assessedBy: Number.isFinite(Number(r.assessed_by)) ? Number(r.assessed_by) : null,
           assessedAt: r.assessed_at ?? null,
+          profilePhotoUrl: alumniProfilePhotoUrl(r.image1, r.image2),
         },
         criteria: (criteriaRows || []).map((c: Record<string, unknown>) => ({
           id: Number(c.id),

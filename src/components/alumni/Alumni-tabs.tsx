@@ -50,6 +50,8 @@ import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplate
 import toast from "react-hot-toast";
 import { ChangeApprovalsTab } from "@/components/alumni/ChangeApprovalsTab";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DashboardStats } from "@/components/dashboard/DashboardStats";
+import type { DashboardTabKey } from "@/components/dashboard/dashboard-stats-config";
 
  function formatRegistrationDate(v?: string | null): string {
    if (!v) return "-";
@@ -60,44 +62,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
    }
  }
 
-type TabKey =
-  | "total"
-  | "verified"
-  | "underApproval"
-  | "active"
-  | "aPlus"
-  | "a"
-  | "b"
-  | "c"
-  | "d"
-  | "distinguished";
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "total", label: "Total" },
-  { key: "verified", label: "Verified" },
-  { key: "underApproval", label: "Under Approval" },
-  { key: "active", label: "Active" },
-];
-
-const CATEGORY_TABS: { key: TabKey; label: string }[] = [
-  { key: "aPlus", label: "A+ Category" },
-  { key: "a", label: "A Category" },
-  { key: "b", label: "B Category" },
-  { key: "c", label: "C Category" },
-  { key: "d", label: "D Category" },
-];
-
-const CATEGORY_TAB_TOOLTIPS: Partial<Record<TabKey, string>> = {
-  aPlus: "A+ is always assigned manually.",
-  a: "Pass-out more than 7 years ago.",
-  b: "Pass-out 4 to <7 years ago, OR Pursuing Higher Education with PhD.",
-  c: "Pass-out 2 to <4 years ago, OR Pursuing Higher Education with Masters.",
-  d: "Pass-out less than 2 years ago.",
-};
-
-const DISTINGUISHED_TAB: { key: TabKey; label: string }[] = [
-  { key: "distinguished", label: "Distinguished Alumni" },
-];
+type TabKey = DashboardTabKey;
 
 /** Matches animated counters on alumni cards (Alumini-cards TabCounter). */
 function useAnimatedCounter(target: number, duration = 600) {
@@ -123,76 +88,6 @@ function useAnimatedCounter(target: number, duration = 600) {
   }, [target, duration]);
 
   return count;
-}
-
-function AlumniTabAnimatedStat({
-  value,
-  isLoading,
-  className,
-}: {
-  value: number;
-  isLoading: boolean;
-  className: string;
-}) {
-  const animated = useAnimatedCounter(isLoading ? 0 : value);
-  if (isLoading) {
-    return (
-      <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading count" />
-    );
-  }
-  return <h3 className={`tabular-nums ${className}`}>{animated.toLocaleString()}</h3>;
-}
-
-function AlumniTabUnderApprovalStats({
-  newCount,
-  changeCount,
-  newLoading,
-  changeLoading,
-  labelTextClass,
-}: {
-  newCount: number;
-  changeCount: number;
-  newLoading: boolean;
-  changeLoading: boolean;
-  labelTextClass: string;
-}) {
-  const animatedNew = useAnimatedCounter(newLoading ? 0 : newCount);
-  const animatedChange = useAnimatedCounter(changeLoading ? 0 : changeCount);
-
-  if (newLoading && changeLoading) {
-    return (
-      <div className="h-10 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg" aria-label="Loading approval counts" />
-    );
-  }
-
-  const pill =
-    "inline-flex items-center rounded-full border border-gray-200/60 bg-white/70 px-3 py-1 text-2xl font-extrabold leading-none text-gray-900 shadow-sm dark:border-gray-700/60 dark:bg-white/[0.06] dark:text-white";
-
-  return (
-    <h3 className={`text-4xl font-extrabold tracking-tight tabular-nums ${labelTextClass}`}>
-      <span className="inline-flex items-center gap-2">
-        <span className={pill}>
-          {newLoading ? (
-            <span className="inline-flex h-6 min-w-[2.25rem] items-center justify-center">
-              <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse opacity-60" />
-            </span>
-          ) : (
-            animatedNew.toLocaleString()
-          )}
-        </span>
-        <span className="text-2xl font-extrabold opacity-50">|</span>
-        <span className={pill}>
-          {changeLoading ? (
-            <span className="inline-flex h-6 min-w-[2.25rem] items-center justify-center">
-              <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse opacity-60" />
-            </span>
-          ) : (
-            animatedChange.toLocaleString()
-          )}
-        </span>
-      </span>
-    </h3>
-  );
 }
 
 function UnderApprovalSubTabCounter({
@@ -228,102 +123,6 @@ function UnderApprovalSubTabCounter({
     </span>
   );
 }
-
-// Counts are computed dynamically from fetched data
-
-// Per-status color classes to visually distinguish each category
-const STATUS_CLASS_MAP: Record<
-  TabKey,
-  {
-    selectedContainer: string;
-    hoverBorder: string;
-    iconBg: string;
-    iconColor: string;
-    labelText: string;
-  }
-> = {
-  total: {
-    selectedContainer:
-      "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
-    hoverBorder: "hover:border-blue-400",
-    iconBg: "bg-blue-400 dark:bg-blue-800",
-    iconColor: "text-blue-700 dark:text-blue-200",
-    labelText: "text-blue-600 dark:text-blue-300",
-  },
-  verified: {
-    selectedContainer:
-      "border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-900/20",
-    hoverBorder: "hover:border-emerald-400",
-    iconBg: "bg-emerald-400 dark:bg-emerald-800",
-    iconColor: "text-emerald-700 dark:text-emerald-200",
-    labelText: "text-emerald-600 dark:text-emerald-300",
-  },
-  underApproval: {
-    selectedContainer:
-      "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
-    hoverBorder: "hover:border-amber-400",
-    iconBg: "bg-amber-400 dark:bg-amber-800",
-    iconColor: "text-amber-700 dark:text-amber-200",
-    labelText: "text-amber-600 dark:text-amber-300",
-  },
-  active: {
-    selectedContainer:
-      "border-indigo-500 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-900/20",
-    hoverBorder: "hover:border-indigo-400",
-    iconBg: "bg-indigo-400 dark:bg-indigo-800",
-    iconColor: "text-indigo-700 dark:text-indigo-200",
-    labelText: "text-indigo-600 dark:text-indigo-300",
-  },
-  aPlus: {
-    selectedContainer:
-      "border-purple-500 bg-purple-50 dark:border-purple-500 dark:bg-purple-900/20",
-    hoverBorder: "hover:border-purple-400",
-    iconBg: "bg-purple-400 dark:bg-purple-800",
-    iconColor: "text-purple-700 dark:text-purple-200",
-    labelText: "text-purple-600 dark:text-purple-300",
-  },
-  a: {
-    selectedContainer:
-      "border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20",
-    hoverBorder: "hover:border-blue-400",
-    iconBg: "bg-blue-400 dark:bg-blue-800",
-    iconColor: "text-blue-700 dark:text-blue-200",
-    labelText: "text-blue-600 dark:text-blue-300",
-  },
-  b: {
-    selectedContainer:
-      "border-green-500 bg-green-50 dark:border-green-500 dark:bg-green-900/20",
-    hoverBorder: "hover:border-green-400",
-    iconBg: "bg-green-400 dark:bg-green-800",
-    iconColor: "text-green-700 dark:text-green-200",
-    labelText: "text-green-600 dark:text-green-300",
-  },
-  c: {
-    selectedContainer:
-      "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-amber-900/20",
-    hoverBorder: "hover:border-amber-400",
-    iconBg: "bg-amber-400 dark:bg-amber-800",
-    iconColor: "text-amber-700 dark:text-amber-200",
-    labelText: "text-amber-600 dark:text-amber-300",
-  },
-  d: {
-    selectedContainer:
-      "border-gray-500 bg-gray-50 dark:border-gray-500 dark:bg-gray-900/20",
-    hoverBorder: "hover:border-gray-400",
-    iconBg: "bg-gray-400 dark:bg-gray-800",
-    iconColor: "text-gray-700 dark:text-gray-200",
-    labelText: "text-gray-600 dark:text-gray-300",
-  },
-  distinguished: {
-    selectedContainer:
-      "border-rose-500 bg-rose-50 dark:border-rose-500 dark:bg-rose-900/20",
-    hoverBorder: "hover:border-rose-400",
-    iconBg: "bg-rose-400 dark:bg-rose-800",
-    iconColor: "text-rose-700 dark:text-rose-200",
-    labelText: "text-rose-600 dark:text-rose-300",
-  },
-};
-
 
 export const AlumniTabs: React.FC = () => {
   const router = useRouter();
@@ -2933,156 +2732,22 @@ export const AlumniTabs: React.FC = () => {
     confirmModal.openModal();
   }, [confirmModal, duplicateDeleteCount, duplicateGateTarget, duplicatesModal, findDuplicatesFor, items, pendingDuplicateGate]);
 
-  // Helper function to render a tab button
-  const renderTabButton = (tab: { key: TabKey; label: string }, idx: number, allTabs: { key: TabKey; label: string }[]) => {
-            const statCount = (() => {
-              switch (tab.key) {
-                case "total":
-                  return counts.total;
-                case "verified":
-                  return counts.verified;
-                case "underApproval":
-                  return counts.underApproval;
-                case "active":
-                  return counts.active;
-                case "aPlus":
-                  return counts.category?.aPlus || 0;
-                case "a":
-                  return counts.category?.a || 0;
-                case "b":
-                  return counts.category?.b || 0;
-                case "c":
-                  return counts.category?.c || 0;
-                case "d":
-                  return counts.category?.d || 0;
-        case "distinguished":
-          return counts.category?.distinguished || 0;
-                default:
-                  return 0;
-              }
-            })();
-
-            const underApprovalNewCount = counts.underApproval || 0;
-            const underApprovalChangeCount = changeApprovalCount;
-            const underApprovalLabel = `${underApprovalNewCount.toLocaleString()} | ${underApprovalChangeCount.toLocaleString()}`;
-            
-            const isSelected = selected === tab.key;
-            const statusStyles = STATUS_CLASS_MAP[tab.key];
-            const isDisabled = false; // All tabs are now functional
-           
-            const buttonNode = (
-              <button
-                key={tab.key}
-                type="button"
-                disabled={isDisabled}
-                className={`
-                  relative group rounded-2xl p-4 text-left transition-all duration-300 ease-out w-50 shadow-md
-                  ${isSelected 
-                    ? `${statusStyles.selectedContainer} shadow-xl ring-2 ring-offset-2 ${statusStyles.iconColor.includes('blue') ? 'ring-blue-500' : statusStyles.iconColor.includes('emerald') ? 'ring-emerald-500' : statusStyles.iconColor.includes('rose') ? 'ring-rose-500' : statusStyles.iconColor.includes('amber') ? 'ring-amber-500' : statusStyles.iconColor.includes('indigo') ? 'ring-indigo-500' : statusStyles.iconColor.includes('purple') ? 'ring-purple-500' : 'ring-gray-500'} dark:ring-offset-gray-900 transform scale-[1.02]` 
-                    : 'bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.01]'
-                  }
-                  ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-                  focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900
-                `}
-                onClick={() => {
-                  if (!isDisabled) {
-                    setSelected(tab.key);
-                    // Clear additional filter when switching tabs
-                    setAdditionalFilter([]);
-                  }
-                }}
-                role="tab"
-                aria-selected={isSelected}
-                aria-disabled={isDisabled}
-                aria-label={`${tab.label} (${tab.key === "underApproval" ? underApprovalLabel : statCount.toLocaleString()})`}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight") {
-                    e.preventDefault();
-                    const nextIdx = (idx + 1) % allTabs.length;
-                    setSelected(allTabs[nextIdx].key);
-                  } else if (e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    const prevIdx = (idx - 1 + allTabs.length) % allTabs.length;
-                    setSelected(allTabs[prevIdx].key);
-                  } else if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelected(tab.key);
-                  }
-                }}
-              >
-                {isSelected && (
-                  <div
-                    className={`absolute top-3 right-3 z-10 w-2.5 h-2.5 rounded-full ${statusStyles.iconBg} animate-pulse pointer-events-none ring-2 ring-white/80 dark:ring-gray-900/80`}
-                  />
-                )}
-                <div className="flex items-center justify-between mb-4 ">
-                  <h6 className={`text-xs font-bold uppercase tracking-wider ${statusStyles.labelText}`}>
-                    {tab.label}
-                  </h6>
-                </div>
-                {tab.key === "underApproval" ? (
-                  <AlumniTabUnderApprovalStats
-                    newCount={underApprovalNewCount}
-                    changeCount={underApprovalChangeCount}
-                    newLoading={isLoadingCounts && !countsData}
-                    changeLoading={isPendingChangeApprovalCount}
-                    labelTextClass={statusStyles.labelText}
-                  />
-                ) : (
-                  <AlumniTabAnimatedStat
-                    value={statCount}
-                    isLoading={isLoadingCounts && !countsData}
-                    className={`text-4xl font-extrabold tracking-tight ${statusStyles.labelText}`}
-                  />
-                )}
-              </button>
-            );
-
-            const tooltipText = CATEGORY_TAB_TOOLTIPS[tab.key];
-            if (tooltipText) {
-              return (
-                <Tooltip key={tab.key}>
-                  <TooltipTrigger asChild>{buttonNode}</TooltipTrigger>
-                  <TooltipContent>
-                    <p>{tooltipText}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-
-            return buttonNode;
-  };
+  const handleDashboardStatSelect = useCallback((key: TabKey) => {
+    setSelected(key);
+    setAdditionalFilter([]);
+  }, []);
 
   return (
     <div className="p-0">
-      <div className="flex flex-col gap-8 ">
-        {/* Stats Cards Section */}
-        <div className="px-4 py-8   rounded-2xl bg-[#183D32]/10 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
-          {/* Regular Tabs */}
-          <div className="flex flex-wrap gap-4 mb-6 ">
-            {TABS.map((tab, idx) => renderTabButton(tab, idx, TABS))}
-            {DISTINGUISHED_TAB.map((tab, idx) => renderTabButton(tab, idx, DISTINGUISHED_TAB))}
-
-          </div>
-          
-          {/* Category Tabs with Label */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
-              
-            
-              <div className="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {CATEGORY_TABS.map((tab, idx) => renderTabButton(tab, idx, CATEGORY_TABS))}
-              {/* Distinguished Alumni Tab */}
-         
-            </div>
-          </div>
-
-          
-        </div>
+      <div className="flex flex-col gap-4">
+        <DashboardStats
+          selected={selected}
+          onSelect={handleDashboardStatSelect}
+          counts={counts}
+          isLoadingCounts={isLoadingCounts && !countsData}
+          underApprovalChangeCount={changeApprovalCount}
+          isLoadingChangeCount={isPendingChangeApprovalCount}
+        />
 
         {/* Distinguished Alumni Tab Content */}
         <div style={{ display: selected === "distinguished" ? "block" : "none" }}>
