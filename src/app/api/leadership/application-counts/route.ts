@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const type = searchParams.get("type") || "all"; // chapter|association|all
     const role = searchParams.get("role") || "all"; // all|president|vice_president|coordinator
+    const category = searchParams.get("category") || "all"; // all|national|international|association
+    const categoryValues = new Set(["all", "national", "international", "association"]);
+    if (!categoryValues.has(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    }
+
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
     const nationalChapterIdRaw = searchParams.get("nationalChapterId");
@@ -93,14 +99,24 @@ export async function GET(req: NextRequest) {
     const assocAdditionalCondition = hasAdditional
       ? sql` AND ass.additional_achievements IS NOT NULL AND LENGTH(TRIM(ass.additional_achievements)) > 0`
       : sql``;
-    const chapterPendingDimensionCondition =
+    const chapterCategoryCondition =
+      category === "association"
+        ? sql` AND 1=0`
+        : category === "national"
+          ? sql` AND TRIM(COALESCE(ch.national_chapter, '')) <> ''`
+          : category === "international"
+            ? sql` AND TRIM(COALESCE(ch.international_chapter, '')) <> ''`
+            : sql``;
+    const associationCategoryCondition = category === "national" || category === "international" ? sql` AND 1=0` : sql``;
+
+    const chapterDimensionCondition =
       validAssociationId
         ? sql` AND 1=0`
         : sql`
             ${validNationalChapterId ? sql` AND cl.chapter_id = ${validNationalChapterId} AND TRIM(COALESCE(ch.national_chapter, '')) <> ''` : sql``}
             ${validInternationalChapterId ? sql` AND cl.chapter_id = ${validInternationalChapterId} AND TRIM(COALESCE(ch.international_chapter, '')) <> ''` : sql``}
           `;
-    const associationPendingDimensionCondition =
+    const associationDimensionCondition =
       validNationalChapterId || validInternationalChapterId
         ? sql` AND 1=0`
         : validAssociationId
@@ -125,7 +141,8 @@ export async function GET(req: NextRequest) {
           ${searchCondition}
           ${chapterRoleCondition}
           ${chapterAdditionalCondition}
-          ${chapterPendingDimensionCondition}
+          ${chapterCategoryCondition}
+          ${chapterDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter
@@ -155,7 +172,8 @@ export async function GET(req: NextRequest) {
           ${searchCondition}
           ${assocRoleCondition}
           ${assocAdditionalCondition}
-          ${associationPendingDimensionCondition}
+          ${associationCategoryCondition}
+          ${associationDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter

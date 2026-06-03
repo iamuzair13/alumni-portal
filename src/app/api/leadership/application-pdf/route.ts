@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { canModify, isSuperAdminUser, isAdminUser } from "@/lib/alumniProfile";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { sql } from "@/lib/dbconnect";
-import { generateLeadershipApplicationPDF } from "@/lib/pdfGenerator";
+import { resolveAlumniProfilePhotoForPdf } from "@/lib/alumniProfilePhotoPdf";
+import { generateLeadershipApplicationPDF, sanitizePdfText } from "@/lib/pdfGenerator";
 import { publicUploadsUrlFromStored } from "@/lib/uploadsImageUrl";
 
 function inferRoleNameFromPosition(position: string): "president" | "vice_president" | "coordinator" {
@@ -88,6 +89,9 @@ export async function GET(req: NextRequest) {
           cl.rejection_reason,
           cl.additional_achievements,
           cl.plan_strategy,
+          cl.strategy_assessment_marks,
+          cl.achievement_assessment_marks,
+          cl.bonus_marks,
           cl.optional_criteria_proficiency,
           cl.cv_file_url,
           cl.additional_file1_url,
@@ -108,7 +112,9 @@ export async function GET(req: NextRequest) {
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as program_name,
-          a.degreetitle
+          a.degreetitle,
+          a.image1,
+          a.image2
         FROM public.chapter_leadership cl
         LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -153,6 +159,9 @@ export async function GET(req: NextRequest) {
           ass.createddatetime,
           ass.additional_achievements,
           ass.plan_strategy,
+          ass.strategy_assessment_marks,
+          ass.achievement_assessment_marks,
+          ass.bonus_marks,
           ass.optional_criteria_proficiency,
           ass.cv_file_url,
           ass.additional_file1_url,
@@ -172,7 +181,9 @@ export async function GET(req: NextRequest) {
           f.faculty_name as facultyname,
           d.department_name as departmentname,
           p.program_name as program_name,
-          a.degreetitle
+          a.degreetitle,
+          a.image1,
+          a.image2
         FROM public.tblalumniassociation ass
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -254,8 +265,14 @@ export async function GET(req: NextRequest) {
       ORDER BY c.sort_order ASC, c.id ASC
     `;
 
+    const alumniProfilePhoto = await resolveAlumniProfilePhotoForPdf(
+      item.image1 as string | null | undefined,
+      item.image2 as string | null | undefined
+    );
+
     const pdf = await generateLeadershipApplicationPDF({
       leadershipType: type,
+      alumniProfilePhoto,
       categoryType:
         type === "chapter"
           ? ((item.national_chapter ? "national" : item.international_chapter ? "international" : null) as any)
@@ -285,10 +302,13 @@ export async function GET(req: NextRequest) {
         department: item.departmentname ? String(item.departmentname) : null,
         program: item.program_name ? String(item.program_name) : (item.degreetitle ? String(item.degreetitle) : null),
       },
-      roleDescription: roleRow ? String(roleRow.role_description ?? "") : "",
-      officeTermGovernanceHtml: roleRow ? String(roleRow.office_term_governance_html ?? "") : "",
-      additionalAchievements: item.additional_achievements ? String(item.additional_achievements) : null,
-      planStrategy: item.plan_strategy ? String(item.plan_strategy) : null,
+      roleDescription: roleRow ? sanitizePdfText(roleRow.role_description, 20_000) : "",
+      officeTermGovernanceHtml: roleRow ? sanitizePdfText(roleRow.office_term_governance_html, 20_000) : "",
+      additionalAchievements: item.additional_achievements ? sanitizePdfText(item.additional_achievements, 12_000) : null,
+      planStrategy: item.plan_strategy ? sanitizePdfText(item.plan_strategy, 12_000) : null,
+      strategyAssessmentMarks: Number.isFinite(Number(item.strategy_assessment_marks)) ? Number(item.strategy_assessment_marks) : 0,
+      achievementAssessmentMarks: Number.isFinite(Number(item.achievement_assessment_marks)) ? Number(item.achievement_assessment_marks) : 0,
+      bonusMarks: Number.isFinite(Number(item.bonus_marks)) ? Number(item.bonus_marks) : 0,
       createdAt: (type === "chapter" ? item.created_at : item.createddatetime) ? String(type === "chapter" ? item.created_at : item.createddatetime) : null,
       updatedAt: item.updated_at ? String(item.updated_at) : null,
       rejectionReason: item.rejection_reason ? String(item.rejection_reason) : null,
@@ -315,7 +335,7 @@ export async function GET(req: NextRequest) {
         adminConfirmed: Boolean(c.admin_confirmed),
         alumniResponse: c.alumni_response ? String(c.alumni_response) : null,
         adminResponse: c.admin_response ? String(c.admin_response) : null,
-        alumniTextResponse: c.alumni_text_response ? String(c.alumni_text_response) : null,
+        alumniTextResponse: c.alumni_text_response ? sanitizePdfText(c.alumni_text_response, 6_000) : null,
         obtainedMarks: Number.isFinite(Number(c.obtained_marks)) ? Number(c.obtained_marks) : null,
       })),
       optionalCriteriaProficiency: normalizeOptionalCriteriaProficiency(item.optional_criteria_proficiency ?? null),
@@ -323,12 +343,26 @@ export async function GET(req: NextRequest) {
 
     const filenameBase = `${type}-leadership-application-${String(item.sapid ?? "").trim() || String(item.registrationno ?? "").trim() || String(applicationId)}`;
 
+    if (pdf.length > 8 * 1024 * 1024) {
+      console.error("[leadership/application-pdf] Generated PDF unexpectedly large", {
+        applicationId,
+        type,
+        bytes: pdf.length,
+      });
+      return NextResponse.json(
+        { error: "Generated PDF is too large. Please contact support." },
+        { status: 500 }
+      );
+    }
+
     const body = new Uint8Array(pdf);
     return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
+        "Content-Length": String(pdf.length),
         "Content-Disposition": `attachment; filename="${filenameBase}.pdf"`,
+        "Cache-Control": "no-store",
       },
     });
   } catch (err) {

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency, criterionObtainedMarks: criterionObtainedMarksBody, assessmentRemarks, unapprovalRemarks } = body as {
+    const { action, applicationId, type, adminCriteriaIds, optionalCriteriaProficiency, criterionObtainedMarks: criterionObtainedMarksBody, assessmentRemarks, unapprovalRemarks, strategyAssessmentMarks, achievementAssessmentMarks } = body as {
       action?: "assessment" | "approve" | "unapprove" | "delete" | "reject";
       applicationId?: number;
       type?: "chapter" | "association";
@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
       criterionObtainedMarks?: unknown;
       assessmentRemarks?: unknown;
       unapprovalRemarks?: unknown;
+      strategyAssessmentMarks?: unknown;
+      achievementAssessmentMarks?: unknown;
     }; // action: "approve" | "reject" | "delete", type: "chapter" | "association"
     // For backward compatibility, some clients may still send `rejectionReason`.
 
@@ -102,6 +104,15 @@ export async function POST(req: NextRequest) {
 
     const assessmentRemarksValue = typeof assessmentRemarks === "string" ? assessmentRemarks.trim() : null;
     const unapprovalRemarksValue = typeof unapprovalRemarks === "string" ? unapprovalRemarks.trim() : null;
+    const strategyAssessmentMarksValue = Number(strategyAssessmentMarks);
+    const achievementAssessmentMarksValue = Number(achievementAssessmentMarks);
+    const hasValidStrategyMarks =
+      Number.isFinite(strategyAssessmentMarksValue) && strategyAssessmentMarksValue >= 0 && strategyAssessmentMarksValue <= 15;
+    const hasValidAchievementMarks =
+      Number.isFinite(achievementAssessmentMarksValue) && achievementAssessmentMarksValue >= 0 && achievementAssessmentMarksValue <= 10;
+    const bonusMarksValue = hasValidStrategyMarks && hasValidAchievementMarks
+      ? normalizeObtainedMark(strategyAssessmentMarksValue + achievementAssessmentMarksValue)
+      : NaN;
     const adminUserId = (session.user as any)?.userId ?? (session.user as any)?.id ?? null;
 
     if (type === "chapter") {
@@ -235,9 +246,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: true, message: "Application approved successfully" });
         }
 
-        // Assessment only allowed for pending applications.
-        if (currentStatus !== "pending") {
-          return NextResponse.json({ error: "Cannot assess: application must be pending." }, { status: 400 });
+        // Assessment/re-assessment is allowed for pending or already assessed applications.
+        if (currentStatus !== "pending" && currentStatus !== "assessed") {
+          return NextResponse.json({ error: "Cannot assess: application must be pending or assessed." }, { status: 400 });
+        }
+        if (!hasValidStrategyMarks) {
+          return NextResponse.json({ error: "Strategy & Planning marks must be between 0 and 15." }, { status: 400 });
+        }
+        if (!hasValidAchievementMarks) {
+          return NextResponse.json({ error: "Additional Achievements marks must be between 0 and 10." }, { status: 400 });
+        }
+        if (!Number.isFinite(bonusMarksValue) || bonusMarksValue > 25) {
+          return NextResponse.json({ error: "Bonus marks total must be between 0 and 25." }, { status: 400 });
         }
 
         const roleText = String((appRecord[0] as { post?: unknown }).post ?? "");
@@ -429,7 +449,10 @@ export async function POST(req: NextRequest) {
                 rejection_reason = NULL,
                 assessment_remarks = ${assessmentRemarksValue},
                 assessed_by = ${adminUserId},
-                assessed_at = NOW()
+                assessed_at = NOW(),
+                strategy_assessment_marks = ${normalizeObtainedMark(strategyAssessmentMarksValue)},
+                achievement_assessment_marks = ${normalizeObtainedMark(achievementAssessmentMarksValue)},
+                bonus_marks = ${bonusMarksValue}
                 ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
             WHERE id = ${Number(applicationId)}
           `;
@@ -438,7 +461,10 @@ export async function POST(req: NextRequest) {
             UPDATE public.chapter_leadership
             SET status = 'assessed',
                 updated_at = NOW(),
-                rejection_reason = NULL
+                rejection_reason = NULL,
+                strategy_assessment_marks = ${normalizeObtainedMark(strategyAssessmentMarksValue)},
+                achievement_assessment_marks = ${normalizeObtainedMark(achievementAssessmentMarksValue)},
+                bonus_marks = ${bonusMarksValue}
                 ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
             WHERE id = ${Number(applicationId)}
           `;
@@ -618,9 +644,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: true, message: "Application approved successfully" });
         }
 
-        // Assessment only allowed for pending applications.
-        if (currentStatus !== "pending") {
-          return NextResponse.json({ error: "Cannot assess: application must be pending." }, { status: 400 });
+        // Assessment/re-assessment is allowed for pending or already assessed applications.
+        if (currentStatus !== "pending" && currentStatus !== "assessed") {
+          return NextResponse.json({ error: "Cannot assess: application must be pending or assessed." }, { status: 400 });
+        }
+        if (!hasValidStrategyMarks) {
+          return NextResponse.json({ error: "Strategy & Planning marks must be between 0 and 15." }, { status: 400 });
+        }
+        if (!hasValidAchievementMarks) {
+          return NextResponse.json({ error: "Additional Achievements marks must be between 0 and 10." }, { status: 400 });
+        }
+        if (!Number.isFinite(bonusMarksValue) || bonusMarksValue > 25) {
+          return NextResponse.json({ error: "Bonus marks total must be between 0 and 25." }, { status: 400 });
         }
 
         const roleText = String((appRecord[0] as { q3?: unknown }).q3 ?? "");
@@ -818,7 +853,10 @@ export async function POST(req: NextRequest) {
                 ${hasAssocRejectionReasonCol?.[0] ? sql`, rejection_reason = NULL` : sql``}
                 , assessment_remarks = ${assessmentRemarksValue},
                 assessed_by = ${adminUserId},
-                assessed_at = NOW()
+                assessed_at = NOW(),
+                strategy_assessment_marks = ${normalizeObtainedMark(strategyAssessmentMarksValue)},
+                achievement_assessment_marks = ${normalizeObtainedMark(achievementAssessmentMarksValue)},
+                bonus_marks = ${bonusMarksValue}
             WHERE id = ${Number(applicationId)}
           `;
         } else {
@@ -827,6 +865,9 @@ export async function POST(req: NextRequest) {
             SET status = 'assessed'
                 ${hasOptionalCriteriaProficiencyField ? sql`, optional_criteria_proficiency = ${optionalCriteriaProficiencyJsonValue}` : sql``}
                 ${hasAssocRejectionReasonCol?.[0] ? sql`, rejection_reason = NULL` : sql``}
+                , strategy_assessment_marks = ${normalizeObtainedMark(strategyAssessmentMarksValue)}
+                , achievement_assessment_marks = ${normalizeObtainedMark(achievementAssessmentMarksValue)}
+                , bonus_marks = ${bonusMarksValue}
             WHERE id = ${Number(applicationId)}
           `;
         }

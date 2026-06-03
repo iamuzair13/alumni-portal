@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const role = searchParams.get("role") || "all";
+    const status = searchParams.get("status") || "all";
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim().toLowerCase();
     const selectedInternationalChapterId = toPositiveInt(searchParams.get("internationalChapterId"));
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
 
     const roleValues = new Set(["all", "president", "vice_president", "coordinator"]);
     if (!roleValues.has(role)) return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    const statusValues = new Set(["all", "approved", "assessed", "pending", "rejected"]);
+    if (!statusValues.has(status)) return NextResponse.json({ error: "Invalid status" }, { status: 400 });
 
     const hasAdditionalValues = new Set(["", "0", "1", "true", "false"]);
     if (!hasAdditionalValues.has(hasAdditionalAchievements)) {
@@ -84,6 +87,8 @@ export async function GET(req: NextRequest) {
     const assocAdditionalCondition = hasAdditional
       ? sql` AND ass.additional_achievements IS NOT NULL AND LENGTH(TRIM(ass.additional_achievements)) > 0`
       : sql``;
+    const chapterStatusCondition = status !== "all" ? sql` AND COALESCE(cl.status, 'pending') = ${status}` : sql``;
+    const assocStatusCondition = status !== "all" ? sql` AND COALESCE(ass.status, 'pending') = ${status}` : sql``;
 
     const chapterScopedByOtherChapterFilter =
       selectedInternationalChapterId ? sql` AND cl.chapter_id = ${selectedInternationalChapterId}` : sql``;
@@ -116,8 +121,9 @@ export async function GET(req: NextRequest) {
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
       LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
-      WHERE COALESCE(cl.status, 'pending') = 'pending'
+      WHERE 1=1
         AND TRIM(COALESCE(ch.national_chapter, '')) <> ''
+        ${chapterStatusCondition}
         ${searchCondition}
         ${chapterRoleCondition}
         ${chapterAdditionalCondition}
@@ -137,8 +143,9 @@ export async function GET(req: NextRequest) {
       FROM public.chapter_leadership cl
       LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
       LEFT JOIN public.tblchapters ch ON ch.id = cl.chapter_id
-      WHERE COALESCE(cl.status, 'pending') = 'pending'
+      WHERE 1=1
         AND TRIM(COALESCE(ch.international_chapter, '')) <> ''
+        ${chapterStatusCondition}
         ${searchCondition}
         ${chapterRoleCondition}
         ${chapterAdditionalCondition}
@@ -157,7 +164,8 @@ export async function GET(req: NextRequest) {
       SELECT ass.association_id AS id, COUNT(*)::int AS count
       FROM public.tblalumniassociation ass
       LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
-      WHERE COALESCE(ass.status, 'pending') = 'pending'
+      WHERE 1=1
+        ${assocStatusCondition}
         ${searchCondition}
         ${assocRoleCondition}
         ${assocAdditionalCondition}

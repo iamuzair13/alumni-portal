@@ -16,7 +16,13 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const type = searchParams.get("type") || "all"; // "chapter", "association", "all"
-    const status = searchParams.get("status") || "pending"; // "all", "approved", "assessed", "pending", "rejected"
+    const category = searchParams.get("category") || "all"; // "all", "national", "international", "association"
+    const status = searchParams.get("status") || "all"; // "all", "approved", "assessed", "pending", "rejected"
+    const categoryValues = new Set(["all", "national", "international", "association"]);
+    if (!categoryValues.has(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    }
+
     const role = searchParams.get("role") || "all"; // "all", "president", "vice_president", "coordinator"
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
@@ -119,6 +125,7 @@ export async function GET(req: NextRequest) {
       additionalFile2Url?: string | null;
       createdAt: string;
       obtainedMarksTotal?: number | null;
+      bonusMarks?: number | null;
     }> = [];
 
     const statusCondition = status !== "all" ? sql` AND cl.status = ${status}` : sql``;
@@ -177,23 +184,28 @@ export async function GET(req: NextRequest) {
     const effectiveAlumniId = isAlumni ? sessionAlumniId : alumniId;
     const chapterAlumniFilter = effectiveAlumniId ? sql` AND cl.alumniid = ${Number(effectiveAlumniId)}` : sql``;
     const assocAlumniFilter = effectiveAlumniId ? sql` AND ass.alumni_id = ${Number(effectiveAlumniId)}` : sql``;
-    const chapterPendingDimensionCondition =
-      status !== "pending"
-        ? sql``
-        : validAssociationId
-          ? sql` AND 1=0`
-          : sql`
-              ${validNationalChapterId ? sql` AND cl.chapter_id = ${validNationalChapterId} AND TRIM(COALESCE(ch.national_chapter, '')) <> ''` : sql``}
-              ${validInternationalChapterId ? sql` AND cl.chapter_id = ${validInternationalChapterId} AND TRIM(COALESCE(ch.international_chapter, '')) <> ''` : sql``}
-            `;
-    const associationPendingDimensionCondition =
-      status !== "pending"
-        ? sql``
-        : validNationalChapterId || validInternationalChapterId
-          ? sql` AND 1=0`
-          : validAssociationId
-            ? sql` AND ass.association_id = ${validAssociationId}`
+    const chapterCategoryCondition =
+      category === "association"
+        ? sql` AND 1=0`
+        : category === "national"
+          ? sql` AND TRIM(COALESCE(ch.national_chapter, '')) <> ''`
+          : category === "international"
+            ? sql` AND TRIM(COALESCE(ch.international_chapter, '')) <> ''`
             : sql``;
+    const associationCategoryCondition = category === "national" || category === "international" ? sql` AND 1=0` : sql``;
+
+    const chapterDimensionCondition = validAssociationId
+      ? sql` AND 1=0`
+      : sql`
+          ${validNationalChapterId ? sql` AND cl.chapter_id = ${validNationalChapterId} AND TRIM(COALESCE(ch.national_chapter, '')) <> ''` : sql``}
+          ${validInternationalChapterId ? sql` AND cl.chapter_id = ${validInternationalChapterId} AND TRIM(COALESCE(ch.international_chapter, '')) <> ''` : sql``}
+        `;
+    const associationDimensionCondition =
+      validNationalChapterId || validInternationalChapterId
+        ? sql` AND 1=0`
+        : validAssociationId
+          ? sql` AND ass.association_id = ${validAssociationId}`
+          : sql``;
 
     // Get chapter leadership applications
     if (type === "all" || type === "chapter") {
@@ -229,6 +241,7 @@ export async function GET(req: NextRequest) {
               AND lcc.chapter_application_id = cl.id
               AND lcc.actor_type = 'admin'
           ) AS total_obtained_marks
+          , cl.bonus_marks
         FROM public.chapter_leadership cl
         LEFT JOIN public.tbl_alumni a ON a.alumniid = cl.alumniid
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -241,7 +254,8 @@ export async function GET(req: NextRequest) {
           ${chapterRoleCondition}
           ${chapterAdditionalCondition}
           ${chapterAlumniFilter}
-          ${chapterPendingDimensionCondition}
+          ${chapterCategoryCondition}
+          ${chapterDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql 
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter 
@@ -287,6 +301,10 @@ export async function GET(req: NextRequest) {
             const n = Number(v);
             return Number.isFinite(n) ? n : null;
           })(),
+          bonusMarks: (() => {
+            const n = Number(r.bonus_marks);
+            return Number.isFinite(n) ? n : 0;
+          })(),
         });
       });
     }
@@ -323,6 +341,7 @@ export async function GET(req: NextRequest) {
               AND lcc.association_application_id = ass.id
               AND lcc.actor_type = 'admin'
           ) AS total_obtained_marks
+          , ass.bonus_marks
         FROM public.tblalumniassociation ass
         LEFT JOIN public.tbl_alumni a ON a.alumniid = ass.alumni_id
         LEFT JOIN public.tbl_faculties f ON f.id = a.faculty
@@ -335,7 +354,8 @@ export async function GET(req: NextRequest) {
           ${assocRoleCondition}
           ${assocAdditionalCondition}
           ${assocAlumniFilter}
-          ${associationPendingDimensionCondition}
+          ${associationCategoryCondition}
+          ${associationDimensionCondition}
           ${accessFilter.hasFilter && accessFilter.sql 
             ? sql` AND EXISTS (
                 SELECT 1 FROM public.tbl_alumni a_filter 
@@ -377,6 +397,10 @@ export async function GET(req: NextRequest) {
             if (v == null || v === "") return null;
             const n = Number(v);
             return Number.isFinite(n) ? n : null;
+          })(),
+          bonusMarks: (() => {
+            const n = Number(r.bonus_marks);
+            return Number.isFinite(n) ? n : 0;
           })(),
         });
       });

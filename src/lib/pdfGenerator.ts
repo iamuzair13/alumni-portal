@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import type { PdfEmbedImage } from "@/lib/alumniProfilePhotoPdf";
 import { formatObtainedMarkDisplay, normalizeObtainedMark } from "@/lib/leadershipMarks";
 import {
   discountCategoryLabel,
@@ -9,16 +10,27 @@ import {
 import { readFileSync } from "fs";
 import { join } from "path";
 
-// Helper function to get logo as base64
+const PDF_LOGO_MAX_BYTES = 512 * 1024;
+
+/** Strip data-URL payloads and cap length so applicant uploads do not bloat PDFs. */
+export function sanitizePdfText(value: unknown, maxLen = 12_000): string {
+  let s = String(value ?? "").trim();
+  if (!s) return "";
+  if (/^data:[^;]+;base64,/i.test(s)) return "[Content omitted from PDF — see application files]";
+  s = s.replace(/data:image\/[a-z0-9+.-]+;base64,[a-z0-9+/=\s]+/gi, "[Image omitted]");
+  if (s.length > maxLen) {
+    return `${s.slice(0, maxLen)}\n\n[Truncated for PDF export]`;
+  }
+  return s;
+}
+
+// Helper function to get logo as base64 (skips oversized assets that inflate PDF file size)
 function getLogoBase64(variant: "light" | "dark" = "dark"): string {
-  // Keep PDF logo source aligned with app header branding.
   const lightCandidates = [
-    // Prefer lightweight assets to avoid huge PDFs.
     join(process.cwd(), "public", "images", "logo", "logo-white.png"),
     join(process.cwd(), "public", "images", "logo", "UOL-LOGO-White.png"),
   ];
   const darkCandidates = [
-    // Dark logos are usually not transparent here; use when a colored banner is not used.
     join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-04.png"),
     join(process.cwd(), "public", "images", "logo", "UOL-Rebrand-ID_Final-01.png"),
   ];
@@ -26,6 +38,7 @@ function getLogoBase64(variant: "light" | "dark" = "dark"): string {
   for (const logoPath of candidates) {
     try {
       const logoBuffer = readFileSync(logoPath);
+      if (logoBuffer.length > PDF_LOGO_MAX_BYTES) continue;
       return `data:image/png;base64,${logoBuffer.toString("base64")}`;
     } catch {
       // try next candidate
@@ -934,6 +947,8 @@ export interface LeadershipApplicationPDFData {
     department?: string | null;
     program?: string | null;
   };
+  /** Profile photo (tbl_alumni image2/image1) or placeholder for PDF header */
+  alumniProfilePhoto?: PdfEmbedImage | null;
   roleDescription?: string | null;
   officeTermGovernanceHtml?: string | null;
   criteria: Array<{
@@ -953,6 +968,9 @@ export interface LeadershipApplicationPDFData {
   }>;
   additionalAchievements?: string | null;
   planStrategy?: string | null;
+  strategyAssessmentMarks?: number | null;
+  achievementAssessmentMarks?: number | null;
+  bonusMarks?: number | null;
   optionalCriteriaProficiency?: unknown;
   uploadedDocuments?: Array<{ label: string; url: string; uploadedAt?: string | null }>;
   createdAt?: string | null;
@@ -1091,7 +1109,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       })();
 
       const normalizeHtml = (html: string) => {
-        return String(html || "")
+        const stripped = String(html || "")
           .replace(/\u00a0/g, " ")
           .replace(/&nbsp;/gi, " ")
           .replace(/&#160;/gi, " ")
@@ -1116,6 +1134,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
           .replace(/\n[ \t]+/g, "\n")
           .replace(/\n{3,}/g, "\n\n")
           .trim();
+        return sanitizePdfText(stripped, 20_000);
       };
 
       const drawInlineBoldLine = (line: string, x: number, fontSize: number, maxW: number, baseBold: boolean = false) => {
@@ -1181,26 +1200,62 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         y += 2;
       };
 
-      const logoBase64 = getLogoBase64();
-      if (logoBase64) {
+      const photoW = 28;
+      const photoH = 36;
+      const photoX = margin;
+      const photoY = margin;
+      let headerBottom = margin + photoH;
+
+      const profilePhoto = data.alumniProfilePhoto;
+      if (profilePhoto?.dataUrl) {
         try {
-          const logoWidth = 40;
-          const logoHeight = 20;
-          const logoX = pageWidth - margin - logoWidth;
-          const logoY = margin;
-          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight);
-          y = logoY + logoHeight + 10;
+          doc.setDrawColor(210, 210, 210);
+          doc.setFillColor(248, 248, 248);
+          doc.rect(photoX, photoY, photoW, photoH, "FD");
+          doc.addImage(
+            profilePhoto.dataUrl,
+            profilePhoto.format,
+            photoX + 1,
+            photoY + 1,
+            photoW - 2,
+            photoH - 2,
+            "alumni-profile-photo",
+            "FAST"
+          );
         } catch {
-          y = margin + 10;
+          doc.setFillColor(245, 245, 245);
+          doc.rect(photoX, photoY, photoW, photoH, "F");
+          setTextStyle(8, false, [120, 120, 120]);
+          doc.text("No photo", photoX + photoW / 2, photoY + photoH / 2, { align: "center" });
         }
-      } else {
-        y = margin + 10;
       }
 
+      const logoBase64 = getLogoBase64();
+      const logoWidth = 40;
+      const logoHeight = 20;
+      const logoX = pageWidth - margin - logoWidth;
+      const logoY = margin;
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", logoX, logoY, logoWidth, logoHeight, "uol-logo", "FAST");
+          headerBottom = Math.max(headerBottom, logoY + logoHeight);
+        } catch {
+          headerBottom = Math.max(headerBottom, logoY + logoHeight);
+        }
+      }
+
+      const titleX = photoX + photoW + 10;
+      const titleY = photoY + 14;
       setTextStyle(14, true, [0, 102, 51]);
-      doc.text("Leadership Application", margin, y);
-      y += 10;
+      doc.text("Leadership Application", titleX, titleY);
+      headerBottom = Math.max(headerBottom, titleY + 8);
+
+      y = headerBottom + 8;
       hLine(0, 10);
+
+      const planStrategyText = sanitizePdfText(data.planStrategy, 12_000) || "No response provided";
+      const additionalAchievementsText = sanitizePdfText(data.additionalAchievements, 12_000) || "No response provided";
+      const roleDescriptionText = sanitizePdfText(data.roleDescription, 20_000) || "-";
 
       
 
@@ -1246,7 +1301,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
       hLine(0, 10);
 
       sectionTitle("Role Description");
-      drawRichTextBlock(String(data.roleDescription || "-"), maxWidth);
+      drawRichTextBlock(roleDescriptionText, maxWidth);
       hLine(0, 10);
       sectionTitle("Criteria");
       const applicationApproved = String(data.status || "").toLowerCase() === "approved";
@@ -1315,6 +1370,8 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         y += rowH;
       };
 
+      let criteriaTotalMarks = 0;
+      let criteriaTotalObtained = 0;
       if (!data.criteria || data.criteria.length === 0) {
         drawWrappedText("No criteria found.", margin, 10.5, false, maxWidth, 10);
       } else {
@@ -1363,7 +1420,7 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
             if (!c.hasTextbox) return base;
             const response =
               c.alumniTextResponse && String(c.alumniTextResponse).trim()
-                ? String(c.alumniTextResponse)
+                ? sanitizePdfText(c.alumniTextResponse, 6_000)
                 : "No response provided";
             const label = String(c.textboxLabel || "Response");
             return `${base}\n${label}: ${response}`;
@@ -1376,6 +1433,8 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
             alumni: alumniCell,
           });
         });
+        criteriaTotalMarks = totalMarks;
+        criteriaTotalObtained = totalObtained;
         y += 10;
 
         if (totalMarks > 0) {
@@ -1390,15 +1449,33 @@ export function generateLeadershipApplicationPDF(data: LeadershipApplicationPDFD
         }
       }
 
-      hLine(0, 10);
-      sectionTitle("Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.");
-      drawRichTextBlock(String(data.additionalAchievements || "-"), maxWidth);
+      const strategyMarks = Number.isFinite(Number(data.strategyAssessmentMarks)) ? normalizeObtainedMark(Number(data.strategyAssessmentMarks)) : 0;
+      const achievementsMarks = Number.isFinite(Number(data.achievementAssessmentMarks)) ? normalizeObtainedMark(Number(data.achievementAssessmentMarks)) : 0;
+      const bonusMarks = Number.isFinite(Number(data.bonusMarks))
+        ? normalizeObtainedMark(Number(data.bonusMarks))
+        : normalizeObtainedMark(strategyMarks + achievementsMarks);
+      const grandObtained = normalizeObtainedMark(criteriaTotalObtained + bonusMarks);
+      const grandMaximum = normalizeObtainedMark(criteriaTotalMarks + 25);
 
       hLine(0, 10);
-      sectionTitle("Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role");
-      drawRichTextBlock(String(data.planStrategy || "-"), maxWidth, 9, true);
+      sectionTitle("Bonus Assessment");
+      drawWrappedText("Strategy & Planning Response:", margin, 10.5, true, maxWidth, 3);
+      drawRichTextBlock(planStrategyText, maxWidth, 10.5, false);
+      drawWrappedText(`Marks Awarded: ${formatObtainedMarkDisplay(strategyMarks)} / 15`, margin, 10.5, false, maxWidth, 8);
+      hLine(0, 8);
+      drawWrappedText("Additional Achievements Response:", margin, 10.5, true, maxWidth, 3);
+      drawRichTextBlock(additionalAchievementsText, maxWidth, 10.5, false);
+      drawWrappedText(`Marks Awarded: ${formatObtainedMarkDisplay(achievementsMarks)} / 10`, margin, 10.5, false, maxWidth, 8);
+      drawWrappedText(`Bonus Marks: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, margin, 10.5, true, maxWidth, 10);
 
-       sectionTitle("Uploaded Documents");
+      hLine(0, 10);
+      sectionTitle("Assessment Summary");
+      drawWrappedText(`Assessment Marks: ${applicationApproved ? formatObtainedMarkDisplay(criteriaTotalObtained) : "—"} / ${formatObtainedMarkDisplay(criteriaTotalMarks)}`, margin, 10.5, false, maxWidth, 4);
+      drawWrappedText(`Bonus Marks: ${formatObtainedMarkDisplay(bonusMarks)} / 25`, margin, 10.5, false, maxWidth, 4);
+      drawWrappedText(`Grand Total: ${applicationApproved ? formatObtainedMarkDisplay(grandObtained) : "—"} / ${formatObtainedMarkDisplay(grandMaximum)}`, margin, 10.5, true, maxWidth, 8);
+
+      hLine(0, 10);
+      sectionTitle("Uploaded Documents");
 
       const fileNameFromUrlPdf = (url: string) => {
         try {

@@ -22,10 +22,12 @@ export type LeadershipApplicationTrace = {
   additionalFile1Url?: string | null;
   additionalFile2Url?: string | null;
   createdAt: string;
+  bonusMarks?: number | null;
 };
 
 export type LeadershipApplicationsQueryInput = {
   type?: "all" | "chapter" | "association";
+  category?: "all" | "national" | "international" | "association";
   status?: "all" | "pending" | "assessed" | "approved" | "rejected";
   role?: "all" | "president" | "vice_president" | "coordinator";
   search?: string;
@@ -39,7 +41,8 @@ export type LeadershipApplicationsQueryInput = {
 export const leadershipApplicationsKey = (input: LeadershipApplicationsQueryInput) => [
   "leadership-applications",
   input.type ?? "all",
-  input.status ?? "pending",
+  input.category ?? "all",
+  input.status ?? "all",
   input.role ?? "all",
   input.search ?? "",
   input.hasAdditionalAchievements ? "1" : "0",
@@ -49,6 +52,7 @@ export const leadershipApplicationsKey = (input: LeadershipApplicationsQueryInpu
 export async function getLeadershipApplications(input: LeadershipApplicationsQueryInput): Promise<LeadershipApplicationTrace[]> {
   const params = new URLSearchParams();
   if (input.type && input.type !== "all") params.append("type", input.type);
+  if (input.category && input.category !== "all") params.append("category", input.category);
   if (input.status && input.status !== "all") params.append("status", input.status);
   if (input.role && input.role !== "all") params.append("role", input.role);
   if (input.search) params.append("search", input.search);

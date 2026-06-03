@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import SyncedTableScroll from "@/components/tables/SyncedTableScroll";
 import Pagination from "@/components/tables/Pagination";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { TrashBinIcon, CheckLineIcon, CloseLineIcon, DownloadIcon, PlusIcon, EyeIcon, CheckCircleIcon } from "@/icons";
+import { TrashBinIcon, DownloadIcon, PlusIcon, EyeIcon, CheckCircleIcon, CheckLineIcon, CloseLineIcon, PencilIcon } from "@/icons";
 import { canModify } from "@/lib/alumniProfile";
 import toast from "react-hot-toast";
 import { AlumniExpandableDetails } from "@/components/alumni/AlumniExpandableDetails";
@@ -84,11 +86,13 @@ type LeadershipApplication = {
   createdAt: string;
   /** Sum of admin entered obtained marks (scored criteria); null if none recorded */
   obtainedMarksTotal?: number | null;
+  bonusMarks?: number | null;
 };
 
 type ApplicationStatusTab = "all" | "pending" | "assessed" | "approved" | "rejected";
+type ApplicationCategoryFilter = "all" | "national" | "international" | "association";
 type RoleFilter = "all" | "president" | "vice_president" | "coordinator";
-type SortKey = "createdAt" | "name" | "sapId" | "type" | "position" | "status";
+type SortKey = "createdAt" | "name" | "sapId" | "type" | "position" | "status" | "bonusMarks";
 
 type ApplicationCounts = {
   all: number;
@@ -98,16 +102,16 @@ type ApplicationCounts = {
   rejected: number;
 };
 
-type PendingFilterOption = {
+type CategoryOptionItem = {
   id: number;
   label: string;
   count: number;
 };
 
-type PendingFilterOptionsResponse = {
-  nationalChapters: PendingFilterOption[];
-  internationalChapters: PendingFilterOption[];
-  associations: PendingFilterOption[];
+type CategoryOptionsResponse = {
+  nationalChapters: CategoryOptionItem[];
+  internationalChapters: CategoryOptionItem[];
+  associations: CategoryOptionItem[];
 };
 
 type ApplicationDetailsCriterion = {
@@ -141,6 +145,10 @@ type ViewDetailsItem = ApplicationDetailsItem & {
   optionalCriteriaProficiency?: Record<string, number | null> | null;
   roleDescription?: string | null;
   officeTermGovernanceHtml?: string | null;
+  strategyAssessmentMarks?: number | null;
+  achievementAssessmentMarks?: number | null;
+  bonusMarks?: number | null;
+  assessmentRemarks?: string | null;
   cvFileUrl?: string | null;
   additionalFile1Url?: string | null;
   additionalFile2Url?: string | null;
@@ -160,6 +168,7 @@ async function fetchMembers(type: string, search?: string, faculty?: string, cha
 
 async function fetchApplications(input: {
   type?: "all" | "chapter" | "association";
+  category?: ApplicationCategoryFilter;
   status?: ApplicationStatusTab;
   role?: RoleFilter;
   search?: string;
@@ -170,7 +179,8 @@ async function fetchApplications(input: {
 }) {
   const items = await getLeadershipApplications({
     type: input.type ?? "all",
-    status: input.status ?? "pending",
+    category: input.category ?? "all",
+    status: input.status ?? "all",
     role: input.role ?? "all",
     search: input.search,
     hasAdditionalAchievements: input.hasAdditionalAchievements,
@@ -243,6 +253,7 @@ function downloadDocumentUrl(url: string, filenameHint?: string) {
 
 async function fetchApplicationCounts(input: {
   type?: "all" | "chapter" | "association";
+  category?: ApplicationCategoryFilter;
   role?: RoleFilter;
   search?: string;
   hasAdditionalAchievements?: boolean;
@@ -252,6 +263,7 @@ async function fetchApplicationCounts(input: {
 }) {
   const params = new URLSearchParams();
   if (input.type && input.type !== "all") params.append("type", input.type);
+  if (input.category && input.category !== "all") params.append("category", input.category);
   if (input.role && input.role !== "all") params.append("role", input.role);
   if (input.search) params.append("search", input.search);
   if (input.hasAdditionalAchievements) params.append("hasAdditionalAchievements", "1");
@@ -271,36 +283,25 @@ async function fetchApplicationCounts(input: {
   return (data.counts || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 }) as ApplicationCounts;
 }
 
-async function fetchPendingFilterOptions(input: {
+async function fetchCategoryOptions(input: {
   role?: RoleFilter;
+  status?: ApplicationStatusTab;
   search?: string;
   hasAdditionalAchievements?: boolean;
-  nationalChapterId?: number;
-  internationalChapterId?: number;
-  associationId?: number;
 }) {
   const params = new URLSearchParams();
   if (input.role && input.role !== "all") params.append("role", input.role);
+  if (input.status && input.status !== "all") params.append("status", input.status);
   if (input.search) params.append("search", input.search);
   if (input.hasAdditionalAchievements) params.append("hasAdditionalAchievements", "1");
-  if (input.nationalChapterId && Number.isFinite(input.nationalChapterId) && input.nationalChapterId > 0) {
-    params.append("nationalChapterId", String(input.nationalChapterId));
-  }
-  if (input.internationalChapterId && Number.isFinite(input.internationalChapterId) && input.internationalChapterId > 0) {
-    params.append("internationalChapterId", String(input.internationalChapterId));
-  }
-  if (input.associationId && Number.isFinite(input.associationId) && input.associationId > 0) {
-    params.append("associationId", String(input.associationId));
-  }
-
   const res = await fetch(`/api/leadership/pending-filter-options?${params.toString()}`);
-  if (!res.ok) throw new Error("Failed to fetch pending filter options");
-  const data = (await res.json()) as PendingFilterOptionsResponse;
+  if (!res.ok) throw new Error("Failed to fetch category options");
+  const data = (await res.json()) as CategoryOptionsResponse;
   return {
     nationalChapters: Array.isArray(data.nationalChapters) ? data.nationalChapters : [],
     internationalChapters: Array.isArray(data.internationalChapters) ? data.internationalChapters : [],
     associations: Array.isArray(data.associations) ? data.associations : [],
-  } as PendingFilterOptionsResponse;
+  } as CategoryOptionsResponse;
 }
 
 async function fetchApplicationDetails(input: { type: "chapter" | "association"; applicationId: number }) {
@@ -323,6 +324,10 @@ async function fetchApplicationDetails(input: { type: "chapter" | "association";
 }
 
 export default function LeadershipPage() {
+  const router = useRouter();
+  const pathname = usePathname() || "/leadership";
+  const searchParams = useSearchParams();
+  const safeSearchParams = searchParams ?? new URLSearchParams();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const { isExporting, openExportModal, ExportModal } = useExcelExport();
@@ -332,12 +337,11 @@ export default function LeadershipPage() {
   const [facultyFilter, setFacultyFilter] = useState("");
   const [chapterFilter, setChapterFilter] = useState("");
   const [applicationTypeFilter, setApplicationTypeFilter] = useState<"all" | "chapter" | "association">("all");
-  const [applicationStatusTab, setApplicationStatusTab] = useState<ApplicationStatusTab>("pending");
+  const [applicationCategoryFilter, setApplicationCategoryFilter] = useState<ApplicationCategoryFilter>("all");
+  const [applicationCategoryItemId, setApplicationCategoryItemId] = useState<number | null>(null);
+  const [applicationStatusTab, setApplicationStatusTab] = useState<ApplicationStatusTab>("all");
   const [applicationRoleFilter, setApplicationRoleFilter] = useState<RoleFilter>("all");
   const [hasAdditionalAchievementsFilter, setHasAdditionalAchievementsFilter] = useState(false);
-  const [pendingNationalChapterFilter, setPendingNationalChapterFilter] = useState<number | null>(null);
-  const [pendingInternationalChapterFilter, setPendingInternationalChapterFilter] = useState<number | null>(null);
-  const [pendingAssociationFilter, setPendingAssociationFilter] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [appPage, setAppPage] = useState(1);
@@ -349,6 +353,8 @@ export default function LeadershipPage() {
   const [adminCriterionObtainedMarks, setAdminCriterionObtainedMarks] = useState<Record<number, number>>({});
   const [assessmentRemarks, setAssessmentRemarks] = useState<string>("");
   const [unapprovalRemarks, setUnapprovalRemarks] = useState<string>("");
+  const [strategyAssessmentMarks, setStrategyAssessmentMarks] = useState<string>("");
+  const [achievementAssessmentMarks, setAchievementAssessmentMarks] = useState<string>("");
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -362,24 +368,84 @@ export default function LeadershipPage() {
     setAppPage(1);
   }, [
     applicationTypeFilter,
+    applicationCategoryFilter,
+    applicationCategoryItemId,
     applicationStatusTab,
     applicationRoleFilter,
     hasAdditionalAchievementsFilter,
-    pendingNationalChapterFilter,
-    pendingInternationalChapterFilter,
-    pendingAssociationFilter,
   ]);
 
   useEffect(() => {
-    if (applicationStatusTab !== "pending") {
-      setPendingNationalChapterFilter(null);
-      setPendingInternationalChapterFilter(null);
-      setPendingAssociationFilter(null);
+    const tab = safeSearchParams.get("tab");
+    if (tab === "chapterMembers" || tab === "associationMembers" || tab === "applications") {
+      setSelectedTab(tab);
     }
-  }, [applicationStatusTab]);
+    const type = safeSearchParams.get("type");
+    if (type === "all" || type === "chapter" || type === "association") {
+      setApplicationTypeFilter(type);
+    }
+    const status = safeSearchParams.get("status");
+    if (status === "all" || status === "pending" || status === "assessed" || status === "approved" || status === "rejected") {
+      setApplicationStatusTab(status);
+    }
+    const category = safeSearchParams.get("category");
+    if (category === "all" || category === "national" || category === "international" || category === "association") {
+      setApplicationCategoryFilter(category);
+    }
+    const role = safeSearchParams.get("role");
+    if (role === "all" || role === "president" || role === "vice_president" || role === "coordinator") {
+      setApplicationRoleFilter(role);
+    }
+    const search = safeSearchParams.get("search") || "";
+    setSearchQuery(search);
+    setDebouncedSearch(search.trim());
+    setHasAdditionalAchievementsFilter(safeSearchParams.get("hasAdditionalAchievements") === "1");
+    const pageValue = Number(safeSearchParams.get("page") || "1");
+    setAppPage(Number.isFinite(pageValue) && pageValue > 0 ? pageValue : 1);
+    const itemValue = Number(safeSearchParams.get("categoryItemId") || "");
+    setApplicationCategoryItemId(Number.isFinite(itemValue) && itemValue > 0 ? itemValue : null);
+  }, [safeSearchParams]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(safeSearchParams.toString());
+    if (selectedTab === "chapterMembers") params.delete("tab");
+    else params.set("tab", selectedTab);
+    if (applicationTypeFilter === "all") params.delete("type");
+    else params.set("type", applicationTypeFilter);
+    if (applicationStatusTab === "all") params.delete("status");
+    else params.set("status", applicationStatusTab);
+    if (applicationCategoryFilter === "all") params.delete("category");
+    else params.set("category", applicationCategoryFilter);
+    if (!applicationCategoryItemId) params.delete("categoryItemId");
+    else params.set("categoryItemId", String(applicationCategoryItemId));
+    if (applicationRoleFilter === "all") params.delete("role");
+    else params.set("role", applicationRoleFilter);
+    if (!debouncedSearch) params.delete("search");
+    else params.set("search", debouncedSearch);
+    if (!hasAdditionalAchievementsFilter) params.delete("hasAdditionalAchievements");
+    else params.set("hasAdditionalAchievements", "1");
+    if (appPage <= 1) params.delete("page");
+    else params.set("page", String(appPage));
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [
+    appPage,
+    applicationCategoryFilter,
+    applicationCategoryItemId,
+    applicationRoleFilter,
+    applicationStatusTab,
+    applicationTypeFilter,
+    debouncedSearch,
+    hasAdditionalAchievementsFilter,
+    pathname,
+    router,
+    safeSearchParams,
+    selectedTab,
+  ]);
 
   const confirmModal = useModal();
   const secondaryConfirmModal = useModal();
+  const assessmentFormInitKeyRef = useRef<string | null>(null);
   const achievementsModal = useModal();
   const [selectedAchievementsApp, setSelectedAchievementsApp] = useState<LeadershipApplication | null>(null);
   const viewModal = useModal();
@@ -394,44 +460,88 @@ export default function LeadershipPage() {
         name?: string;
         email?: string;
         categoryName?: string | null;
+        status?: string;
       }
     | null
   >(null);
 
   const isAdmin = session?.user ? canModify(session.user) : false;
 
+  const downloadLeadershipPdf = async (
+    endpoint: "application-pdf" | "application-scorecard",
+    type: "chapter" | "association",
+    applicationId: number,
+    filenamePrefix: string
+  ) => {
+    const url = new URL(
+      `/api/leadership/${endpoint}`,
+      typeof window !== "undefined" ? window.location.origin : ""
+    );
+    url.searchParams.set("type", type);
+    url.searchParams.set("applicationId", String(applicationId));
+
+    const res = await fetch(url.toString(), {
+      headers: { accept: "application/pdf" },
+      credentials: "include",
+    });
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const err =
+        data && typeof data === "object" && "error" in data
+          ? String((data as { error?: unknown }).error || "")
+          : "";
+      throw new Error(err || "Failed to download PDF");
+    }
+    if (!contentType.includes("application/pdf")) {
+      throw new Error("Server did not return a PDF file. Please try again.");
+    }
+
+    const blob = await res.blob();
+    if (blob.size > 8 * 1024 * 1024) {
+      throw new Error(
+        `Downloaded file is too large (${(blob.size / (1024 * 1024)).toFixed(1)} MB). The application PDF may contain oversized content.`
+      );
+    }
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `${filenamePrefix}-${type}-${applicationId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(blobUrl);
+  };
+
   const handleDownloadApplicationPDF = async () => {
     if (!selectedViewApp) return;
-
     try {
-      const url = new URL(
-        "/api/leadership/application-pdf",
-        typeof window !== "undefined" ? window.location.origin : ""
+      await downloadLeadershipPdf(
+        "application-pdf",
+        selectedViewApp.type,
+        selectedViewApp.applicationId,
+        "leadership-application"
       );
-      url.searchParams.set("type", selectedViewApp.type);
-      url.searchParams.set("applicationId", String(selectedViewApp.applicationId));
-
-      const res = await fetch(url.toString(), { headers: { accept: "application/pdf" } });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const err =
-          data && typeof data === "object" && "error" in data
-            ? String((data as { error?: unknown }).error || "")
-            : "";
-        throw new Error(err || "Failed to download PDF");
-      }
-
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `leadership-application-${selectedViewApp.type}-${selectedViewApp.applicationId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const handleDownloadScorecard = async (type: "chapter" | "association", applicationId: number) => {
+    try {
+      await downloadLeadershipPdf("application-scorecard", type, applicationId, "leadership-scorecard");
+      toast.success("Scorecard downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to download scorecard");
+    }
+  };
+
+  const handleDownloadApplicationFromRow = async (type: "chapter" | "association", applicationId: number) => {
+    try {
+      await downloadLeadershipPdf("application-pdf", type, applicationId, "leadership-application");
+      toast.success("Application PDF downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to download application PDF");
     }
   };
 
@@ -448,7 +558,11 @@ export default function LeadershipPage() {
       if (!res.ok) throw new Error("Failed to load criteria");
       return (await res.json()) as { items: RoleCriterion[] };
     },
-    enabled: confirmModal.isOpen && !!pendingAction && (pendingAction.action === "approve" || pendingAction.action === "assessment") && isAdmin,
+    enabled:
+      (confirmModal.isOpen || secondaryConfirmModal.isOpen) &&
+      !!pendingAction &&
+      (pendingAction.action === "approve" || pendingAction.action === "assessment") &&
+      isAdmin,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -461,7 +575,11 @@ export default function LeadershipPage() {
       if (pendingAction.action !== "approve" && pendingAction.action !== "assessment") return { item: null, criteria: [] as ApplicationDetailsCriterion[] };
       return fetchApplicationDetails({ type: pendingAction.type, applicationId: pendingAction.applicationId });
     },
-    enabled: confirmModal.isOpen && !!pendingAction && (pendingAction.action === "approve" || pendingAction.action === "assessment") && isAdmin,
+    enabled:
+      (confirmModal.isOpen || secondaryConfirmModal.isOpen) &&
+      !!pendingAction &&
+      (pendingAction.action === "approve" || pendingAction.action === "assessment") &&
+      isAdmin,
     staleTime: 0,
     refetchOnWindowFocus: false,
   });
@@ -493,20 +611,72 @@ export default function LeadershipPage() {
   }, [criteriaItems]);
 
   useEffect(() => {
-    if (!confirmModal.isOpen) {
+    const assessmentFlowOpen =
+      (confirmModal.isOpen || secondaryConfirmModal.isOpen) &&
+      pendingAction &&
+      (pendingAction.action === "assessment" || pendingAction.action === "approve");
+
+    if (!assessmentFlowOpen) {
+      assessmentFormInitKeyRef.current = null;
       setAdminCriteriaIds(new Set());
       setAdminOptionalCriteriaProficiency({});
       setAdminCriterionObtainedMarks({});
       setAssessmentRemarks("");
       setUnapprovalRemarks("");
+      setStrategyAssessmentMarks("");
+      setAchievementAssessmentMarks("");
       return;
     }
-    setAdminCriteriaIds(new Set());
-    setAdminOptionalCriteriaProficiency({});
-    setAdminCriterionObtainedMarks({});
-    setAssessmentRemarks("");
+
+    if (!pendingAction) return;
+    const formKey = `${pendingAction.action}-${pendingAction.type}-${pendingAction.applicationId}`;
+    if (assessmentFormInitKeyRef.current === formKey) return;
+    if (approveDetailsLoading) return;
+
+    const item = approveDetailsData?.item as ViewDetailsItem | undefined;
+    const detailCriteria = Array.isArray(approveDetailsData?.criteria) ? approveDetailsData.criteria : [];
+
+    const nextAdminIds = new Set<number>();
+    const nextMarks: Record<number, number> = {};
+    const nextProf: Record<number, number> = {};
+
+    for (const c of detailCriteria) {
+      const id = Number(c.id);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      if (c.is_mandatory && c.admin_confirmed) nextAdminIds.add(id);
+      const om = Number(c.obtained_marks);
+      if (Number.isFinite(om)) nextMarks[id] = normalizeObtainedMark(om);
+    }
+
+    const profRaw = item?.optionalCriteriaProficiency;
+    if (profRaw && typeof profRaw === "object") {
+      for (const [k, v] of Object.entries(profRaw)) {
+        const id = Number(k);
+        const rating = Number(v);
+        if (Number.isFinite(id) && id > 0 && Number.isFinite(rating) && rating >= 1 && rating <= 5) {
+          nextProf[id] = Math.min(5, Math.max(1, Math.round(rating)));
+        }
+      }
+    }
+
+    setAdminCriteriaIds(nextAdminIds);
+    setAdminCriterionObtainedMarks(nextMarks);
+    setAdminOptionalCriteriaProficiency(nextProf);
+    setAssessmentRemarks(item?.assessmentRemarks ? String(item.assessmentRemarks) : "");
     setUnapprovalRemarks("");
-  }, [confirmModal.isOpen, pendingAction?.applicationId]);
+    const strategy = Number(item?.strategyAssessmentMarks ?? 0);
+    const achievement = Number(item?.achievementAssessmentMarks ?? 0);
+    setStrategyAssessmentMarks(Number.isFinite(strategy) ? String(strategy) : "0");
+    setAchievementAssessmentMarks(Number.isFinite(achievement) ? String(achievement) : "0");
+
+    assessmentFormInitKeyRef.current = formKey;
+  }, [
+    confirmModal.isOpen,
+    secondaryConfirmModal.isOpen,
+    pendingAction,
+    approveDetailsLoading,
+    approveDetailsData,
+  ]);
 
   // Fetch chapter members
   const { data: chapterMembersData, isLoading: chapterMembersLoading } = useQuery({
@@ -536,24 +706,24 @@ export default function LeadershipPage() {
     queryKey: [
       "leadership-applications",
       applicationTypeFilter,
+      applicationCategoryFilter,
+      applicationCategoryItemId,
       applicationStatusTab,
       applicationRoleFilter,
       debouncedSearch,
       hasAdditionalAchievementsFilter,
-      pendingNationalChapterFilter,
-      pendingInternationalChapterFilter,
-      pendingAssociationFilter,
     ],
     queryFn: () =>
       fetchApplications({
         type: applicationTypeFilter,
+        category: applicationCategoryFilter,
         status: applicationStatusTab,
         role: applicationRoleFilter,
         search: debouncedSearch || undefined,
         ...(hasAdditionalAchievementsFilter ? { hasAdditionalAchievements: true } : {}),
-        ...(applicationStatusTab === "pending" && pendingNationalChapterFilter ? { nationalChapterId: pendingNationalChapterFilter } : {}),
-        ...(applicationStatusTab === "pending" && pendingInternationalChapterFilter ? { internationalChapterId: pendingInternationalChapterFilter } : {}),
-        ...(applicationStatusTab === "pending" && pendingAssociationFilter ? { associationId: pendingAssociationFilter } : {}),
+        ...(applicationCategoryFilter === "national" && applicationCategoryItemId ? { nationalChapterId: applicationCategoryItemId } : {}),
+        ...(applicationCategoryFilter === "international" && applicationCategoryItemId ? { internationalChapterId: applicationCategoryItemId } : {}),
+        ...(applicationCategoryFilter === "association" && applicationCategoryItemId ? { associationId: applicationCategoryItemId } : {}),
       }),
     enabled: true,
     staleTime: 0,
@@ -565,22 +735,22 @@ export default function LeadershipPage() {
     queryKey: [
       "leadership-application-counts",
       applicationTypeFilter,
+      applicationCategoryFilter,
+      applicationCategoryItemId,
       applicationRoleFilter,
       debouncedSearch,
       hasAdditionalAchievementsFilter,
-      pendingNationalChapterFilter,
-      pendingInternationalChapterFilter,
-      pendingAssociationFilter,
     ],
     queryFn: () =>
       fetchApplicationCounts({
         type: applicationTypeFilter,
+        category: applicationCategoryFilter,
         role: applicationRoleFilter,
         search: debouncedSearch || undefined,
         ...(hasAdditionalAchievementsFilter ? { hasAdditionalAchievements: true } : {}),
-        ...(applicationStatusTab === "pending" && pendingNationalChapterFilter ? { nationalChapterId: pendingNationalChapterFilter } : {}),
-        ...(applicationStatusTab === "pending" && pendingInternationalChapterFilter ? { internationalChapterId: pendingInternationalChapterFilter } : {}),
-        ...(applicationStatusTab === "pending" && pendingAssociationFilter ? { associationId: pendingAssociationFilter } : {}),
+        ...(applicationCategoryFilter === "national" && applicationCategoryItemId ? { nationalChapterId: applicationCategoryItemId } : {}),
+        ...(applicationCategoryFilter === "international" && applicationCategoryItemId ? { internationalChapterId: applicationCategoryItemId } : {}),
+        ...(applicationCategoryFilter === "association" && applicationCategoryItemId ? { associationId: applicationCategoryItemId } : {}),
       }),
     enabled: true,
     placeholderData: (prev) => prev,
@@ -589,26 +759,22 @@ export default function LeadershipPage() {
     refetchOnMount: true,
   });
 
-  const { data: pendingFilterOptionsData, isLoading: pendingFilterOptionsLoading } = useQuery({
+  const { data: categoryOptionsData, isLoading: categoryOptionsLoading } = useQuery({
     queryKey: [
-      "leadership-pending-filter-options",
+      "leadership-category-options",
       applicationRoleFilter,
+      applicationStatusTab,
       debouncedSearch,
       hasAdditionalAchievementsFilter,
-      pendingNationalChapterFilter,
-      pendingInternationalChapterFilter,
-      pendingAssociationFilter,
     ],
     queryFn: () =>
-      fetchPendingFilterOptions({
+      fetchCategoryOptions({
         role: applicationRoleFilter,
+        status: applicationStatusTab,
         search: debouncedSearch || undefined,
         ...(hasAdditionalAchievementsFilter ? { hasAdditionalAchievements: true } : {}),
-        ...(pendingNationalChapterFilter ? { nationalChapterId: pendingNationalChapterFilter } : {}),
-        ...(pendingInternationalChapterFilter ? { internationalChapterId: pendingInternationalChapterFilter } : {}),
-        ...(pendingAssociationFilter ? { associationId: pendingAssociationFilter } : {}),
       }),
-    enabled: selectedTab === "applications" && isAdmin && applicationStatusTab === "pending",
+    enabled: selectedTab === "applications" && isAdmin,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -652,7 +818,7 @@ export default function LeadershipPage() {
     }
 
     // Use confirmation modal instead of immediate action
-    const app = applicationsData?.find((x) => x.id === applicationId);
+    const app = applicationsData?.find((x) => x.id === applicationId && x.type === type);
     setPendingAction({
       action,
       applicationId,
@@ -662,6 +828,7 @@ export default function LeadershipPage() {
       name: app?.name,
       email: app?.email,
       categoryName: app?.categoryName,
+      status: app?.status,
     });
     confirmModal.openModal();
     return;
@@ -690,23 +857,20 @@ export default function LeadershipPage() {
     }
 
     if (action === "assessment" && isAdmin) {
-      const optionalCriteriaIds = criteriaItems
-        .filter((c) => !c.is_mandatory)
-        .map((c) => Number(c.id))
-        .filter((n) => Number.isFinite(n) && n > 0);
-
-      if (optionalCriteriaIds.length > 0) {
-        const missingRating = optionalCriteriaIds.some((id) => {
-          const r = Number(adminOptionalCriteriaProficiency[id] ?? 0);
-          return !Number.isFinite(r) || r < 1 || r > 5;
-        });
-
-        if (missingRating) {
-          toast.error("Please select a proficiency rating (1-5) for all optional criteria.");
-          return;
-        }
+      const strategyNum = Number(strategyAssessmentMarks);
+      const achievementNum = Number(achievementAssessmentMarks);
+      if (!Number.isFinite(strategyNum) || strategyNum < 0 || strategyNum > 15) {
+        toast.error("Strategy & Planning marks must be between 0 and 15.");
+        return;
       }
-
+      if (!Number.isFinite(achievementNum) || achievementNum < 0 || achievementNum > 10) {
+        toast.error("Additional Achievements marks must be between 0 and 10.");
+        return;
+      }
+      if (strategyNum + achievementNum > 25) {
+        toast.error("Bonus marks total cannot exceed 25.");
+        return;
+      }
       const optionalRatedIds = criteriaItems
         .filter((c) => !c.is_mandatory)
         .map((c) => Number(c.id))
@@ -767,6 +931,8 @@ export default function LeadershipPage() {
                 optionalCriteriaProficiency: adminOptionalCriteriaProficiency,
                 criterionObtainedMarks: criterionObtainedMarksPayload,
                 assessmentRemarks,
+                strategyAssessmentMarks: Number(strategyAssessmentMarks),
+                achievementAssessmentMarks: Number(achievementAssessmentMarks),
               }
             : {}),
           ...(action === "unapprove" ? { unapprovalRemarks } : {}),
@@ -884,6 +1050,10 @@ export default function LeadershipPage() {
       url.searchParams.set("type", exportType);
       url.searchParams.set("status", status);
       if (selectedTab === "applications") {
+        if (applicationCategoryFilter && applicationCategoryFilter !== "all") url.searchParams.set("category", applicationCategoryFilter);
+        if (applicationCategoryFilter === "national" && applicationCategoryItemId) url.searchParams.set("nationalChapterId", String(applicationCategoryItemId));
+        if (applicationCategoryFilter === "international" && applicationCategoryItemId) url.searchParams.set("internationalChapterId", String(applicationCategoryItemId));
+        if (applicationCategoryFilter === "association" && applicationCategoryItemId) url.searchParams.set("associationId", String(applicationCategoryItemId));
         if (applicationRoleFilter && applicationRoleFilter !== "all") url.searchParams.set("role", applicationRoleFilter);
         if (debouncedSearch) url.searchParams.set("search", debouncedSearch);
         if (hasAdditionalAchievementsFilter) url.searchParams.set("hasAdditionalAchievements", "1");
@@ -911,7 +1081,11 @@ export default function LeadershipPage() {
         "Leadership Type": item.leadership_type || "",
         "Leadership Status": item.status || "",
         "Position": item.position || "",
+        "Bonus Marks": `${formatObtainedMarkDisplay(Number(item.bonus_marks || 0))} / 25`,
         "Additional Achievements": item.additional_achievements || "",
+        "Strategy & Planning": item.plan_strategy || "",
+        "Strategy Assessment Marks": item.strategy_assessment_marks ?? 0,
+        "Achievements Assessment Marks": item.achievement_assessment_marks ?? 0,
         "Alumni Confirmed Criteria": item.alumni_confirmed_criteria || "",
         "Admin Confirmed Criteria": item.admin_confirmed_criteria || "",
         "SAP ID": item.sapid || "",
@@ -952,6 +1126,7 @@ export default function LeadershipPage() {
         if (sortKey === "type") return a.type || "";
         if (sortKey === "position") return a.position || "";
         if (sortKey === "status") return String(a.status || "");
+        if (sortKey === "bonusMarks") return String(Number(a.bonusMarks ?? 0));
         return "";
       })();
       const vb = ((): string => {
@@ -961,6 +1136,7 @@ export default function LeadershipPage() {
         if (sortKey === "type") return b.type || "";
         if (sortKey === "position") return b.position || "";
         if (sortKey === "status") return String(b.status || "");
+        if (sortKey === "bonusMarks") return String(Number(b.bonusMarks ?? 0));
         return "";
       })();
       return va.localeCompare(vb) * dir;
@@ -993,17 +1169,30 @@ export default function LeadershipPage() {
   const chapterMembersCount = chapterMembersData?.length || 0;
   const associationMembersCount = associationMembersData?.length || 0;
   const applicationsCount = Number(applicationCountsData?.all ?? applicationsData?.length ?? 0);
+  const handleClearFilters = () => {
+    setApplicationStatusTab("all");
+    setApplicationTypeFilter("all");
+    setApplicationCategoryFilter("all");
+    setApplicationCategoryItemId(null);
+    setApplicationRoleFilter("all");
+    setHasAdditionalAchievementsFilter(false);
+    setSearchQuery("");
+    setDebouncedSearch("");
+    setAppPage(1);
+    queryClient.invalidateQueries({ queryKey: ["leadership-applications"] });
+    queryClient.invalidateQueries({ queryKey: ["leadership-application-counts"] });
+  };
 
   return (
     <div className="min-h-screen w-full bg-slate-200 dark:bg-gray-900/50 overflow-x-hidden dark:text-gray-300 dark:bg-gray-900">
       {/* add appropria title and description here */}
-      <div className="w-full max-w-[1230px] border-b border-gray-200 dark:border-gray-700 bg-white rounded-t-lg mt-4 mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
+      <div className="w-full max-w-[1300px] border-b border-gray-200 dark:border-gray-700 bg-white rounded-t-lg mt-4 mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
         <div className="px-4 py-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Leadership Applications</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-300 dark:bg-gray-900">Manage leadership applications for chapters and associations.</p>
         </div>
       </div>
-      <div className="w-full max-w-[1230px] bg-white rounded-b-lg  mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
+      <div className="w-full max-w-[1300px] bg-white rounded-b-lg  mx-auto flex flex-col justify-start dark:text-gray-300 dark:bg-gray-900">
         {/* Tabs Section */}
         <div className="w-full px-4 py-4 ">
           <div className=" mx-auto dark:text-gray-300 dark:bg-gray-900">
@@ -1025,9 +1214,16 @@ export default function LeadershipPage() {
                     onClick={() => {
                       setSelectedTab(tab.key);
                       setSearchQuery("");
+                      setDebouncedSearch("");
                       setFacultyFilter("");
                       setChapterFilter("");
                       setApplicationTypeFilter("all");
+                      setApplicationCategoryFilter("all");
+                      setApplicationCategoryItemId(null);
+                      setApplicationStatusTab("all");
+                      setApplicationRoleFilter("all");
+                      setHasAdditionalAchievementsFilter(false);
+                      setAppPage(1);
                     }}
                   >
                     <div className={`text-xs font-bold uppercase tracking-wide mb-1 truncate dark:text-gray-300 dark:bg-gray-900 ${
@@ -1113,63 +1309,36 @@ export default function LeadershipPage() {
     {/* ─── Primary Command Bar ─── */}
     <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
       
-      {/* Status Segmented Control */}
-      <div className="flex flex-wrap items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/60 backdrop-blur-sm rounded-xl w-fit ring-1 ring-gray-200/60 dark:ring-gray-800/60">
-        {([
-          { key: "all", label: "All", color: "slate" },
-          { key: "pending", label: "Pending", color: "amber" },
-          { key: "assessed", label: "Assessed", color: "blue" },
-          { key: "approved", label: "Approved", color: "emerald" },
-          { key: "rejected", label: "Not Approved", color: "rose" },
-        ] as Array<{ key: ApplicationStatusTab; label: string; color: string }>).map((t) => {
-          const active = applicationStatusTab === t.key;
+      {/* Status Dropdown */}
+      <div className="relative group min-w-[220px] max-w-xs">
+        {(() => {
           const counts = applicationCountsData || { all: 0, pending: 0, assessed: 0, approved: 0, rejected: 0 };
-          const countVal =
-            t.key === "all"
-              ? counts.all
-              : t.key === "pending"
-                ? counts.pending
-                : t.key === "assessed"
-                  ? counts.assessed
-                  : t.key === "approved"
-                    ? counts.approved
-                    : counts.rejected;
-          
-          const colorMap: Record<string, { active: string; badge: string; badgeBg: string }> = {
-            slate: { active: "bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700", badge: "text-slate-600 dark:text-slate-400", badgeBg: "bg-slate-100 dark:bg-slate-800/80" },
-            amber: { active: "bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-200 dark:ring-amber-900/50", badge: "text-amber-600 dark:text-amber-400", badgeBg: "bg-amber-50 dark:bg-amber-900/30" },
-            blue: { active: "bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900/50", badge: "text-blue-600 dark:text-blue-400", badgeBg: "bg-blue-50 dark:bg-blue-900/30" },
-            emerald: { active: "bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-emerald-200 dark:ring-emerald-900/50", badge: "text-emerald-600 dark:text-emerald-400", badgeBg: "bg-emerald-50 dark:bg-emerald-900/30" },
-            rose: { active: "bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-400 shadow-sm ring-1 ring-rose-200 dark:ring-rose-900/50", badge: "text-rose-600 dark:text-rose-400", badgeBg: "bg-rose-50 dark:bg-rose-900/30" },
-          };
-          const colors = colorMap[t.color];
-          
           return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => {
-                setApplicationStatusTab(t.key);
-                setAppPage(1);
-              }}
-              className={`relative rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 ease-out
-                ${active ? colors.active : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200/40 dark:hover:bg-gray-800/60"}
-              `}
-            >
-              <span className="flex items-center gap-2">
-                {t.label}
-                <span className={`inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold transition-all duration-200
-                  ${active ? `${colors.badgeBg} ${colors.badge} scale-105` : "bg-gray-200/50 dark:bg-gray-800 text-gray-500 dark:text-gray-500"}
-                `}>
-                  {countVal}
-                </span>
-              </span>
-              {active && (
-                <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-current opacity-20" />
-              )}
-            </button>
+        <select
+          value={applicationStatusTab}
+          onChange={(e) => {
+            setApplicationStatusTab(e.target.value as ApplicationStatusTab);
+            setAppPage(1);
+          }}
+          className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+        >
+          <option value="all">{`All (${counts.all})`}</option>
+          <option value="pending">{`Pending (${counts.pending})`}</option>
+          <option value="assessed">{`Assessed (${counts.assessed})`}</option>
+          <option value="approved">{`Approved (${counts.approved})`}</option>
+          <option value="rejected">{`Not Approved (${counts.rejected})`}</option>
+        </select>
           );
-        })}
+        })()}
+        <svg
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
       </div>
 
       {/* ─── Secondary Filter Arsenal ─── */}
@@ -1223,94 +1392,71 @@ export default function LeadershipPage() {
           </span>
         </label>
 
-        {/* Pending Context Filters */}
         <div className="flex flex-1 flex-wrap items-center gap-3 min-w-[340px] pl-3 border-l border-gray-200 dark:border-gray-800 animate-in fade-in slide-in-from-left-2 duration-300">
-          {/* National Chapters */}
-          <div className="relative group flex-1 min-w-[160px] max-w-xs">
+          <div className="relative group flex-1 min-w-[180px] max-w-xs">
             <select
-              value={pendingNationalChapterFilter ? String(pendingNationalChapterFilter) : ""}
+              value={applicationCategoryFilter}
               onChange={(e) => {
-                const next = e.target.value ? Number(e.target.value) : null;
-                setPendingNationalChapterFilter(next);
-                setPendingInternationalChapterFilter(null);
-                setPendingAssociationFilter(null);
-                setApplicationTypeFilter("chapter");
+                const next = e.target.value as ApplicationCategoryFilter;
+                setApplicationCategoryFilter(next);
+                setApplicationCategoryItemId(null);
+                if (next === "association") setApplicationTypeFilter("association");
+                if (next === "national" || next === "international") setApplicationTypeFilter("chapter");
                 setAppPage(1);
               }}
               className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
             >
-              <option value="">
-                National Chapters
-                {pendingFilterOptionsLoading ? "…" : ""}
-              </option>
-              {(pendingFilterOptionsData?.nationalChapters || []).map((item) => (
-                <option key={`nat-${item.id}`} value={item.id}>
-                  {item.label} ({item.count})
-                </option>
-              ))}
+              <option value="all">All Categories</option>
+              <option value="national">National Chapters</option>
+              <option value="international">International Chapters</option>
+              <option value="association">Associations</option>
             </select>
             <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
-
-          {/* International Chapters */}
-          <div className="relative group flex-1 min-w-[160px] max-w-xs">
-            <select
-              value={pendingInternationalChapterFilter ? String(pendingInternationalChapterFilter) : ""}
-              onChange={(e) => {
-                const next = e.target.value ? Number(e.target.value) : null;
-                setPendingInternationalChapterFilter(next);
-                setPendingNationalChapterFilter(null);
-                setPendingAssociationFilter(null);
-                setApplicationTypeFilter("chapter");
-                setAppPage(1);
-              }}
-              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
-            >
-              <option value="">
-                International Chapters
-                {pendingFilterOptionsLoading ? "…" : ""}
-              </option>
-              {(pendingFilterOptionsData?.internationalChapters || []).map((item) => (
-                <option key={`int-${item.id}`} value={item.id}>
-                  {item.label} ({item.count})
+          {applicationCategoryFilter !== "all" && (
+            <div className="relative group flex-1 min-w-[220px] max-w-sm">
+              <select
+                value={applicationCategoryItemId ? String(applicationCategoryItemId) : ""}
+                onChange={(e) => {
+                  const next = e.target.value ? Number(e.target.value) : null;
+                  setApplicationCategoryItemId(next && Number.isFinite(next) && next > 0 ? next : null);
+                  setAppPage(1);
+                }}
+                className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
+              >
+                <option value="">
+                  {applicationCategoryFilter === "national"
+                    ? "Select National Chapter"
+                    : applicationCategoryFilter === "international"
+                      ? "Select International Chapter"
+                      : "Select Association"}
+                  {categoryOptionsLoading ? "..." : ""}
                 </option>
-              ))}
-            </select>
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-
-          {/* Associations */}
-          <div className="relative group flex-1 min-w-[160px] max-w-xs">
-            <select
-              value={pendingAssociationFilter ? String(pendingAssociationFilter) : ""}
-              onChange={(e) => {
-                const next = e.target.value ? Number(e.target.value) : null;
-                setPendingAssociationFilter(next);
-                setPendingNationalChapterFilter(null);
-                setPendingInternationalChapterFilter(null);
-                setApplicationTypeFilter("association");
-                setAppPage(1);
-              }}
-              className="appearance-none w-full pl-3.5 pr-9 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm text-sm text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 cursor-pointer"
-            >
-              <option value="">
-                Associations
-                {pendingFilterOptionsLoading ? "…" : ""}
-              </option>
-              {(pendingFilterOptionsData?.associations || []).map((item) => (
-                <option key={`assoc-${item.id}`} value={item.id}>
-                  {item.label} ({item.count})
-                </option>
-              ))}
-            </select>
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+                {(applicationCategoryFilter === "national"
+                  ? categoryOptionsData?.nationalChapters || []
+                  : applicationCategoryFilter === "international"
+                    ? categoryOptionsData?.internationalChapters || []
+                    : categoryOptionsData?.associations || []
+                ).map((item) => (
+                  <option key={`${applicationCategoryFilter}-${item.id}`} value={item.id}>
+                    {item.label} ({item.count})
+                  </option>
+                ))}
+              </select>
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none transition-transform duration-200 group-hover:translate-y-[-45%]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition-all duration-200 shadow-sm"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
@@ -1334,7 +1480,7 @@ export default function LeadershipPage() {
               }
             }}
             showCloseButton={true}
-            className="max-w-[1080px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8 dark:text-gray-300 dark:bg-gray-900"
+            className="max-w-[1400px] w-[95vw] max-h-[90vh] overflow-y-auto p-6 lg:p-8 dark:text-gray-300 dark:bg-gray-900"
           >
             <div className="flex max-h-[80vh] flex-col ">
               <div className="p-6 overflow-y-auto">
@@ -1642,7 +1788,56 @@ export default function LeadershipPage() {
 
               {pendingAction.action === "assessment" && isAdmin && (
                 <div className="mt-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4 dark:text-gray-300 dark:bg-gray-900">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-300 dark:bg-gray-900">Assessment Remarks (optional)</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Bonus Assessment</div>
+                  <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-3">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">Strategy &amp; Planning</div>
+                      <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        Please share an outline of your plan or strategy for fulfilling the responsibilities assigned for this role.
+                      </div>
+                      <div className="mt-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-2 py-2 text-xs whitespace-pre-wrap break-words">
+                        {String((approveDetailsData?.item as ViewDetailsItem | undefined)?.planStrategy || "").trim() || "No response provided"}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={15}
+                          step="any"
+                          value={strategyAssessmentMarks}
+                          onChange={(e) => setStrategyAssessmentMarks(e.target.value)}
+                          className="w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-600 dark:text-gray-400">/ 15</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/20 p-3">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">Additional Achievements</div>
+                      <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        Describe any additional achievements, leadership experience, awards, or qualifications relevant to this role.
+                      </div>
+                      <div className="mt-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-2 py-2 text-xs whitespace-pre-wrap break-words">
+                        {String((approveDetailsData?.item as ViewDetailsItem | undefined)?.additionalAchievements || "").trim() || "No response provided"}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={10}
+                          step="any"
+                          value={achievementAssessmentMarks}
+                          onChange={(e) => setAchievementAssessmentMarks(e.target.value)}
+                          className="w-28 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-600 dark:text-gray-400">/ 10</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Bonus Marks Total: {formatObtainedMarkDisplay(Number(strategyAssessmentMarks || 0) + Number(achievementAssessmentMarks || 0))} / 25
+                  </div>
+
+                  <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 text-sm font-semibold text-gray-900 dark:text-gray-100">Assessment Remarks (optional)</div>
                   <div className="mt-2">
                     <textarea
                       value={assessmentRemarks}
@@ -1725,7 +1920,25 @@ export default function LeadershipPage() {
 
               </div>
 
-              <div className="px-6 pb-6 pt-4 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <div className="px-6 pb-6 pt-4 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                {pendingAction.action === "assessment" &&
+                  (() => {
+                    const s = String(pendingAction.status || approveDetailsData?.item?.status || "").toLowerCase();
+                    if (s !== "assessed" && s !== "approved" && s !== "rejected") return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleDownloadScorecard(pendingAction.type, pendingAction.applicationId)
+                        }
+                        disabled={processingIds.has(pendingAction.applicationId)}
+                        className="mr-auto inline-flex items-center gap-2 rounded-lg border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/30 disabled:opacity-50"
+                      >
+                        <DownloadIcon className="h-4 w-4" />
+                        Download Scorecard
+                      </button>
+                    );
+                  })()}
                 <button
                   type="button"
                   onClick={() => {
@@ -1742,12 +1955,14 @@ export default function LeadershipPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!processingIds.has(pendingAction.applicationId)) {
-                      secondaryConfirmModal.openModal();
-                      toast("Please confirm in the next dialog to proceed.");
-                    }
+                    if (processingIds.has(pendingAction.applicationId)) return;
+                    confirmModal.closeModal();
+                    secondaryConfirmModal.openModal();
                   }}
-                  disabled={processingIds.has(pendingAction.applicationId)}
+                  disabled={
+                    processingIds.has(pendingAction.applicationId) ||
+                    (pendingAction.action === "assessment" && (criteriaLoading || approveDetailsLoading))
+                  }
                   className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
                   Confirm
@@ -1762,9 +1977,12 @@ export default function LeadershipPage() {
             isOpen={secondaryConfirmModal.isOpen}
             onClose={() => {
               secondaryConfirmModal.closeModal();
+              if (pendingAction.action === "assessment" || pendingAction.action === "approve") {
+                confirmModal.openModal();
+              }
             }}
             showCloseButton={true}
-            className="max-w-xl"
+            className="max-w-xl !z-[100001]"
           >
             <div className="p-6">
               <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -1777,7 +1995,12 @@ export default function LeadershipPage() {
               <div className="mt-6 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => secondaryConfirmModal.closeModal()}
+                  onClick={() => {
+                    secondaryConfirmModal.closeModal();
+                    if (pendingAction.action === "assessment" || pendingAction.action === "approve") {
+                      confirmModal.openModal();
+                    }
+                  }}
                   disabled={processingIds.has(pendingAction.applicationId)}
                   className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
                 >
@@ -1786,15 +2009,16 @@ export default function LeadershipPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!processingIds.has(pendingAction.applicationId)) {
-                      executePendingAction();
-                      toast("Submitting..."); // immediate feedback
-                    }
+                    if (processingIds.has(pendingAction.applicationId)) return;
+                    void executePendingAction();
                   }}
-                  disabled={processingIds.has(pendingAction.applicationId)}
+                  disabled={
+                    processingIds.has(pendingAction.applicationId) ||
+                    (pendingAction.action === "assessment" && (criteriaLoading || approveDetailsLoading))
+                  }
                   className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Proceed
+                  {processingIds.has(pendingAction.applicationId) ? "Submitting…" : "Proceed"}
                 </button>
               </div>
             </div>
@@ -1821,6 +2045,8 @@ export default function LeadershipPage() {
                         setSelectedViewApp({ type: app.type, applicationId: app.id });
                         viewModal.openModal();
                       }}
+                      onDownloadScorecard={(type, applicationId) => void handleDownloadScorecard(type, applicationId)}
+                      onDownloadApplication={(type, applicationId) => void handleDownloadApplicationFromRow(type, applicationId)}
                       processingIds={processingIds}
                       sortKey={sortKey}
                       sortDir={sortDir}
@@ -1853,6 +2079,8 @@ export default function LeadershipPage() {
                         setSelectedViewApp({ type: app.type, applicationId: app.id });
                         viewModal.openModal();
                       }}
+                      onDownloadScorecard={(type, applicationId) => void handleDownloadScorecard(type, applicationId)}
+                      onDownloadApplication={(type, applicationId) => void handleDownloadApplicationFromRow(type, applicationId)}
                       processingIds={processingIds}
                       sortKey={sortKey}
                       sortDir={sortDir}
@@ -2024,7 +2252,24 @@ export default function LeadershipPage() {
                                 <DownloadIcon className="h-4 w-4" />
                                 Download PDF
                               </button>
-
+                              {isAdmin &&
+                                (statusLower === "assessed" ||
+                                  statusLower === "approved" ||
+                                  statusLower === "rejected") && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void handleDownloadScorecard(
+                                        selectedViewApp.type,
+                                        selectedViewApp.applicationId
+                                      )
+                                    }
+                                    className="inline-flex items-center gap-2 rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:bg-gray-900 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                                  >
+                                    <DownloadIcon className="h-4 w-4" />
+                                    Download Scorecard
+                                  </button>
+                                )}
                             </div>
                           </div>
 
@@ -2249,6 +2494,251 @@ export default function LeadershipPage() {
   );
 }
 
+const APPLICATION_ACTIONS_MENU_WIDTH = 256;
+const APPLICATION_ACTIONS_MENU_MAX_HEIGHT = 360;
+
+function ApplicationActionsDropdown({
+  app,
+  isOpen,
+  onToggle,
+  onClose,
+  processingIds,
+  canAssess,
+  canFinalize,
+  canDownloadScorecard,
+  status,
+  onViewApplication,
+  onAction,
+  onDownloadScorecard,
+  onDownloadApplication,
+}: {
+  app: LeadershipApplication;
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  processingIds: Set<number>;
+  canAssess: boolean;
+  canFinalize: boolean;
+  canDownloadScorecard: boolean;
+  status: string;
+  onViewApplication: (app: LeadershipApplication) => void;
+  onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
+  onDownloadScorecard: (type: "chapter" | "association", applicationId: number) => void;
+  onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const gap = 8;
+    const top = rect.bottom + gap;
+    let left = rect.right - APPLICATION_ACTIONS_MENU_WIDTH;
+    if (left < 8) left = 8;
+    if (left + APPLICATION_ACTIONS_MENU_WIDTH > window.innerWidth - 8) {
+      left = window.innerWidth - APPLICATION_ACTIONS_MENU_WIDTH - 8;
+    }
+    const spaceBelow = window.innerHeight - top - 8;
+    const maxHeight = Math.max(160, Math.min(APPLICATION_ACTIONS_MENU_MAX_HEIGHT, spaceBelow));
+    setMenuPosition({ top, left, maxHeight });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+    const handleReposition = () => updateMenuPosition();
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
+
+  const isProcessing = processingIds.has(app.id);
+
+  const menu =
+    isOpen && menuPosition && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <div className="fixed inset-0 z-[9998]" aria-hidden="true" onClick={onClose} />
+            <div
+              role="menu"
+              className="fixed z-[9999] w-64 origin-top-right overflow-y-auto rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900 shadow-2xl shadow-black/10 dark:shadow-black/30 ring-1 ring-black/5 dark:ring-white/5 py-1.5"
+              style={{
+                top: menuPosition.top,
+                left: menuPosition.left,
+                maxHeight: menuPosition.maxHeight,
+              }}
+            >
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Application</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onViewApplication(app);
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <EyeIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                View Details
+              </button>
+
+              {canAssess && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    void onAction("assessment", app.id, app.type);
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  {status === "assessed" ? (
+                    <PencilIcon className="h-4 w-4 shrink-0 text-blue-500/80 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+                  ) : (
+                    <CheckCircleIcon className="h-4 w-4 shrink-0 text-blue-500/80 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+                  )}
+                  <span className="group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                    {status === "assessed" ? "Re-assess" : "Assessment"}
+                  </span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onDownloadApplication(app.type, app.id);
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
+                <DownloadIcon className="h-4 w-4 text-blue-600" />
+                Download Application
+              </button>
+
+              {canDownloadScorecard && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onDownloadScorecard(app.type, app.id);
+                    onClose();
+                  }}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                >
+                  <DownloadIcon className="h-4 w-4 text-emerald-600" />
+                  Download Scorecard
+                </button>
+              )}
+
+              {canFinalize && (
+                <>
+                  <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
+                  <div className="px-3 py-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Decision</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      void onAction("approve", app.id, app.type);
+                      onClose();
+                    }}
+                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                  >
+                    <CheckLineIcon className="h-4 w-4 shrink-0 text-emerald-500/80 group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
+                    <span className="group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Approve</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      void onAction("unapprove", app.id, app.type);
+                      onClose();
+                    }}
+                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  >
+                    <CloseLineIcon className="h-4 w-4 shrink-0 text-amber-500/80 group-hover:text-amber-600 dark:group-hover:text-amber-400" />
+                    <span className="group-hover:text-amber-700 dark:group-hover:text-amber-300">Not Approve</span>
+                  </button>
+                </>
+              )}
+
+              <div className="my-1.5 mx-3 border-t border-gray-100 dark:border-gray-800" />
+              <div className="px-3 py-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Danger</p>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  void onAction("delete", app.id, app.type);
+                  onClose();
+                }}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <TrashBinIcon className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          </>,
+          document.body
+        )
+      : null;
+
+  return (
+    <div className="relative ml-auto shrink-0">
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={isProcessing}
+        onClick={() => {
+          if (!isOpen) updateMenuPosition();
+          onToggle();
+        }}
+        className={`dropdown-toggle inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[140px] ${
+          isProcessing
+            ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400 cursor-not-allowed"
+            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-md"
+        }`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+      >
+        {isProcessing ? (
+          <>
+            <svg className="h-4 w-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span>Processing…</span>
+          </>
+        ) : (
+          <>
+            <span>Actions</span>
+            <svg
+              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </>
+        )}
+      </button>
+      {menu}
+    </div>
+  );
+}
+
 function ApplicationsTable({
   applications,
   loading,
@@ -2256,6 +2746,8 @@ function ApplicationsTable({
   onAction,
   onViewAdditionalAchievements,
   onViewApplication,
+  onDownloadScorecard,
+  onDownloadApplication,
   processingIds,
   sortKey,
   sortDir,
@@ -2267,11 +2759,15 @@ function ApplicationsTable({
   onAction: (action: "assessment" | "approve" | "unapprove" | "delete", id: number, type: "chapter" | "association") => Promise<void>;
   onViewAdditionalAchievements: (app: LeadershipApplication) => void;
   onViewApplication: (app: LeadershipApplication) => void;
+  onDownloadScorecard: (type: "chapter" | "association", applicationId: number) => void;
+  onDownloadApplication: (type: "chapter" | "association", applicationId: number) => void;
   processingIds: Set<number>;
   sortKey: SortKey;
   sortDir: "asc" | "desc";
   onSort: (k: SortKey) => void;
  }) {
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+
   const sortIndicator = (k: SortKey) => {
     if (sortKey !== k) return "";
     return sortDir === "asc" ? " ↑" : " ↓";
@@ -2288,9 +2784,10 @@ function ApplicationsTable({
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[110px]">Obtained marks</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">Type</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[220px]">Role</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[120px]">Bonus Marks</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Status</TableCell>
             {isAdmin && (
-              <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[120px]">
+              <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[180px]">
                 <span className="hidden sm:inline">Actions</span>
                 <span className="sm:hidden">Action</span>
               </TableCell>
@@ -2306,6 +2803,7 @@ function ApplicationsTable({
               <TableCell className="px-4 py-4 w-[110px]"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[240px]"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[220px]"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
+              <TableCell className="px-4 py-4 w-[120px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               <TableCell className="px-4 py-4 w-[160px]"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" /></TableCell>
               {isAdmin && (
                 <TableCell className="px-4 py-4 sticky right-0 bg-white dark:bg-gray-800 w-[120px]"><div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded ml-auto" /></TableCell>
@@ -2342,6 +2840,11 @@ function ApplicationsTable({
           </TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell w-[220px]">Email</TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[110px]">Obtained marks</TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[120px]">
+            <button type="button" onClick={() => onSort("bonusMarks")} className="hover:underline">
+              Bonus Marks{sortIndicator("bonusMarks")}
+            </button>
+          </TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[240px]">
             <button type="button" onClick={() => onSort("type")} className="hover:underline">
               Type{sortIndicator("type")}
@@ -2352,13 +2855,14 @@ function ApplicationsTable({
               Role{sortIndicator("position")}
             </button>
           </TableCell>
+          
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">
             <button type="button" onClick={() => onSort("status")} className="hover:underline">
               Status{sortIndicator("status")}
             </button>
           </TableCell>
           {isAdmin && (
-            <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[120px]">
+            <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[180px]">
               <span className="hidden sm:inline">Actions</span>
               <span className="sm:hidden">Action</span>
             </TableCell>
@@ -2433,6 +2937,11 @@ function ApplicationsTable({
                 <span className="text-gray-400 dark:text-gray-500">—</span>
               )}
             </TableCell>
+            <TableCell className="px-4 py-3 text-sm w-[120px]">
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                {formatObtainedMarkDisplay(Number(app.bonusMarks ?? 0))}
+              </span>
+            </TableCell>
             <TableCell className="px-4 py-3 text-sm w-[240px]">
               <div className="truncate min-w-0">
                 {app.type === "chapter" ? "Chapter" : "Association"} - {String(app.categoryName || "-")}
@@ -2441,6 +2950,7 @@ function ApplicationsTable({
             <TableCell className="px-4 py-3 text-sm w-[220px]">
               <LeadershipRoleBadge type={app.type} position={app.position} />
             </TableCell>
+           
             <TableCell className="px-4 py-3 text-sm w-[160px]">
               <span
                 className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
@@ -2463,55 +2973,32 @@ function ApplicationsTable({
               </span>
             </TableCell>
             {isAdmin && (
-              <TableCell className="px-4 py-3 text-right sticky right-0 bg-white dark:bg-gray-800 w-[120px]">
-                <div className="flex flex-row flex-wrap gap-1">
-                  <button
-                    onClick={() => onViewApplication(app)}
-                    disabled={processingIds.has(app.id)}
-                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
-                    title="View"
-                  >
-                    <EyeIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </button>
-                  {String(app.status || "pending").toLowerCase() === "pending" && (
-                    <button
-                      onClick={() => onAction("assessment", app.id, app.type)}
-                      disabled={processingIds.has(app.id)}
-                      className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
-                      title="Assessment"
-                    >
-                      <CheckCircleIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </button>
-                  )}
-                  {String(app.status || "pending").toLowerCase() === "assessed" && (
-                    <>
-                      <button
-                        onClick={() => onAction("approve", app.id, app.type)}
-                        disabled={processingIds.has(app.id)}
-                        className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
-                        title="Approve"
-                      >
-                        <CheckLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                      <button
-                        onClick={() => onAction("unapprove", app.id, app.type)}
-                        disabled={processingIds.has(app.id)}
-                        className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
-                        title="Unapprove"
-                      >
-                        <CloseLineIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => onAction("delete", app.id, app.type)}
-                    disabled={processingIds.has(app.id)}
-                    className="p-2 sm:p-1.5 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 rounded hover:bg-rose-50 text-rose-600 disabled:opacity-50"
-                    title="Delete"
-                  >
-                    <TrashBinIcon className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </button>
-                </div>
+              <TableCell className="px-4 py-3 text-right sticky right-0 z-20 bg-white dark:bg-gray-800 w-[180px] overflow-visible">
+                {(() => {
+                  const status = String(app.status || "pending").toLowerCase();
+                  const rowKey = `${app.type}-${app.id}`;
+                  const canAssess = status !== "approved" && status !== "rejected";
+                  const canFinalize = status === "assessed";
+                  const canDownloadScorecard =
+                    status === "assessed" || status === "approved" || status === "rejected";
+                  return (
+                    <ApplicationActionsDropdown
+                      app={app}
+                      isOpen={openActionMenuId === rowKey}
+                      onToggle={() => setOpenActionMenuId(openActionMenuId === rowKey ? null : rowKey)}
+                      onClose={() => setOpenActionMenuId(null)}
+                      processingIds={processingIds}
+                      canAssess={canAssess}
+                      canFinalize={canFinalize}
+                      canDownloadScorecard={canDownloadScorecard}
+                      status={status}
+                      onViewApplication={onViewApplication}
+                      onAction={onAction}
+                      onDownloadScorecard={onDownloadScorecard}
+                      onDownloadApplication={onDownloadApplication}
+                    />
+                  );
+                })()}
               </TableCell>
             )}
           </TableRow>

@@ -19,7 +19,13 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "all"; // "chapter", "association", "all"
+    const category = searchParams.get("category") || "all"; // "all", "national", "international", "association"
     const status = searchParams.get("status") || "all"; // "all", "approved", "assessed", "pending", "rejected"
+    const categoryValues = new Set(["all", "national", "international", "association"]);
+    if (!categoryValues.has(category)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    }
+
     const role = searchParams.get("role") || "all"; // "all", "president", "vice_president", "coordinator"
     const search = String(searchParams.get("search") || "").trim();
     const hasAdditionalAchievements = String(searchParams.get("hasAdditionalAchievements") || "").trim();
@@ -92,6 +98,15 @@ export async function GET(req: Request) {
     const assocAdditionalCondition = hasAdditional
       ? sql` AND ass.additional_achievements IS NOT NULL AND LENGTH(TRIM(ass.additional_achievements)) > 0`
       : sql``;
+    const chapterCategoryCondition =
+      category === "association"
+        ? sql` AND 1=0`
+        : category === "national"
+          ? sql` AND TRIM(COALESCE(ch.national_chapter, '')) <> ''`
+          : category === "international"
+            ? sql` AND TRIM(COALESCE(ch.international_chapter, '')) <> ''`
+            : sql``;
+    const associationCategoryCondition = category === "national" || category === "international" ? sql` AND 1=0` : sql``;
 
     const allItems: Array<Record<string, unknown>> = [];
 
@@ -144,6 +159,10 @@ export async function GET(req: Request) {
           END::text AS category_type,
           COALESCE(NULLIF(TRIM(COALESCE(ch.national_chapter, '')), ''), NULLIF(TRIM(COALESCE(ch.international_chapter, '')), ''), NULL)::text AS category_name,
           cl.additional_achievements::text AS additional_achievements,
+          cl.plan_strategy::text AS plan_strategy,
+          cl.strategy_assessment_marks::numeric AS strategy_assessment_marks,
+          cl.achievement_assessment_marks::numeric AS achievement_assessment_marks,
+          cl.bonus_marks::numeric AS bonus_marks,
           cl.rejection_reason::text AS rejection_reason,
           cl.created_at::timestamptz AS created_at,
           cl.updated_at::timestamptz AS updated_at,
@@ -183,6 +202,7 @@ export async function GET(req: Request) {
           ${chapterMembersCondition}
           ${chapterRoleCondition}
           ${chapterAdditionalCondition}
+          ${chapterCategoryCondition}
         ORDER BY cl.created_at DESC
       `;
 
@@ -236,6 +256,10 @@ export async function GET(req: Request) {
           'association'::text AS category_type,
           fac.faculty_name::text AS category_name,
           ass.additional_achievements::text AS additional_achievements,
+          ass.plan_strategy::text AS plan_strategy,
+          ass.strategy_assessment_marks::numeric AS strategy_assessment_marks,
+          ass.achievement_assessment_marks::numeric AS achievement_assessment_marks,
+          ass.bonus_marks::numeric AS bonus_marks,
           NULL::text AS rejection_reason,
           ass.createddatetime::timestamp without time zone AS created_at,
           NULL::timestamptz AS updated_at,
@@ -275,6 +299,7 @@ export async function GET(req: Request) {
           ${associationTitleCondition}
           ${assocRoleCondition}
           ${assocAdditionalCondition}
+          ${associationCategoryCondition}
         ORDER BY ass.createddatetime DESC NULLS LAST
       `;
 
