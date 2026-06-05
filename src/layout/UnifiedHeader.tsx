@@ -705,8 +705,16 @@ const UnifiedHeaderTopbar: FC = () => {
               <Image
                 width={154}
                 height={32}
-                className="h-7 w-auto"
-                src="/images/logo/logo-white.png"
+                className="h-7 w-auto dark:hidden"
+                src="/images/logo/UOL-Rebrand-ID_Final-01.png"
+                alt="UOL Alumni Portal"
+                priority
+              />
+              <Image
+                width={154}
+                height={32}
+                className="hidden h-7 w-auto dark:block"
+                src="/images/logo/UOL-Rebrand-ID_Final-01.png"
                 alt="UOL Alumni Portal"
                 priority
               />

@@ -26,7 +26,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch {
       savedTheme = null;
     }
-    const initialTheme = savedTheme || "light";
+    const stored = savedTheme === "dark" ? "dark" : "light";
+    const initialTheme: Theme = stored;
 
     setTheme(initialTheme);
     setIsInitialized(true);
