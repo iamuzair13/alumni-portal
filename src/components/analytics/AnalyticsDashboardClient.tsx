@@ -103,7 +103,7 @@ export default function AnalyticsDashboardClient() {
 
       {dashboard?.scopeNotes && dashboard.scopeNotes.length > 0 && (
         <aside className="mt-3 rounded-xl border border-gray-200 bg-white/80 p-3 text-[11px] text-gray-600 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400">
-          <p className="font-semibold text-gray-800 dark:text-gray-200">Data scope</p>
+          <p className="font-semibold text-gray-800 dark:text-gray-200 ">Data scope</p>
           <ul className="mt-1.5 list-inside list-disc space-y-0.5">
             {dashboard.scopeNotes.map((note) => (
               <li key={note}>{note}</li>

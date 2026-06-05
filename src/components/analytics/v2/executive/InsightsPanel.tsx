@@ -24,21 +24,21 @@ function InsightColumn({
     <div
       className={`rounded-xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-gray-900/50 ${accent} ${compact ? "p-2" : "p-3"}`}
     >
-      <h3 className={`font-bold uppercase tracking-wider text-gray-900 dark:text-white ${compact ? "mb-1 text-[9px]" : "mb-2 text-[11px]"}`}>
+      <h3 className={`font-bold uppercase tracking-wider text-gray-900 dark:text-white ${compact ? "mb-1 text-[12px]" : "mb-2 text-[11px]"}`}>
         {title}
       </h3>
       {items.length === 0 ? (
-        <p className="text-[10px] text-gray-400">—</p>
+        <p className="text-[12px] text-gray-400">—</p>
       ) : (
         <ul className={compact ? "space-y-1" : "space-y-2"}>
           {items.map((item) => (
             <li key={item.label} className="flex gap-1.5">
               <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
               <div className="min-w-0">
-                <p className={`font-semibold text-gray-800 dark:text-gray-200 ${compact ? "text-[10px] leading-tight" : "text-xs"}`}>
+                <p className={`font-semibold text-gray-800 dark:text-gray-200 ${compact ? "text-[12px] leading-tight" : "text-xs"}`}>
                   {item.label}
                 </p>
-                <p className={`text-gray-500 dark:text-gray-400 ${compact ? "text-[9px] leading-snug" : "text-[11px]"}`}>
+                <p className={`text-gray-500 dark:text-gray-400 ${compact ? "text-[9px] leading-snug" : "text-[12px]"}`}>
                   {item.detail}
                 </p>
               </div>

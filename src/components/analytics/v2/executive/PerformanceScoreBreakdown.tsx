@@ -35,18 +35,18 @@ export function PerformanceScoreBreakdown({ result }: { result: PerformanceResul
         {result.reasons.map((reason) => (
           <li key={reason} className="flex gap-1.5">
             <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
-            <p className="text-[10px] leading-snug text-gray-700 dark:text-gray-300">{reason}</p>
+            <p className="text-[12px] leading-snug text-gray-700 dark:text-gray-300">{reason}</p>
           </li>
         ))}
       </ul>
 
-      <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Score drivers</p>
+      <p className="mb-1 text-[12px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Score drivers</p>
       <ul className="space-y-1.5">
         {result.factors.map((factor) => (
           <li key={factor.id}>
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[10px] font-medium text-gray-700 dark:text-gray-300">{factor.label}</span>
-              <span className="shrink-0 text-[10px] tabular-nums text-gray-500 dark:text-gray-400">
+              <span className="truncate text-[12px] font-medium text-gray-700 dark:text-gray-300">{factor.label}</span>
+              <span className="shrink-0 text-[12px] tabular-nums text-gray-500 dark:text-gray-400">
                 {Math.round(factor.score)} · {factor.weight}
               </span>
             </div>

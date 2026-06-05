@@ -67,9 +67,9 @@ function KpiTableSection({ group }: { group: KpiConfigGroup }) {
   return (
     <div className="min-w-0">
       <div className="flex items-baseline gap-2 border-b border-gray-100 bg-gray-50/90 px-2.5 py-1 dark:border-gray-800 dark:bg-gray-800/40">
-        <h3 className="text-[9px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">{group.label}</h3>
+        <h3 className="text-[12px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">{group.label}</h3>
         {group.description ? (
-          <span className="hidden truncate text-[9px] text-gray-400 xl:inline dark:text-gray-500">{group.description}</span>
+          <span className="hidden truncate text-[11px] text-gray-400 xl:inline dark:text-gray-500">{group.description}</span>
         ) : null}
       </div>
       <table className="w-full table-fixed">
@@ -100,7 +100,7 @@ function KpiTableSection({ group }: { group: KpiConfigGroup }) {
                   tabIndex={kpi.expandable ? 0 : undefined}
                   aria-expanded={kpi.expandable ? isExpanded : undefined}
                 >
-                  <td className="w-[42%] truncate py-1 pl-2.5 pr-1 text-[10px] font-medium text-gray-600 dark:text-gray-400">
+                  <td className="w-[42%] truncate py-1 pl-2.5 pr-1 text-[12px] font-medium text-gray-600 dark:text-gray-400">
                     <span className={kpi.expandable ? "inline-flex max-w-full items-center" : undefined}>
                       {kpi.title}
                       {kpi.expandable ? <ExpandChevron open={isExpanded} /> : null}

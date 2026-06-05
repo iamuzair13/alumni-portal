@@ -662,21 +662,6 @@ const UnifiedHeaderTopbar: FC = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // On analytics route, keep sidebar collapsed by default
-  useEffect(() => {
-    if (!isAnalyticsRoute) return;
-
-    // Desktop sidebar (expanded/collapsed)
-    if (typeof window !== "undefined" && window.innerWidth >= 1024 && isExpanded) {
-      toggleSidebar();
-    }
-
-    // Mobile sidebar drawer
-    if (isMobileOpen) {
-      toggleMobileSidebar();
-    }
-  }, [isAnalyticsRoute, isExpanded, isMobileOpen, toggleSidebar, toggleMobileSidebar]);
-
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
@@ -711,6 +696,17 @@ const UnifiedHeaderTopbar: FC = () => {
                 height={32}
                 className="hidden h-7 w-auto dark:block"
                 src="/images/logo/UOL-Rebrand-ID_Final-01.png"
+                alt="UOL Alumni Portal"
+                priority
+              />
+            </Link>
+          ) : isAnalyticsRoute ? (
+            <Link href="/dashboard" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+              <Image
+                width={154}
+                height={32}
+                className="h-7 w-auto"
+                src="/images/logo/logo-white.png"
                 alt="UOL Alumni Portal"
                 priority
               />

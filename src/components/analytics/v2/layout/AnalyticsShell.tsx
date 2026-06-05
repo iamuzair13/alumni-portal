@@ -50,7 +50,7 @@ export function AnalyticsShell({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950 md:p-5">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950 md:p-5 ">
       <header className="mb-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/20">

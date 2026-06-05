@@ -27,9 +27,9 @@ export default async function AdminAnalyticsPage() {
 
   return (
     <div>
-      <ComponentCard >
+    
         <AnalyticsDashboardClient />
-      </ComponentCard>
+
     </div>
   );
 }
