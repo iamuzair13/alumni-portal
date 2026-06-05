@@ -53,9 +53,9 @@ export default function ChartTableToggle({
 
   return (
     <div className={className}>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-2 flex justify-end">
         <div
-          className="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-700 dark:bg-gray-900/60"
+          className="inline-flex rounded-md border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-700 dark:bg-gray-900/60"
           role="group"
           aria-label="View mode"
         >
@@ -63,7 +63,7 @@ export default function ChartTableToggle({
             type="button"
             aria-pressed={view === "table"}
             onClick={() => setAndStore("table")}
-            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded px-2 py-1 text-[10px] font-semibold transition-colors ${
               view === "table"
                 ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300"
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
@@ -75,7 +75,7 @@ export default function ChartTableToggle({
             type="button"
             aria-pressed={view === "chart"}
             onClick={() => setAndStore("chart")}
-            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded px-2 py-1 text-[10px] font-semibold transition-colors ${
               view === "chart"
                 ? "bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300"
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"

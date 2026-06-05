@@ -35,13 +35,13 @@ export default function AnalyticsDataTable({
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/80 dark:border-gray-800">
       <div className="max-h-80 overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead className="sticky top-0 z-10">
             <tr className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/80">
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={`px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${
+                  className={`px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${
                     c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : "text-left"
                   }`}
                 >
@@ -69,7 +69,7 @@ export default function AnalyticsDataTable({
                   {columns.map((c) => (
                     <td
                       key={c.key}
-                      className={`px-4 py-3.5 text-gray-700 dark:text-gray-300 ${
+                      className={`px-3 py-1.5 text-gray-700 dark:text-gray-300 ${
                         c.align === "right" ? "text-right tabular-nums" : c.align === "center" ? "text-center" : "text-left"
                       } ${isTotal ? "text-gray-900 dark:text-white" : ""}`}
                     >

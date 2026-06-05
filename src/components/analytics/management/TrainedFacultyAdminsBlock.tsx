@@ -15,7 +15,6 @@ type Props = {
 export default function TrainedFacultyAdminsBlock({ data, isLoading }: Props) {
   const total = data?.total ?? null;
   const rows = data?.byFaculty ?? [];
-  const sumRows = rows.reduce((s, r) => s + (typeof r.count === "number" ? r.count : 0), 0);
   const tableRows = [
     ...rows.map((r) => ({
       faculty: r.faculty,
@@ -33,11 +32,8 @@ export default function TrainedFacultyAdminsBlock({ data, isLoading }: Props) {
   const chartData = rows.map((r) => r.count);
 
   return (
-    <div className="rounded-xl border border-violet-100 bg-violet-50/30 p-4 dark:border-violet-900/40 dark:bg-violet-950/20">
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Trained faculty admin users</h3>
-        
-      </div>
+    <div className="rounded-lg border border-violet-100 bg-violet-50/30 p-2.5 dark:border-violet-900/40 dark:bg-violet-950/20">
+      <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white">Trained faculty admin users</h3>
       <ChartTableToggle
         widgetId="mgmt-trained-faculty-admins"
         defaultView="table"
@@ -56,19 +52,21 @@ export default function TrainedFacultyAdminsBlock({ data, isLoading }: Props) {
           rows.length > 0 ? (
             <BarChartComponent
               title="Trained admins by faculty"
-              subtitle={typeof total === "number" ? `${total.toLocaleString()} distinct user(s) in scope` : "No data"}
+              subtitle={typeof total === "number" ? `${total.toLocaleString()} distinct user(s)` : "No data"}
               labels={labels.length > 0 ? labels : ["—"]}
               data={chartData.length > 0 ? chartData : [0]}
+              compact
+              height={140}
             />
           ) : (
-            <p className="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            <p className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
               {isLoading ? "Loading…" : "No faculty-scoped admin assignments found."}
             </p>
           )
         }
       />
-      {!isLoading && rows.length > 0 && typeof total === "number" && sumRows !== total ? (
-        <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+      {!isLoading && rows.length > 0 && typeof total === "number" && rows.reduce((s, r) => s + (typeof r.count === "number" ? r.count : 0), 0) !== total ? (
+        <p className="mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
           Row sums may exceed the total when the same user is assigned to multiple faculties.
         </p>
       ) : null}

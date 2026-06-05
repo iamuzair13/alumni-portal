@@ -162,7 +162,14 @@ export type ManagementDashboardPayload = {
     quarterStart: string;
     yearStart: string;
     timeRange: string;
-    facultyId: string | null;
+  periodType?: "all" | "year" | "month";
+  year?: number;
+  month?: number | null;
+  periodStart?: string;
+  periodEnd?: string;
+  periodColumnPrimary?: string;
+  periodColumnSecondary?: string;
+  facultyId: string | null;
   };
   alumniHeadline: ManagementDashboardAlumniHeadline;
   kpis: {

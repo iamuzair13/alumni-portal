@@ -5,13 +5,18 @@ import type { ManagementDashboardPayload, ManagementDashboardSectionD } from "@/
 import BarChartComponent from "@/components/analytics/BarChartComponent";
 import ChartTableToggle from "./ChartTableToggle";
 import AnalyticsDataTable from "./AnalyticsDataTable";
-import { SectionWrapper, StatCard, DashboardIcons } from "./DashboardPrimitives";
+import { DashboardIcons } from "./DashboardPrimitives";
 import { fmtCell } from "./dashboardFormat";
+import { AnalyticsPanel, AnalyticsSubheading } from "@/components/analytics/v2/layout/AnalyticsPanel";
+import { AnalyticsGrid, AnalyticsGridItem } from "@/components/analytics/v2/layout/AnalyticsGrid";
+import { CompactMetricChip } from "@/components/analytics/v2/primitives/CompactMetricChip";
 
 type Props = {
   data: ManagementDashboardPayload | undefined;
   isLoading: boolean;
 };
+
+const CHART_PROPS = { compact: true, height: 150 } as const;
 
 export default function ManagementSectionD({ data, isLoading }: Props) {
   const d = data?.sectionD;
@@ -43,75 +48,72 @@ export default function ManagementSectionD({ data, isLoading }: Props) {
   ];
 
   return (
-    <div className="mt-6 mb-8">
-      <SectionWrapper
-        id="section-d"
-        title="Perks & Benefits"
-        subtitle="Memberships, merchant partnerships, and scholarship discount categories"
-        icon={DashboardIcons.gift}
-      >
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div>
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Memberships & perks
-            </h3>
-            <ChartTableToggle
-              widgetId="mgmt-memberships"
-              defaultView="table"
-              table={
-                <AnalyticsDataTable
-                  isLoading={isLoading}
-                  columns={[
-                    { key: "membership", label: "Type" },
-                    { key: "active", label: "Count / hint", align: "right" },
-                  ]}
-                  rows={perksRows}
-                />
-              }
-              chart={<BarChartComponent title="Membership-related counts" labels={perksRows.map((r) => r.membership)} data={perksRows.map((r) => (typeof r.active === "number" ? r.active : 0))} />}
-            />
-          </div>
+    <AnalyticsPanel
+      id="section-d"
+      title="Perks & Benefits"
+      subtitle="Memberships, merchant partnerships, and discount categories"
+      icon={DashboardIcons.gift}
+      className="mt-3 mb-3"
+    >
+      <AnalyticsGrid>
+        <AnalyticsGridItem span={4}>
+          <AnalyticsSubheading dotColor="bg-emerald-500">Memberships & perks</AnalyticsSubheading>
+          <ChartTableToggle
+            widgetId="mgmt-memberships"
+            defaultView="table"
+            table={
+              <AnalyticsDataTable
+                isLoading={isLoading}
+                columns={[
+                  { key: "membership", label: "Type" },
+                  { key: "active", label: "Count / hint", align: "right" },
+                ]}
+                rows={perksRows}
+              />
+            }
+            chart={
+              <BarChartComponent
+                title="Membership-related counts"
+                labels={perksRows.map((r) => r.membership)}
+                data={perksRows.map((r) => (typeof r.active === "number" ? r.active : 0))}
+                {...CHART_PROPS}
+              />
+            }
+          />
+        </AnalyticsGridItem>
 
-          <div>
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Discount categories (scholarship applications)
-            </h3>
-            <ChartTableToggle
-              widgetId="mgmt-discount-cats"
-              defaultView="chart"
-              table={
-                <div className="grid grid-cols-2 gap-3">
-                  <StatCard label="Dining & Cafés" value={fmtCell(discountCategories.diningAndCafes)} color="amber" />
-                  <StatCard label="Retail & Shopping" value={fmtCell(discountCategories.retailAndShopping)} color="indigo" />
-                  <StatCard label="Travel & Leisure" value={fmtCell(discountCategories.travelAndLeisure)} color="sky" />
-                  <StatCard label="Health & Wellness" value={fmtCell(discountCategories.healthAndWellness)} color="emerald" />
-                  <StatCard label="Professional" value={fmtCell(discountCategories.professionalServices)} color="violet" />
-                  <StatCard label="Financial" value={fmtCell(discountCategories.financialServices)} color="rose" />
-                </div>
-              }
-              chart={<BarChartComponent title="Discount type mentions" labels={discLabels} data={discData} />}
-            />
-          </div>
+        <AnalyticsGridItem span={4}>
+          <AnalyticsSubheading dotColor="bg-amber-500">Discount categories</AnalyticsSubheading>
+          <ChartTableToggle
+            widgetId="mgmt-discount-cats"
+            defaultView="chart"
+            table={
+              <div className="grid grid-cols-2 gap-2">
+                <CompactMetricChip label="Dining & Cafés" value={fmtCell(discountCategories.diningAndCafes)} color="amber" />
+                <CompactMetricChip label="Retail & Shopping" value={fmtCell(discountCategories.retailAndShopping)} color="indigo" />
+                <CompactMetricChip label="Travel & Leisure" value={fmtCell(discountCategories.travelAndLeisure)} color="sky" />
+                <CompactMetricChip label="Health & Wellness" value={fmtCell(discountCategories.healthAndWellness)} color="emerald" />
+                <CompactMetricChip label="Professional" value={fmtCell(discountCategories.professionalServices)} color="violet" />
+                <CompactMetricChip label="Financial" value={fmtCell(discountCategories.financialServices)} color="rose" />
+              </div>
+            }
+            chart={<BarChartComponent title="Discount type mentions" labels={discLabels} data={discData} {...CHART_PROPS} />}
+          />
+        </AnalyticsGridItem>
 
-          <div>
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-              Merchant details
-            </h3>
-            <AnalyticsDataTable
-              isLoading={isLoading}
-              columns={[
-                { key: "merchant", label: "Merchant" },
-                { key: "discount", label: "Discount" },
-                { key: "reference", label: "Reference" },
-              ]}
-              rows={merchantRows}
-            />
-          </div>
-        </div>
-      </SectionWrapper>
-    </div>
+        <AnalyticsGridItem span={4}>
+          <AnalyticsSubheading dotColor="bg-indigo-500">Merchant details</AnalyticsSubheading>
+          <AnalyticsDataTable
+            isLoading={isLoading}
+            columns={[
+              { key: "merchant", label: "Merchant" },
+              { key: "discount", label: "Discount" },
+              { key: "reference", label: "Reference" },
+            ]}
+            rows={merchantRows}
+          />
+        </AnalyticsGridItem>
+      </AnalyticsGrid>
+    </AnalyticsPanel>
   );
 }

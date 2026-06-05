@@ -21,6 +21,45 @@ const yearStartDate = (): string => {
   return new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
 };
 
+function resolvePeriodBounds(searchParams: URLSearchParams): {
+  periodType: "all" | "year" | "month";
+  year: number;
+  month: number | null;
+  periodStart: string;
+  periodEnd: string;
+  periodLabel: string;
+} {
+  const now = new Date();
+  const raw = (searchParams.get("periodType") || "all").toLowerCase();
+  const periodType = raw === "month" ? "month" : raw === "year" ? "year" : "all";
+  const yearRaw = parseInt(searchParams.get("year") || String(now.getFullYear()), 10);
+  const year = Number.isFinite(yearRaw) ? yearRaw : now.getFullYear();
+
+  if (periodType === "all") {
+    return {
+      periodType: "all",
+      year,
+      month: null,
+      periodStart: "",
+      periodEnd: "",
+      periodLabel: "All time",
+    };
+  }
+
+  if (periodType === "month") {
+    const monthRaw = parseInt(searchParams.get("month") || String(now.getMonth() + 1), 10);
+    const month = Number.isFinite(monthRaw) ? Math.min(12, Math.max(1, monthRaw)) : now.getMonth() + 1;
+    const periodStart = new Date(year, month - 1, 1).toISOString().slice(0, 10);
+    const periodEnd = new Date(year, month, 0).toISOString().slice(0, 10);
+    const periodLabel = new Date(year, month - 1, 1).toLocaleString("en", { month: "long", year: "numeric" });
+    return { periodType, year, month, periodStart, periodEnd, periodLabel };
+  }
+
+  const periodStart = new Date(year, 0, 1).toISOString().slice(0, 10);
+  const periodEnd = new Date(year, 11, 31).toISOString().slice(0, 10);
+  return { periodType, year, month: null, periodStart, periodEnd, periodLabel: String(year) };
+}
+
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -32,7 +71,7 @@ export async function GET(req: Request) {
     accessFilter.hasFilter && accessFilter.sql ? sql` AND (${accessFilter.sql})` : sql``;
   const { searchParams } = new URL(req.url);
   const facultyIdParam = searchParams.get("facultyId");
-  const timeRange = (searchParams.get("timeRange") || "This Quarter").trim();
+  const timeRangeLegacy = (searchParams.get("timeRange") || "").trim();
   const debug = (searchParams.get("debug") || "").trim() === "1";
   const selectedFacultyId = facultyIdParam && facultyIdParam !== "all" ? Number(facultyIdParam) : null;
   const facultyFilterCondition =
@@ -40,7 +79,45 @@ export async function GET(req: Request) {
 
   const quarterStart = quarterStartDate();
   const yearStart = yearStartDate();
-  const selectedStart = timeRange === "YTD" ? yearStart : quarterStart;
+
+  const period = resolvePeriodBounds(searchParams);
+  const { periodStart, periodEnd, periodLabel, periodType, year, month } = period;
+
+  const applyPeriodFilter = periodType === "year" || periodType === "month";
+
+  // Legacy timeRange param support (This Quarter / YTD) when periodType not sent
+  const useLegacyTimeRange =
+    !searchParams.get("periodType") && !searchParams.get("year") && timeRangeLegacy.length > 0;
+  const timeRange = applyPeriodFilter ? periodLabel : useLegacyTimeRange ? timeRangeLegacy : "All time";
+  const selectedStart = useLegacyTimeRange
+    ? timeRangeLegacy === "YTD"
+      ? yearStart
+      : quarterStart
+    : applyPeriodFilter
+      ? periodStart
+      : quarterStart;
+
+  /** Calendar quarter/YTD when showing all data; selected period when year/month filter active. */
+  const qStart = applyPeriodFilter ? periodStart : quarterStart;
+  const yStart = applyPeriodFilter ? new Date(year, 0, 1).toISOString().slice(0, 10) : yearStart;
+  const qEndEvents = applyPeriodFilter ? sql` AND fromdate <= ${periodEnd}::date` : sql``;
+  const qEndTalk = applyPeriodFilter ? sql` AND t.date_1 <= ${periodEnd}::date` : sql``;
+  const qEndJob = applyPeriodFilter ? sql` AND j.created_at::date <= ${periodEnd}::date` : sql``;
+  const qEndStory = applyPeriodFilter ? sql` AND s.createdat::date <= ${periodEnd}::date` : sql``;
+  const qEndNews = applyPeriodFilter ? sql` AND COALESCE(n.date, n.created_at::date) <= ${periodEnd}::date` : sql``;
+
+  const alumniPeriodCond = applyPeriodFilter
+    ? sql` AND a.todaydate::date >= ${periodStart}::date AND a.todaydate::date <= ${periodEnd}::date`
+    : sql``;
+  const scholarshipPeriodCond = applyPeriodFilter
+    ? sql` AND s.created_at::date >= ${periodStart}::date AND s.created_at::date <= ${periodEnd}::date`
+    : sql``;
+  const membershipPeriodCond = applyPeriodFilter
+    ? sql` AND m.created_at::date >= ${periodStart}::date AND m.created_at::date <= ${periodEnd}::date`
+    : sql``;
+  const cardPeriodCond = applyPeriodFilter
+    ? sql` AND c.createdat::date >= ${periodStart}::date AND c.createdat::date <= ${periodEnd}::date`
+    : sql``;
 
   try {
     const [kpiRows, alumniHeadlineRows] = await Promise.all([
@@ -52,6 +129,7 @@ export async function GET(req: Request) {
         WHERE 1=1
         ${accessFilterCondition}
         ${facultyFilterCondition}
+        ${alumniPeriodCond}
       `,
       sql/* sql */`
         SELECT
@@ -82,38 +160,40 @@ export async function GET(req: Request) {
         WHERE 1=1
         ${accessFilterCondition}
         ${facultyFilterCondition}
+        ${alumniPeriodCond}
       `,
     ]);
 
     const eventRows = await sql/* sql */`
       SELECT
         COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE fromdate >= ${quarterStart}::date)::int AS quarter_count,
-        COUNT(*) FILTER (WHERE fromdate >= ${yearStart}::date)::int AS ytd_count,
-        COUNT(*) FILTER (WHERE fromdate >= ${selectedStart}::date)::int AS selected_range_count
+        COUNT(*) FILTER (WHERE fromdate >= ${qStart}::date${qEndEvents})::int AS quarter_count,
+        COUNT(*) FILTER (WHERE fromdate >= ${yStart}::date${qEndEvents})::int AS ytd_count,
+        COUNT(*) FILTER (WHERE fromdate >= ${selectedStart}::date)::int AS selected_range_count,
+        COUNT(*) FILTER (WHERE 1=1${applyPeriodFilter ? sql` AND fromdate >= ${periodStart}::date AND fromdate <= ${periodEnd}::date` : sql``})::int AS period_count
       FROM public.tbl_events
     `;
 
     const jobsRows = await sql/* sql */`
       SELECT
-        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE 1=1${applyPeriodFilter ? sql` AND j.created_at::date >= ${periodStart}::date AND j.created_at::date <= ${periodEnd}::date` : sql``})::int AS total,
         COUNT(*) FILTER (WHERE LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')::int AS uol_total,
         COUNT(*) FILTER (WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%'))::int AS other_total,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
-            AND j.created_at >= ${quarterStart}::timestamptz
+            AND j.created_at >= ${qStart}::timestamptz${qEndJob}
         )::int AS uol_quarter,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
-            AND j.created_at >= ${yearStart}::timestamptz
+            AND j.created_at >= ${yStart}::timestamptz${qEndJob}
         )::int AS uol_ytd,
         COUNT(*) FILTER (
           WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
-            AND j.created_at >= ${quarterStart}::timestamptz
+            AND j.created_at >= ${qStart}::timestamptz${qEndJob}
         )::int AS other_quarter,
         COUNT(*) FILTER (
           WHERE NOT (LOWER(COALESCE(company,'')) LIKE '%university of lahore%' OR LOWER(COALESCE(company,'')) LIKE '%uol%')
-            AND j.created_at >= ${yearStart}::timestamptz
+            AND j.created_at >= ${yStart}::timestamptz${qEndJob}
         )::int AS other_ytd
       FROM public.tbljobs j
     `;
@@ -132,6 +212,7 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${scholarshipPeriodCond}
     `;
 
     const membershipRows = await sql/* sql */`
@@ -159,6 +240,7 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${membershipPeriodCond}
     `;
 
     const facultyRows = await sql/* sql */`
@@ -170,6 +252,7 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${alumniPeriodCond}
       GROUP BY 1
       ORDER BY 2 DESC
     `;
@@ -179,7 +262,7 @@ export async function GET(req: Request) {
         (SELECT COUNT(*)::int FROM public.tblchapters c WHERE TRIM(COALESCE(c.national_chapter,'')) <> '') AS national_chapters,
         (SELECT COUNT(*)::int FROM public.tblchapters c WHERE TRIM(COALESCE(c.international_chapter,'')) <> '') AS international_chapters,
         (SELECT COUNT(*)::int FROM public.tblalumniassociation aa) AS associations,
-        (SELECT COUNT(DISTINCT ac.id)::int FROM public.alumni_chapter ac JOIN public.tbl_alumni a ON a.alumniid = ac.id WHERE 1=1 ${accessFilterCondition} ${facultyFilterCondition}) AS members,
+        (SELECT COUNT(DISTINCT ac.id)::int FROM public.alumni_chapter ac JOIN public.tbl_alumni a ON a.alumniid = ac.id WHERE 1=1 ${accessFilterCondition} ${facultyFilterCondition} ${alumniPeriodCond}) AS members,
         (SELECT COUNT(*)::int FROM public.chapter_leadership cl WHERE LOWER(COALESCE(cl.status,'')) = 'approved') AS leaders_appointed
     `;
 
@@ -197,22 +280,25 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${cardPeriodCond}
     `;
 
     const talksRows = await sql/* sql */`
       SELECT
-        COUNT(*) FILTER (WHERE t.date_1 >= ${quarterStart}::date)::int AS quarter_count,
-        COUNT(*) FILTER (WHERE t.date_1 >= ${yearStart}::date)::int AS ytd_count,
-        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.mentorshipprogram,'')) IN ('yes','true','1') AND t.date_1 >= ${quarterStart}::date)::int AS mentorship_quarter,
-        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.mentorshipprogram,'')) IN ('yes','true','1') AND t.date_1 >= ${yearStart}::date)::int AS mentorship_ytd,
-        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%seminar%' AND t.date_1 >= ${quarterStart}::date)::int AS seminars_quarter,
-        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%seminar%' AND t.date_1 >= ${yearStart}::date)::int AS seminars_ytd,
-        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%conference%' AND t.date_1 >= ${quarterStart}::date)::int AS conferences_quarter,
-        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%conference%' AND t.date_1 >= ${yearStart}::date)::int AS conferences_ytd,
-        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%high achiever%' OR LOWER(COALESCE(t.topic,'')) LIKE '%high achiever%') AND t.date_1 >= ${quarterStart}::date)::int AS high_achievers_quarter,
-        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%high achiever%' OR LOWER(COALESCE(t.topic,'')) LIKE '%high achiever%') AND t.date_1 >= ${yearStart}::date)::int AS high_achievers_ytd,
-        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%wellbeing%' OR LOWER(COALESCE(t.topic,'')) LIKE '%wellbeing%') AND t.date_1 >= ${quarterStart}::date)::int AS wellbeing_quarter,
-        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%wellbeing%' OR LOWER(COALESCE(t.topic,'')) LIKE '%wellbeing%') AND t.date_1 >= ${yearStart}::date)::int AS wellbeing_ytd
+        COUNT(*)::int AS total_count,
+        COUNT(*) FILTER (WHERE t.date_1 >= ${qStart}::date${qEndTalk})::int AS quarter_count,
+        COUNT(*) FILTER (WHERE t.date_1 >= ${yStart}::date${qEndTalk})::int AS ytd_count,
+        COUNT(*) FILTER (WHERE 1=1${applyPeriodFilter ? sql` AND t.date_1 >= ${periodStart}::date AND t.date_1 <= ${periodEnd}::date` : sql``})::int AS period_count,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.mentorshipprogram,'')) IN ('yes','true','1') AND t.date_1 >= ${qStart}::date${qEndTalk})::int AS mentorship_quarter,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.mentorshipprogram,'')) IN ('yes','true','1') AND t.date_1 >= ${yStart}::date${qEndTalk})::int AS mentorship_ytd,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%seminar%' AND t.date_1 >= ${qStart}::date${qEndTalk})::int AS seminars_quarter,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%seminar%' AND t.date_1 >= ${yStart}::date${qEndTalk})::int AS seminars_ytd,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%conference%' AND t.date_1 >= ${qStart}::date${qEndTalk})::int AS conferences_quarter,
+        COUNT(*) FILTER (WHERE LOWER(COALESCE(t.activity,'')) LIKE '%conference%' AND t.date_1 >= ${yStart}::date${qEndTalk})::int AS conferences_ytd,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%high achiever%' OR LOWER(COALESCE(t.topic,'')) LIKE '%high achiever%') AND t.date_1 >= ${qStart}::date${qEndTalk})::int AS high_achievers_quarter,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%high achiever%' OR LOWER(COALESCE(t.topic,'')) LIKE '%high achiever%') AND t.date_1 >= ${yStart}::date${qEndTalk})::int AS high_achievers_ytd,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%wellbeing%' OR LOWER(COALESCE(t.topic,'')) LIKE '%wellbeing%') AND t.date_1 >= ${qStart}::date${qEndTalk})::int AS wellbeing_quarter,
+        COUNT(*) FILTER (WHERE (LOWER(COALESCE(t.activity,'')) LIKE '%wellbeing%' OR LOWER(COALESCE(t.topic,'')) LIKE '%wellbeing%') AND t.date_1 >= ${yStart}::date${qEndTalk})::int AS wellbeing_ytd
       FROM public.tblalumnitalks t
       JOIN public.tbl_alumni a ON a.alumniid = t.alumniid
       WHERE 1=1
@@ -222,9 +308,9 @@ export async function GET(req: Request) {
 
     const chapterEventsRows = await sql/* sql */`
       SELECT
-        COUNT(*) FILTER (WHERE e.fromdate >= ${quarterStart}::date)::int AS quarter_count,
-        COUNT(*) FILTER (WHERE e.fromdate >= ${yearStart}::date)::int AS ytd_count,
-        COUNT(*)::int AS total_count
+        COUNT(*) FILTER (WHERE e.fromdate >= ${qStart}::date${applyPeriodFilter ? sql` AND e.fromdate <= ${periodEnd}::date` : sql``})::int AS quarter_count,
+        COUNT(*) FILTER (WHERE e.fromdate >= ${yStart}::date${applyPeriodFilter ? sql` AND e.fromdate <= ${periodEnd}::date` : sql``})::int AS ytd_count,
+        COUNT(*) FILTER (WHERE 1=1${applyPeriodFilter ? sql` AND e.fromdate >= ${periodStart}::date AND e.fromdate <= ${periodEnd}::date` : sql``})::int AS total_count
       FROM public.tbl_events e
     `;
 
@@ -232,27 +318,27 @@ export async function GET(req: Request) {
       SELECT
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(j.category,'')) LIKE '%recruit%' OR LOWER(COALESCE(j.title,'')) LIKE '%recruit%')
-            AND j.created_at >= ${quarterStart}::date
+            AND j.created_at >= ${qStart}::date${qEndJob}
         )::int AS recruitment_quarter,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(j.category,'')) LIKE '%recruit%' OR LOWER(COALESCE(j.title,'')) LIKE '%recruit%')
-            AND j.created_at >= ${yearStart}::date
+            AND j.created_at >= ${yStart}::date${qEndJob}
         )::int AS recruitment_ytd,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(j.category,'')) LIKE '%startup%' OR LOWER(COALESCE(j.title,'')) LIKE '%startup%')
-            AND j.created_at >= ${quarterStart}::date
+            AND j.created_at >= ${qStart}::date${qEndJob}
         )::int AS startups_quarter,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(j.category,'')) LIKE '%startup%' OR LOWER(COALESCE(j.title,'')) LIKE '%startup%')
-            AND j.created_at >= ${yearStart}::date
+            AND j.created_at >= ${yStart}::date${qEndJob}
         )::int AS startups_ytd,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(j.category,'')) LIKE '%course%' OR LOWER(COALESCE(j.category,'')) LIKE '%upskill%' OR LOWER(COALESCE(j.title,'')) LIKE '%course%' OR LOWER(COALESCE(j.title,'')) LIKE '%upskill%')
-            AND j.created_at >= ${quarterStart}::date
+            AND j.created_at >= ${qStart}::date${qEndJob}
         )::int AS upskill_quarter,
         COUNT(*) FILTER (
           WHERE (LOWER(COALESCE(j.category,'')) LIKE '%course%' OR LOWER(COALESCE(j.category,'')) LIKE '%upskill%' OR LOWER(COALESCE(j.title,'')) LIKE '%course%' OR LOWER(COALESCE(j.title,'')) LIKE '%upskill%')
-            AND j.created_at >= ${yearStart}::date
+            AND j.created_at >= ${yStart}::date${qEndJob}
         )::int AS upskill_ytd
       FROM public.tbljobs j
     `;
@@ -276,6 +362,7 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${alumniPeriodCond}
     `;
 
     const occupationRows = await sql/* sql */`
@@ -297,6 +384,7 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${alumniPeriodCond}
     `;
 
     const provinceRows = await sql/* sql */`
@@ -340,6 +428,7 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${alumniPeriodCond}
     `;
 
     const uaaFacultyResolvedCond =
@@ -755,8 +844,8 @@ export async function GET(req: Request) {
       const storyAgg = await sql/* sql */`
         SELECT
           COUNT(*)::int AS total_pub,
-          COUNT(*) FILTER (WHERE s.createdat >= ${quarterStart}::timestamp)::int AS q,
-          COUNT(*) FILTER (WHERE s.createdat >= ${yearStart}::timestamp)::int AS y
+          COUNT(*) FILTER (WHERE s.createdat >= ${qStart}::timestamp${qEndStory})::int AS q,
+          COUNT(*) FILTER (WHERE s.createdat >= ${yStart}::timestamp${qEndStory})::int AS y
         FROM public.tblalumnistories s
         INNER JOIN public.tbl_alumni a ON a.alumniid = s.alumniid
         WHERE s.alumnistories IS NOT NULL
@@ -769,6 +858,9 @@ export async function GET(req: Request) {
       storiesPub = Number(sr?.total_pub ?? 0);
       storiesQ = Number(sr?.q ?? 0);
       storiesY = Number(sr?.y ?? 0);
+      if (applyPeriodFilter) {
+        storiesPub = periodType === "month" ? storiesQ : storiesY;
+      }
     } catch {
       storiesPub = 0;
       storiesQ = 0;
@@ -782,14 +874,17 @@ export async function GET(req: Request) {
       const nl = await sql/* sql */`
         SELECT
           COUNT(*)::int AS c,
-          COUNT(*) FILTER (WHERE COALESCE(n.date, n.created_at::date) >= ${quarterStart}::date)::int AS cq,
-          COUNT(*) FILTER (WHERE COALESCE(n.date, n.created_at::date) >= ${yearStart}::date)::int AS cy
+          COUNT(*) FILTER (WHERE COALESCE(n.date, n.created_at::date) >= ${qStart}::date${qEndNews})::int AS cq,
+          COUNT(*) FILTER (WHERE COALESCE(n.date, n.created_at::date) >= ${yStart}::date${qEndNews})::int AS cy
         FROM public.newsletters n
       `;
       const nr = nl[0] as { c?: number; cq?: number; cy?: number } | undefined;
       nlTotal = Number(nr?.c ?? 0);
       nlQ = Number(nr?.cq ?? 0);
       nlY = Number(nr?.cy ?? 0);
+      if (applyPeriodFilter) {
+        nlTotal = periodType === "month" ? nlQ : nlY;
+      }
     } catch {
       nlTotal = 0;
       nlQ = 0;
@@ -809,11 +904,12 @@ export async function GET(req: Request) {
       WHERE 1=1
       ${accessFilterCondition}
       ${facultyFilterCondition}
+      ${scholarshipPeriodCond}
     `;
 
     const kpi = (kpiRows[0] ?? {}) as { total_alumni?: number; active_alumni?: number };
     const ah = (alumniHeadlineRows[0] ?? {}) as Record<string, number | undefined>;
-    const ev = (eventRows[0] ?? {}) as { total?: number; quarter_count?: number; ytd_count?: number; selected_range_count?: number };
+    const ev = (eventRows[0] ?? {}) as { total?: number; quarter_count?: number; ytd_count?: number; selected_range_count?: number; period_count?: number };
     const jb = (jobsRows[0] ?? {}) as Record<string, number | undefined>;
     const sc = (scholarshipsRows[0] ?? {}) as Record<string, number | undefined>;
     const mb = (membershipRows[0] ?? {}) as Record<string, number | undefined>;
@@ -848,14 +944,35 @@ export async function GET(req: Request) {
       Number(pr.overseas ?? 0);
     const provinceOther = Math.max(0, Number(pr.total_rows ?? 0) - provinceSumKnown);
 
-    const meetupsForKpi = timeRange === "YTD" ? (ev.ytd_count ?? null) : (ev.quarter_count ?? null);
-    const engagementsForKpi = timeRange === "YTD" ? (tk.ytd_count ?? null) : (tk.quarter_count ?? null);
+    const meetupsForKpi = applyPeriodFilter
+      ? (ev.period_count ?? null)
+      : useLegacyTimeRange
+        ? timeRangeLegacy === "YTD"
+          ? (ev.ytd_count ?? null)
+          : (ev.quarter_count ?? null)
+        : (ev.total ?? null);
+    const engagementsForKpi = applyPeriodFilter
+      ? (tk.period_count ?? null)
+      : useLegacyTimeRange
+        ? timeRangeLegacy === "YTD"
+          ? (tk.ytd_count ?? null)
+          : (tk.quarter_count ?? null)
+        : (tk.total_count ?? null);
+
+    const eventsInPeriod = applyPeriodFilter ? (ev.period_count ?? null) : (ev.total ?? null);
 
     const payload: ManagementDashboardPayload = {
       meta: {
         quarterStart,
         yearStart,
         timeRange,
+        periodType,
+        year,
+        month,
+        periodStart: applyPeriodFilter ? periodStart : undefined,
+        periodEnd: applyPeriodFilter ? periodEnd : undefined,
+        periodColumnPrimary: applyPeriodFilter ? periodLabel : "This Quarter",
+        periodColumnSecondary: applyPeriodFilter ? (periodType === "month" ? `YTD ${year}` : periodLabel) : "YTD",
         facultyId: facultyIdParam,
       },
       alumniHeadline: {
@@ -918,7 +1035,7 @@ export async function GET(req: Request) {
           leadersAppointed: ca.leaders_appointed ?? null,
           meetupsQuarter: ev.quarter_count ?? null,
           meetupsYtd: ev.ytd_count ?? null,
-          meetupsTotal: ev.total ?? null,
+          meetupsTotal: applyPeriodFilter ? eventsInPeriod : (ev.total ?? null),
         },
         cardsStatus: {
           totalCards: cd.card_total ?? null,

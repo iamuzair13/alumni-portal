@@ -46,9 +46,11 @@ const chartConfig = {
 export default function FacultyRegistrationsBarChart({
   data,
   subtitle,
+  compact = false,
 }: {
   data: FacultyPoint[];
   subtitle: string;
+  compact?: boolean;
 }) {
   const safeData = data.length > 0 ? data : [{ faculty: "N/A", registrations: 0 }];
   const chartData = safeData.map((d) => ({
@@ -60,13 +62,13 @@ export default function FacultyRegistrationsBarChart({
   const total = safeData.reduce((sum, p) => sum + p.registrations, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Faculty-wise Registrations</CardTitle>
-        <CardDescription>{subtitle}</CardDescription>
+    <Card className={compact ? "border-0 shadow-none" : undefined}>
+      <CardHeader className={compact ? "p-0 pb-2" : undefined}>
+        <CardTitle className={compact ? "text-sm" : undefined}>Faculty-wise Registrations</CardTitle>
+        <CardDescription className={compact ? "text-[11px]" : undefined}>{subtitle}</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
+      <CardContent className={compact ? "p-0" : undefined}>
+        <ChartContainer config={chartConfig} className={compact ? "!h-[140px] w-full" : undefined}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               accessibilityLayer
@@ -89,9 +91,9 @@ export default function FacultyRegistrationsBarChart({
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex gap-2 leading-none font-medium text-gray-800 dark:text-gray-200">
-          Top faculty: {top?.faculty || "Under Processing"} ({Number(top?.registrations || 0).toLocaleString()}) <TrendingUp className="h-4 w-4" />
+      <CardFooter className={`flex-col items-start gap-1 ${compact ? "p-0 pt-1.5 text-[11px]" : "gap-2 text-sm"}`}>
+        <div className="flex gap-1.5 leading-none font-medium text-gray-800 dark:text-gray-200">
+          Top faculty: {top?.faculty || "Under Processing"} ({Number(top?.registrations || 0).toLocaleString()}) <TrendingUp className={compact ? "h-3 w-3" : "h-4 w-4"} />
         </div>
         <div className="leading-none text-gray-500 dark:text-gray-400">Total registrations: {total.toLocaleString()}</div>
       </CardFooter>

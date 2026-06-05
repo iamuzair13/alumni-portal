@@ -88,17 +88,17 @@ function CategorySegment({
             : (() => {
                 switch (config.key) {
                   case "aPlus":
-                    return "text-yellow-700 dark:text-yellow-200";
+                    return "text-yellow-700 dark:text-yellow-900";
                   case "a":
-                    return "text-green-700 dark:text-green-200";
+                    return "text-green-700 dark:text-green-900";
                   case "b":
-                    return "text-blue-700 dark:text-blue-200";
+                    return "text-blue-700 dark:text-blue-900";
                   case "c":
-                    return "text-pink-700 dark:text-pink-200";
+                    return "text-pink-700 dark:text-pink-900";
                   case "d":
-                    return "text-gray-700 dark:text-gray-200";
+                    return "text-gray-700 dark:text-gray-900";
                   default:
-                    return "text-slate-500 dark:text-slate-400";
+                    return "text-slate-500 dark:text-slate-900";
                 }
               })()
         }`}
@@ -138,15 +138,15 @@ function CategorySegment({
                 ? (() => {
                     switch (config.key) {
                       case "aPlus":
-                        return "text-yellow-800 dark:text-yellow-100";
+                        return "text-yellow-800 dark:text-yellow-900";
                       case "a":
-                        return "text-green-800 dark:text-green-100";
+                        return "text-green-800 dark:text-green-900";
                       case "b":
-                        return "text-blue-800 dark:text-blue-100";
+                        return "text-blue-800 dark:text-blue-900";
                       case "c":
-                        return "text-pink-800 dark:text-pink-100";
+                        return "text-pink-800 dark:text-pink-900";
                       case "d":
-                        return "text-gray-800 dark:text-gray-100";
+                        return "text-gray-800 dark:text-gray-900";
                       default:
                         return "text-slate-900 dark:text-white";
                     }
@@ -154,17 +154,17 @@ function CategorySegment({
                 : (() => {
                     switch (config.key) {
                       case "aPlus":
-                        return "text-yellow-700 dark:text-yellow-200";
+                        return "text-yellow-700 dark:text-yellow-900";
                       case "a":
-                        return "text-green-700 dark:text-green-200";
+                        return "text-green-700 dark:text-green-900";
                       case "b":
-                        return "text-blue-700 dark:text-blue-200";
+                        return "text-blue-700 dark:text-blue-900";
                       case "c":
-                        return "text-pink-700 dark:text-pink-200";
+                        return "text-pink-700 dark:text-pink-900";
                       case "d":
-                        return "text-gray-700 dark:text-gray-200";
+                        return "text-gray-700 dark:text-gray-900";
                       default:
-                        return "text-slate-800 dark:text-slate-100";
+                        return "text-slate-800 dark:text-slate-900";
                     }
                   })()
             }

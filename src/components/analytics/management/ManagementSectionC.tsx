@@ -5,15 +5,21 @@ import type { ManagementDashboardPayload, ManagementDashboardSectionC } from "@/
 import BarChartComponent from "@/components/analytics/BarChartComponent";
 import ChartTableToggle from "./ChartTableToggle";
 import AnalyticsDataTable from "./AnalyticsDataTable";
-import { SectionWrapper, DashboardIcons } from "./DashboardPrimitives";
+import { DashboardIcons } from "./DashboardPrimitives";
 import { fmtCell } from "./dashboardFormat";
+import { AnalyticsPanel, AnalyticsSubheading, ChartInsight } from "@/components/analytics/v2/layout/AnalyticsPanel";
+import { AnalyticsGrid, AnalyticsGridItem } from "@/components/analytics/v2/layout/AnalyticsGrid";
+import { getPeriodColumnLabels } from "@/components/analytics/v2/utils/periodColumnLabels";
 
 type Props = {
   data: ManagementDashboardPayload | undefined;
   isLoading: boolean;
 };
 
+const CHART_PROPS = { compact: true, height: 150 } as const;
+
 export default function ManagementSectionC({ data, isLoading }: Props) {
+  const { primary: periodPrimary, secondary: periodSecondary, periodLabel } = getPeriodColumnLabels(data);
   const c = data?.sectionC;
   const careerSource: Partial<ManagementDashboardSectionC["career"]> = c?.career ?? {};
   const scholarshipSource: Partial<ManagementDashboardSectionC["scholarships"]> = c?.scholarships ?? {};
@@ -39,87 +45,75 @@ export default function ManagementSectionC({ data, isLoading }: Props) {
   const scholProcessed = scholarshipRows.map((r) => (typeof r.processed === "number" ? r.processed : 0));
 
   return (
-    <div className="mt-6">
-      <SectionWrapper
-        id="section-c"
-        title="Development & Support"
-        subtitle="Career services, scholarships, and alumni contributions"
-        icon={DashboardIcons.briefcase}
-      >
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <div className="space-y-6">
-            <div>
-              <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-                <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                Career services
-              </h3>
-              <ChartTableToggle
-                widgetId="mgmt-career"
-                defaultView="table"
-                table={
-                  <AnalyticsDataTable
-                    isLoading={isLoading}
-                    columns={[
-                      { key: "item", label: "Service" },
-                      { key: "quarter", label: "This Quarter", align: "right" },
-                      { key: "ytd", label: "YTD", align: "right" },
-                    ]}
-                    rows={careerRows}
-                  />
-                }
-                chart={<BarChartComponent title="Career metrics (this quarter)" labels={careerLabels} data={careerQ} />}
+    <AnalyticsPanel
+      id="section-c"
+      title="Development & Employment"
+      subtitle="Career services, scholarships, and alumni contributions"
+      icon={DashboardIcons.briefcase}
+      className="mt-3"
+    >
+      <AnalyticsGrid>
+        <AnalyticsGridItem span={6}>
+          <AnalyticsSubheading dotColor="bg-sky-500">Career services</AnalyticsSubheading>
+          <ChartInsight>Recruitment, jobs, startups & upskill — QTD metrics</ChartInsight>
+          <ChartTableToggle
+            widgetId="mgmt-career"
+            defaultView="table"
+            table={
+              <AnalyticsDataTable
+                isLoading={isLoading}
+                columns={[
+                  { key: "item", label: "Service" },
+                  { key: "quarter", label: periodPrimary, align: "right" },
+                  { key: "ytd", label: periodSecondary, align: "right" },
+                ]}
+                rows={careerRows}
               />
-            </div>
-          </div>
+            }
+            chart={<BarChartComponent title={`Career metrics (${periodLabel})`} labels={careerLabels} data={careerQ} {...CHART_PROPS} />}
+          />
+        </AnalyticsGridItem>
 
-          <div className="space-y-6">
-            <div>
-              <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-                <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-                Academic scholarships
-              </h3>
-              <ChartTableToggle
-                widgetId="mgmt-scholarships"
-                defaultView="table"
-                table={
-                  <AnalyticsDataTable
-                    isLoading={isLoading}
-                    columns={[
-                      { key: "scholarship", label: "Scholarship type" },
-                      { key: "applied", label: "Applied", align: "right" },
-                      { key: "processed", label: "Processed", align: "right" },
-                    ]}
-                    rows={scholarshipRows}
-                  />
-                }
-                chart={
-                  <BarChartComponent
-                    title="Scholarships: applied vs processed"
-                    subtitle="Stacked comparison shown as two series would require chart upgrade — applied counts"
-                    labels={scholLabels}
-                    data={scholApplied}
-                  />
-                }
+        <AnalyticsGridItem span={6}>
+          <AnalyticsSubheading dotColor="bg-violet-500">Academic scholarships</AnalyticsSubheading>
+          <ChartInsight>Processed: {scholLabels.map((_, i) => `${scholLabels[i]} ${scholProcessed[i]}`).join(" · ")}</ChartInsight>
+          <ChartTableToggle
+            widgetId="mgmt-scholarships"
+            defaultView="table"
+            table={
+              <AnalyticsDataTable
+                isLoading={isLoading}
+                columns={[
+                  { key: "scholarship", label: "Scholarship type" },
+                  { key: "applied", label: "Applied", align: "right" },
+                  { key: "processed", label: "Processed", align: "right" },
+                ]}
+                rows={scholarshipRows}
               />
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Processed counts: {scholLabels.map((_, i) => `${scholLabels[i]} ${scholProcessed[i]}`).join(" · ")}</p>
-            </div>
+            }
+            chart={
+              <BarChartComponent
+                title="Scholarships: applied"
+                subtitle={`Processed — ${scholProcessed.join(", ")}`}
+                labels={scholLabels}
+                data={scholApplied}
+                {...CHART_PROPS}
+              />
+            }
+          />
+        </AnalyticsGridItem>
 
-            <div>
-              <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                Alumni give back
-              </h3>
-              <div className="rounded-xl border border-rose-100 bg-gradient-to-br from-rose-50 to-transparent p-6 dark:border-rose-900/30 dark:from-rose-900/10">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Financial assistance to students</p>
-                <p className="mt-2 text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
-                  {typeof giveBack === "number" ? `Rs. ${giveBack.toLocaleString()}` : "—"}
-                </p>
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">No disbursement total in database yet</p>
-              </div>
-            </div>
+        <AnalyticsGridItem span={12}>
+          <AnalyticsSubheading dotColor="bg-rose-500">Alumni give back</AnalyticsSubheading>
+          <div className="rounded-lg border border-rose-100 bg-gradient-to-br from-rose-50 to-transparent p-3 dark:border-rose-900/30 dark:from-rose-900/10">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Financial assistance to students</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+              {typeof giveBack === "number" ? `Rs. ${giveBack.toLocaleString()}` : "—"}
+            </p>
+            <p className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">No disbursement total in database yet</p>
           </div>
-        </div>
-      </SectionWrapper>
-    </div>
+        </AnalyticsGridItem>
+      </AnalyticsGrid>
+    </AnalyticsPanel>
   );
 }

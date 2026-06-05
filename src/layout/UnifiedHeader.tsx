@@ -506,7 +506,7 @@ const UnifiedHeaderTabs: FC<{ showTabsContent: boolean }> = ({ showTabsContent }
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         className={`
-          sticky top-0 z-[600] flex min-h-[72px] items-center border-b bg-white/95 px-4 py-3
+          sticky top-0 z-[600] flex min-h-[72px] items-center border-b bg-white/95 px-4 
           backdrop-blur-xl transition-all duration-300
           ${
             isScrolled
