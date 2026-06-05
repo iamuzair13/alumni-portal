@@ -3,7 +3,7 @@
 import React from "react";
 import type { ManagementDashboardPayload } from "@/lib/analytics/management-dashboard";
 import type { AlumniTrendPoint } from "@/services/dashboardService";
-import { Area, AreaChart, ResponsiveContainer, XAxis, Tooltip } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { KpiStrip } from "./KpiStrip";
 import { PerformanceScore } from "./PerformanceScore";
 import { InsightsPanel } from "./InsightsPanel";
@@ -11,15 +11,23 @@ import { buildAllKpiGroups } from "../utils/kpiConfig";
 import { deriveInsights } from "../utils/deriveInsights";
 import { derivePerformanceScore } from "../utils/derivePerformanceScore";
 import { filterTrendsToPeriod } from "../utils/filterTrendsToPeriod";
+import {
+  buildRegistrationTrendChartSeries,
+  type RegistrationTrendChartPoint,
+} from "../utils/buildRegistrationTrendChartSeries";
 
 function RegistrationTrendChart({
   data,
   periodLabel,
+  asOfLabel,
+  granularity,
   isLoading,
   compact = false,
 }: {
-  data: Array<{ period: string; total: number; verified: number; active: number }>;
+  data: RegistrationTrendChartPoint[];
   periodLabel: string;
+  asOfLabel: string | null;
+  granularity: "daily" | "monthly";
   isLoading: boolean;
   compact?: boolean;
 }) {
@@ -29,46 +37,70 @@ function RegistrationTrendChart({
         compact ? "px-2.5 py-2" : "p-3"
       }`}
     >
-      <p
-        className={`font-bold uppercase tracking-wider text-gray-900 dark:text-white ${
-          compact ? "mb-1 text-[9px]" : "mb-2 text-[11px]"
-        }`}
-      >
-        Registration trend ({periodLabel})
-      </p>
-      {data.length >= 2 ? (
-        <div className={compact ? "h-[72px]" : "h-[100px]"}>
+      <div className={`flex items-baseline justify-between gap-2 ${compact ? "mb-1" : "mb-2"}`}>
+        <p
+          className={`font-bold uppercase tracking-wider text-gray-900 dark:text-white ${
+            compact ? "text-[9px]" : "text-[11px]"
+          }`}
+        >
+          Registrations ({periodLabel})
+        </p>
+        {asOfLabel ? (
+          <span className="shrink-0 text-[9px] tabular-nums text-gray-400 dark:text-gray-500">Through {asOfLabel}</span>
+        ) : null}
+      </div>
+      {compact ? (
+        <div className="mb-1 flex gap-2 text-[9px] text-gray-400 dark:text-gray-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-sm bg-indigo-500" />
+            Total
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-sm bg-emerald-500" />
+            Verified
+          </span>
+        </div>
+      ) : null}
+      {data.length >= 1 ? (
+        <div className={compact ? "h-[88px]" : "h-[120px]"}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 2, right: 2, left: 0, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: compact ? 14 : 18, right: 2, left: -18, bottom: 0 }} barGap={1} barCategoryGap="18%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-100 dark:stroke-gray-800" />
               <XAxis
-                dataKey="period"
-                tick={{ fontSize: compact ? 8 : 9 }}
+                dataKey="label"
+                tick={{ fontSize: compact ? 7 : 8 }}
                 tickLine={false}
                 axisLine={false}
-                interval="preserveStartEnd"
+                interval={granularity === "daily" && data.length > 8 ? "preserveStartEnd" : 0}
               />
-              <Tooltip contentStyle={{ fontSize: 10 }} />
-              <Area
-                type="monotone"
-                dataKey="total"
-                stroke="#6366f1"
-                fill="#6366f1"
-                fillOpacity={0.15}
-                strokeWidth={2}
-                dot={false}
-                name="Total"
+              <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} width={28} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ fontSize: 10 }}
+                labelFormatter={(_, payload) => {
+                  const row = payload?.[0]?.payload as RegistrationTrendChartPoint | undefined;
+                  return row?.period ?? "";
+                }}
               />
-              <Area
-                type="monotone"
-                dataKey="verified"
-                stroke="#10b981"
-                fill="#10b981"
-                fillOpacity={0.1}
-                strokeWidth={1.5}
-                dot={false}
-                name="Verified"
-              />
-            </AreaChart>
+              {!compact ? <Legend wrapperStyle={{ fontSize: 9, paddingTop: 4 }} iconSize={8} /> : null}
+              <Bar dataKey="total" name="Total" fill="#6366f1" radius={[2, 2, 0, 0]} maxBarSize={compact ? 14 : 18}>
+                <LabelList
+                  dataKey="total"
+                  position="top"
+                  formatter={(value: number) => (value > 0 ? value.toLocaleString() : "")}
+                  className="fill-indigo-600 dark:fill-indigo-400"
+                  style={{ fontSize: compact ? 7 : 8, fontWeight: 600 }}
+                />
+              </Bar>
+              <Bar dataKey="verified" name="Verified" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={compact ? 14 : 18}>
+                <LabelList
+                  dataKey="verified"
+                  position="top"
+                  formatter={(value: number) => (value > 0 ? value.toLocaleString() : "")}
+                  className="fill-emerald-600 dark:fill-emerald-400"
+                  style={{ fontSize: compact ? 7 : 8, fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       ) : (
@@ -83,10 +115,12 @@ function RegistrationTrendChart({
 export function ExecutiveCommandCenter({
   data,
   trends,
+  dailyTrends,
   isLoading,
 }: {
   data: ManagementDashboardPayload | undefined;
   trends: AlumniTrendPoint[] | undefined;
+  dailyTrends: AlumniTrendPoint[] | undefined;
   isLoading: boolean;
 }) {
   const scopedTrends = filterTrendsToPeriod(trends, data?.meta);
@@ -95,12 +129,7 @@ export function ExecutiveCommandCenter({
   const performance = derivePerformanceScore(data);
 
   const periodLabel = data?.meta?.timeRange ?? "Selected period";
-  const trendChartData = scopedTrends.slice(-12).map((p) => ({
-    period: p.period,
-    total: p.total,
-    verified: p.verified,
-    active: p.active,
-  }));
+  const trendSeries = buildRegistrationTrendChartSeries(dailyTrends, trends, data?.meta);
 
   return (
     <section className="mb-3" aria-label="Executive command center">
@@ -111,7 +140,14 @@ export function ExecutiveCommandCenter({
 
         <div className="flex flex-col gap-2 xl:col-span-4">
           <PerformanceScore result={performance} compact />
-          <RegistrationTrendChart data={trendChartData} periodLabel={periodLabel} isLoading={isLoading} compact />
+          <RegistrationTrendChart
+            data={trendSeries.points}
+            periodLabel={periodLabel}
+            asOfLabel={trendSeries.asOfLabel}
+            granularity={trendSeries.granularity}
+            isLoading={isLoading}
+            compact
+          />
           <InsightsPanel strengths={insights.strengths} weaknesses={insights.weaknesses} compact />
         </div>
       </div>

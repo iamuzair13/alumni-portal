@@ -5,6 +5,12 @@ import { buildSparklineSeries, computeTrendDelta } from "@/components/dashboard/
 import { formatKpiValue } from "@/components/analytics/management/dashboardFormat";
 import { DashboardIcons } from "@/components/analytics/management/DashboardPrimitives";
 
+export type KpiFacultyExpandRow = {
+  faculty: string;
+  facultyId: number | null;
+  count: number;
+};
+
 export type KpiConfigItem = {
   title: string;
   value: string;
@@ -13,6 +19,8 @@ export type KpiConfigItem = {
   color: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "orange" | "slate" | "blue";
   trend?: { value: string; positive: boolean };
   sparkline?: number[];
+  expandable?: boolean;
+  expandFaculties?: KpiFacultyExpandRow[];
 };
 
 export type KpiConfigGroup = {
@@ -51,13 +59,6 @@ function buildTrainedAdminGroup(trained: TrainedFacultyAdminsPayload | undefined
       icon: DashboardIcons.users,
       color: "indigo",
     },
-    {
-      title: "Assignment Rows",
-      value: formatKpiValue(assignmentRows > 0 ? assignmentRows : null),
-      subtitle: "May exceed total if multi-faculty",
-      icon: DashboardIcons.entries,
-      color: "slate",
-    },
   ];
 
   for (const row of byFaculty.slice(0, 3)) {
@@ -71,13 +72,20 @@ function buildTrainedAdminGroup(trained: TrainedFacultyAdminsPayload | undefined
   }
 
   if (byFaculty.length > 3) {
-    const restCount = byFaculty.slice(3).reduce((sum, row) => sum + row.count, 0);
+    const rest = byFaculty.slice(3);
+    const restCount = rest.reduce((sum, row) => sum + row.count, 0);
     items.push({
       title: "Other Faculties",
       value: formatKpiValue(restCount),
-      subtitle: `${byFaculty.length - 3} more faculties`,
+      subtitle: `${rest.length} more · tap to expand`,
       icon: DashboardIcons.users,
       color: "slate",
+      expandable: true,
+      expandFaculties: rest.map((row) => ({
+        faculty: row.faculty,
+        facultyId: row.facultyId,
+        count: row.count,
+      })),
     });
   }
 

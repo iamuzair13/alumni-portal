@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { TrendBadge } from "../primitives/TrendBadge";
+import { OtherFacultiesExpandPanel } from "./OtherFacultiesExpandPanel";
 import type { KpiConfigGroup, KpiConfigItem } from "../utils/kpiConfig";
 
 const SPARK_COLORS: Record<KpiConfigItem["color"], string> = {
@@ -42,7 +43,27 @@ function InlineSparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
+function ExpandChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`ml-0.5 inline h-3 w-3 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
 function KpiTableSection({ group }: { group: KpiConfigGroup }) {
+  const [expandedTitle, setExpandedTitle] = useState<string | null>(null);
+
+  const toggleExpand = (title: string) => {
+    setExpandedTitle((current) => (current === title ? null : title));
+  };
+
   return (
     <div className="min-w-0">
       <div className="flex items-baseline gap-2 border-b border-gray-100 bg-gray-50/90 px-2.5 py-1 dark:border-gray-800 dark:bg-gray-800/40">
@@ -53,29 +74,62 @@ function KpiTableSection({ group }: { group: KpiConfigGroup }) {
       </div>
       <table className="w-full table-fixed">
         <tbody>
-          {group.items.map((kpi) => (
-            <tr
-              key={kpi.title}
-              className="border-b border-gray-50 last:border-0 hover:bg-indigo-50/30 dark:border-gray-800/60 dark:hover:bg-indigo-500/5"
-            >
-              <td className="w-[42%] truncate py-1 pl-2.5 pr-1 text-[10px] font-medium text-gray-600 dark:text-gray-400">
-                {kpi.title}
-              </td>
-              <td className="w-[28%] py-1 pr-1 text-right text-sm font-bold tabular-nums leading-none text-gray-900 dark:text-white">
-                {kpi.value}
-              </td>
-              <td className="w-[14%] py-1 pr-1 text-right">
-                {kpi.trend ? <TrendBadge value={kpi.trend.value} positive={kpi.trend.positive} compact /> : null}
-              </td>
-              <td className="hidden w-[16%] py-1 pr-2 sm:table-cell">
-                {kpi.sparkline && kpi.sparkline.length >= 2 ? (
-                  <InlineSparkline data={kpi.sparkline} color={SPARK_COLORS[kpi.color]} />
-                ) : kpi.subtitle ? (
-                  <span className="block truncate text-[9px] text-gray-400 dark:text-gray-500">{kpi.subtitle}</span>
+          {group.items.map((kpi) => {
+            const isExpanded = Boolean(kpi.expandable && expandedTitle === kpi.title);
+            const rowKey = `${group.id}-${kpi.title}`;
+
+            return (
+              <React.Fragment key={rowKey}>
+                <tr
+                  className={`border-b border-gray-50 last:border-0 dark:border-gray-800/60 ${
+                    kpi.expandable
+                      ? `cursor-pointer hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10 ${isExpanded ? "bg-indigo-50/30 ring-1 ring-inset ring-indigo-500/20 dark:bg-indigo-500/5 dark:ring-indigo-400/20" : ""}`
+                      : "hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5"
+                  }`}
+                  onClick={kpi.expandable ? () => toggleExpand(kpi.title) : undefined}
+                  onKeyDown={
+                    kpi.expandable
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleExpand(kpi.title);
+                          }
+                        }
+                      : undefined
+                  }
+                  tabIndex={kpi.expandable ? 0 : undefined}
+                  aria-expanded={kpi.expandable ? isExpanded : undefined}
+                >
+                  <td className="w-[42%] truncate py-1 pl-2.5 pr-1 text-[10px] font-medium text-gray-600 dark:text-gray-400">
+                    <span className={kpi.expandable ? "inline-flex max-w-full items-center" : undefined}>
+                      {kpi.title}
+                      {kpi.expandable ? <ExpandChevron open={isExpanded} /> : null}
+                    </span>
+                  </td>
+                  <td className="w-[28%] py-1 pr-1 text-right text-sm font-bold tabular-nums leading-none text-gray-900 dark:text-white">
+                    {kpi.value}
+                  </td>
+                  <td className="w-[14%] py-1 pr-1 text-right">
+                    {kpi.trend ? <TrendBadge value={kpi.trend.value} positive={kpi.trend.positive} compact /> : null}
+                  </td>
+                  <td className="hidden w-[16%] py-1 pr-2 sm:table-cell">
+                    {kpi.sparkline && kpi.sparkline.length >= 2 ? (
+                      <InlineSparkline data={kpi.sparkline} color={SPARK_COLORS[kpi.color]} />
+                    ) : kpi.subtitle ? (
+                      <span className="block truncate text-[9px] text-gray-400 dark:text-gray-500">{kpi.subtitle}</span>
+                    ) : null}
+                  </td>
+                </tr>
+                {isExpanded && kpi.expandFaculties ? (
+                  <tr className="border-b border-gray-50 dark:border-gray-800/60">
+                    <td colSpan={4} className="px-2.5 pb-2 pt-0.5">
+                      <OtherFacultiesExpandPanel faculties={kpi.expandFaculties} />
+                    </td>
+                  </tr>
                 ) : null}
-              </td>
-            </tr>
-          ))}
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>

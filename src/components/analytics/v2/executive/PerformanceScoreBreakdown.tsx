@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { PerformanceResult } from "../utils/derivePerformanceScore";
+import { motion } from "framer-motion";
 
 function factorBarColor(score: number) {
   if (score >= 65) return "bg-emerald-500 dark:bg-emerald-400";
@@ -19,8 +20,11 @@ export function PerformanceScoreBreakdown({ result }: { result: PerformanceResul
   const dotClass = isConcern ? "bg-rose-500" : result.label === "Strong" ? "bg-emerald-500" : "bg-amber-500";
 
   return (
-    <div
-      className={`rounded-xl border bg-white/90 px-2.5 py-2 shadow-sm backdrop-blur-sm dark:bg-gray-900/60 ${accentBorder}`}
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={`rounded-xl border bg-white/90 px-2.5  py-2 shadow-sm backdrop-blur-sm dark:bg-gray-900/60 ${accentBorder}`}
       role="region"
       aria-label="Performance score breakdown"
     >
@@ -56,6 +60,6 @@ export function PerformanceScoreBreakdown({ result }: { result: PerformanceResul
           </li>
         ))}
       </ul>
-    </div>
+    </motion.div>
   );
 }

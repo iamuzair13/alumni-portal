@@ -63,12 +63,27 @@ export default function AnalyticsDashboardClient() {
       if (!res.ok) throw new Error("Failed to load alumni trends");
       return res.json() as Promise<AlumniTrendPoint[]>;
     },
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: dailyAlumniTrends, isLoading: isLoadingDailyTrends } = useQuery({
+    queryKey: ["analytics-alumni-trends", "daily"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/alumni-trends?period=daily", {
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to load daily alumni trends");
+      return res.json() as Promise<AlumniTrendPoint[]>;
+    },
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const data = dashboard as ManagementDashboardPayload | undefined;
-  const isLoading = isLoadingDashboard || isLoadingTrends;
+  const isLoading = isLoadingDashboard || isLoadingTrends || isLoadingDailyTrends;
 
   return (
     <AnalyticsShell
@@ -79,7 +94,7 @@ export default function AnalyticsDashboardClient() {
       periodFilter={periodFilter}
       onPeriodFilterChange={setPeriodFilter}
     >
-      <ExecutiveCommandCenter data={data} trends={alumniTrends} isLoading={isLoading} />
+      <ExecutiveCommandCenter data={data} trends={alumniTrends} dailyTrends={dailyAlumniTrends} isLoading={isLoading} />
 
       <ManagementSectionA data={data} isLoading={isLoadingDashboard} periodLabel={periodLabel} />
       <ManagementSectionB data={data} isLoading={isLoadingDashboard} />
