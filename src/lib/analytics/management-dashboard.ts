@@ -69,6 +69,7 @@ export type ManagementDashboardSectionB = {
     nationalChapters: number | null;
     internationalChapters: number | null;
     associations: number | null;
+    associationMembers: number | null;
     members: number | null;
     leadersAppointed: number | null;
     meetupsQuarter: number | null;
@@ -143,7 +144,8 @@ export const MANAGEMENT_DASHBOARD_MERCHANT_SEED: Array<{ merchant: string; disco
  * Metrics that are not filtered by alumni faculty (org-wide event/job lists or global chapter definitions).
  */
 export const MANAGEMENT_DASHBOARD_SCOPE_NOTES: readonly string[] = [
-  "Chapter counts (national/international/associations) and approved leadership posts are organization-wide.",
+  "National/international chapter counts and approved leadership posts are organization-wide.",
+  "Association members match the Alumni Association tab: alumni with association_id or faculty set; faculty count is distinct faculties represented in either field.",
   "Meetups and chapter events use tbl_events dates and are not filtered by alumni faculty.",
   "Job board recruitment/start-up/upskill heuristics scan all tbljobs rows.",
 ];

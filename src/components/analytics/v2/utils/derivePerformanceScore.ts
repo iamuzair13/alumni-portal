@@ -40,8 +40,8 @@ function admiringReason(factor: PerformanceFactor): string | null {
     case "active":
       if (s < 35) return null;
       return s >= 60
-        ? `${pctText(s)} of alumni are active — the portal has a healthy, engaged user base.`
-        : `${pctText(s)} active alumni rate reflects a dependable engagement foundation.`;
+        ? `${pctText(s)} of alumni have logged into their profile — the portal has a healthy, engaged user base.`
+        : `${pctText(s)} logged-in alumni rate reflects a dependable engagement foundation.`;
     case "placement":
       if (s < 35) return null;
       return s >= 55
@@ -75,7 +75,7 @@ function attentionReason(factor: PerformanceFactor): string | null {
       return `Verification rate is only ${pctText(s)} — a large share of alumni records still need confirmation.`;
     case "active":
       if (s >= 40) return null;
-      return `Active alumni rate is ${pctText(s)} — many registered alumni are not marked active on the portal.`;
+      return `Logged-in alumni rate is ${pctText(s)} — many registered alumni have never signed into their profile.`;
     case "placement":
       if (s >= 40) return null;
       return `Placement among tracked graduates is ${pctText(s)} — employment outcomes need closer follow-up.`;
@@ -191,7 +191,7 @@ export function derivePerformanceScore(data: ManagementDashboardPayload | undefi
       label: "Active alumni",
       score: activeRate,
       weight: "20%",
-      detail: `${pctText(activeRate)} marked active`,
+      detail: `${pctText(activeRate)} logged in ≥1 time`,
     },
     {
       id: "placement",

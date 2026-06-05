@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/dbconnect";
 import { auth } from "@/lib/auth";
 import { buildAccessFilterSQL } from "@/lib/userAccess";
+import { buildAssociationTabMembershipMembersSQL } from "@/lib/association-tab-filters";
 import {
   MANAGEMENT_DASHBOARD_MERCHANT_SEED,
   MANAGEMENT_DASHBOARD_SCOPE_NOTES,
@@ -124,7 +125,10 @@ export async function GET(req: Request) {
       sql/* sql */`
         SELECT
           COUNT(*) FILTER (WHERE true)::int AS total_alumni,
-          COUNT(*) FILTER (WHERE LOWER(COALESCE(a.alumnistatus,'')) = 'active')::int AS active_alumni
+          COUNT(*) FILTER (WHERE
+            COALESCE(a.logincount, 0) >= 1
+            OR TRIM(COALESCE(a.lasttimelogin, '')) <> ''
+          )::int AS active_alumni
         FROM public.tbl_alumni a
         WHERE 1=1
         ${accessFilterCondition}
@@ -261,7 +265,27 @@ export async function GET(req: Request) {
       SELECT
         (SELECT COUNT(*)::int FROM public.tblchapters c WHERE TRIM(COALESCE(c.national_chapter,'')) <> '') AS national_chapters,
         (SELECT COUNT(*)::int FROM public.tblchapters c WHERE TRIM(COALESCE(c.international_chapter,'')) <> '') AS international_chapters,
-        (SELECT COUNT(*)::int FROM public.tblalumniassociation aa) AS associations,
+        (SELECT COUNT(DISTINCT fid)::int
+         FROM (
+           SELECT a.association_id AS fid
+           FROM public.tbl_alumni a
+           WHERE a.association_id IS NOT NULL
+           ${accessFilterCondition}
+           ${facultyFilterCondition}
+           UNION
+           SELECT a.faculty AS fid
+           FROM public.tbl_alumni a
+           WHERE a.faculty IS NOT NULL
+           ${accessFilterCondition}
+           ${facultyFilterCondition}
+         ) association_faculties
+         WHERE fid IS NOT NULL) AS associations,
+        (SELECT COUNT(DISTINCT a.alumniid)::int
+         FROM public.tbl_alumni a
+         WHERE 1=1
+         ${accessFilterCondition}
+         ${facultyFilterCondition}
+         ${buildAssociationTabMembershipMembersSQL()}) AS association_members,
         (SELECT COUNT(DISTINCT ac.id)::int FROM public.alumni_chapter ac JOIN public.tbl_alumni a ON a.alumniid = ac.id WHERE 1=1 ${accessFilterCondition} ${facultyFilterCondition} ${alumniPeriodCond}) AS members,
         (SELECT COUNT(*)::int FROM public.chapter_leadership cl WHERE LOWER(COALESCE(cl.status,'')) = 'approved') AS leaders_appointed
     `;
@@ -1031,6 +1055,7 @@ export async function GET(req: Request) {
           nationalChapters: ca.national_chapters ?? null,
           internationalChapters: ca.international_chapters ?? null,
           associations: ca.associations ?? null,
+          associationMembers: ca.association_members ?? null,
           members: ca.members ?? null,
           leadersAppointed: ca.leaders_appointed ?? null,
           meetupsQuarter: ev.quarter_count ?? null,

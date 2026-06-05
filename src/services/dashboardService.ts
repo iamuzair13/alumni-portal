@@ -56,7 +56,10 @@ export async function getAlumniTrends(period: AnalyticsPeriod = "monthly"): Prom
       COUNT(*) AS total,
       COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(verify, ''))) IN ('y', 'yes', 'verified')) AS verified,
       COUNT(*) FILTER (WHERE verify IS NULL OR LOWER(TRIM(COALESCE(verify, ''))) NOT IN ('y', 'yes', 'verified')) AS unverified,
-      COUNT(*) FILTER (WHERE LOWER(TRIM(COALESCE(alumnistatus, ''))) = 'active') AS active,
+      COUNT(*) FILTER (WHERE
+        COALESCE(logincount, 0) >= 1
+        OR TRIM(COALESCE(lasttimelogin, '')) <> ''
+      ) AS active,
       COUNT(*) FILTER (WHERE 1 = 0) AS distinguished,
       COUNT(*) FILTER (WHERE category = 'A+') AS "A_plus",
       COUNT(*) FILTER (WHERE category = 'A') AS "A",

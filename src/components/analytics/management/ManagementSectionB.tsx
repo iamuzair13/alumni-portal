@@ -72,7 +72,7 @@ export default function ManagementSectionB({ data, isLoading }: Props) {
           <MetricChipRow className="mb-2">
             <CompactMetricChip label="National" value={fmtCell(chapterStats.nationalChapters)} color="indigo" />
             <CompactMetricChip label="International" value={fmtCell(chapterStats.internationalChapters)} color="emerald" />
-            <CompactMetricChip label="Associations" value={fmtCell(chapterStats.associations)} color="amber" />
+            <CompactMetricChip label="Associations" value={fmtCell(chapterStats.associationMembers)} color="amber" hint={`${fmtCell(chapterStats.associations)} faculties`} />
             <CompactMetricChip label="Members" value={fmtCell(chapterStats.members)} color="sky" />
             <CompactMetricChip label="Leaders" value={fmtCell(chapterStats.leadersAppointed)} color="violet" />
             <CompactMetricChip label="Meetups" value={fmtCell(chapterStats.meetupsTotal)} hint={`${periodPrimary}: ${fmtCell(chapterStats.meetupsQuarter)} · ${periodSecondary}: ${fmtCell(chapterStats.meetupsYtd)}`} color="rose" />
