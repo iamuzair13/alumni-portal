@@ -128,7 +128,10 @@ function buildTrainedAdminGroup(trained: TrainedFacultyAdminsPayload | undefined
 }
 
 /** Occupation transition timing buckets from section A (`occupation_transition_timing`). */
-function buildTransitionVelocityGroup(tv: ManagementDashboardSectionA["transitionVelocity"] | undefined): KpiConfigGroup {
+function buildTransitionVelocityGroup(
+  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined,
+  totalAlumni: number | null | undefined
+): KpiConfigGroup {
   const buckets: Array<{ title: string; value: number | null | undefined; subtitle: string; color: KpiConfigItem["color"] }> = [
     { title: "Before graduation", value: tv?.beforeGraduation, subtitle: "Pre-graduation transition", color: "sky" },
     { title: "Immediate after grad", value: tv?.immediateAfterGraduation, subtitle: "Right after graduation", color: "indigo" },
@@ -138,32 +141,53 @@ function buildTransitionVelocityGroup(tv: ManagementDashboardSectionA["transitio
     { title: "Other / unknown", value: tv?.unknown, subtitle: "Unclassified timing", color: "slate" },
   ];
 
-  const total = buckets.reduce((sum, b) => sum + (typeof b.value === "number" ? b.value : 0), 0);
+  const tracked = buckets.reduce((sum, b) => sum + (typeof b.value === "number" ? b.value : 0), 0);
+  const alumniTotal = typeof totalAlumni === "number" && totalAlumni > 0 ? totalAlumni : 0;
+  const notProvided = alumniTotal > tracked ? alumniTotal - tracked : 0;
   const earlyTransition =
     (tv?.beforeGraduation ?? 0) + (tv?.immediateAfterGraduation ?? 0) + (tv?.within3Months ?? 0);
 
   const items: KpiConfigItem[] = [
     {
-      title: "Tracked transitions",
-      value: formatKpiValue(total > 0 ? total : null),
-      subtitle: "Alumni with timing recorded",
-      icon: DashboardIcons.chart,
-      color: "blue",
-    },
-    {
       title: "Early transition rate",
-      value: pct(earlyTransition, total),
-      subtitle: "Before grad · immediate · ≤3 mo",
+      value: pct(earlyTransition, alumniTotal > 0 ? alumniTotal : null),
+      subtitle: "Of all alumni · before grad · immediate · ≤3 mo",
       icon: DashboardIcons.chart,
       color: "emerald",
+    },
+    {
+      title: "Tracked transitions",
+      value: formatKpiValue(tracked > 0 ? tracked : null),
+      subtitle:
+        notProvided > 0
+          ? `${notProvided.toLocaleString()} alumni without timing data`
+          : "Alumni with timing recorded",
+      icon: DashboardIcons.chart,
+      color: "blue",
     },
     ...buckets.map((b) => ({
       title: b.title,
       value: formatKpiValue(b.value),
-      subtitle: total > 0 && typeof b.value === "number" ? `${pct(b.value, total)} of tracked` : b.subtitle,
+      subtitle:
+        alumniTotal > 0 && typeof b.value === "number"
+          ? `${pct(b.value, alumniTotal)} of all alumni`
+          : tracked > 0 && typeof b.value === "number"
+            ? `${pct(b.value, tracked)} of tracked`
+            : b.subtitle,
       icon: DashboardIcons.briefcase,
       color: b.color,
     })),
+    ...(notProvided > 0
+      ? [
+          {
+            title: "Not provided",
+            value: formatKpiValue(notProvided),
+            subtitle: alumniTotal > 0 ? `${pct(notProvided, alumniTotal)} of all alumni` : "No timing recorded",
+            icon: DashboardIcons.briefcase,
+            color: "slate" as const,
+          },
+        ]
+      : []),
   ];
 
   return {
@@ -243,7 +267,7 @@ export function buildAllKpiGroups(
       ],
     },
     buildTrainedAdminGroup(trainedAdmins),
-    buildTransitionVelocityGroup(transitionVelocity),
+    buildTransitionVelocityGroup(transitionVelocity, data?.alumniHeadline?.total ?? data?.kpis?.totalAlumni),
   ];
 }
 

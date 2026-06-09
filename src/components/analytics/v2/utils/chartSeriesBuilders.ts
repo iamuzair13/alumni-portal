@@ -99,7 +99,41 @@ export function provinceLocationChart(data: ManagementDashboardPayload | undefin
   };
 }
 
-export function transitionVelocityChart(tv: ManagementDashboardSectionA["transitionVelocity"] | undefined): ChartGroupMeta {
+export function transitionVelocityEarlyCount(
+  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined
+): number {
+  return (
+    num(tv?.beforeGraduation) + num(tv?.immediateAfterGraduation) + num(tv?.within3Months)
+  );
+}
+
+export function transitionVelocityTrackedTotal(
+  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined
+): number {
+  return (
+    num(tv?.beforeGraduation) +
+    num(tv?.immediateAfterGraduation) +
+    num(tv?.within3Months) +
+    num(tv?.within6Months) +
+    num(tv?.after6Months) +
+    num(tv?.unknown)
+  );
+}
+
+/** Early transition % uses all alumni as denominator (missing timing counts as not early). */
+export function transitionVelocityScore(
+  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined,
+  totalAlumni: number | null | undefined
+): number {
+  const alumniTotal = num(totalAlumni);
+  if (alumniTotal <= 0) return 0;
+  return Math.round((transitionVelocityEarlyCount(tv) / alumniTotal) * 100);
+}
+
+export function transitionVelocityChart(
+  tv: ManagementDashboardSectionA["transitionVelocity"] | undefined,
+  totalAlumni?: number | null
+): ChartGroupMeta {
   const buckets = [
     { label: "Before graduation", value: num(tv?.beforeGraduation) },
     { label: "Immediate after grad", value: num(tv?.immediateAfterGraduation) },
@@ -108,12 +142,31 @@ export function transitionVelocityChart(tv: ManagementDashboardSectionA["transit
     { label: "After 6 months", value: num(tv?.after6Months) },
     { label: "Other / unknown", value: num(tv?.unknown) },
   ];
-  const total = buckets.reduce((s, b) => s + b.value, 0);
-  const early = num(tv?.beforeGraduation) + num(tv?.immediateAfterGraduation) + num(tv?.within3Months);
+  const trackedTotal = buckets.reduce((s, b) => s + b.value, 0);
+  const alumniTotal = num(totalAlumni);
+  const notProvided = alumniTotal > trackedTotal ? alumniTotal - trackedTotal : 0;
+  const early = transitionVelocityEarlyCount(tv);
+
+  const chartSeries: ChartSeriesPoint[] = [
+    ...buckets.filter((b) => b.value > 0).map((b, i) => ({ ...b, color: colorAt(i) })),
+    ...(notProvided > 0
+      ? [{ label: "Not provided", value: notProvided, color: KPI_COLOR_HEX.slate }]
+      : []),
+  ];
+
+  const insight =
+    alumniTotal > 0
+      ? `Early transition: ${pctLocal(early, alumniTotal)} of ${alumniTotal.toLocaleString()} alumni`
+      : trackedTotal > 0
+        ? `Early transition rate: ${pctLocal(early, trackedTotal)} (tracked only)`
+        : "—";
+
   return {
     chartType: "funnel",
-    chartSeries: buckets.map((b, i) => ({ ...b, color: colorAt(i) })),
-    insight: total > 0 ? `Early transition rate: ${pctLocal(early, total)}` : "—",
+    chartSeries: chartSeries.length
+      ? chartSeries
+      : [{ label: "No data", value: 0, color: KPI_COLOR_HEX.slate }],
+    insight,
   };
 }
 

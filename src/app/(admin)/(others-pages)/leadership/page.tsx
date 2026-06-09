@@ -3389,11 +3389,6 @@ function ApplicationsTable({
               Bonus Marks{sortIndicator("bonusMarks")}
             </button>
           </TableCell>
-          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">
-            <button type="button" onClick={() => onSort("type")} className="hover:underline">
-              Type{sortIndicator("type")}
-            </button>
-          </TableCell>
           <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">
             <button type="button" onClick={() => onSort("position")} className="hover:underline">
               Role{sortIndicator("position")}
@@ -3405,6 +3400,12 @@ function ApplicationsTable({
               Status{sortIndicator("status")}
             </button>
           </TableCell>
+          <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">
+            <button type="button" onClick={() => onSort("type")} className="hover:underline">
+              Type{sortIndicator("type")}
+            </button>
+          </TableCell>
+          
           {isAdmin && (
             <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[180px]">
               <span className="hidden sm:inline">Actions</span>
@@ -3435,23 +3436,7 @@ function ApplicationsTable({
                     </button>
                   ) : null}
                 </div>
-                {(() => {
-                  const docs = documentsFromItem(app);
-                  if (!docs.length) return null;
-                  return (
-                    <div className="mt-1 space-y-0.5">
-                      {docs.map((d) => {
-                        const name = fileNameFromUrl(d.url) || d.label;
-                        return (
-                          <div key={d.key} className="flex items-center gap-2 min-w-0">
-                            <span className="shrink-0 text-[11px] text-gray-600 dark:text-gray-400 font-semibold">{d.label}:</span>
-                            <span className="min-w-0 truncate text-[11px] text-gray-600 dark:text-gray-400 block">{name}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                
                 <a
                   href={app.email ? `mailto:${app.email}` : "#"}
                   className="lg:hidden block text-xs text-blue-600 truncate min-w-0 max-w-full"
@@ -3490,11 +3475,6 @@ function ApplicationsTable({
                 <span className="text-gray-400 dark:text-gray-500">—</span>
               )}
             </TableCell>
-            <TableCell className="px-4 py-3 text-sm w-[180px]">
-              <div className="truncate min-w-0">
-                {app.type === "chapter" ? "Chapter" : "Association"} - {String(app.categoryName || "-")}
-              </div>
-            </TableCell>
             <TableCell className="px-4 py-3 text-sm w-[160px]">
               <LeadershipRoleBadge type={app.type} position={app.position} />
             </TableCell>
@@ -3520,6 +3500,12 @@ function ApplicationsTable({
                 })()}
               </span>
             </TableCell>
+            <TableCell className="px-4 py-3 text-sm w-[180px]">
+              <div className="truncate min-w-0">
+                {app.type === "chapter" ? "Chapter" : "Association"} - {String(app.categoryName || "-")}
+              </div>
+            </TableCell>
+            
             {isAdmin && (
               <TableCell className="px-4 py-3 text-right sticky right-0 z-20 bg-white dark:bg-gray-800 w-[180px] overflow-visible">
                 {(() => {

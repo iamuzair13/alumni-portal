@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { PerformanceResult } from "../utils/derivePerformanceScore";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 function factorBarColor(score: number) {
   if (score >= 65) return "bg-emerald-500 dark:bg-emerald-400";
@@ -10,7 +10,14 @@ function factorBarColor(score: number) {
   return "bg-rose-500 dark:bg-rose-400";
 }
 
-export function PerformanceScoreBreakdown({ result }: { result: PerformanceResult }) {
+export function PerformanceScoreBreakdown({
+  result,
+  variant = "default",
+}: {
+  result: PerformanceResult;
+  variant?: "default" | "command";
+}) {
+  const isCommand = variant === "command";
   const isConcern = result.label === "Needs Attention";
   const accentBorder = isConcern
     ? "border-rose-200/80 dark:border-rose-900/40"
@@ -24,7 +31,11 @@ export function PerformanceScoreBreakdown({ result }: { result: PerformanceResul
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`rounded-xl border bg-white/90 px-2.5  py-2 shadow-sm backdrop-blur-sm dark:bg-gray-900/60 ${accentBorder}`}
+      className={`rounded-xl border px-2.5 py-2 backdrop-blur-sm ${
+        isCommand
+          ? `bg-white shadow-xl dark:bg-gray-900 ${accentBorder}`
+          : `bg-white/90 shadow-sm dark:bg-gray-900/60 ${accentBorder}`
+      }`}
       role="region"
       aria-label="Performance score breakdown"
     >
