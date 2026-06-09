@@ -27,9 +27,7 @@ const nextConfig = {
     })),
   },
 
-  serverExternalPackages: ['jsdom', 'parse5'],
-
-  webpack(config, { isServer }) {
+  webpack(config) {
     config.module.rules.push({
       test: /\.svg$/i,
       use: [
@@ -39,21 +37,6 @@ const nextConfig = {
         },
       ],
     });
-
-    if (isServer) {
-      config.externals = config.externals || [];
-      if (Array.isArray(config.externals)) {
-        config.externals.push('parse5');
-      } else if (typeof config.externals === 'function') {
-        const originalExternals = config.externals;
-        config.externals = (context, request, callback) => {
-          if (request === 'parse5') {
-            return callback(null, 'commonjs parse5');
-          }
-          return originalExternals(context, request, callback);
-        };
-      }
-    }
 
     return config;
   },

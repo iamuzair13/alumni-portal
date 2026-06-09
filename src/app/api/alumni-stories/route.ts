@@ -8,6 +8,7 @@ import { buildAccessFilterSQL } from "@/lib/userAccess";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { sanitizeStoryHtml, storyHtmlTextContent } from "@/lib/sanitizeStoryHtml";
 
 
 type StoryItem = {
@@ -271,17 +272,8 @@ export async function POST(req: Request) {
       v = parsed.data;
     }
     
-    // Sanitize HTML using DOMPurify (dynamic import to avoid ES module issues)
-    const DOMPurify = (await import("isomorphic-dompurify")).default;
-    const cleanHtml = DOMPurify.sanitize(v.storyHtml, {
-      ALLOWED_TAGS: ["p","br","strong","em","u","s","ul","ol","li","h1","h2","h3","a","div"],
-      ALLOWED_ATTR: ["href","target","rel"],
-    });
-    
-    
-    // Check if content is actually empty after sanitization
-    // Remove HTML tags and check if there's any text content
-    const textContent = cleanHtml.replace(/<[^>]+>/g, "").trim();
+    const cleanHtml = sanitizeStoryHtml(v.storyHtml);
+    const textContent = storyHtmlTextContent(v.storyHtml);
     if (!textContent || textContent.length === 0) {
       return NextResponse.json({ 
         message: "Story content is required and cannot be empty after sanitization" 

@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { sanitizeStoryHtml } from "@/lib/sanitizeStoryHtml";
 
 
 
@@ -252,12 +253,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       v = parsed.data;
     }
     
-    // Sanitize HTML using DOMPurify (dynamic import to avoid ES module issues)
-    const DOMPurify = (await import("isomorphic-dompurify")).default;
-    const cleanHtml = DOMPurify.sanitize(v.storyHtml, {
-      ALLOWED_TAGS: ["p","br","strong","em","u","s","ul","ol","li","h1","h2","h3","a","div"],
-      ALLOWED_ATTR: ["href","target","rel"],
-    });
+    const cleanHtml = sanitizeStoryHtml(v.storyHtml);
     
     
     // Update story
