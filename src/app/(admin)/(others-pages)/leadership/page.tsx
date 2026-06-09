@@ -20,6 +20,8 @@ import { EMAIL_ACTION_TYPE, generateAdminActionEmail } from "@/lib/emailTemplate
 import LeadershipRoleBadge from "@/components/ui/LeadershipRoleBadge";
 import { getLeadershipApplications } from "@/app/queries/leadership-applications";
 import { clampObtainedMark, formatObtainedMarkDisplay, normalizeObtainedMark } from "@/lib/leadershipMarks";
+import { twMerge } from "tailwind-merge"; 
+import { Loader2, FileText, Eye, Download } from "lucide-react"; 
 
 type RoleCriterion = {
   id: number;
@@ -185,10 +187,12 @@ type ViewDetailsItem = ApplicationDetailsItem & {
 function AssessmentApplicantSummary({
   pending,
   detailsItem,
+  detailsLoading = false,
   className = "mt-3",
 }: {
   pending: { type: "chapter" | "association"; name?: string; categoryName?: string | null; position?: string };
   detailsItem?: ViewDetailsItem;
+  detailsLoading?: boolean;
   className?: string;
 }) {
   const alumniName = String(pending.name || detailsItem?.name || "").trim() || "—";
@@ -197,15 +201,31 @@ function AssessmentApplicantSummary({
   const applicationLabel =
     pending.type === "chapter" ? `Chapter — ${categoryName}` : `Association — ${categoryName}`;
   const photoSrc = String(detailsItem?.profilePhotoUrl || "").trim() || ALUMNI_PROFILE_PLACEHOLDER;
+  const sapId = String(detailsItem?.sapId || "").trim();
+  const registrationNo = String(detailsItem?.registrationNo || "").trim();
+  const sapRegistrationDisplay =
+    sapId && registrationNo ? `${sapId} / ${registrationNo}` : sapId || registrationNo || "—";
+  const passoutYear =
+    detailsItem?.passingYear != null && Number.isFinite(Number(detailsItem.passingYear))
+      ? String(detailsItem.passingYear)
+      : "—";
+  const docs = documentsFromItem(detailsItem);
+
   return (
     <div
-      className={`${className} flex gap-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/40 px-4 py-3 text-sm text-gray-700 dark:text-gray-300`}
-    >
+  className={twMerge(
+    "group rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-900",
+    className
+  )}
+>
+  <div className="flex flex-col sm:flex-row">
+    {/* Profile Section */}
+    <div className="flex items-start gap-4 p-5 sm:border-r sm:border-gray-100 dark:sm:border-gray-800">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={photoSrc}
         alt={`${alumniName} profile`}
-        className="h-20 w-20 shrink-0 rounded-lg border border-gray-200 object-cover bg-gray-100 dark:border-gray-600 dark:bg-gray-800"
+        className="h-16 w-16 shrink-0 rounded-xl border border-gray-100 object-cover bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
         onError={(e) => {
           const img = e.currentTarget;
           if (!img.src.includes("/images/person.jpg")) {
@@ -213,19 +233,131 @@ function AssessmentApplicantSummary({
           }
         }}
       />
-      <div className="min-w-0 flex-1 space-y-2">
-        <div>
-          <span className="font-semibold text-gray-900 dark:text-gray-100">Alumni Name:</span> {alumniName}
-        </div>
-        <div>
-          <span className="font-semibold text-gray-900 dark:text-gray-100">Leadership Application:</span>{" "}
-          {applicationLabel}
-        </div>
-        <div>
-          <span className="font-semibold text-gray-900 dark:text-gray-100">Role:</span> {role}
-        </div>
+      <div className="min-w-0">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          {alumniName}
+        </h3>
+        <p className="mt-0.5 text-sm font-medium text-gray-500 dark:text-gray-400">
+          {role}
+        </p>
       </div>
     </div>
+
+    {/* Details Section */}
+    <div className="flex-1 px-5 pb-5 sm:py-5">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            SAP ID / Registration No
+          </dt>
+          <dd className="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-200">
+            {detailsLoading ? (
+              <span className="inline-flex items-center gap-1.5 text-gray-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading…
+              </span>
+            ) : (
+              sapRegistrationDisplay
+            )}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            Passout Year
+          </dt>
+          <dd className="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-200">
+            {detailsLoading ? (
+              <span className="inline-flex items-center gap-1.5 text-gray-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading…
+              </span>
+            ) : (
+              passoutYear
+            )}
+          </dd>
+        </div>
+
+        <div className="sm:col-span-2">
+          <dt className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            Leadership Application
+          </dt>
+          <dd className="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-200">
+            {applicationLabel}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  {/* Documents Section */}
+  <div className="border-t border-gray-100 dark:border-gray-800">
+    <div className="px-5 py-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          Uploaded Documents
+        </h4>
+        {!detailsLoading && docs.length > 0 && (
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+            {docs.length}
+          </span>
+        )}
+      </div>
+
+      {detailsLoading ? (
+        <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading documents…
+        </div>
+      ) : docs.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-400 italic">No documents uploaded</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {docs.map((d) => {
+            const name = fileNameFromUrl(d.url) || "—";
+            return (
+              <div
+                key={d.key}
+                className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900/50 dark:hover:bg-gray-800/50"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {d.label}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
+                      {name}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={d.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-white hover:text-gray-900 hover:shadow-sm dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    View
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => downloadDocumentUrl(d.url, name !== "—" ? name : undefined)}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-gray-900 shadow-sm ring-1 ring-gray-200 transition-all hover:bg-gray-50 hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700 dark:hover:bg-gray-700 dark:hover:ring-gray-600"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
   );
 }
 
@@ -1871,6 +2003,7 @@ export default function LeadershipPage() {
                 <AssessmentApplicantSummary
                   pending={pendingAction}
                   detailsItem={approveDetailsData?.item as ViewDetailsItem | undefined}
+                  detailsLoading={approveDetailsLoading}
                 />
               )}
 
@@ -2214,7 +2347,7 @@ export default function LeadershipPage() {
                     </div>
                   </div>
                   <div className="mt-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Bonus Marks Total: {formatObtainedMarkDisplay(Number(strategyAssessmentMarks || 0) + Number(achievementAssessmentMarks || 0))} / 25
+                    Bonus Marks Total: {formatObtainedMarkDisplay(Number(strategyAssessmentMarks || "-") + Number(achievementAssessmentMarks || "-"))} / 25
                   </div>
 
                   <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 text-sm font-semibold text-gray-900 dark:text-gray-100">Assessment Remarks (optional)</div>
@@ -2354,6 +2487,7 @@ export default function LeadershipPage() {
                 <AssessmentApplicantSummary
                   pending={pendingAction}
                   detailsItem={approveDetailsData?.item as ViewDetailsItem | undefined}
+                  detailsLoading={approveDetailsLoading}
                   className="mt-3"
                 />
               )}
@@ -3193,8 +3327,8 @@ function ApplicationsTable({
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[100px]">Obtained marks</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[100px]">Bonus Marks</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[180px]">Type</TableCell>
-            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Role</TableCell>
             <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[130px]">Status</TableCell>
+            <TableCell className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 w-[160px]">Role</TableCell>
             {isAdmin && (
               <TableCell className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 sticky right-0 bg-gray-50 dark:bg-gray-900/50 w-[180px]">
                 <span className="hidden sm:inline">Actions</span>
@@ -3348,9 +3482,13 @@ function ApplicationsTable({
               )}
             </TableCell>
             <TableCell className="px-4 py-3 text-sm w-[100px]">
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                {formatObtainedMarkDisplay(Number(app.bonusMarks ?? 0))}
-              </span>
+              {Number(app.bonusMarks ?? 0) > 0 ? (
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {formatObtainedMarkDisplay(Number(app.bonusMarks ?? 0))}
+                </span>
+              ) : (
+                <span className="text-gray-400 dark:text-gray-500">—</span>
+              )}
             </TableCell>
             <TableCell className="px-4 py-3 text-sm w-[180px]">
               <div className="truncate min-w-0">

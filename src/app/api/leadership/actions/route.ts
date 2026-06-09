@@ -745,7 +745,7 @@ export async function POST(req: NextRequest) {
             WHERE leadership_type = 'association'
               AND association_application_id = ${Number(applicationId)}
               AND actor_type = 'alumni'
-              AND confirmed = true
+              AND COALESCE(response, CASE WHEN confirmed = true THEN 'YES' ELSE NULL END) IN ('YES', 'NO')
           `;
           const alumniConfirmed = (alumniConfirmedRows ?? [])
             .map((r: Record<string, unknown>) => Number(r.criterion_id))
